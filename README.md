@@ -6,28 +6,59 @@ app owns. The apps that run on it live in their own repos, such as
 
 ## Stacks
 
-| Stack                           | Holds                                                                                                                                                                                                   | Applied by                                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                        | A human with project Owner and `gh` `admin:org`. Never CI.                                                        |
-| [`cloud`](stacks/cloud)         | The VPC, the cluster subnet and its Cloud NAT, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, and Artifact Registry                                                 | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
-| [`cluster`](stacks/cluster)     | The GKE Autopilot cluster, the shared Gateway, its address, certificates, and DNS records, the `dev` namespace with its RBAC, quota, and network policy, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
-| [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                         | `deploy-dev`, from Actions on every PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
+| Stack                           | Holds                                                                                                                                                                                                                                                    | Applied by                                                                                                        |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                                                                         | A human with project Owner and `gh` `admin:org`. Never CI.                                                        |
+| [`cloud`](stacks/cloud)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, and Artifact Registry                                                                              | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
+| [`cluster`](stacks/cluster)     | The GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
+| [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                          | `deploy-dev`, from Actions on every PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
 
 ## @cyc-seattle/platform
 
 `src/` is the `@cyc-seattle/platform` package, which the stacks here and the apps' stacks import:
 
 - `getPlatformOutputs()` reads an environment's `platform/outputs.json` from its state bucket. The
-  `cluster` stack writes it. Dev stacks can't read prod's backend, so this replaces a
+  `cluster` stack writes it. It holds the environment's namespace and domain, the Gateway and its
+  address (`gatewayAddress`, for an app's own DNS records), and the Cloud SQL instance's connection
+  name and private IP (`sqlHost`). Dev stacks can't read prod's backend, so this replaces a
   StackReference for platform values (cyc-seattle/isthmia#215).
 - `clusterProvider(platform)` builds a Kubernetes provider for the cluster. Its kubeconfig runs
   `gke-gcloud-auth-plugin` with Application Default Credentials, so Pulumi must run under mise,
   where `mise run install` puts the plugin on `PATH`.
-- `WebService` runs an HTTP service behind the environment's Gateway, with secure defaults. Its pods
-  get no IAM; grant roles to its `member`, a Workload Identity principal.
+- `Workload` runs a long-lived process with no route: a Deployment, a ServiceAccount, and, when it
+  has `ports`, a ClusterIP Service that other pods in the namespace reach at `host`.
+- `WebService` is a `Workload` behind the environment's Gateway at `hostname`. Its Service exposes
+  `port` as port 80, and its readiness probe must be an HTTP GET, which the load balancer's health
+  check reuses.
+- `ScheduledJob` runs a CronJob on `schedule`, in `America/Los_Angeles` unless `timeZone` says
+  otherwise. A run never overlaps the one before it, gets an hour, and doesn't retry, by default.
+- All three run non-root with a read-only root filesystem, no capabilities, and no service account
+  token, on Spot pods in dev only. Their limits equal their requests. Their pods get no IAM; grant
+  roles to `member`, a Workload Identity principal, or set `serviceAccountAnnotations` to run as a
+  Google service account.
 - `enableService` enables a Google Cloud API.
 
-`mise run build` builds it into `dist/`, which is all it publishes.
+`mise run build` builds it into `dist/`, which is all it publishes. `.github/workflows/release.yml`
+releases each merge to `main` with semantic-release, versioned by the conventional commits.
+
+## Environments
+
+| Stack  | Namespace | Domain             | Deploy identity |
+| ------ | --------- | ------------------ | --------------- |
+| `dev`  | `dev`     | `dev.cycsail.team` | `deploy-dev`    |
+| `prod` | `prod`    | `cycsail.team`     | `deploy-runner` |
+
+Each namespace denies ingress from other namespaces except the load balancer's. Dev also admits the
+Kubernetes API's service proxy, which the integration tests use, and denies egress to the mail ports
+(25, 465, 587) outside the cluster. `cluster` writes dev's A records; each prod app writes its own,
+pointing at `gatewayAddress`.
+
+`deploy-dev` may administer the `cyc-dev` Cloud SQL instance and read Secret Manager secrets whose IDs
+start with `dev-`. Read them with `gcp.secretmanager.getSecretVersionAccess`, which needs only the
+accessor role.
+
+A Job that fails in `prod`, or a CronJob there with no successful Job in 3 hours, emails each address
+in `cluster:alertEmails`.
 
 ## Setup
 

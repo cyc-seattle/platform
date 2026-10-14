@@ -56,7 +56,9 @@ export async function kube(
     ...(body !== undefined && { body: JSON.stringify(body) }),
   });
   const text = await response.text();
-  return { status: response.status, body: text ? JSON.parse(text) : undefined };
+  // A proxied service may answer with anything.
+  const json = response.headers.get("content-type")?.startsWith("application/json");
+  return { status: response.status, body: json && text ? JSON.parse(text) : text || undefined };
 }
 
 /** Whether the caller may create `resource` (`name.group`, as kubectl writes it) in `namespace`. */
