@@ -6,6 +6,9 @@ import { enableService } from "../../src/services";
 const iamApi = enableService("iam.googleapis.com");
 const stsApi = enableService("sts.googleapis.com");
 const iamCredentialsApi = enableService("iamcredentials.googleapis.com");
+// A service account's calls bill the project itself, so the project lookups the stacks make (such as
+// `getProject`, for the project number) need the API enabled here; a person's login works without it.
+enableService("cloudresourcemanager.googleapis.com");
 
 const owner = new pulumi.Config("github").require("owner");
 
