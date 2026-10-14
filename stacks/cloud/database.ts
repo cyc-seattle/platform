@@ -6,6 +6,20 @@ import { enableService } from "../../src/services";
 
 const sqlApi = enableService("sqladmin.googleapis.com");
 
+export interface PostgresInstanceArgs {
+  network: pulumi.Input<string>;
+  /** The instance's name. Defaults to the logical name plus a random suffix. */
+  name?: string;
+  /** Defaults to the shared-core `db-g1-small`. */
+  tier?: string;
+  /** Defaults to true, with 7 days of transaction logs. */
+  pointInTimeRecovery?: boolean;
+  /** How many daily backups to keep. Defaults to 30. */
+  retainedBackups?: number;
+  /** Defaults to true. */
+  deletionProtection?: boolean;
+}
+
 /**
  * A Cloud SQL for PostgreSQL instance with secure, durable defaults: private IP only (no public
  * endpoint), automated backups and point-in-time recovery, and deletion protection. Attach it to a
@@ -13,18 +27,20 @@ const sqlApi = enableService("sqladmin.googleapis.com");
  * databases and users on it.
  */
 export class PostgresInstance extends gcp.sql.DatabaseInstance {
-  constructor(name: string, args: { network: pulumi.Input<string> }, opts?: pulumi.CustomResourceOptions) {
+  constructor(name: string, args: PostgresInstanceArgs, opts?: pulumi.CustomResourceOptions) {
+    const pointInTimeRecovery = args.pointInTimeRecovery ?? true;
     super(
       name,
       {
+        ...(args.name ? { name: args.name } : {}),
         databaseVersion: "POSTGRES_16",
         region: location,
         settings: {
-          // Enterprise edition is required for the shared-core tier below; Cloud SQL now defaults
-          // new instances to Enterprise Plus, which only allows db-perf-optimized-* tiers.
+          // Enterprise edition is required for the shared-core tiers; Cloud SQL now defaults new
+          // instances to Enterprise Plus, which only allows db-perf-optimized-* tiers.
           edition: "ENTERPRISE",
           // Shared-core. Not covered by the Cloud SQL SLA; fine at this scale.
-          tier: "db-g1-small",
+          tier: args.tier ?? "db-g1-small",
           availabilityType: "ZONAL",
           diskType: "PD_SSD",
           diskAutoresize: true,
@@ -34,13 +50,13 @@ export class PostgresInstance extends gcp.sql.DatabaseInstance {
           },
           backupConfiguration: {
             enabled: true,
-            pointInTimeRecoveryEnabled: true,
+            pointInTimeRecoveryEnabled: pointInTimeRecovery,
             startTime: "09:00", // ~01:00-02:00 America/Los_Angeles, off-peak
-            transactionLogRetentionDays: 7,
-            backupRetentionSettings: { retainedBackups: 30 },
+            ...(pointInTimeRecovery ? { transactionLogRetentionDays: 7 } : {}),
+            backupRetentionSettings: { retainedBackups: args.retainedBackups ?? 30 },
           },
         },
-        deletionProtection: true,
+        deletionProtection: args.deletionProtection ?? true,
       },
       opts,
     );
@@ -51,5 +67,19 @@ export class PostgresInstance extends gcp.sql.DatabaseInstance {
 export const postgres = new PostgresInstance(
   "substrate",
   { network: network.id },
+  { dependsOn: [privateServicesConnection, sqlApi] },
+);
+
+// Dev's instance (#215). Its data is disposable. Its fixed name keeps it out of db-tunnel's filter.
+export const devPostgres = new PostgresInstance(
+  "cyc-dev",
+  {
+    network: network.id,
+    name: "cyc-dev",
+    tier: "db-f1-micro",
+    pointInTimeRecovery: false,
+    retainedBackups: 7,
+    deletionProtection: false,
+  },
   { dependsOn: [privateServicesConnection, sqlApi] },
 );

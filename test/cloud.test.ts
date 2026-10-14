@@ -8,7 +8,8 @@ interface Created {
 }
 
 const created: Created[] = [];
-const byType = (type: string) => created.filter((r) => r.type === type);
+const instance = (name: string) =>
+  created.find((r) => r.type === "gcp:sql/databaseInstance:DatabaseInstance" && r.name === name)!.inputs;
 
 beforeAll(async () => {
   await pulumi.runtime.setMocks(
@@ -29,14 +30,15 @@ beforeAll(async () => {
 });
 
 describe("PostgresInstance", () => {
-  const instance = () => byType("gcp:sql/databaseInstance:DatabaseInstance")[0]!.inputs;
-
-  it("has no public IP", () => {
-    expect(instance().settings.ipConfiguration).toMatchObject({ ipv4Enabled: false, privateNetwork: "substrate_id" });
+  it.each(["substrate", "cyc-dev"])("%s has no public IP", (name: string) => {
+    expect(instance(name).settings.ipConfiguration).toMatchObject({
+      ipv4Enabled: false,
+      privateNetwork: "substrate_id",
+    });
   });
 
   it("keeps backups with point-in-time recovery", () => {
-    expect(instance().settings.backupConfiguration).toMatchObject({
+    expect(instance("substrate").settings.backupConfiguration).toMatchObject({
       enabled: true,
       pointInTimeRecoveryEnabled: true,
       backupRetentionSettings: { retainedBackups: 30 },
@@ -44,6 +46,56 @@ describe("PostgresInstance", () => {
   });
 
   it("can't be deleted by accident", () => {
-    expect(instance().deletionProtection).toBe(true);
+    expect(instance("substrate").deletionProtection).toBe(true);
+  });
+});
+
+describe("the prod instance", () => {
+  // Any change here is a change to prod's instance, which the cloud preview must not show.
+  it("keeps its inputs", () => {
+    expect(instance("substrate")).toEqual({
+      databaseVersion: "POSTGRES_16",
+      region: "us-west1",
+      settings: {
+        edition: "ENTERPRISE",
+        tier: "db-g1-small",
+        availabilityType: "ZONAL",
+        diskType: "PD_SSD",
+        diskAutoresize: true,
+        ipConfiguration: { ipv4Enabled: false, privateNetwork: "substrate_id" },
+        backupConfiguration: {
+          enabled: true,
+          pointInTimeRecoveryEnabled: true,
+          startTime: "09:00",
+          transactionLogRetentionDays: 7,
+          backupRetentionSettings: { retainedBackups: 30 },
+        },
+      },
+      deletionProtection: true,
+    });
+  });
+});
+
+describe("the dev instance", () => {
+  it("is named cyc-dev, which isthmia's db-tunnel filter doesn't match", () => {
+    expect(instance("cyc-dev").name).toBe("cyc-dev");
+    expect(instance("cyc-dev").name).not.toMatch(/substrate/);
+  });
+
+  it("is the smallest shared-core tier", () => {
+    expect(instance("cyc-dev").settings.tier).toBe("db-f1-micro");
+  });
+
+  it("keeps a week of daily backups and no point-in-time recovery", () => {
+    expect(instance("cyc-dev").settings.backupConfiguration).toEqual({
+      enabled: true,
+      pointInTimeRecoveryEnabled: false,
+      startTime: "09:00",
+      backupRetentionSettings: { retainedBackups: 7 },
+    });
+  });
+
+  it("can be deleted", () => {
+    expect(instance("cyc-dev").deletionProtection).toBe(false);
   });
 });
