@@ -27,8 +27,17 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Deploys
 
+- `cloud`, `cluster`, and `smoke` deploy from Actions (`.github/workflows/pull-request.yml`), through
+  the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR deploys
+  `smoke` to dev and runs the integration tests. A push to `main` also previews prod, then applies it
+  once a maintainer approves.
+- The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, and `prod`
+  is `cloud`, then `cluster`. The workflow calls `preview`, `deploy`, `integration`, and `install`,
+  so keep those names.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
-  (cyc-seattle/isthmia#118).
+  (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.
+- Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
+  when it's set, because Actions' auth step sets it.
 - Preview before every apply. Every preview of an unchanged stack must show no changes.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
 
