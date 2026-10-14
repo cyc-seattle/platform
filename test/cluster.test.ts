@@ -114,6 +114,22 @@ describe("cluster", () => {
   });
 });
 
+describe("Kubernetes provider", () => {
+  // Renaming it would replace every Kubernetes resource in the stack.
+  const provider = () => byName("pulumi:providers:kubernetes", "cyc");
+
+  it("keeps its name, and is pinned to the cluster", () => {
+    expect(provider().clusterIdentifier).toBe("cyc_id");
+  });
+
+  it("talks to the cluster's DNS endpoint with the caller's token", () => {
+    expect(JSON.parse(provider().kubeconfig.value)).toMatchObject({
+      clusters: [{ cluster: { server: "https://gke-example.us-west1.gke.goog" } }],
+      users: [{ user: { token: "token" } }],
+    });
+  });
+});
+
 describe("Gateway", () => {
   const gateway = () => byName("kubernetes:gateway.networking.k8s.io/v1:Gateway", "shared");
   const listener = (name: string) => gateway().spec.listeners.find((l: { name: string }) => l.name === name);

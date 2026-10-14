@@ -10,19 +10,8 @@ interface Account {
   name: string;
 }
 
-interface StateBackend {
-  url: string;
-  secretsProvider: string;
-}
-
 export const gkeNodes = bootstrap.requireOutput("gkeNodes") as pulumi.Output<Account>;
 export const deployDev = bootstrap.requireOutput("deployDev") as pulumi.Output<Account>;
-const stateBackends = bootstrap.requireOutput("stateBackends") as pulumi.Output<Record<string, StateBackend>>;
-
-/** The name of an environment's state bucket, from its `gs://` backend URL. */
-export function stateBucket(environment: string): pulumi.Output<string> {
-  return stateBackends.apply((backends) => new URL(backends[environment]!.url).host);
-}
 
 /** A string output of the cloud stack. */
 export function cloudOutput(name: string): pulumi.Output<string> {
