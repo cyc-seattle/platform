@@ -19,7 +19,8 @@ export const cluster = new gcp.container.Cluster(
       clusterSecondaryRangeName: cloudOutput("clusterPodsRangeName"),
       servicesSecondaryRangeName: cloudOutput("clusterServicesRangeName"),
     },
-    privateClusterConfig: { enablePrivateNodes: true },
+    // GKE sets this on a cluster with no IP endpoint; declaring it keeps the preview clean.
+    privateClusterConfig: { enablePrivateNodes: true, enablePrivateEndpoint: true },
     // Only the DNS-based endpoint, which IAM gates, so Actions runners need no IP allowlist (#215).
     controlPlaneEndpointsConfig: {
       dnsEndpointConfig: { allowExternalTraffic: true },

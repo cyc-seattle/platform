@@ -102,6 +102,10 @@ describe("cluster", () => {
     });
   });
 
+  it("declares the private endpoint GKE sets when there is no IP endpoint", () => {
+    expect(cluster().privateClusterConfig).toEqual({ enablePrivateNodes: true, enablePrivateEndpoint: true });
+  });
+
   it("serves the Gateway API's standard channel", () => {
     expect(cluster().gatewayApiConfig).toEqual({ channel: "CHANNEL_STANDARD" });
   });
