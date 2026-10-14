@@ -5,6 +5,8 @@ import { local } from "@pulumi/command";
 export type StandardRepositoryArgs = github.RepositoryArgs & {
   /** Job names from the repo's workflows. A name no job reports leaves every PR waiting. */
   requiredChecks: string[];
+  /** Approving reviews `main` needs. Org admins bypass it. Defaults to 0. */
+  requiredApprovingReviewCount?: number;
 };
 
 // No workflow token may open PRs, org-wide or per repo. Each repo's pin waits on the org policy.
@@ -24,7 +26,7 @@ const orgWorkflowPermissions = new github.ActionsOrganizationWorkflowPermissions
 export class StandardRepository extends github.Repository {
   constructor(
     plainId: string,
-    { requiredChecks, ...args }: StandardRepositoryArgs,
+    { requiredChecks, requiredApprovingReviewCount = 0, ...args }: StandardRepositoryArgs,
     opts?: pulumi.CustomResourceOptions,
   ) {
     super(
@@ -101,7 +103,7 @@ export class StandardRepository extends github.Repository {
         deletion: true,
         nonFastForward: true,
         pullRequest: {
-          requiredApprovingReviewCount: 0,
+          requiredApprovingReviewCount,
           dismissStaleReviewsOnPush: true,
           allowedMergeMethods: ["squash"],
         },
@@ -120,11 +122,21 @@ export class StandardRepository extends github.Repository {
   }
 }
 
+// Members are set by hand, like Authentik's `staff` group (#212). The prod environments' reviewers.
+export const maintainers = new github.Team("maintainers", {
+  name: "maintainers",
+  description: "Approves deploys to prod.",
+  privacy: "closed",
+});
+
+// A deploy to prod previews merged code with prod credentials before anyone approves, so every merge
+// to main needs a review (#215).
 export const isthmia = new StandardRepository("isthmia", {
   description: "A collection of Typescript packages for managing CYC Community Sailing Center.",
   visibility: "public",
   hasProjects: true,
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
+  requiredApprovingReviewCount: 1,
 });
 
 new StandardRepository(".github", {
@@ -177,12 +189,13 @@ new StandardRepository("gsuite-sdk", {
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
 });
 
-new StandardRepository("platform", {
+export const platform = new StandardRepository("platform", {
   description:
     "Pulumi stacks for CYC's shared Google Cloud platform: identities, the network, databases, and the cluster.",
   visibility: "public",
   hasProjects: false,
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
+  requiredApprovingReviewCount: 1,
 });
 
 new StandardRepository("todo-manager", {

@@ -28,6 +28,11 @@ beforeAll(async () => {
   // The module builds its resources on import, so it loads only after the mocks are set.
   ({ StandardRepository } = await import("../stacks/bootstrap/github.js"));
   new StandardRepository("example", { description: "An example.", requiredChecks: ["build"] });
+  new StandardRepository("reviewed-example", {
+    description: "Reviewed.",
+    requiredApprovingReviewCount: 1,
+    requiredChecks: ["build"],
+  });
   new StandardRepository("archived-example", { description: "Archived.", archived: true, requiredChecks: ["build"] });
   await new Promise((r) => setImmediate(r));
 });
@@ -71,6 +76,11 @@ describe("StandardRepository", () => {
         pullRequest: { requiredApprovingReviewCount: 0, allowedMergeMethods: ["squash"] },
       },
     });
+  });
+
+  it("requires no approving review unless asked", () => {
+    expect(byName("example-main").inputs.rules.pullRequest.requiredApprovingReviewCount).toBe(0);
+    expect(byName("reviewed-example-main").inputs.rules.pullRequest.requiredApprovingReviewCount).toBe(1);
   });
 
   it("requires each named status check", () => {
@@ -150,6 +160,27 @@ describe("Actions workflow permissions", () => {
     expect(pins.length).toBe(ofType("github:index/repository:Repository").length);
     for (const pin of pins) {
       expect(pin.inputs).toMatchObject({ defaultWorkflowPermissions: "read", canApprovePullRequestReviews: false });
+    }
+  });
+});
+
+describe("approving reviews on main", () => {
+  const approvals = (repo: string) =>
+    ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === `${repo}-main`)!.inputs.rules
+      .pullRequest.requiredApprovingReviewCount;
+
+  // A prod preview runs merged code with prod credentials before anyone approves (#215).
+  it.each(["isthmia", "platform"])("is required on %s", (repo) => {
+    expect(approvals(repo)).toBe(1);
+  });
+
+  it("is not required on the other repositories", () => {
+    const others = ofType("github:index/repository:Repository")
+      .map((r) => r.inputs.name as string)
+      .filter((name) => !["isthmia", "platform", "reviewed-example"].includes(name));
+    expect(others.length).toBeGreaterThan(0);
+    for (const name of others) {
+      expect(approvals(name)).toBe(0);
     }
   });
 });
