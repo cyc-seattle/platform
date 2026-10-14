@@ -11,8 +11,22 @@ app owns. The apps that run on it live in their own repos, such as
 | [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                        | A human with project Owner and `gh` `admin:org`. Never CI.                              |
 | [`cloud`](stacks/cloud)         | The VPC, the cluster subnet and its Cloud NAT, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, and Artifact Registry                                                 | A deployer, with `mise run deploy`. Later `deploy-runner`, from Actions after approval. |
 | [`cluster`](stacks/cluster)     | The GKE Autopilot cluster, the shared Gateway, its address, certificates, and DNS records, the `dev` namespace with its RBAC, quota, and network policy, and each environment's `platform/outputs.json` | A deployer, with `mise run deploy`. Later `deploy-runner`, from Actions after approval. |
+| [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                         | A deployer, with `mise run deploy-smoke`. Later `deploy-dev`, on every PR.              |
 
-`src/` holds the helpers the stacks share.
+## @cyc-seattle/platform
+
+`src/` is the `@cyc-seattle/platform` package, which the stacks here and the apps' stacks import:
+
+- `getPlatformOutputs()` reads an environment's `platform/outputs.json` from its state bucket. The
+  `cluster` stack writes it. Dev stacks can't read prod's backend, so this replaces a
+  StackReference for platform values (cyc-seattle/isthmia#215).
+- `clusterProvider(platform)` builds a Kubernetes provider for the cluster from the caller's Google
+  access token.
+- `WebService` runs an HTTP service behind the environment's Gateway, with secure defaults. Its pods
+  get no IAM; grant roles to its `member`, a Workload Identity principal.
+- `enableService` enables a Google Cloud API.
+
+`mise run build` builds it into `dist/`, which is all it publishes.
 
 ## Setup
 
@@ -62,3 +76,11 @@ mise run ci
 
 Runs the type check, Prettier, ESLint, and the unit tests. Tests mock Pulumi with
 `pulumi.runtime.setMocks` and never call a live API.
+
+```sh
+mise run integration
+```
+
+Runs the Gherkin scenarios in `features/` against dev, after `mise run deploy-smoke`. They run as
+whatever identity Application Default Credentials hold. The isolation scenarios expect `deploy-dev`,
+so as a human, log Application Default Credentials in with `--impersonate-service-account` first.
