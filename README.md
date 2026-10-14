@@ -6,10 +6,11 @@ app owns. The apps that run on it live in their own repos, such as
 
 ## Stacks
 
-| Stack                           | Holds                                                                                                            | Applied by                                                                              |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings | A human with project Owner and `gh` `admin:org`. Never CI.                              |
-| [`cloud`](stacks/cloud)         | The VPC and the private services peering, the Cloud SQL instance, the DNS zones, and Artifact Registry           | A deployer, with `mise run deploy`. Later `deploy-runner`, from Actions after approval. |
+| Stack                           | Holds                                                                                                                                                                                                   | Applied by                                                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                        | A human with project Owner and `gh` `admin:org`. Never CI.                              |
+| [`cloud`](stacks/cloud)         | The VPC, the cluster subnet and its Cloud NAT, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, and Artifact Registry                                                 | A deployer, with `mise run deploy`. Later `deploy-runner`, from Actions after approval. |
+| [`cluster`](stacks/cluster)     | The GKE Autopilot cluster, the shared Gateway, its address, certificates, and DNS records, the `dev` namespace with its RBAC, quota, and network policy, and each environment's `platform/outputs.json` | A deployer, with `mise run deploy`. Later `deploy-runner`, from Actions after approval. |
 
 `src/` holds the helpers the stacks share.
 
@@ -36,7 +37,9 @@ mise run preview
 mise run deploy
 ```
 
-`deploy` applies `cloud`. The apps read `cloud`'s outputs through a StackReference.
+`deploy` applies `cloud`, then `cluster`. Prod stacks read `cloud`'s outputs through a StackReference.
+Dev stacks can't read prod state, so `cluster` writes each environment's platform values to
+`platform/outputs.json` in that environment's state bucket.
 
 `bootstrap`'s GitHub provider uses `gh auth token`, so log `gh` in as a cyc-seattle org owner with
 the `admin:org` scope: `gh auth refresh -h github.com -s admin:org`. Deploys refresh first, so they

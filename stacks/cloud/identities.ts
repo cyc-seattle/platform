@@ -8,3 +8,5 @@ function member(outputName: string): pulumi.Output<string> {
 }
 
 export const deployRunnerMember = member("deployRunner");
+export const deployDevMember = member("deployDev");
+export const gkeNodesMember = member("gkeNodes");

@@ -38,3 +38,32 @@ export const privateServicesConnection = new gcp.servicenetworking.Connection(
   },
   { dependsOn: servicenetworkingApi },
 );
+
+export const clusterPodsRange = "pods";
+export const clusterServicesRange = "services";
+
+// The GKE cluster's nodes, with secondary ranges for its pods and services (#215). Clear of the VM
+// subnet above and the private services range (10.159.0.0/16), and in the same VPC, so pods reach
+// Cloud SQL's private IP directly.
+export const clusterSubnet = new gcp.compute.Subnetwork("cluster", {
+  network: network.id,
+  region: location,
+  ipCidrRange: "10.1.0.0/24",
+  privateIpGoogleAccess: true,
+  secondaryIpRanges: [
+    { rangeName: clusterPodsRange, ipCidrRange: "10.2.0.0/17" },
+    { rangeName: clusterServicesRange, ipCidrRange: "10.3.0.0/20" },
+  ],
+});
+
+// Egress for the cluster's private nodes. Only the cluster subnet uses it; the VM keeps its own IP.
+const clusterRouter = new gcp.compute.Router("cluster", { network: network.id, region: location });
+
+new gcp.compute.RouterNat("cluster", {
+  router: clusterRouter.name,
+  region: location,
+  natIpAllocateOption: "AUTO_ONLY",
+  sourceSubnetworkIpRangesToNat: "LIST_OF_SUBNETWORKS",
+  subnetworks: [{ name: clusterSubnet.id, sourceIpRangesToNats: ["ALL_IP_RANGES"] }],
+  logConfig: { enable: true, filter: "ERRORS_ONLY" },
+});

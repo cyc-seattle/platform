@@ -1,0 +1,6 @@
+name: cluster
+description: The GKE Autopilot cluster, the shared Gateway, and each environment's namespace and platform outputs.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm

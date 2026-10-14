@@ -1,6 +1,6 @@
 import * as gcp from "@pulumi/gcp";
 import { location } from "../../src/config";
-import { deployRunnerMember } from "./identities";
+import { deployDevMember, deployRunnerMember, gkeNodesMember } from "./identities";
 import { enableService } from "../../src/services";
 
 const artifactRegistryApi = enableService("artifactregistry.googleapis.com");
@@ -26,3 +26,29 @@ new gcp.artifactregistry.RepositoryIamMember("artifact-member-deploy-runner", {
   role: "roles/artifactregistry.writer",
   member: deployRunnerMember,
 });
+
+// Dev deploys push their images; the cluster's nodes pull them (#215). An IAM member is
+// read-modify-write against one shared policy, so a default replacement strips it (#153).
+new gcp.artifactregistry.RepositoryIamMember(
+  "artifact-member-deploy-dev",
+  {
+    project: artifactRepository.project,
+    location: artifactRepository.location,
+    repository: artifactRepository.name,
+    role: "roles/artifactregistry.writer",
+    member: deployDevMember,
+  },
+  { deleteBeforeReplace: true },
+);
+
+new gcp.artifactregistry.RepositoryIamMember(
+  "artifact-member-gke-nodes",
+  {
+    project: artifactRepository.project,
+    location: artifactRepository.location,
+    repository: artifactRepository.name,
+    role: "roles/artifactregistry.reader",
+    member: gkeNodesMember,
+  },
+  { deleteBeforeReplace: true },
+);
