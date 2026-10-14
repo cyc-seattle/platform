@@ -112,8 +112,6 @@ prodKey.grant(deployRunner.member, "deploy-runner");
 devBucket.grant(deployDev.member, "deploy-dev");
 devKey.grant(deployDev.member, "deploy-dev");
 // The cluster stack writes dev's platform values here, from a prod apply.
-devBucket.grant(deployDev.member, "deploy-dev");
-devKey.grant(deployDev.member, "deploy-dev");
 devBucket.grantObject("platform/outputs.json", deployRunner.member, "deploy-runner-outputs");
 
 function backend(bucket: StateBucket, key: StateKey) {
