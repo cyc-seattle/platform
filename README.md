@@ -6,9 +6,10 @@ app owns. The apps that run on it live in their own repos, such as
 
 ## Stacks
 
-| Stack                           | Holds                                                                                                            | Applied by                                                 |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings | A human with project Owner and `gh` `admin:org`. Never CI. |
+| Stack                           | Holds                                                                                                            | Applied by                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings | A human with project Owner and `gh` `admin:org`. Never CI.                              |
+| [`cloud`](stacks/cloud)         | The VPC and the private services peering, the Cloud SQL instance, the DNS zones, and Artifact Registry           | A deployer, with `mise run deploy`. Later `deploy-runner`, from Actions after approval. |
 
 `src/` holds the helpers the stacks share.
 
@@ -31,7 +32,11 @@ deployer needs first.
 ```sh
 mise run preview-bootstrap
 mise run deploy-bootstrap
+mise run preview
+mise run deploy
 ```
+
+`deploy` applies `cloud`. The apps read `cloud`'s outputs through a StackReference.
 
 `bootstrap`'s GitHub provider uses `gh auth token`, so log `gh` in as a cyc-seattle org owner with
 the `admin:org` scope: `gh auth refresh -h github.com -s admin:org`. Deploys refresh first, so they

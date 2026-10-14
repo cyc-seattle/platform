@@ -51,3 +51,11 @@ run = "pulumi preview --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\"
 [tasks.deploy-bootstrap]
 description = "Apply the bootstrap stack"
 run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
+
+[tasks.preview]
+description = "Show the diff `mise run deploy` would apply"
+run = "pulumi preview --cwd stacks/cloud --stack \"$PULUMI_STACK\""
+
+[tasks.deploy]
+description = "Apply the cloud stack"
+run = "pulumi up --yes --cwd stacks/cloud --stack \"$PULUMI_STACK\""
