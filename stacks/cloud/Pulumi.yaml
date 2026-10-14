@@ -1,0 +1,6 @@
+name: cloud
+description: Shared Google Cloud resources that no app owns - the VPC, Cloud SQL, the DNS zones, and Artifact Registry.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm

@@ -1,0 +1,9 @@
+config:
+  gcp:project: cyc-admin-scripts
+  gcp:region: us-west1
+  cloud:bootstrapStack: organization/bootstrap/prod
+  cloud:externalDomain: cyccommunitysailing.org
+  cloud:internalDomain: cycsail.team
+  cloud:shortDomain: cycsailing.center
+secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod
+encryptedkey: CiQAbYGDqlEo3lPPKOQ4CcHsRDk6OjkFS/uf//TjbangWXQX/8ESSQAhO9qRkATDRu91TRGwaFqFZCEO5w9qR/CgKZG4R3QcauUVvLsGtfMuM6Mn2q9pLGN1hfiHN2rqwWXjITUNLBag4MzF3aZ4W6o=
