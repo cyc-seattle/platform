@@ -16,7 +16,8 @@ beforeAll(async () => {
     {
       newResource: (args) => {
         created.push({ type: args.type, name: args.name, inputs: args.inputs });
-        return { id: `${args.name}_id`, state: args.inputs };
+        const selfLink = args.type === "gcp:compute/address:Address" ? { selfLink: `${args.name}_selfLink` } : {};
+        return { id: `${args.name}_id`, state: { ...args.inputs, ...selfLink } };
       },
       call: (args) => args.inputs,
     },
@@ -26,6 +27,7 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("gcp:region", "us-west1");
   // The module builds its resources on import, so it loads only after the mocks are set.
   await import("../stacks/cloud/database.js");
+  await import("../stacks/cloud/network.js");
   await new Promise((r) => setImmediate(r));
 });
 
@@ -97,5 +99,24 @@ describe("the dev instance", () => {
 
   it("can be deleted", () => {
     expect(instance("cyc-dev").deletionProtection).toBe(false);
+  });
+});
+
+describe("the cluster's Cloud NAT", () => {
+  const nat = () => created.find((r) => r.type === "gcp:compute/routerNat:RouterNat" && r.name === "cluster")!.inputs;
+
+  it("sends egress from one reserved address, which the SMTP relay admits", () => {
+    expect(created.find((r) => r.name === "cluster-nat")).toMatchObject({
+      type: "gcp:compute/address:Address",
+      inputs: { region: "us-west1", addressType: "EXTERNAL" },
+    });
+    expect(nat()).toMatchObject({ natIpAllocateOption: "MANUAL_ONLY", natIps: ["cluster-nat_selfLink"] });
+  });
+
+  it("serves only the cluster subnet", () => {
+    expect(nat()).toMatchObject({
+      sourceSubnetworkIpRangesToNat: "LIST_OF_SUBNETWORKS",
+      subnetworks: [{ name: "cluster_id", sourceIpRangesToNats: ["ALL_IP_RANGES"] }],
+    });
   });
 });

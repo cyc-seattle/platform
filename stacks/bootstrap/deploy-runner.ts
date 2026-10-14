@@ -24,6 +24,9 @@ const predefinedRoles = [
   "roles/cloudscheduler.admin",
   "roles/container.admin",
   "roles/certificatemanager.editor",
+  // The cluster stack's Job alerts and their email channels (#205).
+  "roles/monitoring.alertPolicyEditor",
+  "roles/monitoring.notificationChannelEditor",
 ];
 
 for (const role of predefinedRoles) {
@@ -49,6 +52,12 @@ export const deployerRole = new gcp.projects.IAMCustomRole("deployer", {
     "iam.serviceAccounts.getIamPolicy",
     "iam.roles.get",
     "iam.roles.list",
+    // The cluster stack's log-based metric (#205). roles/logging.configWriter would add sinks too.
+    "logging.logMetrics.create",
+    "logging.logMetrics.delete",
+    "logging.logMetrics.get",
+    "logging.logMetrics.list",
+    "logging.logMetrics.update",
   ],
 });
 

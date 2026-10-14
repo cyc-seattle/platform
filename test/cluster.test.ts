@@ -30,6 +30,9 @@ const stackOutputs: Record<string, Record<string, unknown>> = {
     internalZoneName: "internal-zone",
     internalDomain: "example.team",
     devPostgresConnectionName: "example-project:us-west1:cyc-dev",
+    devPostgresPrivateIp: "10.159.0.6",
+    postgresConnectionName: "example-project:us-west1:substrate-1234",
+    postgresPrivateIp: "10.159.0.5",
     artifactRepositoryUrl: "us-west1-docker.pkg.dev/example-project/artifact-docker-repository",
   },
 };
@@ -49,8 +52,18 @@ beforeAll(async () => {
           };
           return { id: `${args.name}_id`, state };
         }
+        if (args.type === "gcp:compute/globalAddress:GlobalAddress") {
+          return {
+            id: `${args.name}_id`,
+            state: { ...args.inputs, name: `${args.name}_name`, address: "203.0.113.10" },
+          };
+        }
         if (args.type === "gcp:certificatemanager/dnsAuthorization:DnsAuthorization") {
-          const challenge = { name: "_acme-challenge.dev.example.team.", type: "CNAME", data: "challenge.example." };
+          const challenge = {
+            name: `_acme-challenge.${args.inputs.domain}.`,
+            type: "CNAME",
+            data: "challenge.example.",
+          };
           return { id: `${args.name}_id`, state: { ...args.inputs, dnsResourceRecords: [challenge] } };
         }
         // Stands in for Pulumi's autonaming.
@@ -72,6 +85,7 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("gcp:region", "us-west1");
   pulumi.runtime.setConfig("cluster:bootstrapStack", "organization/bootstrap/prod");
   pulumi.runtime.setConfig("cluster:cloudStack", "organization/cloud/prod");
+  pulumi.runtime.setConfig("cluster:alertEmails", JSON.stringify(["alerts@example.org"]));
   // The modules build their resources on import, so they load only after the mocks are set.
   await import("../stacks/cluster/index.js");
   await new Promise((r) => setImmediate(r));
@@ -176,9 +190,11 @@ describe("Gateway", () => {
   });
 
   it.each([
-    ["https-dev", "dev.example.team"],
-    ["https-dev-wildcard", "*.dev.example.team"],
-  ])("admits %s routes only from namespaces labeled dev", (name: string, hostname: string) => {
+    ["https-dev", "dev.example.team", "dev"],
+    ["https-dev-wildcard", "*.dev.example.team", "dev"],
+    ["https-prod", "example.team", "prod"],
+    ["https-prod-wildcard", "*.example.team", "prod"],
+  ])("admits %s routes only from namespaces labeled %s", (name: string, hostname: string, environment: string) => {
     expect(listener(name)).toEqual({
       name,
       hostname,
@@ -186,7 +202,7 @@ describe("Gateway", () => {
       port: 443,
       allowedRoutes: {
         kinds: [{ kind: "HTTPRoute" }],
-        namespaces: { from: "Selector", selector: { matchLabels: { "cycsail.team/environment": "dev" } } },
+        namespaces: { from: "Selector", selector: { matchLabels: { "cycsail.team/environment": environment } } },
       },
     });
   });
@@ -196,6 +212,8 @@ describe("Gateway", () => {
       "http",
       "https-dev",
       "https-dev-wildcard",
+      "https-prod",
+      "https-prod-wildcard",
     ]);
   });
 });
@@ -228,6 +246,38 @@ describe("dev certificate and DNS", () => {
   });
 });
 
+describe("prod certificate and DNS", () => {
+  it("covers the domain and its subdomains", () => {
+    expect(byName("gcp:certificatemanager/certificate:Certificate", "prod")).toMatchObject({
+      managed: { domains: ["example.team", "*.example.team"], dnsAuthorizations: ["prod_id"] },
+    });
+  });
+
+  it("proves control of the domain with the authorization's CNAME", () => {
+    expect(byName("gcp:dns/recordSet:RecordSet", "prod-dns-authorization")).toMatchObject({
+      managedZone: "internal-zone",
+      name: "_acme-challenge.example.team.",
+      type: "CNAME",
+    });
+  });
+
+  it.each([
+    ["prod", "example.team"],
+    ["prod-wildcard", "*.example.team"],
+  ])("maps %s to the certificate", (name: string, hostname: string) => {
+    expect(byName("gcp:certificatemanager/certificateMapEntry:CertificateMapEntry", name)).toMatchObject({
+      map: "gateway_name",
+      hostname,
+      certificates: ["prod_id"],
+    });
+  });
+
+  it("writes no A records, which the apps own", () => {
+    const records = created.filter((r) => r.type === "gcp:dns/recordSet:RecordSet" && r.inputs.type === "A");
+    expect(records.map((r) => r.name).sort()).toEqual(["dev", "dev-wildcard"]);
+  });
+});
+
 describe("dev namespace", () => {
   const ofDev = (type: string) => created.filter((r) => r.type === type && r.inputs.metadata?.namespace === "dev");
 
@@ -241,9 +291,9 @@ describe("dev namespace", () => {
   it("caps total requests and allows no load balancer or node port", () => {
     const [quota] = ofDev("kubernetes:core/v1:ResourceQuota");
     expect(quota!.inputs.spec.hard).toEqual({
-      "requests.cpu": "2",
-      "requests.memory": "6Gi",
-      pods: "20",
+      "requests.cpu": "4",
+      "requests.memory": "10Gi",
+      pods: "30",
       "services.loadbalancers": "0",
       "services.nodeports": "0",
     });
@@ -261,15 +311,58 @@ describe("dev namespace", () => {
     ]);
   });
 
+  const policy = (name: string) => byName("kubernetes:networking.k8s.io/v1:NetworkPolicy", name);
+
   it("denies ingress from other namespaces, except the load balancer's, on any port", () => {
-    const [policy] = ofDev("kubernetes:networking.k8s.io/v1:NetworkPolicy");
-    expect(policy!.inputs.spec).toEqual({
+    expect(policy("dev-isolation").spec).toEqual({
       podSelector: {},
       policyTypes: ["Ingress"],
       ingress: [
         { from: [{ podSelector: {} }] },
         { from: [{ ipBlock: { cidr: "35.191.0.0/16" } }, { ipBlock: { cidr: "130.211.0.0/22" } }] },
       ],
+    });
+  });
+
+  it("admits the API's proxy from the konnectivity agents only", () => {
+    expect(policy("dev-api-proxy")).toMatchObject({
+      metadata: { namespace: "dev", name: "allow-api-proxy" },
+      spec: {
+        podSelector: {},
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: [
+              {
+                namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": "kube-system" } },
+                podSelector: { matchLabels: { "k8s-app": "konnectivity-agent" } },
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  it("allows egress to the cluster on any port, and outside it on all but the mail ports", () => {
+    expect(policy("dev-mail-egress")).toMatchObject({
+      metadata: { namespace: "dev", name: "deny-mail-egress" },
+      spec: {
+        podSelector: {},
+        policyTypes: ["Egress"],
+        egress: [
+          { to: [{ namespaceSelector: {} }] },
+          {
+            ports: [
+              { protocol: "TCP", port: 1, endPort: 24 },
+              { protocol: "TCP", port: 26, endPort: 464 },
+              { protocol: "TCP", port: 466, endPort: 586 },
+              { protocol: "TCP", port: 588, endPort: 65535 },
+              { protocol: "UDP" },
+            ],
+          },
+        ],
+      },
     });
   });
 
@@ -342,7 +435,125 @@ describe("dev platform outputs", () => {
       gateway: { name: "shared", namespace: "gateway" },
       domain: "dev.example.team",
       sqlConnectionName: "example-project:us-west1:cyc-dev",
+      sqlHost: "10.159.0.6",
+      gatewayAddress: "203.0.113.10",
       registry: "us-west1-docker.pkg.dev/example-project/artifact-docker-repository",
     });
+  });
+});
+
+describe("prod namespace", () => {
+  const ofProd = (type: string) => created.filter((r) => r.type === type && r.inputs.metadata?.namespace === "prod");
+
+  it("carries the environment label and the restricted Pod Security Standard", () => {
+    expect(byName("kubernetes:core/v1:Namespace", "prod").metadata).toEqual({
+      name: "prod",
+      labels: { "cycsail.team/environment": "prod", "pod-security.kubernetes.io/enforce": "restricted" },
+    });
+  });
+
+  it("caps total requests and allows no load balancer or node port", () => {
+    const [quota] = ofProd("kubernetes:core/v1:ResourceQuota");
+    expect(quota!.inputs.spec.hard).toEqual({
+      "requests.cpu": "3",
+      "requests.memory": "8Gi",
+      pods: "20",
+      "services.loadbalancers": "0",
+      "services.nodeports": "0",
+    });
+  });
+
+  it("defaults and caps each container's requests", () => {
+    const [limitRange] = ofProd("kubernetes:core/v1:LimitRange");
+    expect(limitRange!.inputs.spec.limits).toEqual([
+      {
+        type: "Container",
+        default: { cpu: "250m", memory: "512Mi" },
+        defaultRequest: { cpu: "250m", memory: "512Mi" },
+        max: { cpu: "2", memory: "4Gi" },
+      },
+    ]);
+  });
+
+  it("denies ingress from other namespaces, and has no other policy", () => {
+    const policies = ofProd("kubernetes:networking.k8s.io/v1:NetworkPolicy");
+    expect(policies.map((p) => p.inputs.metadata.name)).toEqual(["deny-other-namespaces"]);
+  });
+
+  it("binds no one, because deploy-runner's container.admin covers it", () => {
+    expect(ofProd("kubernetes:rbac.authorization.k8s.io/v1:RoleBinding")).toEqual([]);
+  });
+});
+
+describe("prod platform outputs", () => {
+  const object = () => byName("gcp:storage/bucketObject:BucketObject", "prod-platform-outputs");
+
+  it("lives at platform/outputs.json in prod's state bucket", () => {
+    expect(object()).toMatchObject({ bucket: "example-project-pulumi-prod", name: "platform/outputs.json" });
+  });
+
+  it("holds prod's values", () => {
+    expect(JSON.parse(object().content.value)).toEqual({
+      project: "example-project",
+      projectNumber: "123456789",
+      region: "us-west1",
+      cluster: "cyc",
+      clusterEndpoint: "gke-example.us-west1.gke.goog",
+      namespace: "prod",
+      gateway: { name: "shared", namespace: "gateway" },
+      domain: "example.team",
+      sqlConnectionName: "example-project:us-west1:substrate-1234",
+      sqlHost: "10.159.0.5",
+      gatewayAddress: "203.0.113.10",
+      registry: "us-west1-docker.pkg.dev/example-project/artifact-docker-repository",
+    });
+  });
+});
+
+describe("Job alerts", () => {
+  const policy = (name: string) => byName("gcp:monitoring/alertPolicy:AlertPolicy", name);
+
+  it("email each address in alertEmails", () => {
+    expect(byName("gcp:monitoring/notificationChannel:NotificationChannel", "alerts-alerts@example.org")).toMatchObject(
+      {
+        type: "email",
+        labels: { email_address: "alerts@example.org" },
+      },
+    );
+    for (const name of ["job-failed", "cronjob-absent"]) {
+      expect(policy(name).notificationChannels).toEqual(["alerts-alerts@example.org_name"]);
+    }
+  });
+
+  it("alert on a prod Job that runs out of retries or time", () => {
+    const [condition] = policy("job-failed").conditions;
+    const filter: string = condition.conditionMatchedLog.filter;
+    expect(filter).toContain('logName="projects/example-project/logs/events"');
+    expect(filter).toContain('resource.labels.cluster_name="cyc"');
+    expect(filter).toContain('jsonPayload.involvedObject.namespace="prod"');
+    expect(filter).toContain('jsonPayload.involvedObject.kind="Job"');
+    expect(filter).toContain('jsonPayload.reason=("BackoffLimitExceeded" OR "DeadlineExceeded")');
+    expect(condition.conditionMatchedLog.labelExtractors).toMatchObject({
+      job: "EXTRACT(jsonPayload.involvedObject.name)",
+    });
+    expect(policy("job-failed").alertStrategy.notificationRateLimit).toEqual({ period: "300s" });
+  });
+
+  it("count each prod CronJob's successful Jobs", () => {
+    const metric = byName("gcp:logging/metric:Metric", "cronjob-succeeded");
+    expect(metric.filter).toContain('jsonPayload.involvedObject.namespace="prod"');
+    expect(metric.filter).toContain('jsonPayload.reason="SawCompletedJob"');
+    expect(metric.filter).toContain('jsonPayload.message=~": Complete$"');
+    expect(metric.labelExtractors).toEqual({ cronjob: "EXTRACT(jsonPayload.involvedObject.name)" });
+  });
+
+  it("alert on each CronJob with no successful Job in 3 hours", () => {
+    const [condition] = policy("cronjob-absent").conditions;
+    expect(condition.conditionAbsent).toMatchObject({
+      filter: 'metric.type="logging.googleapis.com/user/prod-cronjob-succeeded" AND resource.type="k8s_cluster"',
+      duration: "10800s",
+    });
+    // A cross-series reducer would merge the CronJobs into one series.
+    expect(condition.conditionAbsent.aggregations[0].crossSeriesReducer).toBeUndefined();
   });
 });

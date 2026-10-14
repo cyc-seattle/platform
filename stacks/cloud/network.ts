@@ -59,10 +59,19 @@ export const clusterSubnet = new gcp.compute.Subnetwork("cluster", {
 // Egress for the cluster's private nodes. Only the cluster subnet uses it; the VM keeps its own IP.
 const clusterRouter = new gcp.compute.Router("cluster", { network: network.id, region: location });
 
+// A fixed egress address, so the Workspace SMTP relay can admit the cluster's mail
+// (docs/manual-setup.md). Protected: the relay's allowlist holds it.
+export const clusterNatAddress = new gcp.compute.Address(
+  "cluster-nat",
+  { region: location, addressType: "EXTERNAL", description: "The cluster's Cloud NAT egress address" },
+  { protect: true },
+);
+
 new gcp.compute.RouterNat("cluster", {
   router: clusterRouter.name,
   region: location,
-  natIpAllocateOption: "AUTO_ONLY",
+  natIpAllocateOption: "MANUAL_ONLY",
+  natIps: [clusterNatAddress.selfLink],
   sourceSubnetworkIpRangesToNat: "LIST_OF_SUBNETWORKS",
   subnetworks: [{ name: clusterSubnet.id, sourceIpRangesToNats: ["ALL_IP_RANGES"] }],
   logConfig: { enable: true, filter: "ERRORS_ONLY" },
