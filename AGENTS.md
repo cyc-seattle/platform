@@ -10,7 +10,10 @@ single app owns it. The apps live in their own repos and depend on this one, nev
 
 - `stacks/<name>/` is one Pulumi project. Each has a `package.json` marker, because Pulumi's nodejs
   language host resolves a program's entry point from the nearest one.
-- `src/` holds helpers the stacks import directly.
+- `src/` holds helpers the stacks import directly. `src/index.ts` exports the published package,
+  `@cyc-seattle/platform`; the build compiles only what it imports.
+- `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
+  against dev with `mise run integration`, never in `ci`.
 - The code is CommonJS, like isthmia's Pulumi code (cyc-seattle/isthmia#127). Import paths carry no
   `.js` extension.
 
@@ -36,7 +39,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - New IAM grants are least-privilege.
 - An IAM member resource takes `deleteBeforeReplace: true`. It is read-modify-write against one
   shared policy, so the default replacement strips the member it just added (cyc-seattle/isthmia#153).
-- Tests live in `test/`, and mock Pulumi with `pulumi.runtime.setMocks`.
+- Unit tests live in `test/`, and mock Pulumi with `pulumi.runtime.setMocks`.
 
 ### Comments
 

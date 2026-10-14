@@ -1,10 +1,9 @@
 {
   "name": "@cyc-seattle/platform",
   "version": "0.0.0-development",
-  "description": "Pulumi stacks for CYC's shared Google Cloud platform: identities, the network, databases, and the cluster",
+  "description": "Pulumi components for CYC's shared Google Cloud platform: WebService, the platform outputs reader, and the stacks that build the platform",
   "author": "CYC Community Sailing Center",
   "license": "Apache-2.0",
-  "private": true,
   "homepage": "https://github.com/cyc-seattle/platform#readme",
   "bugs": {
     "url": "https://github.com/cyc-seattle/platform/issues"
@@ -13,23 +12,43 @@
     "type": "git",
     "url": "git+https://github.com/cyc-seattle/platform.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22"
   },
   "packageManager": "pnpm@10.34.6",
   "prettier": "@cyc-seattle/ts-config/prettier",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build"
+  },
   "dependencies": {
-    "@pulumi/command": "1.2.1",
     "@pulumi/gcp": "8.41.1",
-    "@pulumi/github": "6.15.0",
     "@pulumi/kubernetes": "4.34.2",
-    "@pulumi/pulumi": "3.264.0"
+    "@pulumi/pulumi": "3.264.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@amiceli/vitest-cucumber": "7.0.0",
     "@cyc-seattle/ts-config": "^0.1.2",
+    "@pulumi/command": "1.2.1",
+    "@pulumi/github": "6.15.0",
     "@types/js-yaml": "4.0.9",
     "@types/node": "^22.19.1",
     "eslint": "^9.39.5",
+    "google-auth-library": "^11.3.0",
     "js-yaml": "^5.4.3",
     "prettier": "^3.9.10",
     "typescript": "~5.9.3",

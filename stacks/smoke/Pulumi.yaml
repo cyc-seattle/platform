@@ -1,0 +1,6 @@
+name: smoke
+description: One WebService in dev, for the platform's integration tests.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm

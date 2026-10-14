@@ -66,3 +66,23 @@ run = [
   "pulumi up --yes --cwd stacks/cloud --stack \"$PULUMI_STACK\"",
   "pulumi up --yes --cwd stacks/cluster --stack \"$PULUMI_STACK\"",
 ]
+
+# smoke lives only in dev. Task env doesn't re-render [env], so the backend is set here too.
+[tasks.preview-smoke]
+description = "Show the diff `mise run deploy-smoke` would apply"
+env = { PULUMI_STACK = "dev", PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-dev" }
+run = "pulumi preview --cwd stacks/smoke --stack \"$PULUMI_STACK\""
+
+[tasks.deploy-smoke]
+description = "Apply the smoke stack to dev"
+env = { PULUMI_STACK = "dev", PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-dev" }
+run = "pulumi up --yes --cwd stacks/smoke --stack \"$PULUMI_STACK\""
+
+[tasks.build]
+description = "Build the package into dist/"
+run = "pnpm run build"
+
+# Needs the dev deploy, so it isn't part of ci.
+[tasks.integration]
+description = "Run the integration tests against dev"
+run = "pnpm exec vitest run --config vitest.integration.config.ts"
