@@ -5,7 +5,7 @@ import { deployDev } from "./deploy-dev";
 import { deployRunner } from "./deploy-runner";
 import { isthmia, maintainers, platform } from "./github";
 import { stateBackends } from "./state";
-import { allowEnvironment, provider } from "./workload-identity";
+import { allowEnvironment, provider, subjectPrefix } from "./workload-identity";
 
 // The GitHub environments a deploy job runs in, and the identity each one assumes (#215). An
 // environment's name is the last part of the token's subject, so the WIF binding and the environment
@@ -49,12 +49,13 @@ const environments: Environment[] = [
   },
 ];
 
+// platform was created with immutable OIDC subjects; isthmia predates them.
 const repositories = [
-  { name: "isthmia", resource: isthmia },
-  { name: "platform", resource: platform },
+  { name: "isthmia", resource: isthmia, prefix: subjectPrefix("isthmia") },
+  { name: "platform", resource: platform, prefix: subjectPrefix("platform", platform.repoId) },
 ];
 
-for (const { name: repo, resource } of repositories) {
+for (const { name: repo, resource, prefix } of repositories) {
   // A reviewer team needs access to the repository.
   new github.TeamRepository(`${repo}-maintainers`, {
     teamId: maintainers.id,
@@ -96,6 +97,6 @@ for (const { name: repo, resource } of repositories) {
     }
 
     // Both prod environments share deploy-runner, so a binding per (repo, environment) pair.
-    allowEnvironment(env.account, env.accountLabel, repo, env.name);
+    allowEnvironment(env.account, env.accountLabel, repo, prefix, env.name);
   }
 }

@@ -39,6 +39,9 @@ beforeAll(async () => {
           case "gcp:iam/workloadIdentityPoolProvider:WorkloadIdentityPoolProvider":
             state = { ...args.inputs, name: providerName };
             break;
+          case "github:index/repository:Repository":
+            state = { ...args.inputs, repoId: args.inputs.name === "platform" ? 4242 : 1717 };
+            break;
           case "github:index/team:Team":
             return { id: "77", state: args.inputs };
           case "github:index/repositoryEnvironment:RepositoryEnvironment":
@@ -104,8 +107,11 @@ describe("workload identity bindings", () => {
       .filter((r) => r.inputs.role === "roles/iam.workloadIdentityUser")
       .map((r) => r.inputs.member)
       .sort();
+  // platform uses immutable subjects (its numeric IDs); isthmia uses names.
+  const prefix = (repo: string) =>
+    repo === "platform" ? `repo:cyc-seattle@${orgId}/platform@4242` : `repo:cyc-seattle/${repo}`;
   const subject = (repo: string, env: string) =>
-    `principal://iam.googleapis.com/${poolName}/subject/repo:cyc-seattle/${repo}:environment:${env}`;
+    `principal://iam.googleapis.com/${poolName}/subject/${prefix(repo)}:environment:${env}`;
 
   it("lets dev's environment on isthmia and platform assume deploy-dev, and nothing else", () => {
     expect(bindings("deploy-dev")).toEqual([subject("isthmia", "dev"), subject("platform", "dev")].sort());

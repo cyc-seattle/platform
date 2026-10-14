@@ -44,9 +44,22 @@ export const provider = new gcp.iam.WorkloadIdentityPoolProvider("github", {
   attributeCondition: attributeCondition(new pulumi.Config().require("githubOrgId")),
 });
 
+/**
+ * A repository's OIDC `sub` prefix. A repository with immutable subjects names the org and itself by
+ * numeric ID, so a renamed or recreated repository can't match (`gh api
+ * repos/<owner>/<repo>/actions/oidc/customization/sub` shows which a repository uses).
+ */
+export function subjectPrefix(repository: string, repoId?: pulumi.Input<number>): pulumi.Output<string> {
+  if (repoId === undefined) {
+    return pulumi.output(`repo:${owner}/${repository}`);
+  }
+  const orgId = new pulumi.Config().require("githubOrgId");
+  return pulumi.interpolate`repo:${owner}@${orgId}/${repository}@${repoId}`;
+}
+
 /** The principal for jobs of one repository running in one of its environments. */
-export function environmentPrincipal(repository: string, environment: string): pulumi.Output<string> {
-  return pulumi.interpolate`principal://iam.googleapis.com/${pool.name}/subject/repo:${owner}/${repository}:environment:${environment}`;
+export function environmentPrincipal(prefix: pulumi.Input<string>, environment: string): pulumi.Output<string> {
+  return pulumi.interpolate`principal://iam.googleapis.com/${pool.name}/subject/${prefix}:environment:${environment}`;
 }
 
 /** Lets jobs of one repository, in one environment, run as a service account. */
@@ -54,6 +67,7 @@ export function allowEnvironment(
   account: gcp.serviceaccount.Account,
   accountLabel: string,
   repository: string,
+  prefix: pulumi.Input<string>,
   environment: string,
 ): gcp.serviceaccount.IAMMember {
   return new gcp.serviceaccount.IAMMember(
@@ -61,7 +75,7 @@ export function allowEnvironment(
     {
       serviceAccountId: account.name,
       role: "roles/iam.workloadIdentityUser",
-      member: environmentPrincipal(repository, environment),
+      member: environmentPrincipal(prefix, environment),
     },
     // An IAM member is read-modify-write against one shared policy (#153).
     { deleteBeforeReplace: true },
