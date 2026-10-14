@@ -6,6 +6,7 @@ const cloud = new pulumi.StackReference(config.require("cloudStack"));
 
 interface Account {
   email: string;
+  uniqueId: string;
   member: string;
   name: string;
 }

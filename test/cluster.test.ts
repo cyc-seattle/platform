@@ -11,11 +11,12 @@ const created: Created[] = [];
 const byName = (type: string, name: string) => created.find((r) => r.type === type && r.name === name)!.inputs;
 
 const deployDevEmail = "deploy-dev@example-project.iam.gserviceaccount.com";
+const deployDevId = "114358314096459279273";
 
 const stackOutputs: Record<string, Record<string, unknown>> = {
   "organization/bootstrap/prod": {
     gkeNodes: { email: "gke-nodes@example-project.iam.gserviceaccount.com" },
-    deployDev: { email: deployDevEmail },
+    deployDev: { email: deployDevEmail, uniqueId: deployDevId },
     stateBackends: {
       dev: { url: "gs://example-project-pulumi-dev" },
       prod: { url: "gs://example-project-pulumi-prod" },
@@ -274,7 +275,11 @@ describe("dev namespace", () => {
 
   const bindings = () =>
     created.filter((r) => r.type === "kubernetes:rbac.authorization.k8s.io/v1:RoleBinding").map((r) => r.inputs);
-  const deployDev = [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevEmail }];
+  // GKE names a caller by its numeric ID when the token lacks the email scope, as ADC's does.
+  const deployDev = [
+    { apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevEmail },
+    { apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevId },
+  ];
 
   it("binds admin to deploy-dev in dev only", () => {
     expect(bindings()).toContainEqual({
