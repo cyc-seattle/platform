@@ -11,8 +11,9 @@ gcloud = "latest"
 
 [env]
 _.path = ["{{config_root}}/node_modules/.bin"]
-# The main checkout's .gcloud/, even from a worktree, so every worktree shares one login.
-GOOGLE_APPLICATION_CREDENTIALS = "{{ exec(command='dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\"') }}/.gcloud/application_default_credentials.json"
+# Actions' auth step sets this, so keep it when set. Otherwise it's the main checkout's .gcloud/, even
+# from a worktree, so every worktree shares one login.
+GOOGLE_APPLICATION_CREDENTIALS = "{{ get_env(name='GOOGLE_APPLICATION_CREDENTIALS', default=exec(command='dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\"') ~ '/.gcloud/application_default_credentials.json') }}"
 GCP_PROJECT = "cyc-admin-scripts"
 CLOUDSDK_CORE_PROJECT = "{{ env.GCP_PROJECT }}"
 PULUMI_STACK = "{{ get_env(name='PULUMI_STACK', default='prod') }}"
@@ -52,31 +53,14 @@ run = "pulumi preview --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\"
 description = "Apply the bootstrap stack"
 run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
 
-# cluster reads cloud's outputs, so cloud goes first.
+# scripts/each-stack picks the projects from PULUMI_STACK: dev is smoke, prod is cloud then cluster.
 [tasks.preview]
-description = "Show the diff `mise run deploy` would apply"
-run = [
-  "pulumi preview --cwd stacks/cloud --stack \"$PULUMI_STACK\"",
-  "pulumi preview --cwd stacks/cluster --stack \"$PULUMI_STACK\"",
-]
+description = "Show the diff `mise run deploy` would apply to $PULUMI_STACK"
+run = "./scripts/each-stack preview"
 
 [tasks.deploy]
-description = "Apply the cloud stack, then the cluster stack"
-run = [
-  "pulumi up --yes --cwd stacks/cloud --stack \"$PULUMI_STACK\"",
-  "pulumi up --yes --cwd stacks/cluster --stack \"$PULUMI_STACK\"",
-]
-
-# smoke lives only in dev. Task env doesn't re-render [env], so the backend is set here too.
-[tasks.preview-smoke]
-description = "Show the diff `mise run deploy-smoke` would apply"
-env = { PULUMI_STACK = "dev", PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-dev" }
-run = "pulumi preview --cwd stacks/smoke --stack \"$PULUMI_STACK\""
-
-[tasks.deploy-smoke]
-description = "Apply the smoke stack to dev"
-env = { PULUMI_STACK = "dev", PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-dev" }
-run = "pulumi up --yes --cwd stacks/smoke --stack \"$PULUMI_STACK\""
+description = "Apply $PULUMI_STACK's projects"
+run = "./scripts/each-stack up --yes"
 
 [tasks.build]
 description = "Build the package into dist/"
