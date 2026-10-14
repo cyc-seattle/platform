@@ -238,7 +238,7 @@ describe("dev namespace", () => {
     ]);
   });
 
-  it("denies ingress from other namespaces, except the load balancer's", () => {
+  it("denies ingress from other namespaces, except the load balancer's, on any port", () => {
     const [policy] = ofDev("kubernetes:networking.k8s.io/v1:NetworkPolicy");
     expect(policy!.inputs.spec).toEqual({
       podSelector: {},
@@ -250,17 +250,45 @@ describe("dev namespace", () => {
     });
   });
 
+  const bindings = () =>
+    created.filter((r) => r.type === "kubernetes:rbac.authorization.k8s.io/v1:RoleBinding").map((r) => r.inputs);
+  const deployDev = [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevEmail }];
+
   it("binds admin to deploy-dev in dev only", () => {
-    const bindings = created.filter((r) => r.type.startsWith("kubernetes:rbac.authorization.k8s.io/v1:"));
-    expect(bindings.map((r) => r.inputs)).toEqual([
-      {
-        apiVersion: "rbac.authorization.k8s.io/v1",
-        kind: "RoleBinding",
-        metadata: { namespace: "dev", name: "deploy-dev-admin" },
-        roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "ClusterRole", name: "admin" },
-        subjects: [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevEmail }],
-      },
+    expect(bindings()).toContainEqual({
+      apiVersion: "rbac.authorization.k8s.io/v1",
+      kind: "RoleBinding",
+      metadata: { namespace: "dev", name: "deploy-dev-admin" },
+      roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "ClusterRole", name: "admin" },
+      subjects: deployDev,
+    });
+  });
+
+  it("lets deploy-dev edit HTTPRoutes and HealthCheckPolicies in dev only", () => {
+    const [role] = created.filter((r) => r.type === "kubernetes:rbac.authorization.k8s.io/v1:Role");
+    expect(role!.inputs.metadata).toEqual({ namespace: "dev", name: "route-editor" });
+    expect(role!.inputs.rules).toEqual([
+      expect.objectContaining({ apiGroups: ["gateway.networking.k8s.io"], resources: ["httproutes"] }),
+      expect.objectContaining({ apiGroups: ["networking.gke.io"], resources: ["healthcheckpolicies"] }),
     ]);
+    for (const rule of role!.inputs.rules) {
+      expect(rule.verbs).toEqual(expect.arrayContaining(["create", "patch", "delete"]));
+    }
+    expect(bindings()).toContainEqual({
+      apiVersion: "rbac.authorization.k8s.io/v1",
+      kind: "RoleBinding",
+      metadata: { namespace: "dev", name: "deploy-dev-routes" },
+      roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "Role", name: "route-editor" },
+      subjects: deployDev,
+    });
+  });
+
+  it("grants deploy-dev nothing cluster-wide or in another namespace", () => {
+    expect(created.map((r) => r.type)).not.toContain("kubernetes:rbac.authorization.k8s.io/v1:ClusterRoleBinding");
+    expect(bindings()).toHaveLength(2);
+    for (const binding of bindings()) {
+      expect(binding.metadata.namespace).toBe("dev");
+    }
   });
 });
 

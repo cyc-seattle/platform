@@ -30,6 +30,8 @@ export function httpsListeners(environment: string, domain: pulumi.Input<string>
   ];
 }
 
+const editVerbs = ["get", "list", "watch", "create", "update", "patch", "delete"];
+
 export interface EnvironmentNamespaceArgs {
   /** The namespace's total CPU and memory requests, and its pod count. */
   quota: { cpu: string; memory: string; pods: number };
@@ -47,6 +49,7 @@ export interface EnvironmentNamespaceArgs {
  */
 export class EnvironmentNamespace extends k8s.core.v1.Namespace {
   private readonly provider: pulumi.ProviderResource;
+  private readonly routeEditor: k8s.rbac.v1.Role;
 
   constructor(
     readonly environment: string,
@@ -105,6 +108,21 @@ export class EnvironmentNamespace extends k8s.core.v1.Namespace {
       { provider: this.provider },
     );
 
+    // The Gateway API and GKE's policies are CRDs, which the built-in `admin` role may not
+    // aggregate.
+    this.routeEditor = new k8s.rbac.v1.Role(
+      `${environment}-route-editor`,
+      {
+        metadata: { ...metadata, name: "route-editor" },
+        rules: [
+          { apiGroups: ["gateway.networking.k8s.io"], resources: ["httproutes"], verbs: editVerbs },
+          { apiGroups: ["networking.gke.io"], resources: ["healthcheckpolicies"], verbs: editVerbs },
+        ],
+      },
+      { provider: this.provider },
+    );
+
+    // No ports, so it admits the load balancer on whichever port a service serves.
     new k8s.networking.v1.NetworkPolicy(
       `${environment}-isolation`,
       {
@@ -122,14 +140,27 @@ export class EnvironmentNamespace extends k8s.core.v1.Namespace {
     );
   }
 
-  /** Binds the `admin` ClusterRole, in this namespace only, to a Google service account. */
-  grantAdmin(email: pulumi.Input<string>, granteeLabel: string): k8s.rbac.v1.RoleBinding {
-    return new k8s.rbac.v1.RoleBinding(
+  /**
+   * Binds the `admin` ClusterRole, in this namespace only, to a Google service account, and the
+   * Gateway resources a `WebService` creates, which `admin` may not cover.
+   */
+  grantAdmin(email: pulumi.Input<string>, granteeLabel: string): void {
+    const subjects = [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: email }];
+    new k8s.rbac.v1.RoleBinding(
       `${this.environment}-${granteeLabel}-admin`,
       {
         metadata: { namespace: this.metadata.name, name: `${granteeLabel}-admin` },
         roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "ClusterRole", name: "admin" },
-        subjects: [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: email }],
+        subjects,
+      },
+      { provider: this.provider },
+    );
+    new k8s.rbac.v1.RoleBinding(
+      `${this.environment}-${granteeLabel}-routes`,
+      {
+        metadata: { namespace: this.metadata.name, name: `${granteeLabel}-routes` },
+        roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "Role", name: this.routeEditor.metadata.name },
+        subjects,
       },
       { provider: this.provider },
     );
