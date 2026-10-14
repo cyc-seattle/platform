@@ -142,10 +142,13 @@ export class EnvironmentNamespace extends k8s.core.v1.Namespace {
 
   /**
    * Binds the `admin` ClusterRole, in this namespace only, to a Google service account, and the
-   * Gateway resources a `WebService` creates, which `admin` may not cover.
+   * Gateway resources a `WebService` creates, which `admin` may not cover. `usernames` are the
+   * account's email and its numeric unique ID: GKE names a caller by its email only when the token
+   * has the `userinfo.email` scope, which Application Default Credentials lack, and by the ID
+   * otherwise.
    */
-  grantAdmin(email: pulumi.Input<string>, granteeLabel: string): void {
-    const subjects = [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: email }];
+  grantAdmin(usernames: pulumi.Input<string>[], granteeLabel: string): void {
+    const subjects = usernames.map((name) => ({ apiGroup: "rbac.authorization.k8s.io", kind: "User", name }));
     new k8s.rbac.v1.RoleBinding(
       `${this.environment}-${granteeLabel}-admin`,
       {

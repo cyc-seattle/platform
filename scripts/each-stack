@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Runs a pulumi command on each project deployed to $PULUMI_STACK, in dependency order: cluster
+# reads cloud's outputs, and smoke lives only in dev. bootstrap is never in the list
+# (cyc-seattle/isthmia#118).
+set -euo pipefail
+
+case "$PULUMI_STACK" in
+  dev) projects=(smoke) ;;
+  prod) projects=(cloud cluster) ;;
+  *) echo "No projects deploy to stack '$PULUMI_STACK'." >&2; exit 1 ;;
+esac
+
+for project in "${projects[@]}"; do
+  pulumi "$1" --cwd "stacks/$project" --stack "$PULUMI_STACK" "${@:2}"
+done

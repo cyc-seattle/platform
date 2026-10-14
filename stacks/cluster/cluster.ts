@@ -1,7 +1,6 @@
-import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import * as k8s from "@pulumi/kubernetes";
 import { location } from "../../src/config";
+import { clusterProvider } from "../../src/kubernetes";
 import { enableService } from "../../src/services";
 import { cloudOutput, gkeNodes } from "./refs";
 
@@ -20,7 +19,8 @@ export const cluster = new gcp.container.Cluster(
       clusterSecondaryRangeName: cloudOutput("clusterPodsRangeName"),
       servicesSecondaryRangeName: cloudOutput("clusterServicesRangeName"),
     },
-    privateClusterConfig: { enablePrivateNodes: true },
+    // GKE sets this on a cluster with no IP endpoint; declaring it keeps the preview clean.
+    privateClusterConfig: { enablePrivateNodes: true, enablePrivateEndpoint: true },
     // Only the DNS-based endpoint, which IAM gates, so Actions runners need no IP allowlist (#215).
     controlPlaneEndpointsConfig: {
       dnsEndpointConfig: { allowExternalTraffic: true },
@@ -56,24 +56,4 @@ export const clusterEndpoint = cluster.controlPlaneEndpointsConfig.apply((config
   return endpoint;
 });
 
-// An access token for whoever runs Pulumi, so it needs no gke-gcloud-auth-plugin. The DNS endpoint
-// serves a publicly trusted certificate, so the kubeconfig carries no CA.
-const kubeconfig = pulumi
-  .all([clusterEndpoint, gcp.organizations.getClientConfigOutput().accessToken])
-  .apply(([endpoint, token]) =>
-    JSON.stringify({
-      apiVersion: "v1",
-      kind: "Config",
-      clusters: [{ name: "cyc", cluster: { server: `https://${endpoint}` } }],
-      users: [{ name: "pulumi", user: { token } }],
-      contexts: [{ name: "cyc", context: { cluster: "cyc", user: "pulumi" } }],
-      "current-context": "cyc",
-    }),
-  );
-
-// clusterIdentifier keeps a pending cluster update, which makes the kubeconfig unknown, from
-// replacing the provider and with it every Kubernetes resource.
-export const provider = new k8s.Provider("cyc", {
-  kubeconfig: pulumi.secret(kubeconfig),
-  clusterIdentifier: cluster.id,
-});
+export const provider = clusterProvider({ clusterEndpoint }, "cyc", undefined, { clusterIdentifier: cluster.id });

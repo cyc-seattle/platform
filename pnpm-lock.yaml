@@ -8,15 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@pulumi/gcp':
-        specifier: 8.41.1
-        version: 8.41.1(typescript@5.9.3)
-      '@pulumi/kubernetes':
-        specifier: 4.34.2
-        version: 4.34.2(typescript@5.9.3)
-      '@pulumi/pulumi':
-        specifier: 3.264.0
-        version: 3.264.0(typescript@5.9.3)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -30,9 +21,18 @@ importers:
       '@pulumi/command':
         specifier: 1.2.1
         version: 1.2.1(typescript@5.9.3)
+      '@pulumi/gcp':
+        specifier: 8.41.1
+        version: 8.41.1(typescript@5.9.3)
       '@pulumi/github':
         specifier: 6.15.0
         version: 6.15.0(typescript@5.9.3)
+      '@pulumi/kubernetes':
+        specifier: 4.34.2
+        version: 4.34.2(typescript@5.9.3)
+      '@pulumi/pulumi':
+        specifier: 3.264.0
+        version: 3.264.0(typescript@5.9.3)
       '@types/js-yaml':
         specifier: 4.0.9
         version: 4.0.9

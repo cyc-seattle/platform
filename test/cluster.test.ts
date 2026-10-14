@@ -11,11 +11,12 @@ const created: Created[] = [];
 const byName = (type: string, name: string) => created.find((r) => r.type === type && r.name === name)!.inputs;
 
 const deployDevEmail = "deploy-dev@example-project.iam.gserviceaccount.com";
+const deployDevId = "114358314096459279273";
 
 const stackOutputs: Record<string, Record<string, unknown>> = {
   "organization/bootstrap/prod": {
     gkeNodes: { email: "gke-nodes@example-project.iam.gserviceaccount.com" },
-    deployDev: { email: deployDevEmail },
+    deployDev: { email: deployDevEmail, uniqueId: deployDevId },
     stateBackends: {
       dev: { url: "gs://example-project-pulumi-dev" },
       prod: { url: "gs://example-project-pulumi-prod" },
@@ -58,8 +59,6 @@ beforeAll(async () => {
       },
       call: (args) => {
         switch (args.token) {
-          case "gcp:organizations/getClientConfig:getClientConfig":
-            return { accessToken: "token" };
           case "gcp:organizations/getProject:getProject":
             return { ...args.inputs, number: "123456789" };
           default:
@@ -102,6 +101,10 @@ describe("cluster", () => {
     });
   });
 
+  it("declares the private endpoint GKE sets when there is no IP endpoint", () => {
+    expect(cluster().privateClusterConfig).toEqual({ enablePrivateNodes: true, enablePrivateEndpoint: true });
+  });
+
   it("serves the Gateway API's standard channel", () => {
     expect(cluster().gatewayApiConfig).toEqual({ channel: "CHANNEL_STANDARD" });
   });
@@ -111,6 +114,26 @@ describe("cluster", () => {
       subnetwork: "cluster_subnet_id",
       ipAllocationPolicy: { clusterSecondaryRangeName: "pods", servicesSecondaryRangeName: "services" },
     });
+  });
+});
+
+describe("Kubernetes provider", () => {
+  // Renaming it would replace every Kubernetes resource in the stack.
+  const provider = () => byName("pulumi:providers:kubernetes", "cyc");
+
+  it("keeps its name, and is pinned to the cluster", () => {
+    expect(provider().clusterIdentifier).toBe("cyc_id");
+  });
+
+  it("talks to the cluster's DNS endpoint through the auth plugin, with no token in its kubeconfig", () => {
+    // A token would change the kubeconfig, and so the provider, on every run.
+    expect(JSON.parse(provider().kubeconfig)).toMatchObject({
+      clusters: [{ cluster: { server: "https://gke-example.us-west1.gke.goog" } }],
+      users: [
+        { user: { exec: { command: "gke-gcloud-auth-plugin", args: ["--use_application_default_credentials"] } } },
+      ],
+    });
+    expect(provider().kubeconfig).not.toContain("token");
   });
 });
 
@@ -252,7 +275,11 @@ describe("dev namespace", () => {
 
   const bindings = () =>
     created.filter((r) => r.type === "kubernetes:rbac.authorization.k8s.io/v1:RoleBinding").map((r) => r.inputs);
-  const deployDev = [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevEmail }];
+  // GKE names a caller by its numeric ID when the token lacks the email scope, as ADC's does.
+  const deployDev = [
+    { apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevEmail },
+    { apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevId },
+  ];
 
   it("binds admin to deploy-dev in dev only", () => {
     expect(bindings()).toContainEqual({

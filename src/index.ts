@@ -1,4 +1,4 @@
-export { clusterProvider } from "./kubernetes";
+export { clusterProvider, type ClusterProviderArgs } from "./kubernetes";
 export {
   getPlatformOutputs,
   parsePlatformOutputs,

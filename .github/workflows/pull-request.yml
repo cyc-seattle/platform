@@ -18,3 +18,37 @@ jobs:
     uses: cyc-seattle/.github/.github/workflows/pr-title.yml@v2.0.0
     permissions:
       pull-requests: read
+  dev:
+    needs: ci
+    # A fork's PR gets no OIDC token, so it can't deploy.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      environment: dev
+      task: deploy
+      integration: true
+  # Runs merged code with prod credentials before anyone approves, which is safe only because
+  # main requires a reviewed PR (cyc-seattle/isthmia#215).
+  prod-preview:
+    needs: dev
+    if: github.event_name == 'push'
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      environment: prod-preview
+      task: preview
+  prod:
+    needs: prod-preview
+    if: github.event_name == 'push'
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      environment: prod
+      task: deploy

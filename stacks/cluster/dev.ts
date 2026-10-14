@@ -17,7 +17,7 @@ export const devNamespace = new EnvironmentNamespace(
   { provider },
 );
 
-devNamespace.grantAdmin(deployDev.email, "deploy-dev");
+devNamespace.grantAdmin([deployDev.email, deployDev.uniqueId], "deploy-dev");
 
 export const devOutputs = writePlatformOutputs("dev", {
   project: projectId,

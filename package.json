@@ -35,16 +35,21 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
-    "@pulumi/gcp": "8.41.1",
-    "@pulumi/kubernetes": "4.34.2",
-    "@pulumi/pulumi": "3.264.0",
     "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "@pulumi/gcp": "^8",
+    "@pulumi/kubernetes": "^4",
+    "@pulumi/pulumi": "^3"
   },
   "devDependencies": {
     "@amiceli/vitest-cucumber": "7.0.0",
     "@cyc-seattle/ts-config": "^0.1.2",
     "@pulumi/command": "1.2.1",
+    "@pulumi/gcp": "8.41.1",
     "@pulumi/github": "6.15.0",
+    "@pulumi/kubernetes": "4.34.2",
+    "@pulumi/pulumi": "3.264.0",
     "@types/js-yaml": "4.0.9",
     "@types/node": "^22.19.1",
     "eslint": "^9.39.5",
