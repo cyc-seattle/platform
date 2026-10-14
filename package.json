@@ -1,0 +1,37 @@
+{
+  "name": "@cyc-seattle/platform",
+  "version": "0.0.0-development",
+  "description": "Pulumi stacks for CYC's shared Google Cloud platform: identities, the network, databases, and the cluster",
+  "author": "CYC Community Sailing Center",
+  "license": "Apache-2.0",
+  "private": true,
+  "homepage": "https://github.com/cyc-seattle/platform#readme",
+  "bugs": {
+    "url": "https://github.com/cyc-seattle/platform/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cyc-seattle/platform.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.34.6",
+  "prettier": "@cyc-seattle/ts-config/prettier",
+  "dependencies": {
+    "@pulumi/command": "1.2.1",
+    "@pulumi/gcp": "8.41.1",
+    "@pulumi/github": "6.15.0",
+    "@pulumi/pulumi": "3.264.0"
+  },
+  "devDependencies": {
+    "@cyc-seattle/ts-config": "^0.1.2",
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "^22.19.1",
+    "eslint": "^9.39.5",
+    "js-yaml": "^5.4.3",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

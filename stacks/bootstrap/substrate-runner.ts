@@ -1,8 +1,8 @@
 import * as gcp from "@pulumi/gcp";
-import { projectId } from "../config";
+import { projectId } from "../../src/config";
 import { humanDeployers } from "./human-deployers";
-import { ServiceAccount } from "../service-account";
-import { enableService } from "../services";
+import { ServiceAccount } from "../../src/service-account";
+import { enableService } from "../../src/services";
 
 // Identity the substrate VM and its containers act as. Imported, not recreated — a new client ID
 // would break domain-wide delegation for portal auth (docs/manual-setup.md §5.2). App-specific
