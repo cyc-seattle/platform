@@ -1,0 +1,53 @@
+[settings]
+lockfile = true
+
+[tools]
+node = "22"
+pnpm = "10.34.6"
+lefthook = "2"
+pulumi = "3.192.0"
+# Needs a system Python on macOS.
+gcloud = "latest"
+
+[env]
+_.path = ["{{config_root}}/node_modules/.bin"]
+# The main checkout's .gcloud/, even from a worktree, so every worktree shares one login.
+GOOGLE_APPLICATION_CREDENTIALS = "{{ exec(command='dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\"') }}/.gcloud/application_default_credentials.json"
+GCP_PROJECT = "cyc-admin-scripts"
+CLOUDSDK_CORE_PROJECT = "{{ env.GCP_PROJECT }}"
+PULUMI_STACK = "{{ get_env(name='PULUMI_STACK', default='prod') }}"
+# Each stack's state lives in its own environment's bucket, from stacks/bootstrap/state.ts.
+PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-{{ env.PULUMI_STACK }}"
+
+[tasks.install]
+description = "Install dependencies and git hooks"
+run = ["pnpm install", "lefthook install"]
+
+[tasks.format]
+description = "Format and fix all files"
+run = ["pnpm exec prettier --write .", "pnpm exec eslint --fix ."]
+
+[tasks.check]
+description = "Typecheck, then check formatting and lint"
+run = ["pnpm exec tsc -p tsconfig.json", "pnpm exec prettier --check .", "pnpm exec eslint ."]
+
+[tasks.test]
+description = "Run unit tests"
+run = "pnpm exec vitest run"
+
+[tasks.ci]
+description = "Run all checks and tests"
+depends = ["check", "test"]
+
+[tasks.auth-adc]
+description = "Point Application Default Credentials at your own gcloud login"
+run = "./scripts/auth-adc"
+
+# bootstrap is applied by a human with project Owner, never by CI (cyc-seattle/isthmia#118).
+[tasks.preview-bootstrap]
+description = "Show the diff `mise run deploy-bootstrap` would apply"
+run = "pulumi preview --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
+
+[tasks.deploy-bootstrap]
+description = "Apply the bootstrap stack"
+run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""

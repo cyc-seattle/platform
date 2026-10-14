@@ -1,0 +1,7 @@
+{
+  "extends": "@cyc-seattle/ts-config/tsconfig",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src", "stacks", "test", "vitest.config.ts"]
+}

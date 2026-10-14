@@ -1,0 +1,20 @@
+name: pull-request
+
+on:
+  pull_request:
+    # edited: check the PR title again when it changes.
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: cyc-seattle/.github/.github/workflows/ci.yml@v2.0.0
+  pr-title:
+    uses: cyc-seattle/.github/.github/workflows/pr-title.yml@v2.0.0
+    permissions:
+      pull-requests: read

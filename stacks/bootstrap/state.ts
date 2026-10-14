@@ -1,9 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { location, projectId } from "../config";
+import { location, projectId } from "../../src/config";
 import { deployRunner } from "./deploy-runner";
 import { humanDeployers } from "./human-deployers";
-import { enableService } from "../services";
+import { enableService } from "../../src/services";
 
 // Pulumi state, one bucket and one KMS key per environment (#215). A dev deployer gets only dev's,
 // so it can't edit the state a prod apply reads.

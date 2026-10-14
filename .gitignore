@@ -1,0 +1,11 @@
+node_modules/
+dist/
+mise.local.toml
+.env*
+.gcloud/
+.plans/
+CLAUDE.md
+.claude/
+.cursor/
+.vscode/
+.idea/

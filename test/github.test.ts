@@ -11,7 +11,7 @@ interface Created {
 }
 
 const created: Created[] = [];
-let StandardRepository: typeof import("../src/bootstrap/github.js").StandardRepository;
+let StandardRepository: typeof import("../stacks/bootstrap/github.js").StandardRepository;
 
 const ofType = (type: string) => created.filter((r) => r.type === type);
 const byName = (name: string) => created.find((r) => r.name === name)!;
@@ -26,7 +26,7 @@ beforeAll(async () => {
   });
   pulumi.runtime.setConfig("github:owner", "cyc-seattle");
   // The module builds its resources on import, so it loads only after the mocks are set.
-  ({ StandardRepository } = await import("../src/bootstrap/github.js"));
+  ({ StandardRepository } = await import("../stacks/bootstrap/github.js"));
   new StandardRepository("example", { description: "An example.", requiredChecks: ["build"] });
   new StandardRepository("archived-example", { description: "Archived.", archived: true, requiredChecks: ["build"] });
   await new Promise((r) => setImmediate(r));
@@ -154,18 +154,16 @@ describe("Actions workflow permissions", () => {
   });
 });
 
-describe("isthmia", () => {
+describe("platform", () => {
   it("requires only checks that a job in the PR workflow reports", () => {
-    const workflow = yaml.load(
-      readFileSync(resolve(__dirname, "../../../.github/workflows/pull-request.yml"), "utf8"),
-    ) as {
+    const workflow = yaml.load(readFileSync(resolve(__dirname, "../.github/workflows/pull-request.yml"), "utf8")) as {
       jobs: Record<string, { name?: string; uses?: string }>;
     };
     const jobs = Object.entries(workflow.jobs);
     const jobNames = jobs.map(([id, job]) => job.name ?? id);
     // A job that calls a reusable workflow reports `<caller job> / <called job>`.
     const callers = jobs.filter(([, job]) => job.uses).map(([id, job]) => job.name ?? id);
-    const main = ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "isthmia-main")!;
+    const main = ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "platform-main")!;
     const contexts: string[] = main.inputs.rules.requiredStatusChecks.requiredChecks.map(
       (c: { context: string }) => c.context,
     );

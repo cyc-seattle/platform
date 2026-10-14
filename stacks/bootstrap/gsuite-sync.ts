@@ -1,5 +1,5 @@
 import { humanDeployers } from "./human-deployers";
-import { ServiceAccount } from "../service-account";
+import { ServiceAccount } from "../../src/service-account";
 
 // Identity the gsuite-sync Cloud Run job acts as. Separate from clubspotSyncRunner: it holds the
 // Groups Administrator role directly (assigned by hand in the Admin console, docs/manual-setup.md

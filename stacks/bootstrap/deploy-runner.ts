@@ -1,5 +1,5 @@
 import * as gcp from "@pulumi/gcp";
-import { projectId } from "../config";
+import { projectId } from "../../src/config";
 import { substrateRunner } from "./substrate-runner";
 
 // The identity GitHub Actions impersonates to deploy (#118 adds the Workload Identity Federation
