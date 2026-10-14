@@ -13,6 +13,7 @@ const ofType = (type: string) => created.filter((r) => r.type === type);
 
 const human = "user:deployer@example.com";
 const deployRunner = "serviceAccount:deploy-runner@example-project.iam.gserviceaccount.com";
+const deployDev = "serviceAccount:deploy-dev@example-project.iam.gserviceaccount.com";
 
 beforeAll(async () => {
   await pulumi.runtime.setMocks(
@@ -103,7 +104,18 @@ describe("state access", () => {
         },
       }),
     ]);
-    expect(keyMembers("state-dev")).toEqual([human]);
+    expect(keyMembers("state-dev")).toEqual([deployDev, human].sort());
+  });
+
+  it("gives deploy-dev dev's bucket and key, and nothing in prod", () => {
+    expect(bucketMembers("pulumi-dev")).toContainEqual({
+      bucket: "example-project-pulumi-dev",
+      role: "roles/storage.objectUser",
+      member: deployDev,
+    });
+    expect(bucketMembers("pulumi-prod").map((g) => g.member)).not.toContain(deployDev);
+    expect(keyMembers("state-prod")).not.toContain(deployDev);
+    expect(keyMembers("state-dev")).toContain(deployDev);
   });
 
   it("grants encrypt and decrypt only", () => {

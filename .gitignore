@@ -2,7 +2,7 @@ node_modules/
 dist/
 mise.local.toml
 .env*
-.gcloud/
+.gcloud
 .plans/
 CLAUDE.md
 .claude/

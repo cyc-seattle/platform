@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import { location, projectId } from "../../src/config";
+import { deployDev } from "./deploy-dev";
 import { deployRunner } from "./deploy-runner";
 import { humanDeployers } from "./human-deployers";
 import { enableService } from "../../src/services";
@@ -108,6 +109,8 @@ for (const member of humanDeployers) {
 
 prodBucket.grant(deployRunner.member, "deploy-runner");
 prodKey.grant(deployRunner.member, "deploy-runner");
+devBucket.grant(deployDev.member, "deploy-dev");
+devKey.grant(deployDev.member, "deploy-dev");
 // The cluster stack writes dev's platform values here, from a prod apply.
 devBucket.grantObject("platform/outputs.json", deployRunner.member, "deploy-runner-outputs");
 

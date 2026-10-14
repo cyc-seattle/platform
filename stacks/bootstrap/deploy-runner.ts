@@ -1,5 +1,6 @@
 import * as gcp from "@pulumi/gcp";
 import { projectId } from "../../src/config";
+import { gkeNodes } from "./gke-nodes";
 import { substrateRunner } from "./substrate-runner";
 
 // The identity GitHub Actions impersonates to deploy (#118 adds the Workload Identity Federation
@@ -21,6 +22,8 @@ const predefinedRoles = [
   "roles/secretmanager.admin",
   "roles/run.developer",
   "roles/cloudscheduler.admin",
+  "roles/container.admin",
+  "roles/certificatemanager.editor",
 ];
 
 for (const role of predefinedRoles) {
@@ -32,7 +35,9 @@ for (const role of predefinedRoles) {
 }
 
 // What no predefined role grants without over-granting. Excludes project-IAM and role-edit
-// permissions on purpose, so deploy-runner can't grant itself Owner.
+// permissions on purpose, so deploy-runner can't grant itself Owner. It holds no
+// `iam.serviceAccounts.setIamPolicy` either: with it, deploy-runner could make itself a token creator
+// on any service account (#215).
 export const deployerRole = new gcp.projects.IAMCustomRole("deployer", {
   roleId: "deployer",
   title: "Deployer",
@@ -42,7 +47,6 @@ export const deployerRole = new gcp.projects.IAMCustomRole("deployer", {
     "iam.serviceAccounts.get",
     "iam.serviceAccounts.list",
     "iam.serviceAccounts.getIamPolicy",
-    "iam.serviceAccounts.setIamPolicy",
     "iam.roles.get",
     "iam.roles.list",
   ],
@@ -64,3 +68,10 @@ new gcp.serviceaccount.IAMMember(
   },
   { aliases: [{ name: `deploy-runner-user-substrate-runner@${projectId}.iam.gserviceaccount.com` }] },
 );
+
+// Lets the cluster stack attach gke-nodes to the Autopilot cluster.
+new gcp.serviceaccount.IAMMember("deploy-runner-user-gke-nodes", {
+  serviceAccountId: gkeNodes.name,
+  role: "roles/iam.serviceAccountUser",
+  member: deployRunner.member,
+});
