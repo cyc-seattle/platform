@@ -109,9 +109,9 @@ for (const member of humanDeployers) {
 
 prodBucket.grant(deployRunner.member, "deploy-runner");
 prodKey.grant(deployRunner.member, "deploy-runner");
-// The cluster stack writes dev's platform values here, from a prod apply.
 devBucket.grant(deployDev.member, "deploy-dev");
 devKey.grant(deployDev.member, "deploy-dev");
+// The cluster stack writes dev's platform values here, from a prod apply.
 devBucket.grantObject("platform/outputs.json", deployRunner.member, "deploy-runner-outputs");
 
 function backend(bucket: StateBucket, key: StateKey) {
