@@ -7,22 +7,118 @@ version = "588.0.0"
 backend = "vfox:mise-plugins/vfox-gcloud"
 specifiers = ["latest"]
 
+[tools.gcloud."platforms.linux-arm64"]
+url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-588.0.0-linux-arm.tar.gz"
+
+[tools.gcloud."platforms.linux-x64"]
+url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-588.0.0-linux-x86_64.tar.gz"
+
+[tools.gcloud."platforms.macos-arm64"]
+url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-588.0.0-darwin-arm.tar.gz"
+
+[tools.gcloud."platforms.macos-x64"]
+url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-588.0.0-darwin-x86_64.tar.gz"
+
 [[tools.lefthook]]
 version = "2.2.1"
 backend = "aqua:evilmartians/lefthook"
 specifiers = ["2"]
+
+[tools.lefthook."platforms.linux-arm64"]
+checksum = "sha256:90af157cb1f2c6194498cd88aacee9d86c71e09f194bfbf68da2f1d24aa8ae01"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.2.1/lefthook_2.2.1_Linux_aarch64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/621507793"
+provenance = "github-attestations"
+
+[tools.lefthook."platforms.linux-x64"]
+checksum = "sha256:1b0ff33209fb31c5da73a6b860c5077ad83b1d8a99e46f5031fc14ee96caf9fe"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.2.1/lefthook_2.2.1_Linux_x86_64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/621507663"
+provenance = "github-attestations"
+
+[tools.lefthook."platforms.macos-arm64"]
+checksum = "sha256:c58acbd9fab211b6291a0c31d96d7f12e0b420e12989212af2193e7bc7f4a319"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.2.1/lefthook_2.2.1_MacOS_arm64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/621507714"
+provenance = "github-attestations"
+
+[tools.lefthook."platforms.macos-x64"]
+checksum = "sha256:654c41fa4f4490823eea4950beaf72889eae0e9acca0385700c381fce2ec54ae"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.2.1/lefthook_2.2.1_MacOS_x86_64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/621507613"
+provenance = "github-attestations"
 
 [[tools.node]]
 version = "22.23.3"
 backend = "core:node"
 specifiers = ["22"]
 
+[tools.node."platforms.linux-arm64"]
+checksum = "sha256:5ced2d48d1d7198739b7f86804de0171aefb6823b684b12341d3321afc3cb0b2"
+url = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-arm64.tar.gz"
+
+[tools.node."platforms.linux-x64"]
+checksum = "sha256:1084aa36196bba4c3a5e69a1ee388a6e4ff729dad09445fbcd434b28fe3c24af"
+url = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.gz"
+
+[tools.node."platforms.macos-arm64"]
+checksum = "sha256:23b25245dcfb9af7262f8ff142e9e2e0af025368117329e7a7458a51e5922f53"
+url = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-darwin-arm64.tar.gz"
+
+[tools.node."platforms.macos-x64"]
+checksum = "sha256:8a677b0219178efd6eb0e475457c4afb452b521a92f6e67845a73bd85727f2a8"
+url = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-darwin-x64.tar.gz"
+
 [[tools.pnpm]]
 version = "10.34.6"
 backend = "aqua:pnpm/pnpm"
 specifiers = ["10.34.6"]
 
+[tools.pnpm."platforms.linux-arm64"]
+checksum = "sha256:5e18e460aec11c0d39b345a732fbbdee0811354f6f384e2da230c6438ae2137c"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-linux-arm64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100723"
+
+[tools.pnpm."platforms.linux-x64"]
+checksum = "sha256:1bdfa04c3acbbf019befa4cf51f73f1de2729f4a513f737d1295905277f3b9cf"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-linux-x64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100726"
+
+[tools.pnpm."platforms.macos-arm64"]
+checksum = "sha256:62f067df42ba26d3ffbe8b42b8c92a251eb3a69bfa32a8a3a98623a4958e8ca4"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-macos-arm64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100724"
+
+[tools.pnpm."platforms.macos-x64"]
+checksum = "sha256:19f10bac54678ac70319031f7bbb653bb6ab2e8ed12264a0454f265bede8304b"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-macos-x64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100727"
+
 [[tools.pulumi]]
 version = "3.192.0"
 backend = "aqua:pulumi/pulumi"
 specifiers = ["3.192.0"]
+
+[tools.pulumi."platforms.linux-arm64"]
+checksum = "sha256:30b0ff825a1bf426c7cb5a7e4194b858ba677da06c01e8a94d163f4fbe7bcb90"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510724"
+provenance = "cosign"
+
+[tools.pulumi."platforms.linux-x64"]
+checksum = "sha256:1f9896ecf505622b69438381a63bdc044d67dedfe876b103dd452079cf58f1ee"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510735"
+provenance = "cosign"
+
+[tools.pulumi."platforms.macos-arm64"]
+checksum = "sha256:956a3ec098f0a5fc6319c1249ff5d25d16fc47c034c063d7ad8e004dea014d5d"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510685"
+provenance = "cosign"
+
+[tools.pulumi."platforms.macos-x64"]
+checksum = "sha256:654da9c907d62f78173097d2e0afaee783153f5dbefdf9024c6109d75a51be14"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510701"
+provenance = "cosign"
