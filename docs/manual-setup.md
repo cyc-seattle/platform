@@ -39,6 +39,17 @@ add the principal, role **Basic → Owner**, then have them accept the emailed i
 Then add the deployer to `bootstrap:humanDeployers` in `stacks/bootstrap/Pulumi.prod.yaml`, and
 apply `bootstrap`. That grants the Pulumi state buckets and keys, and the IAP SSH roles.
 
+## 3. Who approves prod deploys
+
+The `prod` environment of `isthmia` and `platform` needs an approval from the `maintainers` team,
+which `bootstrap` creates empty (#212). Add each maintainer by hand, or nobody can approve a deploy:
+
+```sh
+gh api -X PUT orgs/cyc-seattle/teams/maintainers/memberships/<github-login> -f role=member
+```
+
+- [x] The current maintainer is a member.
+
 ## When you add a new manual step
 
 If you add infrastructure that needs an out-of-band action, add it here.
