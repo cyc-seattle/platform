@@ -52,10 +52,17 @@ run = "pulumi preview --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\"
 description = "Apply the bootstrap stack"
 run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
 
+# cluster reads cloud's outputs, so cloud goes first.
 [tasks.preview]
 description = "Show the diff `mise run deploy` would apply"
-run = "pulumi preview --cwd stacks/cloud --stack \"$PULUMI_STACK\""
+run = [
+  "pulumi preview --cwd stacks/cloud --stack \"$PULUMI_STACK\"",
+  "pulumi preview --cwd stacks/cluster --stack \"$PULUMI_STACK\"",
+]
 
 [tasks.deploy]
-description = "Apply the cloud stack"
-run = "pulumi up --yes --cwd stacks/cloud --stack \"$PULUMI_STACK\""
+description = "Apply the cloud stack, then the cluster stack"
+run = [
+  "pulumi up --yes --cwd stacks/cloud --stack \"$PULUMI_STACK\"",
+  "pulumi up --yes --cwd stacks/cluster --stack \"$PULUMI_STACK\"",
+]

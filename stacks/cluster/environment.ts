@@ -1,0 +1,137 @@
+import * as pulumi from "@pulumi/pulumi";
+import * as k8s from "@pulumi/kubernetes";
+
+/** The namespace label the Gateway's listeners select an environment's routes by. */
+export const environmentLabel = "cycsail.team/environment";
+
+// Where a global external Application Load Balancer's health checks and proxied requests come from:
+// https://cloud.google.com/load-balancing/docs/firewall-rules
+export const loadBalancerRanges = ["35.191.0.0/16", "130.211.0.0/22"];
+
+/**
+ * The Gateway's HTTPS listeners for an environment's domain and its subdomains. Each admits routes
+ * only from namespaces labeled with the environment, so a route in dev can't claim a prod hostname.
+ */
+export function httpsListeners(environment: string, domain: pulumi.Input<string>) {
+  const allowedRoutes = {
+    kinds: [{ kind: "HTTPRoute" }],
+    namespaces: { from: "Selector", selector: { matchLabels: { [environmentLabel]: environment } } },
+  };
+  // A wildcard hostname doesn't match the domain itself, so each needs its own listener.
+  return [
+    { name: `https-${environment}`, hostname: domain, protocol: "HTTPS", port: 443, allowedRoutes },
+    {
+      name: `https-${environment}-wildcard`,
+      hostname: pulumi.interpolate`*.${domain}`,
+      protocol: "HTTPS",
+      port: 443,
+      allowedRoutes,
+    },
+  ];
+}
+
+export interface EnvironmentNamespaceArgs {
+  /** The namespace's total CPU and memory requests, and its pod count. */
+  quota: { cpu: string; memory: string; pods: number };
+  /** A container's default requests, which Autopilot also makes its limits. */
+  defaultRequests: { cpu: string; memory: string };
+  /** The most one container may request. */
+  maxRequests: { cpu: string; memory: string };
+}
+
+/**
+ * One environment's namespace, labeled for the Gateway's listeners. It enforces the `restricted`
+ * Pod Security Standard, caps its total requests, defaults each container's, and denies ingress
+ * from other namespaces except the load balancer's. Use {@link EnvironmentNamespace.grantAdmin} to
+ * let a deploy identity manage it.
+ */
+export class EnvironmentNamespace extends k8s.core.v1.Namespace {
+  private readonly provider: pulumi.ProviderResource;
+
+  constructor(
+    readonly environment: string,
+    args: EnvironmentNamespaceArgs,
+    opts: pulumi.CustomResourceOptions & { provider: pulumi.ProviderResource },
+  ) {
+    super(
+      environment,
+      {
+        metadata: {
+          name: environment,
+          labels: {
+            [environmentLabel]: environment,
+            "pod-security.kubernetes.io/enforce": "restricted",
+          },
+        },
+      },
+      opts,
+    );
+    this.provider = opts.provider;
+    const metadata = { namespace: this.metadata.name };
+
+    new k8s.core.v1.ResourceQuota(
+      `${environment}-quota`,
+      {
+        metadata: { ...metadata, name: "quota" },
+        spec: {
+          hard: {
+            "requests.cpu": args.quota.cpu,
+            "requests.memory": args.quota.memory,
+            pods: String(args.quota.pods),
+            // Traffic enters through the shared Gateway, not a load balancer or node port of its own.
+            "services.loadbalancers": "0",
+            "services.nodeports": "0",
+          },
+        },
+      },
+      { provider: this.provider },
+    );
+
+    new k8s.core.v1.LimitRange(
+      `${environment}-limits`,
+      {
+        metadata: { ...metadata, name: "limits" },
+        spec: {
+          limits: [
+            {
+              type: "Container",
+              default: args.defaultRequests,
+              defaultRequest: args.defaultRequests,
+              max: args.maxRequests,
+            },
+          ],
+        },
+      },
+      { provider: this.provider },
+    );
+
+    new k8s.networking.v1.NetworkPolicy(
+      `${environment}-isolation`,
+      {
+        metadata: { ...metadata, name: "deny-other-namespaces" },
+        spec: {
+          podSelector: {},
+          policyTypes: ["Ingress"],
+          ingress: [
+            { from: [{ podSelector: {} }] },
+            { from: loadBalancerRanges.map((cidr) => ({ ipBlock: { cidr } })) },
+          ],
+        },
+      },
+      { provider: this.provider },
+    );
+  }
+
+  /** Binds the `admin` ClusterRole, in this namespace only, to a Google service account. */
+  grantAdmin(email: pulumi.Input<string>, granteeLabel: string): k8s.rbac.v1.RoleBinding {
+    return new k8s.rbac.v1.RoleBinding(
+      `${this.environment}-${granteeLabel}-admin`,
+      {
+        metadata: { namespace: this.metadata.name, name: `${granteeLabel}-admin` },
+        roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "ClusterRole", name: "admin" },
+        subjects: [{ apiGroup: "rbac.authorization.k8s.io", kind: "User", name: email }],
+      },
+      { provider: this.provider },
+    );
+  }
+}

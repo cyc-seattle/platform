@@ -1,0 +1,5 @@
+config:
+  gcp:project: cyc-admin-scripts
+  gcp:region: us-west1
+  cluster:bootstrapStack: organization/bootstrap/prod
+  cluster:cloudStack: organization/cloud/prod
