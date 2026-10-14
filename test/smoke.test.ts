@@ -39,9 +39,6 @@ beforeAll(async () => {
           reads.push(a.inputs);
           return { content: JSON.stringify(dev) };
         }
-        if (a.token === "gcp:organizations/getClientConfig:getClientConfig") {
-          return { accessToken: "token" };
-        }
         return a.inputs;
       },
     },
@@ -63,18 +60,18 @@ describe("smoke", () => {
     expect(await valueOf(smoke.url)).toBe("https://smoke.dev.cycsail.team/");
   });
 
-  it("talks to the cluster's DNS endpoint with the caller's token", async () => {
-    // The provider registers only once the outputs file and the token resolve.
+  it("talks to the cluster's DNS endpoint through the auth plugin", async () => {
+    // The provider registers only once the outputs file resolves.
     const provider = await vi.waitFor(() => {
       const found = created.find((r) => r.type === "pulumi:providers:kubernetes");
       expect(found).toBeDefined();
       return found!;
     });
-    // The mocks pass a secret as a wrapper with its plaintext in `value`.
-    expect(provider.inputs.kubeconfig).toHaveProperty("value");
-    expect(JSON.parse(provider.inputs.kubeconfig.value)).toMatchObject({
+    expect(JSON.parse(provider.inputs.kubeconfig)).toMatchObject({
       clusters: [{ cluster: { server: "https://gke-example.us-west1.gke.goog" } }],
-      users: [{ user: { token: "token" } }],
+      users: [
+        { user: { exec: { command: "gke-gcloud-auth-plugin", args: ["--use_application_default_credentials"] } } },
+      ],
     });
   });
 });

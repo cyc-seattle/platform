@@ -21,8 +21,8 @@ PULUMI_STACK = "{{ get_env(name='PULUMI_STACK', default='prod') }}"
 PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-{{ env.PULUMI_STACK }}"
 
 [tasks.install]
-description = "Install dependencies and git hooks"
-run = ["pnpm install", "lefthook install"]
+description = "Install dependencies, git hooks, and the GKE auth plugin Pulumi's Kubernetes provider runs"
+run = ["pnpm install", "lefthook install", "gcloud components install gke-gcloud-auth-plugin --quiet"]
 
 [tasks.format]
 description = "Format and fix all files"

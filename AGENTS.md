@@ -39,6 +39,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
   when it's set, because Actions' auth step sets it.
 - Preview before every apply. Every preview of an unchanged stack must show no changes.
+- The Kubernetes provider execs `gke-gcloud-auth-plugin` with Application Default Credentials, in place
+  of an access token that would change its kubeconfig on every run. `mise run install` installs the
+  plugin into mise's gcloud, so run `pulumi` under mise.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
 
 ## Code style

@@ -1,4 +1,3 @@
-import * as gcp from "@pulumi/gcp";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import type { PlatformOutputs } from "./outputs";
@@ -12,9 +11,10 @@ export interface ClusterProviderArgs {
 }
 
 /**
- * A Kubernetes provider for the environment's cluster. It authenticates with the caller's own Google
- * access token, so Pulumi needs no gke-gcloud-auth-plugin (cyc-seattle/isthmia#215). The cluster
- * stack itself passes only the endpoint, because it writes the rest.
+ * A Kubernetes provider for the environment's cluster. Its kubeconfig runs gke-gcloud-auth-plugin
+ * with Application Default Credentials, so it is the same on every run, unlike one that embeds an
+ * access token. The plugin must be on PATH: `mise run install` adds it. The cluster stack passes
+ * only the endpoint, because it writes the rest.
  */
 export function clusterProvider(
   platform: pulumi.Input<{ clusterEndpoint: pulumi.Input<PlatformOutputs["clusterEndpoint"]> }>,
@@ -22,21 +22,29 @@ export function clusterProvider(
   opts?: pulumi.CustomResourceOptions,
   args: ClusterProviderArgs = {},
 ): k8s.Provider {
-  const token = gcp.organizations.getClientConfigOutput().accessToken;
   // The DNS-based endpoint serves a publicly trusted certificate, so the kubeconfig needs no CA.
-  const kubeconfig = pulumi.all([pulumi.output(platform).clusterEndpoint, token]).apply(([endpoint, token]) =>
+  const kubeconfig = pulumi.output(platform).clusterEndpoint.apply((endpoint) =>
     JSON.stringify({
       apiVersion: "v1",
       kind: "Config",
       clusters: [{ name: "cluster", cluster: { server: `https://${endpoint}` } }],
-      users: [{ name: "user", user: { token } }],
+      users: [
+        {
+          name: "user",
+          user: {
+            exec: {
+              apiVersion: "client.authentication.k8s.io/v1beta1",
+              command: "gke-gcloud-auth-plugin",
+              args: ["--use_application_default_credentials"],
+              installHint: "Run `mise run install`, and run Pulumi under mise.",
+              provideClusterInfo: true,
+            },
+          },
+        },
+      ],
       contexts: [{ name: "cluster", context: { cluster: "cluster", user: "user" } }],
       "current-context": "cluster",
     }),
   );
-  return new k8s.Provider(
-    name,
-    { kubeconfig: pulumi.secret(kubeconfig), clusterIdentifier: args.clusterIdentifier },
-    opts,
-  );
+  return new k8s.Provider(name, { kubeconfig, clusterIdentifier: args.clusterIdentifier }, opts);
 }

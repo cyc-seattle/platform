@@ -58,8 +58,6 @@ beforeAll(async () => {
       },
       call: (args) => {
         switch (args.token) {
-          case "gcp:organizations/getClientConfig:getClientConfig":
-            return { accessToken: "token" };
           case "gcp:organizations/getProject:getProject":
             return { ...args.inputs, number: "123456789" };
           default:
@@ -126,11 +124,15 @@ describe("Kubernetes provider", () => {
     expect(provider().clusterIdentifier).toBe("cyc_id");
   });
 
-  it("talks to the cluster's DNS endpoint with the caller's token", () => {
-    expect(JSON.parse(provider().kubeconfig.value)).toMatchObject({
+  it("talks to the cluster's DNS endpoint through the auth plugin, with no token in its kubeconfig", () => {
+    // A token would change the kubeconfig, and so the provider, on every run.
+    expect(JSON.parse(provider().kubeconfig)).toMatchObject({
       clusters: [{ cluster: { server: "https://gke-example.us-west1.gke.goog" } }],
-      users: [{ user: { token: "token" } }],
+      users: [
+        { user: { exec: { command: "gke-gcloud-auth-plugin", args: ["--use_application_default_credentials"] } } },
+      ],
     });
+    expect(provider().kubeconfig).not.toContain("token");
   });
 });
 

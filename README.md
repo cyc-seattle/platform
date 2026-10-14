@@ -20,8 +20,9 @@ app owns. The apps that run on it live in their own repos, such as
 - `getPlatformOutputs()` reads an environment's `platform/outputs.json` from its state bucket. The
   `cluster` stack writes it. Dev stacks can't read prod's backend, so this replaces a
   StackReference for platform values (cyc-seattle/isthmia#215).
-- `clusterProvider(platform)` builds a Kubernetes provider for the cluster from the caller's Google
-  access token.
+- `clusterProvider(platform)` builds a Kubernetes provider for the cluster. Its kubeconfig runs
+  `gke-gcloud-auth-plugin` with Application Default Credentials, so Pulumi must run under mise,
+  where `mise run install` puts the plugin on `PATH`.
 - `WebService` runs an HTTP service behind the environment's Gateway, with secure defaults. Its pods
   get no IAM; grant roles to its `member`, a Workload Identity principal.
 - `enableService` enables a Google Cloud API.
