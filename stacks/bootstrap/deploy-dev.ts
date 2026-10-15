@@ -20,8 +20,8 @@ export const devInstance = "cyc-dev";
 /** Dev's hand-set Secret Manager secrets carry this prefix in their IDs (#231). */
 export const devSecretPrefix = "dev-";
 
-// Creates dev's databases and users through the Admin API (#231). Cloud SQL checks the database,
-// user, and operation calls against their instance.
+// Creates dev's databases and users through the Admin API (#231). Cloud SQL checks a user or
+// database call against the subresource's own name, under the instance, so match both.
 new gcp.projects.IAMMember(
   "deploy-dev-cloudsql.admin",
   {
@@ -30,7 +30,7 @@ new gcp.projects.IAMMember(
     member: deployDev.member,
     condition: {
       title: `Only ${devInstance}`,
-      expression: `resource.name == "projects/${projectId}/instances/${devInstance}" && resource.service == "sqladmin.googleapis.com"`,
+      expression: `(resource.name == "projects/${projectId}/instances/${devInstance}" || resource.name.startsWith("projects/${projectId}/instances/${devInstance}/")) && resource.service == "sqladmin.googleapis.com"`,
     },
   },
   // An IAM member is read-modify-write against one shared policy (#153).
