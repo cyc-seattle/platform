@@ -14,6 +14,10 @@ export const platformOutputsSchema = z.object({
   gateway: z.object({ name: z.string().min(1), namespace: z.string().min(1) }),
   domain: z.string().min(1),
   sqlConnectionName: z.string().min(1),
+  /** The environment's Cloud SQL private IP, which pods reach directly. */
+  sqlHost: z.string().min(1),
+  /** The shared Gateway's IPv4 address, for an app's own DNS records. */
+  gatewayAddress: z.string().min(1),
   registry: z.string().min(1),
 });
 

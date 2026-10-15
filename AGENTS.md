@@ -11,7 +11,9 @@ single app owns it. The apps live in their own repos and depend on this one, nev
 - `stacks/<name>/` is one Pulumi project. Each has a `package.json` marker, because Pulumi's nodejs
   language host resolves a program's entry point from the nearest one.
 - `src/` holds helpers the stacks import directly. `src/index.ts` exports the published package,
-  `@cyc-seattle/platform`; the build compiles only what it imports.
+  `@cyc-seattle/platform`; the build compiles only what it imports. Its API (`Workload`,
+  `WebService`, `ScheduledJob`, `PlatformOutputs`) is a contract the apps code against, so extend it
+  rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`.
 - The code is CommonJS, like isthmia's Pulumi code (cyc-seattle/isthmia#127). Import paths carry no
@@ -39,6 +41,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
   when it's set, because Actions' auth step sets it.
 - Preview before every apply. Every preview of an unchanged stack must show no changes.
+- A new field in `platform/outputs.json` breaks the dev deploy until `cluster` writes it, and
+  `cluster` applies only after dev passes. Apply `cloud` and `cluster` from the branch first.
 - The Kubernetes provider execs `gke-gcloud-auth-plugin` with Application Default Credentials, in place
   of an access token that would change its kubeconfig on every run. `mise run install` installs the
   plugin into mise's gcloud, so run `pulumi` under mise.

@@ -24,6 +24,8 @@ const platform = (env: string): PlatformOutputs => ({
   gateway: { name: "shared", namespace: "gateway" },
   domain: `${env}.example.org`,
   sqlConnectionName: `example-project:us-west1:${env}`,
+  sqlHost: "10.159.0.5",
+  gatewayAddress: "203.0.113.10",
   registry: "us-west1-docker.pkg.dev/example-project/docker",
 });
 
@@ -106,6 +108,32 @@ describe("WebService placement", () => {
   });
 });
 
+describe("WebService resources", () => {
+  it("sets its limits to its requests", () => {
+    expect(podSpec("dev-web").containers[0].resources).toEqual({
+      requests: { cpu: "50m", memory: "128Mi" },
+      limits: { cpu: "50m", memory: "128Mi" },
+    });
+  });
+
+  it("exposes its HTTP port as port 80, and any other port at its own number", () => {
+    new WebService("two-ports", { ...args("dev"), ports: [{ name: "metrics", port: 9300 }] });
+    return new Promise<void>((resolve) =>
+      setImmediate(() => {
+        expect(find("kubernetes:core/v1:Service", "two-ports").spec.ports).toEqual([
+          { name: "http", port: 80, targetPort: "http" },
+          { name: "metrics", port: 9300, targetPort: "metrics" },
+        ]);
+        expect(podSpec("two-ports").containers[0].ports).toEqual([
+          { name: "http", containerPort: 8080 },
+          { name: "metrics", containerPort: 9300 },
+        ]);
+        resolve();
+      }),
+    );
+  });
+});
+
 describe("WebService routing", () => {
   it("routes its hostname from the environment's Gateway to its Service", () => {
     expect(find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "dev-web").spec).toEqual({
@@ -151,6 +179,12 @@ describe("WebService identity", () => {
     expect(await valueOf(web.member)).toBe(
       "principal://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/example-project.svc.id.goog/subject/ns/dev/sa/member",
     );
+  });
+
+  it("names its ServiceAccount and host after itself", async () => {
+    const web = new WebService("named", args("dev"));
+    expect(await valueOf(web.serviceAccountName)).toBe("named");
+    expect(web.host).toBe("named");
   });
 
   it("creates no IAM", () => {

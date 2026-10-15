@@ -10,8 +10,11 @@ const certificateManagerApi = enableService("certificatemanager.googleapis.com")
 
 const internalZoneName = cloudOutput("internalZoneName");
 
+/** Prod's base domain. Its apps are it and its subdomains. */
+export const prodDomain = cloudOutput("internalDomain");
+
 /** Dev's base domain. Its apps are its subdomains. */
-export const devDomain = pulumi.interpolate`dev.${cloudOutput("internalDomain")}`;
+export const devDomain = pulumi.interpolate`dev.${prodDomain}`;
 
 // Protected: the DNS records point at it.
 export const address = new gcp.compute.GlobalAddress("gateway", { addressType: "EXTERNAL" }, { protect: true });
@@ -24,9 +27,10 @@ export const certificateMap = new gcp.certificatemanager.CertificateMap(
 
 /**
  * Serves an environment's domain and its subdomains through the Gateway: a DNS-authorized
- * certificate for both, their certificate map entries, and A records pointing at the Gateway.
+ * certificate for both, their certificate map entries, and, with `records`, A records pointing at
+ * the Gateway.
  */
-function serveEnvironment(environment: string, domain: pulumi.Input<string>): void {
+function serveEnvironment(environment: string, domain: pulumi.Input<string>, records: boolean): void {
   const authorization = new gcp.certificatemanager.DnsAuthorization(
     environment,
     { domain, description: pulumi.interpolate`Authorizes certificates for ${domain}` },
@@ -57,17 +61,21 @@ function serveEnvironment(environment: string, domain: pulumi.Input<string>): vo
       hostname,
       certificates: [certificate.id],
     });
-    new gcp.dns.RecordSet(`${environment}${suffix}`, {
-      managedZone: internalZoneName,
-      name: pulumi.interpolate`${hostname}.`,
-      type: "A",
-      ttl: 300,
-      rrdatas: [address.address],
-    });
+    if (records) {
+      new gcp.dns.RecordSet(`${environment}${suffix}`, {
+        managedZone: internalZoneName,
+        name: pulumi.interpolate`${hostname}.`,
+        type: "A",
+        ttl: 300,
+        rrdatas: [address.address],
+      });
+    }
   }
 }
 
-serveEnvironment("dev", devDomain);
+serveEnvironment("dev", devDomain, true);
+// Each prod app owns its own record, and moves it from the VM to the Gateway at its cutover (#231).
+serveEnvironment("prod", prodDomain, false);
 
 export const gatewayNamespace = new k8s.core.v1.Namespace("gateway", { metadata: { name: "gateway" } }, { provider });
 
@@ -88,6 +96,7 @@ export const gateway = new k8s.apiextensions.CustomResource(
         // Only the redirect route below, in this namespace, attaches to it.
         { name: "http", protocol: "HTTP", port: 80, allowedRoutes: { namespaces: { from: "Same" } } },
         ...httpsListeners("dev", devDomain),
+        ...httpsListeners("prod", prodDomain),
       ],
     },
   },

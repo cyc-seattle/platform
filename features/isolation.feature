@@ -40,3 +40,11 @@ Feature: Dev is isolated from prod
       | namespaces                                    |
       | clusterroles.rbac.authorization.k8s.io        |
       | clusterrolebindings.rbac.authorization.k8s.io |
+
+  Scenario: deploy-dev reaches a dev Service through the API's service proxy
+    When I GET "/" from the Service "smoke" on port 80 through the API's service proxy
+    Then it answers with status 200
+
+  Scenario: A dev pod can't reach a mail server outside the cluster
+    When a pod in dev connects to "smtp.gmail.com:25", "smtp.gmail.com:465", "smtp.gmail.com:587", and "www.google.com:443"
+    Then only "www.google.com:443" answers

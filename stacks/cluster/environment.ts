@@ -30,6 +30,23 @@ export function httpsListeners(environment: string, domain: pulumi.Input<string>
   ];
 }
 
+/** SMTP, SMTPS, and submission. */
+export const mailPorts = [25, 465, 587];
+
+/** The TCP port ranges, as `[port, endPort]`, that cover every port but `excluded`. */
+export function allPortsExcept(excluded: number[]): [number, number][] {
+  const ranges: [number, number][] = [];
+  let start = 1;
+  for (const port of [...excluded].sort((a, b) => a - b)) {
+    if (port > start) {
+      ranges.push([start, port - 1]);
+    }
+    start = port + 1;
+  }
+  ranges.push([start, 65535]);
+  return ranges;
+}
+
 const editVerbs = ["get", "list", "watch", "create", "update", "patch", "delete"];
 
 export interface EnvironmentNamespaceArgs {
@@ -133,6 +150,62 @@ export class EnvironmentNamespace extends k8s.core.v1.Namespace {
           ingress: [
             { from: [{ podSelector: {} }] },
             { from: loadBalancerRanges.map((cidr) => ({ ipBlock: { cidr } })) },
+          ],
+        },
+      },
+      { provider: this.provider },
+    );
+  }
+
+  /**
+   * Admits the Kubernetes API's service and pod proxy. GKE's control plane reaches pods through the
+   * konnectivity agents, so the proxied requests come from their pods in kube-system.
+   */
+  admitApiProxy(): void {
+    new k8s.networking.v1.NetworkPolicy(
+      `${this.environment}-api-proxy`,
+      {
+        metadata: { namespace: this.metadata.name, name: "allow-api-proxy" },
+        spec: {
+          podSelector: {},
+          policyTypes: ["Ingress"],
+          ingress: [
+            {
+              from: [
+                {
+                  namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": "kube-system" } },
+                  podSelector: { matchLabels: { "k8s-app": "konnectivity-agent" } },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      { provider: this.provider },
+    );
+  }
+
+  /**
+   * Denies TCP egress to the mail ports (25, 465, 587) outside the cluster, so the environment can't
+   * send real mail. Other egress stays open. A policy can only allow, so it allows every other port.
+   */
+  denyMailEgress(): void {
+    new k8s.networking.v1.NetworkPolicy(
+      `${this.environment}-mail-egress`,
+      {
+        metadata: { namespace: this.metadata.name, name: "deny-mail-egress" },
+        spec: {
+          podSelector: {},
+          policyTypes: ["Egress"],
+          egress: [
+            // Any port to pods in the cluster, such as a mail catcher.
+            { to: [{ namespaceSelector: {} }] },
+            {
+              ports: [
+                ...allPortsExcept(mailPorts).map(([port, endPort]) => ({ protocol: "TCP", port, endPort })),
+                { protocol: "UDP" },
+              ],
+            },
           ],
         },
       },

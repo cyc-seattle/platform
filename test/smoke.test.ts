@@ -21,6 +21,8 @@ const dev = {
   gateway: { name: "shared", namespace: "gateway" },
   domain: "dev.cycsail.team",
   sqlConnectionName: "cyc-admin-scripts:us-west1:cyc-dev",
+  sqlHost: "10.159.0.5",
+  gatewayAddress: "203.0.113.10",
   registry: "us-west1-docker.pkg.dev/cyc-admin-scripts/artifact-docker-repository",
 };
 const reads: { bucket: string; name: string }[] = [];

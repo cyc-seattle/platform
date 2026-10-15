@@ -50,6 +50,26 @@ gh api -X PUT orgs/cyc-seattle/teams/maintainers/memberships/<github-login> -f r
 
 - [x] The current maintainer is a member.
 
+## 4. The Workspace SMTP relay admits the cluster
+
+Prod's pods send mail through `smtp-relay.gmail.com:587`, which admits senders by IP. The cluster's
+Cloud NAT sends from one static address, the `cloud` stack's `natAddress` output. As a Workspace
+super-admin, add it in the Admin console under **Apps → Google Workspace → Gmail → Routing → SMTP
+relay service**, to the allowed IP addresses of the relay's rule:
+
+```sh
+pulumi stack output natAddress --cwd stacks/cloud --stack prod
+```
+
+- [ ] The relay admits `natAddress`.
+
+## 5. Where alerts go
+
+`cluster:alertEmails` in `stacks/cluster/Pulumi.prod.yaml` lists the addresses the prod Job alerts
+email. The `cluster` stack doesn't deploy without it.
+
+- [ ] `cluster:alertEmails` is set.
+
 ## When you add a new manual step
 
 If you add infrastructure that needs an out-of-band action, add it here.

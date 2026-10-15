@@ -1,3 +1,4 @@
+import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import { projectId } from "../../src/config";
 import { ServiceAccount } from "../../src/service-account";
@@ -12,3 +13,45 @@ new gcp.projects.IAMMember("deploy-dev-container.clusterViewer", {
   role: "roles/container.clusterViewer",
   member: deployDev.member,
 });
+
+/** The dev Cloud SQL instance, which `cloud` names. */
+export const devInstance = "cyc-dev";
+
+/** Dev's hand-set Secret Manager secrets carry this prefix in their IDs (#231). */
+export const devSecretPrefix = "dev-";
+
+// Creates dev's databases and users through the Admin API (#231). Cloud SQL checks the database,
+// user, and operation calls against their instance.
+new gcp.projects.IAMMember(
+  "deploy-dev-cloudsql.admin",
+  {
+    project: projectId,
+    role: "roles/cloudsql.admin",
+    member: deployDev.member,
+    condition: {
+      title: `Only ${devInstance}`,
+      expression: `resource.name == "projects/${projectId}/instances/${devInstance}" && resource.service == "sqladmin.googleapis.com"`,
+    },
+  },
+  // An IAM member is read-modify-write against one shared policy (#153).
+  { deleteBeforeReplace: true },
+);
+
+// Secret Manager names a secret by the project's number, not its ID.
+const projectNumber = gcp.organizations.getProjectOutput({ projectId }).number;
+
+// Reads dev's hand-set values at deploy time (#231). Use `getSecretVersionAccess`: `getSecretVersion`
+// also reads the version's metadata, which the accessor role doesn't grant.
+new gcp.projects.IAMMember(
+  "deploy-dev-secretmanager.secretAccessor",
+  {
+    project: projectId,
+    role: "roles/secretmanager.secretAccessor",
+    member: deployDev.member,
+    condition: {
+      title: `Only secrets named ${devSecretPrefix}*`,
+      expression: pulumi.interpolate`resource.name.startsWith("projects/${projectNumber}/secrets/${devSecretPrefix}")`,
+    },
+  },
+  { deleteBeforeReplace: true },
+);

@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { projectId, location } from "../../src/config";
-import { clusterPodsRange, clusterServicesRange, clusterSubnet, network, subnet } from "./network";
+import { clusterPodsRange, clusterServicesRange, clusterNatAddress, clusterSubnet, network, subnet } from "./network";
 import { devPostgres, postgres } from "./database";
 import { externalZone, internalDomain, internalZone, shortZone } from "./dns";
 import { artifactRepository } from "./artifact-repository";
@@ -23,6 +23,10 @@ export const clusterSubnetId = clusterSubnet.id;
 export const clusterPodsRangeName = clusterPodsRange;
 export const clusterServicesRangeName = clusterServicesRange;
 export const devPostgresConnectionName = devPostgres.connectionName;
+export const devPostgresPrivateIp = devPostgres.privateIpAddress;
+
+// For the Workspace SMTP relay's allowlist, a manual step.
+export const natAddress = clusterNatAddress.address;
 
 // For the registrar delegation, a manual step.
 export const nameServers = {

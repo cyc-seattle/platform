@@ -14,6 +14,8 @@ const good = {
   gateway: { name: "shared", namespace: "gateway" },
   domain: "dev.example.org",
   sqlConnectionName: "example-project:us-west1:cyc-dev",
+  sqlHost: "10.159.0.5",
+  gatewayAddress: "203.0.113.10",
   registry: "us-west1-docker.pkg.dev/example-project/docker",
 };
 
@@ -55,6 +57,13 @@ describe("parsePlatformOutputs", () => {
     const missing: Partial<typeof good> = { ...good };
     delete missing.clusterEndpoint;
     expect(() => parse(missing)).toThrow(/outputs\.json doesn't hold the platform outputs:[\s\S]*clusterEndpoint/);
+  });
+
+  it.each(["sqlHost", "gatewayAddress"] as const)("requires %s", (field) => {
+    const missing: Partial<typeof good> = { ...good };
+    delete missing[field];
+    expect(() => parse(missing)).toThrow(new RegExp(field));
+    expect(() => parse({ ...good, [field]: "" })).toThrow(new RegExp(field));
   });
 
   it("names a field of the wrong type", () => {
