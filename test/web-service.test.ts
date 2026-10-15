@@ -132,6 +132,12 @@ describe("WebService resources", () => {
       }),
     );
   });
+
+  it("rejects a second port named http", () => {
+    expect(() => new WebService("dup-http", { ...args("dev"), ports: [{ name: "http", port: 9000 }] })).toThrow(
+      /can't name a port "http"/,
+    );
+  });
 });
 
 describe("WebService routing", () => {

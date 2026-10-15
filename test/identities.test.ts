@@ -89,8 +89,7 @@ describe("gsuite-sync", () => {
     expect(byName("gsuite-sync-wif-prod").inputs).toEqual({
       serviceAccountId: `projects/example-project/serviceAccounts/${email("gsuite-sync")}`,
       role: "roles/iam.workloadIdentityUser",
-      member:
-        "principal://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/example-project.svc.id.goog/subject/ns/prod/sa/gsuite-sync",
+      member: "serviceAccount:example-project.svc.id.goog[prod/gsuite-sync]",
     });
   });
 });
