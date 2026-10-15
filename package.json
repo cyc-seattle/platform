@@ -38,7 +38,7 @@
     "zod": "4.6.7"
   },
   "peerDependencies": {
-    "@pulumi/gcp": "^8",
+    "@pulumi/gcp": "^8 || ^10.0.0",
     "@pulumi/kubernetes": "^4",
     "@pulumi/pulumi": "^3"
   },
@@ -46,7 +46,7 @@
     "@amiceli/vitest-cucumber": "7.0.0",
     "@cyc-seattle/ts-config": "^0.1.2",
     "@pulumi/command": "1.2.1",
-    "@pulumi/gcp": "8.41.1",
+    "@pulumi/gcp": "10.1.1",
     "@pulumi/github": "6.15.0",
     "@pulumi/kubernetes": "4.34.2",
     "@pulumi/pulumi": "3.264.0",
