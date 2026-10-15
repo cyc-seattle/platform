@@ -2,6 +2,10 @@ config:
   gcp:project: cyc-admin-scripts
   gcp:region: us-west1
   cloud:bootstrapStack: organization/bootstrap/prod
+  cloud:devDatabases:
+    - authentik
+    - directus
+    - clubspot_fake
   cloud:externalDomain: cyccommunitysailing.org
   cloud:internalDomain: cycsail.team
   cloud:shortDomain: cycsailing.center

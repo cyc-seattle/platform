@@ -53,9 +53,13 @@ Kubernetes API's service proxy, which the integration tests use, and denies egre
 (25, 465, 587) outside the cluster. `cluster` writes dev's A records; each prod app writes its own,
 pointing at `gatewayAddress`.
 
-`deploy-dev` may administer the `cyc-dev` Cloud SQL instance and read Secret Manager secrets whose IDs
-start with `dev-`. Read them with `gcp.secretmanager.getSecretVersionAccess`, which needs only the
-accessor role.
+`deploy-dev` reads Secret Manager secrets whose IDs start with `dev-`. Read them with
+`gcp.secretmanager.getSecretVersionAccess`, which needs only the accessor role.
+
+`cloud` creates each app's dev database, user, and password secret (`dev-db-<name>-password`) on
+`cyc-dev`, for each name in `cloud:devDatabases`. To add an app's dev database, add its name there in a
+platform PR: Cloud SQL ignores IAM conditions on its user and database calls, so `deploy-dev` can't
+hold a role scoped to `cyc-dev`.
 
 A Job that fails in `prod`, or a CronJob there with no successful Job in 3 hours, raises an alert.
 It emails each address in `cluster:alertEmails`, which is unset for now (#20).
