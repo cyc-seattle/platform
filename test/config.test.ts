@@ -55,3 +55,17 @@ describe("requireStringList", () => {
     expect(() => config.requireStringList("empty")).toThrow(/Config "empty"/);
   });
 });
+
+describe("getStringList", () => {
+  it("reads the key from the project's namespace", () => {
+    expect(config.getStringList("admins")).toEqual(["a@example.com", "b@example.com"]);
+  });
+
+  it("is empty when the key is unset", () => {
+    expect(config.getStringList("missing")).toEqual([]);
+  });
+
+  it("still rejects an empty list", () => {
+    expect(() => config.getStringList("empty")).toThrow(/Config "empty"/);
+  });
+});

@@ -22,6 +22,12 @@ export function parseStringList(key: string, value: unknown): string[] {
   return value;
 }
 
+/** Reads an optional list of strings from this project's stack config. Unset, it's empty. */
+export function getStringList(key: string): string[] {
+  const value = new pulumi.Config().getObject<unknown>(key);
+  return value === undefined ? [] : parseStringList(key, value);
+}
+
 /** Reads a required list of strings from this project's stack config. */
 export function requireStringList(key: string): string[] {
   return parseStringList(key, new pulumi.Config().requireObject<unknown>(key));

@@ -3,7 +3,7 @@ config:
   gcp:region: us-west1
   cluster:bootstrapStack: organization/bootstrap/prod
   cluster:cloudStack: organization/cloud/prod
-  # Where the prod Job alerts go (#205). Required:
+  # Where the prod Job alerts go (#205). Unset for now, so they email no one (#20).
   # cluster:alertEmails:
   #   - <placeholder>
 secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod

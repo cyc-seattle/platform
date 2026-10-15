@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { projectId, requireStringList } from "../../src/config";
+import { getStringList, projectId } from "../../src/config";
 import { enableService } from "../../src/services";
 import { cluster } from "./cluster";
 import { prodNamespace } from "./prod";
@@ -10,7 +10,8 @@ import { prodNamespace } from "./prod";
 const monitoringApi = enableService("monitoring.googleapis.com");
 const loggingApi = enableService("logging.googleapis.com");
 
-export const alertChannels = requireStringList("alertEmails").map(
+// Unset for now, so the alerts email no one; their incidents still show in Cloud Monitoring (#20).
+export const alertChannels = getStringList("alertEmails").map(
   (email) =>
     new gcp.monitoring.NotificationChannel(
       `alerts-${email}`,
