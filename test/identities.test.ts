@@ -73,7 +73,7 @@ describe("deploy-dev", () => {
 
   it("administers only the cyc-dev instance", () => {
     expect(grant("roles/cloudsql.admin").inputs.condition.expression).toBe(
-      'resource.name == "projects/example-project/instances/cyc-dev" && resource.service == "sqladmin.googleapis.com"',
+      '(resource.name == "projects/example-project/instances/cyc-dev" || resource.name.startsWith("projects/example-project/instances/cyc-dev/")) && resource.service == "sqladmin.googleapis.com"',
     );
   });
 
