@@ -158,6 +158,10 @@ export function deployment(parent: pulumi.Resource, name: string, args: Workload
   const child = { parent, provider: args.provider };
 
   const account = serviceAccount(name, args, child);
+  if (http !== undefined && args.ports?.some((p) => p.name === "http")) {
+    // The API rejects two ports with one name, and only after the preview.
+    throw new Error(`${name}: "ports" can't name a port "http"; a WebService's own port has that name.`);
+  }
   const ports = [...(http !== undefined ? [{ name: "http", port: http }] : []), ...(args.ports ?? [])];
 
   new k8s.apps.v1.Deployment(

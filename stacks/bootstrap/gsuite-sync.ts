@@ -17,12 +17,8 @@ new gcp.serviceaccount.IAMMember(
   {
     serviceAccountId: gsuiteSyncRunner.name,
     role: "roles/iam.workloadIdentityUser",
-    member: gcp.organizations
-      .getProjectOutput({ projectId })
-      .number.apply(
-        (number) =>
-          `principal://iam.googleapis.com/projects/${number}/locations/global/workloadIdentityPools/${projectId}.svc.id.goog/subject/ns/prod/sa/gsuite-sync`,
-      ),
+    // Google documents only this form for impersonating a service account; principal:// is for direct resource grants.
+    member: `serviceAccount:${projectId}.svc.id.goog[prod/gsuite-sync]`,
   },
   // An IAM member is read-modify-write against one shared policy (#153).
   { deleteBeforeReplace: true },
