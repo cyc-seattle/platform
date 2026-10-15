@@ -62,19 +62,16 @@ describe("deploy-dev", () => {
   const grant = (role: string) =>
     ofType("gcp:projects/iAMMember:IAMMember").find((r) => r.inputs.member === member && r.inputs.role === role)!;
 
-  it("views clusters, and holds Cloud SQL and Secret Manager roles only under conditions", () => {
+  it("views clusters, and reads secrets only under a condition", () => {
     expect(projectMembers(member).sort()).toEqual([
-      "roles/cloudsql.admin",
       "roles/container.clusterViewer",
       "roles/secretmanager.secretAccessor",
     ]);
     expect(grant("roles/container.clusterViewer").inputs.condition).toBeUndefined();
   });
 
-  it("administers only the cyc-dev instance", () => {
-    expect(grant("roles/cloudsql.admin").inputs.condition.expression).toBe(
-      '(resource.name == "projects/example-project/instances/cyc-dev" || resource.name.startsWith("projects/example-project/instances/cyc-dev/")) && resource.service == "sqladmin.googleapis.com"',
-    );
+  it("holds no Cloud SQL role, which ignores conditions on user and database calls", () => {
+    expect(projectMembers(member).filter((role) => role.includes("cloudsql"))).toEqual([]);
   });
 
   it("reads only secrets whose IDs start with dev-", () => {

@@ -17,7 +17,9 @@ beforeAll(async () => {
       newResource: (args) => {
         created.push({ type: args.type, name: args.name, inputs: args.inputs });
         const selfLink = args.type === "gcp:compute/address:Address" ? { selfLink: `${args.name}_selfLink` } : {};
-        return { id: `${args.name}_id`, state: { ...args.inputs, ...selfLink } };
+        const result =
+          args.type === "random:index/randomPassword:RandomPassword" ? { result: `${args.name}_result` } : {};
+        return { id: `${args.name}_id`, state: { ...args.inputs, ...selfLink, ...result } };
       },
       call: (args) => args.inputs,
     },
@@ -25,9 +27,11 @@ beforeAll(async () => {
   );
   pulumi.runtime.setConfig("gcp:project", "example-project");
   pulumi.runtime.setConfig("gcp:region", "us-west1");
+  pulumi.runtime.setConfig("cloud:devDatabases", JSON.stringify(["authentik", "directus", "clubspot_fake"]));
   // The module builds its resources on import, so it loads only after the mocks are set.
   await import("../stacks/cloud/database.js");
   await import("../stacks/cloud/network.js");
+  await import("../stacks/cloud/dev-databases.js");
   await new Promise((r) => setImmediate(r));
 });
 
@@ -118,5 +122,41 @@ describe("the cluster's Cloud NAT", () => {
       sourceSubnetworkIpRangesToNat: "LIST_OF_SUBNETWORKS",
       subnetworks: [{ name: "cluster_id", sourceIpRangesToNats: ["ALL_IP_RANGES"] }],
     });
+  });
+});
+
+describe("dev databases", () => {
+  const ofType = (type: string) => created.filter((r) => r.type === type);
+  const names = ["authentik", "directus", "clubspot_fake"];
+
+  it.each(names)("creates database %s on cyc-dev", (name) => {
+    expect(ofType("gcp:sql/database:Database").find((r) => r.name === name)!.inputs).toMatchObject({
+      name,
+      instance: "cyc-dev",
+    });
+  });
+
+  it.each(names)("creates user %s with a generated password, abandoned on delete", (name) => {
+    expect(ofType("gcp:sql/user:User").find((r) => r.name === name)!.inputs).toMatchObject({
+      name,
+      instance: "cyc-dev",
+      password: { value: `${name}-password_result` },
+      deletionPolicy: "ABANDON",
+    });
+  });
+
+  it.each(names)("stores %s's password in dev-db-%s-password", (name) => {
+    const id = `dev-db-${name}-password`;
+    expect(ofType("gcp:secretmanager/secret:Secret").find((r) => r.name === id)!.inputs).toMatchObject({
+      secretId: id,
+      replication: { auto: {} },
+    });
+    expect(ofType("gcp:secretmanager/secretVersion:SecretVersion").find((r) => r.name === id)!.inputs).toMatchObject({
+      secretData: { value: `${name}-password_result` },
+    });
+  });
+
+  it("creates nothing for an unlisted name", () => {
+    expect(ofType("gcp:sql/database:Database")).toHaveLength(names.length);
   });
 });

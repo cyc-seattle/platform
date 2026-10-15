@@ -46,6 +46,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - The Kubernetes provider execs `gke-gcloud-auth-plugin` with Application Default Credentials, in place
   of an access token that would change its kubeconfig on every run. `mise run install` installs the
   plugin into mise's gcloud, so run `pulumi` under mise.
+- Adding an app's dev database means adding its name to `cloud:devDatabases` in a platform PR. Cloud SQL
+  ignores IAM conditions on its user and database calls, so `deploy-dev` can't create them itself.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
 
 ## Code style

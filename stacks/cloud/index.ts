@@ -4,6 +4,7 @@ import { clusterPodsRange, clusterServicesRange, clusterNatAddress, clusterSubne
 import { devPostgres, postgres } from "./database";
 import { externalZone, internalDomain, internalZone, shortZone } from "./dns";
 import { artifactRepository } from "./artifact-repository";
+import "./dev-databases";
 
 // What the app stacks read through a StackReference.
 export const networkId = network.id;

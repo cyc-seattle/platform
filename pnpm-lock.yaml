@@ -33,6 +33,9 @@ importers:
       '@pulumi/pulumi':
         specifier: 3.264.0
         version: 3.264.0(typescript@5.9.3)
+      '@pulumi/random':
+        specifier: 4.21.3
+        version: 4.21.3(typescript@5.9.3)
       '@types/js-yaml':
         specifier: 4.0.9
         version: 4.0.9
@@ -406,6 +409,9 @@ packages:
         optional: true
       typescript:
         optional: true
+
+  '@pulumi/random@4.21.3':
+    resolution: {integrity: sha512-PXOTQwp7wOJfd/JDNTr6qqZ3cM5Ho08nLWSm7e5nDgYsBTqHbhhdNvKIC5jXuuXYIRfM3MiDkqlnVr40dyW3Eg==}
 
   '@rolldown/binding-android-arm-eabi@1.2.13':
     resolution: {integrity: sha512-Vu/NICrgdRvUOeaJZIyB2FP63s6fO/4ud5l8dXmxDx9yDyn+mN0y+gsvsVviSli+T361Aqo0h46EuMoobrwawA==}
@@ -2304,6 +2310,14 @@ snapshots:
       typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
+
+  '@pulumi/random@4.21.3(typescript@5.9.3)':
+    dependencies:
+      '@pulumi/pulumi': 3.264.0(typescript@5.9.3)
+    transitivePeerDependencies:
+      - supports-color
+      - ts-node
+      - typescript
 
   '@rolldown/binding-android-arm-eabi@1.2.13':
     optional: true
