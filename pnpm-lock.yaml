@@ -13,8 +13,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@amiceli/vitest-cucumber':
-        specifier: 7.0.0
-        version: 7.0.0(vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)))
+        specifier: 8.0.0
+        version: 8.0.0(vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)))
       '@cyc-seattle/ts-config':
         specifier: ^0.1.2
         version: 0.1.2(@types/node@22.20.5)(eslint@9.39.5)(prettier@3.9.10)(typescript@5.9.3)(vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)))
@@ -60,11 +60,11 @@ importers:
 
 packages:
 
-  '@amiceli/vitest-cucumber@7.0.0':
-    resolution: {integrity: sha512-RjadvOolQ/g0uu4ntoZ4iBaTHy2NBxllxcco/apY1o42C5Y8g5OqCTstzmiX0PGa2izb/DskAwocBzsuRtLmLg==}
+  '@amiceli/vitest-cucumber@8.0.0':
+    resolution: {integrity: sha512-d0e2xMft008GQrEAoFoarnfMdSZLXg3VyNdnV7K+9vctFvk5iIqplsycio2daR7+yz6EGvFvC1l6RsWie8le7Q==}
     hasBin: true
     peerDependencies:
-      vitest: ^4.0.4
+      vitest: ^5.0.0
 
   '@cyc-seattle/ts-config@0.1.2':
     resolution: {integrity: sha512-2iihagdSERKnk9XiF5Wd/GVeGLMWvgeuODRyST1twTHMBpL8FygchF4Gz+YayvyuBGllIGyRrM6RL9bfnRdjqQ==}
@@ -1842,7 +1842,7 @@ packages:
 
 snapshots:
 
-  '@amiceli/vitest-cucumber@7.0.0(vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)))':
+  '@amiceli/vitest-cucumber@8.0.0(vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)))':
     dependencies:
       callsites: 4.2.0
       minimist: 1.2.8
