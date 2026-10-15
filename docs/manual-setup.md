@@ -63,13 +63,6 @@ pulumi stack output natAddress --cwd stacks/cloud --stack prod
 
 - [ ] The relay admits `natAddress`.
 
-## 5. Where alerts go
-
-`cluster:alertEmails` in `stacks/cluster/Pulumi.prod.yaml` lists the addresses the prod Job alerts
-email. The `cluster` stack doesn't deploy without it.
-
-- [ ] `cluster:alertEmails` is set.
-
 ## When you add a new manual step
 
 If you add infrastructure that needs an out-of-band action, add it here.

@@ -57,8 +57,8 @@ pointing at `gatewayAddress`.
 start with `dev-`. Read them with `gcp.secretmanager.getSecretVersionAccess`, which needs only the
 accessor role.
 
-A Job that fails in `prod`, or a CronJob there with no successful Job in 3 hours, emails each address
-in `cluster:alertEmails`.
+A Job that fails in `prod`, or a CronJob there with no successful Job in 3 hours, raises an alert.
+It emails each address in `cluster:alertEmails`, which is unset for now (#20).
 
 ## Setup
 
