@@ -13,16 +13,16 @@ permissions:
 
 jobs:
   ci:
-    uses: cyc-seattle/.github/.github/workflows/ci.yml@v2.0.0
+    uses: cyc-seattle/.github/.github/workflows/ci.yml@v2.2.0
   pr-title:
-    uses: cyc-seattle/.github/.github/workflows/pr-title.yml@v2.0.0
+    uses: cyc-seattle/.github/.github/workflows/pr-title.yml@v2.2.0
     permissions:
       pull-requests: read
   dev:
     needs: ci
     # A fork's PR gets no OIDC token, so it can't deploy.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.2.0
     permissions:
       id-token: write
       contents: read
@@ -35,7 +35,7 @@ jobs:
   prod-preview:
     needs: dev
     if: github.event_name == 'push'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.2.0
     permissions:
       id-token: write
       contents: read
@@ -45,7 +45,7 @@ jobs:
   prod:
     needs: prod-preview
     if: github.event_name == 'push'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.2.0
     permissions:
       id-token: write
       contents: read
