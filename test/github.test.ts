@@ -169,17 +169,12 @@ describe("approving reviews on main", () => {
     ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === `${repo}-main`)!.inputs.rules
       .pullRequest.requiredApprovingReviewCount;
 
-  // A prod preview runs merged code with prod credentials before anyone approves (#215).
-  it.each(["isthmia", "platform"])("is required on %s", (repo) => {
-    expect(approvals(repo)).toBe(1);
-  });
-
-  it("is not required on the other repositories", () => {
-    const others = ofType("github:index/repository:Repository")
+  it("is not required on any repository", () => {
+    const repos = ofType("github:index/repository:Repository")
       .map((r) => r.inputs.name as string)
-      .filter((name) => !["isthmia", "platform", "reviewed-example"].includes(name));
-    expect(others.length).toBeGreaterThan(0);
-    for (const name of others) {
+      .filter((name) => name !== "reviewed-example");
+    expect(repos).toContain("isthmia");
+    for (const name of repos) {
       expect(approvals(name)).toBe(0);
     }
   });
