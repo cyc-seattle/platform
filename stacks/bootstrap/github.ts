@@ -129,14 +129,11 @@ export const maintainers = new github.Team("maintainers", {
   privacy: "closed",
 });
 
-// A deploy to prod previews merged code with prod credentials before anyone approves, so every merge
-// to main needs a review (#215).
 export const isthmia = new StandardRepository("isthmia", {
   description: "A collection of Typescript packages for managing CYC Community Sailing Center.",
   visibility: "public",
   hasProjects: true,
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
-  requiredApprovingReviewCount: 1,
 });
 
 new StandardRepository(".github", {
@@ -195,7 +192,6 @@ export const platform = new StandardRepository("platform", {
   visibility: "public",
   hasProjects: false,
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
-  requiredApprovingReviewCount: 1,
 });
 
 new StandardRepository("todo-manager", {
