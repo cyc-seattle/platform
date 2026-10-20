@@ -33,6 +33,7 @@ beforeAll(async () => {
     requiredApprovingReviewCount: 1,
     requiredChecks: ["build"],
   });
+  new StandardRepository("unchecked-example", { description: "Unchecked.", requiredChecks: [] });
   new StandardRepository("archived-example", { description: "Archived.", archived: true, requiredChecks: ["build"] });
   await new Promise((r) => setImmediate(r));
 });
@@ -85,6 +86,10 @@ describe("StandardRepository", () => {
 
   it("requires each named status check", () => {
     expect(byName("example-main").inputs.rules.requiredStatusChecks.requiredChecks).toEqual([{ context: "build" }]);
+  });
+
+  it("leaves out the status-check rule when no checks are named", () => {
+    expect(byName("unchecked-example-main").inputs.rules.requiredStatusChecks).toBeUndefined();
   });
 
   it("blocks tag deletion and moves", () => {
