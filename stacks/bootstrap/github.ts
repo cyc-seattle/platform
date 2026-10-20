@@ -3,7 +3,10 @@ import * as github from "@pulumi/github";
 import { local } from "@pulumi/command";
 
 export type StandardRepositoryArgs = github.RepositoryArgs & {
-  /** Job names from the repo's workflows. A name no job reports leaves every PR waiting. */
+  /**
+   * Job names from the repo's workflows. A name no job reports leaves every PR waiting. An empty
+   * list leaves out the status-check rule, which GitHub may reject with no checks.
+   */
   requiredChecks: string[];
   /** Approving reviews `main` needs. Org admins bypass it. Defaults to 0. */
   requiredApprovingReviewCount?: number;
@@ -107,7 +110,9 @@ export class StandardRepository extends github.Repository {
           dismissStaleReviewsOnPush: true,
           allowedMergeMethods: ["squash"],
         },
-        requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) },
+        ...(requiredChecks.length > 0
+          ? { requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) } }
+          : {}),
       },
     });
 
@@ -144,6 +149,16 @@ new StandardRepository(".github", {
   licenseTemplate: "apache-2.0",
   hasProjects: false,
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
+});
+
+// No checks: its `.github/` holds a checkout of cyc-seattle/.github, so GitHub finds no workflows there.
+new StandardRepository("workplace", {
+  description: "cyc-seattle's repos checked out side by side with place, and shared config for work that spans them.",
+  visibility: "public",
+  autoInit: true,
+  licenseTemplate: "apache-2.0",
+  hasProjects: false,
+  requiredChecks: [],
 });
 
 new StandardRepository("ts-config", {
