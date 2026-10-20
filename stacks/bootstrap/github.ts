@@ -153,8 +153,7 @@ new StandardRepository(".github", {
 
 // No checks: its `.github/` holds a checkout of cyc-seattle/.github, so GitHub finds no workflows there.
 new StandardRepository("workplace", {
-  description:
-    "The place workplace for cyc-seattle: which repos to check out side by side, and shared config for work that spans them.",
+  description: "cyc-seattle's repos checked out side by side with place, and shared config for work that spans them.",
   visibility: "public",
   autoInit: true,
   licenseTemplate: "apache-2.0",
