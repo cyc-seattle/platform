@@ -1,0 +1,13 @@
+name: pr-title
+
+# Its own workflow, so a PR edit reruns only the title check, not CI and the dev deploy.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  pr-title:
+    uses: cyc-seattle/.github/.github/workflows/pr-title.yml@v2.0.0
