@@ -57,7 +57,7 @@
     "google-auth-library": "^11.3.0",
     "js-yaml": "^5.4.3",
     "prettier": "^3.9.10",
-    "typescript": "~5.9.3",
+    "typescript": "~7.0.0",
     "vitest": "^5.0.0"
   }
 }
