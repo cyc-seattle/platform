@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   ci:
-    uses: cyc-seattle/.github/.github/workflows/ci.yml@v2.0.0
+    uses: cyc-seattle/.github/.github/workflows/ci.yml@v2.3.0
   dev:
     needs: ci
     # A fork's PR gets no OIDC token, so it can't deploy.

@@ -70,55 +70,55 @@ checksum = "sha256:8a677b0219178efd6eb0e475457c4afb452b521a92f6e67845a73bd85727f
 url = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-darwin-x64.tar.gz"
 
 [[tools.pnpm]]
-version = "10.34.6"
+version = "10.34.7"
 backend = "aqua:pnpm/pnpm"
-specifiers = ["10.34.6"]
+specifiers = ["10.34.7"]
 
 [tools.pnpm."platforms.linux-arm64"]
-checksum = "sha256:5e18e460aec11c0d39b345a732fbbdee0811354f6f384e2da230c6438ae2137c"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-linux-arm64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100723"
+checksum = "sha256:c57bafc919110f5b942b7778bff0f2170a896d6dc0952c2ff042ca1e228655c3"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.7/pnpm-linux-arm64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/631946121"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:1bdfa04c3acbbf019befa4cf51f73f1de2729f4a513f737d1295905277f3b9cf"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-linux-x64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100726"
+checksum = "sha256:44af1568f2682877e43d8918c344d420e022c3d1cc88a11b0dba3e20f9261450"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.7/pnpm-linux-x64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/631946128"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:62f067df42ba26d3ffbe8b42b8c92a251eb3a69bfa32a8a3a98623a4958e8ca4"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-macos-arm64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100724"
+checksum = "sha256:6381516d15e38b85ef27f00a5ecedaac6824c70d5a01f2c0f44a6d826d90c978"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.7/pnpm-macos-arm64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/631946119"
 
 [tools.pnpm."platforms.macos-x64"]
-checksum = "sha256:19f10bac54678ac70319031f7bbb653bb6ab2e8ed12264a0454f265bede8304b"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.34.6/pnpm-macos-x64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/596100727"
+checksum = "sha256:07d273bf69d27d97ff27595a590fbe1e9dce74266059a87cbd25b47ab1d78043"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.7/pnpm-macos-x64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/631946129"
 
 [[tools.pulumi]]
-version = "3.192.0"
+version = "3.270.0"
 backend = "aqua:pulumi/pulumi"
-specifiers = ["3.192.0"]
+specifiers = ["3.270.0"]
 
 [tools.pulumi."platforms.linux-arm64"]
-checksum = "sha256:30b0ff825a1bf426c7cb5a7e4194b858ba677da06c01e8a94d163f4fbe7bcb90"
-url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510724"
+checksum = "sha256:b41f199a161aba4843312d4cda3143024fa6fbd73229d4149f572a1788f84bda"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.270.0/pulumi-v3.270.0-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/648328173"
 provenance = "cosign"
 
 [tools.pulumi."platforms.linux-x64"]
-checksum = "sha256:1f9896ecf505622b69438381a63bdc044d67dedfe876b103dd452079cf58f1ee"
-url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510735"
+checksum = "sha256:d05899c251cb0413a9a2304f23229218c46852a61256913f34f08ebc27266139"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.270.0/pulumi-v3.270.0-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/648328406"
 provenance = "cosign"
 
 [tools.pulumi."platforms.macos-arm64"]
-checksum = "sha256:956a3ec098f0a5fc6319c1249ff5d25d16fc47c034c063d7ad8e004dea014d5d"
-url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510685"
+checksum = "sha256:688a9f4c5bb685cbd40b83e45c282715cb537ff2a5be97ffb6367ed6f6c26b34"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.270.0/pulumi-v3.270.0-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/648327539"
 provenance = "cosign"
 
 [tools.pulumi."platforms.macos-x64"]
-checksum = "sha256:654da9c907d62f78173097d2e0afaee783153f5dbefdf9024c6109d75a51be14"
-url = "https://github.com/pulumi/pulumi/releases/download/v3.192.0/pulumi-v3.192.0-darwin-x64.tar.gz"
-url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/287510701"
+checksum = "sha256:20e38aa2710b1e1f6351787c51012757e2392bde547ab7430717094130672b56"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.270.0/pulumi-v3.270.0-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/648327862"
 provenance = "cosign"
