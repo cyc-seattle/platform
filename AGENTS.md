@@ -32,9 +32,10 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - `cloud`, `cluster`, and `smoke` deploy from Actions (`.github/workflows/pull-request.yml`), through
   the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR deploys
   `smoke` to dev and runs the integration tests. A push to `main` also previews prod, then applies it
-  once a maintainer approves.
+  once a maintainer approves. `prod` is skipped when the preview shows no changes.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, and `prod`
-  is `cloud`, then `cluster`. The workflow calls `preview`, `deploy`, `integration`, and `install`,
+  is `cloud`, then `cluster`. Its preview appends each project's `true` or `false` to
+  `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`,
   so keep those names.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
   (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.

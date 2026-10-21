@@ -2,6 +2,10 @@
 # Runs a pulumi command on each project deployed to $PULUMI_STACK, in dependency order: cluster
 # reads cloud's outputs, and smoke lives only in dev. bootstrap is never in the list
 # (cyc-seattle/isthmia#118).
+#
+# For preview, it also appends each project's result, true if it has changes and false if not, to
+# $DEPLOY_CHANGES_FILE when that's set. The org's deploy.yml reads it to skip a deploy that changes
+# nothing.
 set -euo pipefail
 
 case "$PULUMI_STACK" in
@@ -10,6 +14,30 @@ case "$PULUMI_STACK" in
   *) echo "No projects deploy to stack '$PULUMI_STACK'." >&2; exit 1 ;;
 esac
 
+if [[ "$1" != preview ]]; then
+  for project in "${projects[@]}"; do
+    pulumi "$1" --cwd "stacks/$project" --stack "$PULUMI_STACK" "${@:2}"
+  done
+  exit 0
+fi
+
+out=$(mktemp)
+trap 'rm -f "$out"' EXIT
 for project in "${projects[@]}"; do
-  pulumi "$1" --cwd "stacks/$project" --stack "$PULUMI_STACK" "${@:2}"
+  status=0
+  pulumi preview --cwd "stacks/$project" --stack "$PULUMI_STACK" --expect-no-changes "${@:2}" 2>&1 \
+    | tee "$out" || status=$?
+  # --expect-no-changes fails both when there are changes and when the preview fails. Only Pulumi's
+  # NoChangesExpectedError means changes; any other failure fails the task.
+  if ((status == 0)); then
+    changes=false
+  elif grep -q 'no changes were expected.* but changes were proposed' "$out"; then
+    changes=true
+  else
+    exit "$status"
+  fi
+  echo "$project: changes=$changes"
+  if [[ -n "${DEPLOY_CHANGES_FILE:-}" ]]; then
+    echo "$changes" >> "$DEPLOY_CHANGES_FILE"
+  fi
 done
