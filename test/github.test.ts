@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as yaml from "js-yaml";
 import * as pulumi from "@pulumi/pulumi";
@@ -186,11 +186,16 @@ describe("approving reviews on main", () => {
 });
 
 describe("platform", () => {
-  it("requires only checks that a job in the PR workflow reports", () => {
-    const workflow = yaml.load(readFileSync(resolve(__dirname, "../.github/workflows/pull-request.yml"), "utf8")) as {
-      jobs: Record<string, { name?: string; uses?: string }>;
-    };
-    const jobs = Object.entries(workflow.jobs);
+  it("requires only checks that a job in a PR workflow reports", () => {
+    const dir = resolve(__dirname, "../.github/workflows");
+    const workflows = readdirSync(dir).map(
+      (file) =>
+        yaml.load(readFileSync(resolve(dir, file), "utf8")) as {
+          on: Record<string, unknown>;
+          jobs: Record<string, { name?: string; uses?: string }>;
+        },
+    );
+    const jobs = workflows.filter((w) => "pull_request" in w.on).flatMap((w) => Object.entries(w.jobs));
     const jobNames = jobs.map(([id, job]) => job.name ?? id);
     // A job that calls a reusable workflow reports `<caller job> / <called job>`.
     const callers = jobs.filter(([, job]) => job.uses).map(([id, job]) => job.name ?? id);
