@@ -30,17 +30,18 @@ jobs:
   prod-preview:
     needs: dev
     if: github.event_name == 'push'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@b72c8431eab3f9a302098694746e925b4d4b9405
     permissions:
       id-token: write
       contents: read
     with:
       environment: prod-preview
       task: preview
+  # Skipped when the preview shows no changes, so a no-op deploy never asks for approval.
   prod:
     needs: prod-preview
-    if: github.event_name == 'push'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.1.0
+    if: github.event_name == 'push' && needs.prod-preview.outputs.changes == 'true'
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@b72c8431eab3f9a302098694746e925b4d4b9405
     permissions:
       id-token: write
       contents: read

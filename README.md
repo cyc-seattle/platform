@@ -92,7 +92,8 @@ GitHub environment that holds its identity and state bucket:
 | Push to `main` | `ci`, `dev`, then `prod-preview`, then `prod`, which waits for the `maintainers` approval |
 
 `prod-preview` runs `mise run preview` as `deploy-runner` and writes the diff to the job summary.
-`prod` runs `mise run deploy` on the same commit once approved. A PR from a fork gets no OIDC token,
+`prod` runs `mise run deploy` on the same commit once approved. It runs only when the preview shows
+changes in `cloud` or `cluster`, so a merge that changes nothing in prod asks for no approval. A PR from a fork gets no OIDC token,
 so its `dev` job is skipped.
 
 `PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, and `prod` is
