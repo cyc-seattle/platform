@@ -43,7 +43,7 @@
     "@pulumi/pulumi": "^3"
   },
   "devDependencies": {
-    "@amiceli/vitest-cucumber": "7.0.0",
+    "@amiceli/vitest-cucumber": "8.0.0",
     "@cyc-seattle/ts-config": "^0.1.2",
     "@pulumi/command": "1.2.1",
     "@pulumi/gcp": "10.2.0",
