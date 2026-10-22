@@ -10,12 +10,13 @@ import { prodNamespace } from "./prod";
 const monitoringApi = enableService("monitoring.googleapis.com");
 const loggingApi = enableService("logging.googleapis.com");
 
-// Unset for now, so the alerts email no one; their incidents still show in Cloud Monitoring (#20).
+// Set as a secret in stack config: the repo and its Actions logs, which show previews, are public, so
+// no address goes into a resource name, a display name, or plain config (#20).
 export const alertChannels = getStringList("alertEmails").map(
-  (email) =>
+  (email, i) =>
     new gcp.monitoring.NotificationChannel(
-      `alerts-${email}`,
-      { displayName: `Alerts to ${email}`, type: "email", labels: { email_address: email } },
+      `alerts-${i}`,
+      { displayName: `Prod alerts ${i + 1}`, type: "email", labels: { email_address: pulumi.secret(email) } },
       { dependsOn: monitoringApi },
     ),
 );
