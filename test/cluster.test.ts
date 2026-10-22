@@ -513,15 +513,16 @@ describe("prod platform outputs", () => {
 describe("Job alerts", () => {
   const policy = (name: string) => byName("gcp:monitoring/alertPolicy:AlertPolicy", name);
 
-  it("email each address in alertEmails", () => {
-    expect(byName("gcp:monitoring/notificationChannel:NotificationChannel", "alerts-alerts@example.org")).toMatchObject(
-      {
-        type: "email",
-        labels: { email_address: "alerts@example.org" },
-      },
-    );
+  it("email each address in alertEmails, kept secret and out of the names", () => {
+    const channel = byName("gcp:monitoring/notificationChannel:NotificationChannel", "alerts-0");
+    expect(channel).toMatchObject({ type: "email", displayName: "Prod alerts 1" });
+    // A secret reaches the mocks wrapped with Pulumi's secret signature.
+    expect(channel.labels).toMatchObject({
+      [pulumi.runtime.specialSigKey]: pulumi.runtime.specialSecretSig,
+      value: { email_address: "alerts@example.org" },
+    });
     for (const name of ["job-failed", "cronjob-absent"]) {
-      expect(policy(name).notificationChannels).toEqual(["alerts-alerts@example.org_name"]);
+      expect(policy(name).notificationChannels).toEqual(["alerts-0_name"]);
     }
   });
 
