@@ -24,12 +24,9 @@ on the org's and project's break-glass access.
 - [ ] `roles/resourcemanager.organizationAdmin` on the org, so the deployer can manage IAM without
       super-admin credentials.
 - [ ] `roles/owner` on project `cyc-admin-scripts`, so `pulumi up` works.
-- [ ] `roles/compute.osLoginExternalUser` on the org, for IAP SSH to isthmia's VM. Owner doesn't
-      cover OS Login for an external principal.
 
 ```sh
 gcloud organizations add-iam-policy-binding <ORG_ID> --member="user:<deployer-email>" --role="roles/resourcemanager.organizationAdmin" --condition=None
-gcloud organizations add-iam-policy-binding <ORG_ID> --member="user:<deployer-email>" --role="roles/compute.osLoginExternalUser" --condition=None
 ```
 
 Google refuses `roles/owner` for an external principal over the API. Grant it in the
@@ -37,7 +34,7 @@ Google refuses `roles/owner` for an external principal over the API. Grant it in
 add the principal, role **Basic → Owner**, then have them accept the emailed invitation.
 
 Then add the deployer to `bootstrap:humanDeployers` in `stacks/bootstrap/Pulumi.prod.yaml`, and
-apply `bootstrap`. That grants the Pulumi state buckets and keys, and the IAP SSH roles.
+apply `bootstrap`. That grants the Pulumi state buckets and keys.
 
 ## 3. Who approves prod deploys
 

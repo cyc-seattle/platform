@@ -3,10 +3,8 @@ import { projectId } from "../../src/config";
 import { humanDeployers } from "./human-deployers";
 import { ServiceAccount } from "../../src/service-account";
 
-// Identity the gsuite-sync Cloud Run job acts as. Separate from clubspotSyncRunner: it holds the
-// Groups Administrator role directly (assigned by hand in the Admin console, docs/manual-setup.md
-// §5.4), not domain-wide delegation, so unlike substrateRunner (substrate.ts) it needs no
-// tokenCreator self-grant - nothing is impersonated.
+// Identity the gsuite-sync CronJob acts as. It holds the Groups Administrator role directly
+// (assigned by hand in the Admin console), not domain-wide delegation, so nothing is impersonated.
 export const gsuiteSyncRunner = new ServiceAccount("gsuite-sync", "Service account that runs the gsuite-sync job.");
 
 gsuiteSyncRunner.allowImpersonation(humanDeployers);

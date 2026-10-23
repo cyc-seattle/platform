@@ -1,7 +1,6 @@
 import * as gcp from "@pulumi/gcp";
 import { projectId } from "../../src/config";
 import { gkeNodes } from "./gke-nodes";
-import { substrateRunner } from "./substrate-runner";
 
 // The identity GitHub Actions impersonates to deploy (#118 adds the Workload Identity Federation
 // pool and the workflow that assumes this account; this project only creates the identity itself).
@@ -13,15 +12,11 @@ export const deployRunner = new gcp.serviceaccount.Account("deploy-runner", {
 const predefinedRoles = [
   "roles/serviceusage.serviceUsageAdmin",
   "roles/compute.admin",
-  "roles/compute.osLogin",
-  "roles/iap.tunnelResourceAccessor",
   "roles/cloudsql.admin",
   "roles/servicenetworking.networksAdmin",
   "roles/dns.admin",
   "roles/artifactregistry.admin",
   "roles/secretmanager.admin",
-  "roles/run.developer",
-  "roles/cloudscheduler.admin",
   "roles/container.admin",
   "roles/certificatemanager.editor",
   // The cluster stack's Job alerts and their email channels (#205).
@@ -66,17 +61,6 @@ new gcp.projects.IAMMember("deploy-runner-deployer", {
   role: deployerRole.name,
   member: deployRunner.member,
 });
-
-// Grants CI `iam.serviceAccounts.actAs` on substrate-runner, needed to attach it to the VM.
-new gcp.serviceaccount.IAMMember(
-  "deploy-runner-user-substrate-runner",
-  {
-    serviceAccountId: substrateRunner.name,
-    role: "roles/iam.serviceAccountUser",
-    member: deployRunner.member,
-  },
-  { aliases: [{ name: `deploy-runner-user-substrate-runner@${projectId}.iam.gserviceaccount.com` }] },
-);
 
 // Lets the cluster stack attach gke-nodes to the Autopilot cluster.
 new gcp.serviceaccount.IAMMember("deploy-runner-user-gke-nodes", {

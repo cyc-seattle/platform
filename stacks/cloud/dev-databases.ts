@@ -2,6 +2,7 @@ import * as gcp from "@pulumi/gcp";
 import * as random from "@pulumi/random";
 import { getStringList, projectId } from "../../src/config";
 import { devPostgres } from "./database";
+import { enableService } from "../../src/services";
 
 /**
  * Creates dev's app databases here, not in isthmia's dev stacks (#231): Cloud SQL ignores IAM
@@ -10,6 +11,9 @@ import { devPostgres } from "./database";
  * Secret Manager secret `dev-db-<name>-password`, which `deploy-dev` already reads.
  */
 export const devDatabaseNames = getStringList("devDatabases");
+
+// Every app's secrets need it too. isthmia's retired `infrastructure` stack enabled it before.
+const secretManagerApi = enableService("secretmanager.googleapis.com");
 
 export const devDatabases = devDatabaseNames.map((name) => {
   const database = new gcp.sql.Database(name, { name, instance: devPostgres.name });
@@ -25,11 +29,15 @@ export const devDatabases = devDatabaseNames.map((name) => {
     { dependsOn: [database] },
   );
 
-  const secret = new gcp.secretmanager.Secret(`dev-db-${name}-password`, {
-    project: projectId,
-    secretId: `dev-db-${name}-password`,
-    replication: { auto: {} },
-  });
+  const secret = new gcp.secretmanager.Secret(
+    `dev-db-${name}-password`,
+    {
+      project: projectId,
+      secretId: `dev-db-${name}-password`,
+      replication: { auto: {} },
+    },
+    { dependsOn: [secretManagerApi] },
+  );
   const version = new gcp.secretmanager.SecretVersion(`dev-db-${name}-password`, {
     secret: secret.id,
     secretData: password.result,
