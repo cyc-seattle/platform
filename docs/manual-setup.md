@@ -58,7 +58,7 @@ relay service**, to the allowed IP addresses of the relay's rule:
 pulumi stack output natAddress --cwd stacks/cloud --stack prod
 ```
 
-- [ ] The relay admits `natAddress`.
+- [x] The relay admits `natAddress`.
 
 ## When you add a new manual step
 

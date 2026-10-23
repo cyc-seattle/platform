@@ -26,7 +26,9 @@ app owns. The apps that run on it live in their own repos, such as
   `gke-gcloud-auth-plugin` with Application Default Credentials, so Pulumi must run under mise,
   where `mise run install` puts the plugin on `PATH`.
 - `Workload` runs a long-lived process with no route: a Deployment, a ServiceAccount, and, when it
-  has `ports`, a ClusterIP Service that other pods in the namespace reach at `host`.
+  has `ports`, a ClusterIP Service that other pods in the namespace reach at `host`. With more than
+  one replica, `spreadAcrossZones` spreads them, and `minAvailable` adds a PodDisruptionBudget.
+  `podAnnotations` sets annotations such as `cluster-autoscaler.kubernetes.io/safe-to-evict`.
 - `WebService` is a `Workload` behind the environment's Gateway at `hostname`. Its Service exposes
   `port` as port 80, and its readiness probe must be an HTTP GET, which the load balancer's health
   check reuses.
@@ -42,6 +44,10 @@ app owns. The apps that run on it live in their own repos, such as
 releases each merge to `main` with semantic-release, versioned by the conventional commits.
 
 ## Environments
+
+Every app runs on the one GKE Autopilot cluster, in its environment's namespace. Prod runs on
+regular capacity, and dev on Spot pods. isthmia's apps (Authentik, Directus, the portal, and the
+two syncs as CronJobs) run in both, and dev adds Mailpit and the Clubspot and Workspace fakes.
 
 | Stack  | Namespace | Domain             | Deploy identity |
 | ------ | --------- | ------------------ | --------------- |
@@ -62,7 +68,8 @@ platform PR: Cloud SQL ignores IAM conditions on its user and database calls, so
 hold a role scoped to `cyc-dev`.
 
 A Job that fails in `prod`, or a CronJob there with no successful Job in 3 hours, raises an alert.
-It emails each address in `cluster:alertEmails`, which is unset for now (#20).
+It emails each address in `cluster:alertEmails`, a secret in the stack's config, which holds the
+maintainer's address (#20).
 
 ## Setup
 
