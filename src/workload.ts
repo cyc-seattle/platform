@@ -47,6 +47,12 @@ export interface WorkloadArgs extends PodArgs {
   startupProbe?: Probe;
   /** Defaults to 1. */
   replicas?: number;
+  /** Annotations on each pod, such as `cluster-autoscaler.kubernetes.io/safe-to-evict`. */
+  podAnnotations?: Record<string, string>;
+  /** Prefers pods in different zones. A preference, so one zone's capacity can still schedule them all. */
+  spreadAcrossZones?: boolean;
+  /** Adds a PodDisruptionBudget that keeps this many pods up through drains. Must be below `replicas`. */
+  minAvailable?: number;
 }
 
 /** The pods' Workload Identity principal, for IAM grants. */
@@ -162,6 +168,11 @@ export function deployment(parent: pulumi.Resource, name: string, args: Workload
     // The API rejects two ports with one name, and only after the preview.
     throw new Error(`${name}: "ports" can't name a port "http"; a WebService's own port has that name.`);
   }
+  const replicas = args.replicas ?? 1;
+  if (args.minAvailable !== undefined && args.minAvailable >= replicas) {
+    // Such a budget blocks every drain, so node upgrades stall on it.
+    throw new Error(`${name}: "minAvailable" (${args.minAvailable}) must be below "replicas" (${replicas}).`);
+  }
   const ports = [...(http !== undefined ? [{ name: "http", port: http }] : []), ...(args.ports ?? [])];
 
   new k8s.apps.v1.Deployment(
@@ -169,21 +180,41 @@ export function deployment(parent: pulumi.Resource, name: string, args: Workload
     {
       metadata,
       spec: {
-        replicas: args.replicas ?? 1,
+        replicas,
         selector: { matchLabels: labels },
         template: {
-          metadata: { labels },
+          metadata: { labels, ...(args.podAnnotations && { annotations: args.podAnnotations }) },
           spec: podSpec(name, args, account.metadata.name, {
             ...(ports.length > 0 && { ports: ports.map((p) => ({ name: p.name, containerPort: p.port })) }),
             ...(args.readinessProbe && { readinessProbe: args.readinessProbe }),
             ...(args.livenessProbe && { livenessProbe: args.livenessProbe }),
             ...(args.startupProbe && { startupProbe: args.startupProbe }),
-          }),
+          }).apply((spec) => ({
+            ...spec,
+            ...(args.spreadAcrossZones && {
+              topologySpreadConstraints: [
+                {
+                  maxSkew: 1,
+                  topologyKey: "topology.kubernetes.io/zone",
+                  whenUnsatisfiable: "ScheduleAnyway",
+                  labelSelector: { matchLabels: labels },
+                },
+              ],
+            }),
+          })),
         },
       },
     },
     child,
   );
+
+  if (args.minAvailable !== undefined) {
+    new k8s.policy.v1.PodDisruptionBudget(
+      name,
+      { metadata, spec: { minAvailable: args.minAvailable, selector: { matchLabels: labels } } },
+      child,
+    );
+  }
 
   if (ports.length === 0) {
     return { serviceAccount: account };
