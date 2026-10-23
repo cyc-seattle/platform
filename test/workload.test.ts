@@ -84,6 +84,13 @@ beforeAll(async () => {
     runAsUser: 1000,
     serviceAccountAnnotations: { "iam.gke.io/gcp-service-account": "mailpit@example-project.iam.gserviceaccount.com" },
   });
+  new Workload("prod-ha", {
+    ...workloadArgs("prod"),
+    replicas: 2,
+    minAvailable: 1,
+    spreadAcrossZones: true,
+    podAnnotations: { "cluster-autoscaler.kubernetes.io/safe-to-evict": "false" },
+  });
   jobMember = new ScheduledJob("dev-sync", jobArgs("dev")).member;
   new ScheduledJob("prod-sync", {
     ...jobArgs("prod"),
@@ -154,6 +161,44 @@ describe("Workload", () => {
 
   it("defaults to one replica", () => {
     expect(find("kubernetes:apps/v1:Deployment", "dev-worker").spec.replicas).toBe(1);
+  });
+
+  it("has no pod annotations, zone spread, or disruption budget by default", () => {
+    const deployment = find("kubernetes:apps/v1:Deployment", "dev-worker");
+    expect(deployment.spec.template.metadata.annotations).toBeUndefined();
+    expect(podSpec("dev-worker").topologySpreadConstraints).toBeUndefined();
+    expect(find("kubernetes:policy/v1:PodDisruptionBudget", "dev-worker")).toBeUndefined();
+  });
+
+  it("annotates its pods", () => {
+    expect(find("kubernetes:apps/v1:Deployment", "prod-ha").spec.template.metadata).toEqual({
+      labels: { "app.kubernetes.io/name": "prod-ha" },
+      annotations: { "cluster-autoscaler.kubernetes.io/safe-to-evict": "false" },
+    });
+  });
+
+  it("prefers spreading its pods across zones", () => {
+    expect(podSpec("prod-ha").topologySpreadConstraints).toEqual([
+      {
+        maxSkew: 1,
+        topologyKey: "topology.kubernetes.io/zone",
+        whenUnsatisfiable: "ScheduleAnyway",
+        labelSelector: { matchLabels: { "app.kubernetes.io/name": "prod-ha" } },
+      },
+    ]);
+  });
+
+  it("keeps minAvailable pods up through drains", () => {
+    expect(find("kubernetes:policy/v1:PodDisruptionBudget", "prod-ha")).toMatchObject({
+      metadata: { name: "prod-ha", namespace: "prod", labels: { "app.kubernetes.io/name": "prod-ha" } },
+      spec: { minAvailable: 1, selector: { matchLabels: { "app.kubernetes.io/name": "prod-ha" } } },
+    });
+  });
+
+  it("refuses a disruption budget that would block every drain", () => {
+    expect(() => new Workload("too-few", { ...workloadArgs("prod"), minAvailable: 1 })).toThrow(
+      /too-few: "minAvailable" \(1\) must be below "replicas" \(1\)/,
+    );
   });
 
   it("exposes each port at the same number on its Service", () => {
