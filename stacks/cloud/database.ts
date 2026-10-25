@@ -18,6 +18,8 @@ export interface PostgresInstanceArgs {
   retainedBackups?: number;
   /** Defaults to true. */
   deletionProtection?: boolean;
+  /** Overrides the tier's default `max_connections`. */
+  maxConnections?: number;
 }
 
 /**
@@ -44,6 +46,9 @@ export class PostgresInstance extends gcp.sql.DatabaseInstance {
           availabilityType: "ZONAL",
           diskType: "PD_SSD",
           diskAutoresize: true,
+          ...(args.maxConnections
+            ? { databaseFlags: [{ name: "max_connections", value: String(args.maxConnections) }] }
+            : {}),
           ipConfiguration: {
             ipv4Enabled: false,
             privateNetwork: args.network,
@@ -80,6 +85,8 @@ export const devPostgres = new PostgresInstance(
     pointInTimeRecovery: false,
     retainedBackups: 7,
     deletionProtection: false,
+    // The micro tier's default of 25 runs out during integration runs (cyc-seattle/isthmia#268).
+    maxConnections: 50,
   },
   { dependsOn: [privateServicesConnection, sqlApi] },
 );
