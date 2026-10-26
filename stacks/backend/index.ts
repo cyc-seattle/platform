@@ -122,12 +122,12 @@ void loadCluster().then((cluster) => {
   deployGsuiteSync(cluster, gsuiteSyncToken);
 });
 
-// Authentik registers Directus's client from these (cyc-seattle/workplace#6 step 5).
+// Authentik registers Directus's client from these (cyc-seattle/workplace#6).
 export const directusOidcClientId = pulumi.output(app.then(({ oidcClientId }) => oidcClientId));
 export const directusOidcClientSecret = pulumi.secret(app.then(({ oidcClientSecret }) => oidcClientSecret));
 
-// Settings -> AI. MCP adds no access of its own, but Directus can't keep a role out of it, so it stays
-// off wherever Community users can sign in until they lose their item permissions (docs/backend.md).
+// Settings -> AI. MCP acts as the signed-in user and adds no access of its own, so it's on for every
+// signed-in user, in prod too (cyc-seattle/workplace#6 decision 16, docs/backend.md).
 const mcp = config.getBoolean("mcp") ?? false;
 new DirectusSettings(
   "directus-settings",

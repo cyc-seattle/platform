@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Runs a pulumi command on each project deployed to $PULUMI_STACK: infra lives only in prod, and smoke
-# only in dev. backend, with the syncs, deploys only to dev until prod cuts over
-# (cyc-seattle/workplace#6 step 6).
+# only in dev. backend, with the syncs, deploys to both, after infra, whose outputs it reads.
 # bootstrap is never in the list (cyc-seattle/isthmia#118).
 #
 # For preview, it also appends each project's result, true if it has changes and false if not, to
@@ -16,7 +15,7 @@ unset DOCKER_HOST
 
 case "$PULUMI_STACK" in
   dev) projects=(smoke backend) ;;
-  prod) projects=(infra) ;;
+  prod) projects=(infra backend) ;;
   *) echo "No projects deploy to stack '$PULUMI_STACK'." >&2; exit 1 ;;
 esac
 

@@ -15,8 +15,8 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   `WebService`, `ScheduledJob`, `PlatformOutputs`) is a contract the apps code against, so extend it
   rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
 - `schemas/<domain>.yaml` is the Directus data model, one file per domain. `src/directus/` merges
-  them into one snapshot and applies it. The `backend` stack deploys Directus with them, in dev until
-  prod cuts over (cyc-seattle/workplace#6). `mise run directus-local` applies them to a local
+  them into one snapshot and applies it. The `backend` stack deploys Directus with them, in dev and
+  prod. `mise run directus-local` applies them to a local
   Directus.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
@@ -45,7 +45,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   `smoke` and `backend` to dev and runs the integration tests. A push to `main` also previews prod,
   then applies it once a maintainer approves. `prod` is skipped when the preview shows no changes.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, then
-  `backend`, and `prod` is `infra`. Its preview appends each project's `true` or `false` to
+  `backend`, and `prod` is `infra`, then `backend`. Its preview appends each project's `true` or `false` to
   `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow calls
   `preview`, `deploy`, `integration`, and `install`, so keep those names.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI

@@ -127,11 +127,20 @@ describe("prod's Directus on the cluster", () => {
     });
   });
 
-  it("generates no second database user, key, password, or Community role ID", () => {
+  it("generates no second database user, key, password, Community role ID, or OIDC client", () => {
     expect(resources.filter((r) => r.type === "gcp:sql/user:User").map((r) => r.name)).toEqual(["directus-user"]);
     const generated = resources.filter((r) => r.type.startsWith("random:") && !r.type.endsWith("RandomBytes"));
-    // The OIDC client is new in every environment: Authentik registers it from this stack.
-    expect(generated.map((r) => r.name)).toEqual(["directus-oidc-client-id", "directus-oidc-client-secret"]);
+    expect(generated.map((r) => r.name)).toEqual([]);
+  });
+
+  it("keeps the OIDC client Authentik generated, so sign-in never breaks", () => {
+    const env = Object.fromEntries(
+      container().containers[0].env.map((e: { name: string; value?: unknown }) => [e.name, e.value]),
+    );
+    expect(env["AUTH_AUTHENTIK_CLIENT_ID"]).toBe("directus");
+    expect(stringData("directus")).toMatchObject({
+      AUTH_AUTHENTIK_CLIENT_SECRET: "directus-oidc-client-secret-value-hex",
+    });
   });
 
   it("reads prod's license key", () => {

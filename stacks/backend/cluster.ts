@@ -34,6 +34,8 @@ export interface ExistingDirectus {
   dbPassword: pulumi.Output<string>;
   adminPassword: pulumi.Output<string>;
   communityRoleId: pulumi.Output<string>;
+  oidcClientId: pulumi.Output<string>;
+  oidcClientSecret: pulumi.Output<string>;
 }
 
 function generated(name: string, length: number): pulumi.Output<string> {
@@ -42,7 +44,8 @@ function generated(name: string, length: number): pulumi.Output<string> {
 
 /**
  * `licensed` false runs Directus on its unlicensed Core tier, with no `LICENSE_KEY`. Given `existing`,
- * Directus keeps prod's keys, database, and Community role; otherwise this generates its own.
+ * Directus keeps prod's keys, database, Community role, and OIDC client; otherwise this generates
+ * its own.
  */
 export async function deployDirectus(
   adminEmail: string,
@@ -67,8 +70,12 @@ export async function deployDirectus(
         .getSecretVersionAccessOutput({ secret: `${isDev ? "dev-" : ""}directus-license-key` })
         .apply((version) => version.secretData)
     : undefined;
-  const oidcClientId = new random.RandomString("directus-oidc-client-id", { length: 40, special: false }).result;
-  const oidcClientSecret = pulumi.secret(generated("directus-oidc-client-secret", 64));
+  const oidcClientId = existing
+    ? existing.oidcClientId
+    : new random.RandomString("directus-oidc-client-id", { length: 40, special: false }).result;
+  const oidcClientSecret = pulumi.secret(
+    existing ? existing.oidcClientSecret : generated("directus-oidc-client-secret", 64),
+  );
 
   const secret = appSecret(cluster, "directus", {
     KEY: existing ? existing.key : generated("directus-key", 64),

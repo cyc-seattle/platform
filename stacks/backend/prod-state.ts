@@ -25,6 +25,9 @@ export function prodDirectus({ adminEmail, admins, externalDomain, baseUrl }: Pr
   new Secret("directus-license-key");
   const clubspotSyncToken = randomSecret("clubspot-sync-directus-token");
   const gsuiteSyncToken = randomSecret("gsuite-sync-directus-token");
+  // Authentik generated it, and it moved here from its state, so prod's client never changed
+  // (cyc-seattle/workplace#6). Authentik registers it from this stack's outputs.
+  const oidcClientSecret = randomSecret("directus-oidc-client-secret");
   prodDatabase("directus", dbPassword.value);
 
   const auth = {
@@ -59,6 +62,8 @@ export function prodDirectus({ adminEmail, admins, externalDomain, baseUrl }: Pr
       dbPassword: dbPassword.value,
       adminPassword: adminPassword.value,
       communityRoleId: roles.communityRole.roleId,
+      oidcClientId: pulumi.output("directus"),
+      oidcClientSecret: oidcClientSecret.value,
     },
   };
 }
