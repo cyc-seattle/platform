@@ -744,3 +744,46 @@ export class DirectusPolicy extends pulumi.dynamic.Resource {
     );
   }
 }
+
+// --- DirectusSettings: the fields of the `directus_settings` singleton that a stack owns, such as
+// Settings -> AI's MCP switches. It writes only the fields it's given, and leaves the rest to admins.
+
+interface DirectusSettingsInputs extends DirectusAuthProps {
+  settings: Record<string, unknown>;
+}
+
+async function patchSettings(inputs: DirectusSettingsInputs): Promise<void> {
+  await waitForReachable(inputs.baseUrl);
+  const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
+  await directusRequest(inputs.baseUrl, token, "PATCH", "/settings", inputs.settings);
+}
+
+export const directusSettingsProvider: pulumi.dynamic.ResourceProvider = {
+  create: reportErrors("DirectusSettings", "create", async (inputs: DirectusSettingsInputs) => {
+    await patchSettings(inputs);
+    return { id: "settings", outs: inputs };
+  }),
+
+  update: reportErrors(
+    "DirectusSettings",
+    "update",
+    async (_id: string, _olds: DirectusSettingsInputs, news: DirectusSettingsInputs) => {
+      await patchSettings(news);
+      return { outs: news };
+    },
+  ),
+
+  // A no-op: there's no earlier value to restore, and the singleton can't be deleted.
+  delete: reportErrors("DirectusSettings", "delete", async () => {}),
+};
+
+export interface DirectusSettingsArgs extends DirectusAuthArgs {
+  settings: pulumi.Input<Record<string, pulumi.Input<unknown>>>;
+}
+
+/** Sets fields of the `directus_settings` singleton. One per Directus. */
+export class DirectusSettings extends pulumi.dynamic.Resource {
+  constructor(name: string, args: DirectusSettingsArgs, opts?: pulumi.CustomResourceOptions) {
+    super(directusSettingsProvider, name, { ...args }, withSecretOutputs(["adminPassword"], opts));
+  }
+}
