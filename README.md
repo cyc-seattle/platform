@@ -11,7 +11,7 @@ app owns. The apps that run on it live in their own repos, such as
 | [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                                                                                                                                                                                                                                                  | A human with project Owner and `gh` `admin:org`. Never CI.                                                        |
 | [`infra`](stacks/infra)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, Artifact Registry, the GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
 | [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                                                                                                                                                                                                   | `deploy-dev`, from Actions on every PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
-| [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync machine users, its OIDC client, and MCP, and the clubspot-sync and gsuite-sync CronJobs, with dev's Clubspot and Workspace fakes                                                                                                                                                                                             | `deploy-dev`, from Actions on every PR. Dev only, until prod cuts over (cyc-seattle/workplace#6 step 6).          |
+| [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync machine users, its OIDC client, and MCP, and the clubspot-sync and gsuite-sync CronJobs, with dev's Clubspot and Workspace fakes                                                                                                                                                                                             | `deploy-dev`, from Actions on every PR, and `deploy-runner` on a push to `main`, after `infra`.                   |
 
 ## @cyc-seattle/platform
 
@@ -102,11 +102,13 @@ GitHub environment that holds its identity and state bucket:
 
 `prod-preview` runs `mise run preview` as `deploy-runner` and writes the diff to the job summary.
 `prod` runs `mise run deploy` on the same commit once approved. It runs only when the preview shows
-changes in `infra`, so a merge that changes nothing in prod asks for no approval. A PR from a fork gets no OIDC token,
-so its `dev` job is skipped.
+changes, so a merge that changes nothing in prod asks for no approval. Dev builds the sync images
+for every commit, and prod's CronJobs run the one built for theirs, so until cyc-seattle/isthmia#258
+every merge previews `backend`'s CronJobs as changed. A PR from a fork gets no OIDC token, so its
+`dev` job is skipped.
 
 `PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, then `backend`, and
-`prod` is `infra`. `integration` is dev only.
+`prod` is `infra`, then `backend`. `integration` is dev only.
 
 `bootstrap` is never deployed from Actions (cyc-seattle/isthmia#118). It holds the identities that
 CI assumes, and a human with project Owner and `gh` `admin:org` applies it with the tasks below.
@@ -123,7 +125,7 @@ mise run deploy
 PULUMI_STACK=dev mise run deploy
 ```
 
-`mise run deploy` applies `infra`. isthmia's prod stacks read its outputs through a StackReference.
+`mise run deploy` applies `infra`, then `backend`. isthmia's prod stacks read its outputs through a StackReference.
 Dev stacks can't read prod state, so `infra` writes each environment's platform
 values to `platform/outputs.json` in that environment's state bucket.
 

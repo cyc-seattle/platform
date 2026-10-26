@@ -15,8 +15,7 @@ projects with their resource names unchanged, and their states moved over with `
 - the clubspot-sync and gsuite-sync CronJobs, their images, and the Secrets that hold their tokens
 - in dev, the Clubspot and Workspace fakes the syncs talk to
 
-Dev deploys it on every PR. Prod still runs isthmia's `crm` and syncs until cyc-seattle/workplace#6
-step 6.
+Dev deploys it on every PR, and a push to `main` deploys prod after `infra`.
 
 ## Outputs
 
@@ -25,9 +24,11 @@ step 6.
 | `directusOidcClientId`     | isthmia's `authentik`, to register Directus |
 | `directusOidcClientSecret` | isthmia's `authentik`, to register Directus |
 
-`backend` generates the OIDC client and Authentik registers it, so platform never reads isthmia's
-outputs. Until Authentik reads these outputs (cyc-seattle/workplace#6 step 5), it holds a different
-client, and signing in to Directus through Authentik fails. The built-in admin still signs in.
+`backend` owns the OIDC client and Authentik registers it, so platform never reads isthmia's
+outputs. Dev's client is generated here. Prod's is the one Authentik generated before
+cyc-seattle/workplace#6: client ID `directus`, and the secret `directus-oidc-client-secret`, whose
+state moved into `backend`. While Authentik and Directus hold different clients, signing in to
+Directus through Authentik fails. The built-in admin still signs in.
 
 ## Never destroy it
 
@@ -45,7 +46,7 @@ Directus 12.3.1 serves MCP at `/mcp`. It needs both:
   `mcp_oauth_enabled`, `mcp_oauth_cimd_enabled`, `mcp_oauth_dcr_enabled`, and `mcp_allow_deletes`
 
 `backend` sets both. The `DirectusSettings` resource writes the settings row through the admin API.
-`backend:mcp` turns MCP on, and it's off when unset. Dev sets it. Deletes and dynamic client
+`backend:mcp` turns MCP on, and it's off when unset. Dev and prod set it. Deletes and dynamic client
 registration are always off.
 
 A client registers by its metadata document (CIMD). Both the document and the redirects must be on
@@ -66,8 +67,9 @@ Directus 12 has **no per-policy or per-role switch for MCP.** Every signed-in us
   signs in through Authentik
 - with a session cookie or a static token, whatever their role
 
-So MCP can't keep Community users out. It stays off in prod until cyc-seattle/workplace#6 step 19
-removes the Community item permissions.
+So MCP can't keep Community users out. It's on in prod for every signed-in user anyway
+(cyc-seattle/workplace#6 decision 16): it adds no access, and the query guard checks its reads.
+Steps 15 to 19 remove the Community item permissions it makes easier to probe.
 
 ### The query guard
 
