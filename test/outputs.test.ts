@@ -87,7 +87,7 @@ describe("readPlatformOutputs", () => {
 
   it("says which object is missing", async () => {
     await expect(outputs.readPlatformOutputs({ environment: "prod" })).rejects.toThrow(
-      /Can't read gs:\/\/example-project-pulumi-prod\/platform\/outputs\.json\. The cluster stack writes it\./,
+      /Can't read gs:\/\/example-project-pulumi-prod\/platform\/outputs\.json\. The infra stack writes it\./,
     );
   });
 

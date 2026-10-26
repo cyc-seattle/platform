@@ -1,5 +1,6 @@
+import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { location } from "../../src/config.ts";
+import { location, projectId } from "../../src/config.ts";
 import { deployDevMember, deployRunnerMember, gkeNodesMember } from "./identities.ts";
 import { enableService } from "../../src/services.ts";
 
@@ -17,6 +18,8 @@ export const artifactRepository = new gcp.artifactregistry.Repository(
   },
   { dependsOn: artifactRegistryApi },
 );
+
+export const artifactRepositoryUrl = pulumi.interpolate`${location}-docker.pkg.dev/${projectId}/${artifactRepository.repositoryId}`;
 
 // Human deployers get access through project `roles/owner` instead.
 new gcp.artifactregistry.RepositoryIamMember("artifact-member-deploy-runner", {
