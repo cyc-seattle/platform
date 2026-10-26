@@ -1,8 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { describeFeature } from "@amiceli/vitest-cucumber";
 import { expect } from "vitest";
-import { devDirectusAdmin, DirectusSession } from "./directus";
-import { feature } from "./support";
+import { devDirectusAdmin, DirectusSession } from "./directus.ts";
+import { feature } from "./support.ts";
 
 // Runs against the roles and policies isthmia's `crm` deployed to dev, so it checks what ships. Every
 // row and user is this run's own, and is deleted afterwards.
