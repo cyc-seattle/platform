@@ -6,7 +6,7 @@ import * as command from "@pulumi/command";
 import * as k8s from "@pulumi/kubernetes";
 import * as random from "@pulumi/random";
 import { WebService } from "../../src/index.ts";
-import { appDatabase, appSecret, isDev, loadCluster, secretEnv, siblingSecret } from "../../src/app/cluster.ts";
+import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv } from "./workloads.ts";
 import { queryGuardConfig } from "./community-rules.ts";
@@ -20,6 +20,9 @@ export interface DirectusOnCluster {
   adminPassword: pulumi.Output<string>;
   /** Directus names it as the default role at start, before `backend` creates the role with this ID. */
   communityRoleId: pulumi.Output<string>;
+  /** Directus's client at Authentik, which Authentik registers from this stack's outputs. */
+  oidcClientId: pulumi.Output<string>;
+  oidcClientSecret: pulumi.Output<string>;
   /** Resolves once Directus answers at `baseUrl`. */
   ready: pulumi.Resource;
 }
@@ -64,7 +67,8 @@ export async function deployDirectus(
         .getSecretVersionAccessOutput({ secret: `${isDev ? "dev-" : ""}directus-license-key` })
         .apply((version) => version.secretData)
     : undefined;
-  const oidcClientSecret = siblingSecret("authentik", "directusOidcClientSecret");
+  const oidcClientId = new random.RandomString("directus-oidc-client-id", { length: 40, special: false }).result;
+  const oidcClientSecret = pulumi.secret(generated("directus-oidc-client-secret", 64));
 
   const secret = appSecret(cluster, "directus", {
     KEY: existing ? existing.key : generated("directus-key", 64),
@@ -106,7 +110,7 @@ export async function deployDirectus(
     env: [
       // dev's db-f1-micro allows about 25 connections across Authentik, Directus, and Parse. Prod's
       // db-g1-small allows about 50, and 10 is Directus's default, as on the VM.
-      ...directusEnv({ domain, adminEmail, dbHost: db.host, communityRoleId, poolMax: isDev ? 4 : 10 }),
+      ...directusEnv({ domain, adminEmail, dbHost: db.host, communityRoleId, oidcClientId, poolMax: isDev ? 4 : 10 }),
       secretEnv("DB_PASSWORD", db.secret, "password"),
     ],
     envFrom: [{ secretRef: { name: secret.metadata.name, optional: false } }],
@@ -147,5 +151,12 @@ export async function deployDirectus(
     { dependsOn: [directus, ...record] },
   );
 
-  return { baseUrl, adminPassword: pulumi.secret(adminPassword), communityRoleId, ready };
+  return {
+    baseUrl,
+    adminPassword: pulumi.secret(adminPassword),
+    communityRoleId,
+    oidcClientId,
+    oidcClientSecret,
+    ready,
+  };
 }

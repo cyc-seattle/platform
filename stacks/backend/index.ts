@@ -9,6 +9,7 @@ import {
   type DirectusPermissionRuleArgs,
   type DirectusPermissionRuleFields,
   DirectusPolicy,
+  DirectusSettings,
 } from "../../src/directus/resources.ts";
 import * as random from "@pulumi/random";
 import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
@@ -114,6 +115,28 @@ const {
 
 // The syncs read their Directus tokens through StackReferences.
 export const { clubspotSyncToken, gsuiteSyncToken } = identities;
+
+// Authentik registers Directus's client from these (cyc-seattle/workplace#6 step 5).
+export const directusOidcClientId = pulumi.output(app.then(({ oidcClientId }) => oidcClientId));
+export const directusOidcClientSecret = pulumi.secret(app.then(({ oidcClientSecret }) => oidcClientSecret));
+
+// Settings -> AI. MCP adds no access of its own, but Directus can't keep a role out of it, so it stays
+// off wherever Community users can sign in until they lose their item permissions (docs/mcp.md).
+const mcp = config.getBoolean("mcp") ?? false;
+new DirectusSettings(
+  "directus-settings",
+  {
+    ...auth,
+    settings: {
+      mcp_enabled: mcp,
+      mcp_oauth_enabled: mcp,
+      mcp_oauth_cimd_enabled: mcp,
+      mcp_oauth_dcr_enabled: false,
+      mcp_allow_deletes: false,
+    },
+  },
+  { dependsOn: [app.then(({ ready }) => ready)] },
+);
 
 // Every schemas/<domain>.yaml, merged into one snapshot and applied once: a domain's own apply would
 // drop the extension fields another domain declares on its collections.

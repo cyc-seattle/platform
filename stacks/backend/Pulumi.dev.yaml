@@ -3,6 +3,7 @@ config:
   gcp:region: us-west1
   backend:directusCpu: "1"
   backend:licensed: true
+  backend:mcp: true
   backend:directusAdminEmail: master@cyccommunitysailing.org
   backend:directusAdmins:
     - ungood@onetrue.name

@@ -94,8 +94,12 @@ describe("Directus on the cluster", () => {
     expect(container("directus").readinessProbe.httpGet.path).toBe("/server/ping");
   });
 
-  it("reads the OIDC client secret from authentik's stack in the same environment", () => {
-    expect(find("pulumi:pulumi:StackReference", "organization/authentik/dev")).toBeDefined();
+  it("generates its own OIDC client, and reads nothing from Authentik's stack", () => {
+    expect(envNames("directus")).toMatchObject({ AUTH_AUTHENTIK_CLIENT_ID: "directus-oidc-client-id-value" });
+    expect(find("kubernetes:core/v1:Secret", "directus").inputs["stringData"].value).toMatchObject({
+      AUTH_AUTHENTIK_CLIENT_SECRET: "directus-oidc-client-secret-value",
+    });
+    expect(resources.filter((r) => r.type === "pulumi:pulumi:StackReference")).toEqual([]);
   });
 
   it("keeps its connection pool small", () => {
