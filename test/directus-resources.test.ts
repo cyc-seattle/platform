@@ -67,7 +67,7 @@ describe("describeProviderError", () => {
 describe("DirectusRole.delete", () => {
   const props = { ...auth, name: "Staff", appAccess: true, roleId: "role-1", policyId: "policy-1" };
 
-  it("treats an already-gone access row, role, and policy as success (#125)", async () => {
+  it("treats an already-gone access row, role, and policy as success (cyc-seattle/isthmia#125)", async () => {
     const fetchMock = vi.fn();
     stubLogin(fetchMock);
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: "access-1" }] })); // GET /access
@@ -167,7 +167,7 @@ describe("DirectusUser.diff", () => {
 describe("DirectusUser.delete", () => {
   const props = { ...auth, email: "a@b.com", roleId: "role-1", provider: "google", userId: "user-1", adopted: false };
 
-  it("treats an already-gone user as success (#125)", async () => {
+  it("treats an already-gone user as success (cyc-seattle/isthmia#125)", async () => {
     const fetchMock = vi.fn();
     stubLogin(fetchMock);
     fetchMock.mockResolvedValueOnce(jsonResponse(404, { errors: [{ message: "not found" }] })); // DELETE /users/user-1
@@ -176,7 +176,7 @@ describe("DirectusUser.delete", () => {
     await expect(directusUserProvider.delete?.("user-1", props)).resolves.toBeUndefined();
   });
 
-  it("treats a 403 as success, since Directus answers 403 rather than 404 for a missing user (#125)", async () => {
+  it("treats a 403 as success, since Directus answers 403 rather than 404 for a missing user (cyc-seattle/isthmia#125)", async () => {
     const fetchMock = vi.fn();
     stubLogin(fetchMock);
     fetchMock.mockResolvedValueOnce(jsonResponse(403, { errors: [{ message: "forbidden" }] })); // DELETE /users/user-1

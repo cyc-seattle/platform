@@ -185,7 +185,7 @@ export const directusRoleProvider: pulumi.dynamic.ResourceProvider = {
     },
   ),
 
-  // Tolerates the access row(s), role, or policy already being gone (#125) rather than 404-ing the
+  // Tolerates the access row(s), role, or policy already being gone (cyc-seattle/isthmia#125) rather than 404-ing the
   // apply into a dead end — same spirit as DirectusAdminAccessGrant.delete below.
   delete: reportErrors("DirectusRole", "delete", async (_id: string, props: DirectusRoleOutputs) => {
     const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
@@ -458,7 +458,7 @@ export const directusUserProvider: pulumi.dynamic.ResourceProvider = {
       return;
     }
     const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
-    // Tolerates the user already being gone (#125) — e.g. removed by hand in the Data Studio.
+    // Tolerates the user already being gone (cyc-seattle/isthmia#125) — e.g. removed by hand in the Data Studio.
     // Directus answers 403 rather than 404 for a missing user id (see client.ts's isForbidden),
     // so both read as "already gone" here.
     try {
@@ -568,7 +568,7 @@ export const directusAdminAccessGrantProvider: pulumi.dynamic.ResourceProvider =
     },
   ),
 
-  // Tolerates the access row or policy already being gone (#125) rather than 404-ing the apply into
+  // Tolerates the access row or policy already being gone (cyc-seattle/isthmia#125) rather than 404-ing the apply into
   // a dead end — same spirit as DirectusUser.delete above.
   delete: reportErrors(
     "DirectusAdminAccessGrant",
@@ -688,7 +688,7 @@ export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
     },
   ),
 
-  // Tolerates the access row or policy already being gone (#125), same spirit as
+  // Tolerates the access row or policy already being gone (cyc-seattle/isthmia#125), same spirit as
   // DirectusAdminAccessGrant.delete above.
   delete: reportErrors("DirectusPolicy", "delete", async (_id: string, props: DirectusPolicyOutputs) => {
     const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);

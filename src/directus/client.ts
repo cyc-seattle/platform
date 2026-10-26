@@ -292,12 +292,12 @@ async function schemaDiff(
   token: string,
   schema: unknown,
 ): Promise<{ hash: string; diff: unknown } | null> {
-  // Found while verifying #109 against a real instance: when the submitted snapshot is already in
+  // Found while verifying cyc-seattle/isthmia#109 against a real instance: when the submitted snapshot is already in
   // sync, Directus returns a bare `204 No Content` (empty body), not `200 { data: null }`.
   // `directusRequest`'s own 204 handling already turns that into `undefined` - treat it the same as
-  // `{ data: null }` rather than crashing on `res.data`. Pre-existing bug, unrelated to #109's
+  // `{ data: null }` rather than crashing on `res.data`. Pre-existing bug, unrelated to cyc-seattle/isthmia#109's
   // cross-app-deletion issue, but on this exact function and newly reachable now that a scoped diff
-  // can genuinely come back empty (pre-#109, an unscoped diff on a shared instance essentially
+  // can genuinely come back empty (pre-cyc-seattle/isthmia#109, an unscoped diff on a shared instance essentially
   // never did, since it always proposed deleting every other app's collections).
   const res = await directusRequest<{ data: { hash: string; diff: unknown } | null } | undefined>(
     baseUrl,
@@ -362,7 +362,7 @@ function ownedCollectionNames(schema: DirectusSnapshot): string[] {
  * (a `meta`-only entry with no `schema`, used to group the Data Model page) is excluded, since a
  * permission rule against one would have no table to apply to. This is the single derivation point
  * for "every collection with data this app owns" - used by callers (e.g. `crm/index.ts`'s Staff
- * permission rules) so the list can't drift from `schema.yaml` (see #109).
+ * permission rules) so the list can't drift from `schema.yaml` (see cyc-seattle/isthmia#109).
  */
 export function collectionsInSchema(schema: unknown): string[] {
   return (schema as DirectusSnapshot).collections.filter((c) => c.schema !== undefined).map((c) => c.collection);
@@ -386,7 +386,7 @@ export function discoverSchemaFiles(schemasDir: string): { name: string; path: s
  * `relations`, drops whatever the live snapshot has under a `collection` in `owned` and replaces it
  * with `appSchema`'s own entries; everything else in the live snapshot passes through untouched.
  *
- * See #109: this is what makes "this app's snapshot doesn't mention collection X" mean "leave X
+ * See cyc-seattle/isthmia#109: this is what makes "this app's snapshot doesn't mention collection X" mean "leave X
  * alone" rather than "delete X" - `/schema/diff` itself has no such notion, it diffs the *entire
  * instance* against whatever it's given. Scoping to exactly what this app owns, plus everything
  * else exactly as it lives today, is the whole fix.
@@ -526,7 +526,7 @@ function hasCollectionDelete(diff: unknown): boolean {
  * immediately after an API-driven apply, requests against the new collections succeed with no
  * restart.
  *
- * Scoped diff (#109): there's one shared Directus instance across every app (see directus.ts) -
+ * Scoped diff (cyc-seattle/isthmia#109): there's one shared Directus instance across every app (see directus.ts) -
  * `schema` here is every package's own schema.yaml already merged into one snapshot (see
  * `mergeSchemas`), applied together in a single call. `/schema/diff` diffs whatever it's given
  * against the *whole instance*, so posting a bare app schema gets read as "delete every collection
@@ -534,7 +534,7 @@ function hasCollectionDelete(diff: unknown): boolean {
  * really does drop the collection and its data. So before diffing, this fetches the live instance
  * snapshot and merges `schema`'s own collections/fields/systemFields/relations onto it
  * (`scopeSnapshot`), leaving every collection nothing declares exactly as it lives today. Do not go
- * back to diffing the bare `schema` - that's the bug #109 fixed.
+ * back to diffing the bare `schema` - that's the bug cyc-seattle/isthmia#109 fixed.
  *
  * What this does and doesn't delete: a collection this app *used to* declare but has since dropped
  * from `schema.yaml` is preserved, not deleted - automated collection deletion isn't supported;
@@ -546,7 +546,7 @@ function hasCollectionDelete(diff: unknown): boolean {
  * delete at all.
  *
  * Side effect worth knowing about: the merged snapshot's `version`/`directus`/`vendor` come from the
- * *live* instance, not from `schema`, so the version-drift check that motivated #101 can no longer
+ * *live* instance, not from `schema`, so the version-drift check that motivated cyc-seattle/isthmia#101 can no longer
  * fire here. That's fine - it was only ever metadata - but noted so it isn't rediscovered later as a
  * regression.
  */

@@ -86,7 +86,7 @@ describe("collectionsInSchema", () => {
   });
 
   it("excludes a folder - a meta-only collection entry with no schema - while still returning every real collection", () => {
-    // Confirmed hands-on against a local Directus instance (#148/#149 step 16): a folder used to
+    // Confirmed hands-on against a local Directus instance (cyc-seattle/isthmia#148/#149 step 16): a folder used to
     // group the Data Model page comes back from /schema/snapshot with no `schema` key at all.
     const withFolder = snapshot(["people", "contacts"]);
     withFolder.collections.push({ collection: "CRM" } as (typeof withFolder.collections)[number]);
@@ -114,7 +114,7 @@ describe("applySchema", () => {
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, { data: snapshot(["a"]) })) // GET /schema/snapshot
       // Real Directus returns a bare 204 (no body) for "already in sync" - not `200 { data: null }`
-      // (found while verifying #109 against a real instance; see schemaDiff's comment).
+      // (found while verifying cyc-seattle/isthmia#109 against a real instance; see schemaDiff's comment).
       .mockResolvedValueOnce(jsonResponse(204, undefined)); // POST /schema/diff: in sync
     vi.stubGlobal("fetch", fetchMock);
 
@@ -163,7 +163,7 @@ describe("applySchema", () => {
   });
 
   it("scopes the diff to this app's own collections: a collection outside this app's schema is preserved", async () => {
-    // Regression test for #109: applySchema used to diff the bare app schema against the whole
+    // Regression test for cyc-seattle/isthmia#109: applySchema used to diff the bare app schema against the whole
     // instance, so a collection belonging to another app (not mentioned in this app's schema.yaml)
     // was proposed for deletion. The live instance here has "a" (this app's) and "other_app_thing"
     // (someone else's); this app's schema only declares "a".
@@ -183,7 +183,7 @@ describe("applySchema", () => {
   });
 
   it("preserves (does not delete) a collection dropped from this app's own schema.yaml", async () => {
-    // Deliberate choice (#109), not a gap: deriving "owned" from the new schema.yaml alone means a
+    // Deliberate choice (cyc-seattle/isthmia#109), not a gap: deriving "owned" from the new schema.yaml alone means a
     // collection this app used to declare but has since removed is no longer in `owned`, so it's
     // never dropped from the live half of the merge and never re-added from the app schema either -
     // it's preserved as-is. Automated collection deletion isn't supported; dropping a collection is
@@ -248,12 +248,12 @@ describe("applySchema", () => {
   it("derives the owned-collection set from the schema argument alone, not a separate parameter", () => {
     // applySchema takes (baseUrl, token, schema) - three parameters, full stop. There is no fourth
     // "owned collections" parameter to pass separately (and therefore no way for it to drift from
-    // schema.yaml - see #109's "never a hand-maintained parallel list").
+    // schema.yaml - see cyc-seattle/isthmia#109's "never a hand-maintained parallel list").
     expect(applySchema.length).toBe(3);
   });
 
   it("throws rather than applying if the diff proposes a collection-level delete", async () => {
-    // Defense in depth (#109): scopeSnapshot should make a collection-level delete impossible, since
+    // Defense in depth (cyc-seattle/isthmia#109): scopeSnapshot should make a collection-level delete impossible, since
     // the merged snapshot always contains every live collection this app doesn't own. If one shows
     // up anyway - a bug in scopeSnapshot, or some other caller diffing an unscoped snapshot - refuse
     // to apply rather than trusting the merge blindly.
@@ -384,7 +384,7 @@ describe("mergeSchemas", () => {
   });
 
   it("throws, naming both schemas, when two schemas declare the same collection's same relation", () => {
-    // Regression test (#143): relations used to be concatenated with no duplicate check at all, so
+    // Regression test (cyc-seattle/isthmia#143): relations used to be concatenated with no duplicate check at all, so
     // two packages declaring a relation on the same (collection, field) silently produced two
     // entries in the snapshot posted to /schema/diff, unlike collections and fields.
     const crm = fieldSnapshot([], [], [{ collection: "programs", field: "google_group_id" }]);

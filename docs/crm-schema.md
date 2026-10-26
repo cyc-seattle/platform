@@ -4,10 +4,10 @@ tags: [architecture, crm, directus]
 
 ## CRM: schema and permission model
 
-Design doc for the CRM's Directus data model, per the plan agreed on issue #69. Covers person
+Design doc for the CRM's Directus data model, per the plan agreed on issue cyc-seattle/isthmia#69. Covers person
 identity, provenance, and permission policies — see `packages/crm/schema.yaml` and
 `packages/clubspot/schema.yaml` for collections and fields; deployment and rollout are tracked in
-the sibling issues (#92-#95) that decompose #69.
+the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompose cyc-seattle/isthmia#69.
 
 ### Scope and non-goals
 
@@ -19,7 +19,7 @@ the sibling issues (#92-#95) that decompose #69.
   row per season, e.g. "2026 Fall Double-handed Race Team". **Program** is the durable catalog
   entry a class links to by hand, e.g. "Double-handed Race Team", the thing a Google Group or a
   volunteer role attaches to; a camp's own programs are derived — the distinct programs of its
-  classes (#149). **Session** (`CampSession`), **class** (`CampClass`), and **registration**
+  classes (cyc-seattle/isthmia#149). **Session** (`CampSession`), **class** (`CampClass`), and **registration**
   (`Registration`/`RegistrationCampSession`) are unchanged — not "enrollment."
 - Registration status and person contact fields get **history, not just a current value** — see
   [Change tracking and provenance](#change-tracking-and-provenance).
@@ -28,7 +28,7 @@ the sibling issues (#92-#95) that decompose #69.
 - Auth identity is deliberately separate from person data — see [Auth identity](#auth-identity)
   below.
 - Coach and guardian **portals** (thin clients calling this API) are out of scope; this doc defines
-  the roles/policies they'll eventually use, but nothing here provisions their logins. That's #65.
+  the roles/policies they'll eventually use, but nothing here provisions their logins. That's cyc-seattle/isthmia#65.
 
 ### Collections
 
@@ -50,7 +50,7 @@ program's Google Group; a role's meaning carries no provider mapping.
 
 `programs.revenue_account` is likewise hand-set by staff and never written by a sync — the finance
 chart-of-accounts code a program's revenue rolls up to. `gsuite-sync`'s audit uses it to flag a
-Clubspot Camp whose classes map to programs with more than one distinct account (#149).
+Clubspot Camp whose classes map to programs with more than one distinct account (cyc-seattle/isthmia#149).
 
 `gsuite-sync` extends collections it doesn't own rather than owning separate ones: it declares
 `programs.google_group_id` in its own schema, even though `programs` belongs to `crm`, not this
@@ -93,9 +93,9 @@ duplicate staff merge in a minute, but a false merge silently attaches one famil
 another person's medical and emergency data.
 
 Updating an existing person follows one rule for every curated field — `people`, `medical_profiles`,
-a guardian/emergency contact's own `people` row, and a promoted field (#137): **the latest edit
+a guardian/emergency contact's own `people` row, and a promoted field (cyc-seattle/isthmia#137): **the latest edit
 always wins**, whether it was made in Directus or in Clubspot. The sync does not fully implement
-this yet (#171): with no edit times, it treats a repeated or first-ever form answer as older than a
+this yet (cyc-seattle/isthmia#171): with no edit times, it treats a repeated or first-ever form answer as older than a
 staff edit, as described below. A
 person's newest linked participant is ranked non-archived registrations first, then
 `registered_at` descending, then `registrations.id` as a tiebreak — the same order `promoted_fields`
@@ -181,7 +181,7 @@ to actually use.
 `custom_field_definitions` has no single row for it — onto a `people` column. `school` is the only
 target today; adding another means adding it to `PROMOTABLE_PERSON_FIELDS`
 (`packages/clubspot/src/promoted-fields.ts`) and deploying, not editing config. It follows the same
-one CRM field rule as every other curated field (#137): per registration, `custom_field_responses`
+one CRM field rule as every other curated field (cyc-seattle/isthmia#137): per registration, `custom_field_responses`
 is itself the mirror, keeping its own last non-blank answer the same way `participants` does, so
 `base` is the response's own stored value before this run's write and `v` is what Clubspot sends
 now, gated on the same newest-linked-participant check. A separate pass runs
@@ -202,7 +202,7 @@ Reusing it instead of a homegrown field means:
 - `people.directus_user_id` is a nullable, unique FK to `directus_users.id`, declared in
   `packages/directus`'s schema — Directus is itself a provider, so its own identity column is an
   extension field on `people` like any other. Set only for people who have an actual login: staff
-  now (provisioned directly by an admin); coach/guardian later, once #65's account-linking flow
+  now (provisioned directly by an admin); coach/guardian later, once cyc-seattle/isthmia#65's account-linking flow
   provisions or links a `directus_users` row on first OIDC login.
 - Directus's own OIDC config does the email-matching (`provider` + `external_identifier` on
   `directus_users`). This schema has no identity/matching logic of its own — it only points `people`
@@ -210,7 +210,7 @@ Reusing it instead of a homegrown field means:
 
 ### Community
 
-`cycsail.team`'s roster (#166) lets a signed-in family see their teammates, through Directus
+`cycsail.team`'s roster (cyc-seattle/isthmia#166) lets a signed-in family see their teammates, through Directus
 policies (`packages/infrastructure/src/crm/community-rules.ts`):
 
 - **Names.** Everyone sharing an active-camp program sees each teammate's name and school.
@@ -242,9 +242,9 @@ CRM field rule, above).
   `medical_profiles`, except the collections Clubspot owns (`packages/clubspot/schema.yaml`) are
   read-only — editing happens in Clubspot, not here — apart from `classes.program_id` and
   `participants.person_id`, which Staff set by hand. The only role delivered end-to-end by
-  #69/#92-#95.
+  cyc-seattle/isthmia#69/#92-cyc-seattle/isthmia#95.
 - **Coach** — defined now so the schema doesn't need reshaping later, but has no way to log in yet
-  (needs #65). KISS for now: any authenticated Directus user can read `sessions` /
+  (needs cyc-seattle/isthmia#65). KISS for now: any authenticated Directus user can read `sessions` /
   `registration_entries` / `people` roster fields (no `medical_profiles`) — scoping a coach to only
   their own sessions via `event_staff` is a follow-up, not built here.
 - **Guardian** — same login caveat as Coach. Policy: read their own minors' `people` /
@@ -252,6 +252,6 @@ CRM field rule, above).
   `relationship_type == 'guardian'`. This scoping isn't KISS'd away like the coach roster case above
   — it's the medical-data boundary the permission model exists to get right. Collection-level
   permissions are what's built; whether `medical_profiles` needs field-level restrictions too is a
-  question for whenever a Guardian actually logs in (#65), not settled here.
+  question for whenever a Guardian actually logs in (cyc-seattle/isthmia#65), not settled here.
 - **Emergency contacts get no role or login.** They're informational rows staff can see on a minor's
   record (`contacts` where `relationship_type == 'emergency_contact'`), not a portal audience.
