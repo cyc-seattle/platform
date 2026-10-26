@@ -1,8 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
-import type { PlatformOutputs } from "../src/outputs";
-import { checkHostname, WebService, type WebServiceArgs } from "../src/web-service";
+import type { PlatformOutputs } from "../src/outputs.ts";
+import { checkHostname, WebService, type WebServiceArgs } from "../src/web-service.ts";
 
 interface Created {
   type: string;

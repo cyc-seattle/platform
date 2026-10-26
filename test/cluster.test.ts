@@ -87,7 +87,7 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("cluster:cloudStack", "organization/cloud/prod");
   pulumi.runtime.setConfig("cluster:alertEmails", JSON.stringify(["alerts@example.org"]));
   // The modules build their resources on import, so they load only after the mocks are set.
-  await import("../stacks/cluster/index.js");
+  await import("../stacks/cluster/index.ts");
   await new Promise((r) => setImmediate(r));
 });
 

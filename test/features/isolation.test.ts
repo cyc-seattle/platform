@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { describeFeature } from "@amiceli/vitest-cucumber";
 import { expect, vi } from "vitest";
-import type { PlatformOutputs } from "../../src/outputs";
-import { canCreate, devPlatform, feature, kube, whoami, type KubeResponse } from "./support";
+import type { PlatformOutputs } from "../../src/outputs.ts";
+import { canCreate, devPlatform, feature, kube, whoami, type KubeResponse } from "./support.ts";
 
 // Tries a TCP connection to each `host:port` argument, and prints how each went as one JSON object.
 const connectScript = `

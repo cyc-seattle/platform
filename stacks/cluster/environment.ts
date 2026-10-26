@@ -68,8 +68,10 @@ export class EnvironmentNamespace extends k8s.core.v1.Namespace {
   private readonly provider: pulumi.ProviderResource;
   private readonly routeEditor: k8s.rbac.v1.Role;
 
+  readonly environment: string;
+
   constructor(
-    readonly environment: string,
+    environment: string,
     args: EnvironmentNamespaceArgs,
     opts: pulumi.CustomResourceOptions & { provider: pulumi.ProviderResource },
   ) {
@@ -86,6 +88,8 @@ export class EnvironmentNamespace extends k8s.core.v1.Namespace {
       },
       opts,
     );
+
+    this.environment = environment;
     this.provider = opts.provider;
     const metadata = { namespace: this.metadata.name };
 

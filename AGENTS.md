@@ -16,8 +16,8 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`.
-- The code is CommonJS, like isthmia's Pulumi code (cyc-seattle/isthmia#127). Import paths carry no
-  `.js` extension.
+- The code is ESM (`"type": "module"`), run by Node 22's type stripping. Relative import paths end in
+  `.ts`, and the code uses only erasable syntax (`erasableSyntaxOnly`).
 
 Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests.
 
@@ -60,6 +60,26 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - An IAM member resource takes `deleteBeforeReplace: true`. It is read-modify-write against one
   shared policy, so the default replacement strips the member it just added (cyc-seattle/isthmia#153).
 - Unit tests live in `test/`, and mock Pulumi with `pulumi.runtime.setMocks`.
+
+### Modules
+
+The rules for ESM come from cyc-seattle/workplace#6.
+
+- Relative imports end in `.ts`, so `../../src` is `../../src/index.ts`. The build rewrites them to
+  `.js`.
+- Use only erasable syntax: no enums, namespaces, or parameter properties. Node strips the types and
+  runs the rest as written.
+- Use `import.meta.dirname`, never `__dirname` or `require`. Neither `tsc`, eslint, nor vitest flags
+  them, but Node fails on them at run time.
+- Never use top-level await in anything `src/index.ts` reaches. The apps' CommonJS code loads the
+  package through Node's `require(esm)`, which fails on a graph that awaits at the top level.
+- A stack's `package.json` sets `"type": "module"`, and its `Pulumi.yaml` sets `typescript: false`.
+  Without the type, Pulumi loads the stack through its vendored ts-node, which rejects `.ts` paths.
+- Code a dynamic provider reaches follows two more rules, because Pulumi serializes it into state:
+  - Load an npm package with `await import()` inside the function that uses it. A top-level import of
+    an ESM package is copied into state by value.
+  - Import a Node builtin as a default import (`import fs from "node:fs"`). A named or namespace
+    import fails to serialize.
 
 ### Comments
 

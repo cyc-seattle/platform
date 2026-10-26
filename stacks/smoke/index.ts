@@ -1,4 +1,4 @@
-import { clusterProvider, getPlatformOutputs, WebService } from "../../src";
+import { clusterProvider, getPlatformOutputs, WebService } from "../../src/index.ts";
 
 const platform = getPlatformOutputs();
 

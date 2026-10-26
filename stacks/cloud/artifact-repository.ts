@@ -1,7 +1,7 @@
 import * as gcp from "@pulumi/gcp";
-import { location } from "../../src/config";
-import { deployDevMember, deployRunnerMember, gkeNodesMember } from "./identities";
-import { enableService } from "../../src/services";
+import { location } from "../../src/config.ts";
+import { deployDevMember, deployRunnerMember, gkeNodesMember } from "./identities.ts";
+import { enableService } from "../../src/services.ts";
 
 const artifactRegistryApi = enableService("artifactregistry.googleapis.com");
 

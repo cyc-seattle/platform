@@ -2,7 +2,10 @@
   "extends": "@cyc-seattle/ts-config/tsconfig",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
   },
   "include": ["src/index.ts"]
 }

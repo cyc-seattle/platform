@@ -29,9 +29,9 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("gcp:region", "us-west1");
   pulumi.runtime.setConfig("cloud:devDatabases", JSON.stringify(["authentik", "directus", "clubspot_fake"]));
   // The module builds its resources on import, so it loads only after the mocks are set.
-  await import("../stacks/cloud/database.js");
-  await import("../stacks/cloud/network.js");
-  await import("../stacks/cloud/dev-databases.js");
+  await import("../stacks/cloud/database.ts");
+  await import("../stacks/cloud/network.ts");
+  await import("../stacks/cloud/dev-databases.ts");
   await new Promise((r) => setImmediate(r));
 });
 

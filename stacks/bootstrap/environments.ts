@@ -1,11 +1,11 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as github from "@pulumi/github";
-import { deployDev } from "./deploy-dev";
-import { deployRunner } from "./deploy-runner";
-import { isthmia, maintainers, platform } from "./github";
-import { stateBackends } from "./state";
-import { allowEnvironment, provider, subjectPrefix } from "./workload-identity";
+import { deployDev } from "./deploy-dev.ts";
+import { deployRunner } from "./deploy-runner.ts";
+import { isthmia, maintainers, platform } from "./github.ts";
+import { stateBackends } from "./state.ts";
+import { allowEnvironment, provider, subjectPrefix } from "./workload-identity.ts";
 
 // The GitHub environments a deploy job runs in, and the identity each one assumes (#215). An
 // environment's name is the last part of the token's subject, so the WIF binding and the environment

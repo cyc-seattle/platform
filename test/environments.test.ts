@@ -16,7 +16,7 @@ const poolName = "projects/123/locations/global/workloadIdentityPools/github";
 const providerName = `${poolName}/providers/github`;
 const orgId = "4242";
 
-let wif: typeof import("../stacks/bootstrap/workload-identity.js");
+let wif: typeof import("../stacks/bootstrap/workload-identity.ts");
 
 beforeAll(async () => {
   await pulumi.runtime.setMocks(
@@ -60,8 +60,8 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("bootstrap:githubOrgId", orgId);
   pulumi.runtime.setConfig("bootstrap:humanDeployers", JSON.stringify(["user:deployer@example.com"]));
   // The modules build their resources on import, so they load only after the mocks are set.
-  wif = await import("../stacks/bootstrap/workload-identity.js");
-  await import("../stacks/bootstrap/environments.js");
+  wif = await import("../stacks/bootstrap/workload-identity.ts");
+  await import("../stacks/bootstrap/environments.ts");
   await new Promise((r) => setImmediate(r));
 });
 

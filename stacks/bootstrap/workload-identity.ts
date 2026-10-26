@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { enableService } from "../../src/services";
+import { enableService } from "../../src/services.ts";
 
 // Lets GitHub Actions jobs exchange their OIDC token for a service account's credentials (#215).
 const iamApi = enableService("iam.googleapis.com");

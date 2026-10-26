@@ -1,9 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
-import { cluster, clusterEndpoint } from "./cluster";
-import { address } from "./gateway";
-import { devOutputs } from "./dev";
-import { prodOutputs } from "./prod";
-import "./alerts";
+import { cluster, clusterEndpoint } from "./cluster.ts";
+import { address } from "./gateway.ts";
+import { devOutputs } from "./dev.ts";
+import { prodOutputs } from "./prod.ts";
+import "./alerts.ts";
 
 export const clusterName = cluster.name;
 export { clusterEndpoint };

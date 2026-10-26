@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { enableService } from "../../src/services";
+import { enableService } from "../../src/services.ts";
 
 const config = new pulumi.Config();
 

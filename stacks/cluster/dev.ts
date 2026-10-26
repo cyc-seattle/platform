@@ -1,10 +1,10 @@
 import * as gcp from "@pulumi/gcp";
-import { location, projectId } from "../../src/config";
-import { cluster, clusterEndpoint, provider } from "./cluster";
-import { EnvironmentNamespace } from "./environment";
-import { address, devDomain, gateway } from "./gateway";
-import { writePlatformOutputs } from "./outputs";
-import { cloudOutput, deployDev } from "./refs";
+import { location, projectId } from "../../src/config.ts";
+import { cluster, clusterEndpoint, provider } from "./cluster.ts";
+import { EnvironmentNamespace } from "./environment.ts";
+import { address, devDomain, gateway } from "./gateway.ts";
+import { writePlatformOutputs } from "./outputs.ts";
+import { cloudOutput, deployDev } from "./refs.ts";
 
 // Fits prod's apps plus Mailpit, the two fakes, smoke, and the integration tests' pods, with room
 // for a rolling update (#231).

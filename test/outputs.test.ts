@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
-import * as outputs from "../src/outputs";
+import * as outputs from "../src/outputs.ts";
 
 const valueOf = <T>(output: pulumi.Output<T>): Promise<T> => (output as any).promise();
 

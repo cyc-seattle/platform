@@ -2,11 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadFeatureFromText } from "@amiceli/vitest-cucumber";
 import { GoogleAuth } from "google-auth-library";
-import { outputsObject, parsePlatformOutputs, stateBucket, type PlatformOutputs } from "../../src/outputs";
+import { outputsObject, parsePlatformOutputs, stateBucket, type PlatformOutputs } from "../../src/outputs.ts";
 
-// Synchronous, because a CommonJS file can't await at the top level.
-export function feature(name: string) {
-  return loadFeatureFromText(readFileSync(join(__dirname, "../../features", name), "utf8"));
+export function feature(name: string): ReturnType<typeof loadFeatureFromText> {
+  return loadFeatureFromText(readFileSync(join(import.meta.dirname, "../../features", name), "utf8"));
 }
 
 // Whatever identity runs the tests: deploy-dev in CI.

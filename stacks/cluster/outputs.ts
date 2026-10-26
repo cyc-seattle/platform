@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { projectId } from "../../src/config";
-import { outputsObject, platformOutputsSchema, stateBucket, type PlatformOutputs } from "../../src/outputs";
+import { projectId } from "../../src/config.ts";
+import { outputsObject, platformOutputsSchema, stateBucket, type PlatformOutputs } from "../../src/outputs.ts";
 
 /** The same shape as the values the reader returns, with each one an Input. */
 type PlatformOutputsInput<T = PlatformOutputs> = {

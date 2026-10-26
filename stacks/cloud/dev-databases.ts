@@ -1,8 +1,8 @@
 import * as gcp from "@pulumi/gcp";
 import * as random from "@pulumi/random";
-import { getStringList, projectId } from "../../src/config";
-import { devPostgres } from "./database";
-import { enableService } from "../../src/services";
+import { getStringList, projectId } from "../../src/config.ts";
+import { devPostgres } from "./database.ts";
+import { enableService } from "../../src/services.ts";
 
 /**
  * Creates dev's app databases here, not in isthmia's dev stacks (#231): Cloud SQL ignores IAM

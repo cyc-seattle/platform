@@ -1,6 +1,6 @@
 import * as gcp from "@pulumi/gcp";
-import { location } from "../../src/config";
-import { enableService } from "../../src/services";
+import { location } from "../../src/config.ts";
+import { enableService } from "../../src/services.ts";
 
 const computeApi = enableService("compute.googleapis.com");
 const servicenetworkingApi = enableService("servicenetworking.googleapis.com");

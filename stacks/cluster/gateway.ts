@@ -1,10 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as k8s from "@pulumi/kubernetes";
-import { enableService } from "../../src/services";
-import { provider } from "./cluster";
-import { httpsListeners } from "./environment";
-import { cloudOutput } from "./refs";
+import { enableService } from "../../src/services.ts";
+import { provider } from "./cluster.ts";
+import { httpsListeners } from "./environment.ts";
+import { cloudOutput } from "./refs.ts";
 
 const certificateManagerApi = enableService("certificatemanager.googleapis.com");
 

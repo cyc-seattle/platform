@@ -1,5 +1,5 @@
-import { humanDeployers } from "./human-deployers";
-import { ServiceAccount } from "../../src/service-account";
+import { humanDeployers } from "./human-deployers.ts";
+import { ServiceAccount } from "../../src/service-account.ts";
 
 // Identity the clubspot-sync Cloud Run job acts as.
 export const clubspotSyncRunner = new ServiceAccount(

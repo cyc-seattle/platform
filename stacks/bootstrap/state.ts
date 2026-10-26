@@ -1,10 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { location, projectId } from "../../src/config";
-import { deployDev } from "./deploy-dev";
-import { deployRunner } from "./deploy-runner";
-import { humanDeployers } from "./human-deployers";
-import { enableService } from "../../src/services";
+import { location, projectId } from "../../src/config.ts";
+import { deployDev } from "./deploy-dev.ts";
+import { deployRunner } from "./deploy-runner.ts";
+import { humanDeployers } from "./human-deployers.ts";
+import { enableService } from "../../src/services.ts";
 
 // Pulumi state, one bucket and one KMS key per environment (#215). A dev deployer gets only dev's,
 // so it can't edit the state a prod apply reads.
@@ -22,10 +22,9 @@ const iamOpts: pulumi.CustomResourceOptions = { deleteBeforeReplace: true };
  * {@link StateBucket.grant} to let a member read and write state.
  */
 export class StateBucket extends gcp.storage.Bucket {
-  constructor(
-    protected readonly plainId: string,
-    opts?: pulumi.CustomResourceOptions,
-  ) {
+  protected readonly plainId: string;
+
+  constructor(plainId: string, opts?: pulumi.CustomResourceOptions) {
     super(
       plainId,
       {
@@ -38,6 +37,7 @@ export class StateBucket extends gcp.storage.Bucket {
       },
       { protect: true, dependsOn: storageApi, ...opts },
     );
+    this.plainId = plainId;
   }
 
   /** Lets a member read and write every object. `granteeLabel` names the resource. */
@@ -79,11 +79,11 @@ export const keyRing = new gcp.kms.KeyRing(
  * {@link StateKey.grant} to let a member encrypt and decrypt with it.
  */
 export class StateKey extends gcp.kms.CryptoKey {
-  constructor(
-    protected readonly plainId: string,
-    opts?: pulumi.CustomResourceOptions,
-  ) {
+  protected readonly plainId: string;
+
+  constructor(plainId: string, opts?: pulumi.CustomResourceOptions) {
     super(plainId, { name: plainId, keyRing: keyRing.id, rotationPeriod: "7776000s" }, { protect: true, ...opts });
+    this.plainId = plainId;
   }
 
   /** Lets a member encrypt and decrypt with this key. `granteeLabel` names the resource. */

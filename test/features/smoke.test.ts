@@ -1,6 +1,6 @@
 import { describeFeature } from "@amiceli/vitest-cucumber";
 import { expect, vi } from "vitest";
-import { feature } from "./support";
+import { feature } from "./support.ts";
 
 describeFeature(feature("smoke.feature"), ({ Scenario }) => {
   let response: Response;

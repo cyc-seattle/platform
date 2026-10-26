@@ -3,12 +3,11 @@ import * as gcp from "@pulumi/gcp";
 
 /** A GCP service account with a convenient IAM `member` string and impersonation helpers. */
 export class ServiceAccount extends gcp.serviceaccount.Account {
-  constructor(
-    protected readonly plainId: string,
-    displayName: string,
-    opts?: pulumi.CustomResourceOptions,
-  ) {
+  protected readonly plainId: string;
+
+  constructor(plainId: string, displayName: string, opts?: pulumi.CustomResourceOptions) {
     super(plainId, { accountId: plainId, displayName }, opts);
+    this.plainId = plainId;
   }
 
   // The IAM member string (`serviceAccount:{email}`) is provided by the base class as `.member`.
