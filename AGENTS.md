@@ -24,7 +24,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 ## Working in this repo
 
 - Plans live on GitHub issues. `.plans/` is git-ignored, for local drafts.
-- PR titles are conventional commits. PRs merge by squash.
+- PR titles are conventional commits. PRs merge by squash, or by merge commit to keep a branch's
+  history (cyc-seattle/workplace#6). Either way, the PR title is the commit's title.
 - Never push to `main`.
 
 ## Deploys
