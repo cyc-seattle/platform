@@ -1,4 +1,4 @@
-import { deploymentEnv, devPlatform, secretValue } from "./support";
+import { deploymentEnv, devPlatform, secretValue } from "./support.ts";
 
 export interface DirectusResponse {
   status: number;
@@ -8,12 +8,15 @@ export interface DirectusResponse {
 /** One signed-in Directus user, who signs in again when the access token expires. */
 export class DirectusSession {
   private token: Promise<string> | undefined;
+  readonly baseUrl: string;
+  readonly email: string;
+  private readonly password: string;
 
-  constructor(
-    readonly baseUrl: string,
-    readonly email: string,
-    private readonly password: string,
-  ) {}
+  constructor(baseUrl: string, email: string, password: string) {
+    this.baseUrl = baseUrl;
+    this.email = email;
+    this.password = password;
+  }
 
   private signIn(): Promise<string> {
     this.token ??= (async () => {
