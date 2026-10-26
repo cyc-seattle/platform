@@ -1,10 +1,10 @@
-# Local-only Directus + Postgres, for applying and testing packages/crm/schema.yaml against a real
-# instance. Never deployed — production's Directus is packages/infrastructure/src/crm/cluster.ts.
+# Local-only Directus + Postgres, for applying and testing schemas/*.yaml against a real instance.
+# Never deployed — production's Directus is isthmia's packages/infrastructure/src/crm/cluster.ts.
 # Holds no real data, so credentials below are fixed and literally fake, not generated.
 #
-# Directus version is pinned to match production (packages/infrastructure/src/crm/cluster.ts);
+# Directus version is pinned to match production (isthmia's packages/infrastructure/src/crm/cluster.ts);
 # a snapshot regenerated against a different version would record a version that doesn't match the
-# pinned image (#101).
+# pinned image (cyc-seattle/isthmia#101).
 #
 # No Google OIDC, no oauth2-proxy, no Caddy — none of that is needed to apply a schema or exercise
 # permission rules through the REST API directly. No license, so Directus doesn't enforce relational
