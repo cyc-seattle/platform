@@ -5,8 +5,8 @@ tags: [architecture, crm, directus]
 ## CRM: schema and permission model
 
 Design doc for the CRM's Directus data model, per the plan agreed on issue cyc-seattle/isthmia#69. Covers person
-identity, provenance, and permission policies — see `packages/crm/schema.yaml` and
-`packages/clubspot/schema.yaml` for collections and fields; deployment and rollout are tracked in
+identity, provenance, and permission policies — see `schemas/crm.yaml` and
+`schemas/clubspot.yaml` for collections and fields; deployment and rollout are tracked in
 the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompose cyc-seattle/isthmia#69.
 
 ### Scope and non-goals
@@ -32,7 +32,7 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
 
 ### Collections
 
-Collections and fields are defined in `packages/crm/schema.yaml` and `packages/clubspot/schema.yaml`
+Collections and fields are defined in `schemas/crm.yaml` and `schemas/clubspot.yaml`
 — the Clubspot-shaped collections (`camps`, `sessions`, `classes`, registrations, and custom
 fields) live in the latter, split out because they wouldn't survive Clubspot being replaced. Both
 are the source of truth Pulumi applies to Directus as one merged snapshot. The sections below cover
@@ -55,13 +55,13 @@ Clubspot Camp whose classes map to programs with more than one distinct account 
 `gsuite-sync` extends collections it doesn't own rather than owning separate ones: it declares
 `programs.google_group_id` in its own schema, even though `programs` belongs to `crm`, not this
 package - groups hang off programs only. `classes.program_id`, by contrast, is a plain field
-declared directly in `packages/clubspot/schema.yaml`, since `clubspot-sync` owns the collection it
+declared directly in `schemas/clubspot.yaml`, since `clubspot-sync` owns the collection it
 came from. Every package's schema is merged into one snapshot and applied together, so a
 collection here can carry another package's field without this package knowing about that
 provider.
 
 Every Clubspot collection keys on the Clubspot objectId itself, entered by the sync rather than
-generated (`packages/clubspot/schema.yaml`'s field notes cover each collection). `session_classes`
+generated (`schemas/clubspot.yaml`'s field notes cover each collection). `session_classes`
 and `custom_field_responses` have no Clubspot id of their own, so their key is their two parents'
 ids joined (`"<parent id>:<parent id>"`); both parents stay as real FK columns alongside it.
 
@@ -239,7 +239,7 @@ CRM field rule, above).
 - **Administrator** — Directus's built-in full-access role.
 - **Staff** — authenticates via Directus's native Google OIDC, restricted to Workspace accounts an
   admin has provisioned as Directus users. Full read/write on every collection above, including
-  `medical_profiles`, except the collections Clubspot owns (`packages/clubspot/schema.yaml`) are
+  `medical_profiles`, except the collections Clubspot owns (`schemas/clubspot.yaml`) are
   read-only — editing happens in Clubspot, not here — apart from `classes.program_id` and
   `participants.person_id`, which Staff set by hand. The only role delivered end-to-end by
   cyc-seattle/isthmia#69/#92-cyc-seattle/isthmia#95.

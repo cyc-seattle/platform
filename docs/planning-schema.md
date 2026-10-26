@@ -4,7 +4,7 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. The app is proposed and not built yet, so no `schema.yaml` declares these collections. Update the diagrams in the same change as any change to the planning design or to its collections.
+Entity-relationship diagrams for the program planning and financial model app. The app is proposed and not built yet, so nothing in `schemas/` declares these collections.
 
 ### Terms
 
