@@ -11,6 +11,11 @@ export interface WebServiceArgs extends WorkloadArgs {
   port: number;
   /** An HTTP GET probe. The load balancer's health check uses the same path. */
   readinessProbe: Probe & { httpGet: pulumi.Input<k8s.types.input.core.v1.HTTPGetAction> };
+  /**
+   * The load balancer's check timing. GKE's default is every 5s from each of several probers, which
+   * an app whose readiness check reaches its database may not afford.
+   */
+  healthCheck?: { checkIntervalSec?: number; timeoutSec?: number };
 }
 
 /** Returns `hostname` if it is the environment's domain or a name under it, and throws otherwise. */
@@ -76,6 +81,7 @@ export class WebService extends pulumi.ComponentResource {
         metadata,
         spec: {
           default: {
+            ...args.healthCheck,
             config: {
               type: "HTTP",
               httpHealthCheck: {

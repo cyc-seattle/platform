@@ -54,6 +54,7 @@ beforeAll(async () => {
   provider = new k8s.Provider("cluster", {});
   new WebService("dev-web", args("dev"));
   new WebService("prod-web", args("prod"));
+  new WebService("slow-web", { ...args("dev"), healthCheck: { checkIntervalSec: 30, timeoutSec: 10 } });
   await new Promise((r) => setImmediate(r));
 });
 
@@ -155,6 +156,13 @@ describe("WebService routing", () => {
         config: { type: "HTTP", httpHealthCheck: { portSpecification: "USE_SERVING_PORT", requestPath: "/ready" } },
       },
       targetRef: { group: "", kind: "Service", name: "dev-web" },
+    });
+  });
+
+  it("sets the load balancer's check timing when given", () => {
+    expect(find("kubernetes:networking.gke.io/v1:HealthCheckPolicy", "slow-web").spec.default).toMatchObject({
+      checkIntervalSec: 30,
+      timeoutSec: 10,
     });
   });
 });
