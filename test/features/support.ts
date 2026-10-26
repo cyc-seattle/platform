@@ -48,10 +48,11 @@ export async function kube(
   method: string,
   path: string,
   body?: unknown,
+  headers: Record<string, string> = {},
 ): Promise<KubeResponse> {
   const response = await fetch(`https://${platform.clusterEndpoint}${path}`, {
     method,
-    headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json" },
+    headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json", ...headers },
     ...(body !== undefined && { body: JSON.stringify(body) }),
   });
   const text = await response.text();

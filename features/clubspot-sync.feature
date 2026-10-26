@@ -1,7 +1,7 @@
 Feature: clubspot-sync brings Clubspot's registrations into the CRM
   The scenario seeds dev's Clubspot fake through Parse's REST API, runs the clubspot-sync CronJob
   once as a Job, and reads the result through Directus's REST API. Its camp and people carry the
-  run's ID, so runs never depend on each other (#185).
+  run's ID, so runs never depend on each other (cyc-seattle/isthmia#185).
 
   Scenario: A participant's registration becomes a person with a guardian
     Given a camp running today in the Clubspot fake

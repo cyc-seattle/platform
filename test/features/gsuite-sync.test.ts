@@ -1,7 +1,7 @@
 import { describeFeature } from "@amiceli/vitest-cucumber";
 import { expect } from "vitest";
-import { feature } from "./feature";
-import { asAdmin, newRunId, proxyOk, runCronJob } from "./support";
+import { feature } from "./support.ts";
+import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
 
 interface MembershipRow {
   id: string;
