@@ -9,6 +9,7 @@
 # No Google OIDC, no oauth2-proxy, no Caddy — none of that is needed to apply a schema or exercise
 # permission rules through the REST API directly. No license, so Directus doesn't enforce relational
 # permission filters here. features/community-rules.feature checks them on dev's licensed instance.
+# Unlicensed, it also caps active collections at 26: an apply past that fails with 403 LIMIT_EXCEEDED.
 services:
   postgres:
     image: postgres:18-alpine
@@ -18,7 +19,9 @@ services:
       POSTGRES_USER: directus
       POSTGRES_PASSWORD: directus
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Postgres 18's image keeps its data in a versioned subdirectory, and refuses a volume
+      # mounted at the old /var/lib/postgresql/data.
+      - postgres_data:/var/lib/postgresql
 
   directus:
     image: directus/directus:12.3.1

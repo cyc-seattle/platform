@@ -57,7 +57,8 @@ token="$(
 
 schema_json="$(mktemp)"
 diff_response="$(mktemp)"
-trap 'rm -f "$schema_json" "$diff_response"' EXIT
+apply_response="$(mktemp)"
+trap 'rm -f "$schema_json" "$diff_response" "$apply_response"' EXIT
 
 # Converts every schema_files entry to JSON (via js-yaml) and merges them with client.ts's own
 # mergeSchemas rather than reimplementing it here - a hand-copied merge drifted from the real one
@@ -103,13 +104,13 @@ apply_once() {
     local apply_status
     apply_status="$(
       jq '.data' "$diff_response" |
-        curl -s -o /dev/null -w '%{http_code}' -X POST "$base_url/schema/apply" \
+        curl -s -o "$apply_response" -w '%{http_code}' -X POST "$base_url/schema/apply" \
           -H "Authorization: Bearer $token" \
           -H 'Content-Type: application/json' \
           --data-binary @-
     )"
     if [[ "$apply_status" != "204" && "$apply_status" != "200" ]]; then
-      echo "POST /schema/apply -> $apply_status" >&2
+      echo "POST /schema/apply -> $apply_status: $(cat "$apply_response")" >&2
       return 1
     fi
     return 0
