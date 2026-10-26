@@ -347,7 +347,7 @@ describeFeature(
   feature("directus-roles.feature"),
   ({ Background, AfterAllScenarios, defineSteps, Scenario, ScenarioOutline }) => {
     // What "lists" read, for "they see only their child's row".
-    let listed: { collection: string; ids: unknown[] };
+    let listed: { collection: string; ids: unknown[] } | undefined;
 
     AfterAllScenarios(async () => {
       if (admin === undefined) {
@@ -472,13 +472,16 @@ describeFeature(
       });
 
       Step("{string} lists {string}", async (_, login: string, collection: string) => {
+        // Steps still run after a failed one, so don't leave the last scenario's list behind.
+        listed = undefined;
         const { status, body } = await as(login).request("GET", `/items/${collection}?fields=id&limit=-1`);
         expect(status, JSON.stringify(body)).toBe(200);
         listed = { collection, ids: body.data.map((item: Row) => item["id"]) };
       });
 
       Step("they see only their child's row", () => {
-        expect(listed.ids).toEqual([row[listed.collection]]);
+        expect(listed, "nothing was listed").toBeDefined();
+        expect(listed?.ids).toEqual([row[listed?.collection ?? ""]]);
       });
     });
 
