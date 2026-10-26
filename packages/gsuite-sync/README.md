@@ -71,6 +71,10 @@ Each pass is a pure plan function, and a thin executor writes the plan, followin
 
 ## Behaviours worth knowing before you change this
 
+[docs/google-groups-nesting.md](../../docs/google-groups-nesting.md) says how Google resolves
+membership and posting through nested groups. Read it before you change group structure or posting
+settings.
+
 **Discovery runs before every other pass, on its own queue.** Membership, settings, nesting, and
 owners all read `google_groups`, so discovery has to finish writing it first. It uses a separate
 `sync_tasks` queue value from the rest (`gsuite-sync-discovery` vs `gsuite-sync`) so that ordering
