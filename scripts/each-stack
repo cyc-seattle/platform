@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs a pulumi command on each project deployed to $PULUMI_STACK, in dependency order: cluster
-# reads cloud's outputs, and smoke lives only in dev. bootstrap is never in the list
-# (cyc-seattle/isthmia#118).
+# reads cloud's outputs, and smoke lives only in dev. backend deploys only to dev until prod cuts over
+# (cyc-seattle/workplace#6 step 6). bootstrap is never in the list (cyc-seattle/isthmia#118).
 #
 # For preview, it also appends each project's result, true if it has changes and false if not, to
 # $DEPLOY_CHANGES_FILE when that's set. The org's deploy.yml reads it to skip a deploy that changes
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 case "$PULUMI_STACK" in
-  dev) projects=(smoke) ;;
+  dev) projects=(smoke backend) ;;
   prod) projects=(cloud cluster) ;;
   *) echo "No projects deploy to stack '$PULUMI_STACK'." >&2; exit 1 ;;
 esac
