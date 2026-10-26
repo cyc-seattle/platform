@@ -1,24 +1,24 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as command from "@pulumi/command";
 import * as k8s from "@pulumi/kubernetes";
 import * as random from "@pulumi/random";
-import { WebService } from "@cyc-seattle/platform";
-import { appDatabase, appSecret, isDev, loadCluster, secretEnv, siblingSecret } from "../cluster";
-import { dnsRecord } from "../cloud";
-import { directusEnv } from "./workloads";
-import { queryGuardConfig } from "./community-rules";
+import { WebService } from "../../src/index.ts";
+import { appDatabase, appSecret, isDev, loadCluster, secretEnv, siblingSecret } from "../../src/app/cluster.ts";
+import { dnsRecord } from "../../src/app/cloud.ts";
+import { directusEnv } from "./workloads.ts";
+import { queryGuardConfig } from "./community-rules.ts";
 
-// Directus on the cluster (#231). Its uploads are ephemeral, as on the VM.
+// Directus on the cluster (cyc-seattle/isthmia#231). Its uploads are ephemeral, as on the VM.
 
 const image = "directus/directus:12.3.1";
 
 export interface DirectusOnCluster {
   baseUrl: string;
   adminPassword: pulumi.Output<string>;
-  /** Directus names it as the default role at start, before `crm` creates the role with this ID. */
+  /** Directus names it as the default role at start, before `backend` creates the role with this ID. */
   communityRoleId: pulumi.Output<string>;
   /** Resolves once Directus answers at `baseUrl`. */
   ready: pulumi.Resource;
@@ -57,7 +57,7 @@ export async function deployDirectus(
   const communityRoleId = existing
     ? existing.communityRoleId
     : new random.RandomUuid("directus-community-role-id").result;
-  // Set by hand in Secret Manager; dev's has its own name (#172). The Access variant needs only the
+  // Set by hand in Secret Manager; dev's has its own name (cyc-seattle/isthmia#172). The Access variant needs only the
   // accessor role, which is all deploy-dev holds.
   const licenseKey = licensed
     ? gcp.secretmanager
@@ -86,7 +86,7 @@ export async function deployDirectus(
           version: "1.0.0",
           "directus:extension": { type: "hook", path: "index.js", source: "index.js", host: "^12.0.0" },
         }),
-        "index.js": readFileSync(resolve(__dirname, "community-query-guard.js"), "utf8"),
+        "index.js": fs.readFileSync(path.resolve(import.meta.dirname, "community-query-guard.cjs"), "utf8"),
         "config.json": communityRoleId.apply((role) => JSON.stringify({ role, ...queryGuardConfig() })),
       },
     },
@@ -125,7 +125,7 @@ export async function deployDirectus(
     // The image's user is `node`, a name, which runAsNonRoot can't check.
     runAsUser: 1000,
     // A second replica would need Redis to share its schema and permission caches, so this keeps
-    // Autopilot from moving the one it has to consolidate nodes (#253).
+    // Autopilot from moving the one it has to consolidate nodes (cyc-seattle/isthmia#253).
     ...(config.getBoolean("safeToEvict") === false && {
       podAnnotations: { "cluster-autoscaler.kubernetes.io/safe-to-evict": "false" },
     }),

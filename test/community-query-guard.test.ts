@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { violation } from "../src/crm/community-query-guard.js";
-import { queryGuardConfig } from "../src/crm/community-rules.js";
+import { violation } from "../stacks/backend/community-query-guard.cjs";
+import { queryGuardConfig } from "../stacks/backend/community-rules.ts";
 
 const config = queryGuardConfig();
 

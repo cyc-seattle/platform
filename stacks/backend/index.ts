@@ -1,29 +1,27 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import * as yaml from "js-yaml";
+import { collectionsInSchema, discoverSchemaFiles, mergeSchemas } from "../../src/directus/client.ts";
 import {
   DirectusSchema,
   DirectusPermissionRule,
-  DirectusPermissionRuleArgs,
-  DirectusPermissionRuleFields,
+  type DirectusPermissionRuleArgs,
+  type DirectusPermissionRuleFields,
   DirectusPolicy,
-  collectionsInSchema,
-  discoverSchemaFiles,
-  mergeSchemas,
-} from "../directus";
+} from "../../src/directus/resources.ts";
 import * as random from "@pulumi/random";
-import { crmIdentities, type CrmIdentities } from "../directus/roles";
-import { prodDirectus } from "./prod-state";
-import { requireStringList } from "../config";
-import { communityPolicies } from "./community-rules";
-import { guardianRules } from "./guardian-rules";
-import { isDev, loadCluster } from "../cluster";
-import { deployDirectus } from "./cluster";
+import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
+import { prodDirectus } from "./prod-state.ts";
+import { requireStringList } from "../../src/app/config.ts";
+import { communityPolicies } from "./community-rules.ts";
+import { guardianRules } from "./guardian-rules.ts";
+import { isDev, loadCluster } from "../../src/app/cluster.ts";
+import { deployDirectus } from "./cluster.ts";
 
 // The CRM app's Directus schema and permission rules, matching docs/crm-schema.md, and the roles and
-// users they attach to (../directus/roles.ts). A second Directus-backed app would define its own
-// schema/rules in its own project, reusing the Directus* resources (../directus/).
+// users they attach to (src/directus/roles.ts). A second Directus-backed app would define its own
+// schema/rules in its own project, reusing the Directus* resources (src/directus/).
 
 const config = new pulumi.Config();
 
@@ -117,17 +115,12 @@ const {
 // The syncs read their Directus tokens through StackReferences.
 export const { clubspotSyncToken, gsuiteSyncToken } = identities;
 
-// Every package's own schema.yaml, merged into one snapshot and applied through a single
-// DirectusSchema resource below — not applied per package, since a canonical package's apply would
-// otherwise drop a field a provider package owns and hasn't re-applied yet. The file list itself
-// comes from disk (see discoverSchemaFiles), not a hand-maintained array here, so a new package's
-// schema.yaml is picked up automatically. Applied via Directus's own REST API (schema/diff +
-// schema/apply), not the CLI — see directus.ts's DirectusSchema for why that also sidesteps a
-// schema-cache-staleness gotcha the CLI path has.
-const schemaFiles = discoverSchemaFiles(resolve(__dirname, "../../../"));
-const loadedSchemas = schemaFiles.map(({ name, path }) => ({
+// Every schemas/<domain>.yaml, merged into one snapshot and applied once: a domain's own apply would
+// drop the extension fields another domain declares on its collections.
+const schemaFiles = discoverSchemaFiles(path.resolve(import.meta.dirname, "../../schemas"));
+const loadedSchemas = schemaFiles.map(({ name, path: file }) => ({
   name,
-  schema: yaml.load(readFileSync(path, "utf8")),
+  schema: yaml.load(fs.readFileSync(file, "utf8")),
 }));
 const schema = mergeSchemas(loadedSchemas);
 
@@ -137,17 +130,17 @@ const crmSchema = new DirectusSchema(
   { dependsOn: [app.then(({ ready }) => ready)] },
 );
 
-// Derived from schema.yaml itself (see #109) rather than hand-maintained, so it can't drift from
+// Derived from schema.yaml itself (see cyc-seattle/isthmia#109) rather than hand-maintained, so it can't drift from
 // what the schema actually declares.
 const allCollections = collectionsInSchema(schema);
 
-// Every table-backed collection packages/clubspot/schema.yaml declares - Clubspot is the editor of
+// Every table-backed collection schemas/clubspot.yaml declares - Clubspot is the editor of
 // that data, so Staff gets read there, not write. Derived the same way as allCollections, from the
 // clubspot package's own schema rather than the merged one, since the merged snapshot no longer
 // says which package owns a collection.
 const clubspotSchema = loadedSchemas.find(({ name }) => name === "clubspot")?.schema;
 if (clubspotSchema === undefined) {
-  throw new Error("crm/index.ts: expected a packages/clubspot/schema.yaml to derive Staff's read-only collections");
+  throw new Error("backend/index.ts: expected a schemas/clubspot.yaml to derive Staff's read-only collections");
 }
 const clubspotOwnedCollections = collectionsInSchema(clubspotSchema);
 
@@ -159,7 +152,7 @@ const clubspotOwnedCollections = collectionsInSchema(clubspotSchema);
  * class's program and a participant's match to a curated person - so each gets a field-scoped
  * update rule alongside its read.
  */
-export function staffPermissionRules(
+function staffPermissionRules(
   allCollections: string[],
   clubspotOwnedCollections: string[],
 ): DirectusPermissionRuleFields[] {
@@ -208,7 +201,7 @@ for (const rule of guardianRules) {
 }
 
 // Least privilege for the clubspot-sync machine user (crm-clubspot-sync in
-// ../directus/roles.ts): create/read/update on every collection it writes.
+// src/directus/roles.ts): create/read/update on every collection it writes.
 // `programs` is deliberately absent: a program is durable and staff-created, and Clubspot has no
 // durable program id to derive one from. Withholding the grant makes that a rule the permission
 // system enforces, not just one the mapping code happens to follow.
@@ -269,7 +262,7 @@ permissionRule(
 );
 
 // program_role_assignments, event_staff, and google_group_memberships are owned elsewhere - the
-// merge executor only repoints person_id off a duplicate onto its keeper (#133).
+// merge executor only repoints person_id off a duplicate onto its keeper (cyc-seattle/isthmia#133).
 for (const collection of ["program_role_assignments", "event_staff", "google_group_memberships"]) {
   for (const action of ["read", "update"] as const) {
     permissionRule(
@@ -281,7 +274,7 @@ for (const collection of ["program_role_assignments", "event_staff", "google_gro
 }
 
 // A person merge folds a duplicate's own rows onto its keeper, then deletes the duplicate - the
-// only deletes clubspot-sync's policy grants (#133).
+// only deletes clubspot-sync's policy grants (cyc-seattle/isthmia#133).
 for (const collection of ["people", "contacts", "contact_points", "medical_profiles"]) {
   permissionRule(
     `crm-clubspot-sync-${collection}-delete`,
@@ -291,7 +284,7 @@ for (const collection of ["people", "contacts", "contact_points", "medical_profi
 }
 
 // Least privilege for the gsuite-sync machine user (crm-gsuite-sync in
-// ../directus/roles.ts): read on every collection it maps from into Google Groups.
+// src/directus/roles.ts): read on every collection it maps from into Google Groups.
 const gsuiteSyncReadCollections = [
   "people",
   "contacts",
@@ -334,7 +327,7 @@ permissionRule(
 );
 
 // The only collections gsuite-sync writes: its own run queue, the audit findings it raises, the
-// groups discovery mirrors out of Workspace, and the memberships it records (#265). No delete: a
+// groups discovery mirrors out of Workspace, and the memberships it records (cyc-seattle/isthmia#265). No delete: a
 // group that vanishes from Workspace is archived, and only staff delete a membership row.
 for (const collection of ["sync_tasks", "audit_findings", "google_groups", "google_group_memberships"]) {
   for (const action of ["create", "read", "update"] as const) {
@@ -346,7 +339,7 @@ for (const collection of ["sync_tasks", "audit_findings", "google_groups", "goog
   }
 }
 
-// The Community role's policies (../directus/roles.ts declares the role itself),
+// The Community role's policies (src/directus/roles.ts declares the role itself),
 // built from the plain data in ./community-rules.ts so the integration test applies exactly what
 // ships here.
 for (const policyData of communityPolicies) {

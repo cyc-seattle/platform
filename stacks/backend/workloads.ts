@@ -27,7 +27,7 @@ export function directusEnv({ domain, adminEmail, dbHost, communityRoleId, poolM
     DB_POOL__MAX: String(poolMax),
     ADMIN_EMAIL: adminEmail,
     PUBLIC_URL: `https://directus.${domain}`,
-    // The built-in admin is the break-glass login if Authentik is down (#166).
+    // The built-in admin is the break-glass login if Authentik is down (cyc-seattle/isthmia#166).
     AUTH_PROVIDERS: "authentik",
     AUTH_AUTHENTIK_DRIVER: "openid",
     AUTH_AUTHENTIK_CLIENT_ID: "directus",
@@ -41,7 +41,7 @@ export function directusEnv({ domain, adminEmail, dbHost, communityRoleId, poolM
     CORS_ENABLED: "true",
     CORS_ORIGIN: site,
     CORS_CREDENTIALS: "true",
-    // An admin still turns MCP on in Settings -> AI (#152).
+    // An admin still turns MCP on in Settings -> AI (cyc-seattle/isthmia#152).
     MCP_OAUTH_ENABLED: "true",
     MCP_OAUTH_CIMD_ENABLED: "true",
   };

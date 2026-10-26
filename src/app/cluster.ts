@@ -1,12 +1,12 @@
-import { execFileSync } from "node:child_process";
+import childProcess from "node:child_process";
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as k8s from "@pulumi/kubernetes";
 import * as docker from "@pulumi/docker-build";
 import * as random from "@pulumi/random";
-import { clusterProvider, readPlatformOutputs, type PlatformOutputs } from "@cyc-seattle/platform";
+import { clusterProvider, readPlatformOutputs, type PlatformOutputs } from "../index.ts";
 
-// What every project that runs on the cluster shares (#231).
+// What every project that runs on the cluster shares (cyc-seattle/isthmia#231).
 
 /** Mailpit and the fakes exist only in dev. */
 export const isDev = pulumi.getStack() === "dev";
@@ -28,7 +28,7 @@ export function loadCluster(): Promise<Cluster> {
 const siblings = new Map<string, pulumi.StackReference>();
 
 /**
- * A secret output of another isthmia project's stack in this environment. A preview tolerates it
+ * A secret output of another project's stack in this environment. A preview tolerates it
  * missing, since the project before this one may not have deployed yet; an update requires it.
  */
 export function siblingSecret(project: string, output: string): pulumi.Output<string> {
@@ -86,10 +86,10 @@ export function databaseUri(host: string, name: string, password: string): strin
 /**
  * A database and its user, both `name`, on the environment's Cloud SQL instance. In dev, platform
  * creates them and keeps the password in Secret Manager: Cloud SQL ignores IAM conditions on user
- * and database calls, so deploy-dev can't make them (#231). Elsewhere this project creates them
+ * and database calls, so deploy-dev can't make them (cyc-seattle/isthmia#231). Elsewhere this project creates them
  * through the Admin API, so no deploy needs a route to the private IP. Users the API creates belong
  * to `cloudsqlsuperuser`, which owns the databases it creates, so the app can create its tables.
- * Both outlive `pulumi destroy`: Directus's license activation is tied to its database (#172). With
+ * Both outlive `pulumi destroy`: Directus's license activation is tied to its database (cyc-seattle/isthmia#172). With
  * `existingPassword`, the database and user exist already, and this writes only the Secret.
  */
 export function appDatabase(cluster: Cluster, name: string, existingPassword?: pulumi.Output<string>): AppDatabase {
@@ -121,7 +121,7 @@ export function appDatabase(cluster: Cluster, name: string, existingPassword?: p
 
 /** The commit being deployed. Images are tagged with it. */
 export function commitSha(): string {
-  return execFileSync("git", ["rev-parse", "HEAD"], { cwd: __dirname, encoding: "utf8" }).trim();
+  return childProcess.execFileSync("git", ["rev-parse", "HEAD"], { cwd: import.meta.dirname, encoding: "utf8" }).trim();
 }
 
 export interface AppImageArgs {
@@ -144,7 +144,7 @@ export function appImage({ platform }: Cluster, name: string, args: AppImageArgs
     ...(args.target !== undefined && { target: args.target }),
     platforms: ["linux/amd64"],
     push: true,
-    // Defaults to true: every preview would otherwise build the image (#114).
+    // Defaults to true: every preview would otherwise build the image (cyc-seattle/isthmia#114).
     buildOnPreview: false,
     registries: [
       {
@@ -158,7 +158,7 @@ export function appImage({ platform }: Cluster, name: string, args: AppImageArgs
 
 /**
  * The image `appImage` builds, by digest. Dev builds and pushes it. Elsewhere it's looked up by the
- * commit's tag, so prod runs what dev ran (#231).
+ * commit's tag, so prod runs what dev ran (cyc-seattle/isthmia#231).
  */
 export function deployedImage(cluster: Cluster, name: string, args: AppImageArgs): pulumi.Output<string> {
   if (isDev) {

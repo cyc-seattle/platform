@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 import * as yaml from "js-yaml";
 import { describe, it, expect } from "vitest";
-import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.js";
-import { communityPolicies } from "../src/crm/community-rules.js";
-import { guardianRules } from "../src/crm/guardian-rules.js";
+import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.ts";
+import { communityPolicies } from "../stacks/backend/community-rules.ts";
+import { guardianRules } from "../stacks/backend/guardian-rules.ts";
 
 interface Snapshot {
   fields: { collection: string; field: string }[];
@@ -17,9 +17,9 @@ interface Snapshot {
 }
 
 const schema = mergeSchemas(
-  discoverSchemaFiles(resolve(__dirname, "../../")).map(({ name, path }) => ({
+  discoverSchemaFiles(path.join(import.meta.dirname, "../schemas")).map(({ name, path: file }) => ({
     name,
-    schema: yaml.load(readFileSync(path, "utf8")),
+    schema: yaml.load(fs.readFileSync(file, "utf8")),
   })),
 ) as Snapshot;
 

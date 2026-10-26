@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
 
-// Prod's Directus on the cluster keeps what it had on the VM (#231). on-cluster.test.ts covers dev,
-// and on-cluster-prod.test.ts prod's Authentik and portal.
+// Prod's Directus on the cluster keeps what it had on the VM (cyc-seattle/isthmia#231).
+// backend-dev.test.ts covers dev.
 
 const platform = {
   project: "test-project",
@@ -60,15 +60,14 @@ pulumi.runtime.setMocks(
       return inputs;
     },
   },
-  "isthmia",
+  "backend",
   "prod",
   false,
 );
 pulumi.runtime.setConfig("gcp:project", "test-project");
-// The mocks name the project `isthmia`, so its config is crm's.
-pulumi.runtime.setConfig("isthmia:directusCpu", "500m");
-pulumi.runtime.setConfig("isthmia:directusMemory", "1Gi");
-pulumi.runtime.setConfig("isthmia:safeToEvict", "false");
+pulumi.runtime.setConfig("backend:directusCpu", "500m");
+pulumi.runtime.setConfig("backend:directusMemory", "1Gi");
+pulumi.runtime.setConfig("backend:safeToEvict", "false");
 
 function find(type: string, name: string): Registered {
   const found = resources.find((r) => r.type === type && r.name === name);
@@ -89,8 +88,8 @@ function stringData(name: string): Record<string, unknown> {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 
 beforeAll(async () => {
-  const { prodDirectus } = await import("../src/crm/prod-state.js");
-  const { deployDirectus } = await import("../src/crm/cluster.js");
+  const { prodDirectus } = await import("../stacks/backend/prod-state.ts");
+  const { deployDirectus } = await import("../stacks/backend/cluster.ts");
   const prod = prodDirectus({
     adminEmail: "admin@example.com",
     admins: [],

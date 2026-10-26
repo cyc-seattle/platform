@@ -1,12 +1,12 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { crmIdentities } from "../directus/roles";
-import { Secret, randomSecret } from "../secret";
-import { prodDatabase } from "../cloud";
+import { crmIdentities } from "../../src/directus/roles.ts";
+import { Secret, randomSecret } from "../../src/app/secret.ts";
+import { prodDatabase } from "../../src/app/cloud.ts";
 
 // Prod Directus's generated secrets, database, record, roles, and users, which moved here from
-// `infrastructure` (#231). They keep their names and values on the cluster: Directus's license
-// activation is tied to its database and URL (#172).
+// `infrastructure` (cyc-seattle/isthmia#231). They keep their names and values on the cluster: Directus's license
+// activation is tied to its database and URL (cyc-seattle/isthmia#172).
 
 export interface ProdDirectusArgs {
   adminEmail: string;

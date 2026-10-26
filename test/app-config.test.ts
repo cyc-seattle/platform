@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
 
-let config: typeof import("../src/config.js");
+let config: typeof import("../src/app/config.ts");
 
 beforeAll(async () => {
   await pulumi.runtime.setMocks(
@@ -16,7 +16,7 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("example:admins", JSON.stringify(["a@example.com", "b@example.com"]));
   pulumi.runtime.setConfig("example:empty", "[]");
   // The module reads gcp config on import, so it loads only after the config is set.
-  config = await import("../src/config.js");
+  config = await import("../src/app/config.ts");
 });
 
 describe("location and projectId", () => {

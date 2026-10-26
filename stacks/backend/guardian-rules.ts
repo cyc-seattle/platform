@@ -1,4 +1,4 @@
-import type { PermissionRuleInput } from "../directus/client";
+import type { PermissionRuleInput } from "../../src/directus/client.ts";
 
 // Plain data (no `@pulumi/*` import), so a test can check each filter against the schema.
 

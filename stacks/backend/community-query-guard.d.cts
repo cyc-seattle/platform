@@ -1,4 +1,4 @@
-import type { QueryGuardConfig } from "./community-rules";
+import type { QueryGuardConfig } from "./community-rules.ts";
 
 interface Relation {
   collection: string;

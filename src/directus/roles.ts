@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
-import { DirectusAdminAccessGrant, DirectusRole, DirectusUser } from "./resources";
+import { DirectusAdminAccessGrant, DirectusRole, DirectusUser } from "./resources.ts";
 
-// The CRM's roles and the users assigned to them. `crm` declares them for prod's existing Directus
+// The CRM's roles and the users assigned to them. `backend` declares them for prod's existing Directus
 // and for dev's, so both call this.
 
 export interface CrmIdentityArgs {
@@ -76,9 +76,9 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     { dependsOn: readyForApiCalls },
   );
 
-  // Families and other signed-in community members (#166) - public registration through the
+  // Families and other signed-in community members (cyc-seattle/isthmia#166) - public registration through the
   // `authentik` OIDC provider (Directus's AUTH_AUTHENTIK_DEFAULT_ROLE_ID), with no login to the Data
-  // Studio. Every grant comes from the three policies in ../crm/community-rules.ts, attached
+  // Studio. Every grant comes from the three policies in stacks/backend/community-rules.ts, attached
   // separately (as DirectusPolicy, not this role's own bundled one) since a permission row is keyed
   // on (policy, collection, action).
   const communityRole = new DirectusRole(
@@ -98,7 +98,7 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
 
   // Staff accounts with admin access, signed in through Authentik with no password.
   //
-  // Via `authentik` (#166): a Directus username is a unique email, and a staff member who's also a
+  // Via `authentik` (cyc-seattle/isthmia#166): a Directus username is a unique email, and a staff member who's also a
   // parent would collide with the Community account the `authentik` provider's public registration
   // creates for them. Directus has no second OIDC provider to fall back to - the built-in
   // ADMIN_EMAIL/ADMIN_PASSWORD account is the break-glass login if Authentik is down.
@@ -126,8 +126,8 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
   }
 
   // Least privilege for the clubspot-sync job: no Data Studio access, and (per its permission rules
-  // in ../crm/index.ts) write access to only the collections it syncs. The role is collection-agnostic
-  // identity; the rules need the schema applied first, so they live in ../crm/.
+  // in stacks/backend/index.ts) write access to only the collections it syncs. The role is collection-agnostic
+  // identity; the rules need the schema applied first, so they live in stacks/backend/.
   const clubspotSyncRole = new DirectusRole(
     "crm-clubspot-sync",
     {
@@ -151,7 +151,7 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
   });
 
   // Same shape as clubspot-sync above, for the gsuite-sync job: no Data Studio access, and (per its
-  // permission rules in ../crm/index.ts) read on what it maps from into Google Groups plus write on
+  // permission rules in stacks/backend/index.ts) read on what it maps from into Google Groups plus write on
   // sync_tasks/audit_findings only.
   const gsuiteSyncRole = new DirectusRole(
     "crm-gsuite-sync",

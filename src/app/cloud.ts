@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 
 // What a project owns in platform's `cloud` stack: its A records, and prod's databases. Prod's
-// resources moved here from the retired `infrastructure` project with `pulumi state move` (#231), so
+// resources moved here from the retired `infrastructure` project with `pulumi state move` (cyc-seattle/isthmia#231), so
 // their names and inputs match what it declared.
 
 let cloud: pulumi.StackReference | undefined;
@@ -31,8 +31,8 @@ export function dnsRecord(
 /**
  * A prod database and its user, `name`, on platform's Cloud SQL instance, through the Admin API. Both
  * outlive `pulumi destroy`: Postgres won't let the API drop a role that holds grants, and Directus's
- * license activation is tied to its database (#172). The database was a `postgresql.Database`, and
- * was imported as this one, so its tables were never touched (#231).
+ * license activation is tied to its database (cyc-seattle/isthmia#172). The database was a `postgresql.Database`, and
+ * was imported as this one, so its tables were never touched (cyc-seattle/isthmia#231).
  */
 export function prodDatabase(name: string, password: pulumi.Input<string>): gcp.sql.Database {
   const instance = cloudOutput("postgresInstanceName");

@@ -47,6 +47,7 @@
     "@amiceli/vitest-cucumber": "7.0.0",
     "@cyc-seattle/ts-config": "^0.1.2",
     "@pulumi/command": "1.2.1",
+    "@pulumi/docker-build": "0.0.22",
     "@pulumi/gcp": "10.2.0",
     "@pulumi/github": "6.15.0",
     "@pulumi/kubernetes": "4.34.2",

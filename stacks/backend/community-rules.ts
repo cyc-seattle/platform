@@ -1,6 +1,6 @@
-import type { PermissionAction } from "../directus/client";
+import type { PermissionAction } from "../../src/directus/client.ts";
 
-// Plain data (no `@pulumi/*` import) describing the Community role's policies (#166) - a
+// Plain data (no `@pulumi/*` import) describing the Community role's policies (cyc-seattle/isthmia#166) - a
 // family or other signed-in community member reading their own teammates. `./index.ts` turns each
 // policy into a `DirectusPolicy` plus its `DirectusPermissionRule` rows, and
 // features/community-rules.feature checks them on dev. See docs/crm-schema.md's Community section
@@ -9,7 +9,7 @@ import type { PermissionAction } from "../directus/client";
 type Filter = Record<string, unknown>;
 
 /** `$CURRENT_USER.email`, compared against `people.email`. Authentik's scope mapping lowercases the
- * `email` claim and clubspot-sync stores `people.email` normalized the same way (#166), so both
+ * `email` claim and clubspot-sync stores `people.email` normalized the same way (cyc-seattle/isthmia#166), so both
  * sides of every filter below line up with no separate login column. */
 const ME: Filter = { email: { _eq: "$CURRENT_USER.email" } };
 
@@ -44,7 +44,7 @@ const ACTS_FOR: Filter = { _or: [ME, GUARDIAN_OF] };
 const FAMILY_SELF: Filter = { _or: [GUARDIAN_OF, { _and: [ME, ADULT] }] };
 
 /** This season's registration for someone the signed-in user acts for - the `family` policy's read
- * and write target for the `share_contact` toggle (#166). */
+ * and write target for the `share_contact` toggle (cyc-seattle/isthmia#166). */
 const WRITABLE: Filter = {
   _and: [{ camp_id: ACTIVE_CAMP }, { participant_id: { person_id: FAMILY_SELF } }],
 };
@@ -85,7 +85,7 @@ const TEAMMATE: Filter = { participant_links: { registrations: { registration_en
 
 /** A registration whose own `share_contact` answer is yes, scoped to the entries that make it
  * visible to a teammate's viewer (`TEAM_ENTRY`) - the opt-in lives on the registration because
- * Clubspot asks the question once per season's signup, not once per person (#166). */
+ * Clubspot asks the question once per season's signup, not once per person (cyc-seattle/isthmia#166). */
 const OPTED_IN_REGISTRATION: Filter = {
   _and: [{ share_contact: { _eq: true } }, { registration_entries: TEAM_ENTRY }],
 };
@@ -261,7 +261,7 @@ export const communityPolicies: CommunityPolicyData[] = [
         permissions: FAMILY_SELF,
       },
       // The viewer's own guardian links to their own children, with no opt-in required - lets the
-      // portal tell a writable child apart from a writable self (#166 step 2).
+      // portal tell a writable child apart from a writable self (cyc-seattle/isthmia#166 step 2).
       {
         collection: "contacts",
         action: "read",

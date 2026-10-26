@@ -12,11 +12,11 @@ import * as random from "@pulumi/random";
  * generates and sets the value.
  */
 export class Secret extends gcp.secretmanager.Secret {
-  constructor(
-    protected readonly plainId: string,
-    opts?: pulumi.CustomResourceOptions,
-  ) {
+  protected readonly plainId: string;
+
+  constructor(plainId: string, opts?: pulumi.CustomResourceOptions) {
     super(plainId, { secretId: plainId, replication: { auto: {} } }, opts);
+    this.plainId = plainId;
   }
 
   /**
@@ -31,7 +31,7 @@ export class Secret extends gcp.secretmanager.Secret {
 }
 
 /**
- * Lets a member read a secret by its ID, which may be another project's (#231). `granteeLabel` names
+ * Lets a member read a secret by its ID, which may be another project's (cyc-seattle/isthmia#231). `granteeLabel` names
  * the resource, since `member` may be an `Output`.
  */
 export function secretAccessor(
@@ -50,7 +50,7 @@ export function secretAccessor(
     },
     // A SecretIamMember is read-modify-write against one shared IAM policy, so on the default
     // create-then-delete replacement the delete reads back the state the create just wrote and
-    // strips the member again - leaving an empty policy that Pulumi believes it created (#153:
+    // strips the member again - leaving an empty policy that Pulumi believes it created (cyc-seattle/isthmia#153:
     // every substrate-runner grant vanished this way, and no later `up` saw a diff to fix).
     { deleteBeforeReplace: true },
   );

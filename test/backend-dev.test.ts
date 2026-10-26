@@ -47,7 +47,7 @@ pulumi.runtime.setMocks(
       return inputs;
     },
   },
-  "isthmia",
+  "backend",
   "dev",
   false,
 );
@@ -80,52 +80,9 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 
 beforeAll(async () => {
   // Imported after setMocks, since the modules read the stack name when they load.
-  const { deployAuthentik } = await import("../src/authentik/cluster.js");
-  const { deployDirectus } = await import("../src/crm/cluster.js");
-  await deployAuthentik();
+  const { deployDirectus } = await import("../stacks/backend/cluster.ts");
   await deployDirectus("admin@example.com", true);
   await settle();
-});
-
-describe("Authentik on the cluster", () => {
-  it("uses the database platform made in dev, creating none of its own", () => {
-    expect(resources.filter((r) => r.type.startsWith("gcp:sql/"))).toEqual([]);
-    expect(secretReads()).toContain("dev-db-authentik-password");
-    // The mock passes secret values through wrapped, as `{ <signature>, value }`.
-    expect(find("kubernetes:core/v1:Secret", "authentik-db").inputs["stringData"].value).toMatchObject({
-      host: "10.1.2.3",
-      database: "authentik",
-      username: "authentik",
-      uri: "postgres://authentik:pa%24%24word@10.1.2.3:5432/authentik",
-    });
-  });
-
-  it("runs the server and the worker, sending mail to Mailpit in dev", () => {
-    expect(container("authentik-server").args).toEqual(["server"]);
-    expect(container("authentik-worker").args).toEqual(["worker"]);
-    expect(envNames("authentik-worker")).toMatchObject({
-      AUTHENTIK_POSTGRESQL__HOST: "10.1.2.3",
-      AUTHENTIK_EMAIL__HOST: "mailpit",
-      AUTHENTIK_EMAIL__PORT: "1025",
-    });
-    expect(container("mailpit").image).toMatch(/^axllent\/mailpit:v/);
-  });
-
-  it("runs one server process and one worker thread, to fit dev's connections", () => {
-    expect(envNames("authentik-server")).toMatchObject({ AUTHENTIK_WEB__WORKERS: "1" });
-    expect(envNames("authentik-worker")).toMatchObject({ AUTHENTIK_WORKER__THREADS: "1" });
-  });
-
-  it("mounts the email templates where the email stage looks", () => {
-    const mounts = container("authentik-worker").volumeMounts.map((m: { mountPath: string }) => m.mountPath);
-    expect(mounts).toEqual(expect.arrayContaining(["/templates/email", "/dev/shm"]));
-  });
-
-  it("serves login.<domain> with the redirects beside it", () => {
-    const route = find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "authentik-server");
-    expect(route.inputs["spec"].hostnames).toEqual(["login.dev.example.com"]);
-    expect(find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "authentik-login-redirects")).toBeDefined();
-  });
 });
 
 describe("Directus on the cluster", () => {
@@ -146,8 +103,8 @@ describe("Directus on the cluster", () => {
   });
 
   it("leaves dev's Spot pods movable", () => {
-    for (const name of ["directus", "authentik-server"]) {
-      expect(find("kubernetes:apps/v1:Deployment", name).inputs["spec"].template.metadata.annotations).toBeUndefined();
-    }
+    expect(
+      find("kubernetes:apps/v1:Deployment", "directus").inputs["spec"].template.metadata.annotations,
+    ).toBeUndefined();
   });
 });
