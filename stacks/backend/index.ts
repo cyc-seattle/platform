@@ -19,6 +19,8 @@ import { communityPolicies } from "./community-rules.ts";
 import { guardianRules } from "./guardian-rules.ts";
 import { isDev, loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
+import { deployClubspotSync } from "./clubspot-sync.ts";
+import { deployGsuiteSync } from "./gsuite-sync.ts";
 
 // The CRM app's Directus schema and permission rules, matching docs/crm-schema.md, and the roles and
 // users they attach to (src/directus/roles.ts). A second Directus-backed app would define its own
@@ -113,8 +115,12 @@ const {
   communityRoleId,
 } = identities;
 
-// The syncs read their Directus tokens through StackReferences.
-export const { clubspotSyncToken, gsuiteSyncToken } = identities;
+// The syncs' CronJobs take their machine users' tokens straight into their Secrets.
+const { clubspotSyncToken, gsuiteSyncToken } = identities;
+void loadCluster().then((cluster) => {
+  deployClubspotSync(cluster, clubspotSyncToken);
+  deployGsuiteSync(cluster, gsuiteSyncToken);
+});
 
 // Authentik registers Directus's client from these (cyc-seattle/workplace#6 step 5).
 export const directusOidcClientId = pulumi.output(app.then(({ oidcClientId }) => oidcClientId));

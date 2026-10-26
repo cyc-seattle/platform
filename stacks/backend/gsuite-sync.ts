@@ -1,24 +1,25 @@
 import * as pulumi from "@pulumi/pulumi";
-import { ScheduledJob, Workload } from "@cyc-seattle/platform";
-import { appSecret, deployedImage, isDev, loadCluster, siblingSecret } from "../cluster";
-import { enableService } from "../services";
+import { ScheduledJob, Workload } from "../../src/index.ts";
+import { appSecret, type Cluster, deployedImage, isDev } from "../../src/app/cluster.ts";
+import { enableService } from "../../src/services.ts";
 
-// gsuite-sync on the cluster (#231): an hourly CronJob that reaches Directus inside the namespace.
+// gsuite-sync on the cluster (cyc-seattle/isthmia#231): an hourly CronJob that reaches Directus inside the namespace.
 // In dev it syncs into the Workspace fake, which keeps its state in memory and ignores auth. In prod
 // it calls the Workspace APIs as gsuite-sync@, through Workload Identity.
 
 // Renovate bumps it with @cyc-seattle/gsuite-sdk, which publishes the fake.
 const fakeImage = "ghcr.io/cyc-seattle/workspace-fake:0.3.0";
 
-export = async () => {
+/** The CronJob, its Secret and image, and in dev, the Workspace fake. */
+export function deployGsuiteSync(cluster: Cluster, directusToken: pulumi.Input<string>): void {
   if (!isDev) {
     // The Directory API, for group membership, nesting, and roles, and the Groups Settings API.
     // Dev's sync calls the Workspace fake instead.
     enableService("admin.googleapis.com");
     enableService("groupssettings.googleapis.com");
   }
-  const config = new pulumi.Config();
-  const cluster = await loadCluster();
+  // Its keys kept their names when the project folded into backend (cyc-seattle/workplace#6).
+  const config = new pulumi.Config("gsuite-sync");
   const { platform, provider } = cluster;
 
   if (isDev) {
@@ -34,10 +35,10 @@ export = async () => {
   }
 
   const secret = appSecret(cluster, "gsuite-sync", {
-    DIRECTUS_TOKEN: siblingSecret("crm", "gsuiteSyncToken"),
+    DIRECTUS_TOKEN: directusToken,
   });
 
-  const image = deployedImage(cluster, "gsuite-sync", { context: "../../../..", target: "gsuite-sync" });
+  const image = deployedImage(cluster, "gsuite-sync", { context: "../..", target: "gsuite-sync" });
 
   new ScheduledJob("gsuite-sync", {
     platform,
@@ -46,6 +47,8 @@ export = async () => {
     // Half past, so it doesn't run alongside clubspot-sync, and passes on the hour's changes within
     // half an hour.
     schedule: "30 * * * *",
+    // As clubspot-sync's: dev runs only the Jobs made from it (cyc-seattle/isthmia#271).
+    ...(isDev && { suspend: true }),
     requests: { cpu: "250m", memory: "512Mi" },
     env: [
       { name: "DIRECTUS_URL", value: "http://directus" },
@@ -55,13 +58,11 @@ export = async () => {
     ],
     envFrom: [{ secretRef: { name: secret.metadata.name, optional: false } }],
     // gsuite-sync@ holds the Groups Administrator role in Workspace. platform's bootstrap lets this
-    // ServiceAccount act as it (#231).
+    // ServiceAccount act as it (cyc-seattle/isthmia#231).
     ...(!isDev && {
       serviceAccountAnnotations: {
         "iam.gke.io/gcp-service-account": `gsuite-sync@${platform.project}.iam.gserviceaccount.com`,
       },
     }),
   });
-
-  return {};
-};
+}

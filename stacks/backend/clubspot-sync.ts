@@ -1,36 +1,37 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { ScheduledJob, Workload } from "@cyc-seattle/platform";
-import { appDatabase, appSecret, type Cluster, deployedImage, isDev, loadCluster, siblingSecret } from "../cluster";
-import { clubspotFakeDatabaseUri, clubspotFakeEnv } from "./fake";
-import { Secret } from "../secret";
+import { ScheduledJob, Workload } from "../../src/index.ts";
+import { appDatabase, appSecret, type Cluster, deployedImage, isDev } from "../../src/app/cluster.ts";
+import { Secret } from "../../src/app/secret.ts";
+import { clubspotFakeDatabaseUri, clubspotFakeEnv } from "./clubspot-fake.ts";
 
-// clubspot-sync on the cluster (#231): an hourly CronJob that reaches Directus inside the namespace.
+// clubspot-sync on the cluster (cyc-seattle/isthmia#231): an hourly CronJob that reaches Directus inside the namespace.
 // In dev it syncs from the Clubspot fake, on its own database on the dev instance. In prod it syncs
 // from Clubspot, with the login set by hand in Secret Manager.
 
 // Renovate bumps it with @cyc-seattle/clubspot-sdk, which publishes the fake.
 const fakeImage = "ghcr.io/cyc-seattle/clubspot-fake:0.3.0";
 
-export = async () => {
+/** The CronJob, its Secret and image, and in dev, the Clubspot fake. */
+export function deployClubspotSync(cluster: Cluster, directusToken: pulumi.Input<string>): void {
   if (!isDev) {
     // Set by hand. The deploy reads them into the CronJob's Secret.
     new Secret("clubspot-username");
     new Secret("clubspot-password");
   }
-  const config = new pulumi.Config();
-  const cluster = await loadCluster();
+  // Its keys kept their names when the project folded into backend (cyc-seattle/workplace#6).
+  const config = new pulumi.Config("clubspot-sync");
   const { platform, provider } = cluster;
 
   const clubspot = isDev ? clubspotFake(cluster, config) : clubspotLogin();
 
   const secret = appSecret(cluster, "clubspot-sync", {
-    DIRECTUS_TOKEN: siblingSecret("crm", "clubspotSyncToken"),
+    DIRECTUS_TOKEN: directusToken,
     CLUBSPOT_EMAIL: clubspot.email,
     CLUBSPOT_PASSWORD: clubspot.password,
   });
 
-  const image = deployedImage(cluster, "clubspot-sync", { context: "../../../..", target: "clubspot-sync" });
+  const image = deployedImage(cluster, "clubspot-sync", { context: "../..", target: "clubspot-sync" });
 
   new ScheduledJob("clubspot-sync", {
     platform,
@@ -39,6 +40,9 @@ export = async () => {
     // Hourly matches BASE_INTERVAL_MS in backoff.ts, so a camp that just wrote something is due again
     // on the very next run.
     schedule: "0 * * * *",
+    // Dev runs only the Jobs the features and `mise run reset` make from it, so a scheduled run never
+    // collides with a test's (cyc-seattle/isthmia#271).
+    ...(isDev && { suspend: true }),
     requests: { cpu: "250m", memory: "512Mi" },
     env: [
       ...(clubspot.serverUrl === undefined ? [] : [{ name: "CLUBSPOT_SERVER_URL", value: clubspot.serverUrl }]),
@@ -47,9 +51,7 @@ export = async () => {
     ],
     envFrom: [{ secretRef: { name: secret.metadata.name, optional: false } }],
   });
-
-  return {};
-};
+}
 
 interface ClubspotLogin {
   /** Unset for Clubspot's own server. */

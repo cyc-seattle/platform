@@ -1,6 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
 
+// The syncs in backend's prod stack. backend-syncs-dev.test.ts covers dev.
+
 const platform = {
   project: "test-project",
   projectNumber: "123",
@@ -29,11 +31,7 @@ pulumi.runtime.setMocks(
   {
     newResource: ({ type, name, inputs }) => {
       resources.push({ type, name, inputs });
-      const state =
-        type === "pulumi:pulumi:StackReference"
-          ? { ...inputs, outputs: { clubspotSyncToken: "clubspot-token", gsuiteSyncToken: "gsuite-token" } }
-          : inputs;
-      return { id: `${name}-id`, state };
+      return { id: `${name}-id`, state: inputs };
     },
     call: ({ token, inputs }) => {
       calls.push({ token, inputs });
@@ -50,15 +48,14 @@ pulumi.runtime.setMocks(
       return inputs;
     },
   },
-  "isthmia",
+  "backend",
   "prod",
   false,
 );
 pulumi.runtime.setConfig("gcp:project", "test-project");
-// The mocks name the project `isthmia`, so its config is both syncs'.
-pulumi.runtime.setConfig("isthmia:clubId", "club01");
-pulumi.runtime.setConfig("isthmia:groupOwners", "owner@example.com");
-pulumi.runtime.setConfig("isthmia:workspaceCustomer", "C123");
+pulumi.runtime.setConfig("clubspot-sync:clubId", "club01");
+pulumi.runtime.setConfig("gsuite-sync:groupOwners", "owner@example.com");
+pulumi.runtime.setConfig("gsuite-sync:workspaceCustomer", "C123");
 
 function find(type: string, name: string): Registered {
   const found = resources.find((r) => r.type === type && r.name === name);
@@ -88,13 +85,13 @@ function stringData(secret: string): Record<string, unknown> {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 
 beforeAll(async () => {
-  // Imported after setMocks, since the modules read the stack name when they load. `export =` comes
-  // through as the default export.
-  type Program = { default: () => Promise<unknown> };
-  const { default: clubspotSync } = (await import("../src/clubspot-sync/index.js")) as unknown as Program;
-  const { default: gsuiteSync } = (await import("../src/gsuite-sync/index.js")) as unknown as Program;
-  await clubspotSync();
-  await gsuiteSync();
+  // Imported after setMocks, since the modules read the stack name when they load.
+  const { loadCluster } = await import("../src/app/cluster.ts");
+  const { deployClubspotSync } = await import("../stacks/backend/clubspot-sync.ts");
+  const { deployGsuiteSync } = await import("../stacks/backend/gsuite-sync.ts");
+  const cluster = await loadCluster();
+  deployClubspotSync(cluster, "clubspot-token");
+  deployGsuiteSync(cluster, "gsuite-token");
   await settle();
 });
 
@@ -115,6 +112,11 @@ describe("The syncs on prod's cluster", () => {
     expect(cronJob("gsuite-sync")).toMatchObject({ schedule: "30 * * * *", concurrencyPolicy: "Forbid" });
   });
 
+  it("aren't suspended", () => {
+    expect(cronJob("clubspot-sync")).not.toHaveProperty("suspend");
+    expect(cronJob("gsuite-sync")).not.toHaveProperty("suspend");
+  });
+
   it("run on regular capacity, not Spot", () => {
     expect(cronJob("clubspot-sync").jobTemplate.spec.template.spec.nodeSelector).toEqual({});
     expect(cronJob("gsuite-sync").jobTemplate.spec.template.spec.nodeSelector).toEqual({});
@@ -131,7 +133,7 @@ describe("clubspot-sync on prod's cluster", () => {
     expect(env("clubspot-sync")).toEqual({ CLUBSPOT_CLUB_ID: "club01", DIRECTUS_URL: "http://directus" });
   });
 
-  it("reads the Clubspot login from Secret Manager, and its token from crm", () => {
+  it("reads the Clubspot login from Secret Manager, and takes its Directus token", () => {
     expect(stringData("clubspot-sync")).toEqual({
       DIRECTUS_TOKEN: "clubspot-token",
       CLUBSPOT_EMAIL: "clubspot-username-value",
@@ -156,7 +158,7 @@ describe("gsuite-sync on prod's cluster", () => {
     expect(find("kubernetes:core/v1:ServiceAccount", "clubspot-sync").inputs["metadata"].annotations).toBeUndefined();
   });
 
-  it("reads its token from crm", () => {
+  it("takes its Directus token", () => {
     expect(stringData("gsuite-sync")).toEqual({ DIRECTUS_TOKEN: "gsuite-token" });
   });
 });
