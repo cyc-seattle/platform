@@ -11,6 +11,11 @@ export interface ScheduledJobArgs extends PodArgs {
   activeDeadlineSeconds?: number;
   /** How many times a failed run retries. Defaults to 0, so the next scheduled run is the retry. */
   backoffLimit?: number;
+  /**
+   * Stops the scheduled runs, while a Job made from the CronJob still runs. Defaults to false. Unset,
+   * it stays out of the spec, so the CronJobs deployed before it existed show no diff.
+   */
+  suspend?: boolean;
 }
 
 /**
@@ -40,6 +45,7 @@ export class ScheduledJob extends pulumi.ComponentResource {
           schedule: args.schedule,
           timeZone: args.timeZone ?? "America/Los_Angeles",
           concurrencyPolicy: "Forbid",
+          ...(args.suspend !== undefined && { suspend: args.suspend }),
           jobTemplate: {
             metadata: { labels },
             spec: {
