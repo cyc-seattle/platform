@@ -15,8 +15,11 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   `WebService`, `ScheduledJob`, `PlatformOutputs`) is a contract the apps code against, so extend it
   rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
 - `schemas/<domain>.yaml` is the Directus data model, one file per domain. `src/directus/` merges
-  them into one snapshot and applies it, and nothing deploys it yet (cyc-seattle/workplace#6).
-  `mise run directus-local` applies them to a local Directus.
+  them into one snapshot and applies it. The `backend` stack deploys Directus with them, in dev until
+  prod cuts over (cyc-seattle/workplace#6). `mise run directus-local` applies them to a local
+  Directus.
+- `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
+  `src/index.ts` doesn't export them.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`.
 - The code is ESM (`"type": "module"`), run by Node 22's type stripping. Relative import paths end in
@@ -33,14 +36,15 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Deploys
 
-- `cloud`, `cluster`, and `smoke` deploy from Actions (`.github/workflows/pull-request.yml`), through
-  the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR deploys
-  `smoke` to dev and runs the integration tests. A push to `main` also previews prod, then applies it
-  once a maintainer approves. `prod` is skipped when the preview shows no changes.
-- The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, and `prod`
-  is `cloud`, then `cluster`. Its preview appends each project's `true` or `false` to
-  `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`,
-  so keep those names.
+- `cloud`, `cluster`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`),
+  through the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR
+  deploys `smoke` and `backend` to dev and runs the integration tests. A push to `main` also previews
+  prod, then applies it once a maintainer approves. `prod` is skipped when the preview shows no
+  changes.
+- The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, then
+  `backend`, and `prod` is `cloud`, then `cluster`. Its preview appends each project's `true` or
+  `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow
+  calls `preview`, `deploy`, `integration`, and `install`, so keep those names.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
   (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.
 - Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
@@ -54,6 +58,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Adding an app's dev database means adding its name to `cloud:devDatabases` in a platform PR. Cloud SQL
   ignores IAM conditions on its user and database calls, so `deploy-dev` can't create them itself.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
+- Never `pulumi destroy` `backend`. Its state holds Directus's database, and Directus's license
+  activation is bound to that database and its `PUBLIC_URL` (cyc-seattle/isthmia#172). Ask the
+  maintainer before any change that could activate a new Directus. `docs/backend.md` has the rest.
 
 ## Schemas
 
