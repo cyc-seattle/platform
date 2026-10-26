@@ -9,3 +9,4 @@ config:
     - ungood@onetrue.name
   backend:externalDomain: cyccommunitysailing.org
 secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-dev
+encryptedkey: CiQAwaFTJB/QW+o8lkCJtgkdlRj/iuVeFBGjS1Mod1GLVlvBWzgSSQBLFC/+9ypuLTcorXshw00tJHhDPi57oxx6ZLZI9lmZmz66ql226m57Hj5xP9vw7tTeTvLxegT3Yp09tRaMgPQ5UmBaKzsaVvc=
