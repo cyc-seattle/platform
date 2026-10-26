@@ -16,7 +16,7 @@ import {
   directusRequest,
   DirectusHttpError,
   reconcilePermission,
-} from "../src/directus/client.js";
+} from "../src/directus/client.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see client.ts's own httpFetch). This local alias
@@ -464,7 +464,7 @@ describe("grantPermission", () => {
 
     expect(permissionId).toBe("42");
     expect(fetchMock).toHaveBeenCalledWith(`${baseUrl}/permissions`, expect.objectContaining({ method: "POST" }));
-    const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body) as Record<string, unknown>;
+    const body = JSON.parse((fetchMock.mock.calls[0]?.[1] as { body: string }).body) as Record<string, unknown>;
     expect(body).toEqual({
       policy: "policy-1",
       collection: "people",
@@ -485,7 +485,7 @@ describe("grantPermission", () => {
       fields: ["id", "notes"],
     });
 
-    const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body) as Record<string, unknown>;
+    const body = JSON.parse((fetchMock.mock.calls[0]?.[1] as { body: string }).body) as Record<string, unknown>;
     expect(body["permissions"]).toEqual({ person_id: { _eq: "$CURRENT_USER" } });
     expect(body["fields"]).toEqual(["id", "notes"]);
   });
@@ -612,7 +612,7 @@ describe("ensurePermission", () => {
       `${baseUrl}/permissions/99`,
       expect.objectContaining({ method: "PATCH" }),
     );
-    const body = JSON.parse((fetchMock.mock.calls[1][1] as { body: string }).body) as Record<string, unknown>;
+    const body = JSON.parse((fetchMock.mock.calls[1]?.[1] as { body: string }).body) as Record<string, unknown>;
     expect(body).toEqual({ permissions: { person_id: { _eq: "$CURRENT_USER" } }, fields: ["id", "notes"] });
   });
 
@@ -701,7 +701,7 @@ describe("upsertUserByEmail", () => {
     // `adopted: true` is what stops the provider delete from removing a live account.
     expect(await upsertUserByEmail(baseUrl, token, fields)).toEqual({ userId: "user-1", adopted: true });
 
-    const methods = fetchMock.mock.calls.map((call: [string, FetchInit?]) => (call[1] as FetchInit).method);
+    const methods = fetchMock.mock.calls.map((call) => (call[1] as FetchInit).method);
     expect(methods).toEqual(["GET", "PATCH"]);
     expect(fetchMock.mock.calls[1]?.[0]).toBe(`${baseUrl}/users/user-1`);
   });
@@ -745,7 +745,7 @@ describe("reconcileUser", () => {
       userId: "user-1",
       adopted: false,
     });
-    const methods = fetchMock.mock.calls.map((call: [string, FetchInit?]) => (call[1] as FetchInit).method);
+    const methods = fetchMock.mock.calls.map((call) => (call[1] as FetchInit).method);
     expect(methods).toEqual(["GET", "PATCH"]);
   });
 

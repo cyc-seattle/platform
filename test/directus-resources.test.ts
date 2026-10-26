@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { omitUndefined, directusRoleProvider, directusUserProvider } from "../src/directus/resources.js";
-import { describeProviderError, DirectusHttpError } from "../src/directus/client.js";
+import { omitUndefined, directusRoleProvider, directusUserProvider } from "../src/directus/resources.ts";
+import { describeProviderError, DirectusHttpError } from "../src/directus/client.ts";
 
 const baseUrl = "https://directus.example.com";
 

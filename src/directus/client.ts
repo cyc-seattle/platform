@@ -2,6 +2,7 @@
 // unit testable (see resources.ts, whose dynamic resource providers call into here; importing
 // resources.ts itself isn't practical since its module-level imports pull in Pulumi).
 
+// Default imports: a named builtin import fails to serialize into a dynamic provider (AGENTS.md).
 import fs from "node:fs";
 import path from "node:path";
 
@@ -72,13 +73,13 @@ export async function login(baseUrl: string, email: string, password: string): P
 /** Thrown by {@link directusRequest} on a non-2xx response, with `status` broken out so callers can
  * tell "not found" apart from a real failure without string-matching the message. */
 export class DirectusHttpError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
     this.name = "DirectusHttpError";
-    // Required, not cosmetic. Pulumi runs a dynamic provider in a separate process through its own
+    // Kept from CommonJS, where Pulumi ran a dynamic provider in a separate process through its own
     // vendored ts-node, which downlevels `class ... extends Error` and breaks the prototype chain -
     // so `message` and `instanceof` are both lost on the way out. A real failure surfaced as
     // `error: undefined` until this line existed.
@@ -148,7 +149,7 @@ export async function directusRequest<T>(
   const res = await fetchRetrying(`${baseUrl}${path}`, {
     method,
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...(body !== undefined && { body: JSON.stringify(body) }),
   });
   if (!res.ok) {
     throw new DirectusHttpError(res.status, `${method} ${path} -> ${res.status}: ${await res.text()}`);

@@ -7,14 +7,14 @@ import {
   ensurePermission,
   reconcilePermission,
   deletePermission,
-  PermissionAction,
-  PermissionRuleInput,
+  type PermissionAction,
+  type PermissionRuleInput,
   upsertUserByEmail,
   reconcileUser,
   isNotFound,
   isForbidden,
   describeProviderError,
-} from "./client";
+} from "./client.ts";
 
 // --- Shared plumbing for the dynamic resources below: all of them talk to Directus's own REST
 // API rather than GCP's, authenticating as the bootstrap admin (via client.ts, kept
@@ -78,7 +78,7 @@ interface DirectusSchemaInputs extends DirectusAuthProps {
   schema: unknown;
 }
 
-const directusSchemaProvider: pulumi.dynamic.ResourceProvider = {
+export const directusSchemaProvider: pulumi.dynamic.ResourceProvider = {
   create: reportErrors("DirectusSchema", "create", async (inputs: DirectusSchemaInputs) => {
     await waitForReachable(inputs.baseUrl);
     const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
@@ -281,7 +281,7 @@ interface DirectusPermissionRuleOutputs extends DirectusPermissionRuleInputs {
   permissionId: string;
 }
 
-const directusPermissionRuleProvider: pulumi.dynamic.ResourceProvider = {
+export const directusPermissionRuleProvider: pulumi.dynamic.ResourceProvider = {
   create: reportErrors("DirectusPermissionRule", "create", async (inputs: DirectusPermissionRuleInputs) => {
     await waitForReachable(inputs.baseUrl);
     const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
@@ -527,7 +527,7 @@ interface DirectusAdminAccessGrantOutputs extends DirectusAdminAccessGrantInputs
   accessId: string;
 }
 
-const directusAdminAccessGrantProvider: pulumi.dynamic.ResourceProvider = {
+export const directusAdminAccessGrantProvider: pulumi.dynamic.ResourceProvider = {
   create: reportErrors("DirectusAdminAccessGrant", "create", async (inputs: DirectusAdminAccessGrantInputs) => {
     await waitForReachable(inputs.baseUrl);
     const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
@@ -647,7 +647,7 @@ interface DirectusPolicyOutputs extends DirectusPolicyInputs {
   accessId: string;
 }
 
-const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
+export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
   create: reportErrors("DirectusPolicy", "create", async (inputs: DirectusPolicyInputs) => {
     await waitForReachable(inputs.baseUrl);
     const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
