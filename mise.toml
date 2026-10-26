@@ -66,6 +66,14 @@ run = "./scripts/each-stack up --yes"
 description = "Build the package into dist/"
 run = "pnpm run build"
 
+[tasks.directus-local]
+description = "Bring up local Directus and Postgres containers, and apply schemas/*.yaml to them"
+run = "./scripts/directus-local up"
+
+[tasks.directus-local-down]
+description = "Tear down the local Directus and Postgres containers and their volume"
+run = "./scripts/directus-local down"
+
 # Needs the dev deploy, so it isn't part of ci.
 [tasks.integration]
 description = "Run the integration tests against dev"

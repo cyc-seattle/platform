@@ -14,6 +14,9 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   `@cyc-seattle/platform`; the build compiles only what it imports. Its API (`Workload`,
   `WebService`, `ScheduledJob`, `PlatformOutputs`) is a contract the apps code against, so extend it
   rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
+- `schemas/<domain>.yaml` is the Directus data model, one file per domain. `src/directus/` merges
+  them into one snapshot and applies it, and nothing deploys it yet (cyc-seattle/workplace#6).
+  `mise run directus-local` applies them to a local Directus.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`.
 - The code is ESM (`"type": "module"`), run by Node 22's type stripping. Relative import paths end in
@@ -51,6 +54,11 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Adding an app's dev database means adding its name to `cloud:devDatabases` in a platform PR. Cloud SQL
   ignores IAM conditions on its user and database calls, so `deploy-dev` can't create them itself.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
+
+## Schemas
+
+- A change to the planning design or its collections updates the ER diagrams in
+  `docs/planning-schema.md` in the same PR.
 
 ## Code style
 
