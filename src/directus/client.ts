@@ -2,8 +2,8 @@
 // unit testable (see resources.ts, whose dynamic resource providers call into here; importing
 // resources.ts itself isn't practical since its module-level imports pull in Pulumi).
 
-import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 
 // This package's tsconfig (@tsconfig/node22, lib: es2024, no DOM) hits an @types/node quirk where
 // the ambient `fetch`/`Response` types resolve to an empty structural type rather than undici's
@@ -368,16 +368,15 @@ export function collectionsInSchema(schema: unknown): string[] {
 }
 
 /**
- * Every package's `schema.yaml`, found under `packagesDir` (one level down, `<packagesDir>/*\/schema.yaml`)
- * rather than a hand-maintained list - so adding a package's schema is just adding the file (#143:
- * a stale hand-maintained list left a package's collections undeclared while still scoped as owned,
- * which let `scopeSnapshot` overwrite their live fields on the next apply).
+ * Every `<domain>.yaml` in `schemasDir`, named by its basename, found on disk rather than from a
+ * hand-maintained list (cyc-seattle/isthmia#143: a stale list left a domain's collections undeclared
+ * while still scoped as owned, which let `scopeSnapshot` overwrite their live fields on the next apply).
  */
-export function discoverSchemaFiles(packagesDir: string): { name: string; path: string }[] {
-  return readdirSync(packagesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => ({ name: entry.name, path: join(packagesDir, entry.name, "schema.yaml") }))
-    .filter(({ path }) => existsSync(path))
+export function discoverSchemaFiles(schemasDir: string): { name: string; path: string }[] {
+  return fs
+    .readdirSync(schemasDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
+    .map((entry) => ({ name: path.basename(entry.name, ".yaml"), path: path.join(schemasDir, entry.name) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

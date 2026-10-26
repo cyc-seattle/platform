@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import path from "node:path";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   applySchema,
@@ -96,19 +96,14 @@ describe("collectionsInSchema", () => {
 });
 
 describe("discoverSchemaFiles", () => {
-  it("finds every package's schema.yaml on disk, keyed by its package directory name", () => {
-    // Real disk, not a mock: this is the same "packages/*/schema.yaml" glob crm/index.ts and
-    // scripts/directus-local both rely on (#143), so it's worth proving against the actual tree
-    // rather than a fixture that could drift from it. __dirname, not import.meta.url: this
-    // package builds to CommonJS, matching crm/index.ts's own resolution.
-    const packagesDir = resolve(__dirname, "../../");
-    const found = discoverSchemaFiles(packagesDir);
+  it("finds every domain's schema on disk, keyed by its basename", () => {
+    // Real disk, not a fixture, so the test can't drift from the tree it describes.
+    const schemasDir = path.resolve(import.meta.dirname, "../schemas");
+    const found = discoverSchemaFiles(schemasDir);
 
-    const names = found.map((f) => f.name);
-    expect(names).toEqual(expect.arrayContaining(["crm", "clubspot", "directus", "gsuite-sync"]));
-    expect(names).not.toContain("infrastructure"); // this package has no schema.yaml of its own
-    for (const { name, path } of found) {
-      expect(path.endsWith(`${name}/schema.yaml`)).toBe(true);
+    expect(found.map((f) => f.name)).toEqual(["clubspot", "crm", "gsuite", "sync"]);
+    for (const { name, path: file } of found) {
+      expect(file).toBe(path.join(schemasDir, `${name}.yaml`));
     }
   });
 });
