@@ -96,9 +96,7 @@ beforeAll(async () => {
     externalDomain: "example.org",
     baseUrl: "https://directus.example.com",
   });
-  // vitest's class fields shadow a dynamic resource's outputs, so the role's ID is set here.
-  const values = { ...prod.values, communityRoleId: pulumi.output("community-role") };
-  await deployDirectus("admin@example.com", true, values);
+  await deployDirectus("admin@example.com", true, prod.values);
   await settle();
 });
 
@@ -145,12 +143,12 @@ describe("prod's Directus on the cluster", () => {
       container().containers[0].env.map((e: { name: string; value?: unknown }) => [e.name, e.value]),
     );
     expect(env).toMatchObject({
-      AUTH_AUTHENTIK_DEFAULT_ROLE_ID: "community-role",
+      AUTH_AUTHENTIK_DEFAULT_ROLE_ID: "crm-community-role-id",
       PUBLIC_URL: "https://directus.example.com",
       DB_POOL__MAX: "10",
     });
     const guard = find("kubernetes:core/v1:ConfigMap", "directus-community-query-guard").inputs["data"];
-    expect(JSON.parse(guard["config.json"]).role).toBe("community-role");
+    expect(JSON.parse(guard["config.json"]).role).toBe("crm-community-role-id");
   });
 
   it("runs on regular capacity with prod's sizing", () => {
