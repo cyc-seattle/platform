@@ -4,14 +4,14 @@ import * as k8s from "@pulumi/kubernetes";
 import { enableService } from "../../src/services.ts";
 import { provider } from "./cluster.ts";
 import { httpsListeners } from "./environment.ts";
-import { cloudOutput } from "./refs.ts";
+import { internalDomain, internalZone } from "./dns.ts";
 
 const certificateManagerApi = enableService("certificatemanager.googleapis.com");
 
-const internalZoneName = cloudOutput("internalZoneName");
+const internalZoneName = internalZone.name;
 
 /** Prod's base domain. Its apps are it and its subdomains. */
-export const prodDomain = cloudOutput("internalDomain");
+export const prodDomain = internalDomain;
 
 /** Dev's base domain. Its apps are its subdomains. */
 export const devDomain = pulumi.interpolate`dev.${prodDomain}`;

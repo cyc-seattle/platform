@@ -2,7 +2,7 @@ import * as gcp from "@pulumi/gcp";
 import * as pulumi from "@pulumi/pulumi";
 import { z } from "zod";
 
-// The cluster stack writes this object to each environment's state bucket, because a StackReference
+// The infra stack writes this object to each environment's state bucket, because a StackReference
 // can't cross from a dev stack into prod's backend (cyc-seattle/isthmia#215).
 export const platformOutputsSchema = z.object({
   project: z.string().min(1),
@@ -62,10 +62,10 @@ export async function readPlatformOutputs(args: PlatformOutputsArgs = {}): Promi
   try {
     ({ content } = await gcp.storage.getBucketObjectContent({ bucket, name: outputsObject }));
   } catch (e) {
-    throw new Error(`Can't read ${source}. The cluster stack writes it.\n${(e as Error).message}`);
+    throw new Error(`Can't read ${source}. The infra stack writes it.\n${(e as Error).message}`);
   }
   if (!content) {
-    throw new Error(`${source} is empty. The cluster stack writes it.`);
+    throw new Error(`${source} is empty. The infra stack writes it.`);
   }
   return parsePlatformOutputs(content, source);
 }

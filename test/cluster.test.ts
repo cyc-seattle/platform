@@ -16,25 +16,18 @@ const deployDevId = "114358314096459279273";
 const stackOutputs: Record<string, Record<string, unknown>> = {
   "organization/bootstrap/prod": {
     gkeNodes: { email: "gke-nodes@example-project.iam.gserviceaccount.com" },
+    deployRunner: { member: "serviceAccount:deploy-runner@example-project.iam.gserviceaccount.com" },
     deployDev: { email: deployDevEmail, uniqueId: deployDevId },
     stateBackends: {
       dev: { url: "gs://example-project-pulumi-dev" },
       prod: { url: "gs://example-project-pulumi-prod" },
     },
   },
-  "organization/cloud/prod": {
-    networkId: "network_id",
-    clusterSubnetId: "cluster_subnet_id",
-    clusterPodsRangeName: "pods",
-    clusterServicesRangeName: "services",
-    internalZoneName: "internal-zone",
-    internalDomain: "example.team",
-    devPostgresConnectionName: "example-project:us-west1:cyc-dev",
-    devPostgresPrivateIp: "10.159.0.6",
-    postgresConnectionName: "example-project:us-west1:substrate-1234",
-    postgresPrivateIp: "10.159.0.5",
-    artifactRepositoryUrl: "us-west1-docker.pkg.dev/example-project/artifact-docker-repository",
-  },
+};
+
+const instances: Record<string, [string, string]> = {
+  substrate: ["example-project:us-west1:substrate-1234", "10.159.0.5"],
+  "cyc-dev": ["example-project:us-west1:cyc-dev", "10.159.0.6"],
 };
 
 beforeAll(async () => {
@@ -51,6 +44,10 @@ beforeAll(async () => {
             controlPlaneEndpointsConfig: { dnsEndpointConfig: { endpoint: "gke-example.us-west1.gke.goog" } },
           };
           return { id: `${args.name}_id`, state };
+        }
+        if (args.type === "gcp:sql/databaseInstance:DatabaseInstance") {
+          const [connectionName, privateIpAddress] = instances[args.name]!;
+          return { id: `${args.name}_id`, state: { ...args.inputs, connectionName, privateIpAddress } };
         }
         if (args.type === "gcp:compute/globalAddress:GlobalAddress") {
           return {
@@ -79,15 +76,17 @@ beforeAll(async () => {
         }
       },
     },
-    "cluster",
+    "infra",
   );
   pulumi.runtime.setConfig("gcp:project", "example-project");
   pulumi.runtime.setConfig("gcp:region", "us-west1");
-  pulumi.runtime.setConfig("cluster:bootstrapStack", "organization/bootstrap/prod");
-  pulumi.runtime.setConfig("cluster:cloudStack", "organization/cloud/prod");
-  pulumi.runtime.setConfig("cluster:alertEmails", JSON.stringify(["alerts@example.org"]));
+  pulumi.runtime.setConfig("infra:bootstrapStack", "organization/bootstrap/prod");
+  pulumi.runtime.setConfig("infra:externalDomain", "example.org");
+  pulumi.runtime.setConfig("infra:internalDomain", "example.team");
+  pulumi.runtime.setConfig("infra:shortDomain", "example.link");
+  pulumi.runtime.setConfig("infra:alertEmails", JSON.stringify(["alerts@example.org"]));
   // The modules build their resources on import, so they load only after the mocks are set.
-  await import("../stacks/cluster/index.ts");
+  await import("../stacks/infra/index.ts");
   await new Promise((r) => setImmediate(r));
 });
 
@@ -123,9 +122,10 @@ describe("cluster", () => {
     expect(cluster().gatewayApiConfig).toEqual({ channel: "CHANNEL_STANDARD" });
   });
 
-  it("uses the cloud stack's subnet and ranges", () => {
+  it("uses the cluster subnet and its ranges", () => {
     expect(cluster()).toMatchObject({
-      subnetwork: "cluster_subnet_id",
+      network: "substrate_id",
+      subnetwork: "cluster_id",
       ipAllocationPolicy: { clusterSecondaryRangeName: "pods", servicesSecondaryRangeName: "services" },
     });
   });
@@ -227,7 +227,7 @@ describe("dev certificate and DNS", () => {
 
   it("proves control of the domain with the authorization's CNAME", () => {
     expect(byName("gcp:dns/recordSet:RecordSet", "dev-dns-authorization")).toMatchObject({
-      managedZone: "internal-zone",
+      managedZone: "internal_name",
       name: "_acme-challenge.dev.example.team.",
       type: "CNAME",
       rrdatas: ["challenge.example."],
@@ -239,7 +239,7 @@ describe("dev certificate and DNS", () => {
     ["dev-wildcard", "*.dev.example.team."],
   ])("points %s at the Gateway's address", (name: string, dnsName: string) => {
     expect(byName("gcp:dns/recordSet:RecordSet", name)).toMatchObject({
-      managedZone: "internal-zone",
+      managedZone: "internal_name",
       name: dnsName,
       type: "A",
     });
@@ -255,7 +255,7 @@ describe("prod certificate and DNS", () => {
 
   it("proves control of the domain with the authorization's CNAME", () => {
     expect(byName("gcp:dns/recordSet:RecordSet", "prod-dns-authorization")).toMatchObject({
-      managedZone: "internal-zone",
+      managedZone: "internal_name",
       name: "_acme-challenge.example.team.",
       type: "CNAME",
     });

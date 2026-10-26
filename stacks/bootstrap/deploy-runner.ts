@@ -19,7 +19,7 @@ const predefinedRoles = [
   "roles/secretmanager.admin",
   "roles/container.admin",
   "roles/certificatemanager.editor",
-  // The cluster stack's Job alerts and their email channels (#205).
+  // The infra stack's Job alerts and their email channels (#205).
   "roles/monitoring.alertPolicyEditor",
   "roles/monitoring.notificationChannelEditor",
 ];
@@ -47,7 +47,7 @@ export const deployerRole = new gcp.projects.IAMCustomRole("deployer", {
     "iam.serviceAccounts.getIamPolicy",
     "iam.roles.get",
     "iam.roles.list",
-    // The cluster stack's log-based metric (#205). roles/logging.configWriter would add sinks too.
+    // The infra stack's log-based metric (#205). roles/logging.configWriter would add sinks too.
     "logging.logMetrics.create",
     "logging.logMetrics.delete",
     "logging.logMetrics.get",
@@ -62,7 +62,7 @@ new gcp.projects.IAMMember("deploy-runner-deployer", {
   member: deployRunner.member,
 });
 
-// Lets the cluster stack attach gke-nodes to the Autopilot cluster.
+// Lets the infra stack attach gke-nodes to the Autopilot cluster.
 new gcp.serviceaccount.IAMMember("deploy-runner-user-gke-nodes", {
   serviceAccountId: gkeNodes.name,
   role: "roles/iam.serviceAccountUser",

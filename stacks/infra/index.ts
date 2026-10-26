@@ -1,17 +1,14 @@
 import * as pulumi from "@pulumi/pulumi";
-import { projectId, location } from "../../src/config.ts";
-import {
-  clusterPodsRange,
-  clusterServicesRange,
-  clusterNatAddress,
-  clusterSubnet,
-  network,
-  subnet,
-} from "./network.ts";
-import { devPostgres, postgres } from "./database.ts";
+import { clusterNatAddress, network, subnet } from "./network.ts";
+import { postgres } from "./database.ts";
 import { externalZone, internalDomain, internalZone, shortZone } from "./dns.ts";
-import { artifactRepository } from "./artifact-repository.ts";
+import { artifactRepository, artifactRepositoryUrl } from "./artifact-repository.ts";
+import { cluster, clusterEndpoint } from "./cluster.ts";
+import { address } from "./gateway.ts";
+import { devOutputs } from "./dev.ts";
+import { prodOutputs } from "./prod.ts";
 import "./dev-databases.ts";
+import "./alerts.ts";
 
 // What the app stacks read through a StackReference.
 export const networkId = network.id;
@@ -24,14 +21,13 @@ export { internalDomain };
 export const artifactRepositoryProject = artifactRepository.project;
 export const artifactRepositoryLocation = artifactRepository.location;
 export const artifactRepositoryName = artifactRepository.name;
-export const artifactRepositoryUrl = pulumi.interpolate`${location}-docker.pkg.dev/${projectId}/${artifactRepository.repositoryId}`;
+export { artifactRepositoryUrl };
 
-// What the cluster stack reads (#215).
-export const clusterSubnetId = clusterSubnet.id;
-export const clusterPodsRangeName = clusterPodsRange;
-export const clusterServicesRangeName = clusterServicesRange;
-export const devPostgresConnectionName = devPostgres.connectionName;
-export const devPostgresPrivateIp = devPostgres.privateIpAddress;
+export const clusterName = cluster.name;
+export { clusterEndpoint };
+export const gatewayAddress = address.address;
+export const devPlatformOutputs = pulumi.interpolate`gs://${devOutputs.bucket}/${devOutputs.name}`;
+export const prodPlatformOutputs = pulumi.interpolate`gs://${prodOutputs.bucket}/${prodOutputs.name}`;
 
 // For the Workspace SMTP relay's allowlist, a manual step.
 export const natAddress = clusterNatAddress.address;

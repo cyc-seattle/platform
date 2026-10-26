@@ -4,7 +4,9 @@ import { cluster, clusterEndpoint, provider } from "./cluster.ts";
 import { EnvironmentNamespace } from "./environment.ts";
 import { address, devDomain, gateway } from "./gateway.ts";
 import { writePlatformOutputs } from "./outputs.ts";
-import { cloudOutput, deployDev } from "./refs.ts";
+import { artifactRepositoryUrl } from "./artifact-repository.ts";
+import { devPostgres } from "./database.ts";
+import { deployDev } from "./identities.ts";
 
 // Fits prod's apps plus Mailpit, the two fakes, smoke, and the integration tests' pods, with room
 // for a rolling update (#231).
@@ -32,8 +34,8 @@ export const devOutputs = writePlatformOutputs("dev", {
   namespace: devNamespace.metadata.name,
   gateway: { name: gateway.metadata.name, namespace: gateway.metadata.namespace },
   domain: devDomain,
-  sqlConnectionName: cloudOutput("devPostgresConnectionName"),
-  sqlHost: cloudOutput("devPostgresPrivateIp"),
+  sqlConnectionName: devPostgres.connectionName,
+  sqlHost: devPostgres.privateIpAddress,
   gatewayAddress: address.address,
-  registry: cloudOutput("artifactRepositoryUrl"),
+  registry: artifactRepositoryUrl,
 });

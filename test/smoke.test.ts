@@ -10,7 +10,7 @@ interface Created {
 const created: Created[] = [];
 const valueOf = <T>(output: pulumi.Output<T>): Promise<T> => (output as any).promise();
 
-// dev's outputs file, as the cluster stack writes it.
+// dev's outputs file, as the infra stack writes it.
 const dev = {
   project: "cyc-admin-scripts",
   projectNumber: "123456789",

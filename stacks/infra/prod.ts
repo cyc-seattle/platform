@@ -4,7 +4,8 @@ import { cluster, clusterEndpoint, provider } from "./cluster.ts";
 import { EnvironmentNamespace } from "./environment.ts";
 import { address, gateway, prodDomain } from "./gateway.ts";
 import { writePlatformOutputs } from "./outputs.ts";
-import { cloudOutput } from "./refs.ts";
+import { artifactRepositoryUrl } from "./artifact-repository.ts";
+import { postgres } from "./database.ts";
 
 // Fits Authentik's server and worker, Directus, the portal, and the two syncs, with room for a
 // rolling update (#231). deploy-runner deploys it through its project-wide container.admin.
@@ -27,8 +28,8 @@ export const prodOutputs = writePlatformOutputs("prod", {
   namespace: prodNamespace.metadata.name,
   gateway: { name: gateway.metadata.name, namespace: gateway.metadata.namespace },
   domain: prodDomain,
-  sqlConnectionName: cloudOutput("postgresConnectionName"),
-  sqlHost: cloudOutput("postgresPrivateIp"),
+  sqlConnectionName: postgres.connectionName,
+  sqlHost: postgres.privateIpAddress,
   gatewayAddress: address.address,
-  registry: cloudOutput("artifactRepositoryUrl"),
+  registry: artifactRepositoryUrl,
 });

@@ -6,20 +6,19 @@ app owns. The apps that run on it live in their own repos, such as
 
 ## Stacks
 
-| Stack                           | Holds                                                                                                                                                                                                                                                    | Applied by                                                                                                        |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                                                                         | A human with project Owner and `gh` `admin:org`. Never CI.                                                        |
-| [`cloud`](stacks/cloud)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, and Artifact Registry                                                                              | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
-| [`cluster`](stacks/cluster)     | The GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
-| [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                          | `deploy-dev`, from Actions on every PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
-| [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync machine users, its OIDC client, and MCP                                                                                                             | `deploy-dev`, from Actions on every PR. Dev only, until prod cuts over (cyc-seattle/workplace#6 step 6).          |
+| Stack                           | Holds                                                                                                                                                                                                                                                                                                                                                                                                                             | Applied by                                                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                                                                                                                                                                                                                                                  | A human with project Owner and `gh` `admin:org`. Never CI.                                                        |
+| [`infra`](stacks/infra)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, Artifact Registry, the GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
+| [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                                                                                                                                                                                                   | `deploy-dev`, from Actions on every PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
+| [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync machine users, its OIDC client, and MCP                                                                                                                                                                                                                                                                                      | `deploy-dev`, from Actions on every PR. Dev only, until prod cuts over (cyc-seattle/workplace#6 step 6).          |
 
 ## @cyc-seattle/platform
 
 `src/` is the `@cyc-seattle/platform` package, which the stacks here and the apps' stacks import:
 
 - `getPlatformOutputs()` reads an environment's `platform/outputs.json` from its state bucket. The
-  `cluster` stack writes it. It holds the environment's namespace and domain, the Gateway and its
+  `infra` stack writes it. It holds the environment's namespace and domain, the Gateway and its
   address (`gatewayAddress`, for an app's own DNS records), and the Cloud SQL instance's connection
   name and private IP (`sqlHost`). Dev stacks can't read prod's backend, so this replaces a
   StackReference for platform values (cyc-seattle/isthmia#215).
@@ -57,19 +56,19 @@ two syncs as CronJobs) run in both, and dev adds Mailpit and the Clubspot and Wo
 
 Each namespace denies ingress from other namespaces except the load balancer's. Dev also admits the
 Kubernetes API's service proxy, which the integration tests use, and denies egress to the mail ports
-(25, 465, 587) outside the cluster. `cluster` writes dev's A records; each prod app writes its own,
+(25, 465, 587) outside the cluster. `infra` writes dev's A records; each prod app writes its own,
 pointing at `gatewayAddress`.
 
 `deploy-dev` reads Secret Manager secrets whose IDs start with `dev-`. Read them with
 `gcp.secretmanager.getSecretVersionAccess`, which needs only the accessor role.
 
-`cloud` creates each app's dev database, user, and password secret (`dev-db-<name>-password`) on
-`cyc-dev`, for each name in `cloud:devDatabases`. To add an app's dev database, add its name there in a
+`infra` creates each app's dev database, user, and password secret (`dev-db-<name>-password`) on
+`cyc-dev`, for each name in `infra:devDatabases`. To add an app's dev database, add its name there in a
 platform PR: Cloud SQL ignores IAM conditions on its user and database calls, so `deploy-dev` can't
 hold a role scoped to `cyc-dev`.
 
 A Job that fails in `prod`, or a CronJob there with no successful Job in 3 hours, raises an alert.
-It emails each address in `cluster:alertEmails`, a secret in the stack's config, which holds the
+It emails each address in `infra:alertEmails`, a secret in the stack's config, which holds the
 maintainer's address (#20).
 
 ## Setup
@@ -101,11 +100,11 @@ GitHub environment that holds its identity and state bucket:
 
 `prod-preview` runs `mise run preview` as `deploy-runner` and writes the diff to the job summary.
 `prod` runs `mise run deploy` on the same commit once approved. It runs only when the preview shows
-changes in `cloud` or `cluster`, so a merge that changes nothing in prod asks for no approval. A PR from a fork gets no OIDC token,
+changes in `infra`, so a merge that changes nothing in prod asks for no approval. A PR from a fork gets no OIDC token,
 so its `dev` job is skipped.
 
 `PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, then `backend`, and
-`prod` is `cloud`, then `cluster`. `integration` is dev only.
+`prod` is `infra`. `integration` is dev only.
 
 `bootstrap` is never deployed from Actions (cyc-seattle/isthmia#118). It holds the identities that
 CI assumes, and a human with project Owner and `gh` `admin:org` applies it with the tasks below.
@@ -122,8 +121,8 @@ mise run deploy
 PULUMI_STACK=dev mise run deploy
 ```
 
-`mise run deploy` applies `cloud`, then `cluster`. Prod stacks read `cloud`'s outputs through a
-StackReference. Dev stacks can't read prod state, so `cluster` writes each environment's platform
+`mise run deploy` applies `infra`. isthmia's prod stacks read its outputs through a StackReference.
+Dev stacks can't read prod state, so `infra` writes each environment's platform
 values to `platform/outputs.json` in that environment's state bucket.
 
 `bootstrap`'s GitHub provider uses `gh auth token`, so log `gh` in as a cyc-seattle org owner with

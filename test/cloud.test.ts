@@ -23,15 +23,15 @@ beforeAll(async () => {
       },
       call: (args) => args.inputs,
     },
-    "cloud",
+    "infra",
   );
   pulumi.runtime.setConfig("gcp:project", "example-project");
   pulumi.runtime.setConfig("gcp:region", "us-west1");
-  pulumi.runtime.setConfig("cloud:devDatabases", JSON.stringify(["authentik", "directus", "clubspot_fake"]));
+  pulumi.runtime.setConfig("infra:devDatabases", JSON.stringify(["authentik", "directus", "clubspot_fake"]));
   // The module builds its resources on import, so it loads only after the mocks are set.
-  await import("../stacks/cloud/database.ts");
-  await import("../stacks/cloud/network.ts");
-  await import("../stacks/cloud/dev-databases.ts");
+  await import("../stacks/infra/database.ts");
+  await import("../stacks/infra/network.ts");
+  await import("../stacks/infra/dev-databases.ts");
   await new Promise((r) => setImmediate(r));
 });
 
@@ -57,7 +57,7 @@ describe("PostgresInstance", () => {
 });
 
 describe("the prod instance", () => {
-  // Any change here is a change to prod's instance, which the cloud preview must not show.
+  // Any change here is a change to prod's instance, which the infra preview must not show.
   it("keeps its inputs", () => {
     expect(instance("substrate")).toEqual({
       databaseVersion: "POSTGRES_16",

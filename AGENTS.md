@@ -36,26 +36,25 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Deploys
 
-- `cloud`, `cluster`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`),
-  through the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR
-  deploys `smoke` and `backend` to dev and runs the integration tests. A push to `main` also previews
-  prod, then applies it once a maintainer approves. `prod` is skipped when the preview shows no
-  changes.
+- `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
+  the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR deploys
+  `smoke` and `backend` to dev and runs the integration tests. A push to `main` also previews prod,
+  then applies it once a maintainer approves. `prod` is skipped when the preview shows no changes.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, then
-  `backend`, and `prod` is `cloud`, then `cluster`. Its preview appends each project's `true` or
-  `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow
-  calls `preview`, `deploy`, `integration`, and `install`, so keep those names.
+  `backend`, and `prod` is `infra`. Its preview appends each project's `true` or `false` to
+  `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow calls
+  `preview`, `deploy`, `integration`, and `install`, so keep those names.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
   (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.
 - Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
   when it's set, because Actions' auth step sets it.
 - Preview before every apply. Every preview of an unchanged stack must show no changes.
-- A new field in `platform/outputs.json` breaks the dev deploy until `cluster` writes it, and
-  `cluster` applies only after dev passes. Apply `cloud` and `cluster` from the branch first.
+- A new field in `platform/outputs.json` breaks the dev deploy until `infra` writes it, and
+  `infra` applies only after dev passes. Apply `infra` from the branch first.
 - The Kubernetes provider execs `gke-gcloud-auth-plugin` with Application Default Credentials, in place
   of an access token that would change its kubeconfig on every run. `mise run install` installs the
   plugin into mise's gcloud, so run `pulumi` under mise.
-- Adding an app's dev database means adding its name to `cloud:devDatabases` in a platform PR. Cloud SQL
+- Adding an app's dev database means adding its name to `infra:devDatabases` in a platform PR. Cloud SQL
   ignores IAM conditions on its user and database calls, so `deploy-dev` can't create them itself.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
 - Never `pulumi destroy` `backend`. Its state holds Directus's database, and Directus's license
