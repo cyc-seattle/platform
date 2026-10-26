@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import type { PlatformOutputs } from "./outputs";
+import type { PlatformOutputs } from "./outputs.ts";
 
 export interface ClusterProviderArgs {
   /**

@@ -37,7 +37,7 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("gcp:region", "us-west1");
   pulumi.runtime.setConfig("bootstrap:humanDeployers", JSON.stringify([human]));
   // The module builds its resources on import, so it loads only after the mocks are set.
-  await import("../stacks/bootstrap/state.js");
+  await import("../stacks/bootstrap/state.ts");
   await new Promise((r) => setImmediate(r));
 });
 

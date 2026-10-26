@@ -1,10 +1,10 @@
 import * as gcp from "@pulumi/gcp";
-import { location, projectId } from "../../src/config";
-import { cluster, clusterEndpoint, provider } from "./cluster";
-import { EnvironmentNamespace } from "./environment";
-import { address, gateway, prodDomain } from "./gateway";
-import { writePlatformOutputs } from "./outputs";
-import { cloudOutput } from "./refs";
+import { location, projectId } from "../../src/config.ts";
+import { cluster, clusterEndpoint, provider } from "./cluster.ts";
+import { EnvironmentNamespace } from "./environment.ts";
+import { address, gateway, prodDomain } from "./gateway.ts";
+import { writePlatformOutputs } from "./outputs.ts";
+import { cloudOutput } from "./refs.ts";
 
 // Fits Authentik's server and worker, Directus, the portal, and the two syncs, with room for a
 // rolling update (#231). deploy-runner deploys it through its project-wide container.admin.

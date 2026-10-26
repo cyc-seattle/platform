@@ -1,10 +1,17 @@
 import * as pulumi from "@pulumi/pulumi";
-import { projectId, location } from "../../src/config";
-import { clusterPodsRange, clusterServicesRange, clusterNatAddress, clusterSubnet, network, subnet } from "./network";
-import { devPostgres, postgres } from "./database";
-import { externalZone, internalDomain, internalZone, shortZone } from "./dns";
-import { artifactRepository } from "./artifact-repository";
-import "./dev-databases";
+import { projectId, location } from "../../src/config.ts";
+import {
+  clusterPodsRange,
+  clusterServicesRange,
+  clusterNatAddress,
+  clusterSubnet,
+  network,
+  subnet,
+} from "./network.ts";
+import { devPostgres, postgres } from "./database.ts";
+import { externalZone, internalDomain, internalZone, shortZone } from "./dns.ts";
+import { artifactRepository } from "./artifact-repository.ts";
+import "./dev-databases.ts";
 
 // What the app stacks read through a StackReference.
 export const networkId = network.id;

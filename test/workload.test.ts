@@ -1,9 +1,9 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
-import type { PlatformOutputs } from "../src/outputs";
-import { ScheduledJob, type ScheduledJobArgs } from "../src/scheduled-job";
-import { Workload, type WorkloadArgs } from "../src/workload";
+import type { PlatformOutputs } from "../src/outputs.ts";
+import { ScheduledJob, type ScheduledJobArgs } from "../src/scheduled-job.ts";
+import { Workload, type WorkloadArgs } from "../src/workload.ts";
 
 interface Created {
   type: string;

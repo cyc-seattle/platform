@@ -27,7 +27,7 @@ const dev = {
 };
 const reads: { bucket: string; name: string }[] = [];
 
-let smoke: typeof import("../stacks/smoke/index.js");
+let smoke: typeof import("../stacks/smoke/index.ts");
 
 beforeAll(async () => {
   await pulumi.runtime.setMocks(
@@ -49,7 +49,7 @@ beforeAll(async () => {
   );
   pulumi.runtime.setConfig("gcp:project", "cyc-admin-scripts");
   // The program builds its resources on import, so it loads only after the mocks are set.
-  smoke = await import("../stacks/smoke/index.js");
+  smoke = await import("../stacks/smoke/index.ts");
 });
 
 describe("smoke", () => {

@@ -4,3 +4,5 @@ runtime:
   name: nodejs
   options:
     packagemanager: pnpm
+    # Node 22 strips the types itself, so Pulumi's vendored ts-node stays out of the way.
+    typescript: false

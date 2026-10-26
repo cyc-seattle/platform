@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { location } from "../../src/config";
-import { network, privateServicesConnection } from "./network";
-import { enableService } from "../../src/services";
+import { location } from "../../src/config.ts";
+import { network, privateServicesConnection } from "./network.ts";
+import { enableService } from "../../src/services.ts";
 
 const sqlApi = enableService("sqladmin.googleapis.com");
 

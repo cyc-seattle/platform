@@ -1,9 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { getStringList, projectId } from "../../src/config";
-import { enableService } from "../../src/services";
-import { cluster } from "./cluster";
-import { prodNamespace } from "./prod";
+import { getStringList, projectId } from "../../src/config.ts";
+import { enableService } from "../../src/services.ts";
+import { cluster } from "./cluster.ts";
+import { prodNamespace } from "./prod.ts";
 
 // Alerts on prod's Jobs, from the Kubernetes events GKE writes to Cloud Logging (#205).
 

@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import type { PlatformOutputs } from "./outputs";
+import type { PlatformOutputs } from "./outputs.ts";
 
 type Probe = k8s.types.input.core.v1.Probe;
 type EnvVar = k8s.types.input.core.v1.EnvVar;

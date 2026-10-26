@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { checkRequests, podSpec, serviceAccount, workloadMember, type PodArgs } from "./workload";
+import { checkRequests, podSpec, serviceAccount, workloadMember, type PodArgs } from "./workload.ts";
 
 export interface ScheduledJobArgs extends PodArgs {
   /** A cron schedule, such as `0 * * * *`. */

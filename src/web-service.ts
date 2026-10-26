@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { checkRequests, deployment, workloadMember, type WorkloadArgs } from "./workload";
+import { checkRequests, deployment, workloadMember, type WorkloadArgs } from "./workload.ts";
 
 type Probe = k8s.types.input.core.v1.Probe;
 

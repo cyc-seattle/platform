@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
-import { projectId } from "../../src/config";
-import { ServiceAccount } from "../../src/service-account";
+import { projectId } from "../../src/config.ts";
+import { ServiceAccount } from "../../src/service-account.ts";
 
 // The identity dev deploys run as (#215). It holds nothing in prod: the cloud and cluster stacks grant
 // its Artifact Registry writer and its `admin` RoleBinding in namespace `dev`, and state.ts grants

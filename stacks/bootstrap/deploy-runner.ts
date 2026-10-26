@@ -1,6 +1,6 @@
 import * as gcp from "@pulumi/gcp";
-import { projectId } from "../../src/config";
-import { gkeNodes } from "./gke-nodes";
+import { projectId } from "../../src/config.ts";
+import { gkeNodes } from "./gke-nodes.ts";
 
 // The identity GitHub Actions impersonates to deploy (#118 adds the Workload Identity Federation
 // pool and the workflow that assumes this account; this project only creates the identity itself).

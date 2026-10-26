@@ -11,7 +11,7 @@ interface Created {
 }
 
 const created: Created[] = [];
-let StandardRepository: typeof import("../stacks/bootstrap/github.js").StandardRepository;
+let StandardRepository: typeof import("../stacks/bootstrap/github.ts").StandardRepository;
 
 const ofType = (type: string) => created.filter((r) => r.type === type);
 const byName = (name: string) => created.find((r) => r.name === name)!;
@@ -26,7 +26,7 @@ beforeAll(async () => {
   });
   pulumi.runtime.setConfig("github:owner", "cyc-seattle");
   // The module builds its resources on import, so it loads only after the mocks are set.
-  ({ StandardRepository } = await import("../stacks/bootstrap/github.js"));
+  ({ StandardRepository } = await import("../stacks/bootstrap/github.ts"));
   new StandardRepository("example", { description: "An example.", requiredChecks: ["build"] });
   new StandardRepository("reviewed-example", {
     description: "Reviewed.",
@@ -195,7 +195,7 @@ describe("approving reviews on main", () => {
 
 describe("platform", () => {
   it("requires only checks that a job in a PR workflow reports", () => {
-    const dir = resolve(__dirname, "../.github/workflows");
+    const dir = resolve(import.meta.dirname, "../.github/workflows");
     const workflows = readdirSync(dir).map(
       (file) =>
         yaml.load(readFileSync(resolve(dir, file), "utf8")) as {

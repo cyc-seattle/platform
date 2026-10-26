@@ -43,9 +43,9 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("gcp:region", "us-west1");
   pulumi.runtime.setConfig("bootstrap:humanDeployers", JSON.stringify(["user:deployer@example.com"]));
   // The modules build their resources on import, so they load only after the mocks are set.
-  await import("../stacks/bootstrap/deploy-runner.js");
-  await import("../stacks/bootstrap/deploy-dev.js");
-  await import("../stacks/bootstrap/gsuite-sync.js");
+  await import("../stacks/bootstrap/deploy-runner.ts");
+  await import("../stacks/bootstrap/deploy-dev.ts");
+  await import("../stacks/bootstrap/gsuite-sync.ts");
   await new Promise((r) => setImmediate(r));
 });
 

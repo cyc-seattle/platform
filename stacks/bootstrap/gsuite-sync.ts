@@ -1,7 +1,7 @@
 import * as gcp from "@pulumi/gcp";
-import { projectId } from "../../src/config";
-import { humanDeployers } from "./human-deployers";
-import { ServiceAccount } from "../../src/service-account";
+import { projectId } from "../../src/config.ts";
+import { humanDeployers } from "./human-deployers.ts";
+import { ServiceAccount } from "../../src/service-account.ts";
 
 // Identity the gsuite-sync CronJob acts as. It holds the Groups Administrator role directly
 // (assigned by hand in the Admin console), not domain-wide delegation, so nothing is impersonated.

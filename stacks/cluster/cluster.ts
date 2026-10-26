@@ -1,8 +1,8 @@
 import * as gcp from "@pulumi/gcp";
-import { location } from "../../src/config";
-import { clusterProvider } from "../../src/kubernetes";
-import { enableService } from "../../src/services";
-import { cloudOutput, gkeNodes } from "./refs";
+import { location } from "../../src/config.ts";
+import { clusterProvider } from "../../src/kubernetes.ts";
+import { enableService } from "../../src/services.ts";
+import { cloudOutput, gkeNodes } from "./refs.ts";
 
 const containerApi = enableService("container.googleapis.com");
 

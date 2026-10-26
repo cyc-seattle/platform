@@ -1,6 +1,6 @@
 import * as gcp from "@pulumi/gcp";
-import { projectId } from "../../src/config";
-import { ServiceAccount } from "../../src/service-account";
+import { projectId } from "../../src/config.ts";
+import { ServiceAccount } from "../../src/service-account.ts";
 
 // The identity the GKE Autopilot nodes run as, instead of the default Compute Engine account, which
 // holds Editor (#215). The cloud stack grants it Artifact Registry read.
