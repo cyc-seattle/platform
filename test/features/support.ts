@@ -94,8 +94,12 @@ export async function secretValue(platform: PlatformOutputs, name: string, key: 
   return Buffer.from(value, "base64").toString("utf8");
 }
 
-/** An env var that a Deployment's first container sets directly. */
-export async function deploymentEnv(platform: PlatformOutputs, deployment: string, name: string): Promise<string> {
+/** An env var that a Deployment's first container sets directly, if it sets it. */
+export async function optionalDeploymentEnv(
+  platform: PlatformOutputs,
+  deployment: string,
+  name: string,
+): Promise<string | undefined> {
   const response = await kube(
     platform,
     "GET",
@@ -105,7 +109,12 @@ export async function deploymentEnv(platform: PlatformOutputs, deployment: strin
     throw new Error(`Can't read the Deployment ${deployment}: ${response.status} ${JSON.stringify(response.body)}`);
   }
   const env: { name: string; value?: string }[] = response.body.spec.template.spec.containers[0].env ?? [];
-  const value = env.find((variable) => variable.name === name)?.value;
+  return env.find((variable) => variable.name === name)?.value;
+}
+
+/** An env var that a Deployment's first container must set directly. */
+export async function deploymentEnv(platform: PlatformOutputs, deployment: string, name: string): Promise<string> {
+  const value = await optionalDeploymentEnv(platform, deployment, name);
   if (value === undefined) {
     throw new Error(`The Deployment ${deployment} doesn't set ${name}.`);
   }

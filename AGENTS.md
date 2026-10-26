@@ -34,6 +34,10 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 ## Working in this repo
 
 - Plans live on GitHub issues. `.plans/` is git-ignored, for local drafts.
+- `.agents/skills/` holds this repo's own skills: `cleanup-duplicate-people` and `cleanup-schools`.
+  Each works through one kind of CRM data problem, proposing a code fix that stops it recurring,
+  then per-row edits for the user to approve. Claude Code reads skills only from `.claude/skills`,
+  so link them there once: `mkdir -p .claude && ln -s ../.agents/skills .claude/skills`.
 - PR titles are conventional commits. PRs merge by squash, or by merge commit to keep a branch's
   history (cyc-seattle/workplace#6). Either way, the PR title is the commit's title.
 - Never push to `main`.

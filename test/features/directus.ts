@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { deploymentEnv, devPlatform, secretValue } from "./support.ts";
 
 export interface DirectusResponse {
@@ -86,4 +88,14 @@ export async function devDirectusAdmin(): Promise<DirectusSession> {
   const email = await deploymentEnv(platform, "directus", "ADMIN_EMAIL");
   const password = await secretValue(platform, "directus", "ADMIN_PASSWORD");
   return new DirectusSession(`https://directus.${platform.domain}`, email, password);
+}
+
+/**
+ * Whether dev's Directus runs with a license, from the backend stack's dev config. Without one,
+ * Directus applies no relational permission rules, so `@licensed` features can't pass
+ * (cyc-seattle/isthmia#172).
+ */
+export function devDirectusLicensed(): boolean {
+  const config = readFileSync(join(import.meta.dirname, "../../stacks/backend/Pulumi.dev.yaml"), "utf8");
+  return !/^\s*backend:licensed:\s*false\s*$/m.test(config);
 }

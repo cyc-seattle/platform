@@ -32,10 +32,19 @@ Directus through Authentik fails. The built-in admin still signs in.
 
 ## Never destroy it
 
-Directus's license activation is bound to its database and its `PUBLIC_URL`, and the key allows few
-activations (cyc-seattle/isthmia#172). Never `pulumi destroy` `backend`, and never drop, recreate, or
-rename its database or change its URL. Move its resources with `pulumi state move` instead. Ask the
-maintainer before any change that could activate a new Directus.
+Directus's license activation is bound to its database's `project_id` and its `PUBLIC_URL`, and the
+key allows 5 activations (cyc-seattle/isthmia#172). Never `pulumi destroy` `backend`, and never drop,
+recreate, or rename its database or change its URL. Move its resources with `pulumi state move`
+instead. Ask the maintainer before any change that could activate a new Directus.
+
+- Directus activates on startup only when `directus_settings.license_key` is empty, and otherwise
+  refreshes. A restart, redeploy, or reset that keeps the database and the URL spends nothing.
+- Never give the key to a throwaway Directus, such as `mise run directus-local`'s.
+- Before an instance leaves its `project_id` or `PUBLIC_URL`, release its activation with
+  `@directus/license`'s `deactivateKey`, which is meant for server migrations.
+- A refresh that fails with `BINDING_MISMATCH`, as after Directus support resets the activation
+  count, keeps the stored license for its 30-day grace period. To bind again, clear `license_key`
+  (not the token) and restart, which spends one activation.
 
 ## MCP
 
