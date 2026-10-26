@@ -122,6 +122,12 @@ describe("StandardRepository labels, security, and reporting", () => {
     });
   });
 
+  it("keeps an archived repository squash-only, since GitHub rejects edits to it", () => {
+    expect(byName("archived-example").inputs).toMatchObject({ allowMergeCommit: false });
+    expect(byName("archived-example").inputs.mergeCommitTitle).toBeUndefined();
+    expect(byName("archived-example-main").inputs.rules.pullRequest.allowedMergeMethods).toEqual(["squash"]);
+  });
+
   it("leaves an archived repository's security settings to GitHub", () => {
     expect(byName("archived-example").inputs.securityAndAnalysis).toBeUndefined();
   });

@@ -32,6 +32,8 @@ export class StandardRepository extends github.Repository {
     { requiredChecks, requiredApprovingReviewCount = 0, ...args }: StandardRepositoryArgs,
     opts?: pulumi.CustomResourceOptions,
   ) {
+    // GitHub rejects edits to an archived repo, so archived repos keep squash-only merges.
+    const allowMergeCommit = !args.archived;
     super(
       plainId,
       {
@@ -40,15 +42,14 @@ export class StandardRepository extends github.Repository {
         hasWiki: false,
         hasDiscussions: false,
         // Merge commits keep an imported history intact (cyc-seattle/workplace#6).
-        allowMergeCommit: true,
+        allowMergeCommit,
         allowSquashMerge: true,
         allowRebaseMerge: false,
         allowAutoMerge: true,
         deleteBranchOnMerge: true,
         squashMergeCommitTitle: "PR_TITLE",
         squashMergeCommitMessage: "PR_BODY",
-        mergeCommitTitle: "PR_TITLE",
-        mergeCommitMessage: "PR_BODY",
+        ...(allowMergeCommit ? { mergeCommitTitle: "PR_TITLE", mergeCommitMessage: "PR_BODY" } : {}),
         archiveOnDestroy: true,
         // GitHub turns push protection off when it archives a repo, and rejects edits to one.
         ...(args.archived
@@ -111,7 +112,7 @@ export class StandardRepository extends github.Repository {
         pullRequest: {
           requiredApprovingReviewCount,
           dismissStaleReviewsOnPush: true,
-          allowedMergeMethods: ["merge", "squash"],
+          allowedMergeMethods: allowMergeCommit ? ["merge", "squash"] : ["squash"],
         },
         ...(requiredChecks.length > 0
           ? { requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) } }
