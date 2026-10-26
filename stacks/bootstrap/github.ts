@@ -20,11 +20,11 @@ const orgWorkflowPermissions = new github.ActionsOrganizationWorkflowPermissions
 });
 
 /**
- * A GitHub repository with the org's standard settings: squash merges only, auto-merge allowed,
- * branches deleted on merge, no wiki, secret scanning with push protection unless archived, private vulnerability
- * reporting, the standard labels, `protect: true`, and archived rather than deleted on destroy. It
- * also protects `main` and the tags with rulesets. Pass `args` to override a setting for one
- * repository.
+ * A GitHub repository with the org's standard settings: squash merges and merge commits, both
+ * titled by the PR, auto-merge allowed, branches deleted on merge, no wiki, secret scanning with
+ * push protection unless archived, private vulnerability reporting, the standard labels,
+ * `protect: true`, and archived rather than deleted on destroy. It also protects `main` and the
+ * tags with rulesets. Pass `args` to override a setting for one repository.
  */
 export class StandardRepository extends github.Repository {
   constructor(
@@ -32,6 +32,8 @@ export class StandardRepository extends github.Repository {
     { requiredChecks, requiredApprovingReviewCount = 0, ...args }: StandardRepositoryArgs,
     opts?: pulumi.CustomResourceOptions,
   ) {
+    // GitHub rejects edits to an archived repo, so archived repos keep squash-only merges.
+    const allowMergeCommit = !args.archived;
     super(
       plainId,
       {
@@ -39,13 +41,15 @@ export class StandardRepository extends github.Repository {
         hasIssues: true,
         hasWiki: false,
         hasDiscussions: false,
-        allowMergeCommit: false,
+        // Merge commits keep an imported history intact (cyc-seattle/workplace#6).
+        allowMergeCommit,
         allowSquashMerge: true,
         allowRebaseMerge: false,
         allowAutoMerge: true,
         deleteBranchOnMerge: true,
         squashMergeCommitTitle: "PR_TITLE",
         squashMergeCommitMessage: "PR_BODY",
+        ...(allowMergeCommit ? { mergeCommitTitle: "PR_TITLE", mergeCommitMessage: "PR_BODY" } : {}),
         archiveOnDestroy: true,
         // GitHub turns push protection off when it archives a repo, and rejects edits to one.
         ...(args.archived
@@ -108,7 +112,7 @@ export class StandardRepository extends github.Repository {
         pullRequest: {
           requiredApprovingReviewCount,
           dismissStaleReviewsOnPush: true,
-          allowedMergeMethods: ["squash"],
+          allowedMergeMethods: allowMergeCommit ? ["merge", "squash"] : ["squash"],
         },
         ...(requiredChecks.length > 0
           ? { requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) } }

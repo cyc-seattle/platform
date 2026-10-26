@@ -39,18 +39,20 @@ beforeAll(async () => {
 });
 
 describe("StandardRepository", () => {
-  it("allows squash merges only", () => {
+  it("allows squash merges and merge commits, but not rebases", () => {
     expect(byName("example").inputs).toMatchObject({
       allowSquashMerge: true,
-      allowMergeCommit: false,
+      allowMergeCommit: true,
       allowRebaseMerge: false,
     });
   });
 
-  it("squashes with the pull request's title and body", () => {
+  it("squashes and merges with the pull request's title and body", () => {
     expect(byName("example").inputs).toMatchObject({
       squashMergeCommitTitle: "PR_TITLE",
       squashMergeCommitMessage: "PR_BODY",
+      mergeCommitTitle: "PR_TITLE",
+      mergeCommitMessage: "PR_BODY",
     });
   });
 
@@ -66,7 +68,7 @@ describe("StandardRepository", () => {
     expect(byName("example").inputs).toMatchObject({ name: "example", description: "An example." });
   });
 
-  it("requires a squash-only pull request on the default branch", () => {
+  it("requires a squash or merge-commit pull request on the default branch", () => {
     expect(byName("example-main").inputs).toMatchObject({
       name: "Require PRs and CI on main",
       conditions: { refName: { includes: ["~DEFAULT_BRANCH"] } },
@@ -74,7 +76,7 @@ describe("StandardRepository", () => {
       rules: {
         deletion: true,
         nonFastForward: true,
-        pullRequest: { requiredApprovingReviewCount: 0, allowedMergeMethods: ["squash"] },
+        pullRequest: { requiredApprovingReviewCount: 0, allowedMergeMethods: ["merge", "squash"] },
       },
     });
   });
@@ -118,6 +120,12 @@ describe("StandardRepository labels, security, and reporting", () => {
       secretScanning: { status: "enabled" },
       secretScanningPushProtection: { status: "enabled" },
     });
+  });
+
+  it("keeps an archived repository squash-only, since GitHub rejects edits to it", () => {
+    expect(byName("archived-example").inputs).toMatchObject({ allowMergeCommit: false });
+    expect(byName("archived-example").inputs.mergeCommitTitle).toBeUndefined();
+    expect(byName("archived-example-main").inputs.rules.pullRequest.allowedMergeMethods).toEqual(["squash"]);
   });
 
   it("leaves an archived repository's security settings to GitHub", () => {
