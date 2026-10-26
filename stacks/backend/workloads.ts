@@ -53,7 +53,7 @@ export function directusEnv({
     CORS_ENABLED: "true",
     CORS_ORIGIN: site,
     CORS_CREDENTIALS: "true",
-    // The settings in ./index.ts turn MCP on as well (docs/mcp.md). A client registers by its metadata
+    // The settings in ./index.ts turn MCP on as well (docs/backend.md). A client registers by its metadata
     // document, never dynamically.
     MCP_OAUTH_ENABLED: "true",
     MCP_OAUTH_CIMD_ENABLED: "true",

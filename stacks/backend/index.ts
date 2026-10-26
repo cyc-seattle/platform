@@ -121,7 +121,7 @@ export const directusOidcClientId = pulumi.output(app.then(({ oidcClientId }) =>
 export const directusOidcClientSecret = pulumi.secret(app.then(({ oidcClientSecret }) => oidcClientSecret));
 
 // Settings -> AI. MCP adds no access of its own, but Directus can't keep a role out of it, so it stays
-// off wherever Community users can sign in until they lose their item permissions (docs/mcp.md).
+// off wherever Community users can sign in until they lose their item permissions (docs/backend.md).
 const mcp = config.getBoolean("mcp") ?? false;
 new DirectusSettings(
   "directus-settings",
