@@ -613,7 +613,7 @@ describe("planCustomFieldResponses", () => {
     expect(plan.toUpdate).toEqual([{ id: "row-1:field-1", patch: { value: "New answer" } }]);
   });
 
-  // #137 review: a blank answer on a later run must never overwrite a value this registration
+  // cyc-seattle/isthmia#137 review: a blank answer on a later run must never overwrite a value this registration
   // already has on file for the same field, same rule as the `participants` mirror.
   it("never overwrites a stored non-blank response with a blank one", () => {
     const reg = confirmedRegistration("reg-1", {

@@ -634,7 +634,7 @@ describe("runSync", () => {
     expect(runTask).toMatchObject({ status: "failed", last_error: "discovery unavailable" });
   });
 
-  // The regression test for #143 finding 4: sync_run keeps a stable key, so every run's children
+  // The regression test for cyc-seattle/isthmia#143 finding 4: sync_run keeps a stable key, so every run's children
   // land on the same parent row. Before the fix, campsFailed was computed by reading every task
   // ever attached to that parent, so camp-a's task - left non-"done" by its one failed attempt -
   // kept the run permanently "failed" even after Clubspot stopped offering camp-a up for discovery.
@@ -749,7 +749,7 @@ describe("runSync", () => {
     expect(tables.get("people")![0]).toMatchObject({ school: "Roosevelt High" });
   });
 
-  // The one CRM field rule (#137) applies to promoted fields too, per-registration, inside the
+  // The one CRM field rule (cyc-seattle/isthmia#137) applies to promoted fields too, per-registration, inside the
   // camp loop - not only as the run-level gap-fill fallback above.
   it("writes a promoted field's changed answer per registration, replacing a stale answer and counting it", async () => {
     const now = new Date("2026-01-15T12:00:00Z");
@@ -1018,7 +1018,7 @@ describe("runSync", () => {
     }
   });
 
-  // The regression test for finding 2 (#143): staff deleted the person a participant was linked
+  // The regression test for finding 2 (cyc-seattle/isthmia#143): staff deleted the person a participant was linked
   // to (`participants.person_id` SET NULL), which used to make this participant look brand new to
   // the matcher on every later run - silently matching or creating a person every time instead of
   // leaving it for `unlinked_participant` to flag. An unlinked participant's mirror still syncs; only
@@ -1425,7 +1425,7 @@ describe("runSync", () => {
     expect(blankTables.get("participants")![0]).toEqual(existingParticipantRow);
   });
 
-  // #137 review finding 3: two registrations for the same Clubspot participant in one camp's
+  // cyc-seattle/isthmia#137 review finding 3: two registrations for the same Clubspot participant in one camp's
   // batch (e.g. two sessions of the same camp) used to both see no `participants` row yet and
   // both queue a create with the same PK.
   it("dedupes two registrations sharing one Clubspot participant, instead of creating it twice", async () => {
@@ -1479,7 +1479,7 @@ describe("runSync", () => {
     ]);
   });
 
-  // #137 review finding 4: two registrations sharing one existing, unlinked participant used to
+  // cyc-seattle/isthmia#137 review finding 4: two registrations sharing one existing, unlinked participant used to
   // each count and mirror it separately.
   it("counts and mirrors an existing unlinked participant only once, even when two registrations share it", async () => {
     const now = new Date("2026-01-15T12:00:00Z");

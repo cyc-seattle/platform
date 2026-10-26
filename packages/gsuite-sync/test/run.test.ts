@@ -174,7 +174,7 @@ const now = new Date("2026-06-15T00:00:00Z");
 describe("enqueueDueProgramGroups", () => {
   it("enqueues every program with a google_group_id, regardless of whether it has a due class", async () => {
     // A program's only current activity can be a role assignment - an off-season program, or one
-    // with no class yet - and it must still get a task (#149 step 14a).
+    // with no class yet - and it must still get a task (cyc-seattle/isthmia#149 step 14a).
     const { fetchMock } = makeDirectusStore({
       programs: [
         { id: "program-with-due-class", google_group_id: "group-1" },
@@ -420,7 +420,7 @@ describe("runGroupSync", () => {
     ]);
   });
 
-  it("doesn't re-add someone who left the group, and records that they left (#265)", async () => {
+  it("doesn't re-add someone who left the group, and records that they left (cyc-seattle/isthmia#265)", async () => {
     const roleHolder = (id: string) => ({
       id: `pra-${id}`,
       person_id: id,
@@ -585,7 +585,7 @@ describe("runGroupSync", () => {
     expect(adder.calls).toContainEqual(["shared@cyccommunitysailing.org", "manager2@example.com", "MEMBER"]);
   });
 
-  it("enqueues and adds a role holder for a program with no class at all (#149 step 14a)", async () => {
+  it("enqueues and adds a role holder for a program with no class at all (cyc-seattle/isthmia#149 step 14a)", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "offseason@cyccommunitysailing.org" }],
       programs: [{ id: "program-1", name: "Off-season", google_group_id: "group-1" }],

@@ -125,7 +125,7 @@ export interface SyncParticipantOptions {
   existingPersonId?: string;
   /** The mirror's stored row before this run's write - `undefined` for a participant mirrored for the first time. */
   priorMirror?: ParticipantRow;
-  /** This run's fresh mirror fields for the participant - the `v` side of the one CRM field rule (#137). */
+  /** This run's fresh mirror fields for the participant - the `v` side of the one CRM field rule (cyc-seattle/isthmia#137). */
   mirrorFields: ParticipantMirrorFields;
   /** This participant's own registration, ranked against every other registration linked to the same person. */
   registration: RegistrationRank;
@@ -149,7 +149,7 @@ function withComparableEmail(row: PersonRow): PersonRow {
  * for comparison, a stored `Foo@Bar.com` reads as unchanged (or already-set) against `v`, and
  * `planSyncedFields` never patches it. When the raw stored value matches `v` case-insensitively but
  * not exactly, this forces the lowercase write through and never counts it as a replaced staff edit
- * - it's the same address Clubspot already normalizes on write (#166), not a real edit.
+ * - it's the same address Clubspot already normalizes on write (cyc-seattle/isthmia#166), not a real edit.
  */
 function reconcileEmailCasing(
   plan: FieldTally & { patch: Partial<PersonRow> },
@@ -169,7 +169,7 @@ function reconcileEmailCasing(
   };
 }
 
-/** Logs a replaced staff edit - person id and field names only, never the values (#137). Shared with `sync-run.ts`'s per-registration promoted-fields sync. */
+/** Logs a replaced staff edit - person id and field names only, never the values (cyc-seattle/isthmia#137). Shared with `sync-run.ts`'s per-registration promoted-fields sync. */
 export function logReplacedFields(collection: string, id: string, fields: readonly string[]): void {
   if (fields.length === 0) {
     return;
@@ -187,7 +187,7 @@ export function logReplacedFields(collection: string, id: string, fields: readon
  * the FK once and no later sync undoes it.
  *
  * Every curated field on `people`, `medical_profiles`, and a guardian/emergency slot follows the
- * one CRM field rule (#137, `synced-fields.ts`): the newest linked participant's form answer wins,
+ * one CRM field rule (cyc-seattle/isthmia#137, `synced-fields.ts`): the newest linked participant's form answer wins,
  * and a staff edit holds until Clubspot sends something new. A participant that isn't currently
  * the newest one linked to its person writes only the `participants` mirror, never `people` or
  * `medical_profiles` - see `isNewestParticipant`.
@@ -323,7 +323,7 @@ export class PersonSync {
    * Directus yet (see `BatchSibling`; without them, two registrations newly linked to one person in
    * the same batch would each see zero siblings and both count as newest). Returns whether this
    * registration is the newest, and - regardless - the best-ranked *other* one, whose stored mirror
-   * is the fallback base a field with no history of its own falls back to (#137).
+   * is the fallback base a field with no history of its own falls back to (cyc-seattle/isthmia#137).
    *
    * Two Directus reads, not one: it 403s a dot-notation relational filter on a scoped token (see
    * `sync-run.ts`'s `readByIds`), so this finds the person's other participants first, then their
@@ -434,7 +434,7 @@ export class PersonSync {
    * Applies the one CRM field rule to an already-resolved existing person's `people` row. `base`
    * is this participant's own prior mirror; `fallbackMirror` is the person's previous newest
    * *other* linked participant's mirror, which a field with no history of its own falls back to
-   * (#137) - see `resolveFieldBase`.
+   * (cyc-seattle/isthmia#137) - see `resolveFieldBase`.
    */
   private async applySyncedPersonFields(
     personId: string,
@@ -895,7 +895,7 @@ export class PersonSync {
    * guardian-1 might be Dad, 2025's Mom). Used as `base` only when its name still matches the
    * contact this slot is linked to today; otherwise there's no fallback, and the slot falls back to
    * {@link planSyncedField}'s fill-null-only rule instead of comparing against a different person's
-   * answer (#137 review).
+   * answer (cyc-seattle/isthmia#137 review).
    *
    * `slotNameMatchesContact` alone isn't enough here: it treats a blank name as vacuously matching
    * any contact, which is right for this run's own slot (nothing to contradict yet) but wrong for a
@@ -916,7 +916,7 @@ export class PersonSync {
    * Checks an existing guardian/emergency-contact slot's name against its linked person once, so
    * the result gates both this write (a mismatch or a non-newest registration writes nothing) and
    * whether `syncGuardianContacts`/`syncEmergencyContacts` may attribute the slot's contact points
-   * to that person - a mismatch means neither, regardless of `isNewest` (#143: a stale slot must
+   * to that person - a mismatch means neither, regardless of `isNewest` (cyc-seattle/isthmia#143: a stale slot must
    * never donate its email/phone to a person it no longer names).
    */
   private async syncContactSlot(

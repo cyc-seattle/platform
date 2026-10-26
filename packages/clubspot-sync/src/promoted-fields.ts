@@ -20,7 +20,7 @@ import { emptyFieldTally, type FieldTally, parseYesNo, planSyncedField, resolveB
  * or onto a `registrations` column answered fresh by each registration (`share_contact`; design
  * doc "Sync: a registration-level promoted field").
  *
- * Both targets share the same two paths, pure, and both following the one CRM field rule (#137):
+ * Both targets share the same two paths, pure, and both following the one CRM field rule (cyc-seattle/isthmia#137):
  * - `planPromotedFieldSync`/`planRegistrationPromotedFieldSync` run once per registration, inside
  *   `syncRegistrations` (`sync-run.ts`). The `people` path is gated on the same
  *   newest-linked-participant check `people` and `medical_profiles` use; the `registrations` path
@@ -156,7 +156,7 @@ export function buildTargetByDefinitionId(
  * write a Directus revision every hour. Archived ranks last rather than being excluded, so a
  * cancelled registration's answer can still fill a column nothing else answers.
  *
- * Shared with `synced-fields.ts`'s newest-linked-participant rule (#137), which uses the same
+ * Shared with `synced-fields.ts`'s newest-linked-participant rule (cyc-seattle/isthmia#137), which uses the same
  * order to decide whose form answer wins a person's curated fields.
  */
 export function compareByRegistrationRecency(
@@ -177,7 +177,7 @@ export interface PromotedFieldSyncPlan extends FieldTally {
 }
 
 /**
- * Whether the per-registration promoted-fields sync needs a fallback lookup at all (#137 review,
+ * Whether the per-registration promoted-fields sync needs a fallback lookup at all (cyc-seattle/isthmia#137 review,
  * read-volume finding). {@link planPromotedFieldSync} only reaches for `fallbackByTargetField`
  * through {@link resolveBase} when a response's own definition has no stored row yet, so a
  * registration whose own `custom_field_responses` already cover every promotable response it sent
@@ -196,7 +196,7 @@ export function needsFallbackTargetValues(
 }
 
 /**
- * Applies the one CRM field rule (#137) to one registration's promotable responses. `response` is
+ * Applies the one CRM field rule (cyc-seattle/isthmia#137) to one registration's promotable responses. `response` is
  * this registration's own raw `customFieldsArray`; `existingResponses` is its own
  * `custom_field_responses` rows as stored before this run's write - the `base` side of the rule,
  * same as `participants` is for every other curated field. `fallbackByTargetField` is the person's
@@ -206,7 +206,7 @@ export function needsFallbackTargetValues(
  * it against the same target field is the only thing that still lines up. Used - via
  * {@link resolveBase} - only where this registration has no stored response of its own for a
  * definition: a newly linked registration's first sync has nothing in `existingResponses` yet, so
- * without it a changed answer would only ever fill a null column (#137). `currentPerson` is the
+ * without it a changed answer would only ever fill a null column (cyc-seattle/isthmia#137). `currentPerson` is the
  * resolved person's current value for every promotable column.
  *
  * The caller gates this on the newest-linked-participant check - an older registration's answer
@@ -266,7 +266,7 @@ export interface RegistrationPromotedFieldSyncPlan extends FieldTally {
  * narrowed to the definitions a `promoted_fields` row maps to `share_contact` - the caller does
  * that matching the same way {@link buildTargetByDefinitionId} does for `people` fields.
  * `storedResponses` is this registration's own `custom_field_responses` as stored before this
- * run's write - the `base` side of the field rule (#137).
+ * run's write - the `base` side of the field rule (cyc-seattle/isthmia#137).
  */
 export function planRegistrationPromotedFieldSync(
   rawAnswers: readonly CustomFieldResponseInput[],
@@ -386,7 +386,7 @@ export function planPromotedFields(
     Map<PromotablePersonField, { registration: RegistrationRow; value: string }>
   >();
 
-  // A registration whose participant has no resolved person yet (unlinked, #137) has no one to
+  // A registration whose participant has no resolved person yet (unlinked, cyc-seattle/isthmia#137) has no one to
   // promote a response onto.
   let skippedForNoPerson = 0;
 

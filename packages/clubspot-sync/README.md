@@ -2,7 +2,7 @@
 
 An hourly CronJob that syncs one Clubspot club's camps, schedule, and registrations into the CRM's
 Directus instance (`@cyc-seattle/crm`). Replaces the spreadsheet-backed reports in
-`cyc-seattle/admin-functions` for that data. See issue #70.
+`cyc-seattle/admin-functions` for that data. See issue cyc-seattle/isthmia#70.
 
 ## Running locally
 
@@ -40,7 +40,7 @@ Options:
   without writing anything.
 
 Prefer the env vars over `--directus-token` and the Clubspot password flags. A flag value is
-visible to anyone on the box who runs `ps` (#49).
+visible to anyone on the box who runs `ps` (cyc-seattle/isthmia#49).
 
 ## Verifying and backfilling one camp
 
@@ -75,7 +75,7 @@ almost all of the logic testable with no Directus and no Parse:
 - `schedule.ts` - plans `camps`, `sessions`, `classes`, `session_classes`, `entry_caps`.
 - `people.ts` / `person-sync.ts` - person matching and the `people`/`contacts`/`medical_profiles`
   plan and its executor.
-- `synced-fields.ts` - the one CRM field rule every curated field follows (#137): pure, and used by
+- `synced-fields.ts` - the one CRM field rule every curated field follows (cyc-seattle/isthmia#137): pure, and used by
   `person-sync.ts` for `people`, guardian/emergency-contact slots, and `medical_profiles`.
 - `registrations.ts` - plans `registrations`, `registration_entries`, `registration_billing`,
   `custom_field_definitions`, `custom_field_responses`.
@@ -97,7 +97,7 @@ almost all of the logic testable with no Directus and no Parse:
 
 **Clubspot is the source of truth for schedule and registration columns.** A manual edit to one is
 overwritten on the next run that reconciles that row. `people`, `medical_profiles`, and a
-guardian/emergency contact's own `people` row follow one different rule instead (#137, `synced-fields.ts`):
+guardian/emergency contact's own `people` row follow one different rule instead (cyc-seattle/isthmia#137, `synced-fields.ts`):
 the newest linked participant's form answer wins, and a staff edit holds until Clubspot sends
 something new. The `participants` mirror itself keeps Clubspot's last non-blank answer for every
 field - a blank form answer never overwrites a value already stored there (`people.ts`'s

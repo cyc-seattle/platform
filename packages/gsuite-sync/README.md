@@ -44,7 +44,7 @@ Options:
   passes still read live Google state, since reads have no side effects.
 
 Prefer the env vars over `--directus-token`. A flag value is visible to anyone on the box who runs
-`ps` (#49).
+`ps` (cyc-seattle/isthmia#49).
 
 ## Shape of the code
 
@@ -105,7 +105,7 @@ that needs a human.
 in `program_role_assignments`, simply stops being re-added on the next run — nobody is ever removed
 from a Google Group by this job.
 
-**The membership pass never re-adds someone who left a group (#265).** It records each person it
+**The membership pass never re-adds someone who left a group (cyc-seattle/isthmia#265).** It records each person it
 sees in a program group in `google_group_memberships`, keyed by group and person. Each run it lists
 the group's live members once, then for each planned person:
 
@@ -129,11 +129,11 @@ The audit treats a removed person as intentionally absent, and raises nothing fo
 
 **A program's membership task is enqueued on `google_group_id` alone, not on having a due class.**
 A program whose only current activity is a `program_role_assignments` row — off-season, or set up
-before its first class exists — still needs its role holders synced (#149). Whether a class's camp is active, below, decides which
+before its first class exists — still needs its role holders synced (cyc-seattle/isthmia#149). Whether a class's camp is active, below, decides which
 _participants_ get added once the task runs; it plays no part in whether the task runs at all.
 
 **A class only contributes participants while its camp is current or upcoming** (`isCampActive`,
-#265): the camp isn't archived, and its `end_date` hasn't passed or is unset. People who register
+cyc-seattle/isthmia#265): the camp isn't archived, and its `end_date` hasn't passed or is unset. People who register
 in spring for a summer camp get the group's emails before it starts. Last season's members stay in
 the group anyway, because the job never removes anyone. Program role assignments have their own
 `starts_on`/`ends_on` instead.
@@ -155,11 +155,11 @@ settings drift still cover every non-archived group.
 **An unusable email is skipped, not fatal.** Clubspot contact fields hold phone numbers and
 typos, and the Directory API rejects a whole add on one bad address, so membership skips anything
 `isValidEmail` rejects and the audit raises `invalid_email` for that person. Fix it in Directus:
-clubspot-sync only fills empty `people` fields (#137), so a correction made only in Clubspot never
+clubspot-sync only fills empty `people` fields (cyc-seattle/isthmia#137), so a correction made only in Clubspot never
 replaces the bad value. Fixing Clubspot too keeps Clubspot's own emails to the family working.
 
 **Group managers are not audited.** They're managed by hand until roles have one model across
-Directus and Google Groups (#156), so a `MANAGER` is never reported as `unexpected_member` or
+Directus and Google Groups (cyc-seattle/isthmia#156), so a `MANAGER` is never reported as `unexpected_member` or
 `stale_member`. The sync never demotes one either — adding an existing manager as `MEMBER` leaves
 their role alone. Owners are still audited.
 
@@ -181,7 +181,7 @@ the Directus admin UI.
 **A program group must not be used as an oauth2-proxy allowlist.** Nested group membership resolves
 in-domain only — `hasMember` doesn't follow a cross-domain member through a nested group on
 Workspace Business Standard, and the tier that would fix it (`checkTransitiveMembership`) needs
-Enterprise or Cloud Identity Premium. See #65 and #98.
+Enterprise or Cloud Identity Premium. See cyc-seattle/isthmia#65 and cyc-seattle/isthmia#98.
 
 **A re-enqueue never resets a struggling task's failure count.** Every run re-enqueues every due
 unit of work, but `@cyc-seattle/directus`'s queue carries a task's `attempts` and `last_error`
@@ -193,5 +193,5 @@ and re-enqueues it by hand.
 
 ## Open questions
 
-- **Sync notifications.** Deferred (#122). `sync_tasks.needs_attention` makes a chronically failing
+- **Sync notifications.** Deferred (cyc-seattle/isthmia#122). `sync_tasks.needs_attention` makes a chronically failing
   task visible in the Directus admin UI today.

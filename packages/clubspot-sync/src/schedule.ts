@@ -129,7 +129,7 @@ export function planCamps(camps: Camp[], existing: CampWithClubspot[]): Collecti
 /**
  * Reconciles `classes` by id. A new class is created unlinked (`program_id: null`); an existing
  * row's `program_id` is never part of the diff, since staff set it by hand, once per class - see
- * #149. Bypasses `planById`, whose generic diff would otherwise patch it back to null on every run.
+ * cyc-seattle/isthmia#149. Bypasses `planById`, whose generic diff would otherwise patch it back to null on every run.
  */
 export function planClasses(campClasses: CampClass[], existing: ClassRow[]): CollectionPlan<ClassRow> {
   const existingById = new Map(existing.map((row) => [row.id, row] as const));

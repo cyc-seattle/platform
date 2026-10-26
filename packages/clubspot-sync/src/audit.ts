@@ -3,7 +3,7 @@ import { type AuditFindingInput } from "@cyc-seattle/directus";
 import { type DuplicatePersonGroup, type MergePerson } from "./merge.ts";
 
 /** The two kinds this run-level detection pass raises (design doc "Merge, unmerge, and review",
- * #133). Scopes `planAuditFindingWrites` to the rows it owns, so it never resolves a finding some
+ * cyc-seattle/isthmia#133). Scopes `planAuditFindingWrites` to the rows it owns, so it never resolves a finding some
  * other sync raised - `class_without_program`, also tagged `source: "clubspot-sync"`, is owned and
  * reconciled by gsuite-sync's own audit pass instead. */
 export type AuditFindingKind = "duplicate_person" | "unlinked_participant";

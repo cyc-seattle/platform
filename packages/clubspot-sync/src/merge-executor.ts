@@ -18,7 +18,7 @@ import {
 } from "./merge.ts";
 
 /**
- * The thin, impure half of "Merge, unmerge, and review" (#133): `merge.ts` plans a merge,
+ * The thin, impure half of "Merge, unmerge, and review" (cyc-seattle/isthmia#133): `merge.ts` plans a merge,
  * this module applies one to Directus for each `duplicate_person` finding staff have approved.
  * Runs once per sync, before the camp loop, so a merged person's records are consolidated before
  * anything else this run touches them.

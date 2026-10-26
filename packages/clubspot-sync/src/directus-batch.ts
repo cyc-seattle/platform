@@ -2,7 +2,7 @@ import { type DirectusClient } from "@cyc-seattle/directus";
 
 // Directus 403s a dot-notation relational filter (`filter[registration_id.camp_id][_eq]`) on
 // several hop collections - it requires read permission on the traversed field itself, which
-// this token doesn't have, independent of what's in `fields` (see #135 follow-up). Chunked `_in` is
+// this token doesn't have, independent of what's in `fields` (see cyc-seattle/isthmia#135 follow-up). Chunked `_in` is
 // the fallback: a UUID plus its comma separator is ~37 characters, so 40 ids/batch keeps a request's
 // id list under 1,480 characters - well under a conservative 2,000-character URL budget once the
 // base URL, path, and other query params are added.

@@ -218,7 +218,7 @@ interface CampScope {
 
 /**
  * Reads every table the schedule and registration passes reconcile against, scoped to one camp
- * so a camp sync's read no longer grows with the club's whole history (#135) - fetching each
+ * so a camp sync's read no longer grows with the club's whole history (cyc-seattle/isthmia#135) - fetching each
  * collection's state for just this camp and diffing it in avoids a Directus round trip per pass.
  * `classes`, `sessions`, `custom_field_definitions`, and `registrations` carry `camp_id`
  * directly; `session_classes` and `entry_caps` are reached through their classes'
@@ -393,7 +393,7 @@ export interface CampSyncCounts {
   participantsMirrored: number;
   contactPointsCreated: number;
   contactPointsTouched: number;
-  /** The one CRM field rule's own tally (#137) - see `synced-fields.ts`. */
+  /** The one CRM field rule's own tally (cyc-seattle/isthmia#137) - see `synced-fields.ts`. */
   fieldsWritten: number;
   fieldsReplacedStaffEdits: number;
   fieldsBlankSkipped: number;
@@ -557,7 +557,7 @@ async function syncRegistrations(
   // curated field yet. `participants` rows for a genuinely new registration aren't written until
   // after pass 2, so an isNewest ranking that only reads what's already in Directus would let two
   // registrations newly linked to the same person in this same batch both count as newest, and
-  // whichever is processed last would win regardless of which is actually newer (#137). Resolving
+  // whichever is processed last would win regardless of which is actually newer (cyc-seattle/isthmia#137). Resolving
   // every person first, and ranking pass 2 against the whole batch, fixes that.
   interface ResolvedRegistration {
     registration: Registration;
@@ -586,7 +586,7 @@ async function syncRegistrations(
   // Two registrations can share one Clubspot participant in the same batch (e.g. two sessions of
   // the same camp). Resolving the person only once per participant id, and every later
   // registration reusing that same resolution, is what keeps pass 2 from queuing a second
-  // `participants` create with the same PK (#137 review finding 3).
+  // `participants` create with the same PK (cyc-seattle/isthmia#137 review finding 3).
   const resolvedPersonByParticipantId = new Map<string, ResolvedPerson>();
   for (const registration of data.registrations) {
     const participant = firstParticipant(registration);
@@ -651,7 +651,7 @@ async function syncRegistrations(
   }
 
   // Captured once, before this loop starts mutating `existingParticipantById`: the field rule's
-  // `base` (#137) must be each registration's own stored answer as of the start of this run, not a
+  // `base` (cyc-seattle/isthmia#137) must be each registration's own stored answer as of the start of this run, not a
   // same-batch sibling's fresh write. Two *existing* registrations sharing a participant otherwise
   // let the second one processed compare against the first's own write - if the first processed
   // wasn't the newest, the newest would then see `base === v` and drop its real change as
@@ -675,7 +675,7 @@ async function syncRegistrations(
     // Looked up fresh, not the pass 1 snapshot: two registrations can share one Clubspot
     // participant within a batch, and the second must see the first's own write from this same
     // batch to decide create vs. update below - not queue a second `participants` create with the
-    // same PK (#137 review finding 3).
+    // same PK (cyc-seattle/isthmia#137 review finding 3).
     const priorParticipant = existingParticipantById.get(participant.id);
     // The field rule's own base, unlike `priorParticipant` above - the pass 1 snapshot, so a
     // same-batch sibling's fresh mirror write never stands in for this registration's own stored
@@ -697,7 +697,7 @@ async function syncRegistrations(
       participantsMirrored++;
     }
 
-    // The mirror keeps Clubspot's last non-blank answer for every field (#137 review), unlike the
+    // The mirror keeps Clubspot's last non-blank answer for every field (cyc-seattle/isthmia#137 review), unlike the
     // CRM row's own one-CRM-field rule - `mergeParticipantMirrorFields` is only what's written to
     // `participants` here; `mirrorFields` itself stays this run's raw `v` for `syncParticipant`
     // below. `last_sync_run_id` only moves in the same patch as an actual change, so an unchanged
@@ -855,12 +855,12 @@ async function syncRegistrations(
       // The previous newest *other* registration's own answer, by target field - the same
       // fallback base `PersonSync` draws `people`/`medical_profiles` from, so a newly linked
       // registration's first sync compares against its person's last known answer instead of only
-      // filling a null column (#137).
+      // filling a null column (cyc-seattle/isthmia#137).
       const fallbackRegistrationId = fallbackRegistrationIdByRegistrationId.get(registration.id);
       // Skipped whenever this registration's own stored responses already cover every promotable
       // one it sent - `resolveBase` only ever reaches for the fallback when a definition has no
       // stored row of its own yet, so reading the fallback registration's responses otherwise
-      // would be a read this sync never uses (#137 review, read-volume finding).
+      // would be a read this sync never uses (cyc-seattle/isthmia#137 review, read-volume finding).
       const fallbackByTargetField =
         fallbackRegistrationId &&
         needsFallbackTargetValues(targetByDefinitionId, rawResponses, existingResponsesForRegistration)
@@ -1101,7 +1101,7 @@ export type SyncCampOutcome = { status: "skipped" } | { status: "synced"; campCr
  * One camp's full reconcile: the schedule and registration passes, then the camp's own
  * watermark and backoff state. Every call re-reads the shared tables, since camps sync
  * independently through the queue now and there's no run-scoped in-memory state to reuse - scoped
- * to this camp, so the read no longer grows with every other camp the club has (#135).
+ * to this camp, so the read no longer grows with every other camp the club has (cyc-seattle/isthmia#135).
  */
 export async function syncCamp(options: SyncCampOptions): Promise<SyncCampOutcome> {
   const { camp, since, bypassBackoff, directus, personSync, gateway, runId } = options;
@@ -1158,7 +1158,7 @@ export interface RunSyncResult {
   contactPointsCreated: number;
   contactPointsTouched: number;
   peoplePromoted: number;
-  /** The one CRM field rule's own tally (#137) - see `synced-fields.ts`. */
+  /** The one CRM field rule's own tally (cyc-seattle/isthmia#137) - see `synced-fields.ts`. */
   fieldsWritten: number;
   fieldsReplacedStaffEdits: number;
   fieldsBlankSkipped: number;
@@ -1261,7 +1261,7 @@ function campTaskHandler(
  * row rather than piling up a new root every run - that's what keeps the tree in the Directus admin
  * UI readable. `runSync` no longer reads this run's outcome back out through `parent_id`, precisely
  * because a stable parent accumulates every camp ever enqueued under it, including ones discovery
- * has since stopped returning (#143 finding 4) - it tracks the ids this call actually enqueues instead.
+ * has since stopped returning (cyc-seattle/isthmia#143 finding 4) - it tracks the ids this call actually enqueues instead.
  */
 async function enqueueDueCamps(
   clubId: string,
@@ -1316,7 +1316,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
   let runError: string | undefined;
 
   // Before the camp loop, so a merged person's records are consolidated before anything else this
-  // run touches them (design doc "Merge, unmerge, and review", #133). Isolated the same way as the
+  // run touches them (design doc "Merge, unmerge, and review", cyc-seattle/isthmia#133). Isolated the same way as the
   // promoted-fields and audit-detection passes below: its own failure must not be mistaken for a
   // camp's own result, but it does still mark the whole run failed, since an approved finding left
   // mid-merge needs the operator's attention same as any other run failure.
@@ -1409,7 +1409,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
       // a retry, or simply never claimable until now - is claimed here without being re-enqueued,
       // and still belongs in what this run reports on. What discovery no longer returns is absent
       // from both sets, so it drops out of the count instead of hanging on the stable sync_run
-      // parent forever (#143 finding 4).
+      // parent forever (cyc-seattle/isthmia#143 finding 4).
       const checkedTaskIds = [...new Set([...campTaskIds, ...claimedTaskIds])];
       campsChecked = checkedTaskIds.length;
 

@@ -48,7 +48,7 @@ describe("findUnexpectedMembers", () => {
     expect(result).toEqual([]);
   });
 
-  it("raises nothing for an unplanned manager, since managers are hand-managed (#156)", () => {
+  it("raises nothing for an unplanned manager, since managers are hand-managed (cyc-seattle/isthmia#156)", () => {
     const result = findUnexpectedMembers(
       { email: "class@cyccommunitysailing.org" },
       ["planned@example.com"],
@@ -164,7 +164,7 @@ describe("findStaleMembers", () => {
     expect(result).toEqual([]);
   });
 
-  it("raises nothing for an aged-out manager, since managers are hand-managed (#156)", () => {
+  it("raises nothing for an aged-out manager, since managers are hand-managed (cyc-seattle/isthmia#156)", () => {
     const result = findStaleMembers(
       { email: "class@cyccommunitysailing.org" },
       ["current@example.com"],
@@ -431,7 +431,7 @@ describe("candidateMemberPeople", () => {
     expect(findInvalidEmails(candidateMemberPeople(tables, now)).map((f) => f.subject)).toEqual(["current"]);
   });
 
-  it("leaves out a person removed from the group, since the sync won't add them back (#265)", () => {
+  it("leaves out a person removed from the group, since the sync won't add them back (cyc-seattle/isthmia#265)", () => {
     const tables = {
       groups: [{ id: "group-1", email: "j-pod@cyccommunitysailing.org", archived: false }],
       programs: [{ id: "mapped", name: "J Pod", google_group_id: "group-1", revenue_account: null }],

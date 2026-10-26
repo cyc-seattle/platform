@@ -21,7 +21,7 @@ function rowFor(rows: readonly GoogleGroupMembershipRow[]): GoogleGroupMembershi
 
 /**
  * Plans one program group's membership writes from its planned people, its live members, and the
- * `google_group_memberships` rows the sync has already written for it (#265):
+ * `google_group_memberships` rows the sync has already written for it (cyc-seattle/isthmia#265):
  *
  * | Live? | Row               | Action                                  |
  * | ----- | ----------------- | --------------------------------------- |

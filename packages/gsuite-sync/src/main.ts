@@ -23,7 +23,7 @@ export function googleClients(
   auth: Auth.GoogleAuth,
   rootUrl?: string,
 ): { directory: DirectoryClient; settingsReader: GroupSettingsClient } {
-  // The Workspace fake has no quota, so skip the per-call delay that protects the real API's (#271).
+  // The Workspace fake has no quota, so skip the per-call delay that protects the real API's (cyc-seattle/isthmia#271).
   const options: ClientOptions =
     rootUrl === undefined ? {} : { rootUrl, pacing: { requestDelayMs: 0, retryDelayMs: 1_000 } };
   return { directory: new DirectoryClient(auth, options), settingsReader: new GroupSettingsClient(auth, options) };

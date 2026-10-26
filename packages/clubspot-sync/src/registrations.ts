@@ -374,7 +374,7 @@ export function planCustomFieldResponses(
     }
     // An absent or whitespace-only response means the participant left this question blank on
     // this run - but this registration's own stored answer keeps its last non-blank value, same
-    // rule as the `participants` mirror (#137 review): a blank never overwrites a value already
+    // rule as the `participants` mirror (cyc-seattle/isthmia#137 review): a blank never overwrites a value already
     // on file.
     const incoming = response.response ?? null;
     const stored = existingByDefinitionId.get(response.customFieldID)?.value ?? null;

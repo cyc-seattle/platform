@@ -212,7 +212,7 @@ describe("PersonSync.syncParticipant - creating and matching", () => {
     expect(contacts[0]!["contact_id"]).not.toBe("person-1");
   });
 
-  // #166-style duplicate: a parent first seen as an emergency contact (Clubspot gives no email for
+  // cyc-seattle/isthmia#166-style duplicate: a parent first seen as an emergency contact (Clubspot gives no email for
   // that role) gets an email-less `people` row; a later registration's guardian slot, which does
   // have an email, must still find that row instead of creating a second one.
   it("falls back to the emergency-contact identity rule when a guardian's email doesn't match an email-less row", async () => {
@@ -646,7 +646,7 @@ describe("PersonSync.syncParticipant - dry run", () => {
   });
 });
 
-describe("PersonSync.syncParticipant - the one CRM field rule (#137)", () => {
+describe("PersonSync.syncParticipant - the one CRM field rule (cyc-seattle/isthmia#137)", () => {
   function seedPerson(overrides: Partial<Record<string, unknown>> = {}) {
     return {
       id: "person-1",
@@ -802,7 +802,7 @@ describe("PersonSync.syncParticipant - the one CRM field rule (#137)", () => {
 
   // Commit 81ed7828 started writing normalized emails, but a row synced before that change kept
   // whatever case Clubspot originally sent - `withComparableEmail` reads it as unchanged, so it
-  // was never patched. #166's roster rules match `people.email` exactly against a lowercased
+  // was never patched. cyc-seattle/isthmia#166's roster rules match `people.email` exactly against a lowercased
   // login address, so this legacy casing needs fixing on the next sync.
   it("lowercases a legacy row's mixed-case email once Clubspot repeats the same address", async () => {
     const { fetchMock, tables } = makeDirectusStore({
@@ -1263,7 +1263,7 @@ describe("PersonSync.syncParticipant - guardian and emergency-contact slots", ()
     }
   });
 
-  // #137 review finding 2: 2024's guardian-1 slot named Dad; 2025's guardian-1 slot is linked to
+  // cyc-seattle/isthmia#137 review finding 2: 2024's guardian-1 slot named Dad; 2025's guardian-1 slot is linked to
   // Mom, whose email staff since corrected. A newly linked 2025 participant has no mirror of its
   // own yet, so without checking the fallback slot's name it would compare Mom's staff-corrected
   // email against Dad's old one and "replace" it.

@@ -42,7 +42,7 @@ export const AUDIT_FINDING_KINDS: readonly AuditFindingKind[] = [
  * only knows `kind` as a plain string, since `directus` has no knowledge of any sync's kinds. */
 export type GsuiteAuditFinding = AuditFindingInput & { kind: AuditFindingKind };
 
-// Group managers are managed by hand until roles have one model (#156), so neither membership
+// Group managers are managed by hand until roles have one model (cyc-seattle/isthmia#156), so neither membership
 // check audits them. Owners still are: config owners are in the plan, and a stray one is worth a look.
 function isAudited(member: GroupMember): boolean {
   return member.role !== "MANAGER";
@@ -117,7 +117,7 @@ export function findUnexpectedMembers(
 
 /**
  * `stale_member` findings: a live member of `group` who is in the `all` plan but not the `current`
- * one - a real registration, but only for a camp that has ended or been archived (#265). Add-only
+ * one - a real registration, but only for a camp that has ended or been archived (cyc-seattle/isthmia#265). Add-only
  * means they were added legitimately and are never removed automatically; this is what keeps them
  * from being misreported as `unexpected_member`.
  */
@@ -198,7 +198,7 @@ export function findProgramsWithoutGroup(programs: readonly ProgramWithGoogleGro
 
 /**
  * `class_without_program` findings: a `classes` row with no `program_id`, the hand-set link from
- * #149. This is a Clubspot-side gap - `program_id` lives on `classes` in `clubspot`'s own schema
+ * cyc-seattle/isthmia#149. This is a Clubspot-side gap - `program_id` lives on `classes` in `clubspot`'s own schema
  * and has nothing to do with a Google Group - so it's tagged `clubspot-sync` rather than
  * `gsuite-sync`, even though this pass is the one computing it today.
  */
@@ -239,7 +239,7 @@ export function candidateMemberPeople(tables: AuditTables, now: Date): PersonRow
  * `invalid_email` findings: a person whose `email` isn't a usable address. Membership skips them
  * (see `isValidEmail`), so this is where they surface to be fixed. The caller passes only
  * `candidateMemberPeople`, so nobody outside a current group is reported.
- * Fix it in Directus: clubspot-sync only fills empty `people` fields (#137), so a Clubspot-only
+ * Fix it in Directus: clubspot-sync only fills empty `people` fields (cyc-seattle/isthmia#137), so a Clubspot-only
  * correction never lands.
  */
 export function findInvalidEmails(

@@ -2,7 +2,7 @@ import { type RegistrationRow } from "@cyc-seattle/clubspot";
 import { compareByRegistrationRecency } from "./promoted-fields.ts";
 
 /**
- * The one rule every curated CRM field follows (#137): `people` (the participant's own row and
+ * The one rule every curated CRM field follows (cyc-seattle/isthmia#137): `people` (the participant's own row and
  * every guardian/emergency-contact slot's), `medical_profiles`, and the primary email and phone
  * are all synced the same way. Pure; `person-sync.ts` is the thin, impure executor that resolves
  * `base`/`v` (via {@link resolveBase}, falling back to the person's previous newest linked
@@ -70,7 +70,7 @@ export function parseYesNo(value: string | null): boolean | null | undefined {
 }
 
 /**
- * Resolves the base one field actually compares against (#137): this participant's own stored
+ * Resolves the base one field actually compares against (cyc-seattle/isthmia#137): this participant's own stored
  * mirror value wins whenever it has one at all, including a known blank - the mirror keeps
  * Clubspot's last non-blank answer (see `people.ts`'s `mergeParticipantMirrorFields`), so a blank
  * `own` here means Clubspot has never answered this field, not that a prior answer was lost. Only
@@ -204,7 +204,7 @@ export interface Ranked<T> extends RegistrationRank {
 
 /**
  * The best-ranked (see {@link isNewestParticipant}) of a list of candidates - the "previous
- * newest linked participant" #137's fallback-base rule draws a field's value from, when the
+ * newest linked participant" cyc-seattle/isthmia#137's fallback-base rule draws a field's value from, when the
  * current participant has none of its own. `undefined` with an empty list.
  */
 export function bestRanked<T>(candidates: readonly Ranked<T>[]): Ranked<T> | undefined {

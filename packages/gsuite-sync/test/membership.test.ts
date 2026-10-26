@@ -310,7 +310,7 @@ describe("planProgramMembers", () => {
 
   it("includes a role holder even when the program has no class at all", () => {
     // The step 8-13 collapse regressed this: a program whose only activity is a role assignment -
-    // off-season, or set up before its first class exists - must still get its role holder (#149).
+    // off-season, or set up before its first class exists - must still get its role holder (cyc-seattle/isthmia#149).
     const result = planProgramMembers(
       PROGRAM_ID,
       tables({

@@ -3,7 +3,7 @@ import { contactPointKeyForRow } from "./contact-points.ts";
 
 /**
  * Pure planning for merging duplicate `people` rows (design doc "Merge, unmerge, and review",
- * #133). `findDuplicatePeople` proposes a keeper for a group of same-named rows;
+ * cyc-seattle/isthmia#133). `findDuplicatePeople` proposes a keeper for a group of same-named rows;
  * `planPersonMerge` turns one approved group into an ordered, explicit list of writes. Both are
  * pure - a later step's executor reads the candidates and related rows from Directus and applies
  * the plan, and is the only thing that touches the network.

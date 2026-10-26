@@ -513,7 +513,7 @@ export function mergeParticipantMirrorFields(
 /**
  * The CRM-shaped value each of the participant's own `people` fields becomes, from a stored
  * `participants` row instead of a live `Participant` - unlike `PersonRow`, `first_name` is
- * nullable here, since the one CRM field rule (#137) has to weigh a blank mirror value against
+ * nullable here, since the one CRM field rule (cyc-seattle/isthmia#137) has to weigh a blank mirror value against
  * whatever base it held, even where `people.first_name` itself is NOT NULL. Built with the same
  * primitives (`toNullableText`, `normalizeEmail`) `buildPersonFieldsFromParticipant` uses, so a
  * mirror row's prior and current values compare on equal footing.
@@ -579,7 +579,7 @@ export function contactFieldValuesFromMirror(slot: ContactMirrorSlot): ContactMi
 
 /**
  * True when `newFullName`, once split, still names the same person as `contact` currently does.
- * Guards a guardian or emergency-contact slot's field updates (#137): a slot's name changing
+ * Guards a guardian or emergency-contact slot's field updates (cyc-seattle/isthmia#137): a slot's name changing
  * entirely - not just a spelling correction - usually means Clubspot now has a different adult in
  * that slot, and applying its email or phone to the previously-linked person would be wrong.
  */

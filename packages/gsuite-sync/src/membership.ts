@@ -143,9 +143,9 @@ export function planProgramMemberPeople(
  * membership and `google_group_memberships` (see `planMembershipWrites`), and never removes anyone.
  *
  * A class only contributes participants while its camp is current or upcoming (see `isCampActive`,
- * #265), unless `options.includeInactiveCamps` is set. A class whose camp can't be found doesn't
+ * cyc-seattle/isthmia#265), unless `options.includeInactiveCamps` is set. A class whose camp can't be found doesn't
  * contribute. Role assignments have their own `starts_on`/`ends_on` filter instead, and must keep
- * working for a program with no active camp at all (#149).
+ * working for a program with no active camp at all (cyc-seattle/isthmia#149).
  */
 export function planProgramMembers(
   programId: string,

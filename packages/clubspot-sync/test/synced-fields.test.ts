@@ -192,7 +192,7 @@ describe("bestRanked", () => {
   });
 });
 
-describe("resolveBase - the previous newest linked participant's fallback (#137)", () => {
+describe("resolveBase - the previous newest linked participant's fallback (cyc-seattle/isthmia#137)", () => {
   it("prefers its own known value over the fallback", () => {
     expect(resolveBase("own", "fallback")).toBe("own");
   });
