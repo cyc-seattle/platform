@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Puts dev's data back to a fresh start: empties the CRM's collections, reseeds the Clubspot fake,
 # empties the Workspace fake, and runs both syncs. Directus keeps its database, schema, roles, and
-# users, so it keeps its license activation (#172). Always dev's: prod has no fakes to reseed.
+# users, so it keeps its license activation (cyc-seattle/isthmia#172). Always dev's: prod has no fakes to reseed.
 set -euo pipefail
 
 outputs="$(gcloud storage cat "gs://${GCP_PROJECT}-pulumi-dev/platform/outputs.json")"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Every workspace package needs a `COPY packages/<name>/package.json` line in the Dockerfile, since
-# pnpm reads every member named in the lockfile even if its source never enters the image (#146).
+# pnpm reads every member named in the lockfile even if its source never enters the image (cyc-seattle/isthmia#146).
 set -euo pipefail
 
 here="$(dirname "${BASH_SOURCE[0]}")"

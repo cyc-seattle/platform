@@ -5,31 +5,30 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable && npm install -g corepack@latest
 
 # Runs on the build host's own architecture (arm64 on Apple Silicon) instead of under emulation,
-# even though clubspot-sync/gsuite-sync below stay linux/amd64 (#129). tsc's output is
+# even though clubspot-sync/gsuite-sync below stay linux/amd64 (cyc-seattle/isthmia#129). tsc's output is
 # architecture-neutral and the production dependency trees are pure JS, so a cross-arch build here
 # is safe.
 FROM --platform=$BUILDPLATFORM base AS build
 WORKDIR /usr/src/app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/tsconfig.base.json packages/
 
 # pnpm reads every workspace member named in the lockfile, so each one needs a manifest here even
-# though most packages' source never enters this stage (#114).
+# though most packages' source never enters this stage (cyc-seattle/isthmia#114).
 COPY packages/clubspot/package.json packages/clubspot/
 COPY packages/clubspot-sync/package.json packages/clubspot-sync/
 COPY packages/crm/package.json packages/crm/
 COPY packages/directus/package.json packages/directus/
 COPY packages/gsuite-sync/package.json packages/gsuite-sync/
-COPY packages/infrastructure/package.json packages/infrastructure/
-COPY packages/portal/package.json packages/portal/
 
 # --ignore-scripts throughout this stage: install only resolves and links node_modules, never
-# running a package's `prepare` (tsc --build). That keeps this layer cached across source-only
+# running a package's install scripts. That keeps this layer cached across source-only
 # changes.
 #
 # Building happens explicitly below, in two dependency tiers, with a `pnpm install --offline`
 # between each to refresh node_modules. That refresh is required, not cosmetic:
-# inject-workspace-packages (.npmrc) hard-copies a workspace dependency's `files` into its
+# injectWorkspacePackages (pnpm-workspace.yaml) hard-copies a workspace dependency's `files` into its
 # consumer's node_modules at link time, so a consumer built before its dependency would still see
 # the dependency's pre-build (missing dist) copy.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \

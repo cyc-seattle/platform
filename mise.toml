@@ -8,6 +8,9 @@ lefthook = "2"
 pulumi = "3.270.0"
 # Needs a system Python on macOS.
 gcloud = "latest"
+# For scripts/reset.
+jq = "latest"
+kubectl = "1.36"
 
 [env]
 _.path = ["{{config_root}}/node_modules/.bin"]
@@ -28,12 +31,15 @@ run = ["pnpm install", "lefthook install", "gcloud components install gke-gcloud
 description = "Format and fix all files"
 run = ["pnpm exec prettier --write .", "pnpm exec eslint --fix ."]
 
+# Each package's checks and tests read its workspace dependencies' dist/.
 [tasks.check]
-description = "Typecheck, then check formatting and lint"
-run = ["pnpm exec tsc -p tsconfig.json", "pnpm exec prettier --check .", "pnpm exec eslint ."]
+description = "Typecheck, check formatting, and lint"
+depends = ["build"]
+run = "./scripts/check"
 
 [tasks.test]
 description = "Run unit tests"
+depends = ["build"]
 run = "pnpm exec vitest run"
 
 [tasks.ci]
@@ -63,8 +69,8 @@ description = "Apply $PULUMI_STACK's projects"
 run = "./scripts/each-stack up --yes"
 
 [tasks.build]
-description = "Build the package into dist/"
-run = "pnpm run build"
+description = "Build the published package and the workspace's packages into their dist/"
+run = "pnpm run -r --include-workspace-root build"
 
 [tasks.directus-local]
 description = "Bring up local Directus and Postgres containers, and apply schemas/*.yaml to them"
@@ -73,6 +79,10 @@ run = "./scripts/directus-local up"
 [tasks.directus-local-down]
 description = "Tear down the local Directus and Postgres containers and their volume"
 run = "./scripts/directus-local down"
+
+[tasks.reset]
+description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
+run = "./scripts/reset"
 
 # Needs the dev deploy, so it isn't part of ci.
 [tasks.integration]
