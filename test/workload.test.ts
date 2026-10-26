@@ -98,6 +98,7 @@ beforeAll(async () => {
     activeDeadlineSeconds: 600,
     backoffLimit: 2,
   });
+  new ScheduledJob("suspended-sync", { ...jobArgs("dev"), suspend: true });
   await new Promise((r) => setImmediate(r));
 });
 
@@ -283,6 +284,14 @@ describe("ScheduledJob", () => {
       timeZone: "UTC",
       jobTemplate: { spec: { activeDeadlineSeconds: 600, backoffLimit: 2 } },
     });
+  });
+
+  it("leaves suspend out of the spec unless it's set, so it runs on its schedule", () => {
+    expect(jobSpec("dev-sync")).not.toHaveProperty("suspend");
+  });
+
+  it("can be suspended", () => {
+    expect(jobSpec("suspended-sync").suspend).toBe(true);
   });
 
   it("exposes its Workload Identity principal", async () => {

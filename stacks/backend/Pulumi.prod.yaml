@@ -9,3 +9,8 @@ config:
   backend:directusCpu: 500m
   backend:directusMemory: 1Gi
   backend:safeToEvict: false
+  clubspot-sync:clubId: nw6IMf9Bnq
+  # The break-glass super-admins, granted OWNER on every group.
+  gsuite-sync:groupOwners: master@cyccommunitysailing.org
+  # Not `my_customer`: gsuite-sync@ holds an admin role but belongs to no domain, so the alias 404s.
+  gsuite-sync:workspaceCustomer: C01yd45n0

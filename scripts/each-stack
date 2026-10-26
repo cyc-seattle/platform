@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # Runs a pulumi command on each project deployed to $PULUMI_STACK: infra lives only in prod, and smoke
-# only in dev. backend deploys only to dev until prod cuts over (cyc-seattle/workplace#6 step 6).
+# only in dev. backend, with the syncs, deploys only to dev until prod cuts over
+# (cyc-seattle/workplace#6 step 6).
 # bootstrap is never in the list (cyc-seattle/isthmia#118).
 #
 # For preview, it also appends each project's result, true if it has changes and false if not, to
 # $DEPLOY_CHANGES_FILE when that's set. The org's deploy.yml reads it to skip a deploy that changes
 # nothing.
 set -euo pipefail
+
+# The docker-build provider records DOCKER_HOST in state, so a per-user socket path makes a deploy
+# from another machine replace the sync images (cyc-seattle/isthmia#208). Unset, it builds on the
+# first buildx builder it can reach.
+unset DOCKER_HOST
 
 case "$PULUMI_STACK" in
   dev) projects=(smoke backend) ;;

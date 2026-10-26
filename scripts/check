@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Formatting, linting, and type checks: the root's src, stacks, and tests, each package's src and
+# tests, and the Dockerfile's manifests. `mise run check` builds the packages first.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+pnpm exec prettier --check .
+pnpm exec eslint .
+pnpm exec tsc -p tsconfig.json
+for f in packages/*/tsconfig.test.json; do pnpm exec tsc -p "$f"; done
+./scripts/dockerfile-packages
