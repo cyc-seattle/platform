@@ -1,8 +1,9 @@
 # The backend stack
 
 `stacks/backend` runs Directus per environment, at `https://directus.<domain>`, on the environment's
-Cloud SQL database `directus`. It came from isthmia's `crm` project with its resource names unchanged,
-and its state moved over with `pulumi state move` (cyc-seattle/workplace#6). It holds:
+Cloud SQL database `directus`. It came from isthmia's `crm`, `clubspot-sync`, and `gsuite-sync`
+projects with their resource names unchanged, and their states moved over with `pulumi state move`
+(cyc-seattle/workplace#6). It holds:
 
 - Directus, as a `WebService`, with the Community query guard mounted as a hook extension
 - the schema apply, from every `schemas/<domain>.yaml` merged into one snapshot
@@ -11,15 +12,16 @@ and its state moved over with `pulumi state move` (cyc-seattle/workplace#6). It 
 - the admins' accounts, and the clubspot-sync and gsuite-sync machine users with their tokens
 - Directus's OIDC client at Authentik
 - the MCP settings
+- the clubspot-sync and gsuite-sync CronJobs, their images, and the Secrets that hold their tokens
+- in dev, the Clubspot and Workspace fakes the syncs talk to
 
-Dev deploys it on every PR. Prod still runs isthmia's `crm` until cyc-seattle/workplace#6 step 6.
+Dev deploys it on every PR. Prod still runs isthmia's `crm` and syncs until cyc-seattle/workplace#6
+step 6.
 
 ## Outputs
 
 | Output                     | Read by                                     |
 | -------------------------- | ------------------------------------------- |
-| `clubspotSyncToken`        | clubspot-sync, as its Directus token        |
-| `gsuiteSyncToken`          | gsuite-sync, as its Directus token          |
 | `directusOidcClientId`     | isthmia's `authentik`, to register Directus |
 | `directusOidcClientSecret` | isthmia's `authentik`, to register Directus |
 
@@ -73,3 +75,17 @@ The guard (cyc-seattle/isthmia#235) is a filter on `items.query`. The items tool
 `ItemsService.readByQuery`, which emits `items.query` for every read, including the reads after a
 create or an update. So the guard checks an MCP tool call's filter, sort, group, aggregate, and
 `deep` exactly as it checks a REST query.
+
+## The syncs
+
+clubspot-sync and gsuite-sync are packages in `packages/`. The root `Dockerfile` builds both images,
+and dev builds them on every deploy, tagged with the commit. Prod runs the image dev built for its
+commit, so deploy a commit to dev before prod. Each CronJob reads its machine user's Directus token
+from its own Secret, which `backend` writes from the token it generates.
+
+In prod they run hourly, clubspot-sync on the hour and gsuite-sync at half past. In dev the
+CronJobs are suspended, and only Jobs made from them run: the integration features' and
+`mise run reset`'s. So a scheduled run never collides with a test's, and a test never waits for one
+(cyc-seattle/isthmia#271). `kubectl create job --from=cronjob/<name>` runs one by hand.
+
+Their config keeps the `clubspot-sync:` and `gsuite-sync:` keys it had in isthmia's projects.

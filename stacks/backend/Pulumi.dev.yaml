@@ -8,5 +8,13 @@ config:
   backend:directusAdmins:
     - ungood@onetrue.name
   backend:externalDomain: cyccommunitysailing.org
+  # The Clubspot fake's seed, public test values.
+  clubspot-sync:clubId: seedClub01
+  clubspot-sync:clubspotEmail: dockmaster@example.test
+  clubspot-sync:clubspotPassword:
+    secure: v1:JL0gPXPYOYHatQP0:CBpGCQqgmX6f8PYV4fmcMT6Nv70AwKseFrbkCGA=
+  # The Workspace fake takes any values.
+  gsuite-sync:groupOwners: owner@example.test
+  gsuite-sync:workspaceCustomer: C00000000
 secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-dev
 encryptedkey: CiQAwaFTJB/QW+o8lkCJtgkdlRj/iuVeFBGjS1Mod1GLVlvBWzgSSQBLFC/+9ypuLTcorXshw00tJHhDPi57oxx6ZLZI9lmZmz66ql226m57Hj5xP9vw7tTeTvLxegT3Yp09tRaMgPQ5UmBaKzsaVvc=
