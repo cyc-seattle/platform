@@ -50,12 +50,12 @@ gh api -X PUT orgs/cyc-seattle/teams/maintainers/memberships/<github-login> -f r
 ## 4. The Workspace SMTP relay admits the cluster
 
 Prod's pods send mail through `smtp-relay.gmail.com:587`, which admits senders by IP. The cluster's
-Cloud NAT sends from one static address, the `cloud` stack's `natAddress` output. As a Workspace
+Cloud NAT sends from one static address, the `infra` stack's `natAddress` output. As a Workspace
 super-admin, add it in the Admin console under **Apps → Google Workspace → Gmail → Routing → SMTP
 relay service**, to the allowed IP addresses of the relay's rule:
 
 ```sh
-pulumi stack output natAddress --cwd stacks/cloud --stack prod
+pulumi stack output natAddress --cwd stacks/infra --stack prod
 ```
 
 - [x] The relay admits `natAddress`.

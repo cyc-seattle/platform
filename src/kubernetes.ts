@@ -13,7 +13,7 @@ export interface ClusterProviderArgs {
 /**
  * A Kubernetes provider for the environment's cluster. Its kubeconfig runs gke-gcloud-auth-plugin
  * with Application Default Credentials, so it is the same on every run, unlike one that embeds an
- * access token. The plugin must be on PATH: `mise run install` adds it. The cluster stack passes
+ * access token. The plugin must be on PATH: `mise run install` adds it. The infra stack passes
  * only the endpoint, because it writes the rest.
  */
 export function clusterProvider(

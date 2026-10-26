@@ -2,7 +2,8 @@ import * as gcp from "@pulumi/gcp";
 import { location } from "../../src/config.ts";
 import { clusterProvider } from "../../src/kubernetes.ts";
 import { enableService } from "../../src/services.ts";
-import { cloudOutput, gkeNodes } from "./refs.ts";
+import { gkeNodes } from "./identities.ts";
+import { clusterPodsRange, clusterServicesRange, clusterSubnet, network } from "./network.ts";
 
 const containerApi = enableService("container.googleapis.com");
 
@@ -13,11 +14,11 @@ export const cluster = new gcp.container.Cluster(
     location,
     enableAutopilot: true,
     releaseChannel: { channel: "REGULAR" },
-    network: cloudOutput("networkId"),
-    subnetwork: cloudOutput("clusterSubnetId"),
+    network: network.id,
+    subnetwork: clusterSubnet.id,
     ipAllocationPolicy: {
-      clusterSecondaryRangeName: cloudOutput("clusterPodsRangeName"),
-      servicesSecondaryRangeName: cloudOutput("clusterServicesRangeName"),
+      clusterSecondaryRangeName: clusterPodsRange,
+      servicesSecondaryRangeName: clusterServicesRange,
     },
     // GKE sets this on a cluster with no IP endpoint; declaring it keeps the preview clean.
     privateClusterConfig: { enablePrivateNodes: true, enablePrivateEndpoint: true },
