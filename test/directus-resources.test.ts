@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { omitUndefined, directusRoleProvider, directusUserProvider } from "../src/directus/resources.ts";
+import {
+  omitUndefined,
+  directusRoleProvider,
+  directusSettingsProvider,
+  directusUserProvider,
+} from "../src/directus/resources.ts";
 import { describeProviderError, DirectusHttpError } from "../src/directus/client.ts";
 
 const baseUrl = "https://directus.example.com";
@@ -192,5 +197,33 @@ describe("DirectusUser.delete", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(directusUserProvider.delete?.("user-1", props)).rejects.toThrow(/500/);
+  });
+});
+
+describe("DirectusSettings", () => {
+  const settings = { mcp_enabled: true, mcp_allow_deletes: false };
+
+  it("patches only the fields it's given", async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: "pong" })); // GET /server/ping
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: settings })); // PATCH /settings
+    vi.stubGlobal("fetch", fetchMock);
+
+    await directusSettingsProvider.create({ ...auth, settings });
+
+    const [url, init] = fetchMock.mock.calls[2]!;
+    expect(url).toBe(`${baseUrl}/settings`);
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body)).toEqual(settings);
+  });
+
+  it("leaves the settings alone on delete", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await directusSettingsProvider.delete?.("settings", { ...auth, settings });
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

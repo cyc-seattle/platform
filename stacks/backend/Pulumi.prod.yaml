@@ -1,0 +1,11 @@
+config:
+  gcp:project: cyc-admin-scripts
+  gcp:region: us-west1
+  backend:directusAdminEmail: master@cyccommunitysailing.org
+  backend:directusAdmins:
+    - ungood@onetrue.name
+  backend:externalDomain: cyccommunitysailing.org
+  # Regular capacity, not Spot, with room for a large sync (cyc-seattle/isthmia#232).
+  backend:directusCpu: 500m
+  backend:directusMemory: 1Gi
+  backend:safeToEvict: false

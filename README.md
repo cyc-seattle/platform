@@ -11,6 +11,7 @@ app owns. The apps that run on it live in their own repos, such as
 | [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, and the org's GitHub repos and settings                                                                                                                                                                                                                                                                                                                  | A human with project Owner and `gh` `admin:org`. Never CI.                                                        |
 | [`infra`](stacks/infra)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, Artifact Registry, the GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.            |
 | [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                                                                                                                                                                                                   | `deploy-dev`, from Actions on every PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
+| [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync machine users, its OIDC client, and MCP                                                                                                                                                                                                                                                                                      | `deploy-dev`, from Actions on every PR. Dev only, until prod cuts over (cyc-seattle/workplace#6 step 6).          |
 
 ## @cyc-seattle/platform
 
@@ -102,8 +103,8 @@ GitHub environment that holds its identity and state bucket:
 changes in `infra`, so a merge that changes nothing in prod asks for no approval. A PR from a fork gets no OIDC token,
 so its `dev` job is skipped.
 
-`PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, and `prod` is
-`infra`. `integration` is dev only.
+`PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, then `backend`, and
+`prod` is `infra`. `integration` is dev only.
 
 `bootstrap` is never deployed from Actions (cyc-seattle/isthmia#118). It holds the identities that
 CI assumes, and a human with project Owner and `gh` `admin:org` applies it with the tasks below.

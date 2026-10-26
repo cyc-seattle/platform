@@ -1,0 +1,12 @@
+name: backend
+description: Directus per environment, with the schema apply, its roles, policies, and machine users, and its OIDC client.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+    # Node 22 strips the types itself, so Pulumi's vendored ts-node stays out of the way.
+    typescript: false
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: gcp-typescript

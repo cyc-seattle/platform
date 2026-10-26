@@ -21,6 +21,9 @@ importers:
       '@pulumi/command':
         specifier: 1.2.1
         version: 1.2.1(typescript@5.9.3)
+      '@pulumi/docker-build':
+        specifier: 0.0.22
+        version: 0.0.22(typescript@5.9.3)
       '@pulumi/gcp':
         specifier: 10.2.0
         version: 10.2.0(typescript@5.9.3)
@@ -390,6 +393,9 @@ packages:
 
   '@pulumi/command@1.2.1':
     resolution: {integrity: sha512-mutNDIUYP67yCBYOVIidQyxuTwZDY9v/sx9EGbgIv4PXfyfolOKGgGLeoHEbI1lxRwaw2wbTZ3VNIynDnA5VKA==}
+
+  '@pulumi/docker-build@0.0.22':
+    resolution: {integrity: sha512-DcnwoDv7kBM6MBhuEfkiATDwKDqGCNPICxUt7gbYSdpb/UuT+6K7pNMQu7mCNZV7feqZh9EJ3P20UXCq1R+YQg==}
 
   '@pulumi/gcp@10.2.0':
     resolution: {integrity: sha512-SkNSx0MhAVQI/TI4/np9lrM41U1I1L6YeSrtq0D9flkwr3bHWcXKpvgYasJR6qL+3eoLt9UwZmGQuPpYUxIxdQ==}
@@ -2250,6 +2256,14 @@ snapshots:
   '@protobufjs/utf8@1.1.2': {}
 
   '@pulumi/command@1.2.1(typescript@5.9.3)':
+    dependencies:
+      '@pulumi/pulumi': 3.270.0(typescript@5.9.3)
+    transitivePeerDependencies:
+      - supports-color
+      - ts-node
+      - typescript
+
+  '@pulumi/docker-build@0.0.22(typescript@5.9.3)':
     dependencies:
       '@pulumi/pulumi': 3.270.0(typescript@5.9.3)
     transitivePeerDependencies:

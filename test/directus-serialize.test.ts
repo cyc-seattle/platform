@@ -39,6 +39,7 @@ describe("Directus providers", () => {
       "directusPolicyProvider",
       "directusRoleProvider",
       "directusSchemaProvider",
+      "directusSettingsProvider",
       "directusUserProvider",
     ]);
     for (const [name, size] of Object.entries(sizes)) {

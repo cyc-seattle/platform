@@ -247,8 +247,8 @@ export interface DirectusRoleArgs extends DirectusAuthArgs {
  * to become reachable before authenticating, since it may still be starting.
  */
 export class DirectusRole extends pulumi.dynamic.Resource {
-  public readonly roleId!: pulumi.Output<string>;
-  public readonly policyId!: pulumi.Output<string>;
+  declare public readonly roleId: pulumi.Output<string>;
+  declare public readonly policyId: pulumi.Output<string>;
 
   constructor(name: string, args: DirectusRoleArgs, opts?: pulumi.CustomResourceOptions) {
     super(
@@ -354,7 +354,7 @@ export interface DirectusPermissionRuleArgs extends DirectusAuthArgs {
 /** One permission row under a policy. `policyId` typically comes from a `DirectusRole`'s output,
  * but the rule itself doesn't have to be declared by whatever owns that role. */
 export class DirectusPermissionRule extends pulumi.dynamic.Resource {
-  public readonly permissionId!: pulumi.Output<string>;
+  declare public readonly permissionId: pulumi.Output<string>;
 
   constructor(name: string, args: DirectusPermissionRuleArgs, opts?: pulumi.CustomResourceOptions) {
     super(
@@ -499,7 +499,7 @@ export interface DirectusUserArgs extends DirectusAuthArgs {
 /** A Directus user provisioned for a specific Google account — no password, no manual "create my
  * account" step; signing in with that Google account just works. */
 export class DirectusUser extends pulumi.dynamic.Resource {
-  public readonly userId!: pulumi.Output<string>;
+  declare public readonly userId: pulumi.Output<string>;
 
   constructor(name: string, args: DirectusUserArgs, opts?: pulumi.CustomResourceOptions) {
     super(
@@ -614,8 +614,8 @@ export interface DirectusAdminAccessGrantArgs extends DirectusAuthArgs {
 
 /** Grants one user `admin_access` via a policy attached to their account directly, not to a role. */
 export class DirectusAdminAccessGrant extends pulumi.dynamic.Resource {
-  public readonly policyId!: pulumi.Output<string>;
-  public readonly accessId!: pulumi.Output<string>;
+  declare public readonly policyId: pulumi.Output<string>;
+  declare public readonly accessId: pulumi.Output<string>;
 
   constructor(name: string, args: DirectusAdminAccessGrantArgs, opts?: pulumi.CustomResourceOptions) {
     super(
@@ -732,8 +732,8 @@ export interface DirectusPolicyArgs extends DirectusAuthArgs {
  * Community) that needs more than the one policy `DirectusRole` bundles with it. Permission rules
  * attach to `policyId`, as their own `DirectusPermissionRule` resources, same as any other policy. */
 export class DirectusPolicy extends pulumi.dynamic.Resource {
-  public readonly policyId!: pulumi.Output<string>;
-  public readonly accessId!: pulumi.Output<string>;
+  declare public readonly policyId: pulumi.Output<string>;
+  declare public readonly accessId: pulumi.Output<string>;
 
   constructor(name: string, args: DirectusPolicyArgs, opts?: pulumi.CustomResourceOptions) {
     super(
@@ -742,5 +742,48 @@ export class DirectusPolicy extends pulumi.dynamic.Resource {
       { ...args, policyId: undefined, accessId: undefined },
       withSecretOutputs(["adminPassword"], opts),
     );
+  }
+}
+
+// --- DirectusSettings: the fields of the `directus_settings` singleton that a stack owns, such as
+// Settings -> AI's MCP switches. It writes only the fields it's given, and leaves the rest to admins.
+
+interface DirectusSettingsInputs extends DirectusAuthProps {
+  settings: Record<string, unknown>;
+}
+
+async function patchSettings(inputs: DirectusSettingsInputs): Promise<void> {
+  await waitForReachable(inputs.baseUrl);
+  const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
+  await directusRequest(inputs.baseUrl, token, "PATCH", "/settings", inputs.settings);
+}
+
+export const directusSettingsProvider: pulumi.dynamic.ResourceProvider = {
+  create: reportErrors("DirectusSettings", "create", async (inputs: DirectusSettingsInputs) => {
+    await patchSettings(inputs);
+    return { id: "settings", outs: inputs };
+  }),
+
+  update: reportErrors(
+    "DirectusSettings",
+    "update",
+    async (_id: string, _olds: DirectusSettingsInputs, news: DirectusSettingsInputs) => {
+      await patchSettings(news);
+      return { outs: news };
+    },
+  ),
+
+  // A no-op: there's no earlier value to restore, and the singleton can't be deleted.
+  delete: reportErrors("DirectusSettings", "delete", async () => {}),
+};
+
+export interface DirectusSettingsArgs extends DirectusAuthArgs {
+  settings: pulumi.Input<Record<string, pulumi.Input<unknown>>>;
+}
+
+/** Sets fields of the `directus_settings` singleton. One per Directus. */
+export class DirectusSettings extends pulumi.dynamic.Resource {
+  constructor(name: string, args: DirectusSettingsArgs, opts?: pulumi.CustomResourceOptions) {
+    super(directusSettingsProvider, name, { ...args }, withSecretOutputs(["adminPassword"], opts));
   }
 }

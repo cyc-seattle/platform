@@ -53,7 +53,7 @@ run = "pulumi preview --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\"
 description = "Apply the bootstrap stack"
 run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
 
-# scripts/each-stack picks the projects from PULUMI_STACK: dev is smoke, prod is infra.
+# scripts/each-stack picks the projects from PULUMI_STACK: dev is smoke then backend, prod is infra.
 [tasks.preview]
 description = "Show the diff `mise run deploy` would apply to $PULUMI_STACK"
 run = "./scripts/each-stack preview"
