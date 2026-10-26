@@ -82,3 +82,31 @@ export async function whoami(platform: PlatformOutputs): Promise<string> {
   });
   return review.body?.status?.userInfo?.username ?? "an unknown user";
 }
+
+/** One key of a Secret in dev's namespace. */
+export async function secretValue(platform: PlatformOutputs, name: string, key: string): Promise<string> {
+  const response = await kube(platform, "GET", `/api/v1/namespaces/${platform.namespace}/secrets/${name}`);
+  const value = response.body?.data?.[key];
+  if (response.status !== 200 || typeof value !== "string") {
+    throw new Error(`Can't read ${key} from the Secret ${name}: ${response.status}`);
+  }
+  return Buffer.from(value, "base64").toString("utf8");
+}
+
+/** An env var that a Deployment's first container sets directly. */
+export async function deploymentEnv(platform: PlatformOutputs, deployment: string, name: string): Promise<string> {
+  const response = await kube(
+    platform,
+    "GET",
+    `/apis/apps/v1/namespaces/${platform.namespace}/deployments/${deployment}`,
+  );
+  if (response.status !== 200) {
+    throw new Error(`Can't read the Deployment ${deployment}: ${response.status} ${JSON.stringify(response.body)}`);
+  }
+  const env: { name: string; value?: string }[] = response.body.spec.template.spec.containers[0].env ?? [];
+  const value = env.find((variable) => variable.name === name)?.value;
+  if (value === undefined) {
+    throw new Error(`The Deployment ${deployment} doesn't set ${name}.`);
+  }
+  return value;
+}
