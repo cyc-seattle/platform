@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { DirectusClient, SyncQueue } from "@cyc-seattle/directus";
 import {
-  AddMemberResult,
-  Group,
-  GroupMember,
-  GroupRole,
-  GroupSettings,
+  type AddMemberResult,
+  type Group,
+  type GroupMember,
+  type GroupRole,
+  type GroupSettings,
   resolveGroupSettingsTemplate,
 } from "@cyc-seattle/gsuite-sdk";
-import { SettingsReader } from "../src/audit-settings.js";
-import { DirectoryReader } from "../src/audit-writer.js";
-import { MemberAdder } from "../src/directory-writer.js";
-import { GroupDirectoryReader } from "../src/discovery-writer.js";
+import { type SettingsReader } from "../src/audit-settings.ts";
+import { type DirectoryReader } from "../src/audit-writer.ts";
+import { type MemberAdder } from "../src/directory-writer.ts";
+import { type GroupDirectoryReader } from "../src/discovery-writer.ts";
 import {
   enqueueAudit,
   enqueueDiscovery,
@@ -21,8 +21,8 @@ import {
   enqueueGroupSettings,
   runGroupSync,
   sharedMembershipSnapshot,
-} from "../src/run.js";
-import { SettingsApplier } from "../src/settings-writer.js";
+} from "../src/run.ts";
+import { type SettingsApplier } from "../src/settings-writer.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This
@@ -871,7 +871,10 @@ describe("runGroupSync", () => {
 });
 
 describe("sharedMembershipSnapshot", () => {
-  function countReads(fetchMock: { mock: { calls: [string, FetchInit?][] } }, collection: string): number {
+  function countReads(
+    fetchMock: { mock: { calls: [string, (FetchInit | undefined)?][] } },
+    collection: string,
+  ): number {
     return fetchMock.mock.calls.filter(([url]) => new URL(url).pathname === `/items/${collection}`).length;
   }
 

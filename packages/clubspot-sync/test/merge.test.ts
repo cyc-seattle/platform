@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   findDuplicatePeople,
   planPersonMerge,
-  MergeContact,
-  MergeContactPoint,
-  MergeMedicalProfile,
-  MergePerson,
-  MergePersonReference,
-  MergeRelatedData,
-} from "../src/merge.js";
+  type MergeContact,
+  type MergeContactPoint,
+  type MergeMedicalProfile,
+  type MergePerson,
+  type MergePersonReference,
+  type MergeRelatedData,
+} from "../src/merge.ts";
 
 function person(overrides: Partial<MergePerson> & { id: string }): MergePerson {
   return {

@@ -16,7 +16,7 @@ vi.mock("@cyc-seattle/gsuite-sdk", () => ({
   },
 }));
 
-const { googleClients } = await import("../src/main.js");
+const { googleClients } = await import("../src/main.ts");
 
 describe("googleClients", () => {
   const auth = new google.auth.GoogleAuth();

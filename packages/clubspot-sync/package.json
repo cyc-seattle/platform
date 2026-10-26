@@ -2,6 +2,7 @@
   "name": "@cyc-seattle/clubspot-sync",
   "description": "Syncs Clubspot data into the CRM's Directus instance",
   "version": "0.0.1",
+  "private": true,
   "author": "CYC Community Sailing Center",
   "license": "Apache-2.0",
   "type": "module",
@@ -17,10 +18,8 @@
     "node": ">= 20.8 < 23"
   },
   "scripts": {
-    "prepare": "pnpm run build",
     "build": "tsc --build",
-    "clean": "tsc --build --clean",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "tsc --build --clean"
   },
   "dependencies": {
     "@commander-js/extra-typings": "^13.1.0",

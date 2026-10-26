@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { AuditFindingRow, DirectusClient, fingerprintFinding } from "@cyc-seattle/directus";
-import { Group, GroupMember, GroupSettings } from "@cyc-seattle/gsuite-sdk";
-import { SettingsReader } from "../src/audit-settings.js";
-import { DirectoryReader, runAudit } from "../src/audit-writer.js";
+import { type AuditFindingRow, DirectusClient, fingerprintFinding } from "@cyc-seattle/directus";
+import { type Group, type GroupMember, type GroupSettings } from "@cyc-seattle/gsuite-sdk";
+import { type SettingsReader } from "../src/audit-settings.ts";
+import { type DirectoryReader, runAudit } from "../src/audit-writer.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This
@@ -28,7 +28,7 @@ function jsonResponse(status: number, body: unknown) {
 /**
  * A stateful in-memory Directus stand-in, matching `run.test.ts`'s fixture, except for `DELETE`:
  * the gsuite-sync machine user is only granted `create`/`read`/`update` on `audit_findings`
- * (`packages/infrastructure/src/crm/index.ts`), so this store 403s a delete instead of allowing
+ * (`stacks/backend/index.ts`), so this store 403s a delete instead of allowing
  * one - a test that tried to resolve a finding by deleting it would fail here, not silently pass.
  */
 function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[]>> = {}) {

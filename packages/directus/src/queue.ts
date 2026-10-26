@@ -1,4 +1,4 @@
-import { SyncTaskRow } from "./sync-tasks.js";
+import { type SyncTaskRow } from "./sync-tasks.ts";
 
 /** A fresh task's default retry budget, when the caller enqueuing it doesn't specify one. */
 export const DEFAULT_MAX_ATTEMPTS = 5;

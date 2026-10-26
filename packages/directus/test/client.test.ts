@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import winston from "winston";
-import { CREATE_CHUNK_SIZE, DirectusClient } from "../src/client.js";
+import { CREATE_CHUNK_SIZE, DirectusClient } from "../src/client.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type (see client.ts) rather than undici's real one. This local alias covers the
@@ -253,7 +253,7 @@ describe("updateItem", () => {
   it("in dry-run mode, logs which fields would change but not their values", async () => {
     vi.stubGlobal("fetch", vi.fn());
     const client = new DirectusClient(baseUrl, token, true);
-    const infoSpy = vi.spyOn(winston, "info").mockImplementation(() => winston);
+    const infoSpy = vi.spyOn(winston, "info").mockReturnThis();
 
     await client.updateItem("medical_profiles", "42", {
       conditions: "peanut allergy",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Group, GroupMember } from "@cyc-seattle/gsuite-sdk";
-import { planGroupNestingDiscovery, planGroupUpserts } from "../src/discovery.js";
-import { GoogleGroupRow } from "../src/schema.js";
+import { type Group, type GroupMember } from "@cyc-seattle/gsuite-sdk";
+import { planGroupNestingDiscovery, planGroupUpserts } from "../src/discovery.ts";
+import { type GoogleGroupRow } from "../src/schema.ts";
 
 function row(overrides: Partial<GoogleGroupRow>): GoogleGroupRow {
   return {

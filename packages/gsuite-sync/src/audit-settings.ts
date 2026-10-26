@@ -1,6 +1,6 @@
-import { GroupSettings, resolveGroupSettingsTemplate } from "@cyc-seattle/gsuite-sdk";
-import { GsuiteAuditFinding, GSUITE_SYNC_SOURCE } from "./audit.js";
-import { GoogleGroupRow } from "./schema.js";
+import { type GroupSettings, resolveGroupSettingsTemplate } from "@cyc-seattle/gsuite-sdk";
+import { type GsuiteAuditFinding, GSUITE_SYNC_SOURCE } from "./audit.ts";
+import { type GoogleGroupRow } from "./schema.ts";
 
 /** The slice of `GroupSettingsClient` the settings-drift check reads through - narrow enough that
  * a real instance satisfies it structurally, matching `SettingsApplier`'s pattern. Kept separate

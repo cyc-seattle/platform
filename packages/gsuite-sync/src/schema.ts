@@ -1,4 +1,4 @@
-import { ProgramRow } from "@cyc-seattle/crm";
+import { type ProgramRow } from "@cyc-seattle/crm";
 
 /** Row shape for the `google_groups` collection: one row per Google Group. See `schema.yaml`. */
 export interface GoogleGroupRow {

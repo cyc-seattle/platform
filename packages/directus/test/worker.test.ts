@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import winston from "winston";
-import { DirectusClient } from "../src/client.js";
-import { runQueue, SyncQueue } from "../src/worker.js";
-import { SyncTaskRow } from "../src/sync-tasks.js";
+import { DirectusClient } from "../src/client.ts";
+import { runQueue, SyncQueue } from "../src/worker.ts";
+import { type SyncTaskRow } from "../src/sync-tasks.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type (see client.ts) rather than undici's real one. This local alias covers the
@@ -116,7 +116,7 @@ describe("runQueue", () => {
       .mockResolvedValueOnce(jsonResponse(200, { data: [] }));
     vi.stubGlobal("fetch", fetchMock);
     const handler = vi.fn().mockRejectedValue(new Error("clubspot is down"));
-    const warnSpy = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warnSpy = vi.spyOn(winston, "warn").mockReturnThis();
 
     await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler });
 
@@ -148,7 +148,7 @@ describe("runQueue", () => {
       .mockResolvedValueOnce(jsonResponse(200, { data: { ...stuck, status: "pending" } })) // sweep
       .mockResolvedValueOnce(jsonResponse(200, { data: [] })); // re-read: nothing left claimable
     vi.stubGlobal("fetch", fetchMock);
-    const warnSpy = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warnSpy = vi.spyOn(winston, "warn").mockReturnThis();
 
     const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", {});
 

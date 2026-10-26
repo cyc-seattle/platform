@@ -1,4 +1,4 @@
-import { GoogleGroupRow } from "./schema.js";
+import { type GoogleGroupRow } from "./schema.ts";
 
 /**
  * Which `google_groups` rows the settings pass should apply a template to: every non-archived row

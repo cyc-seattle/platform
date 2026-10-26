@@ -1,19 +1,19 @@
 import winston from "winston";
-import { PersonRow } from "@cyc-seattle/crm";
+import { type PersonRow } from "@cyc-seattle/crm";
 import {
-  CustomFieldDefinitionRow,
-  CustomFieldResponseRow,
-  ParticipantRow,
+  type CustomFieldDefinitionRow,
+  type CustomFieldResponseRow,
+  type ParticipantRow,
   PROMOTABLE_PERSON_FIELDS,
   PROMOTABLE_REGISTRATION_FIELDS,
-  PromotablePersonField,
-  PromotableRegistrationField,
-  PromotedFieldRow,
-  RegistrationRow,
+  type PromotablePersonField,
+  type PromotableRegistrationField,
+  type PromotedFieldRow,
+  type RegistrationRow,
 } from "@cyc-seattle/clubspot";
-import { normalizeName } from "./people.js";
-import { CustomFieldResponseInput } from "./registrations.js";
-import { emptyFieldTally, FieldTally, parseYesNo, planSyncedField, resolveBase } from "./synced-fields.js";
+import { normalizeName } from "./people.ts";
+import { type CustomFieldResponseInput } from "./registrations.ts";
+import { emptyFieldTally, type FieldTally, parseYesNo, planSyncedField, resolveBase } from "./synced-fields.ts";
 
 /**
  * Copies a staff-configured set of custom field responses onto `people` columns (e.g. "School"),
@@ -50,8 +50,7 @@ const SCALAR_FIELD_TYPES = new Set(["text", "select", "radio"]);
  * `SyncedFieldValue` and {@link planRegistrationPromotedFieldSync}).
  */
 export type PromotedFieldTarget =
-  | { kind: "person"; field: PromotablePersonField }
-  | { kind: "registration"; field: PromotableRegistrationField };
+  { kind: "person"; field: PromotablePersonField } | { kind: "registration"; field: PromotableRegistrationField };
 
 function resolveTarget(targetField: string): PromotedFieldTarget | undefined {
   if ((PROMOTABLE_PERSON_FIELDS as readonly string[]).includes(targetField)) {

@@ -1,4 +1,4 @@
-import { CampRow } from "@cyc-seattle/clubspot";
+import { type CampRow } from "@cyc-seattle/clubspot";
 
 const pacificDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" });
 

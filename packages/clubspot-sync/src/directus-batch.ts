@@ -1,4 +1,4 @@
-import { DirectusClient } from "@cyc-seattle/directus";
+import { type DirectusClient } from "@cyc-seattle/directus";
 
 // Directus 403s a dot-notation relational filter (`filter[registration_id.camp_id][_eq]`) on
 // several hop collections - it requires read permission on the traversed field itself, which

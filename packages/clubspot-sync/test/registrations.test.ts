@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import winston from "winston";
 import type { Camp, CustomField, Registration, RegistrationCampSession } from "@cyc-seattle/clubspot-sdk";
-import { CustomFieldResponseRow, RegistrationBillingRow, RegistrationRow } from "@cyc-seattle/clubspot";
+import { type CustomFieldResponseRow, type RegistrationBillingRow, type RegistrationRow } from "@cyc-seattle/clubspot";
 import {
   buildRegistrationRow,
   calculateEntryStatus,
@@ -11,8 +11,8 @@ import {
   planRegistrationEntries,
   planRegistrations,
   REGISTRATION_CREATE_ORDER,
-} from "../src/registrations.js";
-import { RegistrationEntryWithClubspot } from "../src/schema.js";
+} from "../src/registrations.ts";
+import { type RegistrationEntryWithClubspot } from "../src/schema.ts";
 
 // Minimal Parse.Object stand-in: just an id and a `.get(key)` accessor, per roster.test.ts.
 function parseObject(id: string, data: Record<string, unknown>) {
@@ -138,7 +138,7 @@ describe("planRegistrations", () => {
   });
 
   it("skips a registration with no participant instead of crashing, and warns and counts it", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const plan = planRegistrations(
         [confirmedRegistration("reg-1", { participantsArray: [] }), confirmedRegistration("reg-2")],
@@ -180,7 +180,7 @@ describe("calculateEntryStatus", () => {
   });
 
   it("maps an applied status to confirmed and warns", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       expect(calculateEntryStatus(false, false, "applied", "reg-1", "join-1")).toBe("confirmed");
       expect(warn).toHaveBeenCalled();
@@ -318,7 +318,7 @@ describe("planRegistrationEntries", () => {
   });
 
   it("drops an entry referencing an unresolvable session and warns, without touching an existing row for it", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     const unresolvable = parseObject("join-missing", {
       campSessionObject: { id: "session-missing" },
       campClassObject: { id: "class-1" },
@@ -564,7 +564,7 @@ describe("planCustomFieldResponses", () => {
   });
 
   it("skips a response whose customFieldID matches no known definition, and warns and counts it", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const reg = confirmedRegistration("reg-1", {
         participantsArray: [

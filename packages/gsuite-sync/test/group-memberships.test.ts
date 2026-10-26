@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { planMembershipWrites, removedPersonIds } from "../src/group-memberships.js";
-import { GoogleGroupMembershipRow } from "../src/schema.js";
+import { planMembershipWrites, removedPersonIds } from "../src/group-memberships.ts";
+import { type GoogleGroupMembershipRow } from "../src/schema.ts";
 
 const now = new Date("2026-10-24T12:00:00Z");
 const timestamp = now.toISOString();

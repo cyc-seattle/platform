@@ -1,4 +1,4 @@
-import { GoogleGroupRow } from "./schema.js";
+import { type GoogleGroupRow } from "./schema.ts";
 
 export interface GroupNesting {
   child: GoogleGroupRow;

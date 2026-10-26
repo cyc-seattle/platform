@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { DirectusClient } from "../src/client.js";
-import { finishSyncRun, startSyncRun, SyncRunRow } from "../src/sync-runs.js";
+import { type DirectusClient } from "../src/client.ts";
+import { finishSyncRun, startSyncRun, type SyncRunRow } from "../src/sync-runs.ts";
 
 /** A hand-rolled stand-in for the one `DirectusClient` surface these helpers call. */
 function fakeDirectus(overrides: Partial<Pick<DirectusClient, "createItems" | "updateItem" | "isDryRun">> = {}) {

@@ -1,5 +1,5 @@
-import { Group, GroupMember } from "@cyc-seattle/gsuite-sdk";
-import { GoogleGroupRow } from "./schema.js";
+import { type Group, type GroupMember } from "@cyc-seattle/gsuite-sdk";
+import { type GoogleGroupRow } from "./schema.ts";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

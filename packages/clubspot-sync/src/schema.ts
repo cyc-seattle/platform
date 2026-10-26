@@ -1,4 +1,4 @@
-import { CampRow, RegistrationEntryRow } from "@cyc-seattle/clubspot";
+import { type CampRow, type RegistrationEntryRow } from "@cyc-seattle/clubspot";
 
 /**
  * Sync-internal bookkeeping columns: real fields on `packages/clubspot`'s collections, but not

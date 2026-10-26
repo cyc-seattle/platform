@@ -1,6 +1,6 @@
-import { Participant } from "@cyc-seattle/clubspot-sdk";
-import { ContactRow, MedicalProfileRow, PersonRow } from "@cyc-seattle/crm";
-import { ParticipantRow } from "@cyc-seattle/clubspot";
+import { type Participant } from "@cyc-seattle/clubspot-sdk";
+import { type ContactRow, type MedicalProfileRow, type PersonRow } from "@cyc-seattle/crm";
+import { type ParticipantRow } from "@cyc-seattle/clubspot";
 
 /**
  * `contacts.contact_id` and `participants.person_id` are resolved once, when the row that points

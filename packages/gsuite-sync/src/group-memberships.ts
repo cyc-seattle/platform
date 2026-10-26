@@ -1,5 +1,5 @@
-import { isValidEmail, normalizeEmail, PersonRow } from "@cyc-seattle/crm";
-import { GoogleGroupMembershipRow } from "./schema.js";
+import { isValidEmail, normalizeEmail, type PersonRow } from "@cyc-seattle/crm";
+import { type GoogleGroupMembershipRow } from "./schema.ts";
 
 export interface MembershipRowUpdate {
   id: string;

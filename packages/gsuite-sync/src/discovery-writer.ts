@@ -1,8 +1,8 @@
 import winston from "winston";
-import { DirectusClient } from "@cyc-seattle/directus";
-import { Group, GroupMember } from "@cyc-seattle/gsuite-sdk";
-import { planGroupNestingDiscovery, planGroupUpserts } from "./discovery.js";
-import { GoogleGroupRow } from "./schema.js";
+import { type DirectusClient } from "@cyc-seattle/directus";
+import { type Group, type GroupMember } from "@cyc-seattle/gsuite-sdk";
+import { planGroupNestingDiscovery, planGroupUpserts } from "./discovery.ts";
+import { type GoogleGroupRow } from "./schema.ts";
 
 /** The slice of `DirectoryClient` the discovery pass reads through - narrow enough that a real
  * instance satisfies it structurally, matching `DirectoryReader`'s pattern in audit-writer.ts. */

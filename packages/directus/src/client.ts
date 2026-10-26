@@ -76,11 +76,15 @@ export class DirectusClient {
    * @param dryRun When true, every write logs and returns what it would have sent instead of
    *   issuing the request. Reads always execute. Step 9's `--dry-run` CLI flag sets this.
    */
-  constructor(
-    private readonly baseUrl: string,
-    private readonly token: string,
-    private readonly dryRun = false,
-  ) {}
+  private readonly baseUrl: string;
+  private readonly token: string;
+  private readonly dryRun: boolean;
+
+  constructor(baseUrl: string, token: string, dryRun = false) {
+    this.baseUrl = baseUrl;
+    this.token = token;
+    this.dryRun = dryRun;
+  }
 
   /** Lets a caller that assigns its own placeholder ids for a dry run's id-less rows tell one apart from a real write failure. */
   get isDryRun(): boolean {
@@ -91,7 +95,7 @@ export class DirectusClient {
     const res = await fetchRetrying(`${this.baseUrl}${path}`, {
       method,
       headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      ...(body !== undefined && { body: JSON.stringify(body) }),
     });
     if (!res.ok) {
       throw new Error(`${method} ${path} -> ${res.status}: ${await res.text()}`);

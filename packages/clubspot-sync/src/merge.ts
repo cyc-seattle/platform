@@ -1,5 +1,5 @@
-import { normalizeName } from "./people.js";
-import { contactPointKeyForRow } from "./contact-points.js";
+import { normalizeName } from "./people.ts";
+import { contactPointKeyForRow } from "./contact-points.ts";
 
 /**
  * Pure planning for merging duplicate `people` rows (design doc "Merge, unmerge, and review",

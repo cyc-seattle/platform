@@ -1,11 +1,22 @@
 import winston from "winston";
-import { ContactPointRow, ContactRow, PersonRow, ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
-import { CampRow, ClassRow, ParticipantRow, RegistrationEntryRow, RegistrationRow } from "@cyc-seattle/clubspot";
-import { AuditFindingRow, DirectusClient, fingerprintFinding, planAuditFindingWrites } from "@cyc-seattle/directus";
-import { Group, GroupMember } from "@cyc-seattle/gsuite-sdk";
+import { type ContactPointRow, type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
+import {
+  type CampRow,
+  type ClassRow,
+  type ParticipantRow,
+  type RegistrationEntryRow,
+  type RegistrationRow,
+} from "@cyc-seattle/clubspot";
+import {
+  type AuditFindingRow,
+  type DirectusClient,
+  fingerprintFinding,
+  planAuditFindingWrites,
+} from "@cyc-seattle/directus";
+import { type Group, type GroupMember } from "@cyc-seattle/gsuite-sdk";
 import {
   AUDIT_FINDING_KINDS,
-  AuditTables,
+  type AuditTables,
   candidateMemberPeople,
   findClassesWithoutProgram,
   findInvalidEmails,
@@ -16,12 +27,12 @@ import {
   findSecondaryEmailAddresses,
   findStaleMembers,
   findUnexpectedMembers,
-  GsuiteAuditFinding,
+  type GsuiteAuditFinding,
   isProgramGroup,
   plannedGroupMembers,
-} from "./audit.js";
-import { findSettingsDrift, SettingsReader } from "./audit-settings.js";
-import { GoogleGroupMembershipRow, GoogleGroupRow, ProgramWithGoogleGroup } from "./schema.js";
+} from "./audit.ts";
+import { findSettingsDrift, type SettingsReader } from "./audit-settings.ts";
+import { type GoogleGroupMembershipRow, type GoogleGroupRow, type ProgramWithGoogleGroup } from "./schema.ts";
 
 /** The slice of `DirectoryClient` the audit pass reads through - narrow enough that a real
  * instance satisfies it structurally, matching `MemberAdder`'s pattern. Reads have no side
@@ -147,13 +158,11 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
     winston.info("Raising audit finding", finding);
   }
   if (toCreate.length > 0) {
-    const rows = toCreate.map(
-      (finding): Omit<AuditFindingRow, "id"> => ({
-        ...finding,
-        status: "open",
-        fingerprint: fingerprintFinding(finding),
-      }),
-    );
+    const rows = toCreate.map((finding): Omit<AuditFindingRow, "id"> => ({
+      ...finding,
+      status: "open",
+      fingerprint: fingerprintFinding(finding),
+    }));
     await directus.createItems<AuditFindingRow>("audit_findings", rows as AuditFindingRow[]);
   }
 

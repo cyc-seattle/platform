@@ -1,14 +1,20 @@
 import winston from "winston";
-import { Camp, CustomField, Participant, Registration, RegistrationCampSession } from "@cyc-seattle/clubspot-sdk";
 import {
-  CustomFieldDefinitionRow,
-  CustomFieldResponseRow,
-  RegistrationBillingRow,
-  RegistrationRow,
+  type Camp,
+  type CustomField,
+  type Participant,
+  type Registration,
+  type RegistrationCampSession,
+} from "@cyc-seattle/clubspot-sdk";
+import {
+  type CustomFieldDefinitionRow,
+  type CustomFieldResponseRow,
+  type RegistrationBillingRow,
+  type RegistrationRow,
 } from "@cyc-seattle/clubspot";
-import { isBlank } from "./people.js";
-import { CollectionPlan, diffFields, joinedId, planById } from "./schedule.js";
-import { RegistrationEntryWithClubspot } from "./schema.js";
+import { isBlank } from "./people.ts";
+import { type CollectionPlan, diffFields, joinedId, planById } from "./schedule.ts";
+import { type RegistrationEntryWithClubspot } from "./schema.ts";
 
 /**
  * Pure plan functions for the registration pass: `custom_field_definitions`, `registrations`,

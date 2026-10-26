@@ -1,5 +1,5 @@
 import { Camp, Club, LoggedQuery } from "@cyc-seattle/clubspot-sdk";
-import { findAll } from "./parse-paging.js";
+import { findAll } from "./parse-paging.ts";
 
 /**
  * Lists every non-archived camp for a club - the set of camps the sync considers each run.

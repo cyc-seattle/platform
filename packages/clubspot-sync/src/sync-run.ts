@@ -1,44 +1,51 @@
 import winston from "winston";
-import { Camp, CampClass, CampSession, EntryCap, Participant, Registration } from "@cyc-seattle/clubspot-sdk";
-import { PersonRow } from "@cyc-seattle/crm";
 import {
-  ClassRow,
-  ContactPointWithParticipant,
-  CustomFieldDefinitionRow,
-  CustomFieldResponseRow,
-  EntryCapRow,
-  ParticipantRow,
-  PromotablePersonField,
-  PromotableRegistrationField,
-  PromotedFieldRow,
-  RegistrationBillingRow,
-  RegistrationRow,
-  SessionClassRow,
-  SessionRow,
+  type Camp,
+  type CampClass,
+  type CampSession,
+  type EntryCap,
+  type Participant,
+  type Registration,
+} from "@cyc-seattle/clubspot-sdk";
+import { type PersonRow } from "@cyc-seattle/crm";
+import {
+  type ClassRow,
+  type ContactPointWithParticipant,
+  type CustomFieldDefinitionRow,
+  type CustomFieldResponseRow,
+  type EntryCapRow,
+  type ParticipantRow,
+  type PromotablePersonField,
+  type PromotableRegistrationField,
+  type PromotedFieldRow,
+  type RegistrationBillingRow,
+  type RegistrationRow,
+  type SessionClassRow,
+  type SessionRow,
 } from "@cyc-seattle/clubspot";
 import {
-  AuditFindingRow,
-  DirectusClient,
+  type AuditFindingRow,
+  type DirectusClient,
   fingerprintFinding,
   finishSyncRun,
   planAuditFindingWrites,
   startSyncRun,
-  SyncQueue,
-  SyncRunOutcome,
-  SyncTaskHandler,
-  SyncTaskRow,
+  type SyncQueue,
+  type SyncRunOutcome,
+  type SyncTaskHandler,
+  type SyncTaskRow,
   runQueue,
   targetFromKey,
   TaskOrphaned,
 } from "@cyc-seattle/directus";
-import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipantFindings } from "./audit.js";
-import { campBackoff, nextSyncState } from "./backoff.js";
-import { contactPointKeySet, planStaffContactPoints } from "./contact-points.js";
-import { readByIds } from "./directus-batch.js";
-import { findDuplicatePeople, MERGE_PERSON_FIELDS, MergePerson } from "./merge.js";
-import { runApprovedPersonMerges } from "./merge-executor.js";
-import { buildParticipantMirrorFields, mergeParticipantMirrorFields, ParticipantMirrorFields } from "./people.js";
-import { BatchSibling, logReplacedFields, PersonSync, ResolvedPerson } from "./person-sync.js";
+import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipantFindings } from "./audit.ts";
+import { campBackoff, nextSyncState } from "./backoff.ts";
+import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts";
+import { readByIds } from "./directus-batch.ts";
+import { findDuplicatePeople, MERGE_PERSON_FIELDS, type MergePerson } from "./merge.ts";
+import { runApprovedPersonMerges } from "./merge-executor.ts";
+import { buildParticipantMirrorFields, mergeParticipantMirrorFields, type ParticipantMirrorFields } from "./people.ts";
+import { type BatchSibling, logReplacedFields, type PersonSync, type ResolvedPerson } from "./person-sync.ts";
 import {
   buildTargetByDefinitionId,
   needsFallbackTargetValues,
@@ -47,29 +54,29 @@ import {
   planRegistrationPromotedFieldSync,
   splitPromotedFieldTargets,
   trimmedValue,
-} from "./promoted-fields.js";
+} from "./promoted-fields.ts";
 import {
-  CollectionPlan,
+  type CollectionPlan,
   diffFields,
   planCamps,
   planClasses,
   planEntryCaps,
   planSessionClasses,
   planSessions,
-  SessionClassPlan,
-} from "./schedule.js";
+  type SessionClassPlan,
+} from "./schedule.ts";
 import {
-  CustomFieldResponseInput,
+  type CustomFieldResponseInput,
   firstParticipant,
   planCustomFieldDefinitions,
   planCustomFieldResponses,
   planRegistrationBilling,
   planRegistrationEntries,
   planRegistrations,
-  RegistrationBillingPlan,
-} from "./registrations.js";
-import { CampWithClubspot, RegistrationEntryWithClubspot } from "./schema.js";
-import { RegistrationRank } from "./synced-fields.js";
+  type RegistrationBillingPlan,
+} from "./registrations.ts";
+import { type CampWithClubspot, type RegistrationEntryWithClubspot } from "./schema.ts";
+import { type RegistrationRank } from "./synced-fields.ts";
 
 /** No prior successful sync: the registration window starts from the beginning of Clubspot history. */
 export const EPOCH = new Date(0);
@@ -1050,13 +1057,11 @@ async function detectAuditFindings(directus: DirectusClient): Promise<AuditDetec
   const { toCreate, toResolve, toReopen } = planAuditFindingWrites(findings, existingRows, AUDIT_FINDING_KINDS);
 
   if (toCreate.length > 0) {
-    const rows = toCreate.map(
-      (finding): Omit<AuditFindingRow, "id"> => ({
-        ...finding,
-        status: "open",
-        fingerprint: fingerprintFinding(finding),
-      }),
-    );
+    const rows = toCreate.map((finding): Omit<AuditFindingRow, "id"> => ({
+      ...finding,
+      status: "open",
+      fingerprint: fingerprintFinding(finding),
+    }));
     await directus.createItems<AuditFindingRow>("audit_findings", rows as AuditFindingRow[]);
   }
   for (const row of toResolve) {

@@ -1,6 +1,6 @@
-import { ParticipantRow } from "@cyc-seattle/clubspot";
-import { AuditFindingInput } from "@cyc-seattle/directus";
-import { DuplicatePersonGroup, MergePerson } from "./merge.js";
+import { type ParticipantRow } from "@cyc-seattle/clubspot";
+import { type AuditFindingInput } from "@cyc-seattle/directus";
+import { type DuplicatePersonGroup, type MergePerson } from "./merge.ts";
 
 /** The two kinds this run-level detection pass raises (design doc "Merge, unmerge, and review",
  * #133). Scopes `planAuditFindingWrites` to the rows it owns, so it never resolves a finding some

@@ -1,7 +1,7 @@
-import { AuditFindingRow, DirectusClient } from "@cyc-seattle/directus";
-import { parseDuplicatePersonFindingMemberIds } from "./audit.js";
-import { readByIds } from "./directus-batch.js";
-import { groupKey, MergePerson } from "./merge.js";
+import { type AuditFindingRow, type DirectusClient } from "@cyc-seattle/directus";
+import { parseDuplicatePersonFindingMemberIds } from "./audit.ts";
+import { readByIds } from "./directus-batch.ts";
+import { groupKey, type MergePerson } from "./merge.ts";
 
 /**
  * Migration step 5, run once from the CLI's `--approve-matching-duplicates` flag: approves every

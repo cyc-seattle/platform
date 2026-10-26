@@ -1,22 +1,22 @@
 import { randomUUID } from "node:crypto";
 import winston from "winston";
-import { Participant } from "@cyc-seattle/clubspot-sdk";
-import { ContactPointWithParticipant, ParticipantRow } from "@cyc-seattle/clubspot";
-import { ContactRow, MedicalProfileRow, PersonRow } from "@cyc-seattle/crm";
-import { DirectusClient } from "@cyc-seattle/directus";
+import { type Participant } from "@cyc-seattle/clubspot-sdk";
+import { type ContactPointWithParticipant, type ParticipantRow } from "@cyc-seattle/clubspot";
+import { type ContactRow, type MedicalProfileRow, type PersonRow } from "@cyc-seattle/crm";
+import { type DirectusClient } from "@cyc-seattle/directus";
 import {
-  ContactPointSlot,
+  type ContactPointSlot,
   contactPointCandidatesFromSlots,
   contactPointKeySet,
   planStaffContactPoints,
   readContactPointsForPersons,
   upsertContactPoints,
-} from "./contact-points.js";
+} from "./contact-points.ts";
 import {
   buildEmergencyContactRow,
   buildGuardianContactRow,
   buildPersonFieldsFromParticipant,
-  ContactMirrorSlot,
+  type ContactMirrorSlot,
   contactFieldValuesFromMirror,
   emergencyContactInputsFromParticipant,
   guardianInputsFromParticipant,
@@ -25,25 +25,25 @@ import {
   matchParticipant,
   medicalFieldValuesFromMirror,
   normalizeEmail,
-  ParticipantMirrorFields,
+  type ParticipantMirrorFields,
   personFieldsFromEmergencyContact,
   personFieldsFromGuardian,
   personFieldValuesFromMirror,
-  PersonMatchCandidate,
+  type PersonMatchCandidate,
   slotNameMatchesContact,
   splitContactName,
-} from "./people.js";
+} from "./people.ts";
 import {
   addFieldTally,
   bestRanked,
   emptyFieldTally,
-  FieldTally,
+  type FieldTally,
   isNewestParticipant,
   planSyncedFields,
-  Ranked,
-  RegistrationRank,
+  type Ranked,
+  type RegistrationRank,
   resolveFieldBase,
-} from "./synced-fields.js";
+} from "./synced-fields.ts";
 
 // Directus has no trigram operator over REST, so the fallback candidate fetch is a bounded
 // last-name substring search rather than every row in `people`.
@@ -193,7 +193,11 @@ export function logReplacedFields(collection: string, id: string, fields: readon
  * `medical_profiles` - see `isNewestParticipant`.
  */
 export class PersonSync {
-  constructor(private readonly directus: DirectusClient) {}
+  private readonly directus: DirectusClient;
+
+  constructor(directus: DirectusClient) {
+    this.directus = directus;
+  }
 
   /**
    * Matches or reuses this participant's person, without touching any curated field - the first

@@ -5,11 +5,11 @@ import {
   parseYesNo,
   planSyncedField,
   planSyncedFields,
-  Ranked,
-  RegistrationRank,
+  type Ranked,
+  type RegistrationRank,
   resolveBase,
   resolveFieldBase,
-} from "../src/synced-fields.js";
+} from "../src/synced-fields.ts";
 
 describe("parseYesNo", () => {
   it("parses Yes and No case-insensitively", () => {

@@ -15,12 +15,12 @@ import {
 } from "@cyc-seattle/clubspot-sdk";
 import { LoggingOption, VerboseOption } from "@cyc-seattle/commodore";
 import { DirectusClient, SyncQueue } from "@cyc-seattle/directus";
-import { approveMatchingDuplicates } from "./approve-matching-duplicates.js";
-import { discoverCamps } from "./camps.js";
-import { findAll } from "./parse-paging.js";
-import { PersonSync } from "./person-sync.js";
-import { seedContactPoints } from "./seed-contact-points.js";
-import { CampData, fetchCampDataGateway, runSync, SyncGateway } from "./sync-run.js";
+import { approveMatchingDuplicates } from "./approve-matching-duplicates.ts";
+import { discoverCamps } from "./camps.ts";
+import { findAll } from "./parse-paging.ts";
+import { PersonSync } from "./person-sync.ts";
+import { seedContactPoints } from "./seed-contact-points.ts";
+import { type CampData, fetchCampDataGateway, runSync, type SyncGateway } from "./sync-run.ts";
 
 const clubspot = new Clubspot();
 

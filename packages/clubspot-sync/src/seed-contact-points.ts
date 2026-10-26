@@ -1,15 +1,15 @@
-import { ContactRelationshipType, ContactRow, PersonRow } from "@cyc-seattle/crm";
-import { ContactPointWithParticipant, ParticipantRow } from "@cyc-seattle/clubspot";
-import { DirectusClient } from "@cyc-seattle/directus";
+import { type ContactRelationshipType, type ContactRow, type PersonRow } from "@cyc-seattle/crm";
+import { type ContactPointWithParticipant, type ParticipantRow } from "@cyc-seattle/clubspot";
+import { type DirectusClient } from "@cyc-seattle/directus";
 import {
   applyContactPointPlan,
-  ContactPointCandidateWithParticipant,
-  ContactPointSlot,
+  type ContactPointCandidateWithParticipant,
+  type ContactPointSlot,
   contactPointCandidatesFromSlots,
   contactPointKeySet,
   planContactPointUpserts,
   planStaffContactPoints,
-} from "./contact-points.js";
+} from "./contact-points.ts";
 
 /** A guardian/emergency slot's resolved person, from the `contacts` row `person-sync.ts` already wrote for it. */
 function contactIdForSlot(

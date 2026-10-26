@@ -2,14 +2,14 @@
 
 import { fileURLToPath } from "node:url";
 import { Command, Option } from "@commander-js/extra-typings";
-import { google } from "googleapis";
+import { type Auth, google } from "googleapis";
 import winston from "winston";
 import { LoggingOption, VerboseOption } from "@cyc-seattle/commodore";
 import { DirectusClient, SyncQueue } from "@cyc-seattle/directus";
 import { type ClientOptions, DirectoryClient, GroupSettingsClient } from "@cyc-seattle/gsuite-sdk";
-import { dryRunMemberAdder, MemberAdder } from "./directory-writer.js";
-import { runGroupSync } from "./run.js";
-import { dryRunSettingsApplier, SettingsApplier } from "./settings-writer.js";
+import { dryRunMemberAdder, type MemberAdder } from "./directory-writer.ts";
+import { runGroupSync } from "./run.ts";
+import { dryRunSettingsApplier, type SettingsApplier } from "./settings-writer.ts";
 
 // Directory covers membership, nesting, managers, owners and discovery; Groups Settings is the
 // wider, separate scope the settings pass needs.
@@ -20,7 +20,7 @@ const SCOPES = [
 
 /** Both Google clients, sent to `rootUrl` (such as the Workspace fake) instead of Google when it's set. */
 export function googleClients(
-  auth: InstanceType<typeof google.auth.GoogleAuth>,
+  auth: Auth.GoogleAuth,
   rootUrl?: string,
 ): { directory: DirectoryClient; settingsReader: GroupSettingsClient } {
   // The Workspace fake has no quota, so skip the per-call delay that protects the real API's (#271).

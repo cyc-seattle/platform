@@ -1,4 +1,4 @@
-import { CampClubspotFields } from "./schema.js";
+import { type CampClubspotFields } from "./schema.ts";
 
 /**
  * The run loop's cadence: the Cloud Scheduler trigger runs the job hourly. Paired with

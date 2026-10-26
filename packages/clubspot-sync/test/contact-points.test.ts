@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import type { ContactPointWithParticipant } from "@cyc-seattle/clubspot";
 import {
   contactPointCandidatesFromSlots,
-  ContactPointCandidateWithParticipant,
+  type ContactPointCandidateWithParticipant,
   contactPointKeySet,
   planContactPointUpserts,
   planStaffContactPoints,
-} from "../src/contact-points.js";
+} from "../src/contact-points.ts";
 
 const now = new Date("2026-01-15T00:00:00Z");
 

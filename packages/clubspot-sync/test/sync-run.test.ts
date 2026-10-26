@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import type { Camp, CampClass, EntryCap, Registration } from "@cyc-seattle/clubspot-sdk";
 import {
-  AuditFindingRow,
+  type AuditFindingRow,
   DirectusClient,
   fingerprintFinding,
   SyncQueue,
-  SyncRunRow,
-  SyncTaskRow,
+  type SyncRunRow,
+  type SyncTaskRow,
 } from "@cyc-seattle/directus";
-import { PersonSync } from "../src/person-sync.js";
-import { CampData, EPOCH, runSync, SyncGateway, syncCamp } from "../src/sync-run.js";
+import { PersonSync } from "../src/person-sync.ts";
+import { type CampData, EPOCH, runSync, type SyncGateway, syncCamp } from "../src/sync-run.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This

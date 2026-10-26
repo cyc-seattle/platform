@@ -1,13 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import winston from "winston";
-import { ContactRow, PersonRow, ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
-import { CampRow, ClassRow, ParticipantRow, RegistrationEntryRow, RegistrationRow } from "@cyc-seattle/clubspot";
+import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
+import {
+  type CampRow,
+  type ClassRow,
+  type ParticipantRow,
+  type RegistrationEntryRow,
+  type RegistrationRow,
+} from "@cyc-seattle/clubspot";
 import {
   isCurrentProgramRole,
-  MembershipTables,
+  type MembershipTables,
   planProgramMemberPeople,
   planProgramMembers,
-} from "../src/membership.js";
+} from "../src/membership.ts";
 
 const now = new Date("2026-06-15T00:00:00Z");
 
@@ -385,7 +391,7 @@ describe("planProgramMembers", () => {
   });
 
   it("skips a confirmed participant with no resolved person, and warns once with the count", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const result = planProgramMemberPeople(
         PROGRAM_ID,

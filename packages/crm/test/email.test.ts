@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidEmail, normalizeEmail } from "../src/email.js";
+import { isValidEmail, normalizeEmail } from "../src/email.ts";
 
 describe("isValidEmail", () => {
   it.each(["a@example.com", " Planned@Example.com ", "first.last+tag@sub.example.org"])(

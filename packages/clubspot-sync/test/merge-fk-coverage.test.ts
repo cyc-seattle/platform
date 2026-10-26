@@ -1,9 +1,9 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import * as yaml from "js-yaml";
-import { HANDLED_PEOPLE_FOREIGN_KEYS } from "../src/merge.js";
+import { HANDLED_PEOPLE_FOREIGN_KEYS } from "../src/merge.ts";
 
 interface RelationEntry {
   collection: string;
@@ -16,14 +16,13 @@ interface Snapshot {
   relations?: RelationEntry[];
 }
 
-const packagesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const schemasDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "schemas");
 
-/** Every `packages/*\/schema.yaml`, found by directory rather than a hand-maintained list - matches `discoverSchemaFiles` in `packages/infrastructure/src/directus/client.ts`. */
+/** Every `schemas/<domain>.yaml`, found by directory rather than a hand-maintained list - matches `discoverSchemaFiles` in `src/directus/client.ts`. */
 function findSchemaFiles(): string[] {
-  return readdirSync(packagesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => join(packagesDir, entry.name, "schema.yaml"))
-    .filter((path) => existsSync(path));
+  return readdirSync(schemasDir)
+    .filter((name) => name.endsWith(".yaml"))
+    .map((name) => join(schemasDir, name));
 }
 
 function readPeopleRelations(): RelationEntry[] {

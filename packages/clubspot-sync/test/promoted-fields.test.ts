@@ -1,19 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import winston from "winston";
-import { PersonRow } from "@cyc-seattle/crm";
+import { type PersonRow } from "@cyc-seattle/crm";
 import {
-  CustomFieldDefinitionRow,
-  CustomFieldResponseRow,
-  ParticipantRow,
-  PromotedFieldRow,
-  RegistrationRow,
+  type CustomFieldDefinitionRow,
+  type CustomFieldResponseRow,
+  type ParticipantRow,
+  type PromotedFieldRow,
+  type RegistrationRow,
 } from "@cyc-seattle/clubspot";
 import {
   needsFallbackTargetValues,
   planPromotedFields,
   planPromotedFieldSync,
   planRegistrationPromotedFieldSync,
-} from "../src/promoted-fields.js";
+} from "../src/promoted-fields.ts";
 
 function promotedField(labels: string[], targetField = "school"): PromotedFieldRow {
   return { id: "config-1", target_field: targetField as PromotedFieldRow["target_field"], labels };
@@ -70,7 +70,7 @@ function person(id: string, school: string | null = null): PersonRow {
 
 describe("planPromotedFields", () => {
   it("does nothing and logs at info when promoted_fields is empty", () => {
-    const info = vi.spyOn(winston, "info").mockImplementation(() => winston);
+    const info = vi.spyOn(winston, "info").mockReturnThis();
     try {
       const plan = planPromotedFields([], [definition("def-1", "School")], [], [], [], [person("person-1")]);
       expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
@@ -205,7 +205,7 @@ describe("planPromotedFields", () => {
   });
 
   it("skips a config row naming a target outside the promotable allow-list, and warns", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const plan = planPromotedFields(
         [promotedField(["Grade"], "grade")],
@@ -223,7 +223,7 @@ describe("planPromotedFields", () => {
   });
 
   it("warns once for a configured label matching no definition", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const plan = planPromotedFields(
         [promotedField(["School Nickname"])],
@@ -242,7 +242,7 @@ describe("planPromotedFields", () => {
   });
 
   it("skips a response on a registration whose participant has no resolved person, and warns once with the count", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const plan = planPromotedFields(
         [promotedField(["School"])],
@@ -462,7 +462,7 @@ describe("planRegistrationPromotedFieldSync", () => {
   });
 
   it("never writes an answer that parses as neither Yes nor No, and counts and logs it", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const plan = planRegistrationPromotedFieldSync([{ customFieldID: "def-1", response: "Maybe" }], [], null);
       expect(plan).toEqual({

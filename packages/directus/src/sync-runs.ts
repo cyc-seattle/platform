@@ -1,4 +1,4 @@
-import { DirectusClient } from "./client.js";
+import { type DirectusClient } from "./client.ts";
 
 /** Row shape for the `sync_runs` collection: one row per job execution. See `schema.yaml`. */
 export type SyncRunStatus = "running" | "succeeded" | "failed";

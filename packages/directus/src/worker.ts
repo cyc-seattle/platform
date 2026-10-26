@@ -1,8 +1,8 @@
 import winston from "winston";
-import { DirectusClient } from "./client.js";
+import { type DirectusClient } from "./client.ts";
 import {
   claimableTasks,
-  EnqueueInput,
+  type EnqueueInput,
   planCancel,
   planClaim,
   planEnqueue,
@@ -11,8 +11,8 @@ import {
   planSweep,
   staleRunningTasks,
   taskKey,
-} from "./queue.js";
-import { SyncTaskRow } from "./sync-tasks.js";
+} from "./queue.ts";
+import { type SyncTaskRow } from "./sync-tasks.ts";
 
 /** Does one task's work. Enqueuing child tasks (via `parent_id`) is the handler's job, not the
  * worker's - the worker has no notion that a task tree exists. */
@@ -28,7 +28,11 @@ export class TaskOrphaned extends Error {}
  * logic of its own - see `planClaim` for why claiming needs no lease.
  */
 export class SyncQueue {
-  constructor(private readonly directus: DirectusClient) {}
+  private readonly directus: DirectusClient;
+
+  constructor(directus: DirectusClient) {
+    this.directus = directus;
+  }
 
   /** Creates a task, or resets an existing one with the same `key` back to pending. This is what
    * makes a re-enqueue update in place instead of piling up a duplicate row. */

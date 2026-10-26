@@ -1,5 +1,5 @@
 import type { PersonRow } from "@cyc-seattle/crm";
-import type { RegistrationRow } from "./registrations.js";
+import type { RegistrationRow } from "./registrations.ts";
 
 /**
  * `people` columns a `promoted_fields` row may target. A code allow-list, not staff config, so a

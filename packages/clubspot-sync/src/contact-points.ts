@@ -1,8 +1,8 @@
 import winston from "winston";
-import { ContactPointKind, isValidEmail, PersonRow } from "@cyc-seattle/crm";
-import { ContactPointWithParticipant } from "@cyc-seattle/clubspot";
-import { DirectusClient } from "@cyc-seattle/directus";
-import { normalizeEmail, normalizePhone } from "./people.js";
+import { type ContactPointKind, isValidEmail, type PersonRow } from "@cyc-seattle/crm";
+import { type ContactPointWithParticipant } from "@cyc-seattle/clubspot";
+import { type DirectusClient } from "@cyc-seattle/directus";
+import { normalizeEmail, normalizePhone } from "./people.ts";
 
 /**
  * `contact_points` records every email and phone a form has given for a person, not only the

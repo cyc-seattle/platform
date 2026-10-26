@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { planGroupNesting } from "../src/nesting.js";
-import { GoogleGroupRow } from "../src/schema.js";
+import { planGroupNesting } from "../src/nesting.ts";
+import { type GoogleGroupRow } from "../src/schema.ts";
 
 function group(overrides: Partial<GoogleGroupRow>): GoogleGroupRow {
   return {

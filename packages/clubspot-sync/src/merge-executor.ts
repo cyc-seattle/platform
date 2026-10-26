@@ -1,21 +1,21 @@
 import winston from "winston";
-import { AuditFindingRow, DirectusClient } from "@cyc-seattle/directus";
-import { parseDuplicatePersonFindingMemberIds } from "./audit.js";
-import { readByIds } from "./directus-batch.js";
+import { type AuditFindingRow, type DirectusClient } from "@cyc-seattle/directus";
+import { parseDuplicatePersonFindingMemberIds } from "./audit.ts";
+import { readByIds } from "./directus-batch.ts";
 import {
   groupKey,
   HANDLED_PEOPLE_FOREIGN_KEYS,
   MERGE_PERSON_FIELDS,
-  MergeContact,
-  MergeContactPoint,
-  MergeMedicalProfile,
-  MergeParticipant,
-  MergePerson,
-  MergePersonReference,
-  MergeRelatedData,
-  MergeStep,
+  type MergeContact,
+  type MergeContactPoint,
+  type MergeMedicalProfile,
+  type MergeParticipant,
+  type MergePerson,
+  type MergePersonReference,
+  type MergeRelatedData,
+  type MergeStep,
   planPersonMerge,
-} from "./merge.js";
+} from "./merge.ts";
 
 /**
  * The thin, impure half of "Merge, unmerge, and review" (#133): `merge.ts` plans a merge,

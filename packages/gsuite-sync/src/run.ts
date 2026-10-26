@@ -1,27 +1,33 @@
 import winston from "winston";
-import { ContactRow, PersonRow, ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
-import { CampRow, ClassRow, ParticipantRow, RegistrationEntryRow, RegistrationRow } from "@cyc-seattle/clubspot";
+import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
 import {
-  DirectusClient,
+  type CampRow,
+  type ClassRow,
+  type ParticipantRow,
+  type RegistrationEntryRow,
+  type RegistrationRow,
+} from "@cyc-seattle/clubspot";
+import {
+  type DirectusClient,
   runQueue,
-  SyncQueue,
-  SyncTaskHandler,
-  SyncTaskRow,
+  type SyncQueue,
+  type SyncTaskHandler,
+  type SyncTaskRow,
   targetFromKey,
   TaskOrphaned,
 } from "@cyc-seattle/directus";
 import { resolveGroupSettingsTemplate } from "@cyc-seattle/gsuite-sdk";
-import { DirectoryReader, runAudit } from "./audit-writer.js";
-import { SettingsReader } from "./audit-settings.js";
-import { MemberAdder } from "./directory-writer.js";
-import { GroupDirectoryReader, runDiscovery } from "./discovery-writer.js";
-import { planMembershipWrites } from "./group-memberships.js";
-import { MembershipTables, planProgramMemberPeople } from "./membership.js";
-import { planGroupNesting } from "./nesting.js";
-import { planGroupOwners } from "./owners.js";
-import { GoogleGroupMembershipRow, GoogleGroupRow, ProgramWithGoogleGroup } from "./schema.js";
-import { planGroupsWithSettings } from "./settings.js";
-import { SettingsApplier } from "./settings-writer.js";
+import { type DirectoryReader, runAudit } from "./audit-writer.ts";
+import { type SettingsReader } from "./audit-settings.ts";
+import { type MemberAdder } from "./directory-writer.ts";
+import { type GroupDirectoryReader, runDiscovery } from "./discovery-writer.ts";
+import { planMembershipWrites } from "./group-memberships.ts";
+import { type MembershipTables, planProgramMemberPeople } from "./membership.ts";
+import { planGroupNesting } from "./nesting.ts";
+import { planGroupOwners } from "./owners.ts";
+import { type GoogleGroupMembershipRow, type GoogleGroupRow, type ProgramWithGoogleGroup } from "./schema.ts";
+import { planGroupsWithSettings } from "./settings.ts";
+import { type SettingsApplier } from "./settings-writer.ts";
 
 const QUEUE = "gsuite-sync";
 // Discovery gets its own queue value, not just its own kind, so it can be drained to completion

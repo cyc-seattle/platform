@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import winston from "winston";
 import type { Participant } from "@cyc-seattle/clubspot-sdk";
-import { ParticipantRow } from "@cyc-seattle/clubspot";
+import { type ParticipantRow } from "@cyc-seattle/clubspot";
 import { DirectusClient } from "@cyc-seattle/directus";
-import { buildParticipantMirrorFields, ParticipantMirrorFields } from "../src/people.js";
-import { PersonSync, SyncParticipantOptions } from "../src/person-sync.js";
-import { RegistrationRank } from "../src/synced-fields.js";
+import { buildParticipantMirrorFields, type ParticipantMirrorFields } from "../src/people.ts";
+import { PersonSync, type SyncParticipantOptions } from "../src/person-sync.ts";
+import { type RegistrationRank } from "../src/synced-fields.ts";
 
 const baseUrl = "https://directus.example.com";
 const token = "test-token";
@@ -535,7 +535,7 @@ describe("PersonSync.syncParticipant - creating and matching", () => {
     const { fetchMock, tables } = makeDirectusStore({ people: candidates });
     vi.stubGlobal("fetch", fetchMock);
 
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const sync = new PersonSync(new DirectusClient(baseUrl, token));
       // No email and no DOB, so the candidate fetch falls back to a last-name substring search.
@@ -600,7 +600,7 @@ describe("PersonSync.syncParticipant - creating and matching", () => {
     });
     vi.stubGlobal("fetch", customFetch);
 
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     try {
       const sync = new PersonSync(new DirectusClient(baseUrl, token));
       const data = {
@@ -1175,7 +1175,7 @@ describe("PersonSync.syncParticipant - guardian and emergency-contact slots", ()
       contacts: [seedGuardianContact()],
     });
     vi.stubGlobal("fetch", fetchMock);
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     const sync = new PersonSync(new DirectusClient(baseUrl, token));
 
     const priorData = {
@@ -1225,7 +1225,7 @@ describe("PersonSync.syncParticipant - guardian and emergency-contact slots", ()
       registrations: [newerRegistration],
     });
     vi.stubGlobal("fetch", fetchMock);
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     const sync = new PersonSync(new DirectusClient(baseUrl, token));
 
     const priorData = {

@@ -1,7 +1,19 @@
 import winston from "winston";
-import { ContactRow, isValidEmail, normalizeEmail, PersonRow, ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
-import { CampRow, ClassRow, ParticipantRow, RegistrationEntryRow, RegistrationRow } from "@cyc-seattle/clubspot";
-import { isCampActive } from "./camps.js";
+import {
+  type ContactRow,
+  isValidEmail,
+  normalizeEmail,
+  type PersonRow,
+  type ProgramRoleAssignmentRow,
+} from "@cyc-seattle/crm";
+import {
+  type CampRow,
+  type ClassRow,
+  type ParticipantRow,
+  type RegistrationEntryRow,
+  type RegistrationRow,
+} from "@cyc-seattle/clubspot";
+import { isCampActive } from "./camps.ts";
 
 /**
  * Whether a `program_role_assignments` row is in effect on `now`. Durable by default: a null

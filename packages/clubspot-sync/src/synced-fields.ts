@@ -1,5 +1,5 @@
-import { RegistrationRow } from "@cyc-seattle/clubspot";
-import { compareByRegistrationRecency } from "./promoted-fields.js";
+import { type RegistrationRow } from "@cyc-seattle/clubspot";
+import { compareByRegistrationRecency } from "./promoted-fields.ts";
 
 /**
  * The one rule every curated CRM field follows (#137): `people` (the participant's own row and

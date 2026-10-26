@@ -1,7 +1,7 @@
 import winston from "winston";
-import { Camp, CampClass, CampSession, EntryCap } from "@cyc-seattle/clubspot-sdk";
-import { ClassRow, EntryCapRow, SessionClassRow, SessionRow } from "@cyc-seattle/clubspot";
-import { CampWithClubspot } from "./schema.js";
+import { type Camp, type CampClass, type CampSession, type EntryCap } from "@cyc-seattle/clubspot-sdk";
+import { type ClassRow, type EntryCapRow, type SessionClassRow, type SessionRow } from "@cyc-seattle/clubspot";
+import { type CampWithClubspot } from "./schema.ts";
 
 /**
  * The schedule pass reconciles `camps`, `sessions`, `classes`, `session_classes`, and

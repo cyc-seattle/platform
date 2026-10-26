@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import winston from "winston";
 import type { Camp, CampClass, CampSession, EntryCap } from "@cyc-seattle/clubspot-sdk";
-import { ClassRow, EntryCapRow, SessionClassRow, SessionRow } from "@cyc-seattle/clubspot";
+import { type ClassRow, type EntryCapRow, type SessionClassRow, type SessionRow } from "@cyc-seattle/clubspot";
 import {
   planCamps,
   planClasses,
@@ -9,8 +9,8 @@ import {
   planSessionClasses,
   planSessions,
   SCHEDULE_CREATE_ORDER,
-} from "../src/schedule.js";
-import { CampWithClubspot } from "../src/schema.js";
+} from "../src/schedule.ts";
+import { type CampWithClubspot } from "../src/schema.ts";
 
 // Minimal Parse.Object stand-in: just an id and a `.get(key)` accessor, per roster.test.ts.
 function parseObject(id: string, data: Record<string, unknown>) {
@@ -224,7 +224,7 @@ describe("planSessions", () => {
   });
 
   it("writes null dates and warns for a session missing one or both dates, without disturbing the rest of the plan", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     const plan = planSessions(
       [
         campSession("session-1", "camp-1", "Week 1") as unknown as CampSession,
@@ -323,7 +323,7 @@ describe("planEntryCaps", () => {
   });
 
   it("drops a cap referencing an unresolvable session, warns, and still plans the rest", () => {
-    const warn = vi.spyOn(winston, "warn").mockImplementation(() => winston);
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
     const plan = planEntryCaps(
       [
         entryCap("cap-1", "class-1", 10, "session-missing") as unknown as EntryCap,

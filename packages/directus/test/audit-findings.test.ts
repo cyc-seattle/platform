@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  AuditFindingInput,
-  AuditFindingRow,
+  type AuditFindingInput,
+  type AuditFindingRow,
   fingerprintFinding,
   planAuditFindingWrites,
-} from "../src/audit-findings.js";
+} from "../src/audit-findings.ts";
 
 const ownedKinds = ["unexpected_member"];
 

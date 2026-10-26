@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GoogleGroupRow } from "../src/schema.js";
-import { planGroupsWithSettings } from "../src/settings.js";
+import { type GoogleGroupRow } from "../src/schema.ts";
+import { planGroupsWithSettings } from "../src/settings.ts";
 
 function group(overrides: Partial<GoogleGroupRow>): GoogleGroupRow {
   return {

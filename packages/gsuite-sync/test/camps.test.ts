@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCampActive } from "../src/camps.js";
+import { isCampActive } from "../src/camps.ts";
 
 const now = new Date("2026-06-15T00:00:00Z");
 

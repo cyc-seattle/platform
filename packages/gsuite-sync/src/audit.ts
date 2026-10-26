@@ -1,12 +1,12 @@
-import { CampRow, ClassRow } from "@cyc-seattle/clubspot";
-import { ContactPointRow, isValidEmail, normalizeEmail, PersonRow, ProgramRow } from "@cyc-seattle/crm";
-import { AuditFindingInput } from "@cyc-seattle/directus";
-import { GroupMember } from "@cyc-seattle/gsuite-sdk";
-import { removedPersonIds } from "./group-memberships.js";
-import { MembershipTables, planProgramMemberPeople, planProgramMembers } from "./membership.js";
-import { planGroupNesting } from "./nesting.js";
-import { planGroupOwners } from "./owners.js";
-import { GoogleGroupMembershipRow, GoogleGroupRow, ProgramWithGoogleGroup } from "./schema.js";
+import { type CampRow, type ClassRow } from "@cyc-seattle/clubspot";
+import { type ContactPointRow, isValidEmail, normalizeEmail, type PersonRow, type ProgramRow } from "@cyc-seattle/crm";
+import { type AuditFindingInput } from "@cyc-seattle/directus";
+import { type GroupMember } from "@cyc-seattle/gsuite-sdk";
+import { removedPersonIds } from "./group-memberships.ts";
+import { type MembershipTables, planProgramMemberPeople, planProgramMembers } from "./membership.ts";
+import { planGroupNesting } from "./nesting.ts";
+import { planGroupOwners } from "./owners.ts";
+import { type GoogleGroupMembershipRow, type GoogleGroupRow, type ProgramWithGoogleGroup } from "./schema.ts";
 
 /** Which sync raised a finding. `class_without_program` tags `clubspot-sync` even though this
  * pass computes it - see `findClassesWithoutProgram`. */

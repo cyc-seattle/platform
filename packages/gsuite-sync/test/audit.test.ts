@@ -1,8 +1,8 @@
-import { CampRow, ClassRow } from "@cyc-seattle/clubspot";
-import { PersonRow, ProgramRow } from "@cyc-seattle/crm";
+import { type CampRow, type ClassRow } from "@cyc-seattle/clubspot";
+import { type PersonRow, type ProgramRow } from "@cyc-seattle/crm";
 import { describe, expect, it } from "vitest";
 import {
-  AuditTables,
+  type AuditTables,
   candidateMemberPeople,
   findClassesWithoutProgram,
   findInvalidEmails,
@@ -13,8 +13,8 @@ import {
   findStaleMembers,
   findUnexpectedMembers,
   isProgramGroup,
-} from "../src/audit.js";
-import { ProgramWithGoogleGroup } from "../src/schema.js";
+} from "../src/audit.ts";
+import { type ProgramWithGoogleGroup } from "../src/schema.ts";
 
 const NO_SECONDARY_EMAILS = new Set<string>();
 

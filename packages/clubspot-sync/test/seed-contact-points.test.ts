@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { ContactRow } from "@cyc-seattle/crm";
-import { ContactPointWithParticipant, ParticipantRow } from "@cyc-seattle/clubspot";
+import { type ContactRow } from "@cyc-seattle/crm";
+import { type ContactPointWithParticipant, type ParticipantRow } from "@cyc-seattle/clubspot";
 import { DirectusClient } from "@cyc-seattle/directus";
-import { seedContactPoints, slotsForMirroredParticipant } from "../src/seed-contact-points.js";
+import { seedContactPoints, slotsForMirroredParticipant } from "../src/seed-contact-points.ts";
 
 const baseUrl = "https://directus.example.com";
 const token = "test-token";
@@ -160,7 +160,7 @@ describe("seedContactPoints", () => {
     });
 
     const postCalls = fetchMock.mock.calls.filter(
-      ([, init]: [string, { method?: string } | undefined]) => init?.method === "POST",
+      ([, init]: [string, ({ method?: string } | undefined)?]) => init?.method === "POST",
     );
     expect(postCalls).toHaveLength(2);
     const [, formCreateInit] = postCalls[0] as [string, { body: string }];
