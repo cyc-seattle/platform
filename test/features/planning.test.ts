@@ -11,7 +11,7 @@ for (const text of [
   "a plan someone else started",
   "they can save the draft as a version",
   "they can make a saved version active",
-  "they can't move anything from the draft into a saved version",
+  "they can't copy a draft's changes into a saved version",
   "they can't turn a saved version back into a draft",
 ]) {
   Step(text, () => notBuilt("11"));

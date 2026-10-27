@@ -7,11 +7,11 @@ Feature: Roles and groups
     children like any other parent.
   - Admin, for the people who run the system.
 
-  Anything more, such as changing the CRM or planning a season, comes from groups. A group, such as
-  the Finance Committee, gives its members one or more policies. A policy is a named set of
-  permissions. For example, CRM Writer lets someone add, edit, and delete people in the CRM. An admin
-  manages the groups in the Data Studio: who is in each one, and which policies each one gives. To
-  change something means to add, edit, or delete it.
+  Anything more, such as changing people's details or planning a season, comes from groups. A
+  group, such as the Finance Committee, gives its members one or more policies. A policy is a named
+  set of permissions. For example, CRM Writer lets someone add, edit, and delete people and their
+  details. An admin manages the groups in the Data Studio: who is in each one, and which policies
+  each one gives. To change something means to add, edit, or delete it.
 
   Groups only give policies to people. They never change anyone's role. The syncs sign in with
   accounts of their own, and the first admin account is the one the system was set up with. Groups
@@ -45,17 +45,17 @@ Feature: Roles and groups
         | Crew      |
 
     @pending
-    Example: A volunteer who can change the CRM still can't change roles
+    Example: A volunteer with CRM Writer still can't change roles
       Given a user with the Crew role and the CRM Writer policy
       Then they can't change anyone's role, even their own
 
   @pending
   Rule: Joining a group gives its policies, and doesn't change the person's role
 
-    Example: A volunteer joins a group that can change the CRM
+    Example: A volunteer joins a group that gives CRM Writer
       Given a user with the Crew role
       When an admin adds them to a group that gives the CRM Writer policy
-      Then they can change the CRM
+      Then they can change people and their details
       And they still have the Crew role
 
   @pending
@@ -64,7 +64,7 @@ Feature: Roles and groups
     Example: A volunteer leaves the group
       Given a user in a group that gives the CRM Writer policy
       When an admin takes them out of the group
-      Then they can't change the CRM
+      Then they can't change people and their details
 
   @pending
   Rule: When a group stops giving a policy, its members lose it
@@ -72,7 +72,7 @@ Feature: Roles and groups
     Example: The group stops giving CRM Writer
       Given a user in a group that gives the CRM Writer policy
       When an admin changes the group so it no longer gives that policy
-      Then they can't change the CRM
+      Then they can't change people and their details
 
   @pending
   Rule: A person keeps a policy as long as any of their groups gives it
@@ -80,7 +80,7 @@ Feature: Roles and groups
     Example: A volunteer leaves one of two groups that give the same policy
       Given a user in two groups that each give the CRM Writer policy
       When an admin takes them out of one of the groups
-      Then they can change the CRM
+      Then they can change people and their details
 
   @pending
   Rule: Changing groups never changes what the syncs or the first admin account can do
@@ -90,10 +90,10 @@ Feature: Roles and groups
       When an admin adds it to a group that gives the Medical Reader policy
       Then it can't see medical information
 
-    Example: A group can't stop the first admin account from changing the CRM
+    Example: A group can't stop the first admin account from changing people's details
       Given the first admin account
       When an admin adds it to a group that gives the CRM Reader policy
-      Then it can change the CRM
+      Then it can change people and their details
 
   @pending
   Rule: Only an admin can change groups
@@ -111,6 +111,6 @@ Feature: Roles and groups
         | Community |
         | Crew      |
 
-    Example: A volunteer who can change the CRM still can't change groups
+    Example: A volunteer with CRM Writer still can't change groups
       Given a user with the Crew role and the CRM Writer policy
       Then they can't change groups

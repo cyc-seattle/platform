@@ -34,11 +34,11 @@ const account = (number: string) => ({
   retired: false,
 });
 
-Step("an account in the catalog", async () => {
+Step("a revenue account in the catalog", async () => {
   accountNumber = key("account");
   await adminCreate("accounts", account(accountNumber));
 });
-Step("an admin adds another account with the same number", async () => {
+Step("an admin adds another revenue account with the same number", async () => {
   const second = account(accountNumber!);
   const { status } = await (await admin()).request("POST", "/items/accounts", second);
   if (status < 300) {

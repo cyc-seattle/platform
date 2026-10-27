@@ -245,7 +245,7 @@ Step("a teammate who hasn't answered the sharing question, and their parent", as
   const teammate = await aTeammate({ share: null, fields: { phone: phone() } });
   call("the teammate's parent", await guardianOf(teammate));
 });
-Step("another family on the team, whose parent signs in", async () => {
+Step("another parent on the team", async () => {
   const teammate = await aTeammate({ share: null });
   const guardian = call("the teammate's parent", await guardianOf(teammate));
   guardian.user = await createUser(guardian.email, "Community");
@@ -278,10 +278,10 @@ Step("a sailor who is only on the second team", async () => {
   call("the sailor", await sailor("sailor", secondTeam, { share: true }));
 });
 
-Step("an adult who sails on a team and signs in", async () => {
+Step("an adult who sails on a team", async () => {
   await signIn(call("the sailor", await sailor("adult", await theTeam(), { share: true, dateOfBirth: ADULT })));
 });
-Step("a sailor with no date of birth on file who sails on a team and signs in", async () => {
+Step("a sailor with no date of birth on file who sails on a team", async () => {
   await signIn(call("the sailor", await sailor("adult", await theTeam(), { share: true, dateOfBirth: null })));
 });
 Step("a user with the Community role whose email isn't in the CRM", async () => {
@@ -310,24 +310,24 @@ async function parentCoordinator(): Promise<string> {
   return existing?.id ?? (await (await admin()).ok("POST", "/items/program_roles", { name: PARENT_COORDINATOR })).id;
 }
 
-Step("a Parent Coordinator of a team", async () => aVolunteer(await parentCoordinator(), null));
-Step("a Parent Coordinator of a team whose role ended three days ago", async () => {
+Step("a Parent Coordinator for a program", async () => aVolunteer(await parentCoordinator(), null));
+Step("a Parent Coordinator for a program whose role ended three days ago", async () => {
   await aVolunteer(await parentCoordinator(), daysFromNow(-3));
   await aTeammate({ share: true, dateOfBirth: ADULT }, "the sailor");
 });
-Step("a race committee volunteer for a team", async () => {
+Step("a race committee volunteer for a program", async () => {
   const role = await adminCreate("program_roles", { name: `Race committee ${key("role")}` });
   await aVolunteer(role.id, null);
   await aTeammate({ share: true, dateOfBirth: ADULT }, "the sailor");
 });
-Step("a sailor on the team who hasn't answered the sharing question, and their parent", async () => {
+Step("a sailor in the program who hasn't answered the sharing question, and their parent", async () => {
   const sailing = await aTeammate({ share: null }, "the sailor");
   call("the sailor's parent", await guardianOf(sailing));
 });
-Step("a sailor on the team who is a child, with an email and phone of their own", () =>
+Step("a sailor in the program who is a child, with an email and phone of their own", () =>
   aTeammate({ share: null, fields: { phone: phone() } }, "the sailor"),
 );
-Step("a sailor on the team whose parent is under 18", async () => {
+Step("a sailor in the program whose parent is under 18", async () => {
   const sailing = await aTeammate({ share: null }, "the sailor");
   call("the sailor's parent", await guardianOf(sailing, yearsAgo(16)));
 });
@@ -419,9 +419,9 @@ function noContactDetails(...labels: string[]): void {
     expect(row?.["phone"], label).toBeFalsy();
   }
 }
-Step("not the email or phone of {someone}", (_, label: string) => noContactDetails(label));
-Step("not the email or phone of {someone} or {someone}", (_, first: string, second: string) =>
-  noContactDetails(first, second),
+Step("they don't see {someone}'s email or phone", (_, label: string) => noContactDetails(label));
+Step("they don't see {someone}'s or their parent's email or phone", (_, label: string) =>
+  noContactDetails(label, `${label}'s parent`),
 );
 Step("they see no email or phone for {someone}", (_, label: string) => noContactDetails(label));
 
@@ -452,8 +452,8 @@ Step("they see who {someone}'s parent is", (_, label: string) => {
 });
 
 for (const [text, sees] of [
-  ["the other family sees the parent's email", true],
-  ["the other family no longer sees the parent's email", false],
+  ["the other parent sees the parent's email", true],
+  ["the other parent no longer sees the parent's email", false],
 ] as const) {
   Step(text, async () => {
     const rows = await read(await asThe("the teammate's parent"), "people");
@@ -492,7 +492,7 @@ Step("they can't move their child to another camp", async () => {
 
 // A registration that matches only the names policy comes back with family's fields as null, since
 // the fields Directus returns span every read rule on the role.
-Step("they can't see whether the teammate opted in, or for which camp", () => {
+Step("they can't see the teammate's sharing answer", () => {
   const registration = scene.rows.find((row) => "share_contact" in row);
   expect(registration).toBeDefined();
   expect(registration?.["share_contact"]).toBeNull();
@@ -503,7 +503,7 @@ Step("they can't see the teammate's sign-up answers", () => {
   expect(Object.keys(participant ?? {}).sort()).toEqual(["id", "person_id"]);
 });
 
-Step("they can't see anyone's extra emails and phone numbers", async () => {
+Step("they can't see anyone's extra emails or phone numbers", async () => {
   const { status, body } = await (await theirSession()).request("GET", "/items/contact_points");
   if (status !== 403) {
     expect(status).toBe(200);
@@ -575,26 +575,25 @@ Step("they don't find the teammate", () => {
 });
 
 // Directus sorts, groups, and aggregates on the raw column, so the query guard refuses them outright.
-const requests: Record<string, string> = {
-  "people sorted by email": "sort=email",
-  "people grouped by email": "groupBy[]=email&aggregate[count]=id",
-  "a count of different phone numbers": "aggregate[countDistinct]=phone",
-};
-parameter("request", Object.keys(requests));
+const revealing = ["sort=email", "groupBy[]=email&aggregate[count]=id", "aggregate[countDistinct]=phone"];
 
-Step("they ask for {request}", async (_, request: string) => {
-  const { status } = await (await theirSession()).request("GET", `/items/people?${requests[request]}`);
-  expectRefusal(() => expect(status).toBe(403));
+Step("they ask for a list that would reveal hidden emails or phone numbers", async () => {
+  const session = await theirSession();
+  const statuses: Record<string, number> = {};
+  for (const query of revealing) {
+    statuses[query] = (await session.request("GET", `/items/people?${query}`)).status;
+  }
+  expectRefusal(() => expect(statuses).toEqual(Object.fromEntries(revealing.map((query) => [query, 403]))));
 });
 
-Step("they can't see the details of the team's registrations", async () => {
+Step("they can't see the details of the program's registrations", async () => {
   const rows = await read(await theirSession(), "registrations");
   expect(rows.length).toBeGreaterThan(0);
   for (const row of rows) {
     expect(row["camp_id"]).toBeNull();
   }
 });
-Step("they see no one on the team", async () => {
+Step("they see no one in the program", async () => {
   const session = await theirSession();
   for (const collection of ["people", "contacts", "registrations", "registration_entries", "participants"]) {
     expect(await read(session, collection), collection).toEqual([]);

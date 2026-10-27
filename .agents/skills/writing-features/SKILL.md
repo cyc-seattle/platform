@@ -72,28 +72,36 @@ the CRM".
 
 These came from review comments on [cyc-seattle/platform#48](https://github.com/cyc-seattle/platform/pull/48).
 
-| Slop                                                                            | Plain                                                                                 |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| A CRM Writer keeps the CRM                                                      | A CRM Writer can change the CRM                                                       |
-| A CRM Reader sees the CRM, and changes nothing                                  | A CRM Reader can see the CRM, but can't change it                                     |
-| Programs are the catalog's                                                      | Programs belong to the catalog                                                        |
-| Crew read the rosters (in one rule), Crew see no medical profiles (in the next) | Crew can see the rosters. Crew can't see medical information                          |
-| A service account which reaches only what it syncs                              | An account of its own, which can only do the work the sync needs                      |
-| Groups grant nothing beyond policies                                            | Groups only give policies to people                                                   |
-| A family reads no one's address book                                            | A family can't see anyone's extra emails and phone numbers                            |
-| Signing in matches a person in the CRM by email, whatever its case              | Signing in finds a person in the CRM by their email, even if they type it in capitals |
-| A Parent Coordinator's role that has ended shows no one                         | Parent Coordinators whose role has ended see no one                                   |
-| Given a group in the Workspace fake                                             | Given a program with a Google group                                                   |
-| the leaver's membership row records that they left                              | they're still not in the group                                                        |
-| When staff delete that note                                                     | When staff let them back into the group                                               |
-| Teammates show by name                                                          | The parent sees every teammate by name                                                |
-| Rule: A Plan Writer can edit any draft … Then they can change a draft           | Rule: A Plan Writer can change any draft … Then they can change a draft               |
-| is refused / the catalog refuses it / they're refused                           | the CRM doesn't allow it                                                              |
-| can't see camps, sessions, classes, and registrations                           | can't see camps, sessions, classes, or registrations                                  |
-| it can delete people, their parents and emergency contacts, their other emails… | it can delete people's details (with "details" defined in the description)            |
-| clubspot-sync runs / gsuite-sync's service account                              | the Clubspot sync runs / the Google sync's service account                            |
-| Then they get the same people as a search for something no one has              | Then they don't find the teammate                                                     |
-| # One example, because each sync run takes minutes                              | (nothing: say why in the step code)                                                   |
+| Slop                                                                                    | Plain                                                                                 |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| A CRM Writer keeps the CRM                                                              | A CRM Writer can change the CRM                                                       |
+| A CRM Reader sees the CRM, and changes nothing                                          | A CRM Reader can see the CRM, but can't change it                                     |
+| Programs are the catalog's                                                              | Programs belong to the catalog                                                        |
+| Crew read the rosters (in one rule), Crew see no medical profiles (in the next)         | Crew can see the rosters. Crew can't see medical information                          |
+| A service account which reaches only what it syncs                                      | An account of its own, which can only do the work the sync needs                      |
+| Groups grant nothing beyond policies                                                    | Groups only give policies to people                                                   |
+| A family reads no one's address book                                                    | A family can't see anyone's extra emails and phone numbers                            |
+| Signing in matches a person in the CRM by email, whatever its case                      | Signing in finds a person in the CRM by their email, even if they type it in capitals |
+| A Parent Coordinator's role that has ended shows no one                                 | Parent Coordinators whose role has ended see no one                                   |
+| Given a group in the Workspace fake                                                     | Given a program with a Google group                                                   |
+| the leaver's membership row records that they left                                      | they're still not in the group                                                        |
+| When staff delete that note                                                             | When staff let them back into the group                                               |
+| Teammates show by name                                                                  | The parent sees every teammate by name                                                |
+| Rule: A Plan Writer can edit any draft … Then they can change a draft                   | Rule: A Plan Writer can change any draft … Then they can change a draft               |
+| is refused / the catalog refuses it / they're refused                                   | the CRM doesn't allow it                                                              |
+| can't see camps, sessions, classes, and registrations                                   | can't see camps, sessions, classes, or registrations                                  |
+| it can delete people, their parents and emergency contacts, their other emails…         | it can delete people's details (with "details" defined in the description)            |
+| clubspot-sync runs / gsuite-sync's service account                                      | the Clubspot sync runs / the Google sync's service account                            |
+| Then they get the same people as a search for something no one has                      | Then they don't find the teammate                                                     |
+| # One example, because each sync run takes minutes                                      | (nothing: say why in the step code)                                                   |
+| A CRM Writer can change the CRM (when the CRM includes registrations they can't change) | A CRM Writer can change people and their details                                      |
+| Each account has its own number (with service accounts in the next file)                | Each revenue account has its own number                                               |
+| billing (in one file), what they paid (in another)                                      | payments, everywhere                                                                  |
+| Crew can't see sailors' medical information (but a Crew parent sees their own child's)  | Crew can't see other families' medical information                                    |
+| Example: Merging two people deletes the duplicate (its steps only check permission)     | Example: The Clubspot sync can delete a duplicate person                              |
+| whether or not they opted in                                                            | whether or not the teammate's family opted in                                         |
+| But not the email or phone of the teammate or the teammate's parent                     | But they don't see the teammate's or their parent's email or phone                    |
+| Given another family on the team, whose parent signs in                                 | Given another parent on the team                                                      |
 
 Watch for:
 
@@ -107,6 +115,31 @@ Watch for:
 - the code's name for a service, such as "clubspot-sync". Say "the Clubspot sync", as staff do;
 - a kind of thing a staffer can't picture, such as "a volunteer in another role". Name the role: "a
   race committee volunteer".
+- a pronoun with two possible owners: "whether or not they opted in", after a parent and a teammate.
+
+### Make the rules agree
+
+A reader takes each rule at its word, so a rule that another rule, an example, or another feature
+contradicts is wrong, however plain it reads.
+
+- Use one word for one thing, in every feature. "Account" can't mean a revenue account in one file
+  and a sign-in account in the next: say "revenue account". Don't call one thing two names, such as
+  "billing" and "what they paid".
+- Define a set in the feature that uses it, before its first use. A set defined only in another
+  feature is undefined here.
+- Say exactly what a rule covers. "A CRM Writer can change the CRM" is false when the description
+  says the CRM includes registrations and medical information, which they can't change. Name the
+  set: "people and their details".
+- Scope an absolute rule that has an exception. "Crew can't see medical information" contradicts
+  "a Crew parent sees their own child's"; write "other families' medical information".
+- Name the exception in the rule, not elsewhere: "Each plan is for one product, apart from the
+  Operations Plan".
+- Each example shows its rule, and only that. An example about who decides doesn't belong under a
+  rule about what's shared: split it into a rule of its own. An example's title says what its steps
+  check: "Merging two people deletes the duplicate" over steps that only check a permission
+  promises more than it tests.
+- When a rule here limits what another feature allows, such as "only planners can see products"
+  while the Google sync sees them, add the exception to the rule.
 
 ### Check it before you push
 
@@ -315,6 +348,8 @@ which rule it breaks.
 - [ ] Actors are named for what they are (policy, role, person, service account) and kinds aren't
       mixed. No "login".
 - [ ] Every term is the domain's, or the description defines it.
+- [ ] Each term means one thing in every feature, and each set is defined in the feature that uses
+      it. No rule contradicts another rule, its own examples, or another feature.
 - [ ] Every scenario is a requirement of this feature's area. Nothing generic, nothing that belongs
       to another service or domain. A permission set's feature covers all its policies.
 - [ ] Background holds only what every scenario needs and a reader can keep in mind.

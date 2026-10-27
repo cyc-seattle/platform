@@ -1,17 +1,18 @@
 Feature: Camps and registrations from Clubspot
   Families sign up for camps in Clubspot. The Clubspot sync copies each camp's sessions and classes,
   and each registration, from Clubspot into the CRM. A registration comes with the sailor's answers
-  to the sign-up questions and what they paid. The sync adds each sailor and parent on a
-  registration to the CRM as a person, so staff work from one list of people. When it finds the same
-  person in the CRM twice, it merges the two into one. The CRM also has event staffing from
-  Clubspot: which coaches and staff work each session.
+  to the sign-up questions, their medical information, and their payments. The sync adds each
+  sailor and parent on a registration to the CRM as a person, so staff work from one list of people.
+  When it finds the same person in the CRM twice, it merges the two into one. The CRM also has event
+  staffing from Clubspot: which coaches and staff work each session. What came from Clubspot means
+  the camps, sessions, classes, registrations, and staffing.
 
   Staff fix a camp or a registration in Clubspot, not in the CRM, because the next copy would undo
   a change made in the CRM. In the CRM, staff only link what came from Clubspot to the rest of the
   club's data: which program a class belongs to, and which person in the CRM a sailor is.
 
   The Clubspot sync signs in to the CRM with an account of its own, called a service account, which
-  can only do the work the sync needs. It keeps notes in the CRM: a list of tasks, and reports of
+  can only do the work the sync needs. It writes notes in the CRM: a list of tasks, and reports of
   problems for staff to fix. It also logs each run. Staff choose which sign-up answers, such as a
   sailor's school, get copied onto a person's details.
 
@@ -29,27 +30,27 @@ Feature: Camps and registrations from Clubspot
       Then the CRM has the sailor as a person
       And the CRM has the sailor's parent as a person, listed as their parent
 
-  Rule: Staff can see what came from Clubspot, but can only change it in Clubspot
+  Rule: Staff can see what came from Clubspot, but can't change it in the CRM, apart from linking it
 
-    Example: A CRM Writer can see camps and registrations, but can't change them
+    Example: A CRM Writer can see what came from Clubspot, but can't change it
       Given a user with the CRM Writer policy
       Then they can see what came from Clubspot
       But they can't change what came from Clubspot
 
     @pending
-    Example: A CRM Reader can see camps and registrations, but can't change them
+    Example: A CRM Reader can see what came from Clubspot, but can't change it
       Given a user with the CRM Reader policy
       Then they can see what came from Clubspot
       But they can't change what came from Clubspot
 
-  Rule: A CRM Writer can link a class to its program, and a sailor to their person in the CRM
+  Rule: A CRM Writer can link a class to its program, and a sailor to the right person in the CRM
 
     Example: A CRM Writer sets a class's program, and matches a sailor to a person
       Given a user with the CRM Writer policy
       Then they can set which program a class belongs to
       And they can match a registration's sailor to a person in the CRM
 
-  Rule: The Clubspot sync can add, see, and edit what it copies from Clubspot
+  Rule: The Clubspot sync can add, see, and edit what it copies from Clubspot, its notes, and its run logs
 
     Example: The Clubspot sync adds and edits what it copies
       Given the Clubspot sync's service account
@@ -60,14 +61,14 @@ Feature: Camps and registrations from Clubspot
 
   Rule: The Clubspot sync deletes something only when it merges two people, or when a new copy from Clubspot replaces it
 
-    Example: Merging two people deletes the duplicate
+    Example: The Clubspot sync can delete a duplicate person
       Given the Clubspot sync's service account
       Then it can delete people's details and medical information
 
-    Example: A new copy from Clubspot replaces a session's classes and a registration's billing
+    Example: A new copy from Clubspot replaces a session's classes and a registration's payments
       Given the Clubspot sync's service account
-      Then it can delete a session's list of classes
-      And it can delete a registration's billing
+      Then it can replace a session's classes with a new copy from Clubspot
+      And it can replace a registration's payments with a new copy from Clubspot
 
     Example: The Clubspot sync can't delete anything else
       Given the Clubspot sync's service account

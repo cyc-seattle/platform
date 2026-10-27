@@ -53,26 +53,14 @@ const CAMPS_AND_REGISTRATIONS = plain(
 );
 
 const sets: Record<string, Target[]> = {
-  // The CRM's own collections. Programs belong to the catalog, and medical information is granted apart.
-  "the CRM": plain(
-    "people",
-    "contacts",
-    "contact_points",
-    "program_roles",
-    "program_role_assignments",
-    "promoted_fields",
-    "sync_tasks",
-    "sync_runs",
-    "audit_findings",
-    "google_groups",
-    "google_group_memberships",
-  ),
+  // A person's details, as crm.feature defines them. Medical information is granted apart.
+  "people and their details": plain("people", "contacts", "contact_points"),
   "medical information": plain("medical_profiles"),
   "the rosters": plain("programs", "camps", "sessions", "classes", "registration_entries", "people"),
   "sailors' parents and emergency contacts": plain("contacts"),
-  "extra emails and phone numbers": plain("contact_points"),
+  "extra emails or phone numbers": plain("contact_points"),
   registrations: plain("participants", "registrations", "registration_billing"),
-  billing: plain("registration_billing"),
+  payments: plain("registration_billing"),
   "what came from Clubspot": [...CAMPS_AND_REGISTRATIONS, ...plain("event_staff")],
   "camps and registrations": CAMPS_AND_REGISTRATIONS,
   "camps, sessions, classes, or registrations": plain(
@@ -83,8 +71,8 @@ const sets: Record<string, Target[]> = {
     "registrations",
     "registration_entries",
   ),
-  "a session's list of classes": plain("session_classes"),
-  "a registration's billing": plain("registration_billing"),
+  "a session's classes": plain("session_classes"),
+  "a registration's payments": plain("registration_billing"),
   "people's details and medical information": plain("people", "contacts", "contact_points", "medical_profiles"),
   "people's roles": plain("program_role_assignments", "event_staff", "google_group_memberships"),
   "its notes": plain("sync_tasks", "audit_findings"),
@@ -113,7 +101,7 @@ const sets: Record<string, Target[]> = {
     "programs",
   ),
   products: plain("products"),
-  accounts: plain("accounts"),
+  "revenue accounts": plain("accounts"),
   plans: [...plain("plans", "version_sets", "version_set_members", "plan_activations"), ...versions("draft", "saved")],
   "a draft": versions("draft"),
   "a saved version": versions("saved"),

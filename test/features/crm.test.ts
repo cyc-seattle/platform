@@ -9,7 +9,7 @@ import { admin, adminCreate, created, email, itemPath, runId } from "./steps/row
 interface Family {
   sailorId: string;
   parentIds: string[];
-  emergencyContactId: string;
+  emergencyContactIds: string[];
 }
 
 let family: Family | undefined;
@@ -31,15 +31,17 @@ async function listed(sailorId: string, contactId: string, relationship: "guardi
   await adminCreate("contacts", { subject_id: sailorId, contact_id: contactId, relationship_type: relationship });
 }
 
-Step("a sailor with two parents and an emergency contact", async () => {
+Step("a sailor with two parents and two emergency contacts", async () => {
   const sailorId = await person("sailor");
   const parentIds = [await person("parent"), await person("parent")];
-  const emergencyContactId = await person("neighbor");
+  const emergencyContactIds = [await person("neighbor"), await person("grandparent")];
   for (const parentId of parentIds) {
     await listed(sailorId, parentId, "guardian");
   }
-  await listed(sailorId, emergencyContactId, "emergency_contact");
-  family = { sailorId, parentIds, emergencyContactId };
+  for (const contactId of emergencyContactIds) {
+    await listed(sailorId, contactId, "emergency_contact");
+  }
+  family = { sailorId, parentIds, emergencyContactIds };
 });
 
 let found: { contact_id: string; relationship_type: string }[] = [];
@@ -47,21 +49,21 @@ Step("an admin looks up the sailor's parents and emergency contacts", async () =
   const filter = encodeURIComponent(JSON.stringify({ subject_id: { _eq: theFamily().sailorId } }));
   found = await (await admin()).ok("GET", `/items/contacts?filter=${filter}&fields=contact_id,relationship_type`);
 });
-Step("they see both parents and the emergency contact", () => {
-  const { parentIds, emergencyContactId } = theFamily();
+Step("they see both parents and both emergency contacts", () => {
+  const { parentIds, emergencyContactIds } = theFamily();
   expect(found).toEqual(
     expect.arrayContaining([
       ...parentIds.map((id) => ({ contact_id: id, relationship_type: "guardian" })),
-      { contact_id: emergencyContactId, relationship_type: "emergency_contact" },
+      ...emergencyContactIds.map((id) => ({ contact_id: id, relationship_type: "emergency_contact" })),
     ]),
   );
-  expect(found).toHaveLength(3);
+  expect(found).toHaveLength(4);
 });
 
 Step("a sailor with medical information on file", async () => {
   const sailorId = await person("sailor");
   await adminCreate("medical_profiles", { id: randomUUID(), person_id: sailorId, allergies: "none" });
-  family = { sailorId, parentIds: [], emergencyContactId: "" };
+  family = { sailorId, parentIds: [], emergencyContactIds: [] };
 });
 Step("an admin adds a second set of medical information for the sailor", async () => {
   const id = randomUUID();

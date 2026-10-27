@@ -3,14 +3,14 @@ Feature: The catalog
   club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Each product
   is one kind: a program, a charter, a storage lease, merchandise, event hosting, or other. A program
   is a product that sailors sign up for, such as a summer camp or the race team. It has details of
-  its own, such as its Google group. The catalog also lists the accounts the club's money is booked
-  to, the qualifications a coach can hold, the boat classes the club sails, such as Opti or 420, and
-  the kinds of equipment programs share, such as coach boats and trailers.
+  its own, such as its Google group. The catalog also lists the revenue accounts the club's money is
+  booked to, the qualifications a coach can hold, the boat classes the club sails, such as Opti or
+  420, and the kinds of equipment programs share, such as coach boats and trailers.
 
   Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Only the
-  few people who manage the club's products and accounts can change the catalog. They have the
-  Catalog Writer policy. The Catalog Reader policy lets someone see the catalog without changing it.
-  To change something means to add, edit, or delete it.
+  few people who manage the club's products and revenue accounts can change the catalog. They have
+  the Catalog Writer policy. The Catalog Reader policy lets someone see the catalog without changing
+  it. To change something means to add, edit, or delete it.
 
   Rule: A product that runs a program can't be deleted
 
@@ -20,11 +20,11 @@ Feature: The catalog
       Then the catalog doesn't allow it
       And the product is still in the catalog
 
-  Rule: Each account has its own number
+  Rule: Each revenue account has its own number
 
-    Example: A second account with the same number isn't allowed
-      Given an account in the catalog
-      When an admin adds another account with the same number
+    Example: A second revenue account with the same number isn't allowed
+      Given a revenue account in the catalog
+      When an admin adds another revenue account with the same number
       Then the catalog doesn't allow it
 
   @pending
@@ -38,7 +38,7 @@ Feature: The catalog
   @pending
   Rule: A Catalog Writer can change the catalog, programs included
 
-    Example: A Catalog Writer adds, edits, and deletes products, accounts, and programs
+    Example: A Catalog Writer adds, edits, and deletes products, revenue accounts, and programs
       Given a user with the Catalog Writer policy
       Then they can change the catalog
 
@@ -56,7 +56,7 @@ Feature: The catalog
         | Plan Writer |
 
   @pending
-  Rule: A CRM Reader or CRM Writer can see programs, but can't change them
+  Rule: A CRM Reader or CRM Writer can see each program's details, such as its Google group, but can't change them
 
     Scenario Outline: A CRM policy can see programs, but can't change them
       Given a user with the <policy> policy
@@ -69,19 +69,20 @@ Feature: The catalog
         | CRM Writer |
 
   @pending
-  Rule: Only people with a Catalog or Plan policy can see products and accounts
+  Rule: Only people with a Catalog or Plan policy, and the Google sync, can see products and revenue accounts
 
-    Scenario Outline: A role on its own doesn't let someone see products or accounts
+    Scenario Outline: A role on its own doesn't let someone see products or revenue accounts
       Given a user with the <role> role
       Then they can't see products
-      And they can't see accounts
+      And they can't see revenue accounts
 
       Examples:
         | role      |
         | Community |
         | Crew      |
 
-    Example: A CRM Writer can't see products or accounts
+    Example: A CRM Writer can see a program's details, but not its product or revenue account
       Given a user with the CRM Writer policy
-      Then they can't see products
-      And they can't see accounts
+      Then they can see programs
+      But they can't see products
+      And they can't see revenue accounts

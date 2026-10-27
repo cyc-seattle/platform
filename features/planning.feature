@@ -6,13 +6,13 @@ Feature: Plans
   One saved version of each plan is the active one, and the active versions together are the
   club's plan for the season.
 
-  Plans include wages, which are what each staff level is paid per hour and what each salaried
-  position is paid per year, and bonus rates, which set the bonus a head coach earns on the products
-  they run. Anyone who can see plans sees all of these. Planners have the Plan Reader or Plan Writer
+  Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
+  each salaried position is paid per year. Bonus rates set the bonus a head coach earns on the
+  products they run. Anyone who can see plans sees all of these. Planners have the Plan Reader or Plan Writer
   policy, which they get from their groups. To change something means to add, edit, or delete it.
 
   @pending
-  Rule: Each plan is for one product, and starts with a draft
+  Rule: Each plan is for one product, apart from the Operations Plan, and starts with a draft
 
     Example: A Plan Writer starts a plan for a product
       Given a user with the Plan Writer policy
@@ -36,7 +36,7 @@ Feature: Plans
       Given a user with the Plan Writer policy
       Then they can see a saved version
       But they can't change a saved version
-      And they can't move anything from the draft into a saved version
+      And they can't copy a draft's changes into a saved version
       And they can't turn a saved version back into a draft
 
     Example: An admin can't change a saved version either
@@ -81,7 +81,7 @@ Feature: Plans
       And they can make a saved version active
 
   @pending
-  Rule: No one else can see plans
+  Rule: Only planners can see plans
 
     Scenario Outline: A role on its own doesn't let someone see plans
       Given a user with the <role> role

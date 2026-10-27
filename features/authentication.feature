@@ -1,8 +1,8 @@
 @licensed
 Feature: Signing in
   Staff, coaches, volunteers, and families all sign in with an email address. When someone signs in,
-  the club finds their person in the CRM by their email address, and that tells the club who they are
-  and whose children are theirs. Everyone who signs in can open the Data Studio, the website where
+  the club looks them up in the CRM by their email address, and that tells the club who they are and
+  whose children are theirs. Everyone who signs in can open the Data Studio, the website where
   the club looks at and changes its data. Families mostly use the roster page on cycsail.team instead.
 
   What someone can do once they're signed in depends on their role and their groups (see "Roles and
@@ -42,12 +42,12 @@ Feature: Signing in
     Example: A new committee member signs in for the first time
       Given a person in the CRM who has never signed in, in a group that gives the CRM Writer policy
       When they sign in for the first time
-      Then they can change the CRM
+      Then they can change people and their details
       And they have the Community role
 
   Rule: Every role can open the Data Studio
 
-    Scenario Outline: Crew and Admin can open the Data Studio
+    Scenario Outline: Crew and admins can open the Data Studio
       Given a user with the <role> role
       Then they can open the Data Studio
 

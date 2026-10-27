@@ -1,14 +1,14 @@
 Feature: Google Groups for programs
   Each program has a Google group, and everyone who has a role in the program, such as a coach or a
-  Parent Coordinator, belongs to it. The Google sync adds them to the group. The CRM keeps a copy of
-  each Google group and who is in it, and notes each person the sync added. If someone leaves a
-  group, the Google sync doesn't add them back until staff let them back in. The Google sync also
-  reports problems for staff to fix, such as a camp whose programs book their money to different
-  revenue accounts.
+  Parent Coordinator, belongs to it. The Google sync adds them to the group. The CRM has a copy of
+  each Google group and its members, and records who the sync added. If someone leaves a group, the
+  Google sync doesn't add them back until staff let them back in. The Google sync also reports
+  problems for staff to fix, such as a camp whose programs book their money to different revenue
+  accounts.
 
   The Google sync signs in to the CRM with an account of its own, called a service account. It can
   see only what it needs to fill the groups: the programs, their rosters, and who has a role in
-  each. It keeps notes in the CRM: a list of tasks, and reports of problems for staff to fix. To
+  each. It writes notes in the CRM: a list of tasks, and reports of problems for staff to fix. To
   change something means to add, edit, or delete it.
 
   Rule: Everyone with a role in a program is in the program's Google group
@@ -43,18 +43,18 @@ Feature: Google Groups for programs
       Given the Google sync's service account
       Then it can see only which sailor each registration is for
 
-  Rule: The Google sync can see people's extra emails and phone numbers, but nothing else about them
+  Rule: The Google sync can see each extra email and phone number, and whose it is, but nothing else stored with it
 
     Example: The Google sync looks up a person's extra emails and phone numbers
       Given the Google sync's service account
       Then it can see only each extra email or phone number, and whose it is
 
-  Rule: The Google sync can't see medical information or billing
+  Rule: The Google sync can't see medical information or payments
 
-    Example: The Google sync can't see medical information or billing
+    Example: The Google sync can't see medical information or payments
       Given the Google sync's service account
       Then it can't see medical information
-      And it can't see billing
+      And it can't see payments
 
   Rule: The Google sync can add, see, and edit its notes and the Google groups, but can't delete them
 
@@ -68,7 +68,7 @@ Feature: Google Groups for programs
   @pending
   Rule: The Google sync can see products and their revenue accounts, to check that each camp's programs use one account
 
-    Example: The Google sync looks up products and accounts
+    Example: The Google sync looks up products and revenue accounts
       Given the Google sync's service account
       Then it can see products
-      And it can see accounts
+      And it can see revenue accounts

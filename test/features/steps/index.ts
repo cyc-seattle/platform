@@ -276,6 +276,12 @@ for (const pronoun of ["they", "it"]) {
     Step(`${pronoun} ${text} {records}`, (_, records: string) => check(records));
   }
 }
+// A new copy from Clubspot deletes the old rows and adds their replacements.
+Step("it can replace {records} with a new copy from Clubspot", async (_, records: string) => {
+  for (const target of targets(records)) {
+    await can(["create", "delete"], target);
+  }
+});
 
 Step("a plan with wages and bonus rates", () => runRows());
 // No field-level hiding: a reader gets wages and bonus rates with the rest.
