@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import "./steps/community.ts";
-import { describeAccessFeature, onEachScenario, Step } from "./steps/index.ts";
+import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
 import { admin, adminCreate, created, email, itemPath, runId } from "./steps/rows.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
@@ -13,10 +13,8 @@ interface Family {
 }
 
 let family: Family | undefined;
-let status = 0;
 onEachScenario(() => {
   family = undefined;
-  status = 0;
 });
 
 function theFamily(): Family {
@@ -67,24 +65,24 @@ Step("a sailor with medical information on file", async () => {
 });
 Step("an admin adds a second set of medical information for the sailor", async () => {
   const id = randomUUID();
-  ({ status } = await (
+  const { status } = await (
     await admin()
-  ).request("POST", "/items/medical_profiles", { id, person_id: theFamily().sailorId, allergies: "peanuts" }));
+  ).request("POST", "/items/medical_profiles", { id, person_id: theFamily().sailorId, allergies: "peanuts" });
   if (status < 300) {
     created.push({ collection: "medical_profiles", id });
   }
-});
-Step("the CRM refuses it", () => {
-  expect(status).toBeGreaterThanOrEqual(400);
-  expect(status).toBeLessThan(500);
+  expectRefusal(() => {
+    expect(status).toBeGreaterThanOrEqual(400);
+    expect(status).toBeLessThan(500);
+  });
 });
 
-Step("an admin deletes one of the sailor's parents", async () => {
-  ({ status } = await (await admin()).request("DELETE", itemPath("people", theFamily().parentIds[0])));
-});
 // Directus answers a delete its foreign key refuses with a 500, so the read after it is the check.
-Step("they're refused, and the parent is still in the CRM", async () => {
-  expect(status).toBeGreaterThanOrEqual(400);
+Step("an admin deletes one of the sailor's parents", async () => {
+  const { status } = await (await admin()).request("DELETE", itemPath("people", theFamily().parentIds[0]));
+  expectRefusal(() => expect(status).toBeGreaterThanOrEqual(400));
+});
+Step("the parent is still in the CRM", async () => {
   await (await admin()).ok("GET", itemPath("people", theFamily().parentIds[0]));
 });
 

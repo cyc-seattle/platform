@@ -50,7 +50,16 @@ the CRM".
 - Use plain subject, verb, object sentences: "A Medical Reader can see sailors' medical
   information".
 - Use everyday verbs: can see, can change, can add, can edit, can delete. Pick one word for each
-  action and keep it everywhere. Don't write "sees" in one rule and "reads" in the next.
+  action and keep it everywhere. Don't write "sees" in one rule and "reads" in the next. "Change"
+  means add, edit, or delete: say so once in each feature's description, then don't swap in "edit"
+  for it.
+- Make the person who sees something the subject: "the parent sees the teammate's email", not "the
+  teammate's email shows".
+- Say a refusal one way: "the CRM doesn't allow it". Not "is refused" in one example and "rejects
+  it" in the next.
+- Use "or" in a negative list: "can't see camps or registrations", not "camps and registrations".
+- Name a set once in the description, then use the name: define "a person's details" and write
+  "it can delete people's details", not the same five-item list in every step.
 - Use the words staff use: parent, sailor, team, roster, registration, sign-up answers. Don't use
   the system's words: collection, record, row, subtype, machine user, contact point, promoted field.
 - Give a concrete example where an abstract noun would go: "a sailor's school", not "a promoted
@@ -65,17 +74,26 @@ These came from review comments on [cyc-seattle/platform#48](https://github.com/
 
 | Slop                                                                            | Plain                                                                                 |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| A CRM Writer keeps the CRM                                                      | A CRM Writer can edit the CRM                                                         |
+| A CRM Writer keeps the CRM                                                      | A CRM Writer can change the CRM                                                       |
 | A CRM Reader sees the CRM, and changes nothing                                  | A CRM Reader can see the CRM, but can't change it                                     |
 | Programs are the catalog's                                                      | Programs belong to the catalog                                                        |
 | Crew read the rosters (in one rule), Crew see no medical profiles (in the next) | Crew can see the rosters. Crew can't see medical information                          |
 | A service account which reaches only what it syncs                              | An account of its own, which can only do the work the sync needs                      |
 | Groups grant nothing beyond policies                                            | Groups only give policies to people                                                   |
-| A family reads no one's address book                                            | A family can't see anyone's other emails and phone numbers                            |
+| A family reads no one's address book                                            | A family can't see anyone's extra emails and phone numbers                            |
 | Signing in matches a person in the CRM by email, whatever its case              | Signing in finds a person in the CRM by their email, even if they type it in capitals |
 | A Parent Coordinator's role that has ended shows no one                         | Parent Coordinators whose role has ended see no one                                   |
-| Given a group in the Workspace fake                                             | Given a Google group                                                                  |
-| the leaver's membership row records that they left                              | the CRM notes that the person who left is out of the group                            |
+| Given a group in the Workspace fake                                             | Given a program with a Google group                                                   |
+| the leaver's membership row records that they left                              | they're still not in the group                                                        |
+| When staff delete that note                                                     | When staff let them back into the group                                               |
+| Teammates show by name                                                          | The parent sees every teammate by name                                                |
+| Rule: A Plan Writer can edit any draft … Then they can change a draft           | Rule: A Plan Writer can change any draft … Then they can change a draft               |
+| is refused / the catalog refuses it / they're refused                           | the CRM doesn't allow it                                                              |
+| can't see camps, sessions, classes, and registrations                           | can't see camps, sessions, classes, or registrations                                  |
+| it can delete people, their parents and emergency contacts, their other emails… | it can delete people's details (with "details" defined in the description)            |
+| clubspot-sync runs / gsuite-sync's service account                              | the Clubspot sync runs / the Google sync's service account                            |
+| Then they get the same people as a search for something no one has              | Then they don't find the teammate                                                     |
+| # One example, because each sync run takes minutes                              | (nothing: say why in the step code)                                                   |
 
 Watch for:
 
@@ -83,7 +101,12 @@ Watch for:
 - jargon and internal names a club staffer wouldn't know;
 - abstract nouns in place of plain actions, and passive or roundabout phrasing;
 - clever compression: "Clubspot's records change in Clubspot, so a CRM Writer only links them";
-- vague words that mean something only to the author, such as "the engine" or "the cast".
+- vague words that mean something only to the author, such as "the engine" or "the cast";
+- test mechanics in a step or a comment: what a search is compared against, which requests a page
+  sends, how long a run takes, what the test's stand-in can't do. Those go in the step code;
+- the code's name for a service, such as "clubspot-sync". Say "the Clubspot sync", as staff do;
+- a kind of thing a staffer can't picture, such as "a volunteer in another role". Name the role: "a
+  race committee volunteer".
 
 ### Check it before you push
 
@@ -150,7 +173,7 @@ Incidental data (IDs, dates that don't matter, field lists) goes in the glue.
 
 - Name every actor by what it is in the domain, and keep kinds apart. A **policy** (CRM Reader),
   a **role** (Crew), a **person** in a role (a Parent Coordinator), and a **service account**
-  (the account clubspot-sync signs in with) are different kinds of thing. Don't call them all "logins", and
+  (the account the Clubspot sync signs in with) are different kinds of thing. Don't call them all "logins", and
   don't mix kinds in one Examples column.
 - Use names the reader already knows. Introduce a new term in the description before a scenario
   uses it. A feature titled "What the engine's machine user can do" fails a reader who has never
@@ -160,7 +183,7 @@ Incidental data (IDs, dates that don't matter, field lists) goes in the glue.
 
 ### Good names
 
-- The feature's title names the area and its question: "Who can see and change the CRM".
+- The feature's title names the area, in a few words: "The CRM", "The catalog", "Signing in".
 - A rule's title states the rule. A scenario's title states the example's point, so the list of
   titles reads as a summary of the behaviour.
 - Name the people in examples only when the name helps a reader tell them apart in one scenario.
@@ -175,7 +198,7 @@ Incidental data (IDs, dates that don't matter, field lists) goes in the glue.
 - A property every domain shares, such as "MCP can do whatever the REST API can", isn't a rule of any
   one domain. Specify it once, in a feature about that property, or leave it to a unit test.
 - A service's access belongs with that service's other rules, not in the feature of each domain
-  whose data it uses. gsuite-sync seeing the catalog is a rule in `gsuite.feature`.
+  whose data it uses. The Google sync seeing the catalog is a rule in `gsuite.feature`.
 - Signing in has its own feature, `authentication.feature`. Roles and groups, which decide what
   someone can do once signed in, are in `authorization.feature`.
 - A feature about a permission set covers every policy in that set. A CRM feature that only
@@ -206,7 +229,7 @@ Besides its data model, each feature says who can see and change what. Those rul
 rules above, plus these:
 
 - **The actor is the grant, stated in the Given.** `Given a user with the CRM Reader policy`,
-  `Given a user with the Crew role`, `Given clubspot-sync's service account`. The glue creates that
+  `Given a user with the Crew role`, `Given the Clubspot sync's service account`. The glue creates that
   user and grants exactly that. A scenario about a combination says so:
   `Given a user with the CRM Writer policy and no Medical policy`.
 - **One feature per domain**, covering every policy in its permission set. One `Rule:` per thing a
@@ -222,7 +245,7 @@ rules above, plus these:
   `Rule: A family can't find out a hidden contact detail by filtering or searching`, with examples like
   "filtering by an email's first letters". The glue holds the query strings.
 - **Service accounts** get rules in the feature of the domain their service works on, such as
-  clubspot-sync's in `clubspot.feature`, not a row in a policy's Examples.
+  the Clubspot sync's in `clubspot.feature`, not a row in a policy's Examples.
 
 ### What belongs in unit tests instead
 

@@ -1,10 +1,11 @@
 import { expect } from "vitest";
 import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
 import { canSet, describeAccessFeature, Step } from "./steps/index.ts";
+import { admin, adminCreate, itemPath, key } from "./steps/rows.ts";
 
-// The run's scenario seeds dev's Clubspot fake through Parse's REST API, runs the clubspot-sync
-// CronJob once as a Job, and reads the result through Directus's REST API. Its camp and people carry
-// the run's ID, so runs never depend on each other (cyc-seattle/isthmia#185).
+// The sync scenarios seed dev's CRM, and its Clubspot fake through Parse's REST API, run the
+// clubspot-sync CronJob once as a Job, and read the result through Directus's REST API. Their camps
+// and people carry the run's ID, so runs never depend on each other (cyc-seattle/isthmia#185).
 
 // The fake's seed, which the dev stack's clubspot-sync config names (contract: public test values).
 const CLUB_ID = "seedClub01";
@@ -27,7 +28,7 @@ async function create(className: string, objectId: string, fields: Record<string
 Step("they can set which program a class belongs to", () => canSet("classes", "program_id"));
 Step("they can match a registration's sailor to a person in the CRM", () => canSet("participants", "person_id"));
 
-Step("it can move people's program roles, event staffing, and Google group memberships to another person", async () => {
+Step("it can move people's roles to another person", async () => {
   for (const collection of ["program_role_assignments", "event_staff", "google_group_memberships"]) {
     await canSet(collection, "person_id");
   }
@@ -103,7 +104,7 @@ describeAccessFeature("clubspot.feature", {
       });
     });
 
-    When("clubspot-sync runs", async () => {
+    When("the Clubspot sync runs", async () => {
       await runCronJob("clubspot-sync", runId);
     });
 
@@ -133,6 +134,55 @@ describeAccessFeature("clubspot.feature", {
           email: participant.guardianEmail,
         },
       });
+    });
+  },
+
+  "The person kept becomes the coach": ({ Given, And, When, Then }) => {
+    const runId = newRunId();
+    let keeperId: string;
+    let duplicateId: string;
+    let assignmentId: string;
+
+    Given("two people who are the same sailor, one a coach in a program", async () => {
+      // The same name is what makes them one merge group.
+      const sailor = () => adminCreate("people", { first_name: "Merge", last_name: `Sailor ${runId}` });
+      keeperId = (await sailor()).id;
+      duplicateId = (await sailor()).id;
+      const program = await adminCreate("programs", { name: `Program ${runId}` });
+      const coach = await adminCreate("program_roles", { name: `Coach ${key("role")}` });
+      assignmentId = (
+        await adminCreate("program_role_assignments", {
+          person_id: duplicateId,
+          program_id: program.id,
+          program_role_id: coach.id,
+        })
+      ).id;
+    });
+
+    // The finding's detail is the format clubspot-sync writes and its merge reads back.
+    And("staff have approved merging them", async () => {
+      await adminCreate("audit_findings", {
+        source: "clubspot-sync",
+        kind: "duplicate_person",
+        subject: keeperId,
+        detail: `Merge Sailor ${runId}: ${[keeperId, duplicateId].map((id) => `${id} (dob unknown)`).join(", ")}`,
+        status: "approved",
+        fingerprint: key("fingerprint"),
+      });
+    });
+
+    When("the Clubspot sync runs", async () => {
+      await runCronJob("clubspot-sync", runId);
+    });
+
+    Then("the person kept is the coach", async () => {
+      const assignment = await (await admin()).ok("GET", itemPath("program_role_assignments", assignmentId));
+      expect(assignment.person_id).toBe(keeperId);
+    });
+
+    And("the duplicate is gone", async () => {
+      const { status } = await (await admin()).request("GET", itemPath("people", duplicateId));
+      expect(status).not.toBe(200);
     });
   },
 });

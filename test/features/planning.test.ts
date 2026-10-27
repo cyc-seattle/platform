@@ -3,7 +3,7 @@ import { describeAccessFeature, Step } from "./steps/index.ts";
 
 for (const text of [
   "they start a plan for a product",
-  "the plan has a draft they can edit",
+  "the plan has a draft they can change",
   "the plan has no saved versions yet",
   "a plan with two saved versions, the first of them active",
   "they make the second version active",

@@ -1,70 +1,74 @@
 Feature: Google Groups for programs
   Each program has a Google group, and everyone who has a role in the program, such as a coach or a
-  Parent Coordinator, belongs to it. gsuite-sync adds them to the group, and notes each person it
-  adds in the CRM. If someone leaves a group, gsuite-sync doesn't add them back until staff say so.
-  gsuite-sync also reports problems for staff to fix, such as a camp whose programs post their money
-  to different revenue accounts.
+  Parent Coordinator, belongs to it. The Google sync adds them to the group. The CRM keeps a copy of
+  each Google group and who is in it, and notes each person the sync added. If someone leaves a
+  group, the Google sync doesn't add them back until staff let them back in. The Google sync also
+  reports problems for staff to fix, such as a camp whose programs book their money to different
+  revenue accounts.
 
-  gsuite-sync signs in to the CRM with an account of its own, called a service account. It can see
-  only what it needs to fill the groups.
+  The Google sync signs in to the CRM with an account of its own, called a service account. It can
+  see only what it needs to fill the groups: the programs, their rosters, and who has a role in
+  each. It keeps notes in the CRM: a list of tasks, and reports of problems for staff to fix. To
+  change something means to add, edit, or delete it.
 
-  Rule: Everyone with a role in a program is in its group, and someone who leaves stays out until staff let them back
+  Rule: Everyone with a role in a program is in the program's Google group
 
-    # One example, because each sync run takes minutes: the second run starts where the first ended.
-    # The test's stand-in for Google can't remove a member, so the person who left is already out of
-    # the group before the first run, while the CRM still notes that gsuite-sync added them.
-    Example: People with a role join the group, and staff let someone who left back in
-      Given a Google group
-      And a program in the CRM that uses the group
-      And a person in the CRM who has a role in the program
-      And a second person with a role, whom gsuite-sync added to the group and who has since left it
-      When gsuite-sync runs
-      Then the person is in the group
-      And the person who left is not in the group
-      And the CRM notes that the person who left is out of the group
-      When staff delete that note
-      And gsuite-sync runs again
-      Then the person who left is in the group again
-      And the CRM notes that gsuite-sync added them again
+    Example: A coach joins their program's group
+      Given a program with a Google group
+      And a person with a role in the program
+      When the Google sync runs
+      Then they're in the group
 
-  Rule: gsuite-sync can see the programs, rosters, and roles it uses, but can't change them
+  Rule: Someone who leaves a program's group stays out until staff let them back in
 
-    Example: gsuite-sync can see programs, rosters, and roles, but can't edit them
-      Given gsuite-sync's service account
-      Then it can see the programs, rosters, and program roles it uses to fill groups
-      But it can't edit the programs, rosters, and program roles it uses to fill groups
+    Example: Staff let someone who left back into the group
+      Given a program with a Google group
+      And a person with a role in the program, who has left the group
+      When the Google sync runs
+      Then they're still not in the group
+      When staff let them back into the group
+      And the Google sync runs again
+      Then they're in the group again
 
-    Example: gsuite-sync can't add or edit people
-      Given gsuite-sync's service account
-      Then it can't add or edit people
+  Rule: The Google sync can see what it uses to fill groups, but can't change it
 
-  Rule: gsuite-sync can see only who each registration is for, and only the emails and phone numbers people have given
+    Example: The Google sync looks up programs, rosters, and roles
+      Given the Google sync's service account
+      Then it can see what it uses to fill groups
+      But it can't change what it uses to fill groups
 
-    Example: gsuite-sync can see only who each registration is for
-      Given gsuite-sync's service account
+  Rule: The Google sync can see which sailor a registration is for, but nothing else about it
+
+    Example: The Google sync looks up a registration
+      Given the Google sync's service account
       Then it can see only which sailor each registration is for
 
-    Example: gsuite-sync can see only each email and phone number, and what kind it is
-      Given gsuite-sync's service account
-      Then it can see only the kind and value of people's other emails and phone numbers
+  Rule: The Google sync can see people's extra emails and phone numbers, but nothing else about them
 
-  Rule: gsuite-sync can't see medical information or billing
+    Example: The Google sync looks up a person's extra emails and phone numbers
+      Given the Google sync's service account
+      Then it can see only each extra email or phone number, and whose it is
 
-    Example: gsuite-sync can't see medical information or billing
-      Given gsuite-sync's service account
+  Rule: The Google sync can't see medical information or billing
+
+    Example: The Google sync can't see medical information or billing
+      Given the Google sync's service account
       Then it can't see medical information
       And it can't see billing
 
-  Rule: gsuite-sync can add and edit its own task list, problem reports, and groups, but can't delete them
+  Rule: The Google sync can add, see, and edit its notes and the Google groups, but can't delete them
 
-    Example: gsuite-sync notes what it has done
-      Given gsuite-sync's service account
-      Then it can add, see, and edit its task list, problem reports, and Google groups
-      But it can't delete its task list, problem reports, and Google groups
+    Example: The Google sync keeps its notes and the groups up to date
+      Given the Google sync's service account
+      Then it can add, see, and edit its notes
+      And it can add, see, and edit the Google groups
+      But it can't delete its notes
+      And it can't delete the Google groups
 
   @pending
-  Rule: gsuite-sync can see products and their revenue accounts, to check that each camp's programs use one account
+  Rule: The Google sync can see products and their revenue accounts, to check that each camp's programs use one account
 
-    Example: gsuite-sync can see products and accounts
-      Given gsuite-sync's service account
-      Then it can see products and accounts
+    Example: The Google sync looks up products and accounts
+      Given the Google sync's service account
+      Then it can see products
+      And it can see accounts

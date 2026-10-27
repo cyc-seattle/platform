@@ -7,19 +7,23 @@ Feature: Roles and groups
     children like any other parent.
   - Admin, for the people who run the system.
 
-  Anything more, such as editing the CRM or planning a season, comes from groups. A group, such as
+  Anything more, such as changing the CRM or planning a season, comes from groups. A group, such as
   the Finance Committee, gives its members one or more policies. A policy is a named set of
   permissions. For example, CRM Writer lets someone add, edit, and delete people in the CRM. An admin
-  manages the groups in the Data Studio: who is in each one, and which policies each one gives.
+  manages the groups in the Data Studio: who is in each one, and which policies each one gives. To
+  change something means to add, edit, or delete it.
 
-  Groups only give policies to people. They never change anyone's role. They also never change the
-  accounts the syncs sign in with, or the admin account the system was set up with.
+  Groups only give policies to people. They never change anyone's role. The syncs sign in with
+  accounts of their own, and the first admin account is the one the system was set up with. Groups
+  never change what those accounts can do.
 
   @pending
   Rule: Everyone who signs in has the Community, Crew, or Admin role
 
-    Example: No one has any other role
-      Then everyone who signs in has the Community, Crew, or Admin role
+    Example: Everyone who has signed in has one of the three roles
+      Given the people in the CRM who have signed in
+      When an admin looks up their roles
+      Then each of them has the Community, Crew, or Admin role
 
   Rule: Only an admin can change someone's role
 
@@ -41,14 +45,14 @@ Feature: Roles and groups
         | Crew      |
 
     @pending
-    Example: A volunteer who can edit the CRM still can't change roles
+    Example: A volunteer who can change the CRM still can't change roles
       Given a user with the Crew role and the CRM Writer policy
       Then they can't change anyone's role, even their own
 
   @pending
   Rule: Joining a group gives its policies, and doesn't change the person's role
 
-    Example: A volunteer joins a group that can edit the CRM
+    Example: A volunteer joins a group that can change the CRM
       Given a user with the Crew role
       When an admin adds them to a group that gives the CRM Writer policy
       Then they can change the CRM
@@ -79,13 +83,17 @@ Feature: Roles and groups
       Then they can change the CRM
 
   @pending
-  Rule: Groups never change the syncs' accounts or the original admin account
+  Rule: Changing groups never changes what the syncs or the first admin account can do
 
-    Example: Changing a group leaves the syncs' accounts and the original admin account alone
-      Given a user with the Crew role
-      When an admin adds them to a group that gives the CRM Writer policy
-      Then the syncs' accounts still have the same role and policies
-      And so does the admin account the system was set up with
+    Example: A group can't let the Google sync see medical information
+      Given the Google sync's service account
+      When an admin adds it to a group that gives the Medical Reader policy
+      Then it can't see medical information
+
+    Example: A group can't stop the first admin account from changing the CRM
+      Given the first admin account
+      When an admin adds it to a group that gives the CRM Reader policy
+      Then it can change the CRM
 
   @pending
   Rule: Only an admin can change groups
@@ -103,6 +111,6 @@ Feature: Roles and groups
         | Community |
         | Crew      |
 
-    Example: A volunteer who can edit the CRM still can't change groups
+    Example: A volunteer who can change the CRM still can't change groups
       Given a user with the Crew role and the CRM Writer policy
       Then they can't change groups

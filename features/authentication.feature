@@ -1,9 +1,9 @@
 @licensed
 Feature: Signing in
-  Staff, coaches, volunteers, and families all sign in with an email address. Staff, coaches, and
-  volunteers use the Data Studio, the website where the club looks at and edits its data. Families use
-  the roster page on cycsail.team. When someone signs in, the club finds their person in the CRM by
-  their email address, and that tells the club who they are and whose children are theirs.
+  Staff, coaches, volunteers, and families all sign in with an email address. When someone signs in,
+  the club finds their person in the CRM by their email address, and that tells the club who they are
+  and whose children are theirs. Everyone who signs in can open the Data Studio, the website where
+  the club looks at and changes its data. Families mostly use the roster page on cycsail.team instead.
 
   What someone can do once they're signed in depends on their role and their groups (see "Roles and
   groups").
@@ -11,10 +11,9 @@ Feature: Signing in
   Rule: Signing in finds a person in the CRM by their email, even if they type it in capitals
 
     Example: A parent who types their email in capitals still sees their child's team
-      Given a parent whose child sails on a team, who signs in typing their email in capitals
-      And an adult teammate who opted in to sharing
-      When they look at the roster
-      Then they see the teammate's email
+      Given a parent in the CRM whose child sails on a team
+      When they sign in, typing their email in capitals
+      Then they see their child's team
 
     Example: Someone whose email isn't in the CRM sees no one
       Given a user with the Community role whose email isn't in the CRM

@@ -89,6 +89,22 @@ export const theirSession = session;
 
 const resets: (() => void)[] = [];
 
+let refusal: (() => unknown) | undefined;
+
+/** Records how to check that what the When just asked for was refused. */
+export function expectRefusal(check: () => unknown): void {
+  refusal = check;
+}
+
+for (const system of ["the CRM", "the catalog"]) {
+  Step(`${system} doesn't allow it`, async () => {
+    if (refusal === undefined) {
+      throw new Error("No When has asked for anything.");
+    }
+    await refusal();
+  });
+}
+
 /** Runs `reset` after each scenario, to clear what it left. */
 export function onEachScenario(reset: () => void): void {
   resets.push(reset);
@@ -261,15 +277,14 @@ for (const pronoun of ["they", "it"]) {
   }
 }
 
+Step("a plan with wages and bonus rates", () => runRows());
 // No field-level hiding: a reader gets wages and bonus rates with the rest.
-for (const pronoun of ["they", "it"]) {
-  Step(`${pronoun} can see every detail of {records}`, (_, records: string) => readsEveryDetail(records));
-}
+Step("they can see every part of the plan, wages and bonus rates included", () => readsEveryDetail());
 
-async function readsEveryDetail(records: string): Promise<void> {
+async function readsEveryDetail(): Promise<void> {
   await runRows();
   const user = await session();
-  for (const target of targets(records)) {
+  for (const target of targets("plans")) {
     const { status, body } = await user.request("GET", readQuery(target, "*"));
     expect(status, `${target.collection}: ${JSON.stringify(body)}`).toBe(200);
     for (const key of target.rows) {
@@ -312,12 +327,16 @@ for (const text of ["they have the {role} role", "they still have the {role} rol
   });
 }
 
-Step("everyone who signs in has the Community, Crew, or Admin role", async () => {
+let signedIn: { id: string; directus_user_id: { role: { name: string } | null } | null }[] = [];
+Step("the people in the CRM who have signed in", () => runRows());
+Step("an admin looks up their roles", async () => {
   const filter = encodeURIComponent(JSON.stringify({ directus_user_id: { _nnull: true } }));
-  const people = await (
+  signedIn = await (
     await admin()
   ).ok("GET", `/items/people?filter=${filter}&fields=id,directus_user_id.role.name&limit=-1`);
-  for (const { id, directus_user_id: user } of people) {
+});
+Step("each of them has the Community, Crew, or Admin role", () => {
+  for (const { id, directus_user_id: user } of signedIn) {
     expect(["Community", "Crew", "Admin"].map(todaysRoleName), `person ${id}`).toContain(user?.role?.name);
   }
 });
@@ -352,8 +371,8 @@ for (const text of [
   "an admin takes them out of the group",
   "an admin takes them out of one of the groups",
   "an admin changes the group so it no longer gives that policy",
-  "the syncs' accounts still have the same role and policies",
-  "so does the admin account the system was set up with",
+  "the first admin account",
+  "an admin adds it to a group that gives the {policy} policy",
 ]) {
   Step(text, () => notBuilt("8a"));
 }
@@ -396,6 +415,7 @@ export function describeAccessFeature(name: string, ownSteps: Record<string, Sce
       // After, not before: a Background runs ahead of BeforeEachScenario.
       AfterEachScenario(() => {
         they = undefined;
+        refusal = undefined;
         for (const reset of resets) {
           reset();
         }

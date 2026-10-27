@@ -2,9 +2,9 @@ import { expect } from "vitest";
 import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
 import { describeAccessFeature, readOnly, Step } from "./steps/index.ts";
 
-// The run's scenario sets up a program and its role holders in dev's CRM, runs the gsuite-sync
-// CronJob as a Job, and reads the Workspace fake's Directory API through the Kubernetes API's
-// service proxy. Its group and people carry the run's ID, so runs never depend on each other.
+// The sync scenarios set up a program and its role holders in dev's CRM, run the gsuite-sync
+// CronJob as a Job, and read the Workspace fake's Directory API through the Kubernetes API's service
+// proxy. Their groups and people carry a run ID, so runs never depend on each other.
 
 interface MembershipRow {
   id: string;
@@ -13,23 +13,34 @@ interface MembershipRow {
 }
 
 Step("it can see only which sailor each registration is for", () => readOnly("participants", ["id", "person_id"]));
-Step("it can see only the kind and value of people's other emails and phone numbers", () =>
+Step("it can see only each extra email or phone number, and whose it is", () =>
   readOnly("contact_points", ["id", "person_id", "kind", "normalized"]),
 );
 
-describeAccessFeature("gsuite.feature", {
-  "People with a role join the group, and staff let someone who left back in": ({ Given, And, When, Then }) => {
-    const runId = newRunId();
-    const groupEmail = `program.${runId}@example.test`;
-    const personEmail = `volunteer.${runId}@example.test`;
-    const leaverEmail = `leaver.${runId}@example.test`;
-    const leaverAddedAt = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-    let groupId: string;
-    let programId: string;
-    let leaverId: string;
-    let removedRowId: string | undefined;
+/** A program with a Google group, in the CRM and the Workspace fake, for one scenario. */
+function programWithGroup() {
+  const runId = newRunId();
+  const groupEmail = `program.${runId}@example.test`;
+  let groupId: string;
+  let programId: string;
+  let jobs = 0;
 
-    async function holdRole(firstName: string, email: string): Promise<string> {
+  return {
+    async create(): Promise<void> {
+      await proxyOk("workspace-fake", 8080, "POST", "/admin/directory/v1/groups", {
+        email: groupEmail,
+        name: `Program ${runId}`,
+      });
+      // Discovery matches the row to the live group by email. Staff link a program to its row by hand.
+      const group = await asAdmin("POST", "/items/google_groups", { email: groupEmail, name: `Program ${runId}` });
+      const program = await asAdmin("POST", "/items/programs", { name: `Program ${runId}`, google_group_id: group.id });
+      groupId = group.id;
+      programId = program.id;
+    },
+
+    /** A person with a role in the program, and their email. */
+    async roleHolder(firstName: string): Promise<{ id: string; email: string }> {
+      const email = `${firstName.toLowerCase()}.${runId}@example.test`;
       const person = await asAdmin("POST", "/items/people", { first_name: firstName, last_name: runId, email });
       const role = await asAdmin("POST", "/items/program_roles", { name: `${firstName} ${runId}` });
       await asAdmin("POST", "/items/program_role_assignments", {
@@ -37,10 +48,10 @@ describeAccessFeature("gsuite.feature", {
         program_id: programId,
         program_role_id: role.id,
       });
-      return person.id;
-    }
+      return { id: person.id, email };
+    },
 
-    async function members(): Promise<string[]> {
+    async members(): Promise<string[]> {
       const body = await proxyOk(
         "workspace-fake",
         8080,
@@ -48,87 +59,88 @@ describeAccessFeature("gsuite.feature", {
         `/admin/directory/v1/groups/${encodeURIComponent(groupEmail)}/members`,
       );
       return (body.members ?? []).map((member: { email: string }) => member.email);
-    }
+    },
 
-    async function leaverRows(): Promise<MembershipRow[]> {
-      const query = new URLSearchParams({ "filter[group_id][_eq]": groupId, "filter[person_id][_eq]": leaverId });
+    async memberships(personId: string): Promise<MembershipRow[]> {
+      const query = new URLSearchParams({ "filter[group_id][_eq]": groupId, "filter[person_id][_eq]": personId });
       return asAdmin("GET", `/items/google_group_memberships?${query}`);
-    }
+    },
 
-    Given("a Google group", async () => {
-      await proxyOk("workspace-fake", 8080, "POST", "/admin/directory/v1/groups", {
-        email: groupEmail,
-        name: `Program ${runId}`,
-      });
-    });
-
-    // Discovery matches the row to the live group by email. Staff link a program to its row by hand.
-    And("a program in the CRM that uses the group", async () => {
-      const group = await asAdmin("POST", "/items/google_groups", { email: groupEmail, name: `Program ${runId}` });
-      const program = await asAdmin("POST", "/items/programs", {
-        name: `Program ${runId}`,
-        google_group_id: group.id,
-      });
-      groupId = group.id;
-      programId = program.id;
-    });
-
-    And("a person in the CRM who has a role in the program", async () => {
-      await holdRole("Volunteer", personEmail);
-    });
-
-    And("a second person with a role, whom gsuite-sync added to the group and who has since left it", async () => {
-      leaverId = await holdRole("Leaver", leaverEmail);
+    async recordMembership(personId: string, email: string, addedAt: string): Promise<void> {
       await asAdmin("POST", "/items/google_group_memberships", {
         group_id: groupId,
-        person_id: leaverId,
-        email: leaverEmail,
-        added_at: leaverAddedAt,
+        person_id: personId,
+        email,
+        added_at: addedAt,
         removed_at: null,
       });
+    },
+
+    // Job names must be unique.
+    async sync(): Promise<void> {
+      await runCronJob("gsuite-sync", jobs++ === 0 ? runId : `${runId}-${jobs}`);
+    },
+  };
+}
+
+describeAccessFeature("gsuite.feature", {
+  "A coach joins their program's group": ({ Given, And, When, Then }) => {
+    const program = programWithGroup();
+    let coach: { id: string; email: string };
+
+    Given("a program with a Google group", () => program.create());
+    And("a person with a role in the program", async () => {
+      coach = await program.roleHolder("Coach");
+    });
+    When("the Google sync runs", () => program.sync());
+    Then("they're in the group", async () => {
+      expect(await program.members()).toContain(coach.email);
+    });
+  },
+
+  "Staff let someone who left back into the group": ({ Given, And, When, Then }) => {
+    const program = programWithGroup();
+    const addedAt = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+    let leaver: { id: string; email: string };
+    let removedRowId: string | undefined;
+
+    Given("a program with a Google group", () => program.create());
+
+    // The Workspace fake can't remove a member, so the person is out of the group from the start,
+    // while the CRM still notes that gsuite-sync added them.
+    And("a person with a role in the program, who has left the group", async () => {
+      leaver = await program.roleHolder("Leaver");
+      await program.recordMembership(leaver.id, leaver.email, addedAt);
     });
 
-    When("gsuite-sync runs", async () => {
-      await runCronJob("gsuite-sync", runId);
-    });
+    When("the Google sync runs", () => program.sync());
 
-    Then("the person is in the group", async () => {
-      expect(await members()).toContain(personEmail);
-    });
-
-    And("the person who left is not in the group", async () => {
-      expect(await members()).not.toContain(leaverEmail);
-    });
-
-    And("the CRM notes that the person who left is out of the group", async () => {
-      const rows = await leaverRows();
+    // The CRM notes that they left, which is what keeps gsuite-sync from adding them back.
+    Then("they're still not in the group", async () => {
+      expect(await program.members()).not.toContain(leaver.email);
+      const rows = await program.memberships(leaver.id);
       expect(rows).toHaveLength(1);
       expect(rows[0]!.removed_at).not.toBeNull();
       removedRowId = rows[0]!.id;
     });
 
-    When("staff delete that note", async () => {
+    // Staff let someone back in by deleting the note that they left.
+    When("staff let them back into the group", async () => {
       if (!removedRowId) {
         throw new Error("No removed membership row to delete: the step that finds it failed.");
       }
       await asAdmin("DELETE", `/items/google_group_memberships/${removedRowId}`);
     });
 
-    // Job names must be unique.
-    And("gsuite-sync runs again", async () => {
-      await runCronJob("gsuite-sync", `${runId}-again`);
-    });
+    And("the Google sync runs again", () => program.sync());
 
-    Then("the person who left is in the group again", async () => {
-      expect(await members()).toContain(leaverEmail);
-    });
-
-    And("the CRM notes that gsuite-sync added them again", async () => {
-      const rows = await leaverRows();
+    Then("they're in the group again", async () => {
+      expect(await program.members()).toContain(leaver.email);
+      const rows = await program.memberships(leaver.id);
       expect(rows).toHaveLength(1);
       expect(rows[0]!.id).not.toBe(removedRowId);
       expect(rows[0]!.removed_at).toBeNull();
-      expect(Date.parse(rows[0]!.added_at)).toBeGreaterThan(Date.parse(leaverAddedAt));
+      expect(Date.parse(rows[0]!.added_at)).toBeGreaterThan(Date.parse(addedAt));
     });
   },
 });

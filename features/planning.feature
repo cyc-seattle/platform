@@ -8,8 +8,8 @@ Feature: Plans
 
   Plans include wages, which are what each staff level is paid per hour and what each salaried
   position is paid per year, and bonus rates, which set the bonus a head coach earns on the products
-  they run. Anyone who can see plans sees all of these. People get the Plan Reader and Plan Writer
-  policies from their groups.
+  they run. Anyone who can see plans sees all of these. Planners have the Plan Reader or Plan Writer
+  policy, which they get from their groups. To change something means to add, edit, or delete it.
 
   @pending
   Rule: Each plan is for one product, and starts with a draft
@@ -17,7 +17,7 @@ Feature: Plans
     Example: A Plan Writer starts a plan for a product
       Given a user with the Plan Writer policy
       When they start a plan for a product
-      Then the plan has a draft they can edit
+      Then the plan has a draft they can change
       And the plan has no saved versions yet
 
   @pending
@@ -47,9 +47,10 @@ Feature: Plans
   @pending
   Rule: Planners can see every plan, including wages and bonus rates
 
-    Scenario Outline: Each planning policy can see every detail of every plan
+    Scenario Outline: Each planning policy can see a plan's wages and bonus rates
       Given a user with the <policy> policy
-      Then they can see every detail of plans
+      And a plan with wages and bonus rates
+      Then they can see every part of the plan, wages and bonus rates included
 
       Examples:
         | policy      |
@@ -59,14 +60,14 @@ Feature: Plans
   @pending
   Rule: A Plan Reader can't change plans
 
-    Example: A Plan Reader can't edit a plan
+    Example: A Plan Reader can't change a plan
       Given a user with the Plan Reader policy
       Then they can't change plans
 
   @pending
-  Rule: A Plan Writer can edit any plan's draft, even one someone else started
+  Rule: A Plan Writer can change any plan's draft, even one someone else started
 
-    Example: A Plan Writer edits another planner's draft
+    Example: A Plan Writer changes another planner's draft
       Given a user with the Plan Writer policy
       And a plan someone else started
       Then they can change a draft
@@ -82,7 +83,7 @@ Feature: Plans
   @pending
   Rule: No one else can see plans
 
-    Scenario Outline: A role on its own doesn't show plans
+    Scenario Outline: A role on its own doesn't let someone see plans
       Given a user with the <role> role
       Then they can't see plans
 
@@ -91,7 +92,7 @@ Feature: Plans
         | Community |
         | Crew      |
 
-    Scenario Outline: Other policies don't show plans
+    Scenario Outline: Other policies don't let someone see plans
       Given a user with the <policy> policy
       Then they can't see plans
 

@@ -2,27 +2,30 @@ Feature: The catalog
   The catalog lists what the club sells and how it accounts for the money. A product is something the
   club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Each product
   is one kind: a program, a charter, a storage lease, merchandise, event hosting, or other. A program
-  is a product of the program kind, with details of its own. The catalog also lists the accounts the
-  club's money is booked to, the qualifications a coach can hold, the boat classes the club sails,
-  such as Opti or 420, and the kinds of equipment programs share, such as coach boats and trailers.
+  is a product that sailors sign up for, such as a summer camp or the race team. It has details of
+  its own, such as its Google group. The catalog also lists the accounts the club's money is booked
+  to, the qualifications a coach can hold, the boat classes the club sails, such as Opti or 420, and
+  the kinds of equipment programs share, such as coach boats and trailers.
 
-  Planners use the catalog to build plans. Only the few people who set prices and accounts can
-  change it. They have the Catalog Writer policy. The Catalog Reader policy lets someone look things
-  up without changing them.
+  Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Only the
+  few people who manage the club's products and accounts can change the catalog. They have the
+  Catalog Writer policy. The Catalog Reader policy lets someone see the catalog without changing it.
+  To change something means to add, edit, or delete it.
 
   Rule: A product that runs a program can't be deleted
 
-    Example: Deleting a product with a program is refused
+    Example: Deleting a product with a program isn't allowed
       Given a product that runs a program
       When an admin deletes the product
-      Then they're refused, and the product stays
+      Then the catalog doesn't allow it
+      And the product is still in the catalog
 
   Rule: Each account has its own number
 
-    Example: A second account with the same number is refused
+    Example: A second account with the same number isn't allowed
       Given an account in the catalog
       When an admin adds another account with the same number
-      Then the catalog refuses it
+      Then the catalog doesn't allow it
 
   @pending
   Rule: A Catalog Reader can see the catalog, but can't change it
@@ -33,7 +36,7 @@ Feature: The catalog
       But they can't change the catalog
 
   @pending
-  Rule: A Catalog Writer can edit the catalog, programs included
+  Rule: A Catalog Writer can change the catalog, programs included
 
     Example: A Catalog Writer adds, edits, and deletes products, accounts, and programs
       Given a user with the Catalog Writer policy
@@ -53,7 +56,7 @@ Feature: The catalog
         | Plan Writer |
 
   @pending
-  Rule: Programs belong to the catalog, so a CRM Reader or CRM Writer can see them but can't change them
+  Rule: A CRM Reader or CRM Writer can see programs, but can't change them
 
     Scenario Outline: A CRM policy can see programs, but can't change them
       Given a user with the <policy> policy
@@ -66,17 +69,19 @@ Feature: The catalog
         | CRM Writer |
 
   @pending
-  Rule: Only people who manage the catalog or plan can see prices and accounts
+  Rule: Only people with a Catalog or Plan policy can see products and accounts
 
-    Scenario Outline: A role on its own doesn't show prices and accounts
+    Scenario Outline: A role on its own doesn't let someone see products or accounts
       Given a user with the <role> role
-      Then they can't see products and accounts
+      Then they can't see products
+      And they can't see accounts
 
       Examples:
         | role      |
         | Community |
         | Crew      |
 
-    Example: Being able to edit the CRM doesn't show prices and accounts
+    Example: A CRM Writer can't see products or accounts
       Given a user with the CRM Writer policy
-      Then they can't see products and accounts
+      Then they can't see products
+      And they can't see accounts

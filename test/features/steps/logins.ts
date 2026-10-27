@@ -34,8 +34,8 @@ const policySteps: Record<string, string> = {
 };
 
 const services: Record<string, string> = {
-  "clubspot-sync": "Clubspot Sync",
-  "gsuite-sync": "Gsuite Sync",
+  "the Clubspot sync": "Clubspot Sync",
+  "the Google sync": "Gsuite Sync",
 };
 
 /** The name of today's role with a role's access. */
