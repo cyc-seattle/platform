@@ -316,7 +316,7 @@ Feature: The CRM
       Then they see the sailor's name
       But not the email or phone of the sailor
 
-  Rule: A Parent Coordinator sees only the sailors in their own program
+  Rule: A Parent Coordinator can see only the sailors in their own program
 
     Example: A Parent Coordinator doesn't see a sailor in another program
       Given a Parent Coordinator of a team
