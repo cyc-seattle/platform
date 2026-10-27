@@ -4,7 +4,7 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. The app is proposed and not built yet, so nothing in `schemas/` declares these collections.
+Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs`. The rest is proposed and not built yet.
 
 ### Terms
 
@@ -39,6 +39,7 @@ erDiagram
     qualifications ||--o{ qualification_covers : covers
     qualifications ||--o{ qualification_covers : "covered by"
     accounts |o--o{ accounts : "parent, contra"
+    products ||--o| programs : "program subtype"
 
     products {
         uuid id PK
@@ -62,7 +63,17 @@ erDiagram
         uuid id PK
         string name
     }
+    programs {
+        uuid id PK
+        uuid product_id FK "unique, kind program"
+    }
+    organizations {
+        uuid id PK
+        string name
+        int fiscal_year_start_month "1-12"
+    }
     qualification_covers {
+        uuid id PK
         uuid qualification_id FK
         uuid covers_id FK
     }
@@ -84,6 +95,8 @@ erDiagram
         string disposition "mapped|ignored"
     }
 ```
+
+`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year, and nothing links to it yet.
 
 ### Versioning
 

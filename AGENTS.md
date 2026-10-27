@@ -16,8 +16,7 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
 - `schemas/<domain>.yaml` is the Directus data model, one file per domain. `src/directus/` merges
   them into one snapshot and applies it. The `backend` stack deploys Directus with them, in dev and
-  prod. `mise run directus-local` applies them to a local
-  Directus.
+  prod. A schema change is tested on dev, through the PR's deploy.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
 - `packages/` is a pnpm workspace of private packages: the two syncs, clubspot-sync and gsuite-sync,
@@ -76,6 +75,16 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 - A change to the planning design or its collections updates the ER diagrams in
   `docs/planning-schema.md` in the same PR.
+- A subtype, such as `programs` of `products`, is its own collection (cyc-seattle/isthmia#213 §2):
+  - The base holds the shared fields and a `kind`. A kind with no fields of its own gets no
+    collection.
+  - The subtype keeps its own `id` and links to the base by `<base>_id`: a unique, required M2O
+    whose picker filters on the subtype's `kind`. The foreign key restricts delete, so a base row
+    with a subtype row can't be deleted. The base reads it back
+    through a one-row O2M alias.
+  - Directus can't compare fields across collections, so nothing stops a subtype row's base having
+    the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
+    one there.
 
 ## Code style
 

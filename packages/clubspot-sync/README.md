@@ -6,14 +6,11 @@ Directus instance (`@cyc-seattle/crm`). Replaces the spreadsheet-backed reports 
 
 ## Running locally
 
-Start a local Directus and Postgres with `mise run directus-local` from the repository root. It
-applies `packages/crm/schema.yaml` to a fresh instance.
-
-Then run the CLI against it:
+Run the CLI against dev's Directus, with a token for a user that may write the CRM:
 
 ```sh
 CLUBSPOT_EMAIL=... CLUBSPOT_PASSWORD=... \
-DIRECTUS_URL=http://localhost:8055 DIRECTUS_TOKEN=... \
+DIRECTUS_URL=https://directus.<dev domain> DIRECTUS_TOKEN=... \
 pnpm exec clubspot-sync --club <clubspot-club-id> --dry-run
 ```
 

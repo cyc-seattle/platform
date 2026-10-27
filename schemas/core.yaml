@@ -1,0 +1,1766 @@
+version: 1
+directus: 12.3.1
+vendor: postgres
+collections:
+  - collection: Catalog
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: Catalog
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: category
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+  - collection: accounts
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: accounts
+      color: null
+      display_template: "{{number}} {{name}}"
+      group: Catalog
+      hidden: false
+      icon: account_balance
+      item_duplication_fields: null
+      note: The chart of accounts that plans, results, and actuals book to.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: accounts
+  - collection: boat_classes
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: boat_classes
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: sailing
+      item_duplication_fields: null
+      note: A kind of boat offerings sail, such as Opti or 420.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: boat_classes
+  - collection: products
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: products
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: sell
+      item_duplication_fields: null
+      note: A lasting thing CYC sells. A kind with fields of its own has a subtype collection, such as programs.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: products
+  - collection: qualifications
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: qualifications
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: workspace_premium
+      item_duplication_fields: null
+      note: A certification a coach holds or an offering requires.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: qualifications
+  - collection: qualification_covers
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: qualification_covers
+      color: null
+      display_template: "{{qualification_id.name}} covers {{covers_id.name}}"
+      group: Catalog
+      hidden: false
+      icon: account_tree
+      item_duplication_fields: null
+      note: Holding qualification_id satisfies a requirement for covers_id.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: qualification_covers
+  - collection: resource_kinds
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: resource_kinds
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: inventory_2
+      item_duplication_fields: null
+      note: A kind of shared resource, such as RIB or trailer.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: resource_kinds
+  - collection: programs
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: programs
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: school
+      item_duplication_fields: null
+      note: >-
+        The durable catalog entry (e.g. Youth Camp, LTS Weekday) a class links
+        to by hand. Not Clubspot's Camp - see camps.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: programs
+  - collection: organizations
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: organizations
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: corporate_fare
+      item_duplication_fields: null
+      note: A legal entity that keeps its own books. The fiscal year is set here, per organization.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: organizations
+fields:
+  - collection: accounts
+    field: id
+    type: uuid
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: accounts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: accounts
+    field: number
+    type: string
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: number
+      group: null
+      hidden: false
+      interface: input
+      note: The chart-of-accounts code.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: number
+      table: accounts
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: accounts
+    field: name
+    type: string
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: accounts
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: accounts
+    field: type
+    type: string
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: type
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: revenue
+            value: revenue
+          - text: expense
+            value: expense
+          - text: asset
+            value: asset
+          - text: liability
+            value: liability
+          - text: net_assets
+            value: net_assets
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation:
+        type:
+          _in:
+            - revenue
+            - expense
+            - asset
+            - liability
+            - net_assets
+      validation_message: "Must be one of: revenue, expense, asset, liability, net_assets."
+      width: full
+    schema:
+      name: type
+      table: accounts
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: accounts
+    field: form_990_part
+    type: string
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: form_990_part
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: form_990_part
+      table: accounts
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: accounts
+    field: form_990_line
+    type: string
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: form_990_line
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: form_990_line
+      table: accounts
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: accounts
+    field: default_function
+    type: string
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: default_function
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: The functional-expense column a line booked here takes unless it sets its own.
+      options:
+        choices:
+          - text: program
+            value: program
+          - text: management
+            value: management
+          - text: fundraising
+            value: fundraising
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation:
+        _or:
+          - default_function:
+              _null: true
+          - default_function:
+              _in:
+                - program
+                - management
+                - fundraising
+      validation_message: "Must be one of: program, management, fundraising."
+      width: full
+    schema:
+      name: default_function
+      table: accounts
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: accounts
+    field: parent_id
+    type: uuid
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: parent_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: parent_id
+      table: accounts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
+  - collection: accounts
+    field: contra_account_id
+    type: uuid
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: contra_account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The account this one offsets.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: contra_account_id
+      table: accounts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
+  - collection: accounts
+    field: retired
+    type: boolean
+    meta:
+      collection: accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: retired
+      group: null
+      hidden: false
+      interface: boolean
+      note: Kept for history, and closed to new lines.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: retired
+      table: accounts
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_classes
+    field: id
+    type: uuid
+    meta:
+      collection: boat_classes
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: boat_classes
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_classes
+    field: name
+    type: string
+    meta:
+      collection: boat_classes
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: boat_classes
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_classes
+    field: sailors_per_boat
+    type: integer
+    meta:
+      collection: boat_classes
+      conditions: null
+      display: null
+      display_options: null
+      field: sailors_per_boat
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sailors_per_boat
+      table: boat_classes
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_classes
+    field: footprint_sq_ft
+    type: decimal
+    meta:
+      collection: boat_classes
+      conditions: null
+      display: null
+      display_options: null
+      field: footprint_sq_ft
+      group: null
+      hidden: false
+      interface: input
+      note: Dry-storage area one boat takes.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: footprint_sq_ft
+      table: boat_classes
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 10
+      numeric_scale: 2
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: products
+    field: id
+    type: uuid
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: products
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: products
+    field: name
+    type: string
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: products
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: products
+    field: kind
+    type: string
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: kind
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: Must match the product's subtype row, if it has one. Directus can't check that across collections.
+      options:
+        choices:
+          - text: program
+            value: program
+          - text: charter
+            value: charter
+          - text: storage_lease
+            value: storage_lease
+          - text: merchandise
+            value: merchandise
+          - text: event_hosting
+            value: event_hosting
+          - text: other
+            value: other
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation:
+        kind:
+          _in:
+            - program
+            - charter
+            - storage_lease
+            - merchandise
+            - event_hosting
+            - other
+      validation_message: "Must be one of: program, charter, storage_lease, merchandise, event_hosting, other."
+      width: full
+    schema:
+      name: kind
+      table: products
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: products
+    field: revenue_account_id
+    type: uuid
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: revenue_account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: revenue_account_id
+      table: products
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
+  - collection: qualifications
+    field: id
+    type: uuid
+    meta:
+      collection: qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: qualifications
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: qualifications
+    field: name
+    type: string
+    meta:
+      collection: qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: qualifications
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: qualifications
+    field: covers
+    type: alias
+    meta:
+      collection: qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: covers
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: The qualifications this one satisfies a requirement for.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: qualification_covers
+    field: id
+    type: uuid
+    meta:
+      collection: qualification_covers
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: qualification_covers
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: qualification_covers
+    field: qualification_id
+    type: uuid
+    meta:
+      collection: qualification_covers
+      conditions: null
+      display: null
+      display_options: null
+      field: qualification_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: qualification_id
+      table: qualification_covers
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: qualifications
+      foreign_key_column: id
+  - collection: qualification_covers
+    field: covers_id
+    type: uuid
+    meta:
+      collection: qualification_covers
+      conditions: null
+      display: null
+      display_options: null
+      field: covers_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: covers_id
+      table: qualification_covers
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: qualifications
+      foreign_key_column: id
+  - collection: resource_kinds
+    field: id
+    type: uuid
+    meta:
+      collection: resource_kinds
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: resource_kinds
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: resource_kinds
+    field: name
+    type: string
+    meta:
+      collection: resource_kinds
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: resource_kinds
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: id
+    type: uuid
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: name
+    type: string
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: revenue_account
+    type: string
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: revenue_account
+      group: null
+      hidden: false
+      interface: input
+      note: >-
+        The finance chart-of-accounts code this program's revenue rolls up to, hand-set by staff -
+        never written by a sync. Null means the program isn't mapped to an account yet.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: revenue_account
+      table: programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: product_id
+    type: uuid
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: product_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The product this program is a subtype of, which must be of kind program. Null until the backfill sets it.
+      options:
+        filter:
+          kind:
+            _eq: program
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product_id
+      table: programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: products
+      foreign_key_column: id
+  - collection: products
+    field: programs
+    type: alias
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: programs
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: "The product's program subtype row: one at most, for kind program."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: organizations
+    field: id
+    type: uuid
+    meta:
+      collection: organizations
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: organizations
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: organizations
+    field: name
+    type: string
+    meta:
+      collection: organizations
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: organizations
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: organizations
+    field: fiscal_year_start_month
+    type: integer
+    meta:
+      collection: organizations
+      conditions: null
+      display: null
+      display_options: null
+      field: fiscal_year_start_month
+      group: null
+      hidden: false
+      interface: input
+      note: "The month the fiscal year starts in: 1 for January."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation:
+        _and:
+          - fiscal_year_start_month:
+              _gte: 1
+          - fiscal_year_start_month:
+              _lte: 12
+      validation_message: Must be a month number, 1 to 12.
+      width: full
+    schema:
+      name: fiscal_year_start_month
+      table: organizations
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+relations:
+  - collection: accounts
+    field: contra_account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: accounts
+      many_field: contra_account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: accounts
+      column: contra_account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: accounts_contra_account_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: accounts
+    field: parent_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: accounts
+      many_field: parent_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: accounts
+      column: parent_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: accounts_parent_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: products
+    field: revenue_account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: products
+      many_field: revenue_account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: products
+      column: revenue_account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: products_revenue_account_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: qualification_covers
+    field: covers_id
+    related_collection: qualifications
+    meta:
+      junction_field: qualification_id
+      many_collection: qualification_covers
+      many_field: covers_id
+      one_allowed_collections: null
+      one_collection: qualifications
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: qualification_covers
+      column: covers_id
+      foreign_key_table: qualifications
+      foreign_key_column: id
+      constraint_name: qualification_covers_covers_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: qualification_covers
+    field: qualification_id
+    related_collection: qualifications
+    meta:
+      junction_field: covers_id
+      many_collection: qualification_covers
+      many_field: qualification_id
+      one_allowed_collections: null
+      one_collection: qualifications
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: covers
+      sort_field: null
+    schema:
+      table: qualification_covers
+      column: qualification_id
+      foreign_key_table: qualifications
+      foreign_key_column: id
+      constraint_name: qualification_covers_qualification_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: programs
+    field: product_id
+    related_collection: products
+    meta:
+      junction_field: null
+      many_collection: programs
+      many_field: product_id
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: programs
+      sort_field: null
+    schema:
+      table: programs
+      column: product_id
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: programs_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT

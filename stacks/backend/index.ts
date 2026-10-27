@@ -160,8 +160,16 @@ const crmSchema = new DirectusSchema(
 );
 
 // Derived from schema.yaml itself (see cyc-seattle/isthmia#109) rather than hand-maintained, so it can't drift from
-// what the schema actually declares.
-const allCollections = collectionsInSchema(schema);
+// what the schema actually declares. Only the domains that predate the catalog: a newer domain is reached through
+// its own policies, never Staff's blanket rule (cyc-seattle/platform#48). `programs` moved from crm to core, and keeps
+// the access it had.
+const staffDomains = new Set(["clubspot", "crm", "gsuite", "sync"]);
+const allCollections = [
+  ...loadedSchemas
+    .filter(({ name }) => staffDomains.has(name))
+    .flatMap(({ schema: domainSchema }) => collectionsInSchema(domainSchema)),
+  "programs",
+];
 
 // Every table-backed collection schemas/clubspot.yaml declares - Clubspot is the editor of
 // that data, so Staff gets read there, not write. Derived the same way as allCollections, from the
