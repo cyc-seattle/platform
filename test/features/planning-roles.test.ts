@@ -34,7 +34,6 @@ describeFeature(
         "{string} can create, read, update, and delete the draft's rows",
         "{string} can save the draft as a version",
         "{string} can activate a saved version",
-        "{string} can't read the catalog",
         "{string} can't read any plan, or the results",
         "{string} reads the saved version's rows",
         "{string} can't create, update, or delete the saved version's rows",
@@ -60,6 +59,10 @@ describeFeature(
         "{string} reads the catalog",
         "{string} can't change the catalog",
         "{string} can't read the catalog, any plan, or the results",
+        "no user of this run's people has a role",
+        "{string} holds the Community policy, and no other",
+        "{string} reads their teammates, as Community does",
+        "{string} reaches what the Staff role reaches today",
         "{string} can't read the CRM, Clubspot's records, the syncs' records, or groups",
       ]) {
         Step(text);
@@ -74,11 +77,16 @@ describeFeature(
       "Nobody changes a saved version, not even an admin",
       "Each policy opens the Data Studio",
       "Only an admin manages groups, their members, and their grants",
-      "Coaches, guardians, and community members in no planning group see no catalog, plans, or results",
+      "The plan policies read the catalog, and change none of it",
+      "The Staff, Coach, and Guardian policies give no catalog, plans, or results",
     ]) {
       ScenarioOutline(outline, () => {});
     }
     for (const scenario of [
+      "A person's user has no role",
+      "Signing in grants Community, and nothing else",
+      "A signed-in person in no group sees no catalog, plans, or results",
+      "A person in a group that grants Staff gets what the Staff role gives today",
       "Plan Reader reads every plan and its results, wages and bonus rates included",
       "Plan Reader changes nothing",
       "Plan Writer reads everything Plan Reader does",
@@ -86,7 +94,7 @@ describeFeature(
       "Plan Writer edits any plan's draft, including one someone else started",
       "Plan Writer saves a draft as a version, and activates it",
       "Plan Writer doesn't write results",
-      "The plan policies don't reach the catalog, and the catalog policies don't reach plans",
+      "The catalog policies don't reach plans",
       "MCP reaches what the REST API does, and no more",
       "Joining a group grants its policies",
       "Leaving a group takes its policies away",
@@ -94,7 +102,6 @@ describeFeature(
       "A policy two groups grant stays until both drop it",
       "A community member in a group keeps what Community gives them",
       "A person added before their first sign-in gets the group's policies once they sign in",
-      "Staff in no planning group read the catalog, and see no plans",
       "The engine writes results and metrics",
       "The engine reads the catalog and every plan, wages included, and changes none of it",
       "The engine reads nothing about people",

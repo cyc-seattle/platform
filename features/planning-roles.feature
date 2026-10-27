@@ -10,16 +10,18 @@ Feature: Who can see and change the catalog, plans, and results
   Results are the engine's P&L lines and metrics for a plan. Wages are staff levels' hourly rates and
   salaried positions' salaries. Bonus rates are bonus owners' rates.
 
-  Code defines four policies: Catalog Reader, Catalog Writer, Plan Reader, and Plan Writer. Who holds
-  them is data. A group links people to policies, and an admin edits groups, their members, and
-  their grants in the Data Studio. A user holds the policies their person's groups grant, and no
-  others.
+  Code defines the policies: Catalog Reader, Catalog Writer, Plan Reader, and Plan Writer, beside
+  Staff, Coach, Guardian, and Community. Who holds them is data. People hold no Directus role. A
+  group links people to policies, and an admin edits groups, their members, and their grants in the
+  Data Studio. A person's user holds the policies their groups grant, and Community from signing
+  in. Staff, say, is a group an admin sets up, granting the Staff policy and Catalog Reader. Machine
+  users keep their policies in code.
 
   Each run signs in once as each of these throwaway users:
-  - Catalog Reader, Catalog Writer, Plan Reader, and Plan Writer: each a person with no role, in a
-    group that grants only that policy.
-  - Admin: an admin.
-  - Staff, Coach, Guardian, and Community: one of each role, in no group.
+  - Catalog Reader, Catalog Writer, Plan Reader, Plan Writer, Staff, Coach, and Guardian: each a
+    person in a group that grants only that policy.
+  - Admin: a person in a group that grants Directus's Administrator policy.
+  - Ungrouped: a person with a login, in no group.
   - Engine: the engine's machine user.
   - clubspot-sync and gsuite-sync, as today.
 
@@ -59,6 +61,26 @@ Feature: Who can see and change the catalog, plans, and results
       | resource_kinds       |
 
   @pending
+  Scenario: A person's user has no role
+    Then no user of this run's people has a role
+
+  # DECISION: Signing in grants the Community policy to every user with a login. Its rules already
+  # scope it to the person's own family and teammates, and everything else comes from groups. The
+  # alternative is a Community group an admin adds each family to.
+  @pending
+  Scenario: Signing in grants Community, and nothing else
+    Then "Ungrouped" holds the Community policy, and no other
+    And "Ungrouped" reads their teammates, as Community does
+
+  @pending
+  Scenario: A signed-in person in no group sees no catalog, plans, or results
+    Then "Ungrouped" can't read the catalog, any plan, or the results
+
+  @pending
+  Scenario: A person in a group that grants Staff gets what the Staff role gives today
+    Then "Staff" reaches what the Staff role reaches today
+
+  @pending
   Scenario: Plan Reader reads every plan and its results, wages and bonus rates included
     Then "Plan Reader" reads every plan's draft and saved versions, with wages and bonus rates
     And "Plan Reader" reads the results
@@ -67,6 +89,7 @@ Feature: Who can see and change the catalog, plans, and results
   Scenario: Plan Reader changes nothing
     Then "Plan Reader" can't change any plan
     And "Plan Reader" can't change the results
+    And "Plan Reader" can't change the catalog
 
   @pending
   Scenario: Plan Writer reads everything Plan Reader does
@@ -90,13 +113,19 @@ Feature: Who can see and change the catalog, plans, and results
   Scenario: Plan Writer doesn't write results
     Then "Plan Writer" can't change the results
 
-  # DECISION: Each policy reaches only its own domain, as the four are defined. A group whose members
-  # plan grants Catalog Reader too, since a plan names its product and accounts. The alternative is
-  # that both plan policies also read the catalog.
   @pending
-  Scenario: The plan policies don't reach the catalog, and the catalog policies don't reach plans
-    Then "Plan Writer" can't read the catalog
-    And "Catalog Writer" can't read any plan, or the results
+  Scenario Outline: The plan policies read the catalog, and change none of it
+    Then "<login>" reads the catalog
+    And "<login>" can't change the catalog
+
+    Examples:
+      | login       |
+      | Plan Reader |
+      | Plan Writer |
+
+  @pending
+  Scenario: The catalog policies don't reach plans
+    Then "Catalog Writer" can't read any plan, or the results
 
   @pending
   Scenario Outline: Nobody changes a saved version, not even an admin
@@ -168,7 +197,7 @@ Feature: Who can see and change the catalog, plans, and results
     Then "Admin" can create, read, update, and delete "<collection>"
     And "Staff" can't create, update, or delete "<collection>"
     And "Plan Writer" can't create, update, or delete "<collection>"
-    And "Community" can't create, update, or delete "<collection>"
+    And "Ungrouped" can't create, update, or delete "<collection>"
 
     Examples:
       | collection     |
@@ -176,24 +205,15 @@ Feature: Who can see and change the catalog, plans, and results
       | group_members  |
       | group_policies |
 
-  # DECISION: Staff's role reads the catalog with no group, because staff set a program's product
-  # (step 9) and pick it from the catalog. Every other planning grant comes from a group. The
-  # alternative keeps roles out of planning entirely, and an admin puts staff in a group instead.
   @pending
-  Scenario: Staff in no planning group read the catalog, and see no plans
-    Then "Staff" reads the catalog
-    And "Staff" can't change the catalog
-    And "Staff" can't read any plan, or the results
-
-  @pending
-  Scenario Outline: Coaches, guardians, and community members in no planning group see no catalog, plans, or results
+  Scenario Outline: The Staff, Coach, and Guardian policies give no catalog, plans, or results
     Then "<login>" can't read the catalog, any plan, or the results
 
     Examples:
-      | login     |
-      | Coach     |
-      | Guardian  |
-      | Community |
+      | login    |
+      | Staff    |
+      | Coach    |
+      | Guardian |
 
   @pending
   Scenario: The engine writes results and metrics
