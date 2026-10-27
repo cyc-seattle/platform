@@ -171,11 +171,12 @@ The steps across `test/features/` form one vocabulary for the domain. Each step 
 reader would use, and the glue holds every how.
 
 - Reuse a step before adding one. Read the existing steps first (`grep -rn 'Step(' test/features`).
-- Write steps as a domain API: `a user with the {string} policy`, `they can read {string}`, each
+- Write steps as a domain API: `a user with the {policy} policy`, `they can read {records}`, each
   with one meaning everywhere.
-- Name parameters in the text. vitest-cucumber has no custom parameter types, so a bare `{string}`
-  says nothing about what fills it. Put the noun next to it (`the {string} policy`,
-  `a {string} record`) and name the callback's parameter to match (`policy`, `record`).
+- Name every parameter. A bare `{string}` says nothing about what fills it, so give a domain value
+  its own parameter type (`{policy}`, `{role}`, `{service}`, `{records}` in
+  `test/features/steps/index.ts`), and name the callback's parameter to match. Keep `{string}`
+  for free text, with the noun next to it (`a {string} record`).
 - A step's definition must not depend on which scenario runs it, beyond the state its Givens set.
 - Keep the glue thin: a step calls domain helpers (`as(user)`, `newRow(record)`), and the helpers
   call Directus. The helpers are shared; the steps are just phrases bound to them.
@@ -190,8 +191,10 @@ against dev. They never run in `mise run ci`.
 - The test file must name every scenario in the feature, or the run fails. Scenarios under a
   `Rule:` go inside `Rule(name, ({ RuleBackground, RuleScenario, RuleScenarioOutline }) => ...)`.
   `defineSteps` at the feature level covers rule scenarios too.
-- Parameter types are fixed: `{string}`, `{int}`, `{number}`, `{word}`, `{list}`, `{boolean}`,
-  `{date}`, `{char}`, `{any}`.
+- The built-in parameter types are `{string}`, `{int}`, `{number}`, `{word}`, `{list}`,
+  `{boolean}`, `{date}`, `{char}`, and `{any}`. `defineParameterExpression` adds a named one; the
+  `parameter` helper in `test/features/steps/index.ts` builds one from a list of names. Its regexp
+  must also match an outline's `<column>`, or the step won't match in a Scenario Outline.
 - A keyword-free step matches in a Scenario but not in a Scenario Outline, so this repo's `Step`
   helper registers each text under Given, When, Then, and And.
 - A feature tagged `@licensed` needs a licensed Directus. Check how its test file skips it before

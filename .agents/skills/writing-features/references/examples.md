@@ -206,11 +206,13 @@ Before (`test/features/planning.test.ts` in #48):
 "{string} can start a plan for a product, with a draft",
 ```
 
-The review: "`{string}` is a terrible variable name, don't you think?" vitest-cucumber can't name a
-parameter type, so the step text must:
+The review: "`{string}` is a terrible variable name, don't you think?" After, a named parameter type
+says what fills it, and only a policy's name matches:
 
 ```ts
-Step("a user with the {string} policy", async (_, policy: string) => { ... });
+parameter("policy", policyNames);
+
+Step("a user with the {policy} policy", (_, policy: string) => setThey(actor({ policies: [policy] })));
 Step("they can start a plan for a product, with a draft", async () => { ... });
 ```
 
