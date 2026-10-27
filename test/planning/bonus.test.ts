@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, type PlanBonusOwner } from "../src/index.ts";
+import { computePlan, type PlanBonusOwner } from "../../src/planning/index.ts";
 import { A, budgetLine, emptyPlan, offering, pool, product, total } from "./fixtures.ts";
 
 function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
@@ -10,8 +10,6 @@ function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
     role_name: "Head coach",
     bonus_rate: 0.1,
     account_id: A.bonus,
-    starts_on: null,
-    ends_on: null,
     ...overrides,
   };
 }
@@ -57,12 +55,6 @@ describe("bonus owners", () => {
     expect(total(out, { line: "bonus", cost_center_key: l.key })).toBeGreaterThan(0);
   });
 
-  it("counts only its window", () => {
-    const { data } = twoProducts(0);
-    data.plan_bonus_owners = [owner({ starts_on: "2027-07-01", ends_on: "2027-12-31" })];
-    expect(total(computePlan(data), { line: "bonus" })).toBe(0);
-  });
-
   it("nets what the pools allocate", () => {
     const { data } = twoProducts(1200);
     const ga = pool();
@@ -72,7 +64,6 @@ describe("bonus owners", () => {
         amount_cents: 51_000,
         cost_center_type: "pool",
         cost_center_key: ga.key,
-        phasing: { "2027-06": 1 },
       }),
     );
     // 100000 + 1000 − 1200 − 51000

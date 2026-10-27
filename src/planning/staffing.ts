@@ -1,8 +1,9 @@
-import { effectiveOn, isoWeekday, monthOf, within } from "./dates.ts";
+import { isoWeekday, within } from "./dates.ts";
 import type { Context } from "./context.ts";
-import type { ScheduledActivity } from "./schedule.ts";
+import type { ScheduledActivity } from "./activities.ts";
 import type {
   ComputedActivity,
+  CostType,
   Id,
   PlanActivityBlockRule,
   PlanOffering,
@@ -10,18 +11,17 @@ import type {
   PlanStaffLevel,
 } from "./types.ts";
 
-/** Hours a salaried position coached, by offering key and month, for the salaried rule. */
+/** Hours a salaried position coached, by offering key, for the salaried rule. */
 export interface SalariedCoaching {
   position_key: Id;
   offering_key: Id;
-  month: string;
   hours: number;
 }
 
-/** `target_enrollment`, else `capacity × fill_rate`, unrounded. */
+/** Whole kids: `target_enrollment` if set, otherwise `capacity × fill_rate` rounded. */
 export function enrollmentOf(offering: PlanOffering): number {
-  if (offering.target_enrollment != null) return offering.target_enrollment;
-  return (offering.capacity ?? 0) * (offering.fill_rate ?? 0);
+  if (offering.target_enrollment != null) return Math.round(offering.target_enrollment);
+  return Math.round((offering.capacity ?? 0) * (offering.fill_rate ?? 0));
 }
 
 interface Staffed {
@@ -91,18 +91,12 @@ export class Staffing {
     return false;
   }
 
-  private levelFor(offering: PlanOffering, block: PlanActivityBlockRule | null, date: string) {
+  private levelFor(offering: PlanOffering, block: PlanActivityBlockRule | null): PlanStaffLevel | undefined {
     const levels = this.ctx.data.plan_staff_levels;
-    if (block?.coach_level_id != null) {
-      const row = levels.find((l) => l.id === block.coach_level_id);
-      if (row !== undefined)
-        return effectiveOn(
-          levels.filter((l) => l.name === row.name),
-          date,
-        );
-    }
+    const blockLevel = block?.coach_level_id == null ? undefined : levels.find((l) => l.id === block.coach_level_id);
+    if (blockLevel !== undefined) return blockLevel;
     if (offering.coach_level_key == null) return undefined;
-    return this.ctx.effectiveByKey(levels, offering.coach_level_key, date);
+    return levels.find((l) => l.key === offering.coach_level_key);
   }
 
   private sailorsByClass(offering: PlanOffering, enrollment: number): Map<Id, number> {
@@ -134,11 +128,11 @@ export class Staffing {
   }
 
   private initial(a: ScheduledActivity): Staffed {
-    const { offering, rule, stored } = a;
+    const { offering, stored } = a;
     const enrollment = this.ctx.enrollment.get(offering.id) ?? 0;
-    const fixedCoaches = stored?.fixed_coaches ?? rule?.fixed_coaches ?? offering.fixed_coaches;
-    const fixedRibs = stored?.fixed_ribs ?? rule?.fixed_ribs ?? offering.fixed_ribs;
-    const fixedBoats = stored?.fixed_boats ?? offering.fixed_boats;
+    const fixedCoaches = stored.fixed_coaches ?? offering.fixed_coaches;
+    const fixedRibs = stored.fixed_ribs ?? offering.fixed_ribs;
+    const fixedBoats = stored.fixed_boats ?? offering.fixed_boats;
     const coaches = fixedCoaches ?? coachesFor(offering, enrollment);
     const travel = a.kind === "travel";
     const ribs = fixedRibs ?? (travel ? 0 : Math.ceil(coaches * (offering.ribs_per_coach ?? 0)));
@@ -236,28 +230,29 @@ export class Staffing {
     }
   }
 
-  private ribRate(date: string): { hourly: number; daily: number } | undefined {
+  /**
+   * One RIB's hourly and daily cost, averaged over the RIB resources by `quantity`, and the part of
+   * it from resources excluded from MTDC, such as rentals.
+   */
+  private ribRate(): { hourly: number; daily: number; rental: number; hourlyRental: number } | undefined {
     const kind = this.ctx.data.rib_resource_kind_id;
     if (kind == null) return undefined;
     const ribs = this.ctx.data.plan_resources.filter((r) => r.resource_kind_id === kind);
-    const current = [...new Set(ribs.map((r) => r.name))]
-      .map((name) =>
-        effectiveOn(
-          ribs.filter((r) => r.name === name),
-          date,
-        ),
-      )
-      .filter((r): r is PlanResource => r !== undefined);
-    if (current.length === 0) return undefined;
+    if (ribs.length === 0) return undefined;
     const weight = (r: PlanResource): number => r.quantity ?? 1;
-    const totalWeight = sum(current.map(weight));
+    const totalWeight = sum(ribs.map(weight));
+    const average = (rows: PlanResource[], cost: (r: PlanResource) => number): number =>
+      sum(rows.map((r) => weight(r) * cost(r))) / totalWeight;
+    const rentals = ribs.filter((r) => r.excluded_from_mtdc);
     return {
-      hourly: sum(current.map((r) => weight(r) * hourlyCost(r))) / totalWeight,
-      daily: sum(current.map((r) => weight(r) * (r.cost_per_day_cents ?? 0))) / totalWeight,
+      hourly: average(ribs, hourlyCost),
+      daily: average(ribs, (r) => r.cost_per_day_cents ?? 0),
+      hourlyRental: average(rentals, hourlyCost),
+      rental: average(rentals, (r) => r.cost_per_day_cents ?? 0),
     };
   }
 
-  /** Staffs every activity, books its labor and equipment, and records its metrics. */
+  /** Staffs every activity, and records what its coaches, RIBs, boats and resources cost. */
   run(scheduled: ScheduledActivity[]): { activities: ComputedActivity[]; coaching: SalariedCoaching[] } {
     const { ctx } = this;
     const staffed = scheduled.map((a) => this.initial(a));
@@ -278,30 +273,34 @@ export class Staffing {
     for (const r of ctx.data.plan_activity_resources) {
       resourcesByActivity.set(r.activity_id, [...(resourcesByActivity.get(r.activity_id) ?? []), r]);
     }
-    const posting = ctx.data.posting_accounts;
+    const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
+    const ribRate = this.ribRate();
 
     for (const s of staffed) {
       const { a } = s;
       const offering = a.offering;
       const key = offering.key;
-      const month = monthOf(a.date);
       const paidHours = a.paid_minutes / 60;
       const waterHours = a.on_water_minutes / 60;
 
-      const book = (account: Id, amount: number, line: string, explanation: string): void =>
+      const book = (type: CostType, amount: number, line: string, explanation: string, mtdcShare = 1): void => {
+        if (amount === 0) return;
+        const account = ctx.costAccount(type);
+        if (account === undefined) return;
         ctx.book({
           cost_center_type: "offering",
           cost_center_key: key,
           account_id: account,
           function: ctx.functionFor(account, null, "offering"),
-          basis: "both",
-          month,
           amount,
           line_key: `${line}:${key}`,
           explanation,
+          mtdc_share: mtdcShare,
+          wages: type === "coach_wages",
         });
+      };
 
-      s.level = this.levelFor(offering, s.block, a.date);
+      s.level = this.levelFor(offering, s.block);
       const hourly = s.coaches - s.salaried;
       if (offering.required_qualification != null && s.level !== undefined) {
         if (!this.qualifies(s.level.qualifications ?? [], offering.required_qualification)) {
@@ -318,57 +317,52 @@ export class Staffing {
       const volunteer = s.level?.pay_type === "volunteer";
       const rate = volunteer ? 0 : (s.level?.hourly_rate_cents ?? 0);
       const wages = hourly * paidHours * rate;
-      book(posting.coach_wages, wages, "coach_wages", "Hourly coaches × paid hours × the coach level's rate");
-      ctx.addMetric(key, "coach_hours", month, s.coaches * paidHours);
-      if (!volunteer && s.level !== undefined) ctx.addMetric(key, "paid_hours", month, hourly * paidHours);
-      ctx.addMetric(key, "wages", month, wages);
+      book("coach_wages", wages, "coach_wages", "Hourly coaches × paid hours × the coach level's rate");
       for (const p of s.positions) {
-        coaching.push({ position_key: p.key, offering_key: key, month, hours: p.coaches * paidHours });
+        coaching.push({ position_key: p.key, offering_key: key, hours: p.coaches * paidHours });
       }
 
       if (s.ribs > 0 && waterHours > 0) {
-        const ribRate = this.ribRate(a.date);
-        if (ribRate === undefined)
-          this.warnOnce("no_rib_rate", "No RIB resource is in effect, so RIBs cost nothing", "ribs");
-        else {
+        if (ribRate === undefined) {
+          this.warnOnce("no_rib_rate", "No RIB resource is in the plan, so RIBs cost nothing", "ribs");
+        } else {
+          const cost = s.ribs * (waterHours * ribRate.hourly + ribRate.daily);
+          const rental = s.ribs * (waterHours * ribRate.hourlyRental + ribRate.rental);
           book(
-            posting.ribs,
-            s.ribs * (waterHours * ribRate.hourly + ribRate.daily),
+            "ribs",
+            cost,
             "ribs",
             "RIBs × on-water hours × the RIB rate, plus a day rate",
+            cost > 0 ? 1 - rental / cost : 1,
           );
         }
-        ctx.addMetric(key, "rib_hours", month, s.ribs * waterHours);
       }
 
       for (const [classId, boats] of s.boats) {
         if (boats <= 0 || waterHours <= 0) continue;
-        ctx.addMetric(key, "boat_hours", month, boats * waterHours);
-        const rate = effectiveOn(
-          ctx.data.plan_boat_rates.filter((r) => r.boat_class_id === classId),
-          a.date,
-        );
-        if (rate === undefined) continue;
+        const boatRate = ctx.data.plan_boat_rates.find((r) => r.boat_class_id === classId);
+        if (boatRate === undefined) continue;
         book(
-          posting.boat_maintenance,
-          boats * waterHours * rate.maintenance_per_boat_hour_cents,
+          "boat_maintenance",
+          boats * waterHours * boatRate.maintenance_per_boat_hour_cents,
           `boats:${classId}`,
           "Boats × on-water hours × the class's maintenance rate",
         );
       }
 
-      for (const use of a.stored === null ? [] : (resourcesByActivity.get(a.stored.id) ?? [])) {
-        const resource = ctx.effectiveByKey(ctx.data.plan_resources, use.resource_key, a.date);
+      for (const use of resourcesByActivity.get(a.stored.id) ?? []) {
+        const resource = resources.get(use.resource_key);
         if (resource === undefined) {
           this.warnOnce("unknown_resource", `Activity uses missing resource ${use.resource_key}`, use.resource_key);
           continue;
         }
         const hours = use.hours ?? paidHours;
         book(
-          posting.resources,
+          "resources",
           use.quantity * (hours * hourlyCost(resource) + (resource.cost_per_day_cents ?? 0)),
           `resource:${use.resource_key}`,
           `${resource.name}: quantity × hours × hourly cost, plus a day rate`,
+          resource.excluded_from_mtdc ? 0 : 1,
         );
       }
     }
@@ -380,9 +374,8 @@ export class Staffing {
       activities: staffed.map((s) => ({
         offering_id: s.a.offering.id,
         offering_key: s.a.offering.key,
-        schedule_rule_id: s.a.rule?.id ?? null,
         trip_id: s.a.trip?.id ?? null,
-        activity_id: s.a.stored?.id ?? null,
+        activity_id: s.a.stored.id,
         date: s.a.date,
         kind: s.a.kind,
         paid_minutes: s.a.paid_minutes,
@@ -397,42 +390,37 @@ export class Staffing {
   }
 
   /**
-   * A trip's coaches each fly and stay; the miles are driven once. The rates are assumptions named
-   * `lodging_per_night_cents` and `mileage_rate_cents`.
+   * A trip's coaches each fly and stay; the miles are driven once. Its coaches are those of its
+   * travel days; with none, the offering's coaching ratio sets them.
    */
   private bookTrips(staffed: Staffed[]): void {
     const { ctx } = this;
     for (const trip of ctx.data.plan_trips) {
       const offering = ctx.offeringsById.get(trip.offering_id);
-      if (offering === undefined) continue;
+      if (offering === undefined || !ctx.inYear(offering)) continue;
       const travel = staffed.find((s) => s.a.trip?.id === trip.id);
       const coaches =
         travel?.coaches ?? offering.fixed_coaches ?? coachesFor(offering, ctx.enrollment.get(offering.id) ?? 0);
-      const assumptions = ctx.assumptionsOn(trip.starts_on);
-      const lodging = assumptions.get("lodging_per_night_cents");
-      const mileage = assumptions.get("mileage_rate_cents");
-      if ((trip.nights ?? 0) > 0 && lodging === undefined) {
-        this.warnOnce(
-          "no_assumption",
-          "Trips have nights but no lodging_per_night_cents assumption",
-          "lodging_per_night_cents",
-        );
+      const lodging = ctx.rates?.lodging_per_night_cents ?? null;
+      const mileage = ctx.rates?.mileage_rate_cents ?? null;
+      if ((trip.nights ?? 0) > 0 && lodging === null) {
+        this.warnOnce("no_rate", "Trips have nights but no lodging_per_night_cents rate", "lodging_per_night_cents");
       }
-      if ((trip.miles ?? 0) > 0 && mileage === undefined) {
-        this.warnOnce("no_assumption", "Trips have miles but no mileage_rate_cents assumption", "mileage_rate_cents");
+      if ((trip.miles ?? 0) > 0 && mileage === null) {
+        this.warnOnce("no_rate", "Trips have miles but no mileage_rate_cents rate", "mileage_rate_cents");
       }
       const amount =
         coaches * (trip.airfare_cents ?? 0) +
         coaches * (trip.nights ?? 0) * (lodging ?? 0) +
         (trip.miles ?? 0) * (mileage ?? 0);
-      const account = ctx.data.posting_accounts.travel;
+      if (amount === 0) continue;
+      const account = ctx.costAccount("travel");
+      if (account === undefined) continue;
       ctx.book({
         cost_center_type: "offering",
         cost_center_key: offering.key,
         account_id: account,
         function: ctx.functionFor(account, null, "offering"),
-        basis: "both",
-        month: monthOf(trip.starts_on),
         amount,
         line_key: `trip:${trip.key}`,
         explanation: `${trip.name}: ${round2(coaches)} coaches, ${trip.nights ?? 0} nights, ${trip.miles ?? 0} miles`,

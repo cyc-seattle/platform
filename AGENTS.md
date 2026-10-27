@@ -11,17 +11,19 @@ single app owns it. The apps live in their own repos and depend on this one, nev
 - `stacks/<name>/` is one Pulumi project. Each has a `package.json` marker, because Pulumi's nodejs
   language host resolves a program's entry point from the nearest one.
 - `src/` holds helpers the stacks import directly. `src/index.ts` exports the published package,
-  `@cyc-seattle/platform`; the build compiles only what it imports. Its API (`Workload`,
+  `@cyc-seattle/platform`, and `src/planning/index.ts` its `planning` subpath; the build compiles
+  only what they import. Its API (`Workload`,
   `WebService`, `ScheduledJob`, `PlatformOutputs`) is a contract the apps code against, so extend it
   rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
 - `schemas/<domain>.yaml` is the Directus data model, one file per domain. `src/directus/` merges
   them into one snapshot and applies it. The `backend` stack deploys Directus with them, in dev and
   prod. A schema change is tested on dev, through the PR's deploy.
+- `src/planning/` is the planning engine, published as `@cyc-seattle/platform/planning` so an app can
+  load it without Pulumi. `docs/planning-engine.md` gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
 - `packages/` is a pnpm workspace of private packages: the two syncs, clubspot-sync and gsuite-sync,
-  and the `crm`, `clubspot`, and `directus` libraries they share, plus `planning-engine`, the
-  planning engine as a pure library. Each builds to `dist/` with `tsc`,
+  and the `crm`, `clubspot`, and `directus` libraries they share. Each builds to `dist/` with `tsc`,
   and the root `Dockerfile` builds the sync images from them. A package reads its workspace
   dependencies' `dist/`, so `mise run check` and `mise run test` build them first.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
@@ -83,6 +85,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   - Directus can't compare fields across collections, so nothing stops a subtype row's base having
     the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
     one there.
+- A change to how the engine calculates a number updates `docs/planning-engine.md` in the same PR. A
+  saved plan version records the `@cyc-seattle/platform` version that calculated it, so such a change
+  must be a `feat:` or `fix:`, which releases a new version.
 
 ## Code style
 
