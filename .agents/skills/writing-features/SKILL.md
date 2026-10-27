@@ -316,6 +316,8 @@ against dev. They never run in `mise run ci`.
 
 - It parses `Feature:` descriptions, `Background:`, `Rule:` with its own `Background:`, `Example:`
   and `Scenario:`, `Scenario Outline:` with `Examples:`, tags, data tables, and doc strings.
+- A description line that starts with a step keyword, such as "When it finds", is parsed as a
+  step, and the run fails with `MissingSteppableError`. Reflow the line, or reword it.
 - The test file must name every scenario in the feature, or the run fails. Scenarios under a
   `Rule:` go inside `Rule(name, ({ RuleBackground, RuleScenario, RuleScenarioOutline }) => ...)`.
   `defineSteps` at the feature level covers rule scenarios too.

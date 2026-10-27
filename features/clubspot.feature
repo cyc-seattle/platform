@@ -3,7 +3,7 @@ Feature: Camps and registrations from Clubspot
   and each registration, from Clubspot into the CRM. A registration comes with the sailor's answers
   to the sign-up questions, their medical information, and their payments. The sync adds each
   sailor and parent on a registration to the CRM as a person, so staff work from one list of people.
-  When it finds the same person in the CRM twice, it merges the two into one. The CRM also has event
+  If it finds the same person in the CRM twice, it merges the two into one. The CRM also has event
   staffing from Clubspot: which coaches and staff work each session. What came from Clubspot means
   the camps, sessions, classes, registrations, and staffing.
 
