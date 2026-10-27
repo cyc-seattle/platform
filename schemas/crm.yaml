@@ -2243,6 +2243,73 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: programs
+    field: product_id
+    type: uuid
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: product_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The product this program is a subtype of, which must be of kind program. Null until the backfill sets it.
+      options:
+        filter:
+          kind:
+            _eq: program
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product_id
+      table: programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: products
+      foreign_key_column: id
+  - collection: products
+    field: programs
+    type: alias
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: programs
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: "The product's program subtype row: one at most, for kind program."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
 relations:
   - collection: contacts
     field: subject_id
@@ -2391,3 +2458,24 @@ relations:
       constraint_name: contact_points_person_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: programs
+    field: product_id
+    related_collection: products
+    meta:
+      junction_field: null
+      many_collection: programs
+      many_field: product_id
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: programs
+      sort_field: null
+    schema:
+      table: programs
+      column: product_id
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: programs_product_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE

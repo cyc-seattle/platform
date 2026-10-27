@@ -52,6 +52,9 @@ program's Google Group; a role's meaning carries no provider mapping.
 chart-of-accounts code a program's revenue rolls up to. `gsuite-sync`'s audit uses it to flag a
 Clubspot Camp whose classes map to programs with more than one distinct account (cyc-seattle/isthmia#149).
 
+`programs.product_id` makes each program a subtype of a `core` product of kind `program`, per `AGENTS.md`'s
+subtype pattern. It stays null until the backfill (cyc-seattle/workplace#6 step 10) sets it.
+
 `gsuite-sync` extends collections it doesn't own rather than owning separate ones: it declares
 `programs.google_group_id` in its own schema, even though `programs` belongs to `crm`, not this
 package - groups hang off programs only. `classes.program_id`, by contrast, is a plain field

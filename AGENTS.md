@@ -74,6 +74,15 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 - A change to the planning design or its collections updates the ER diagrams in
   `docs/planning-schema.md` in the same PR.
+- A subtype, such as `programs` of `products`, is its own collection (cyc-seattle/isthmia#213 §2):
+  - The base holds the shared fields and a `kind`. A kind with no fields of its own gets no
+    collection.
+  - The subtype keeps its own `id` and links to the base by `<base>_id`: a unique, required M2O
+    that cascades on delete, whose picker filters on the subtype's `kind`. The base reads it back
+    through a one-row O2M alias.
+  - Directus can't compare fields across collections, so nothing stops a subtype row's base having
+    the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
+    one there.
 
 ## Code style
 
