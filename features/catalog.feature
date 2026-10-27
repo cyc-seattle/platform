@@ -10,7 +10,9 @@ Feature: The catalog
   Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Only the
   few people who manage the club's products and revenue accounts can change the catalog. They have
   the Catalog Writer policy. The Catalog Reader policy lets someone see the catalog without changing
-  it. To change something means to add, edit, or delete it.
+  it. Crew, the club's coaches and volunteers, can see products and revenue accounts too. Staff with
+  a CRM policy can see programs and their details, but not products or revenue accounts unless
+  they're also Crew. To change something means to add, edit, or delete it.
 
   Rule: A product that runs a program can't be deleted
 
@@ -56,7 +58,7 @@ Feature: The catalog
         | Plan Writer |
 
   @pending
-  Rule: A CRM Reader or CRM Writer can see each program's details, such as its Google group, but can't change them
+  Rule: A CRM Reader or CRM Writer can see programs and their details, such as their Google group, but can't change them
 
     Scenario Outline: A CRM policy can see programs, but can't change them
       Given a user with the <policy> policy
@@ -69,20 +71,25 @@ Feature: The catalog
         | CRM Writer |
 
   @pending
-  Rule: Only people with a Catalog or Plan policy, and the Google sync, can see products and revenue accounts
+  Rule: Crew can see products and revenue accounts, but can't change them
 
-    Scenario Outline: A role on its own doesn't let someone see products or revenue accounts
-      Given a user with the <role> role
+    Example: A coach looks up products and revenue accounts
+      Given a user with the Crew role
+      Then they can see products
+      And they can see revenue accounts
+      But they can't change products
+      And they can't change revenue accounts
+
+  @pending
+  Rule: Only Crew, people with a Catalog or Plan policy, and the Google sync can see products and revenue accounts
+
+    Example: A family member can't see products or revenue accounts
+      Given a user with the Community role
       Then they can't see products
       And they can't see revenue accounts
 
-      Examples:
-        | role      |
-        | Community |
-        | Crew      |
-
-    Example: A CRM Writer can see a program's details, but not its product or revenue account
-      Given a user with the CRM Writer policy
+    Example: A CRM Writer who isn't Crew can see a program's details, but not its product or revenue account
+      Given a user with the Community role and the CRM Writer policy
       Then they can see programs
       But they can't see products
       And they can't see revenue accounts

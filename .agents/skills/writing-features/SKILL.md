@@ -132,6 +132,9 @@ contradicts is wrong, however plain it reads.
   set: "people and their details".
 - Scope an absolute rule that has an exception. "Crew can't see medical information" contradicts
   "a Crew parent sees their own child's"; write "other families' medical information".
+- Say where a rule holds, rather than who it leaves out. "Anyone in a role but Parent Coordinator
+  sees no one" leaves a reader asking about Crew, who see every roster. Write "A role in a program
+  lets someone see more only in that program".
 - Name the exception in the rule, not elsewhere: "Each plan is for one product, apart from the
   Operations Plan".
 - Each example shows its rule, and only that. An example about who decides doesn't belong under a

@@ -17,11 +17,14 @@ Feature: The CRM
   - Medical Reader: can see sailors' medical information, but can't change it.
   - Medical Writer: can change sailors' medical information.
 
-  Crew are the club's coaches and volunteers. They can see the rosters: who is signed up for each
+  Crew are the club's coaches and volunteers. They can see every roster: who is signed up for each
   class. Families sign in to see their own children and their child's team. A team is everyone
   sailing in the same program at a camp that's running now. When a family signs up in Clubspot, it's
   asked whether to share its email and phone with the rest of the team. A Parent Coordinator is a
   parent who helps run one program. "Parent" means anyone listed as a sailor's parent or guardian.
+
+  A family member can also have a role in a program, such as Parent Coordinator or race committee.
+  What that role lets them see applies only to that program.
 
   Rule: A sailor can have more than one parent, and more than one emergency contact
 
@@ -86,7 +89,7 @@ Feature: The CRM
       Given a user with the Medical Writer policy
       Then they can change medical information
 
-  Rule: Crew can see the rosters, but can't change them
+  Rule: Crew can see every roster, but can't change them
 
     Example: A coach looks at the rosters
       Given a user with the Crew role
@@ -317,9 +320,9 @@ Feature: The CRM
       Then they see the sailor's name
       But they don't see the sailor's email or phone
 
-  Rule: A Parent Coordinator can see only the sailors in their own program
+  Rule: A role in a program lets someone see more only in that program
 
-    Example: A Parent Coordinator doesn't see a sailor in another program
+    Example: A Parent Coordinator of one program sees nothing extra in another
       Given a Parent Coordinator for a program
       And a sailor in another program at the same camp
       When they look at the roster
@@ -334,7 +337,7 @@ Feature: The CRM
       Then they see who the sailor's parent is
       But they can't see the details of the program's registrations
 
-  Rule: A family member who helps run a program, in any role but Parent Coordinator, doesn't see more of the team because of that role
+  Rule: A race committee role doesn't let someone see the program's roster
 
     Example: A race committee volunteer sees no one in the program
       Given a race committee volunteer for a program

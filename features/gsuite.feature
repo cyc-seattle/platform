@@ -66,7 +66,7 @@ Feature: Google Groups for programs
       And it can't delete the Google groups
 
   @pending
-  Rule: The Google sync can see products and their revenue accounts, to check that each camp's programs use one account
+  Rule: The Google sync can see products and their revenue accounts, to check that each camp's programs use one revenue account
 
     Example: The Google sync looks up products and revenue accounts
       Given the Google sync's service account

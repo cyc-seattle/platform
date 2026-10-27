@@ -3,8 +3,8 @@ Feature: Roles and groups
 
   - Community, for the club's families and members, who can see their own children and their
     children's teammates.
-  - Crew, for coaches and volunteers, who can see the rosters they run programs from, and their own
-    children like any other parent.
+  - Crew, for coaches and volunteers, who can see every roster, the club's products and revenue
+    accounts, and their own children like any other parent.
   - Admin, for the people who run the system.
 
   Anything more, such as changing people's details or planning a season, comes from groups. A
