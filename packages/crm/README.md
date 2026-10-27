@@ -9,8 +9,8 @@ later would be its own package alongside this one, sharing the same Directus inf
 
 - **`schema.yaml`** — the normative, checked-in definition of this app's collections, fields, and
   relations (see [docs/crm-schema.md](../../docs/crm-schema.md) for the design it implements).
-  Edited directly; Pulumi's `crm` project applies it to the live instance. Verify a change against
-  `mise run directus-local` before deploying.
+  Edited directly; Pulumi's `crm` project applies it to the live instance. A PR's dev deploy
+  tests a change.
 - **`src/`** — the TypeScript row types for the collections `schema.yaml` declares, exported for
   anything that reads or writes the CRM. They live here rather than in a consumer because a sync
   maps between two schemas rather than defining one; `packages/clubspot` imports `PersonRow`, and

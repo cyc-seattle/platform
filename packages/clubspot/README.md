@@ -5,15 +5,14 @@ every registration and custom-field collection derived from them — a Directus 
 types, applied alongside `@cyc-seattle/crm`'s. No jobs of its own.
 
 Split out of `crm` because these collections are Clubspot's shape, not the org's: they would not
-survive Clubspot being replaced. `crm` keeps `people`, `contacts`, `medical_profiles`, `programs`,
-and the program-role tables — the collections that would.
+survive Clubspot being replaced. `crm` keeps `people`, `contacts`, `medical_profiles`, and the
+program-role tables, and `core` keeps `programs` — the collections that would.
 
 ## Contents
 
 - **`schema.yaml`** — the normative, checked-in definition of this package's collections, fields,
   and relations. Edited directly; Pulumi's `crm` project applies the merged snapshot of every
-  package's schema to the live instance. Verify a change against `mise run directus-local` before
-  deploying.
+  package's schema to the live instance. A PR's dev deploy tests a change.
 - **`src/`** — the TypeScript row types for the collections `schema.yaml` declares, exported for
   `clubspot-sync` and `gsuite-sync`, both of which read or write this data. `promoted_fields.target_field`
   names either a `people` column (`school`) or a `registrations` column (`share_contact`, answered

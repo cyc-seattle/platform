@@ -11,16 +11,12 @@ programs only - a class has no group of its own.
 
 ## Running locally
 
-Start a local Directus and Postgres with `mise run directus-local` from the repository root. It applies
-the merged schema, including this package's `google_groups` and `google_group_memberships`
-collections, to a fresh instance. Run the CLI once and the discovery pass populates `google_groups`
-from Workspace; nothing needs to be entered there by hand. What staff still set by hand is the link from a program to its group
+Run the CLI against dev's Directus. The discovery pass populates `google_groups` from Workspace;
+nothing needs to be entered there by hand. What staff still set by hand is the link from a program to its group
 (`programs.google_group_id`) - discovery can't infer that.
 
-Then run the CLI against it:
-
 ```sh
-DIRECTUS_URL=http://localhost:8055 DIRECTUS_TOKEN=... \
+DIRECTUS_URL=https://directus.<dev domain> DIRECTUS_TOKEN=... \
 pnpm exec gsuite-sync --dry-run
 ```
 
