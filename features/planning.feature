@@ -1,78 +1,99 @@
-Feature: Who can see and change plans and results
-  A plan holds one product's offerings, or, for the Operations Plan, what products share. A plan has
-  one draft, which changes, and saved versions, which never do. Results are the engine's P&L lines
-  and metrics for a plan. Wages are staff levels' hourly rates and salaried positions' salaries.
-  Bonus rates are bonus owners' rates. A plan reader sees them all.
-
-  Code defines Plan Reader and Plan Writer, and an admin grants them through groups. Step 11 of
-  https://github.com/cyc-seattle/workplace/issues/6 builds plans and their policies, and turns these
-  scenarios green.
-
-  Each login named for a policy is a Community user in a group that grants only that policy. The
-  run's rows include a plan for the run's product, with a draft and a saved version. Another user
-  started the plan. Each version has a row in every planning collection, and the engine has written
-  results for the saved version.
-
-  Background:
-    Given this run's users and rows on dev's Directus
+Feature: Who can see and change plans and their results
+  A plan sets out how one product will run in a season: its offerings, prices, schedule, staffing,
+  and budget. The Operations Plan holds what the products share. Each plan has one draft, which
+  planners edit, and saved versions, which never change once saved. One saved version of each plan
+  is active at a time. A plan's results are the P&L lines and metrics the planning engine computes
+  from it. Plans hold wages, which are the hourly rates of staff levels and the salaries of salaried
+  positions, and bonus rates, which are what each bonus owner earns. Anyone who reads plans sees all
+  of these. Plan Reader and Plan Writer are policies a group grants.
 
   @pending
-  Scenario Outline: The plan policies read every plan and its results, wages and bonus rates included
-    Then "<login>" can read every field of "plans"
-    And "<login>" can read "results"
+  Rule: Planners read every plan and its results, wages and bonus rates included
 
-    Examples:
-      | login       |
-      | Plan Reader |
-      | Plan Writer |
+    Scenario Outline: Each plan policy reads every plan in full
+      Given a user with the <policy> policy
+      Then they can read every detail of plans
+      And they can read results
 
-  @pending
-  Scenario: Plan Reader changes nothing
-    Then "Plan Reader" can't change "plans"
-    And "Plan Reader" can't change "results"
+      Examples:
+        | policy      |
+        | Plan Reader |
+        | Plan Writer |
 
   @pending
-  Scenario: Plan Writer starts a plan for a product, with a draft
-    Then "Plan Writer" can start a plan for a product, with a draft
+  Rule: A Plan Reader changes nothing
+
+    Example: A Plan Reader can't edit a plan or its results
+      Given a user with the Plan Reader policy
+      Then they can't change plans
+      And they can't change results
 
   @pending
-  Scenario: Plan Writer edits any plan's draft, including one someone else started
-    Then "Plan Writer" can create, read, update, and delete "the draft"
+  Rule: A Plan Writer starts a plan for a product, with a draft
+
+    Example: A Plan Writer starts a plan
+      Given a user with the Plan Writer policy
+      When they start a plan for a product
+      Then the plan has a draft they can edit
 
   @pending
-  Scenario: Plan Writer saves a draft as a version, and activates it
-    Then "Plan Writer" can save the draft as a version
-    And "Plan Writer" can activate a saved version
+  Rule: A Plan Writer edits any plan's draft, including one someone else started
+
+    Example: A Plan Writer edits another planner's draft
+      Given a user with the Plan Writer policy
+      And a plan someone else started
+      Then they can change a draft
 
   @pending
-  Scenario Outline: Nobody changes a saved version, not even an admin
-    Then "<login>" can read "the saved version"
-    And "<login>" can't change "the saved version"
-    And "<login>" can't move a draft's row into the saved version
-    And "<login>" can't make the saved version a draft again
+  Rule: A Plan Writer saves a draft as a version, and makes a saved version active
 
-    Examples:
-      | login       |
-      | Plan Writer |
-      | Admin       |
+    Example: A Plan Writer saves and activates a version
+      Given a user with the Plan Writer policy
+      Then they can save the draft as a version
+      And they can make a saved version active
 
   @pending
-  Scenario: MCP reaches what the REST API does, and no more
-    Then "Plan Writer" can create, read, update, and delete "the draft" over MCP
-    And "Plan Writer" can't change "the saved version" over MCP
-    And "Plan Reader" can't change "plans" over MCP
+  Rule: A saved version never changes, even for an admin
+
+    Example: A Plan Writer can't change a saved version
+      Given a user with the Plan Writer policy
+      Then they can read a saved version
+      But they can't change a saved version
+      And they can't move a row from the draft into a saved version
+      And they can't make a saved version a draft again
+
+    Example: An admin can't change a saved version either
+      Given a user with the Admin role
+      Then they can't change a saved version
+      And they can't make a saved version a draft again
 
   @pending
-  Scenario Outline: Nobody else reads plans or results
-    Then "<login>" can't read "plans"
-    And "<login>" can't read "results"
+  Rule: Only the planning engine writes results
 
-    Examples:
-      | login          |
-      | Community      |
-      | Crew           |
-      | CRM Writer     |
-      | Catalog Reader |
-      | Catalog Writer |
-      | clubspot-sync  |
-      | gsuite-sync    |
+    Example: A Plan Writer can't change results
+      Given a user with the Plan Writer policy
+      Then they can't change results
+
+  @pending
+  Rule: No one else reads plans or results
+
+    Scenario Outline: A role alone doesn't show plans
+      Given a user with the <role> role
+      Then they can't read plans
+      And they can't read results
+
+      Examples:
+        | role      |
+        | Community |
+        | Crew      |
+
+    Scenario Outline: The other policies don't show plans
+      Given a user with the <policy> policy
+      Then they can't read plans
+      And they can't read results
+
+      Examples:
+        | policy         |
+        | CRM Writer     |
+        | Catalog Reader |
+        | Catalog Writer |

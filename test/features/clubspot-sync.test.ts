@@ -1,7 +1,10 @@
-import { describeFeature } from "@amiceli/vitest-cucumber";
 import { expect } from "vitest";
-import { feature } from "./support.ts";
 import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
+import { canSet, describeAccessFeature, Step } from "./steps/index.ts";
+
+// The run's scenario seeds dev's Clubspot fake through Parse's REST API, runs the clubspot-sync
+// CronJob once as a Job, and reads the result through Directus's REST API. Its camp and people carry
+// the run's ID, so runs never depend on each other (cyc-seattle/isthmia#185).
 
 // The fake's seed, which the dev stack's clubspot-sync config names (contract: public test values).
 const CLUB_ID = "seedClub01";
@@ -21,8 +24,14 @@ async function create(className: string, objectId: string, fields: Record<string
   await proxyOk("clubspot-fake", 1337, "POST", `/parse/classes/${className}`, { objectId, ...fields }, parseHeaders);
 }
 
-describeFeature(feature("clubspot-sync.feature"), ({ Scenario }) => {
-  Scenario("A participant's registration becomes a person with a guardian", ({ Given, And, When, Then }) => {
+Step("it can move role assignments, event staffing, and group memberships to another person", async () => {
+  for (const collection of ["program_role_assignments", "event_staff", "google_group_memberships"]) {
+    await canSet(collection, "person_id");
+  }
+});
+
+describeAccessFeature("clubspot-sync.feature", {
+  "A participant's registration becomes a person with a guardian": ({ Given, And, When, Then }) => {
     const runId = newRunId();
     const id = (kind: string) => `${kind}${runId}`;
     const participant = {
@@ -122,5 +131,5 @@ describeFeature(feature("clubspot-sync.feature"), ({ Scenario }) => {
         },
       });
     });
-  });
+  },
 });

@@ -3,7 +3,7 @@ import type { PermissionAction } from "../../src/directus/client.ts";
 // Plain data (no `@pulumi/*` import) describing the Community role's policies (cyc-seattle/isthmia#166) - a
 // family or other signed-in community member reading their own teammates. `./index.ts` turns each
 // policy into a `DirectusPolicy` plus its `DirectusPermissionRule` rows, and
-// features/community-rules.feature checks them on dev. See docs/crm-schema.md's Community section
+// features/crm.feature checks them on dev. See docs/crm-schema.md's Community section
 // and the design doc for the shape this codifies.
 
 type Filter = Record<string, unknown>;

@@ -1,30 +1,30 @@
-Feature: What the engine's machine user can do
-  The engine reads plans and writes their results: P&L lines and metrics. It signs in as a machine
-  user, whose policies the backend stack defines in code. Step 11 of
-  https://github.com/cyc-seattle/workplace/issues/6 builds the user and turns its reads green, and
-  step 12 deploys the engine and turns its writes green.
-
-  The run's rows include a plan for the run's product, with a draft and a saved version, and results
-  for the saved version.
-
-  Background:
-    Given this run's users and rows on dev's Directus
+Feature: What the planning engine can do
+  The planning engine computes a plan's results: the P&L lines and metrics that show what a plan
+  will earn and cost. It works from the plan and from the catalog's prices and accounts. It runs on
+  its own, signed in with a service account, and needs nothing about the club's people.
 
   @pending
-  Scenario: The engine writes results and metrics
-    Then "Engine" can create, read, update, and delete "results"
+  Rule: The planning engine writes a plan's results
+
+    Example: The planning engine records results
+      Given the planning engine's service account
+      Then it can change results
 
   @pending
-  Scenario: The engine reads every plan, wages included, and changes none of it
-    Then "Engine" can read every field of "plans"
-    And "Engine" can't change "plans"
+  Rule: The planning engine reads every plan and the catalog, and changes neither
+
+    Example: The planning engine reads a plan in full, wages included
+      Given the planning engine's service account
+      Then it can read every detail of plans
+      And it can read the catalog
+      But it can't change plans
+      And it can't change the catalog
 
   @pending
-  Scenario: The engine reads nothing about people
-    Then "Engine" can't read "the CRM"
-    And "Engine" can't read "Clubspot's records"
-    And "Engine" can't read "groups"
+  Rule: The planning engine reads nothing about people
 
-  @pending
-  Scenario: Plan Writer doesn't write results
-    Then "Plan Writer" can't change "results"
+    Example: The planning engine can't read the CRM or Clubspot's records
+      Given the planning engine's service account
+      Then it can't read the CRM
+      And it can't read medical profiles
+      And it can't read Clubspot's records

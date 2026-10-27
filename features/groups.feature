@@ -1,69 +1,79 @@
-Feature: Groups grant policies
-  Who holds a policy beyond their role's is data, not code. A group links people to policies, and an
-  admin edits groups, their members, and their grants in the Data Studio. A hook keeps each user's
-  own policies equal to what their groups grant. A group never sets a role (`roles.feature`), and the
-  hook leaves machine users and the bootstrap admin alone. Step 8a of
-  https://github.com/cyc-seattle/workplace/issues/6 builds groups, and turns these scenarios green.
-
-  These scenarios grant CRM Writer, which reads medical profiles, where a Community or Crew user
-  reads none of the run's.
-
-  Background:
-    Given this run's users and rows on dev's Directus
+Feature: How groups grant access
+  Beyond their role, a person's access comes from the groups they're in. A group, such as the
+  Finance Committee, grants one or more policies. A policy is a set of things its holders may see or
+  change, such as CRM Writer or Plan Reader. An admin keeps the groups, their members, and what each
+  grants, in the Data Studio. A group's members are people in the CRM, so someone added to a group
+  before they ever sign in gets its access when they first do. Groups grant policies to people only:
+  they never set a role, and they never touch the syncs' service accounts or the admin account the
+  platform was set up with.
 
   @pending
-  Scenario: Joining a group adds its policies, and leaves the role alone
-    Given "Pat" is a person on the "Crew" role
-    When an admin adds "Pat" to a group that grants "CRM Writer"
-    Then "Pat" can read "medical_profiles"
-    And "Pat" holds the "Crew" role
+  Rule: Joining a group grants its policies, and leaves the person's role alone
+
+    Example: A volunteer joins a group that keeps the CRM
+      Given a user with the Crew role
+      When an admin adds them to a group that grants the CRM Writer policy
+      Then they can change the CRM
+      And they still hold the Crew role
 
   @pending
-  Scenario: Leaving a group takes its policies away
-    Given "Pat" is in a group that grants "CRM Writer"
-    When an admin removes "Pat" from the group
-    Then "Pat" can't read "medical_profiles"
+  Rule: Leaving a group takes its policies away
+
+    Example: A volunteer leaves the group
+      Given a user in a group that grants the CRM Writer policy
+      When an admin removes them from the group
+      Then they can't change the CRM
 
   @pending
-  Scenario: Dropping a group's grant takes it from every member
-    Given "Pat" is in a group that grants "CRM Writer"
-    When an admin drops "CRM Writer" from the group
-    Then "Pat" can't read "medical_profiles"
+  Rule: A group that stops granting a policy takes it from every member
+
+    Example: The group stops granting CRM Writer
+      Given a user in a group that grants the CRM Writer policy
+      When an admin stops the group granting it
+      Then they can't change the CRM
 
   @pending
-  Scenario: A policy two groups grant stays until both drop it
-    Given "Pat" is in two groups that grant "CRM Writer"
-    When an admin removes "Pat" from one of them
-    Then "Pat" can read "medical_profiles"
+  Rule: A person keeps a policy while any of their groups grants it
+
+    Example: A volunteer leaves one of two groups that grant the same policy
+      Given a user in two groups that each grant the CRM Writer policy
+      When an admin removes them from one of the groups
+      Then they can change the CRM
 
   @pending
-  Scenario: A person added before their first sign-in gets the group's policies once they sign in
-    Given "Pat" is a person with no login, in a group that grants "CRM Writer"
-    When "Pat" signs in for the first time
-    Then "Pat" can read "medical_profiles"
-    And "Pat" holds the "Community" role
+  Rule: Someone added to a group before they first sign in gets its policies when they do
+
+    Example: A new committee member signs in for the first time
+      Given a person in the CRM who has never signed in, in a group that grants the CRM Writer policy
+      When they sign in for the first time
+      Then they can change the CRM
+      And they hold the Community role
 
   @pending
-  Scenario Outline: The hook leaves machine users and the bootstrap admin alone
-    Given "Pat" is a person with a login
-    When an admin adds "Pat" to a group that grants "CRM Writer"
-    Then "<user>" keeps its role and policies
+  Rule: Groups never change the syncs' service accounts or the setup admin
 
-    Examples:
-      | user                |
-      | clubspot-sync       |
-      | gsuite-sync         |
-      | the bootstrap admin |
+    Example: Editing a group leaves the service accounts and the setup admin as they were
+      Given a user with the Crew role
+      When an admin adds them to a group that grants the CRM Writer policy
+      Then clubspot-sync's and gsuite-sync's service accounts keep their roles and policies
+      And so does the admin account the platform was set up with
 
   @pending
-  Scenario Outline: Only an admin manages groups, their members, and their grants
-    Then "Admin" can create, read, update, and delete "<collection>"
-    And "CRM Writer" can't create, update, or delete "<collection>"
-    And "Crew" can't create, update, or delete "<collection>"
-    And "Community" can't create, update, or delete "<collection>"
+  Rule: Only an admin keeps groups
 
-    Examples:
-      | collection     |
-      | groups         |
-      | group_members  |
-      | group_policies |
+    Example: An admin keeps groups, their members, and their grants
+      Given a user with the Admin role
+      Then they can change groups
+
+    Scenario Outline: No other role keeps groups
+      Given a user with the <role> role
+      Then they can't change groups
+
+      Examples:
+        | role      |
+        | Community |
+        | Crew      |
+
+    Example: Keeping the CRM doesn't let a volunteer keep groups
+      Given a user with the Crew role and the CRM Writer policy
+      Then they can't change groups

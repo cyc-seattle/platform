@@ -1,7 +1,21 @@
-import { defineSteps, describeFeature } from "@amiceli/vitest-cucumber";
-import { expect } from "vitest";
+import { defineParameterExpression, defineSteps, describeFeature } from "@amiceli/vitest-cucumber";
+import { afterAll, describe, expect, it } from "vitest";
+import type { DirectusSession } from "../directus.ts";
+import { devDirectusLicensed } from "../directus.ts";
 import { feature } from "../support.ts";
-import { as, deleteUsers, notBuilt, person, roleId, roleOf, setRole, userId } from "./logins.ts";
+import {
+  deleteUsers,
+  notBuilt,
+  policyNames,
+  roleNames,
+  roleOf,
+  roleId,
+  serviceNames,
+  setRole,
+  todaysRoleName,
+  userFor,
+  type Actor,
+} from "./logins.ts";
 import {
   admin,
   adminCreate,
@@ -15,23 +29,84 @@ import {
   runRows,
   type Row,
 } from "./rows.ts";
-import { targets, type Target } from "./sets.ts";
+import { recordNames, targets, type Target } from "./sets.ts";
 
-// The steps the access features share, registered once for every feature a test file describes. A
-// domain's test file imports this, adds its own steps with `defineSteps`, and calls
-// `describeAccessFeature`.
+// The steps the features share: who "they" are, and what they can see and change. A feature's test
+// file imports this, adds its own steps with `Step`, and calls `describeAccessFeature`.
 
-type Callback = (...args: any[]) => void | Promise<void>;
+type Callback = (...args: any[]) => unknown;
 
 // Registered per keyword: vitest-cucumber 7.0.0 matches a keyword-free Step in a Scenario and a
 // Background, but not in a Scenario Outline.
 export function Step(text: string, fn: Callback): void {
-  defineSteps(({ Given, When, Then, And }) => {
-    for (const define of [Given, When, Then, And]) {
-      define(text, fn);
+  // A step may return what its helper did; vitest-cucumber ignores it.
+  const step = fn as (...args: any[]) => void | Promise<void>;
+  defineSteps(({ Given, When, Then, And, But }) => {
+    for (const define of [Given, When, Then, And, But]) {
+      define(text, step);
     }
   });
 }
+
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** A parameter that takes one of `names`, or an outline's `<column>`, which the example fills in. */
+export function parameter(name: string, names: string[]): void {
+  const longestFirst = [...names].sort((a, b) => b.length - a.length).map(escape);
+  defineParameterExpression({
+    name,
+    regexp: new RegExp(`(?:${longestFirst.join("|")}|<\\w+>)`),
+    transformer: (value: string) => value,
+  });
+}
+
+parameter("policy", policyNames);
+parameter("role", roleNames);
+parameter("service", serviceNames);
+parameter("records", recordNames);
+
+/** The session "they" sign in with, and their user's id. */
+export interface They {
+  session(): Promise<DirectusSession>;
+  userId(): Promise<string>;
+}
+
+let they: They | undefined;
+
+export function setThey(next: They): void {
+  they = next;
+}
+
+function current(): They {
+  if (they === undefined) {
+    throw new Error("No Given has said who they are.");
+  }
+  return they;
+}
+
+const session = () => current().session();
+export const theirSession = session;
+
+const resets: (() => void)[] = [];
+
+/** Runs `reset` after each scenario, to clear what it left. */
+export function onEachScenario(reset: () => void): void {
+  resets.push(reset);
+}
+
+function actor(spec: Actor): They {
+  return {
+    session: async () => (await userFor(spec)).session,
+    userId: async () => (await userFor(spec)).userId,
+  };
+}
+
+Step("a user with the {policy} policy", (_, policy: string) => setThey(actor({ policies: [policy] })));
+Step("a user with the {role} role", (_, role: string) => setThey(actor({ role })));
+Step("a user with the {role} role and the {policy} policy", (_, role: string, policy: string) =>
+  setThey(actor({ role, policies: [policy] })),
+);
+Step("{service}'s service account", (_, service: string) => setThey(actor({ service })));
 
 const ACTIONS = ["create", "read", "update", "delete"] as const;
 type Action = (typeof ACTIONS)[number];
@@ -46,8 +121,6 @@ function phrase(actions: Action[], conjunction: string): string {
 
 /** Every ordered, non-empty subset of the four actions. */
 const subsets: Action[][] = Array.from({ length: 15 }, (_, i) => ACTIONS.filter((_, bit) => (i + 1) & (1 << bit)));
-
-const list = (names: string) => names.split(",").map((name) => name.trim());
 
 function rowIds(target: Target): string[] {
   return target.rows.map((key) => row[key]).filter((id) => id !== undefined);
@@ -68,35 +141,36 @@ function readQuery(target: Target, fields = "id"): string {
   return `/items/${target.collection}?fields=${encodeURIComponent(fields)}${filter}`;
 }
 
-async function can(login: string, actions: Action[], target: Target): Promise<void> {
-  const session = await as(login);
+async function can(actions: Action[], target: Target): Promise<void> {
+  await runRows();
+  const user = await session();
   const { collection } = target;
   const has = (action: Action) => actions.includes(action);
   if (has("create")) {
     // The rest of the actions work on the row just created.
     const data = await newRow(collection);
     const id = data["id"];
-    const create = await session.request("POST", `/items/${collection}`, data);
+    const create = await user.request("POST", `/items/${collection}`, data);
     if (create.status < 300) {
       created.push({ collection, id });
     }
     expect(create.status, `${collection} create: ${JSON.stringify(create.body)}`).toBe(200);
     if (has("read")) {
-      const read = await session.request("GET", itemPath(collection, id));
+      const read = await user.request("GET", itemPath(collection, id));
       expect(read.status, `${collection} read: ${JSON.stringify(read.body)}`).toBe(200);
     }
     if (has("update")) {
-      const update = await session.request("PATCH", itemPath(collection, id), change(collection));
+      const update = await user.request("PATCH", itemPath(collection, id), change(collection));
       expect(update.status, `${collection} update: ${JSON.stringify(update.body)}`).toBe(200);
     }
     if (has("delete")) {
-      const remove = await session.request("DELETE", itemPath(collection, id));
+      const remove = await user.request("DELETE", itemPath(collection, id));
       expect(remove.status, `${collection} delete: ${JSON.stringify(remove.body)}`).toBe(204);
     }
     return;
   }
   if (has("read")) {
-    const { status, body } = await session.request("GET", readQuery(target));
+    const { status, body } = await user.request("GET", readQuery(target));
     expect(status, `${collection} read: ${JSON.stringify(body)}`).toBe(200);
     const ids = rowIds(target);
     if (ids.length > 0) {
@@ -105,33 +179,34 @@ async function can(login: string, actions: Action[], target: Target): Promise<vo
   }
   if (has("update")) {
     for (const id of runRow(target)) {
-      const { status, body } = await session.request("PATCH", itemPath(collection, id), change(collection));
+      const { status, body } = await user.request("PATCH", itemPath(collection, id), change(collection));
       expect(status, `${collection} update: ${JSON.stringify(body)}`).toBe(200);
     }
   }
   if (has("delete")) {
     // A row of its own, so the run's row stays for the steps after.
     const item = await adminCreate(collection, await newRow(collection));
-    const { status, body } = await session.request("DELETE", itemPath(collection, item.id));
+    const { status, body } = await user.request("DELETE", itemPath(collection, item.id));
     expect(status, `${collection} delete: ${JSON.stringify(body)}`).toBe(204);
   }
 }
 
-async function cant(login: string, actions: Action[], target: Target): Promise<void> {
-  const session = await as(login);
+async function cant(actions: Action[], target: Target): Promise<void> {
+  await runRows();
+  const user = await session();
   const { collection } = target;
   for (const action of actions) {
     if (action === "create") {
       const data = await newRow(collection);
-      const { status, body } = await session.request("POST", `/items/${collection}`, data);
+      const { status, body } = await user.request("POST", `/items/${collection}`, data);
       if (status < 300) {
         created.push({ collection, id: data["id"] });
       }
       expect(status, `${collection} create: ${JSON.stringify(body)}`).toBe(403);
     } else if (action === "read") {
       // A role whose rules match none of the run's rows reads an empty list, not a 403: Crew, say,
-      // reading medical profiles through Community's own-child rule.
-      const { status, body } = await session.request("GET", readQuery(target));
+      // reading medical profiles through Community's own-family rule.
+      const { status, body } = await user.request("GET", readQuery(target));
       if (status !== 403) {
         expect(status, `${collection} read: ${JSON.stringify(body)}`).toBe(200);
         expect(body.data, `${collection} read`).toEqual([]);
@@ -140,162 +215,206 @@ async function cant(login: string, actions: Action[], target: Target): Promise<v
       for (const id of runRow(target)) {
         const method = action === "update" ? "PATCH" : "DELETE";
         const data = action === "update" ? change(collection) : undefined;
-        const { status, body } = await session.request(method, itemPath(collection, id), data);
+        const { status, body } = await user.request(method, itemPath(collection, id), data);
         expect(status, `${collection} ${action}: ${JSON.stringify(body)}`).toBe(403);
       }
     }
   }
 }
 
-Step("this run's users and rows on dev's Directus", async () => {
-  await runRows();
-});
-
-for (const actions of subsets) {
-  Step(`{string} can ${phrase(actions, "and")} {string}`, async (_, login: string, target: string) => {
-    for (const each of targets(target)) {
-      await can(login, actions, each);
-    }
-  });
-}
-const negatives: [string, Action[]][] = [
-  ...subsets.map((actions): [string, Action[]] => [phrase(actions, "or"), actions]),
-  ["change", ["create", "update", "delete"]],
+const checks: [string, (records: string) => Promise<void>][] = [
+  ...subsets.map((actions): [string, (records: string) => Promise<void>] => [
+    `can ${phrase(actions, "and")}`,
+    async (records) => {
+      for (const target of targets(records)) {
+        await can(actions, target);
+      }
+    },
+  ]),
+  ...[
+    ...subsets.map((actions): [string, Action[]] => [phrase(actions, "or"), actions]),
+    ["change", ["create", "update", "delete"]] as [string, Action[]],
+  ].map(([text, actions]): [string, (records: string) => Promise<void>] => [
+    `can't ${text}`,
+    async (records) => {
+      for (const target of targets(records)) {
+        await cant(actions, target);
+      }
+    },
+  ]),
+  [
+    "can change",
+    async (records) => {
+      for (const target of targets(records)) {
+        await can([...ACTIONS], target);
+      }
+    },
+  ],
 ];
-for (const [text, actions] of negatives) {
-  Step(`{string} can't ${text} {string}`, async (_, login: string, target: string) => {
-    for (const each of targets(target)) {
-      await cant(login, actions, each);
-    }
-  });
+for (const pronoun of ["they", "it"]) {
+  for (const [text, check] of checks) {
+    Step(`${pronoun} ${text} {records}`, (_, records: string) => check(records));
+  }
 }
 
 // No field-level hiding: a reader gets wages and bonus rates with the rest.
-Step("{string} can read every field of {string}", async (_, login: string, target: string) => {
-  const session = await as(login);
-  for (const each of targets(target)) {
-    const { status, body } = await session.request("GET", readQuery(each, "*"));
-    expect(status, `${each.collection}: ${JSON.stringify(body)}`).toBe(200);
-    for (const key of each.rows) {
+for (const pronoun of ["they", "it"]) {
+  Step(`${pronoun} can read every detail of {records}`, (_, records: string) => readsEveryDetail(records));
+}
+
+async function readsEveryDetail(records: string): Promise<void> {
+  await runRows();
+  const user = await session();
+  for (const target of targets(records)) {
+    const { status, body } = await user.request("GET", readQuery(target, "*"));
+    expect(status, `${target.collection}: ${JSON.stringify(body)}`).toBe(200);
+    for (const key of target.rows) {
       const read = body.data.find((item: Row) => item["id"] === row[key]);
       expect(read, key).toEqual(fixture[key]);
     }
   }
-});
+}
 
-Step("{string} can read only {string} of {string}", async (_, login: string, fields: string, collection: string) => {
-  const session = await as(login);
-  const [target] = targets(collection) as [Target];
-  const allowed = list(fields);
-  const all = await session.request("GET", readQuery(target, "*"));
+/** Checks that "they" read exactly `allowed` of the run's row in `collection`, and no other field. */
+export async function readOnly(collection: string, allowed: string[]): Promise<void> {
+  await runRows();
+  const user = await session();
+  const target: Target = { collection, rows: [collection] };
+  const all = await user.request("GET", readQuery(target, "*"));
   expect(all.status, JSON.stringify(all.body)).toBe(200);
   expect(Object.keys(all.body.data[0] ?? {}).sort()).toEqual([...allowed].sort());
   const others = Object.keys(fixture[collection] ?? {}).filter((field) => !allowed.includes(field));
-  const denied = await session.request("GET", readQuery(target, others.join(",")));
+  const denied = await user.request("GET", readQuery(target, others.join(",")));
   expect(denied.status, JSON.stringify(denied.body)).toBe(403);
-});
+}
 
-Step("{string} can set {string} on {string}", async (_, login: string, field: string, collection: string) => {
-  // The value it already has, so the run's row is unchanged.
+/** Checks that "they" can set `field` on the run's row in `collection`, to the value it already has. */
+export async function canSet(collection: string, field: string): Promise<void> {
+  await runRows();
   const { status, body } = await (
-    await as(login)
+    await session()
   ).request("PATCH", itemPath(collection, row[collection]), { [field]: fixture[collection]?.[field] });
   expect(status, JSON.stringify(body)).toBe(200);
-});
+}
 
-Step("{string} can sign in to the Data Studio", async (_, login: string) => {
-  const globals = await (await as(login)).ok("GET", "/policies/me/globals");
+Step("they can open the Data Studio", async () => {
+  const globals = await (await session()).ok("GET", "/policies/me/globals");
   expect(globals.app_access).toBe(true);
 });
 
-Step("{string} holds the {string} role", async (_, login: string, role: string) => {
-  expect(await roleOf(login)).toBe(role);
-});
+for (const text of ["they hold the {role} role", "they still hold the {role} role"]) {
+  Step(text, async (_, role: string) => {
+    expect(await roleOf(await current().userId())).toBe(todaysRoleName(role));
+  });
+}
 
-Step("every person's user holds one of {string}", async (_, roles: string) => {
+Step("every person who signs in holds the Community, Crew, or Admin role", async () => {
   const filter = encodeURIComponent(JSON.stringify({ directus_user_id: { _nnull: true } }));
   const people = await (
     await admin()
   ).ok("GET", `/items/people?filter=${filter}&fields=id,directus_user_id.role.name&limit=-1`);
   for (const { id, directus_user_id: user } of people) {
-    expect(list(roles), `person ${id}`).toContain(user?.role?.name);
+    expect(["Community", "Crew", "Admin"].map(todaysRoleName), `person ${id}`).toContain(user?.role?.name);
   }
 });
 
-Step("{string} is a person with no login", async (_, name: string) => {
-  await person(name, undefined);
+Step("an admin gives them the {role} role", async (_, role: string) => {
+  await setRole(await current().userId(), role);
 });
 
-Step("{string} is a person with a login", async (_, name: string) => {
-  await person(name, "Community");
-});
-
-Step("{string} is a person on the {string} role", async (_, name: string, role: string) => {
-  await person(name, role);
-});
-
-Step("{string} is the run's child's guardian, on the {string} role", async (_, name: string, role: string) => {
-  const { personId } = await person(name, role);
-  await adminCreate("contacts", await newRow("contacts", { contact_id: personId, relationship_type: "guardian" }));
-});
-
-Step("an admin gives {string} the {string} role", async (_, name: string, role: string) => {
-  await setRole(name, role);
-});
-
-Step("{string} can't change a user's role, their own included", async (_, login: string) => {
-  const session = await as(login);
-  const someone = `Someone ${login}`;
-  await person(someone, "Community");
+Step("they can't change anyone's role, their own included", async () => {
+  const user = await session();
+  const someone = await userFor({ role: "Community" });
   const adminRole = await roleId("Administrator");
-  for (const [name, path] of [
-    [login, "/users/me"],
-    [someone, `/users/${await userId(someone)}`],
+  for (const [userId, path] of [
+    [await current().userId(), "/users/me"],
+    [someone.userId, `/users/${someone.userId}`],
   ] as const) {
-    const before = await roleOf(name);
-    await session.request("PATCH", path, { role: adminRole });
-    expect(await roleOf(name), name).toBe(before);
+    const before = await roleOf(userId);
+    await user.request("PATCH", path, { role: adminRole });
+    expect(await roleOf(userId), path).toBe(before);
   }
 });
 
+// Groups, and a first sign-in through the club's single sign-on, come with step 8a.
 for (const text of [
-  "{string} is in a group that grants {string}",
-  "{string} is in two groups that grant {string}",
-  "{string} is a person with no login, in a group that grants {string}",
-  "an admin adds {string} to a group that grants {string}",
-  "an admin removes {string} from the group",
-  "an admin removes {string} from one of them",
-  "an admin drops {string} from the group",
-  "{string} signs in for the first time",
-  "{string} signs in again",
-  "{string} keeps its role and policies",
+  "a person in the CRM who has never signed in",
+  "a person in the CRM who has never signed in, in a group that grants the {policy} policy",
+  "a user in a group that grants the {policy} policy",
+  "a user in two groups that each grant the {policy} policy",
+  "they sign in for the first time",
+  "they sign in again",
+  "an admin adds them to a group that grants the {policy} policy",
+  "an admin removes them from the group",
+  "an admin removes them from one of the groups",
+  "an admin stops the group granting it",
+  "clubspot-sync's and gsuite-sync's service accounts keep their roles and policies",
+  "so does the admin account the platform was set up with",
 ]) {
   Step(text, () => notBuilt("8a"));
 }
 
-/** Describes an access feature with the shared steps, and deletes the run's rows and users after. */
-export function describeAccessFeature(name: string): void {
+/** A scenario's own steps, for one whose steps no other feature shares. */
+export type ScenarioSteps = (steps: Record<"Given" | "When" | "Then" | "And" | "But", Callback>) => void;
+
+interface Declarable {
+  description: string;
+  examples?: unknown;
+}
+
+/**
+ * Describes a feature on the shared steps, plus any scenario's own, declaring every scenario,
+ * pending ones included, so a typo in a pending scenario's step fails the run too. Deletes the run's
+ * rows and users after.
+ */
+export function describeAccessFeature(name: string, ownSteps: Record<string, ScenarioSteps> = {}): void {
   const parsed = feature(name);
+  if (parsed.tags.has("licensed") && !devDirectusLicensed()) {
+    describe.skip(`Feature: ${parsed.name}`, () => {
+      it("is skipped: dev's Directus is unlicensed (backend:licensed is false in stacks/backend/Pulumi.dev.yaml)", () => {});
+    });
+    return;
+  }
+
+  // vitest-cucumber runs AfterAllScenarios after each Rule, so cleanup waits for the whole file.
+  afterAll(async () => {
+    // Rows first: a person's row points at its user.
+    const failures = [...(await deleteRows()), ...(await deleteUsers())];
+    if (failures.length > 0) {
+      throw new Error(`Couldn't clean up:\n${failures.join("\n")}`);
+    }
+  });
+
   describeFeature(
     parsed,
-    ({ Background, AfterAllScenarios, Scenario, ScenarioOutline }) => {
-      AfterAllScenarios(async () => {
-        // Rows first: a person's row points at its user.
-        const failures = [...(await deleteRows()), ...(await deleteUsers())];
-        if (failures.length > 0) {
-          throw new Error(`Couldn't clean up:\n${failures.join("\n")}`);
+    ({ AfterEachScenario, Background, Rule, Scenario, ScenarioOutline }) => {
+      // After, not before: a Background runs ahead of BeforeEachScenario.
+      AfterEachScenario(() => {
+        they = undefined;
+        for (const reset of resets) {
+          reset();
         }
       });
-
-      Background(() => {});
-
-      // Every scenario, pending or not, so a step a pending one names must exist.
-      for (const scenario of parsed.scenarii) {
-        if ("examples" in scenario) {
-          ScenarioOutline(scenario.description, () => {});
-        } else {
-          Scenario(scenario.description, () => {});
+      if (parsed.background) {
+        Background(() => {});
+      }
+      const declare = (list: readonly Declarable[], scenario: typeof Scenario, outline: typeof ScenarioOutline) => {
+        for (const each of list) {
+          if ("examples" in each) {
+            outline(each.description, () => {});
+          } else {
+            scenario(each.description, (ownSteps[each.description] ?? (() => {})) as Parameters<typeof Scenario>[1]);
+          }
         }
+      };
+      declare(parsed.scenarii, Scenario, ScenarioOutline);
+      for (const rule of parsed.rules) {
+        Rule(rule.name, ({ RuleBackground, RuleScenario, RuleScenarioOutline }) => {
+          if (rule.background) {
+            RuleBackground(() => {});
+          }
+          declare(rule.scenarii, RuleScenario as typeof Scenario, RuleScenarioOutline as typeof ScenarioOutline);
+        });
       }
     },
     { excludeTags: ["pending"] },

@@ -1,116 +1,69 @@
-Feature: The three roles
-  Every user holds one of three roles, each with its own base access. Community is every user's role
-  when they first sign in: a family's view of its own children and their teammates, which
-  `community-rules.feature` pins in full. Crew is volunteers and staff: it reads rosters, and carries
-  Community's policies too, so a volunteer who is also a parent keeps their family view. Admin has
-  Directus's admin access. An admin changes a user's role by hand. Groups never set a role; they only
-  grant more policies (`groups.feature`).
-
-  Step 8a of https://github.com/cyc-seattle/workplace/issues/6 builds the Crew and Admin roles, and
-  folds Guardian's rules into Community. Until then, the Crew login signs in on today's Coach role,
-  whose rules Crew keeps.
-
-  Each run works on rows of its own: a program, a camp with one session and class, and a child
-  registered in it, with one guardian and a medical profile. The Community login is that child's
-  guardian. A second child, in another family, is registered in the same class.
-
-  Background:
-    Given this run's users and rows on dev's Directus
+Feature: Who holds which role
+  Everyone who signs in to the club's data holds one of three roles, which sets their base access.
+  Community is for the club's families and members, who see their own children and their teammates.
+  Crew is for its volunteers and staff, who read the rosters they run programs from and keep a
+  family's view of their own children. Admin runs the platform. Anything beyond a role's base
+  access, such as keeping the CRM or planning a season, comes from a group. The Data Studio is the
+  web app where the club reads and edits its data.
 
   @pending
-  Scenario: Every person's user holds exactly one of the three roles
-    Then every person's user holds one of "Community, Crew, Admin"
+  Rule: Everyone who signs in holds the Community, Crew, or Admin role
+
+    Example: No one holds a role outside the three
+      Then every person who signs in holds the Community, Crew, or Admin role
 
   @pending
-  Scenario: A new sign-in gets Community
-    Given "Pat" is a person with no login
-    When "Pat" signs in for the first time
-    Then "Pat" holds the "Community" role
+  Rule: A person who signs in for the first time holds the Community role
+
+    Example: A parent signs in for the first time
+      Given a person in the CRM who has never signed in
+      When they sign in for the first time
+      Then they hold the Community role
+
+  Rule: Only an admin changes a person's role
+
+    @pending
+    Example: An admin makes a volunteer Crew
+      Given a user with the Community role
+      When an admin gives them the Crew role
+      Then they hold the Crew role
+      And they can read the rosters
+
+    @pending
+    Scenario Outline: No other role changes a role, their own included
+      Given a user with the <role> role
+      Then they can't change anyone's role, their own included
+
+      Examples:
+        | role      |
+        | Community |
+        | Crew      |
+
+    @pending
+    Example: Keeping the CRM doesn't let a volunteer change roles
+      Given a user with the Crew role and the CRM Writer policy
+      Then they can't change anyone's role, their own included
 
   @pending
-  Scenario: An admin makes a person Crew
-    Given "Pat" is a person with a login
-    When an admin gives "Pat" the "Crew" role
-    Then "Pat" holds the "Crew" role
-    And "Pat" can read "registration_entries"
+  Rule: Signing in again keeps a person's role
 
-  @pending
-  Scenario: A Crew member who signs in again is still Crew
-    Given "Pat" is a person on the "Crew" role
-    When "Pat" signs in again
-    Then "Pat" holds the "Crew" role
+    Example: A Crew member signs in again
+      Given a user with the Crew role
+      When they sign in again
+      Then they still hold the Crew role
 
-  @pending
-  Scenario Outline: Only an admin changes a user's role
-    Then "<login>" can't change a user's role, their own included
+  Rule: Every role opens the Data Studio
 
-    Examples:
-      | login      |
-      | Community  |
-      | Crew       |
-      | CRM Writer |
+    Scenario Outline: Crew and Admin open the Data Studio
+      Given a user with the <role> role
+      Then they can open the Data Studio
 
-  # Community's Data Studio access is https://github.com/cyc-seattle/platform/issues/49.
-  @pending
-  Scenario Outline: Each role opens the Data Studio
-    Then "<login>" can sign in to the Data Studio
+      Examples:
+        | role  |
+        | Crew  |
+        | Admin |
 
-    Examples:
-      | login     |
-      | Community |
-      | Crew      |
-      | Admin     |
-
-  Scenario Outline: Crew reads rosters, and changes nothing
-    Then "Crew" can read "<collection>"
-    And "Crew" can't create, update, or delete "<collection>"
-
-    Examples:
-      | collection           |
-      | programs             |
-      | camps                |
-      | sessions             |
-      | classes              |
-      | registration_entries |
-      | people               |
-
-  Scenario Outline: Crew reads nothing else
-    Then "Crew" can't read "<collection>"
-
-    Examples:
-      | collection               |
-      | medical_profiles         |
-      | contacts                 |
-      | contact_points           |
-      | participants             |
-      | registrations            |
-      | registration_billing     |
-      | program_role_assignments |
-      | sync_tasks               |
-      | audit_findings           |
-
-  @pending
-  Scenario: A Crew member who is also a parent keeps their family view
-    Given "Pat" is the run's child's guardian, on the "Crew" role
-    Then "Pat" can read "medical_profiles"
-
-  @pending
-  Scenario Outline: A Community member reads their own child's records
-    Then "Community" can read "<collection>"
-
-    Examples:
-      | collection           |
-      | people               |
-      | medical_profiles     |
-      | participants         |
-      | registrations        |
-      | registration_entries |
-
-  @pending
-  Scenario Outline: A Community member can't change their child's person or medical profile
-    Then "Community" can't update "<collection>"
-
-    Examples:
-      | collection       |
-      | people           |
-      | medical_profiles |
+    @pending
+    Example: A family member opens the Data Studio
+      Given a user with the Community role
+      Then they can open the Data Studio

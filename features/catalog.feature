@@ -1,68 +1,59 @@
 Feature: Who can see and change the catalog
-  The catalog is the `core` domain: products, accounts, qualifications and their covers, boat
-  classes, and resource kinds. Code defines Catalog Reader and Catalog Writer, and an admin grants
-  them through groups. Step 9 of https://github.com/cyc-seattle/workplace/issues/6 builds the
-  catalog and its policies, and turns these scenarios green, except gsuite-sync's, which step 10
-  does.
-
-  Each login named for a policy is a Community user in a group that grants only that policy. The
-  run's rows include a product in the catalog.
-
-  Background:
-    Given this run's users and rows on dev's Directus
+  The catalog lists what the club offers and how it accounts for it: its products and their prices,
+  the revenue accounts they post to, the qualifications a sailor can hold, the boat classes, the kinds
+  of resource a program uses, and the programs each product runs. Planners read it to build plans.
+  Only the few people who set prices and accounts may change it, through the Catalog Writer policy a
+  group grants. Catalog Reader lets someone look it up without changing it.
 
   @pending
-  Scenario Outline: Catalog Reader reads the catalog, and changes nothing
-    Then "Catalog Reader" can read "<collection>"
-    And "Catalog Reader" can't create, update, or delete "<collection>"
+  Rule: A Catalog Reader reads the catalog, and changes nothing
 
-    Examples:
-      | collection           |
-      | products             |
-      | accounts             |
-      | qualifications       |
-      | qualification_covers |
-      | boat_classes         |
-      | resource_kinds       |
+    Example: A Catalog Reader looks up the catalog
+      Given a user with the Catalog Reader policy
+      Then they can read the catalog
+      But they can't change the catalog
 
   @pending
-  Scenario Outline: Catalog Writer keeps the catalog
-    Then "Catalog Writer" can create, read, update, and delete "<collection>"
+  Rule: A Catalog Writer keeps the catalog, programs included
 
-    Examples:
-      | collection           |
-      | products             |
-      | accounts             |
-      | qualifications       |
-      | qualification_covers |
-      | boat_classes         |
-      | resource_kinds       |
+    Example: A Catalog Writer adds, edits, and removes the catalog's records
+      Given a user with the Catalog Writer policy
+      Then they can change the catalog
 
   @pending
-  Scenario Outline: The plan policies and the engine read the catalog, and change none of it
-    Then "<login>" can read "the catalog"
-    And "<login>" can't change "the catalog"
+  Rule: A product that runs programs can't be deleted
 
-    Examples:
-      | login       |
-      | Plan Reader |
-      | Plan Writer |
-      | Engine      |
-
-  # gsuite-sync's revenue-account audit reads the catalog once step 10 moves it off
-  # `programs.revenue_account`.
-  @pending
-  Scenario: gsuite-sync reads products and their revenue accounts
-    Then "gsuite-sync" can read "products"
-    And "gsuite-sync" can read "accounts"
+    Example: A Catalog Writer tries to delete a product with a program
+      Given a user with the Catalog Writer policy
+      And a product that runs a program
+      When they delete the product
+      Then they're refused, and the product stays
 
   @pending
-  Scenario Outline: Nobody else reads the catalog
-    Then "<login>" can't read "the catalog"
+  Rule: Planners read the catalog, and change nothing in it
 
-    Examples:
-      | login         |
-      | Community     |
-      | Crew          |
-      | CRM Writer    |
-      | clubspot-sync |
+    Scenario Outline: Each plan policy reads the catalog
+      Given a user with the <policy> policy
+      Then they can read the catalog
+      But they can't change the catalog
+
+      Examples:
+        | policy      |
+        | Plan Reader |
+        | Plan Writer |
+
+  @pending
+  Rule: Only those who keep the catalog or plan see prices and accounts
+
+    Scenario Outline: A role alone doesn't show prices and accounts
+      Given a user with the <role> role
+      Then they can't read products and accounts
+
+      Examples:
+        | role      |
+        | Community |
+        | Crew      |
+
+    Example: Keeping the CRM doesn't show prices and accounts
+      Given a user with the CRM Writer policy
+      Then they can't read products and accounts

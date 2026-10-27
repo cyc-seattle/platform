@@ -102,6 +102,12 @@ describe("Directus on the cluster", () => {
     expect(resources.filter((r) => r.type === "pulumi:pulumi:StackReference")).toEqual([]);
   });
 
+  // The deepest Community rule nests deeper than the default (test/community-rules.test.ts), and
+  // crm.feature shows it still resolves (cyc-seattle/isthmia#175).
+  it("leaves MAX_RELATIONAL_DEPTH at Directus's default", () => {
+    expect(envNames("directus")).not.toHaveProperty("MAX_RELATIONAL_DEPTH");
+  });
+
   it("keeps its connection pool small", () => {
     expect(envNames("directus")).toMatchObject({ DB_POOL__MAX: "4", PUBLIC_URL: "https://directus.dev.example.com" });
   });

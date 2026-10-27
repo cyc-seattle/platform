@@ -215,6 +215,7 @@ export const changes: Record<string, () => Row> = {
   audit_findings: () => ({ detail: "A changed test finding." }),
   google_groups: () => ({ description: "Changed." }),
   google_group_memberships: () => ({ added_at: new Date().toISOString() }),
+  promoted_fields: () => ({ labels: ["Changed"] }),
 };
 
 /** A new row for `collection`, with `fixed`'s fields in place of the builder's. */
