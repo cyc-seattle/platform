@@ -28,7 +28,7 @@ Feature: The Community role's rules (cyc-seattle/isthmia#166)
 
   Edna Krabappel is the Laser Race Team's Parent Coordinator. Seymour Skinner volunteers for the team
   in another role. Groundskeeper Willie was its Parent Coordinator until three days ago. Hans Moleman
-  signs in, but no one in the CRM has his email.
+  signs in, but no one in the CRM has his email. Bart, Todd, and Milhouse each have a medical profile.
 
   Background:
     Given this run's Community fixtures on dev's Directus
@@ -90,8 +90,23 @@ Feature: The Community role's rules (cyc-seattle/isthmia#166)
     When "Marge" reads the "Todd" participant
     Then it has only the fields "id, person_id"
 
-  Scenario: Nobody reads medical profiles or contact points
-    Then every login gets nothing from "medical_profiles, contact_points"
+  Scenario: Nobody reads contact points
+    Then every login gets nothing from "contact_points"
+
+  # Guardian's rules join Community in step 8a of https://github.com/cyc-seattle/workplace/issues/6.
+  @pending
+  Scenario Outline: A family reads its own children's medical profiles, and no one else's
+    When "<login>" reads medical profiles
+    Then they see the medical profiles of exactly "<children>"
+
+    Examples:
+      | login | children |
+      | Marge | Bart     |
+      | Ned   | Todd     |
+      | Kirk  | Milhouse |
+      | Lenny |          |
+      | Edna  |          |
+      | Hans  |          |
 
   Scenario Outline: A contacts read holds the viewer's own guardian link, and opted-in teammates' links
     When "<login>" reads contacts

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { describeFeature } from "@amiceli/vitest-cucumber";
 import { describe, expect, it } from "vitest";
 import { ACTIVE_CAMP, PARENT_COORDINATOR, communityPolicies } from "../../stacks/backend/community-rules.ts";
@@ -212,6 +213,10 @@ async function createFixtures(): Promise<void> {
 
   for (const [key, fields] of Object.entries(people)) {
     personId[key] = (await createItem("people", fields)).id;
+  }
+
+  for (const child of ["Bart", "Todd", "Milhouse"]) {
+    await createItem("medical_profiles", { id: randomUUID(), person_id: personId[child], allergies: "none" });
   }
 
   const guardianships = [
@@ -665,7 +670,21 @@ if (!devDirectusLicensed()) {
       Scenario("Opting out hides a guardian's contact on the next read", () => {});
       Scenario("A family writes only its own share_contact", () => {});
       Scenario("Another family's registration comes back through the names policy only", () => {});
-      Scenario("Nobody reads medical profiles or contact points", () => {});
+      Scenario("Nobody reads contact points", () => {});
+      ScenarioOutline(
+        "A family reads its own children's medical profiles, and no one else's",
+        ({ When, Then }, variables) => {
+          When('"<login>" reads medical profiles', async () => {
+            ({ data: rows } = await readAs(variables["login"], "medical_profiles"));
+          });
+          Then('they see the medical profiles of exactly "<children>"', () => {
+            const children: string = variables["children"];
+            expect(new Set(rows.map((row) => row["person_id"]))).toEqual(
+              new Set(children === "" ? [] : list(children).map((name) => personId[name])),
+            );
+          });
+        },
+      );
       // Two grants union here: family's MY_GUARDIAN_LINK, for the viewer's own link, and contacts'
       // SHARED_GUARDIAN_LINK, for an opted-in teammate's, which the roster needs to place a guardian.
       ScenarioOutline(
@@ -772,5 +791,6 @@ if (!devDirectusLicensed()) {
         });
       });
     },
+    { excludeTags: ["pending"] },
   );
 }
