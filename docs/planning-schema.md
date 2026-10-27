@@ -67,6 +67,11 @@ erDiagram
         uuid id PK
         uuid product_id FK "unique, kind program"
     }
+    organizations {
+        uuid id PK
+        string name
+        int fiscal_year_start_month "1-12"
+    }
     qualification_covers {
         uuid id PK
         uuid qualification_id FK
@@ -90,6 +95,8 @@ erDiagram
         string disposition "mapped|ignored"
     }
 ```
+
+`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year, and nothing links to it yet.
 
 ### Versioning
 

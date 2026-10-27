@@ -182,6 +182,60 @@ collections:
       versioning: false
     schema:
       name: resource_kinds
+  - collection: programs
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: programs
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: school
+      item_duplication_fields: null
+      note: >-
+        The durable catalog entry (e.g. Youth Camp, LTS Weekday) a class links
+        to by hand. Not Clubspot's Camp - see camps.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: programs
+  - collection: organizations
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: organizations
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: corporate_fare
+      item_duplication_fields: null
+      note: A legal entity that keeps its own books. The fiscal year is set here, per organization.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: organizations
 fields:
   - collection: accounts
     field: id
@@ -1267,6 +1321,322 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: programs
+    field: id
+    type: uuid
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: name
+    type: string
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: revenue_account
+    type: string
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: revenue_account
+      group: null
+      hidden: false
+      interface: input
+      note: >-
+        The finance chart-of-accounts code this program's revenue rolls up to, hand-set by staff -
+        never written by a sync. Null means the program isn't mapped to an account yet.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: revenue_account
+      table: programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: product_id
+    type: uuid
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: product_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The product this program is a subtype of, which must be of kind program. Null until the backfill sets it.
+      options:
+        filter:
+          kind:
+            _eq: program
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product_id
+      table: programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: products
+      foreign_key_column: id
+  - collection: products
+    field: programs
+    type: alias
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: programs
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: "The product's program subtype row: one at most, for kind program."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: organizations
+    field: id
+    type: uuid
+    meta:
+      collection: organizations
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: organizations
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: organizations
+    field: name
+    type: string
+    meta:
+      collection: organizations
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: organizations
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: organizations
+    field: fiscal_year_start_month
+    type: integer
+    meta:
+      collection: organizations
+      conditions: null
+      display: null
+      display_options: null
+      field: fiscal_year_start_month
+      group: null
+      hidden: false
+      interface: input
+      note: "The month the fiscal year starts in: 1 for January."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation:
+        _and:
+          - fiscal_year_start_month:
+              _gte: 1
+          - fiscal_year_start_month:
+              _lte: 12
+      validation_message: Must be a month number, 1 to 12.
+      width: full
+    schema:
+      name: fiscal_year_start_month
+      table: organizations
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
 relations:
   - collection: accounts
     field: contra_account_id
@@ -1373,3 +1743,24 @@ relations:
       constraint_name: qualification_covers_qualification_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: programs
+    field: product_id
+    related_collection: products
+    meta:
+      junction_field: null
+      many_collection: programs
+      many_field: product_id
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: programs
+      sort_field: null
+    schema:
+      table: programs
+      column: product_id
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: programs_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT

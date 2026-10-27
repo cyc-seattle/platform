@@ -73,8 +73,8 @@ describe("subtypes", () => {
         expect(field.meta.options?.filter).toEqual({ kind: { _eq: kind } });
       });
 
-      it(`deletes the ${subtype} row with its ${base} row`, () => {
-        expect(findRelation(subtype, foreignKey).schema.on_delete).toBe("CASCADE");
+      it(`blocks deleting a ${base} row that has a ${subtype} row`, () => {
+        expect(findRelation(subtype, foreignKey).schema.on_delete).toBe("RESTRICT");
       });
 
       it(`reads the ${subtype} row from ${base}.${alias}`, () => {

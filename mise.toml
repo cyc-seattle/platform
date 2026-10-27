@@ -72,14 +72,6 @@ run = "./scripts/each-stack up --yes"
 description = "Build the published package and the workspace's packages into their dist/"
 run = "pnpm run -r --include-workspace-root build"
 
-[tasks.directus-local]
-description = "Bring up local Directus and Postgres containers, and apply schemas/*.yaml to them"
-run = "./scripts/directus-local up"
-
-[tasks.directus-local-down]
-description = "Tear down the local Directus and Postgres containers and their volume"
-run = "./scripts/directus-local down"
-
 [tasks.reset]
 description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
 run = "./scripts/reset"
