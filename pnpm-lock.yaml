@@ -149,6 +149,8 @@ importers:
         specifier: ^3.18.3
         version: 3.19.0
 
+  packages/planning-engine: {}
+
 packages:
 
   '@amiceli/vitest-cucumber@7.0.0':
