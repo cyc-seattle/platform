@@ -33,10 +33,9 @@ const policySteps: Record<string, string> = {
   "Plan Writer": "11",
 };
 
-const services: Record<string, string | undefined> = {
+const services: Record<string, string> = {
   "clubspot-sync": "Clubspot Sync",
   "gsuite-sync": "Gsuite Sync",
-  "the planning engine": undefined,
 };
 
 /** The name of today's role with a role's access. */
@@ -94,7 +93,7 @@ export async function createUser(signIn: string, role: string): Promise<User> {
 /** Today's role for an actor, or the step that builds it. */
 function todaysRole({ role, policies = [], service }: Actor): string {
   if (service !== undefined) {
-    return services[service] ?? notBuilt("11");
+    return services[service]!;
   }
   if (role !== undefined && policies.length === 0) {
     return todaysRoles[role]!;

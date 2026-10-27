@@ -1,19 +1,17 @@
-Feature: Who can see and change plans and their results
+Feature: Who can see and change plans
   A plan sets out how one product will run in a season: its offerings, prices, schedule, staffing,
   and budget. The Operations Plan holds what the products share. Each plan has one draft, which
   planners edit, and saved versions, which never change once saved. One saved version of each plan
-  is active at a time. A plan's results are the P&L lines and metrics the planning engine computes
-  from it. Plans hold wages, which are the hourly rates of staff levels and the salaries of salaried
+  is active at a time. Plans hold wages, which are the hourly rates of staff levels and the salaries of salaried
   positions, and bonus rates, which are what each bonus owner earns. Anyone who reads plans sees all
   of these. Plan Reader and Plan Writer are policies a group grants.
 
   @pending
-  Rule: Planners read every plan and its results, wages and bonus rates included
+  Rule: Planners read every plan, wages and bonus rates included
 
     Scenario Outline: Each plan policy reads every plan in full
       Given a user with the <policy> policy
       Then they can read every detail of plans
-      And they can read results
 
       Examples:
         | policy      |
@@ -23,10 +21,9 @@ Feature: Who can see and change plans and their results
   @pending
   Rule: A Plan Reader changes nothing
 
-    Example: A Plan Reader can't edit a plan or its results
+    Example: A Plan Reader can't edit a plan
       Given a user with the Plan Reader policy
       Then they can't change plans
-      And they can't change results
 
   @pending
   Rule: A Plan Writer starts a plan for a product, with a draft
@@ -68,19 +65,11 @@ Feature: Who can see and change plans and their results
       And they can't make a saved version a draft again
 
   @pending
-  Rule: Only the planning engine writes results
-
-    Example: A Plan Writer can't change results
-      Given a user with the Plan Writer policy
-      Then they can't change results
-
-  @pending
-  Rule: No one else reads plans or results
+  Rule: No one else reads plans
 
     Scenario Outline: A role alone doesn't show plans
       Given a user with the <role> role
       Then they can't read plans
-      And they can't read results
 
       Examples:
         | role      |
@@ -90,7 +79,6 @@ Feature: Who can see and change plans and their results
     Scenario Outline: The other policies don't show plans
       Given a user with the <policy> policy
       Then they can't read plans
-      And they can't read results
 
       Examples:
         | policy         |

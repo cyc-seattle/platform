@@ -17,7 +17,6 @@ const VERSIONED = [
   "plan_offerings",
   "plan_offering_prices",
   "plan_offering_boat_classes",
-  "plan_schedule_rules",
   "plan_trips",
   "plan_activities",
   "plan_activity_resources",
@@ -34,8 +33,6 @@ const VERSIONED = [
   "plan_resources",
   "plan_boat_rates",
   "plan_activity_block_rules",
-  "plan_formulas",
-  "plan_formula_deps",
 ];
 
 const versions = (...names: string[]): Target[] =>
@@ -131,7 +128,6 @@ const sets: Record<string, Target[]> = {
   plans: [...plain("plans", "version_sets", "version_set_members", "plan_activations"), ...versions("draft", "saved")],
   "a draft": versions("draft"),
   "a saved version": versions("saved"),
-  results: plain("plan_results", "plan_metrics"),
   groups: plain("groups", "group_members", "group_policies"),
 };
 
