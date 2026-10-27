@@ -21,7 +21,8 @@ single app owns it. The apps live in their own repos and depend on this one, nev
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
 - `packages/` is a pnpm workspace of private packages: the two syncs, clubspot-sync and gsuite-sync,
-  and the `crm`, `clubspot`, and `directus` libraries they share. Each builds to `dist/` with `tsc`,
+  and the `crm`, `clubspot`, and `directus` libraries they share, plus `planning-engine`, the
+  planning engine as a pure library. Each builds to `dist/` with `tsc`,
   and the root `Dockerfile` builds the sync images from them. A package reads its workspace
   dependencies' `dist/`, so `mise run check` and `mise run test` build them first.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run

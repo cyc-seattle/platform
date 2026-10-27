@@ -21,6 +21,7 @@ COPY packages/clubspot-sync/package.json packages/clubspot-sync/
 COPY packages/crm/package.json packages/crm/
 COPY packages/directus/package.json packages/directus/
 COPY packages/gsuite-sync/package.json packages/gsuite-sync/
+COPY packages/planning-engine/package.json packages/planning-engine/
 
 # --ignore-scripts throughout this stage: install only resolves and links node_modules, never
 # running a package's install scripts. That keeps this layer cached across source-only

@@ -1,0 +1,18 @@
+{
+  "name": "@cyc-seattle/planning-engine",
+  "description": "The planning engine: computes a version set's P&L lines and metrics from its plan rows, with no I/O",
+  "version": "0.0.1",
+  "private": true,
+  "author": "CYC Community Sailing Center",
+  "license": "Apache-2.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  }
+}
