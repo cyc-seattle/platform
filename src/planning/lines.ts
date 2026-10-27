@@ -3,9 +3,9 @@ import { spreadWeights } from "./measures.ts";
 import type { CostCenterType, Id } from "./types.ts";
 
 /**
- * Books amounts to their cost centers, pushing a product's down to its offerings. Offering, pool and
- * org amounts book at once; a product's wait for `flush`, so its weights see every offering's lines
- * whatever order the lines come in.
+ * Records amounts on their cost centers. Amounts on an offering, a pool or the organization are
+ * recorded right away. Amounts on a product wait until `flush`, then are divided among its offerings
+ * by MTDC, so every offering's own costs are in first, whatever order the lines come in.
  */
 export class CostCenterBooker {
   private readonly ctx: Context;
@@ -53,11 +53,11 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
     (type === "offering" && key != null && ctx.offeringsByKey.has(key)) ||
     (type === "product" && key != null && ctx.products.has(key)) ||
     (type === "pool" && key != null && ctx.data.plan_pools.some((p) => p.key === key));
-  if (!known) ctx.warn("unknown_cost_center", `Line ${line} books to a missing ${type} ${key ?? ""}`, line);
+  if (!known) ctx.warn("unknown_cost_center", `Line ${line} is on a missing ${type} ${key ?? ""}`, line);
   return known;
 }
 
-/** Books the plan year's `plan_budget_lines`. */
+/** Records the plan year's `plan_budget_lines`. */
 export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
   for (const line of ctx.data.plan_budget_lines) {
     if (line.fiscal_year !== ctx.data.fiscal_year) continue;
@@ -75,7 +75,7 @@ export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
   }
 }
 
-/** Books `plan_labor_lines`: hours × the staff level's rate, as wages. */
+/** Records `plan_labor_lines`: hours × the staff level's rate, as wages. */
 export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
   const levels = new Map(ctx.data.plan_staff_levels.map((l) => [l.key, l]));
   for (const line of ctx.data.plan_labor_lines) {

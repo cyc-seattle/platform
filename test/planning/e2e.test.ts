@@ -387,7 +387,7 @@ describe("a realistic plan, end to end", () => {
     expect(sum(lines, (l) => l.line_key.endsWith("labor:fleet-maintenance-key"))).toBe(120 * 2000);
   });
 
-  it("books the RIB purchase as a cost in its year", () => {
+  it("counts the RIB purchase as a cost in the year it's bought", () => {
     expect(sum(lines, (l) => l.account_id === A.equipment)).toBe(2_500_000);
   });
 

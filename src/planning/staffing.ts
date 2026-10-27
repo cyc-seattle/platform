@@ -18,7 +18,7 @@ export interface SalariedCoaching {
   hours: number;
 }
 
-/** Whole kids: `target_enrollment`, else `capacity × fill_rate` rounded. */
+/** Whole kids: `target_enrollment` if set, otherwise `capacity × fill_rate` rounded. */
 export function enrollmentOf(offering: PlanOffering): number {
   if (offering.target_enrollment != null) return Math.round(offering.target_enrollment);
   return Math.round((offering.capacity ?? 0) * (offering.fill_rate ?? 0));
@@ -252,7 +252,7 @@ export class Staffing {
     };
   }
 
-  /** Staffs every activity, books its labor and equipment, and records its metrics. */
+  /** Staffs every activity, and records what its coaches, RIBs, boats and resources cost. */
   run(scheduled: ScheduledActivity[]): { activities: ComputedActivity[]; coaching: SalariedCoaching[] } {
     const { ctx } = this;
     const staffed = scheduled.map((a) => this.initial(a));
@@ -391,7 +391,7 @@ export class Staffing {
 
   /**
    * A trip's coaches each fly and stay; the miles are driven once. Its coaches are those of its
-   * travel days, else what the offering's ratio gives.
+   * travel days; with none, the offering's coaching ratio sets them.
    */
   private bookTrips(staffed: Staffed[]): void {
     const { ctx } = this;

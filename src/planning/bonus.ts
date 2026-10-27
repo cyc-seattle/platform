@@ -3,8 +3,8 @@ import { revenue } from "./measures.ts";
 import type { Id } from "./types.ts";
 
 /**
- * Books each bonus owner's `bonus_rate × max(0, combined net)` for the plan year, after every pool.
- * It goes to the owned products' offerings by revenue, and counts in no base.
+ * Records each bonus owner's `bonus_rate × max(0, combined net)` for the plan year, after every pool.
+ * It's divided among the owned products' offerings by revenue, and is never counted in MTDC.
  */
 export function bookBonuses(ctx: Context): void {
   for (const owner of ctx.data.plan_bonus_owners) {

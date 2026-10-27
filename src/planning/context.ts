@@ -13,7 +13,7 @@ import type {
   Product,
 } from "./types.ts";
 
-/** The stage that booked an entry. Only `direct` entries form a base. */
+/** The step that recorded an entry. Only `direct` entries count toward MTDC. */
 export type Stage = "direct" | "pool" | "bonus";
 
 /** One amount, in fractional cents, before lines are rounded and summed. */
@@ -35,7 +35,7 @@ export interface Entry {
 export type EntryInput = Omit<Entry, "stage" | "mtdc_share" | "wages"> &
   Partial<Pick<Entry, "stage" | "mtdc_share" | "wages">>;
 
-/** Indexes over the input, and the entries booked so far, shared by every rule. */
+/** Lookups over the input, and the entries recorded so far, shared by every step. */
 export class Context {
   /** The plan year's first and last days. */
   readonly fy: { from: DateString; to: DateString };
@@ -71,11 +71,11 @@ export class Context {
     );
   }
 
-  /** The account the organization books a computed cost type to. */
+  /** The account the organization records a calculated cost type in. */
   costAccount(type: CostType): Id | undefined {
     const account = this.costAccounts.get(type);
     if (account === undefined) {
-      this.warn("no_cost_account", `The organization names no account for ${type}, so it books nothing`, type);
+      this.warn("no_cost_account", `The organization has no account set for ${type}, so that cost is left out`, type);
     }
     return account;
   }
@@ -90,7 +90,7 @@ export class Context {
     this.entries.push({ stage: "direct", mtdc_share: 1, wages: false, ...entry });
   }
 
-  /** An entry's function: the line's, else its account's default, else by cost center. */
+  /** An entry's function: the line's if set, otherwise its account's default, otherwise by cost center. */
   functionFor(
     accountId: Id,
     explicit: AccountFunction | null | undefined,

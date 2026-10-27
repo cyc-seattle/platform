@@ -6,7 +6,7 @@ tags: [architecture, planning, directus]
 
 Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs` and `organization_cost_accounts`. The rest is proposed and not built yet.
 
-The model holds a plan's facts and inputs only. Nothing worked out from them is stored: apps and agents call the [planning engine](planning-engine.md) for a P&L when they need one.
+The database stores only what planners enter, not totals calculated from it. Apps and agents ask the [planning engine](planning-engine.md) to calculate a P&L when they need one.
 
 ### Terms
 
@@ -15,9 +15,9 @@ The model holds a plan's facts and inputs only. Nothing worked out from them is 
 - **Offering:** a product sold for a period, such as J-Pod Fall 2027 or Guppies summer week 3. A program offering is one Clubspot session × class, the unit Clubspot caps enrollment on.
 - **Activity:** one dated, timed event that uses coaches, boats or other resources, such as a practice, a regatta day or a travel day. The planner, or a scheduling tool, enters each one.
 - **Activity block:** offerings whose activities share coaches and boats on certain days, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
-- **Cost center:** what a money line belongs to. That is an offering, a product (split over its offerings), a pool (G&A, program admin), or the org. Offerings that earn revenue are strictly profit centers, but one field covers every kind.
+- **Cost center:** what a money line belongs to. That is an offering, a product (divided among its offerings), a pool (G&A, program admin), or the org. Strictly speaking, an offering that earns revenue is a profit center, but we call all of these cost centers.
 - **Bonus owner:** a role, such as Single-handed head coach. It owns a set of products and earns a bonus on their combined net.
-- **Plan:** a separately versioned part of the plan. A **Program Plan** (or a Charter Plan, a Storage Plan and so on) holds one product's offerings. The **Operations Plan** holds what products share.
+- **Plan:** one part of the club's overall plan, saved and versioned on its own. A **Program Plan** (or a Charter Plan, a Storage Plan and so on) holds one product's offerings. The **Operations Plan** holds what products share.
 - **Version:** either a draft or an immutable saved snapshot of one plan.
 - **Version set:** one version per plan.
   - The **active version set** is "the plan".
@@ -42,7 +42,7 @@ erDiagram
     qualifications ||--o{ qualification_covers : "covered by"
     accounts |o--o{ accounts : "parent, contra"
     products ||--o| programs : "program subtype"
-    organizations ||--o{ organization_cost_accounts : "posts computed costs"
+    organizations ||--o{ organization_cost_accounts : "calculated costs go to"
     accounts ||--o{ organization_cost_accounts : "booked to"
 
     products {
@@ -106,7 +106,7 @@ erDiagram
     }
 ```
 
-`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year. `organization_cost_accounts` names, for each cost the engine works out rather than reads from a line, the one account it books to; `(organization_id, cost_type)` is unique. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
+`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, card fees and so on) is recorded in; `(organization_id, cost_type)` is unique. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
 
 ### Versioning
 
@@ -137,7 +137,7 @@ erDiagram
         string message
         uuid saved_by
         timestamp saved_at
-        string platform_version "the @cyc-seattle/platform that worked it out"
+        string platform_version "the @cyc-seattle/platform that calculated it"
     }
     version_sets {
         uuid id PK
@@ -162,7 +162,7 @@ erDiagram
     }
 ```
 
-A saved version records the `@cyc-seattle/platform` version whose engine worked out its numbers, so they can be worked out again the same way.
+A saved version records which version of the engine (`@cyc-seattle/platform`) calculated its numbers, so we can recalculate them the same way later.
 
 ### Product plan (one version)
 
@@ -261,11 +261,11 @@ erDiagram
     }
 ```
 
-An offering counts, all of it, in the plan year it starts in. Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
+All of an offering's revenue and costs go in the plan year it starts in, even if it runs into the next year. Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
 
-Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; the model holds no rule that generates them. A travel day is an activity of kind `travel`, linked to its trip.
+Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 
-A budget line counts in its `fiscal_year`, and buying equipment is a cost in the year it's bought. A line on a product is split over the product's offerings by MTDC. `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest. `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
+A budget line counts in its `fiscal_year`, and buying equipment is a cost in the year it's bought. A cost on a product is divided among the product's offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest. `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
 
 ### Operations plan (one version)
 
@@ -352,11 +352,11 @@ erDiagram
     }
 ```
 
-`plan_rates` holds the year's rates; a version has at most one row. Each staff level, salaried position, resource and boat rate also has one rate for the year, so a key names one row.
+`plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position, resource and boat rate also has one rate for the year, so each has a single row.
 
-A pool, such as G&A or program admin, collects shared costs: lines booked to it, and the salary its positions' hours don't charge to programs. All of it is split over every offering in the plan year by MTDC.
+A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. Everything in a pool is divided among all of the year's offerings by MTDC.
 
-A bonus owner's bonus is `bonus_rate × the combined net of its products for the year`, after pools, when that's above zero.
+A bonus owner's bonus is `bonus_rate` × the combined net of its products for the year, after pools, if that net is above zero.
 
 The Operations Plan also holds `plan_budget_lines` and `plan_labor_lines` for pool and org lines (insurance, the clubhouse fee, fundraising, equipment). They have the same shape as the product plan's lines.
 
@@ -377,4 +377,4 @@ erDiagram
     }
 ```
 
-Actuals are what QuickBooks and Clubspot recorded. To compare them with a plan, add them up over the plan year and set them beside the engine's lines for the same cost centers and accounts.
+Actuals are what QuickBooks and Clubspot recorded. To compare them with a plan, add up a plan year's actuals and compare them with the engine's lines for the same cost centers and accounts.

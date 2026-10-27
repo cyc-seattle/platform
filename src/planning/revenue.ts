@@ -11,7 +11,7 @@ export function countDays(ctx: Context, activities: ComputedActivity[]): void {
   for (const [key, set] of dates) ctx.days.set(key, set.size);
 }
 
-/** Books each offering's revenue, price × enrollment, with its COGS and card fees. */
+/** Records each offering's revenue, price × enrollment, with its COGS and card fees. */
 export function bookRevenue(ctx: Context): void {
   for (const offering of ctx.fyOfferings()) {
     const product = ctx.products.get(offering.product_id);

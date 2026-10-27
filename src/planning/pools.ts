@@ -2,8 +2,8 @@ import type { Context, Entry } from "./context.ts";
 import { mtdc } from "./measures.ts";
 
 /**
- * Splits everything booked to each pool over every offering in the plan year by MTDC, keeping each
- * amount's account and function. MTDC counts direct costs only, so one pool's split never shifts
+ * Divides everything in each pool among all of the plan year's offerings by MTDC, keeping each
+ * amount's account and function. Shared costs never count toward MTDC, so one pool's split never shifts
  * another's.
  */
 export function allocatePools(ctx: Context): void {
@@ -18,7 +18,7 @@ export function allocatePools(ctx: Context): void {
   ctx.entries.splice(0, ctx.entries.length, ...kept);
 
   if (total <= 0) {
-    ctx.warn("no_mtdc", "No offering in the plan year has MTDC, so the pools stay with the organization");
+    ctx.warn("no_mtdc", "No offering in the plan year has MTDC, so the shared costs stay with the organization");
   }
   for (const e of pooled) {
     const pool = pools.get(e.cost_center_key ?? "");

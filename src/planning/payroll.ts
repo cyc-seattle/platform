@@ -1,6 +1,6 @@
 import type { Context, Entry } from "./context.ts";
 
-/** Books payroll tax on every wage booked so far, at the year's rate, to the same place as the wage. */
+/** Records payroll tax at the year's rate on every wage so far, wherever the wage is. */
 export function bookPayrollTax(ctx: Context): void {
   const rate = ctx.rates?.payroll_tax_rate ?? 0;
   if (rate <= 0) return;

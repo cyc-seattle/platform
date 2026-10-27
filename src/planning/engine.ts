@@ -11,8 +11,8 @@ import { enrollmentOf, Staffing } from "./staffing.ts";
 import type { CostLine, EngineOutput, Id, Pnl, PlanData, Totals } from "./types.ts";
 
 /**
- * Works out the plan year's P&L from a plan's rows. The steps run in the order
- * docs/planning-engine.md gives, each reading only what earlier ones booked.
+ * Calculates the plan year's P&L from a plan's rows. The steps run in the order
+ * docs/planning-engine.md gives, each reading only what earlier steps recorded.
  */
 export function computePlan(data: PlanData): EngineOutput {
   const ctx = new Context(data);

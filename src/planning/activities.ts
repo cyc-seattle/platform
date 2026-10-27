@@ -2,7 +2,7 @@ import { minutesOf } from "./dates.ts";
 import type { Context } from "./context.ts";
 import type { ActivityKind, PlanActivity, PlanOffering, PlanTrip } from "./types.ts";
 
-/** A stored activity, before staffing, with its times worked out. */
+/** A stored activity, before staffing, with its paid time and time on the water. */
 export interface ScheduledActivity {
   offering: PlanOffering;
   trip: PlanTrip | null;
@@ -16,7 +16,7 @@ export interface ScheduledActivity {
 
 /**
  * The plan year's activities. Paid time is start to end plus setup and put-away; on-water time is
- * `on_water_minutes`, else the whole span, and zero when the activity uses no boats.
+ * `on_water_minutes` if set, otherwise the whole span, and zero when the activity uses no boats.
  */
 export function scheduleActivities(ctx: Context): ScheduledActivity[] {
   const trips = new Map(ctx.data.plan_trips.map((t) => [t.id, t]));

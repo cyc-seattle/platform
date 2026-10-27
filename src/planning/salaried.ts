@@ -13,7 +13,7 @@ interface Charge {
 /**
  * Charges each salaried position's salary: its coaching and management hours at its hourly
  * equivalent go to what they served, and the rest, including its `ga_share` off the top, goes to its
- * remainder pool, else the org.
+ * remainder pool, or the organization if it has none.
  */
 export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker: CostCenterBooker): void {
   if (ctx.data.plan_salaried_positions.length === 0) return;
@@ -55,7 +55,7 @@ export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker:
     if (rate === null && charges.length > 0) {
       ctx.warn(
         "no_paid_hours",
-        `${position.name} has hours booked but no paid_hours_per_year, so they cost nothing`,
+        `${position.name} has hours charged to programs but no paid_hours_per_year, so they cost nothing`,
         position.key,
       );
     }
@@ -66,7 +66,7 @@ export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker:
     if (scale < 1) {
       ctx.warn(
         "position_overbooked",
-        `${position.name}'s hours cost more than its salary less ga_share, so they're scaled down`,
+        `${position.name}'s hours charged to programs cost more than its salary after ga_share, so they're scaled down`,
         position.key,
       );
     }

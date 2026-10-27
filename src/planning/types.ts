@@ -70,7 +70,7 @@ export interface Organization {
   fiscal_year_start_month: number;
 }
 
-/** A cost the engine works out rather than reads from a line. Each posts to the account its organization names. */
+/** A cost the engine calculates. The organization sets which account each is recorded in. */
 export type CostType =
   | "coach_wages"
   | "salaries"
@@ -252,7 +252,7 @@ export interface PlanActivityBlockRule extends Versioned {
   salaried_positions: Id[] | null;
 }
 
-/** A shared cost, such as G&A, split over every offering in the plan year by MTDC. */
+/** A group of shared costs, such as G&A, divided among all of the plan year's offerings by MTDC. */
 export interface PlanPool extends Versioned {
   name: string;
 }
