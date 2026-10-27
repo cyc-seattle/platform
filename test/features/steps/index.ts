@@ -111,12 +111,16 @@ Step("{service}'s service account", (_, service: string) => setThey(actor({ serv
 const ACTIONS = ["create", "read", "update", "delete"] as const;
 type Action = (typeof ACTIONS)[number];
 
-/** "read", "read and update", or "create, read, and update". */
+/** Each action in the features' own words. */
+const WORDS: Record<Action, string> = { create: "add", read: "see", update: "edit", delete: "delete" };
+
+/** "see", "see and edit", or "add, see, and edit". */
 function phrase(actions: Action[], conjunction: string): string {
-  if (actions.length < 3) {
-    return actions.join(` ${conjunction} `);
+  const words = actions.map((action) => WORDS[action]);
+  if (words.length < 3) {
+    return words.join(` ${conjunction} `);
   }
-  return `${actions.slice(0, -1).join(", ")}, ${conjunction} ${actions.at(-1)}`;
+  return `${words.slice(0, -1).join(", ")}, ${conjunction} ${words.at(-1)}`;
 }
 
 /** Every ordered, non-empty subset of the four actions. */
@@ -259,7 +263,7 @@ for (const pronoun of ["they", "it"]) {
 
 // No field-level hiding: a reader gets wages and bonus rates with the rest.
 for (const pronoun of ["they", "it"]) {
-  Step(`${pronoun} can read every detail of {records}`, (_, records: string) => readsEveryDetail(records));
+  Step(`${pronoun} can see every detail of {records}`, (_, records: string) => readsEveryDetail(records));
 }
 
 async function readsEveryDetail(records: string): Promise<void> {
@@ -302,13 +306,13 @@ Step("they can open the Data Studio", async () => {
   expect(globals.app_access).toBe(true);
 });
 
-for (const text of ["they hold the {role} role", "they still hold the {role} role"]) {
+for (const text of ["they have the {role} role", "they still have the {role} role"]) {
   Step(text, async (_, role: string) => {
     expect(await roleOf(await current().userId())).toBe(todaysRoleName(role));
   });
 }
 
-Step("every person who signs in holds the Community, Crew, or Admin role", async () => {
+Step("everyone who signs in has the Community, Crew, or Admin role", async () => {
   const filter = encodeURIComponent(JSON.stringify({ directus_user_id: { _nnull: true } }));
   const people = await (
     await admin()
@@ -322,7 +326,7 @@ Step("an admin gives them the {role} role", async (_, role: string) => {
   await setRole(await current().userId(), role);
 });
 
-Step("they can't change anyone's role, their own included", async () => {
+Step("they can't change anyone's role, even their own", async () => {
   const user = await session();
   const someone = await userFor({ role: "Community" });
   const adminRole = await roleId("Administrator");
@@ -339,17 +343,17 @@ Step("they can't change anyone's role, their own included", async () => {
 // Groups, and a first sign-in through the club's single sign-on, come with step 8a.
 for (const text of [
   "a person in the CRM who has never signed in",
-  "a person in the CRM who has never signed in, in a group that grants the {policy} policy",
-  "a user in a group that grants the {policy} policy",
-  "a user in two groups that each grant the {policy} policy",
+  "a person in the CRM who has never signed in, in a group that gives the {policy} policy",
+  "a user in a group that gives the {policy} policy",
+  "a user in two groups that each give the {policy} policy",
   "they sign in for the first time",
   "they sign in again",
-  "an admin adds them to a group that grants the {policy} policy",
-  "an admin removes them from the group",
-  "an admin removes them from one of the groups",
-  "an admin stops the group granting it",
-  "clubspot-sync's and gsuite-sync's service accounts keep their roles and policies",
-  "so does the admin account the platform was set up with",
+  "an admin adds them to a group that gives the {policy} policy",
+  "an admin takes them out of the group",
+  "an admin takes them out of one of the groups",
+  "an admin changes the group so it no longer gives that policy",
+  "the syncs' accounts still have the same role and policies",
+  "so does the admin account the system was set up with",
 ]) {
   Step(text, () => notBuilt("8a"));
 }

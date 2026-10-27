@@ -12,13 +12,13 @@ interface MembershipRow {
   removed_at: string | null;
 }
 
-Step("it can read only who each registration's sailor is", () => readOnly("participants", ["id", "person_id"]));
-Step("it can read only the kind and value of each email and phone in an address book", () =>
+Step("it can see only which sailor each registration is for", () => readOnly("participants", ["id", "person_id"]));
+Step("it can see only the kind and value of people's other emails and phone numbers", () =>
   readOnly("contact_points", ["id", "person_id", "kind", "normalized"]),
 );
 
-describeAccessFeature("gsuite-sync.feature", {
-  "Role holders join the group, and staff let a leaver back": ({ Given, And, When, Then }) => {
+describeAccessFeature("gsuite.feature", {
+  "People with a role join the group, and staff let someone who left back in": ({ Given, And, When, Then }) => {
     const runId = newRunId();
     const groupEmail = `program.${runId}@example.test`;
     const personEmail = `volunteer.${runId}@example.test`;
@@ -55,7 +55,7 @@ describeAccessFeature("gsuite-sync.feature", {
       return asAdmin("GET", `/items/google_group_memberships?${query}`);
     }
 
-    Given("a group in the Workspace fake", async () => {
+    Given("a Google group", async () => {
       await proxyOk("workspace-fake", 8080, "POST", "/admin/directory/v1/groups", {
         email: groupEmail,
         name: `Program ${runId}`,
@@ -63,7 +63,7 @@ describeAccessFeature("gsuite-sync.feature", {
     });
 
     // Discovery matches the row to the live group by email. Staff link a program to its row by hand.
-    And("a program in the CRM that points at the group", async () => {
+    And("a program in the CRM that uses the group", async () => {
       const group = await asAdmin("POST", "/items/google_groups", { email: groupEmail, name: `Program ${runId}` });
       const program = await asAdmin("POST", "/items/programs", {
         name: `Program ${runId}`,
@@ -73,11 +73,11 @@ describeAccessFeature("gsuite-sync.feature", {
       programId = program.id;
     });
 
-    And("a person in the CRM who holds a role in the program", async () => {
+    And("a person in the CRM who has a role in the program", async () => {
       await holdRole("Volunteer", personEmail);
     });
 
-    And("a second role holder whom gsuite-sync added to the group, who has since left it", async () => {
+    And("a second person with a role, whom gsuite-sync added to the group and who has since left it", async () => {
       leaverId = await holdRole("Leaver", leaverEmail);
       await asAdmin("POST", "/items/google_group_memberships", {
         group_id: groupId,
@@ -92,22 +92,22 @@ describeAccessFeature("gsuite-sync.feature", {
       await runCronJob("gsuite-sync", runId);
     });
 
-    Then("the person is a member of the group", async () => {
+    Then("the person is in the group", async () => {
       expect(await members()).toContain(personEmail);
     });
 
-    And("the leaver is not a member of the group", async () => {
+    And("the person who left is not in the group", async () => {
       expect(await members()).not.toContain(leaverEmail);
     });
 
-    And("the leaver's membership row records that they left", async () => {
+    And("the CRM notes that the person who left is out of the group", async () => {
       const rows = await leaverRows();
       expect(rows).toHaveLength(1);
       expect(rows[0]!.removed_at).not.toBeNull();
       removedRowId = rows[0]!.id;
     });
 
-    When("staff delete the leaver's membership row", async () => {
+    When("staff delete that note", async () => {
       if (!removedRowId) {
         throw new Error("No removed membership row to delete: the step that finds it failed.");
       }
@@ -119,11 +119,11 @@ describeAccessFeature("gsuite-sync.feature", {
       await runCronJob("gsuite-sync", `${runId}-again`);
     });
 
-    Then("the leaver is a member of the group", async () => {
+    Then("the person who left is in the group again", async () => {
       expect(await members()).toContain(leaverEmail);
     });
 
-    And("the leaver has a fresh membership row", async () => {
+    And("the CRM notes that gsuite-sync added them again", async () => {
       const rows = await leaverRows();
       expect(rows).toHaveLength(1);
       expect(rows[0]!.id).not.toBe(removedRowId);

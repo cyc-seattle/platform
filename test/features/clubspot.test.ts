@@ -24,14 +24,17 @@ async function create(className: string, objectId: string, fields: Record<string
   await proxyOk("clubspot-fake", 1337, "POST", `/parse/classes/${className}`, { objectId, ...fields }, parseHeaders);
 }
 
-Step("it can move role assignments, event staffing, and group memberships to another person", async () => {
+Step("they can set which program a class belongs to", () => canSet("classes", "program_id"));
+Step("they can match a registration's sailor to a person in the CRM", () => canSet("participants", "person_id"));
+
+Step("it can move people's program roles, event staffing, and Google group memberships to another person", async () => {
   for (const collection of ["program_role_assignments", "event_staff", "google_group_memberships"]) {
     await canSet(collection, "person_id");
   }
 });
 
-describeAccessFeature("clubspot-sync.feature", {
-  "A participant's registration becomes a person with a guardian": ({ Given, And, When, Then }) => {
+describeAccessFeature("clubspot.feature", {
+  "A sailor's registration adds the sailor and their parent to the CRM": ({ Given, And, When, Then }) => {
     const runId = newRunId();
     const id = (kind: string) => `${kind}${runId}`;
     const participant = {
@@ -42,7 +45,7 @@ describeAccessFeature("clubspot-sync.feature", {
       guardianEmail: `guardian.${runId}@example.test`,
     };
 
-    Given("a camp running today in the Clubspot fake", async () => {
+    Given("a camp running today in Clubspot", async () => {
       const club = pointer("clubs", CLUB_ID);
       await create("camps", id("cmp"), {
         clubObject: club,
@@ -64,7 +67,7 @@ describeAccessFeature("clubspot-sync.feature", {
       });
     });
 
-    And("a participant registered in it, with a guardian", async () => {
+    And("a sailor registered for it, with a parent", async () => {
       const camp = pointer("camps", id("cmp"));
       const session = pointer("campSessions", id("ses"));
       const campClass = pointer("campClasses", id("cls"));
@@ -106,7 +109,7 @@ describeAccessFeature("clubspot-sync.feature", {
 
     let person: any;
 
-    Then("the CRM has the participant as a person", async () => {
+    Then("the CRM has the sailor as a person", async () => {
       const fields = [
         "person_id.id",
         "person_id.first_name",
@@ -121,7 +124,7 @@ describeAccessFeature("clubspot-sync.feature", {
       expect(person).toMatchObject({ first_name: participant.firstName, last_name: participant.lastName });
     });
 
-    And("the person's guardian is a person, linked as their guardian", () => {
+    And("the CRM has the sailor's parent as a person, listed as their parent", () => {
       expect(person.my_contacts).toContainEqual({
         relationship_type: "guardian",
         contact_id: {

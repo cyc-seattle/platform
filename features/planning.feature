@@ -1,17 +1,55 @@
-Feature: Who can see and change plans
-  A plan sets out how one product will run in a season: its offerings, prices, schedule, staffing,
-  and budget. The Operations Plan holds what the products share. Each plan has one draft, which
-  planners edit, and saved versions, which never change once saved. One saved version of each plan
-  is active at a time. Plans hold wages, which are the hourly rates of staff levels and the salaries of salaried
-  positions, and bonus rates, which are what each bonus owner earns. Anyone who reads plans sees all
-  of these. Plan Reader and Plan Writer are policies a group grants.
+Feature: Plans
+  A plan sets out how one product will run in a season: what the club offers and when, the prices,
+  the schedule, who works it, and the budget. The Operations Plan covers what the products share,
+  such as the office and the boats. Planners work on a plan's draft, and save it as a version when
+  it's ready. A saved version never changes, so the club can always look back at what it agreed to.
+  One saved version of each plan is the active one, and the active versions together are the
+  club's plan for the season.
+
+  Plans include wages, which are what each staff level is paid per hour and what each salaried
+  position is paid per year, and bonus rates, which set the bonus a head coach earns on the products
+  they run. Anyone who can see plans sees all of these. People get the Plan Reader and Plan Writer
+  policies from their groups.
 
   @pending
-  Rule: Planners read every plan, wages and bonus rates included
+  Rule: Each plan is for one product, and starts with a draft
 
-    Scenario Outline: Each plan policy reads every plan in full
+    Example: A Plan Writer starts a plan for a product
+      Given a user with the Plan Writer policy
+      When they start a plan for a product
+      Then the plan has a draft they can edit
+      And the plan has no saved versions yet
+
+  @pending
+  Rule: Only one saved version of each plan is active at a time
+
+    Example: Making a version active replaces the one that was active
+      Given a user with the Plan Writer policy
+      And a plan with two saved versions, the first of them active
+      When they make the second version active
+      Then only the second version is active
+
+  @pending
+  Rule: A saved version never changes, even for an admin
+
+    Example: A Plan Writer can't change a saved version
+      Given a user with the Plan Writer policy
+      Then they can see a saved version
+      But they can't change a saved version
+      And they can't move anything from the draft into a saved version
+      And they can't turn a saved version back into a draft
+
+    Example: An admin can't change a saved version either
+      Given a user with the Admin role
+      Then they can't change a saved version
+      And they can't turn a saved version back into a draft
+
+  @pending
+  Rule: Planners can see every plan, including wages and bonus rates
+
+    Scenario Outline: Each planning policy can see every detail of every plan
       Given a user with the <policy> policy
-      Then they can read every detail of plans
+      Then they can see every detail of plans
 
       Examples:
         | policy      |
@@ -19,22 +57,14 @@ Feature: Who can see and change plans
         | Plan Writer |
 
   @pending
-  Rule: A Plan Reader changes nothing
+  Rule: A Plan Reader can't change plans
 
     Example: A Plan Reader can't edit a plan
       Given a user with the Plan Reader policy
       Then they can't change plans
 
   @pending
-  Rule: A Plan Writer starts a plan for a product, with a draft
-
-    Example: A Plan Writer starts a plan
-      Given a user with the Plan Writer policy
-      When they start a plan for a product
-      Then the plan has a draft they can edit
-
-  @pending
-  Rule: A Plan Writer edits any plan's draft, including one someone else started
+  Rule: A Plan Writer can edit any plan's draft, even one someone else started
 
     Example: A Plan Writer edits another planner's draft
       Given a user with the Plan Writer policy
@@ -42,43 +72,28 @@ Feature: Who can see and change plans
       Then they can change a draft
 
   @pending
-  Rule: A Plan Writer saves a draft as a version, and makes a saved version active
+  Rule: A Plan Writer can save a draft as a version, and make a saved version active
 
-    Example: A Plan Writer saves and activates a version
+    Example: A Plan Writer saves a version and makes it active
       Given a user with the Plan Writer policy
       Then they can save the draft as a version
       And they can make a saved version active
 
   @pending
-  Rule: A saved version never changes, even for an admin
+  Rule: No one else can see plans
 
-    Example: A Plan Writer can't change a saved version
-      Given a user with the Plan Writer policy
-      Then they can read a saved version
-      But they can't change a saved version
-      And they can't move a row from the draft into a saved version
-      And they can't make a saved version a draft again
-
-    Example: An admin can't change a saved version either
-      Given a user with the Admin role
-      Then they can't change a saved version
-      And they can't make a saved version a draft again
-
-  @pending
-  Rule: No one else reads plans
-
-    Scenario Outline: A role alone doesn't show plans
+    Scenario Outline: A role on its own doesn't show plans
       Given a user with the <role> role
-      Then they can't read plans
+      Then they can't see plans
 
       Examples:
         | role      |
         | Community |
         | Crew      |
 
-    Scenario Outline: The other policies don't show plans
+    Scenario Outline: Other policies don't show plans
       Given a user with the <policy> policy
-      Then they can't read plans
+      Then they can't see plans
 
       Examples:
         | policy         |

@@ -1,3 +1,3 @@
 import { describeAccessFeature } from "./steps/index.ts";
 
-describeAccessFeature("groups.feature");
+describeAccessFeature("authorization.feature");

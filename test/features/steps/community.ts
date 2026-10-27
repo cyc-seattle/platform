@@ -204,7 +204,7 @@ async function aGuardian(
 ): Promise<Person> {
   const on = state === "running" ? await theTeam() : (scene.team = await team("ended"));
   const child = call("the child", await sailor("child", on, { share }));
-  const guardian = call("the guardian", await guardianOf(child));
+  const guardian = call("the parent", await guardianOf(child));
   await signIn(guardian, role, typed?.(guardian.email));
   return guardian;
 }
@@ -218,14 +218,14 @@ async function aTeammate(
 
 // Givens: who signs in, and who sails with them.
 
-Step("a guardian whose child sails on a team", () => aGuardian("Community"));
-Step("a guardian whose child sails on a team and opted in to sharing", () => aGuardian("Community", { share: true }));
-Step("a guardian whose child sails on a team and opted out of sharing", () => aGuardian("Community", { share: false }));
-Step("a guardian whose child sails on a team, who signs in typing their email in capitals", () =>
+Step("a parent whose child sails on a team", () => aGuardian("Community"));
+Step("a parent whose child sails on a team and opted in to sharing", () => aGuardian("Community", { share: true }));
+Step("a parent whose child sails on a team and opted out of sharing", () => aGuardian("Community", { share: false }));
+Step("a parent whose child sails on a team, who signs in typing their email in capitals", () =>
   aGuardian("Community", { typed: (address) => address.replace(/^[^@]+/, (local) => local.toUpperCase()) }),
 );
-Step("a user with the Crew role who is the guardian of a sailor on a team", () => aGuardian("Crew"));
-Step("a guardian whose child sailed only in a camp that has ended, alongside a teammate who opted in", async () => {
+Step("a user with the Crew role whose child sails on a team", () => aGuardian("Crew"));
+Step("a parent whose child sailed only at a camp that has ended, with a teammate who opted in", async () => {
   await aGuardian("Community", { state: "ended" });
   await aTeammate({ share: true, dateOfBirth: ADULT });
 });
@@ -234,25 +234,25 @@ Step("an adult teammate who opted in to sharing", () => aTeammate({ share: true,
 Step("an adult teammate who opted in to sharing, with no date of birth on file", () =>
   aTeammate({ share: true, dateOfBirth: null }),
 );
-Step("a teammate who hasn't answered the sharing question, with a guardian", async () => {
+Step("a teammate who hasn't answered the sharing question, and their parent", async () => {
   const teammate = await aTeammate({ share: null, fields: { phone: phone() } });
-  call("the teammate's guardian", await guardianOf(teammate));
+  call("the teammate's parent", await guardianOf(teammate));
 });
-Step("a teammate who hasn't answered the sharing question, with a guardian who signs in", async () => {
+Step("another family on the team, whose parent signs in", async () => {
   const teammate = await aTeammate({ share: null });
-  const guardian = call("the teammate's guardian", await guardianOf(teammate));
+  const guardian = call("the teammate's parent", await guardianOf(teammate));
   guardian.user = await createUser(guardian.email, "Community");
 });
-Step("a teammate who is a child and opted in to sharing, with a guardian", async () => {
+Step("a teammate who is a child and opted in to sharing, and their parent", async () => {
   const teammate = await aTeammate({ share: true, fields: { phone: phone() } });
-  call("the teammate's guardian", await guardianOf(teammate));
+  call("the teammate's parent", await guardianOf(teammate));
 });
-Step("a teammate who opted in on another team but not on this one, with a guardian", async () => {
+Step("a teammate who opted in on another team but not on this one, and their parent", async () => {
   const teammate = await aTeammate({ share: false });
   await register(teammate, await team(), true);
-  call("the teammate's guardian", await guardianOf(teammate));
+  call("the teammate's parent", await guardianOf(teammate));
 });
-Step("a sailor who was on the team only in a camp that has ended", async () => {
+Step("a sailor who was on the team only at a camp that has ended", async () => {
   const { programId } = await theTeam();
   call("the sailor", await sailor("sailor", await team("ended", programId), { share: true, dateOfBirth: ADULT }));
 });
@@ -268,7 +268,7 @@ Step("an adult who sails on a team and signs in", async () => {
 Step("a sailor with no date of birth on file who sails on a team and signs in", async () => {
   await signIn(call("the sailor", await sailor("adult", await theTeam(), { share: true, dateOfBirth: null })));
 });
-Step("a user with the Community role whose email no one in the CRM has", async () => {
+Step("a user with the Community role whose email isn't in the CRM", async () => {
   await signIn({ id: "", email: email("nobody") });
 });
 
@@ -304,18 +304,18 @@ Step("a volunteer in another role on a team", async () => {
   await aVolunteer(role.id, null);
   await aTeammate({ share: true, dateOfBirth: ADULT }, "the sailor");
 });
-Step("a sailor on the team who hasn't answered the sharing question, with a guardian", async () => {
+Step("a sailor on the team who hasn't answered the sharing question, and their parent", async () => {
   const sailing = await aTeammate({ share: null }, "the sailor");
-  call("the sailor's guardian", await guardianOf(sailing));
+  call("the sailor's parent", await guardianOf(sailing));
 });
 Step("a sailor on the team who is a child, with an email and phone of their own", () =>
   aTeammate({ share: null, fields: { phone: phone() } }, "the sailor"),
 );
-Step("a sailor on the team whose guardian is a child", async () => {
+Step("a sailor on the team whose parent is under 18", async () => {
   const sailing = await aTeammate({ share: null }, "the sailor");
-  call("the sailor's guardian", await guardianOf(sailing, yearsAgo(16)));
+  call("the sailor's parent", await guardianOf(sailing, yearsAgo(16)));
 });
-Step("a sailor in another program in the same camp", async () => {
+Step("a sailor in another program at the same camp", async () => {
   await theTeam();
   call("the sailor", await sailor("sailor", await team(), { share: true, dateOfBirth: ADULT }));
 });
@@ -329,16 +329,16 @@ async function read(session: DirectusSession, collection: string, query = ""): P
 
 const ids = (rows: Row[]) => new Set(rows.map((row) => row["id"]));
 
-Step("they view their rosters", async () => {
+Step("they look at the roster", async () => {
   scene.rows = await read(await theirSession(), "people");
 });
-Step("they look up medical profiles", async () => {
+Step("they look up medical information", async () => {
   scene.rows = await read(await theirSession(), "medical_profiles");
 });
-Step("they look up who is whose guardian", async () => {
+Step("they look up who each sailor's parents are", async () => {
   scene.rows = await read(await theirSession(), "contacts");
 });
-Step("they look up who is the teammate's guardian", async () => {
+Step("they look up who the teammate's parent is", async () => {
   scene.rows = await read(await theirSession(), "contacts", `?filter[subject_id][_eq]=${the("the teammate").id}`);
 });
 Step("they look up the teammate's registration", async () => {
@@ -354,23 +354,17 @@ const shareContact = async (session: DirectusSession, registrationId: string | u
   (await session.request("PATCH", `/items/registrations/${registrationId}`, { share_contact: value })).status;
 
 for (const [text, value] of [
-  ["the guardian opts out for their child", false],
-  ["the guardian opts in for their child", true],
+  ["the parent opts out for their child", false],
+  ["the parent opts in for their child", true],
 ] as const) {
   Step(text, async () => {
-    expect(await shareContact(await asThe("the guardian"), the("the child").registrationId, value)).toBeLessThan(300);
+    expect(await shareContact(await asThe("the parent"), the("the child").registrationId, value)).toBeLessThan(300);
   });
 }
 
 // Then: what they see.
 
-parameter("someone", [
-  "the teammate",
-  "the teammate's guardian",
-  "the sailor",
-  "the sailor's guardian",
-  "the guardian",
-]);
+parameter("someone", ["the teammate", "the teammate's parent", "the sailor", "the sailor's parent", "the parent"]);
 
 const rowOf = (who: Person) => scene.rows.find((row) => row["id"] === who.id);
 
@@ -403,14 +397,14 @@ function noContactDetails(...labels: string[]): void {
     expect(row?.["phone"], label).toBeFalsy();
   }
 }
-Step("no contact details for {someone}", (_, label: string) => noContactDetails(label));
-Step("no contact details for {someone} or {someone}", (_, first: string, second: string) =>
+Step("not the email or phone of {someone}", (_, label: string) => noContactDetails(label));
+Step("not the email or phone of {someone} or {someone}", (_, first: string, second: string) =>
   noContactDetails(first, second),
 );
-Step("they see no contact details for {someone}", (_, label: string) => noContactDetails(label));
+Step("they see no email or phone for {someone}", (_, label: string) => noContactDetails(label));
 
 Step("they see only themselves and their child", () => {
-  expect(ids(scene.rows)).toEqual(new Set([the("the guardian").id, the("the child").id]));
+  expect(ids(scene.rows)).toEqual(new Set([the("the parent").id, the("the child").id]));
 });
 Step("they see no one", () => {
   expect(scene.rows).toEqual([]);
@@ -424,21 +418,21 @@ const link = (subject: Person, guardian: Person) => ({
   contact_id: guardian.id,
   relationship_type: "guardian",
 });
-Step("they see that they're their child's guardian", () => {
-  expect(scene.rows).toContainEqual(link(the("the child"), the("the guardian")));
+Step("they see that they're their child's parent", () => {
+  expect(scene.rows).toContainEqual(link(the("the child"), the("the parent")));
 });
-Step("they see who {someone}'s guardian is", (_, label: string) => {
+Step("they see who {someone}'s parent is", (_, label: string) => {
   const subject = the(label);
   expect(scene.rows).toContainEqual(link(subject, subject.guardian!));
 });
 
 for (const [text, sees] of [
-  ["the teammate's guardian sees the guardian's email", true],
-  ["the teammate's guardian doesn't see the guardian's email", false],
+  ["the other family sees the parent's email", true],
+  ["the other family no longer sees the parent's email", false],
 ] as const) {
   Step(text, async () => {
-    const rows = await read(await asThe("the teammate's guardian"), "people");
-    const guardian = the("the guardian");
+    const rows = await read(await asThe("the teammate's parent"), "people");
+    const guardian = the("the parent");
     const shown = rows.find((row) => row["id"] === guardian.id)?.["email"];
     if (sees) {
       expect(shown).toBe(guardian.email);
@@ -456,8 +450,8 @@ Step("they can opt out of sharing and back in", async () => {
 });
 for (const [text, label, session] of [
   ["they can't change whether they share", "the sailor", "the sailor"],
-  ["they can't change whether the teammate shares", "the teammate", "the guardian"],
-  ["they can't change whether their child shares", "the child", "the guardian"],
+  ["they can't change whether the teammate shares", "the teammate", "the parent"],
+  ["they can't change whether their child shares", "the child", "the parent"],
 ] as const) {
   Step(text, async () => {
     expect(await shareContact(await asThe(session), the(label).registrationId, true)).toBeGreaterThanOrEqual(400);
@@ -466,7 +460,7 @@ for (const [text, label, session] of [
 Step("they can't move their child's registration to another camp", async () => {
   const ended = await camp("ended");
   const { status } = await (
-    await asThe("the guardian")
+    await asThe("the parent")
   ).request("PATCH", `/items/registrations/${the("the child").registrationId}`, { camp_id: ended.id });
   expect(status).toBeGreaterThanOrEqual(400);
 });
@@ -484,7 +478,7 @@ Step("they can't see the teammate's sign-up answers", () => {
   expect(Object.keys(participant ?? {}).sort()).toEqual(["id", "person_id"]);
 });
 
-Step("they can't read anyone's address book", async () => {
+Step("they can't see anyone's other emails and phone numbers", async () => {
   const { status, body } = await (await theirSession()).request("GET", "/items/contact_points");
   if (status !== 403) {
     expect(status).toBe(200);
@@ -492,13 +486,13 @@ Step("they can't read anyone's address book", async () => {
   }
 });
 
-Step("they can't change their child's record", async () => {
+Step("they can't change their child's details", async () => {
   const { status } = await (
     await theirSession()
   ).request("PATCH", `/items/people/${the("the child").id}`, { last_name: "Changed" });
   expect(status).toBe(403);
 });
-Step("they can't change their child's medical profile", async () => {
+Step("they can't change their child's medical information", async () => {
   const { status } = await (
     await theirSession()
   ).request("PATCH", `/items/medical_profiles/${the("the child").medicalProfileId}`, { medications: "none" });
@@ -515,18 +509,18 @@ const searches: Record<string, () => [string, string, string]> = {
     `nobody.${runId}`,
   ],
   "the teammate's phone": () => ["filter[phone][_eq]", the("the teammate").phone!, "+19999999999"],
-  "free text from the teammate's email": () => ["search", the("the teammate").email, email("nobody")],
-  "the teammate's guardian's email": () => [
+  "any part of the teammate's email": () => ["search", the("the teammate").email, email("nobody")],
+  "the teammate's parent's email": () => [
     "filter[my_contacts][contact_id][email][_eq]",
-    the("the teammate's guardian").email,
+    the("the teammate's parent").email,
     email("nobody"),
   ],
 };
-parameter("detail", Object.keys(searches));
+parameter("search", Object.keys(searches));
 
-Step("they search people by {detail}", async (_, detail: string) => {
+Step("they search people for {search}", async (_, search: string) => {
   const session = await theirSession();
-  const [query, real, nobody] = searches[detail]!();
+  const [query, real, nobody] = searches[search]!();
   scene.baseline = ids(await read(session, "people"));
   scene.probes = [];
   for (const value of [real, nobody]) {
@@ -536,14 +530,14 @@ Step("they search people by {detail}", async (_, detail: string) => {
     scene.probes.push(result.status === 200 ? result.body.data : []);
   }
 });
-Step("they find the same people as a search for a value no one has", () => {
+Step("they get the same people as a search for something no one has", () => {
   const [real, nobody] = scene.probes as [Row[], Row[]];
   expect(ids(real)).toEqual(ids(nobody));
   for (const id of ids(real)) {
     expect(scene.baseline).toContain(id);
   }
 });
-Step("they filter people for those with a phone on file", async () => {
+Step("they ask for everyone with a phone number on file", async () => {
   const result = await (await theirSession()).request("GET", "/items/people?filter[phone][_nnull]=true");
   expect([200, 403]).toContain(result.status);
   scene.probes = [result.status === 200 ? result.body.data : []];
@@ -558,7 +552,7 @@ Step("they don't find the teammate", () => {
 const requests: Record<string, string> = {
   "people sorted by email": "sort=email",
   "people grouped by email": "groupBy[]=email&aggregate[count]=id",
-  "a count of distinct phones": "aggregate[countDistinct]=phone",
+  "a count of different phone numbers": "aggregate[countDistinct]=phone",
 };
 parameter("request", Object.keys(requests));
 
@@ -569,7 +563,7 @@ Step("they're refused", () => {
   expect(scene.status).toBe(403);
 });
 
-Step("none of the team's registrations reads as their own", async () => {
+Step("they can't see the details of the team's registrations", async () => {
   const rows = await read(await theirSession(), "registrations");
   expect(rows.length).toBeGreaterThan(0);
   for (const row of rows) {
@@ -605,7 +599,7 @@ const rosterRequests: { collection: string; fields: string[]; filter?: Row }[] =
   { collection: "participants", fields: ["id", "person_id"] },
 ];
 
-Step("they open the portal's roster", async () => {
+Step("they open the roster page", async () => {
   const session = await theirSession();
   scene.statuses = [];
   for (const request of rosterRequests) {
@@ -619,11 +613,11 @@ Step("they open the portal's roster", async () => {
   scene.statuses.push(permissions.status);
   scene.rows = [permissions.body?.data ?? {}];
 });
-Step("every request it sends succeeds", () => {
+Step("every request the page sends succeeds", () => {
   expect(scene.statuses).toEqual(scene.statuses.map(() => 200));
 });
 // The portal shows a family's view when Directus reports its registrations read as partial.
-Step("it shows them a family's view", () => {
+Step("it shows them what a family can see", () => {
   expect((scene.rows[0] as { registrations?: { read?: { access?: string } } }).registrations?.read?.access).toBe(
     "partial",
   );

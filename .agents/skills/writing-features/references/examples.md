@@ -27,11 +27,10 @@ feature. Not code, not the plan or issues or PRs."
 After:
 
 ```gherkin
-Feature: Who can see and change the catalog
-  The catalog lists what the club offers and how it accounts for it: its products, the revenue
-  accounts they post to, the qualifications a sailor can hold, the boat classes, and the kinds of
-  resource a program uses. Planners read it to build plans. Only the few people who set prices
-  and accounts may change it.
+Feature: The catalog
+  The catalog lists what the club sells and how it accounts for the money. A product is something
+  the club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Planners
+  use the catalog to build plans. Only the few people who set prices and accounts can change it.
 ```
 
 The `core` domain, the step numbers, and the run's rows go to the PR body or the glue.
@@ -52,13 +51,13 @@ humans without referring to the steps", for example "Given a user with policy X,
 After: each example's Givens name the user's grant and the records the rule is about.
 
 ```gherkin
-  Rule: A Catalog Reader reads the catalog, and changes nothing
+  Rule: A Catalog Reader can see the catalog, but can't change it
 
-    Example: A planner looks up a product's price
+    Example: A Catalog Reader looks up a product
       Given a user with the Catalog Reader policy
       And a product in the catalog
       When they look up the product
-      Then they see its price and revenue account
+      Then they see its revenue account
       But they can't change it
 ```
 
@@ -89,18 +88,18 @@ After: the Givens carry just the facts this rule turns on.
   Rule: A family sees a teammate's contact details only if the teammate opted in to sharing
 
     Background:
-      Given a guardian whose child sails on a team in a camp running now
+      Given a parent whose child sails on a team
 
     Example: A teammate who opted in shows their email
-      Given a teammate on the same team who opted in to sharing
-      When the guardian views the team's roster
+      Given an adult teammate who opted in to sharing
+      When they look at the roster
       Then they see the teammate's email
 
     Example: A teammate who hasn't answered shows only their name
-      Given a teammate on the same team who hasn't answered the sharing question
-      When the guardian views the team's roster
+      Given a teammate who hasn't answered the sharing question, and their parent
+      When they look at the roster
       Then they see the teammate's name
-      But not their email or phone
+      But not the email or phone of the teammate or the teammate's parent
 ```
 
 ## Actors of different kinds in one column
@@ -126,13 +125,12 @@ belong in the catalog permissions feature."
 After: the column names the kind, and the service account goes to its own service's feature.
 
 ```gherkin
-  Rule: Whoever plans reads the catalog, and changes nothing in it
+  Rule: Planners can see the catalog, but can't change it
 
-    Scenario Outline: Each plan policy reads the catalog
+    Scenario Outline: Each planning policy can see the catalog
       Given a user with the <policy> policy
-      When they look up a product
-      Then they see it
-      But they can't change it
+      Then they can see the catalog
+      But they can't change the catalog
 
       Examples:
         | policy      |
@@ -177,16 +175,16 @@ After: one feature for the CRM's permission set, with a rule per thing its polic
 
 ```gherkin
 Feature: Who can see and change the CRM
-  The CRM holds the club's people: sailors, their families, and the volunteers who run programs.
-  Medical records are the most sensitive data the club keeps, so they're granted apart from the
-  rest of the CRM. Families see their own team through the Community role.
+  The CRM is the club's list of people: sailors, their parents, and the coaches, volunteers, and
+  staff who run programs. Each sailor's medical information is the most private information the
+  club has, so staff need a separate permission to see it.
 
-  Rule: A CRM Reader sees people and their contacts, and changes nothing
-  Rule: A CRM Writer keeps people and their contacts
-  Rule: Medical records need a Medical policy, even for a CRM Writer
-  Rule: A Medical Reader reads medical records, and a Medical Writer also changes them
-  Rule: A family sees everyone on their child's team, by name
-  Rule: A family sees a teammate's contact details only if the teammate opted in to sharing
+  Rule: A CRM Reader can see the CRM, but can't change it
+  Rule: A CRM Writer can edit the CRM
+  Rule: A CRM Reader or CRM Writer can't see medical information without a Medical policy
+  Rule: A Medical Reader can see every sailor's medical information, but can't change it
+  Rule: A family can see everyone on their child's team by name, whether or not they opted in to sharing
+  Rule: A family can see a teammate's email and phone only if the teammate opted in to sharing
 ```
 
 Each rule then gets an example or two, as above.
@@ -195,8 +193,9 @@ Each rule then gets an example or two, as above.
 
 Before (`engine.feature` in #48): `Feature: What the engine's machine user can do`.
 
-The review: "WTF is 'the engine'?" Name it as the domain does ("the planning engine, which builds a
-season's schedule from its plans"), and define it in the description before any scenario uses it.
+The review: "WTF is 'the engine'?" Name a thing the way the club does, and say what it is in the
+description before any scenario uses it. Here the feature went away: the planning engine doesn't
+sign in, so it has no permissions to specify.
 
 ## A parameter with no name
 
@@ -206,27 +205,81 @@ Before (`test/features/planning.test.ts` in #48):
 "{string} can start a plan for a product, with a draft",
 ```
 
-The review: "`{string}` is a terrible variable name, don't you think?" vitest-cucumber can't name a
-parameter type, so the step text must:
+The review: "`{string}` is a terrible variable name, don't you think?" A named parameter type says
+what fills it, and accepts only the names the features use:
 
 ```ts
-Step("a user with the {string} policy", async (_, policy: string) => { ... });
-Step("they can start a plan for a product, with a draft", async () => { ... });
+parameter("policy", policyNames);
+Step("a user with the {policy} policy", (_, policy: string) => setThey(actor({ policies: [policy] })));
+Step("they start a plan for a product", () => notBuilt("11"));
 ```
 
-## What already reads well
+## Wording that reads like AI slop
 
-`gsuite-sync.feature` and `clubspot-sync.feature` show the shape to keep: a short Given per fact the
-outcome depends on, one action, and Thens a staff member could check by hand.
+The review of the round after the restructure: the features had the right rules in the wrong words.
+
+> "keeps the CRM" doesn't make sense. Use plain english like "A CRM Writer can edit the CRM".
+
+> "and changes nothing" -> "but cannot change them"
+
+> "Programs are the catalog's" is more AI-junk. "Programs belong to the Catalog domain". Don't be
+> sloppy.
+
+> You use "sees the" and "reads the"... in different places. Be consistent.
+
+Before:
 
 ```gherkin
-  Scenario: A participant's registration becomes a person with a guardian
-    Given a camp running today in the Clubspot fake
-    And a participant registered in it, with a guardian
-    When clubspot-sync runs
-    Then the CRM has the participant as a person
-    And the person's guardian is a person, linked as their guardian
+  Rule: A CRM Reader sees the CRM and Clubspot's records, and changes nothing
+  Rule: A CRM Writer keeps the CRM
+  Rule: Clubspot's records change in Clubspot, so a CRM Writer only links them to the CRM
+  Rule: Programs are the catalog's, so the CRM policies read them and change none
+  Rule: Crew read the rosters, and change nothing
+  Rule: A family reads no one's address book
 ```
 
-Their descriptions still explain the test's mechanics (seeding through Parse's REST API, the run's
-ID, the service proxy). That belongs in the glue.
+After:
+
+```gherkin
+  Rule: A CRM Reader can see the CRM, but can't change it
+  Rule: A CRM Writer can edit the CRM
+  Rule: A CRM Writer can link a class to its program, and a sailor to their person in the CRM
+  Rule: Programs belong to the catalog, so a CRM Reader or CRM Writer can see them but can't change them
+  Rule: Crew can see the rosters, but can't change them
+  Rule: A family can't see anyone's other emails and phone numbers
+```
+
+The steps changed with them: "can see" everywhere "read" or "sees" was, and "a parent" for "a
+guardian", since that's what staff say. "Parent" is defined once in the description, as anyone
+listed as a sailor's parent or guardian.
+
+## A feature about permissions only
+
+The review: "Feature files should be about not only the permission rules, but also the domain
+models." A feature now opens with the rules its data follows, which an admin checks on dev:
+
+```gherkin
+  Rule: A sailor can have more than one parent and emergency contact
+
+    Example: A sailor with two parents and an emergency contact
+      Given a sailor with two parents and an emergency contact
+      When an admin looks up the sailor's parents and emergency contacts
+      Then they see both parents and the emergency contact
+```
+
+## What reads well
+
+`clubspot.feature`'s sync example shows the shape to keep: a short Given for each fact the outcome
+depends on, one action, and Thens a staff member could check by hand.
+
+```gherkin
+    Example: A sailor's registration adds the sailor and their parent to the CRM
+      Given a camp running today in Clubspot
+      And a sailor registered for it, with a parent
+      When clubspot-sync runs
+      Then the CRM has the sailor as a person
+      And the CRM has the sailor's parent as a person, listed as their parent
+```
+
+The Given says "in Clubspot", not "in the Clubspot fake". That the test uses a stand-in for
+Clubspot is the glue's business.

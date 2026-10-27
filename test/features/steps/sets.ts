@@ -53,7 +53,7 @@ const CAMPS_AND_REGISTRATIONS = plain(
 );
 
 const sets: Record<string, Target[]> = {
-  // The CRM's own records. Programs are the catalog's, and medical profiles are granted apart.
+  // The CRM's own collections. Programs belong to the catalog, and medical information is granted apart.
   "the CRM": plain(
     "people",
     "contacts",
@@ -67,8 +67,8 @@ const sets: Record<string, Target[]> = {
     "google_groups",
     "google_group_memberships",
   ),
-  "medical profiles": plain("medical_profiles"),
-  "Clubspot's records": [...CAMPS_AND_REGISTRATIONS, ...plain("event_staff")],
+  "medical information": plain("medical_profiles"),
+  "camps, registrations, and event staffing from Clubspot": [...CAMPS_AND_REGISTRATIONS, ...plain("event_staff")],
   "Clubspot's camps and registrations": CAMPS_AND_REGISTRATIONS,
   "camps, sessions, classes, and registrations": plain(
     "camps",
@@ -79,26 +79,22 @@ const sets: Record<string, Target[]> = {
     "registration_entries",
   ),
   "the rosters": plain("programs", "camps", "sessions", "classes", "registration_entries", "people"),
-  "family links and address books": plain("contacts", "contact_points"),
-  "registrations and their billing": plain("participants", "registrations", "registration_billing"),
+  "parents, emergency contacts, and other emails and phone numbers": plain("contacts", "contact_points"),
+  "registrations and billing": plain("participants", "registrations", "registration_billing"),
   billing: plain("registration_billing"),
-  "people, their family links, address books, and medical profiles": plain(
-    "people",
-    "contacts",
-    "contact_points",
-    "medical_profiles",
-  ),
+  "people, their parents and emergency contacts, their other emails and phone numbers, and their medical information":
+    plain("people", "contacts", "contact_points", "medical_profiles"),
   people: plain("people"),
-  "a session's classes": plain("session_classes"),
-  "the syncs' runs and findings": plain("sync_runs", "audit_findings"),
-  "the syncs' queue, runs, and findings": plain("sync_tasks", "sync_runs", "audit_findings"),
-  "role assignments, event staffing, and group memberships": plain(
+  "which classes run in a session": plain("session_classes"),
+  "the syncs' run logs and problem reports": plain("sync_runs", "audit_findings"),
+  "the syncs' task list, run logs, and problem reports": plain("sync_tasks", "sync_runs", "audit_findings"),
+  "people's program roles, event staffing, and Google group memberships": plain(
     "program_role_assignments",
     "event_staff",
     "google_group_memberships",
   ),
-  "the promoted fields": plain("promoted_fields"),
-  "the programs, rosters, and roles it maps into groups": plain(
+  "which sign-up answers to copy": plain("promoted_fields"),
+  "the programs, rosters, and program roles it uses to fill groups": plain(
     "programs",
     "camps",
     "classes",
@@ -108,7 +104,7 @@ const sets: Record<string, Target[]> = {
     "registration_entries",
     "program_role_assignments",
   ),
-  "its queue, findings, and Google groups": plain(
+  "its task list, problem reports, and Google groups": plain(
     "sync_tasks",
     "audit_findings",
     "google_groups",
