@@ -383,7 +383,8 @@ export function describeAccessFeature(name: string, ownSteps: Record<string, Sce
     if (failures.length > 0) {
       throw new Error(`Couldn't clean up:\n${failures.join("\n")}`);
     }
-  });
+    // One request per row, and the family examples make hundreds.
+  }, 300_000);
 
   describeFeature(
     parsed,
