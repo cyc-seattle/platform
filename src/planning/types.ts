@@ -63,7 +63,33 @@ export interface ResourceKind {
   name: string;
 }
 
-// Product plan
+export interface Organization {
+  id: Id;
+  name: string;
+  /** The fiscal year's first month, 1–12. */
+  fiscal_year_start_month: number;
+}
+
+/** A cost the engine works out rather than reads from a line. Each posts to the account its organization names. */
+export type CostType =
+  | "coach_wages"
+  | "salaries"
+  | "payroll_tax"
+  | "ribs"
+  | "boat_maintenance"
+  | "resources"
+  | "travel"
+  | "cogs"
+  | "card_fees";
+
+export interface OrganizationCostAccount {
+  id: Id;
+  organization_id: Id;
+  cost_type: CostType;
+  account_id: Id;
+}
+
+// Program plan
 
 export type ActivityKind = "practice" | "regatta" | "clinic" | "camp_week" | "travel";
 
@@ -76,11 +102,8 @@ export interface PlanOffering extends Versioned {
   capacity: number | null;
   target_enrollment: number | null;
   fill_rate: number | null;
+  /** Per kid. */
   price_cents: number | null;
-  price_basis: PriceBasis | null;
-  units: number | null;
-  /** `{"YYYY-MM": share}`, shares summing to 1. */
-  registration_curve: Record<string, number> | null;
   sailors_per_coach: number | null;
   min_coaches: number | null;
   /** A `plan_staff_levels` key. */
@@ -95,59 +118,25 @@ export interface PlanOffering extends Versioned {
   note: string | null;
 }
 
-/** How an offering's price multiplies out; see the README. */
-export type PriceBasis = "per_enrollment" | "per_session" | "per_month" | "per_unit";
-
 export interface PlanOfferingBoatClass extends Versioned {
   offering_id: Id;
   boat_class_id: Id;
   share: number;
 }
 
-export interface PlanOfferingPrice extends Versioned {
-  offering_id: Id;
-  tier: string;
-  price_cents: number;
-  share: number;
-}
-
-export interface PlanScheduleRule extends Versioned {
-  offering_id: Id;
-  /** ISO weekday numbers, 1 = Monday. */
-  weekdays: number[];
-  start_time: TimeString;
-  end_time: TimeString;
-  on_water_fraction: number | null;
-  setup_minutes: number | null;
-  putaway_minutes: number | null;
-  starts_on: DateString | null;
-  ends_on: DateString | null;
-  skip_dates: DateString[] | null;
-  kind: Exclude<ActivityKind, "travel">;
-  uses_boats: boolean;
-  fixed_coaches: number | null;
-  fixed_ribs: number | null;
-}
-
 export interface PlanTrip extends Versioned {
   offering_id: Id;
   name: string;
-  starts_on: DateString;
-  ends_on: DateString;
-  pre_travel_days: number | null;
-  post_travel_days: number | null;
-  travel_hours_per_day: number | null;
-  load_minutes: number | null;
-  unload_minutes: number | null;
   nights: number | null;
+  /** Per coach. */
   airfare_cents: number | null;
   miles: number | null;
-  external_event_ref: string | null;
 }
 
+/** One dated activity, or a travel day, as the planner or a scheduling tool entered it. */
 export interface PlanActivity extends Versioned {
   offering_id: Id;
-  schedule_rule_id: Id | null;
+  /** The trip a travel day belongs to. */
   trip_id: Id | null;
   date: DateString;
   start_time: TimeString | null;
@@ -156,10 +145,10 @@ export interface PlanActivity extends Versioned {
   setup_minutes: number | null;
   putaway_minutes: number | null;
   kind: ActivityKind;
+  uses_boats: boolean;
   fixed_coaches: number | null;
   fixed_ribs: number | null;
   fixed_boats: number | null;
-  overridden: boolean;
 }
 
 export interface PlanActivityResource extends Versioned {
@@ -176,16 +165,11 @@ export interface PlanLaborLine extends Versioned {
   cost_center_key: Id | null;
   /** A `plan_staff_levels` key. */
   staff_level_key: Id;
-  hours: number | null;
-  hours_formula: string | null;
-  /** `{"YYYY-MM": share}`. */
-  phasing: Record<string, number> | null;
+  hours: number;
   account_id: Id;
   function: AccountFunction | null;
   note: string | null;
 }
-
-export type Spread = "by_mtdc" | "by_revenue" | "even" | "by_months";
 
 export interface PlanBudgetLine extends Versioned {
   name: string;
@@ -193,28 +177,23 @@ export interface PlanBudgetLine extends Versioned {
   function: AccountFunction | null;
   cost_center_type: CostCenterType;
   cost_center_key: Id | null;
-  spread: Spread | null;
-  amount_cents: number | null;
-  formula: string | null;
+  amount_cents: number;
   fiscal_year: number;
-  phasing_mode: "annual_split" | "monthly_rate" | null;
-  /** `{"YYYY-MM": share}` for `annual_split`; `{"YYYY-MM": cents}` for `monthly_rate`. */
-  phasing: Record<string, number> | null;
-  is_participant_support: boolean;
-  is_capital: boolean;
-  is_non_cash: boolean;
-  excluded_from_base: boolean;
+  /** Set for a cost 2 CFR 200.1 leaves out of MTDC, such as equipment or participant support. */
+  excluded_from_mtdc: boolean;
   note: string | null;
 }
 
 // Operations plan
 
-export interface PlanAssumption extends Versioned {
-  name: string;
-  value: number;
-  unit: string | null;
-  effective_from: DateString | null;
-  note: string | null;
+/** The year's rates. An Operations plan version has at most one row. */
+export interface PlanRates extends Versioned {
+  /** Employer payroll costs, as a share of wages. */
+  payroll_tax_rate: number | null;
+  /** Card processing fees, as a share of revenue. */
+  card_fee_rate: number | null;
+  lodging_per_night_cents: number | null;
+  mileage_rate_cents: number | null;
 }
 
 export interface PlanStaffLevel extends Versioned {
@@ -223,7 +202,6 @@ export interface PlanStaffLevel extends Versioned {
   hourly_rate_cents: number | null;
   /** `qualifications` ids. */
   qualifications: Id[] | null;
-  effective_from: DateString | null;
 }
 
 export interface PlanSalariedPosition extends Versioned {
@@ -232,17 +210,14 @@ export interface PlanSalariedPosition extends Versioned {
   paid_hours_per_year: number | null;
   qualifications: Id[] | null;
   ga_share: number | null;
+  /** The pool that takes the salary its hours don't charge to programs. */
   remainder_pool_id: Id | null;
   form_990_line: string | null;
-  effective_from: DateString | null;
-  effective_to: DateString | null;
 }
 
 export interface PlanSalariedBooking extends Versioned {
   position_id: Id;
   product_id: Id;
-  starts_on: DateString | null;
-  ends_on: DateString | null;
   kind: "management";
   hours: number;
 }
@@ -255,13 +230,13 @@ export interface PlanResource extends Versioned {
   cost_per_day_cents: number | null;
   fuel_per_hour_cents: number | null;
   maintenance_per_hour_cents: number | null;
-  effective_from: DateString | null;
+  /** Set for a rental, whose cost leaves MTDC. */
+  excluded_from_mtdc: boolean;
 }
 
 export interface PlanBoatRate extends Versioned {
   boat_class_id: Id;
   maintenance_per_boat_hour_cents: number;
-  effective_from: DateString | null;
 }
 
 export interface PlanActivityBlockRule extends Versioned {
@@ -277,66 +252,15 @@ export interface PlanActivityBlockRule extends Versioned {
   salaried_positions: Id[] | null;
 }
 
-export type PoolMethod = "base_share" | "fixed_shares" | "area" | "formula";
-
+/** A shared cost, such as G&A, split over every offering in the plan year by MTDC. */
 export interface PlanPool extends Versioned {
   name: string;
-  step_order: number;
-  method: PoolMethod;
-  /** A metric name, or `accounts` to sum the accounts in `base_categories`. */
-  base: string | null;
-  /** Account ids, for `base: "accounts"`. */
-  base_categories: Id[] | null;
-  targets_filter: TargetsFilter | null;
-  denominator_quantity: number | null;
-  unit: string | null;
-  remainder_pool_id: Id | null;
-  phasing: "by_base" | "even" | "target_months" | null;
-}
-
-/** Which offerings a pool or formula reaches. Every field given must match; none given matches all. */
-export interface TargetsFilter {
-  offering_keys?: Id[];
-  product_ids?: Id[];
-  product_kinds?: Product["kind"][];
-  exclude_offering_keys?: Id[];
-  exclude_product_ids?: Id[];
-}
-
-export interface PlanPoolShare extends Versioned {
-  pool_id: Id;
-  target_type: "offering" | "product";
-  target_key: Id;
-  share: number | null;
-  quantity: number | null;
-  amount_cents: number | null;
-  starts_on: DateString | null;
-  ends_on: DateString | null;
-}
-
-export interface PlanFormula extends Versioned {
-  name: string;
-  dimension: "none" | "offering" | "product" | "month";
-  expression: string;
-  account_id: Id | null;
-  function: AccountFunction | null;
-  cost_center_type: CostCenterType | null;
-  applies_to_filter: TargetsFilter | null;
-  excluded_from_base: boolean;
-  note: string | null;
-}
-
-export interface PlanFormulaDep extends Versioned {
-  formula_id: Id;
-  depends_on: string;
 }
 
 export interface PlanBonusOwner extends Versioned {
   role_name: string;
   bonus_rate: number;
   account_id: Id;
-  starts_on: DateString | null;
-  ends_on: DateString | null;
 }
 
 export interface PlanBonusOwnerProduct extends Versioned {
@@ -344,29 +268,12 @@ export interface PlanBonusOwnerProduct extends Versioned {
   product_id: Id;
 }
 
-/**
- * Accounts the schema has no field for. Activity labor, RIBs, boats, resources, salaries and COGS
- * have no account of their own, so the caller names one for each.
- */
-export interface PostingAccounts {
-  coach_wages: Id;
-  salaries: Id;
-  ribs: Id;
-  boat_maintenance: Id;
-  resources: Id;
-  travel: Id;
-  cogs: Id;
-}
-
-/** One version set's rows: the catalog plus every pinned version's plan rows. */
+/** The catalog plus every row of the plan versions being calculated. */
 export interface PlanData {
-  /** Stamped on every result and metric. */
-  version_set_key: string;
-  /** The fiscal year to compute. Fiscal year N ends in calendar year N. */
+  /** The plan year. Fiscal year N ends in calendar year N. */
   fiscal_year: number;
-  /** The fiscal year's first month, 1–12. */
-  fiscal_year_start_month: number;
-  posting_accounts: PostingAccounts;
+  organization: Organization;
+  organization_cost_accounts: OrganizationCostAccount[];
   /** The resource kind whose `plan_resources` price RIB hours. */
   rib_resource_kind_id: Id | null;
 
@@ -379,15 +286,13 @@ export interface PlanData {
 
   plan_offerings: PlanOffering[];
   plan_offering_boat_classes: PlanOfferingBoatClass[];
-  plan_offering_prices: PlanOfferingPrice[];
-  plan_schedule_rules: PlanScheduleRule[];
   plan_trips: PlanTrip[];
   plan_activities: PlanActivity[];
   plan_activity_resources: PlanActivityResource[];
   plan_labor_lines: PlanLaborLine[];
   plan_budget_lines: PlanBudgetLine[];
 
-  plan_assumptions: PlanAssumption[];
+  plan_rates: PlanRates[];
   plan_staff_levels: PlanStaffLevel[];
   plan_salaried_positions: PlanSalariedPosition[];
   plan_salaried_bookings: PlanSalariedBooking[];
@@ -395,50 +300,52 @@ export interface PlanData {
   plan_boat_rates: PlanBoatRate[];
   plan_activity_block_rules: PlanActivityBlockRule[];
   plan_pools: PlanPool[];
-  plan_pool_shares: PlanPoolShare[];
-  plan_formulas: PlanFormula[];
-  plan_formula_deps: PlanFormulaDep[];
   plan_bonus_owners: PlanBonusOwner[];
   plan_bonus_owner_products: PlanBonusOwnerProduct[];
 }
 
-// Results
+// Output
 
-export type Basis = "accrual" | "cash";
-
-export interface PlanResult {
-  version_set_key: string;
+/** One line of cost or revenue for the plan year, on one offering, product, pool or the organization. */
+export interface CostLine {
   cost_center_type: CostCenterType;
   cost_center_key: Id | null;
   account_id: Id;
   function: AccountFunction | null;
-  basis: Basis;
-  /** The month's first day. */
-  month: DateString;
-  /** A magnitude: the account's type gives its sign. */
+  /** Always positive: the account's type says whether it's revenue or expense. */
   amount_cents: number;
   line_key: string;
   explanation: string;
 }
 
-export type MetricName = "coach_hours" | "paid_hours" | "rib_hours" | "boat_hours" | "enrollment" | "wages" | "mtdc";
-
-export interface PlanMetric {
-  version_set_key: string;
-  cost_center_key: Id;
-  metric: MetricName;
-  month: DateString;
-  value: number;
+/** Revenue, expenses and net, in cents. */
+export interface Totals {
+  revenue_cents: number;
+  expense_cents: number;
+  net_cents: number;
 }
 
-/** A generated or stored activity, after overrides, with the staffing the engine gave it. */
+/** One offering's P&L for the plan year, or a product's, which adds up its offerings. */
+export interface Pnl extends Totals {
+  level: "offering" | "product";
+  /** An offering key, or a product id. */
+  key: Id;
+  /** Each account's total, revenue and expense alike. */
+  by_account: { account_id: Id; amount_cents: number }[];
+  mtdc_cents: number;
+  enrollment: number;
+  /** The dates it has an activity other than travel. */
+  days: number;
+  /** Enrollment × days. */
+  sailor_days: number;
+}
+
+/** An activity with the staffing the engine gave it. */
 export interface ComputedActivity {
   offering_id: Id;
   offering_key: Id;
-  schedule_rule_id: Id | null;
   trip_id: Id | null;
-  /** The stored row's id, when one exists. */
-  activity_id: Id | null;
+  activity_id: Id;
   date: DateString;
   kind: ActivityKind;
   /** Paid minutes: start to end plus setup and put-away. */
@@ -459,8 +366,9 @@ export interface EngineWarning {
 }
 
 export interface EngineOutput {
-  plan_results: PlanResult[];
-  plan_metrics: PlanMetric[];
+  lines: CostLine[];
+  /** Each offering's P&L, then each product's. */
+  pnl: Pnl[];
   activities: ComputedActivity[];
   warnings: EngineWarning[];
 }

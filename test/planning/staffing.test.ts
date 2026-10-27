@@ -1,36 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, type PlanData } from "../src/index.ts";
+import { computePlan, type PlanData } from "../../src/planning/index.ts";
 import {
   A,
   activity,
   blockRule,
   emptyPlan,
-  metricTotal,
+  pnlOf,
   nextId,
   offering,
   position,
   product,
-  rule,
+  rates,
   staffLevel,
   total,
   trip,
 } from "./fixtures.ts";
 
-const ONE_DAY = { starts_on: "2027-06-01", ends_on: "2027-06-01" };
-
 function onePractice(o: Partial<Parameters<typeof offering>[1]> = {}, extra: Partial<PlanData> = {}) {
   const p = product();
   const level = staffLevel({ hourly_rate_cents: 2500 });
   const off = offering(p.id, { target_enrollment: 13, coach_level_key: level.key, ...o });
-  const r = rule(off.id, { ...ONE_DAY, start_time: "16:00", end_time: "18:00" });
+  const a = activity(off.id);
   const data = emptyPlan({
     products: [p],
     plan_offerings: [off],
-    plan_schedule_rules: [r],
+    plan_activities: [a],
     plan_staff_levels: [level],
     ...extra,
   });
-  return { p, off, r, level, data };
+  return { p, off, a, level, data };
 }
 
 describe("staffing", () => {
@@ -46,49 +44,26 @@ describe("staffing", () => {
     expect(computePlan(data).activities[0]?.coaches).toBe(3);
   });
 
-  it("prefers the activity's fixed count, then the rule's, then the offering's", () => {
-    const { data, r, off } = onePractice({ sailors_per_coach: 6, fixed_coaches: 4 });
+  it("prefers the activity's fixed count, then the offering's", () => {
+    const { data, a } = onePractice({ sailors_per_coach: 6, fixed_coaches: 4 });
     expect(computePlan(data).activities[0]?.coaches).toBe(4);
-    r.fixed_coaches = 5;
-    expect(computePlan(data).activities[0]?.coaches).toBe(5);
-    data.plan_activities = [
-      activity(off.id, {
-        schedule_rule_id: r.id,
-        date: "2027-06-01",
-        start_time: "16:00",
-        end_time: "18:00",
-        fixed_coaches: 1.5,
-        overridden: true,
-      }),
-    ];
-    expect(computePlan(data).activities[0]?.coaches).toBe(1.5);
+    a.fixed_coaches = 1;
+    expect(computePlan(data).activities[0]?.coaches).toBe(1);
   });
 
-  it("pays hourly coaches for paid hours at their level's rate, and records the hours", () => {
+  it("pays hourly coaches for paid hours at their level's rate", () => {
     const { data, off } = onePractice({ sailors_per_coach: 6 });
     const out = computePlan(data);
     // 3 coaches × 2 h × 2500¢
     expect(total(out, { line: "coach_wages", cost_center_key: off.key })).toBe(15_000);
-    expect(metricTotal(out, off.key, "coach_hours")).toBe(6);
-    expect(metricTotal(out, off.key, "paid_hours")).toBe(6);
-    expect(metricTotal(out, off.key, "wages")).toBe(15_000);
   });
 
-  it("uses the rate in effect on the activity's date", () => {
-    const { data, off, level } = onePractice({ sailors_per_coach: 13 });
-    data.plan_staff_levels.push(
-      staffLevel({ name: level.name, hourly_rate_cents: 3000, effective_from: "2027-05-01" }),
-    );
-    expect(total(computePlan(data), { line: "coach_wages", cost_center_key: off.key })).toBe(6000);
-  });
-
-  it("counts volunteers' hours but pays them nothing", () => {
-    const { data, off, level } = onePractice({ sailors_per_coach: 6 });
+  it("pays volunteers nothing", () => {
+    const { data, level } = onePractice({ sailors_per_coach: 6 });
     level.pay_type = "volunteer";
     const out = computePlan(data);
     expect(total(out, { line: "coach_wages" })).toBe(0);
-    expect(metricTotal(out, off.key, "coach_hours")).toBe(6);
-    expect(metricTotal(out, off.key, "paid_hours")).toBe(0);
+    expect(out.activities[0]?.coaches).toBe(3);
   });
 
   it("warns when a level lacks the offering's qualification, accepting one that covers it", () => {
@@ -100,7 +75,7 @@ describe("staffing", () => {
   });
 
   it("puts RIBs on the water per coach, priced by the RIB resource", () => {
-    const { data, off } = onePractice({ sailors_per_coach: 6, ribs_per_coach: 0.5 });
+    const { data } = onePractice({ sailors_per_coach: 6, ribs_per_coach: 0.5 });
     data.plan_resources = [
       {
         id: "r1",
@@ -113,14 +88,13 @@ describe("staffing", () => {
         cost_per_day_cents: 100,
         fuel_per_hour_cents: 400,
         maintenance_per_hour_cents: 100,
-        effective_from: null,
+        excluded_from_mtdc: false,
       },
     ];
     const out = computePlan(data);
     expect(out.activities[0]?.ribs).toBe(2);
     // 2 RIBs × (2 h × 500¢ + 100¢)
     expect(total(out, { line: "ribs" })).toBe(2200);
-    expect(metricTotal(out, off.key, "rib_hours")).toBe(4);
   });
 
   it("puts sailors on club boats by class, less those who bring their own, and prices maintenance", () => {
@@ -140,13 +114,11 @@ describe("staffing", () => {
         key: "br1",
         boat_class_id: "opti",
         maintenance_per_boat_hour_cents: 50,
-        effective_from: null,
       },
     ];
     const out = computePlan(data);
     // 8 sailors on club boats: 4 Optis, and 2 420s.
     expect(out.activities[0]?.boats).toBe(6);
-    expect(metricTotal(out, off.key, "boat_hours")).toBe(12);
     // Only the Opti has a rate: 4 boats × 2 h × 50¢.
     expect(total(out, { line: "boats" })).toBe(400);
   });
@@ -176,43 +148,51 @@ describe("staffing", () => {
         cost_per_day_cents: 500,
         fuel_per_hour_cents: null,
         maintenance_per_hour_cents: null,
-        effective_from: null,
+        excluded_from_mtdc: false,
       },
     ];
     data.plan_activity_resources = [
       { id: "ar1", version_id: "v1", key: "ar1", activity_id: a.id, resource_key: "crane-key", quantity: 2, hours: 3 },
     ];
     // 2 × (3 h × 1000¢ + 500¢)
-    expect(total(computePlan(data), { line: "resource" })).toBe(7000);
+    let out = computePlan(data);
+    expect(total(out, { line: "resource" })).toBe(7000);
+    expect(pnlOf(out, off.key).mtdc_cents).toBe(7000);
+
+    data.plan_resources[0]!.excluded_from_mtdc = true;
+    out = computePlan(data);
+    expect(total(out, { line: "resource" })).toBe(7000);
+    expect(pnlOf(out, off.key).mtdc_cents).toBe(0);
+  });
+
+  it("leaves the share of RIB cost from RIBs excluded from MTDC, such as rentals, out of MTDC", () => {
+    const { data, off } = onePractice({ sailors_per_coach: 6, ribs_per_coach: 0.5 });
+    const rib = (key: string, quantity: number, excluded_from_mtdc: boolean) => ({
+      id: key,
+      version_id: "v1",
+      key,
+      resource_kind_id: "kind-rib",
+      name: key,
+      quantity,
+      cost_per_hour_cents: 500,
+      cost_per_day_cents: 0,
+      fuel_per_hour_cents: null,
+      maintenance_per_hour_cents: null,
+      excluded_from_mtdc,
+    });
+    data.plan_resources = [rib("owned", 3, false), rib("rented", 1, true)];
+    const out = computePlan(data);
+    // 2 RIBs × 2 h × 500¢, a quarter of it rented.
+    expect(total(out, { line: "ribs" })).toBe(2000);
+    expect(pnlOf(out, off.key).mtdc_cents).toBe(15_000 + 1500);
   });
 
   it("books a trip's airfare and lodging per coach, and its miles once", () => {
     const { data, off } = onePractice({ fixed_coaches: 2 });
-    data.plan_trips = [
-      trip(off.id, { nights: 2, airfare_cents: 30_000, miles: 100, pre_travel_days: 1, travel_hours_per_day: 4 }),
-    ];
-    data.plan_assumptions = [
-      {
-        id: "a1",
-        version_id: "v1",
-        key: "a1",
-        name: "lodging_per_night_cents",
-        value: 10_000,
-        unit: "cents",
-        effective_from: null,
-        note: null,
-      },
-      {
-        id: "a2",
-        version_id: "v1",
-        key: "a2",
-        name: "mileage_rate_cents",
-        value: 70,
-        unit: "cents",
-        effective_from: null,
-        note: null,
-      },
-    ];
+    const t = trip(off.id, { nights: 2, airfare_cents: 30_000, miles: 100 });
+    data.plan_trips = [t];
+    data.plan_activities.push(activity(off.id, { date: "2027-06-11", kind: "travel", trip_id: t.id }));
+    data.plan_rates = [rates({ lodging_per_night_cents: 10_000, mileage_rate_cents: 70 })];
     // 2 × 30000 + 2 × 2 × 10000 + 100 × 70
     expect(total(computePlan(data), { line: "trip", account_id: A.travel })).toBe(107_000);
   });
@@ -233,11 +213,11 @@ describe("staffing", () => {
         coach_level_key: level.key,
         ribs_per_coach: 1,
       });
-      const rules = [a, b].map((o) => rule(o.id, { ...ONE_DAY, uses_boats: false }));
+      const activities = [a, b].map((o) => activity(o.id, { uses_boats: false }));
       const data = emptyPlan({
         products: [p],
         plan_offerings: [a, b],
-        plan_schedule_rules: rules,
+        plan_activities: activities,
         plan_staff_levels: [level],
         plan_activity_block_rules: [blockRule([a.key, b.key], { weekdays: [2] })],
       });
@@ -267,19 +247,16 @@ describe("staffing", () => {
     });
 
     it("fills its first slots with its salaried positions, paying fewer hourly coaches", () => {
-      const { a, data } = block();
+      const { data } = block();
       const director = position({ annual_salary_cents: 1_200_000, paid_hours_per_year: 2000 });
       data.plan_salaried_positions = [director];
       data.plan_activity_block_rules[0]!.salaried_positions = [director.key];
       const out = computePlan(data);
       // 2 coaches, 1 salaried: 1 hourly coach × 2 h × 2000¢ across the two offerings.
       expect(total(out, { line: "coach_wages" })).toBe(4000);
-      // The director's 2 h at 600¢ an hour go to the offerings; the rest of June's salary goes to the org.
-      expect(total(out, { line: `salary:${director.key}:coaching`, month: "2027-06-01" })).toBe(1200);
-      expect(
-        total(out, { line: `salary:${director.key}:remainder`, month: "2027-06-01", cost_center_type: "org" }),
-      ).toBe(98_800);
-      expect(metricTotal(out, a.key, "coach_hours")).toBe(2);
+      // The director's 2 h at 600¢ an hour go to the offerings; the rest of the salary goes to the org.
+      expect(total(out, { line: `salary:${director.key}:coaching` })).toBe(1200);
+      expect(total(out, { line: `salary:${director.key}:remainder`, cost_center_type: "org" })).toBe(1_198_800);
     });
   });
 });

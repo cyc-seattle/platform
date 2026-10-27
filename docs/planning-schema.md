@@ -4,16 +4,18 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs`. The rest is proposed and not built yet.
+Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs` and `organization_cost_accounts`. The rest is proposed and not built yet.
+
+The model holds a plan's facts and inputs only. Nothing worked out from them is stored: apps and agents call the [planning engine](planning-engine.md) for a P&L when they need one.
 
 ### Terms
 
 - **Product:** a lasting thing CYC sells, such as J-Pod Race Team, boat charters or storage leasing. Products live in the new `core` domain.
 - **Program:** a product of kind `program`, such as J-Pod Race Team. Each application groups programs its own way: the website by category, finance by revenue account, Google Workspace by Group. So no single program hierarchy exists.
 - **Offering:** a product sold for a period, such as J-Pod Fall 2027 or Guppies summer week 3. A program offering is one Clubspot session × class, the unit Clubspot caps enrollment on.
-- **Activity:** one dated, timed event that consumes resources, such as a practice or a regatta day.
-- **Activity block:** activities from different offerings that share coaches and boats, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
-- **Cost center:** what a money line belongs to. That is an offering, a product (spread over its offerings), a pool (G&A, program admin), or the org. Offerings that earn revenue are strictly profit centers, but one field covers every kind.
+- **Activity:** one dated, timed event that uses coaches, boats or other resources, such as a practice, a regatta day or a travel day. The planner, or a scheduling tool, enters each one.
+- **Activity block:** offerings whose activities share coaches and boats on certain days, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
+- **Cost center:** what a money line belongs to. That is an offering, a product (split over its offerings), a pool (G&A, program admin), or the org. Offerings that earn revenue are strictly profit centers, but one field covers every kind.
 - **Bonus owner:** a role, such as Single-handed head coach. It owns a set of products and earns a bonus on their combined net.
 - **Plan:** a separately versioned part of the plan. A **Program Plan** (or a Charter Plan, a Storage Plan and so on) holds one product's offerings. The **Operations Plan** holds what products share.
 - **Version:** either a draft or an immutable saved snapshot of one plan.
@@ -24,11 +26,11 @@ Entity-relationship diagrams for the program planning and financial model app. `
 
 ### Diagram conventions
 
-Every version-scoped entity also has an `id` (deterministic), a `version_id` and a `key`. The diagrams below leave these out except where they matter.
+Every version-scoped entity also has an `id` (deterministic), a `version_id` and a `key`, and `(version_id, key)` is unique. The diagrams below leave these out except where they matter.
 
 Arrays are shown as `json`.
 
-Dashed lines are references by stable `key` across plans. The engine resolves them within a version set; they are not database foreign keys.
+Dashed lines are references by stable `key` across plans. The engine looks them up within a version set; they are not database foreign keys.
 
 ### `core` catalog
 
@@ -40,6 +42,8 @@ erDiagram
     qualifications ||--o{ qualification_covers : "covered by"
     accounts |o--o{ accounts : "parent, contra"
     products ||--o| programs : "program subtype"
+    organizations ||--o{ organization_cost_accounts : "posts computed costs"
+    accounts ||--o{ organization_cost_accounts : "booked to"
 
     products {
         uuid id PK
@@ -87,6 +91,12 @@ erDiagram
         uuid id PK
         string name
     }
+    organization_cost_accounts {
+        uuid id PK
+        uuid organization_id FK
+        string cost_type "coach_wages|salaries|payroll_tax|ribs|boat_maintenance|resources|travel|cogs|card_fees"
+        uuid account_id FK
+    }
     offering_external_refs {
         uuid offering_key
         string clubspot_camp_id
@@ -96,7 +106,7 @@ erDiagram
     }
 ```
 
-`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year, and nothing links to it yet.
+`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year. `organization_cost_accounts` names, for each cost the engine works out rather than reads from a line, the one account it books to; `(organization_id, cost_type)` is unique. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
 
 ### Versioning
 
@@ -127,6 +137,7 @@ erDiagram
         string message
         uuid saved_by
         timestamp saved_at
+        string platform_version "the @cyc-seattle/platform that worked it out"
     }
     version_sets {
         uuid id PK
@@ -151,6 +162,8 @@ erDiagram
     }
 ```
 
+A saved version records the `@cyc-seattle/platform` version whose engine worked out its numbers, so they can be worked out again the same way.
+
 ### Product plan (one version)
 
 ```mermaid
@@ -160,12 +173,9 @@ erDiagram
     qualifications |o--o{ plan_offerings : requires
     plan_offerings ||--o{ plan_offering_boat_classes : sails
     boat_classes ||--o{ plan_offering_boat_classes : "boat class"
-    plan_offerings ||--o{ plan_offering_prices : "price tiers"
-    plan_offerings ||--o{ plan_schedule_rules : "scheduled by"
-    plan_offerings ||--o{ plan_trips : "travels for"
     plan_offerings ||--o{ plan_activities : runs
-    plan_schedule_rules |o--o{ plan_activities : generates
-    plan_trips |o--o{ plan_activities : "generates travel days"
+    plan_offerings ||--o{ plan_trips : "travels for"
+    plan_trips |o--o{ plan_activities : "travel days"
     plan_activities ||--o{ plan_activity_resources : uses
     plan_offerings ||--o{ plan_budget_lines : "direct lines"
     plan_offerings ||--o{ plan_labor_lines : "direct labor"
@@ -182,10 +192,7 @@ erDiagram
         int capacity
         int target_enrollment "or fill_rate"
         decimal fill_rate
-        int price_cents
-        string price_basis
-        int units
-        json registration_curve
+        int price_cents "per kid"
         decimal sailors_per_coach
         int min_coaches
         uuid coach_level_key "operations key"
@@ -203,47 +210,9 @@ erDiagram
         uuid boat_class_id FK
         decimal share
     }
-    plan_offering_prices {
-        uuid offering_id FK
-        string tier
-        int price_cents
-        decimal share
-    }
-    plan_schedule_rules {
-        uuid offering_id FK
-        json weekdays
-        time start_time
-        time end_time
-        decimal on_water_fraction
-        int setup_minutes
-        int putaway_minutes
-        date starts_on
-        date ends_on
-        json skip_dates
-        string kind "practice|regatta|clinic|camp_week"
-        boolean uses_boats
-        int fixed_coaches "override"
-        int fixed_ribs "override"
-    }
-    plan_trips {
-        uuid offering_id FK
-        string name
-        date starts_on
-        date ends_on
-        int pre_travel_days
-        int post_travel_days
-        decimal travel_hours_per_day
-        int load_minutes
-        int unload_minutes
-        int nights
-        int airfare_cents
-        int miles
-        string external_event_ref
-    }
     plan_activities {
         uuid offering_id FK
-        uuid schedule_rule_id FK
-        uuid trip_id FK
+        uuid trip_id FK "travel days"
         date date
         time start_time
         time end_time
@@ -251,10 +220,17 @@ erDiagram
         int setup_minutes
         int putaway_minutes
         string kind "practice|regatta|clinic|camp_week|travel"
+        boolean uses_boats
         int fixed_coaches "override"
         int fixed_ribs "override"
         int fixed_boats "override"
-        boolean overridden
+    }
+    plan_trips {
+        uuid offering_id FK
+        string name
+        int nights
+        int airfare_cents "per coach"
+        int miles
     }
     plan_activity_resources {
         uuid activity_id FK
@@ -268,8 +244,6 @@ erDiagram
         uuid cost_center_key
         uuid staff_level_key "operations key"
         decimal hours
-        string hours_formula
-        json phasing
         uuid account_id FK
         string function
         string note
@@ -280,61 +254,51 @@ erDiagram
         string function
         string cost_center_type "offering|product|pool|org"
         uuid cost_center_key
-        string spread "by_mtdc|by_revenue|even|by_months"
         int amount_cents
-        string formula
         int fiscal_year
-        string phasing_mode "annual_split|monthly_rate"
-        json phasing
-        boolean is_participant_support
-        boolean is_capital
-        boolean is_non_cash
-        boolean excluded_from_base
+        boolean excluded_from_mtdc
         string note
     }
 ```
 
-`spread` applies when the cost center is a product: it decides how the amount is pushed down to that product's offerings in the fiscal year. `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor. They are priced at a staff level, and count toward the wages and paid-hours metrics.
+An offering counts, all of it, in the plan year it starts in. Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
+
+Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; the model holds no rule that generates them. A travel day is an activity of kind `travel`, linked to its trip.
+
+A budget line counts in its `fiscal_year`, and buying equipment is a cost in the year it's bought. A line on a product is split over the product's offerings by MTDC. `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest. `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
 
 ### Operations plan (one version)
 
 ```mermaid
 erDiagram
-    plan_versions ||--o{ plan_assumptions : contains
+    plan_versions ||--o| plan_rates : contains
     plan_versions ||--o{ plan_staff_levels : contains
     plan_versions ||--o{ plan_salaried_positions : contains
     plan_versions ||--o{ plan_resources : contains
     plan_versions ||--o{ plan_activity_block_rules : contains
     plan_versions ||--o{ plan_pools : contains
-    plan_versions ||--o{ plan_formulas : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     resource_kinds ||--o{ plan_resources : "kind of"
     boat_classes ||--o{ plan_boat_rates : "rate for"
     plan_salaried_positions ||--o{ plan_salaried_bookings : "management hours"
     products ||--o{ plan_salaried_bookings : "booked to"
+    plan_salaried_positions }o--o| plan_pools : "rest of salary to"
     plan_staff_levels |o--o{ plan_activity_block_rules : "hourly level"
-    plan_pools ||--o{ plan_pool_shares : shares
-    plan_pools |o--o{ plan_pools : "remainder to"
-    plan_formulas ||--o{ plan_formula_deps : "depends on"
-    accounts ||--o{ plan_formulas : "booked to"
     plan_bonus_owners ||--o{ plan_bonus_owner_products : owns
     products ||--o{ plan_bonus_owner_products : "owned by"
     plan_activity_block_rules }o..o{ plan_offerings : "offering keys"
-    plan_pool_shares }o..|| plan_offerings : "offering or product key"
 
-    plan_assumptions {
-        string name
-        decimal value
-        string unit
-        date effective_from
-        string note
+    plan_rates {
+        decimal payroll_tax_rate "share of wages"
+        decimal card_fee_rate "share of revenue"
+        int lodging_per_night_cents
+        int mileage_rate_cents
     }
     plan_staff_levels {
         string name
         string pay_type "hourly|volunteer"
         int hourly_rate_cents
         json qualifications
-        date effective_from
     }
     plan_salaried_positions {
         string name
@@ -344,14 +308,10 @@ erDiagram
         decimal ga_share
         uuid remainder_pool_id FK
         string form_990_line "override"
-        date effective_from
-        date effective_to
     }
     plan_salaried_bookings {
         uuid position_id FK
         uuid product_id FK
-        date starts_on
-        date ends_on
         string kind "management"
         decimal hours
     }
@@ -363,12 +323,11 @@ erDiagram
         int cost_per_day_cents
         int fuel_per_hour_cents
         int maintenance_per_hour_cents
-        date effective_from
+        boolean excluded_from_mtdc "rentals"
     }
     plan_boat_rates {
         uuid boat_class_id FK
         int maintenance_per_boat_hour_cents
-        date effective_from
     }
     plan_activity_block_rules {
         string name
@@ -381,47 +340,11 @@ erDiagram
     }
     plan_pools {
         string name
-        int step_order
-        string method "base_share|fixed_shares|area|formula"
-        string base
-        json base_categories
-        json targets_filter
-        decimal denominator_quantity
-        string unit
-        uuid remainder_pool_id FK
-        string phasing "by_base|even|target_months"
-    }
-    plan_pool_shares {
-        uuid pool_id FK
-        string target_type "offering|product"
-        uuid target_key
-        decimal share
-        decimal quantity
-        int amount_cents
-        date starts_on
-        date ends_on
-    }
-    plan_formulas {
-        string name
-        string dimension "none|offering|product|month"
-        string expression
-        uuid account_id FK
-        string function
-        string cost_center_type
-        json applies_to_filter
-        boolean excluded_from_base
-        string note
-    }
-    plan_formula_deps {
-        uuid formula_id FK
-        string depends_on "formula, assumption or metric name"
     }
     plan_bonus_owners {
         string role_name
         decimal bonus_rate
         uuid account_id FK
-        date starts_on
-        date ends_on
     }
     plan_bonus_owner_products {
         uuid bonus_owner_id FK
@@ -429,41 +352,20 @@ erDiagram
     }
 ```
 
-A bonus owner's bonus is `bonus_rate × max(0, the combined net of its products)`, so a loss on one owned product offsets gains on another. It is computed after every pool is allocated, and kept out of every base.
+`plan_rates` holds the year's rates; a version has at most one row. Each staff level, salaried position, resource and boat rate also has one rate for the year, so a key names one row.
 
-A pool's `remainder_pool_id` takes whatever its shares leave unclaimed. Unused storage, for example, flows into G&A before G&A is allocated. Pool shares carry dates, so summer can take 100% of the float in June to August while linear feet split it the rest of the year.
+A pool, such as G&A or program admin, collects shared costs: lines booked to it, and the salary its positions' hours don't charge to programs. All of it is split over every offering in the plan year by MTDC.
 
-The Operations Plan also holds `plan_budget_lines` for org and pool lines (insurance, the clubhouse fee, fundraising, capital). They have the same shape as the product plan's lines.
+A bonus owner's bonus is `bonus_rate × the combined net of its products for the year`, after pools, when that's above zero.
 
-### Results and actuals
+The Operations Plan also holds `plan_budget_lines` and `plan_labor_lines` for pool and org lines (insurance, the clubhouse fee, fundraising, equipment). They have the same shape as the product plan's lines.
+
+### Actuals
 
 ```mermaid
 erDiagram
-    version_sets ||--o{ plan_results : "cached for baselines"
-    version_sets ||--o{ plan_metrics : "cached for baselines"
-    accounts ||--o{ plan_results : "booked to"
     accounts ||--o{ actuals : "booked to"
-    plan_results }o..o{ actuals : "same shape: cost center, account, month"
 
-    plan_results {
-        string version_set_key "hash of pinned versions"
-        string cost_center_type
-        uuid cost_center_key
-        uuid account_id FK
-        string function
-        string basis "accrual|cash"
-        date month
-        int amount_cents
-        string line_key
-        string explanation
-    }
-    plan_metrics {
-        string version_set_key
-        uuid cost_center_key
-        string metric "coach_hours|paid_hours|rib_hours|boat_hours|enrollment|wages|mtdc"
-        date month
-        decimal value
-    }
     actuals {
         string cost_center_type
         uuid cost_center_key
@@ -474,3 +376,5 @@ erDiagram
         string source "qbo|clubspot"
     }
 ```
+
+Actuals are what QuickBooks and Clubspot recorded. To compare them with a plan, add them up over the plan year and set them beside the engine's lines for the same cost centers and accounts.
