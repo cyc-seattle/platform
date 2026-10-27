@@ -94,6 +94,7 @@ const sets: Record<string, Target[]> = {
     "google_group_memberships",
   ),
   "which sign-up answers to copy": plain("promoted_fields"),
+  "sign-up answers to copy": plain("promoted_fields"),
   "the programs, rosters, and program roles it uses to fill groups": plain(
     "programs",
     "camps",

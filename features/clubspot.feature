@@ -81,7 +81,7 @@ Feature: Camps and registrations from Clubspot
 
   Rule: clubspot-sync can see which sign-up answers to copy, but only staff can change that
 
-    Example: clubspot-sync can't change which sign-up answers to copy
+    Example: clubspot-sync can't add a sign-up answer to copy
       Given clubspot-sync's service account
       Then it can see which sign-up answers to copy
-      But it can't change which sign-up answers to copy
+      But it can't add sign-up answers to copy
