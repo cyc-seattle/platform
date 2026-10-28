@@ -78,10 +78,15 @@ function secretReads(): unknown[] {
 // Lets the registrations an awaited deploy queued reach the mocks.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 
+const extensions = {
+  queryGuard: { policies: { Crew: { people: [{ fields: "*" as const, filtered: false }] } } },
+  groupPolicies: { grantable: ["CRM Writer"], roles: ["Community", "Crew", "Admin"] },
+};
+
 beforeAll(async () => {
   // Imported after setMocks, since the modules read the stack name when they load.
   const { deployDirectus } = await import("../stacks/backend/cluster.ts");
-  await deployDirectus("admin@example.com", true);
+  await deployDirectus("admin@example.com", true, extensions);
   await settle();
 });
 
@@ -116,5 +121,18 @@ describe("Directus on the cluster", () => {
     expect(
       find("kubernetes:apps/v1:Deployment", "directus").inputs["spec"].template.metadata.annotations,
     ).toBeUndefined();
+  });
+});
+
+describe("Directus's hook extensions", () => {
+  it.each(["community-query-guard", "group-policies"])("mounts %s with its config", (name) => {
+    const data = find("kubernetes:core/v1:ConfigMap", `directus-${name}`).inputs["data"];
+    expect(JSON.parse(data["package.json"])["directus:extension"].type).toBe("hook");
+    expect(JSON.parse(data["config.json"])).toEqual(
+      name === "group-policies" ? extensions.groupPolicies : extensions.queryGuard,
+    );
+    expect(container("directus").volumeMounts).toEqual(
+      expect.arrayContaining([expect.objectContaining({ mountPath: `/directus/extensions/${name}` })]),
+    );
   });
 });

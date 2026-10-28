@@ -9,7 +9,7 @@ import { WebService } from "../../src/index.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv } from "./workloads.ts";
-import { queryGuardConfig } from "./community-rules.ts";
+import type { GroupPoliciesConfig, QueryGuardConfig } from "./policies.ts";
 
 // Directus on the cluster (cyc-seattle/isthmia#231). Its uploads are ephemeral, as on the VM.
 
@@ -42,6 +42,12 @@ function generated(name: string, length: number): pulumi.Output<string> {
   return new random.RandomPassword(name, { length, special: false }).result;
 }
 
+/** The configs of the hook extensions Directus loads (./policies.ts). */
+export interface DirectusExtensions {
+  queryGuard: QueryGuardConfig;
+  groupPolicies: GroupPoliciesConfig;
+}
+
 /**
  * `licensed` false runs Directus on its unlicensed Core tier, with no `LICENSE_KEY`. Given `existing`,
  * Directus keeps prod's keys, database, Community role, and OIDC client; otherwise this generates
@@ -50,6 +56,7 @@ function generated(name: string, length: number): pulumi.Output<string> {
 export async function deployDirectus(
   adminEmail: string,
   licensed: boolean,
+  extensions: DirectusExtensions,
   existing?: ExistingDirectus,
 ): Promise<DirectusOnCluster> {
   const config = new pulumi.Config();
@@ -87,22 +94,29 @@ export async function deployDirectus(
 
   // Directus loads extensions only at start. Unnamed, so a change replaces it under a new name, and
   // the Deployment rolls.
-  const queryGuard = new k8s.core.v1.ConfigMap(
-    "directus-community-query-guard",
-    {
-      metadata: { namespace: platform.namespace },
-      data: {
-        "package.json": JSON.stringify({
-          name: "community-query-guard",
-          version: "1.0.0",
-          "directus:extension": { type: "hook", path: "index.js", source: "index.js", host: "^12.0.0" },
-        }),
-        "index.js": fs.readFileSync(path.resolve(import.meta.dirname, "community-query-guard.cjs"), "utf8"),
-        "config.json": communityRoleId.apply((role) => JSON.stringify({ role, ...queryGuardConfig() })),
+  const hook = (name: string, source: string, config: object) => {
+    const configMap = new k8s.core.v1.ConfigMap(
+      `directus-${name}`,
+      {
+        metadata: { namespace: platform.namespace },
+        data: {
+          "package.json": JSON.stringify({
+            name,
+            version: "1.0.0",
+            "directus:extension": { type: "hook", path: "index.js", source: "index.js", host: "^12.0.0" },
+          }),
+          "index.js": fs.readFileSync(path.resolve(import.meta.dirname, source), "utf8"),
+          "config.json": JSON.stringify(config),
+        },
       },
-    },
-    { provider },
-  );
+      { provider },
+    );
+    return { name, configMap };
+  };
+  const hooks = [
+    hook("community-query-guard", "community-query-guard.cjs", extensions.queryGuard),
+    hook("group-policies", "group-policies.cjs", extensions.groupPolicies),
+  ];
 
   const directus = new WebService("directus", {
     platform,
@@ -126,12 +140,12 @@ export async function deployDirectus(
       { name: "pm2", mountPath: "/home/node/.pm2", emptyDir: {} },
       { name: "uploads", mountPath: "/directus/uploads", emptyDir: { sizeLimit: "1Gi" } },
       { name: "extensions", mountPath: "/directus/node_modules/.directus", emptyDir: {} },
-      {
-        name: "community-query-guard",
-        mountPath: "/directus/extensions/community-query-guard",
-        configMap: queryGuard.metadata.name,
+      ...hooks.map(({ name, configMap }) => ({
+        name,
+        mountPath: `/directus/extensions/${name}`,
+        configMap: configMap.metadata.name,
         readOnly: true,
-      },
+      })),
     ],
     // The image's user is `node`, a name, which runAsNonRoot can't check.
     runAsUser: 1000,
@@ -153,7 +167,7 @@ export async function deployDirectus(
       create: 'curl -fsS -o /dev/null --retry 90 --retry-delay 10 --retry-all-errors "$DIRECTUS_URL/server/ping"',
       environment: { DIRECTUS_URL: baseUrl },
       // A changed Secret replaces the Deployment too, so Directus restarts.
-      triggers: [image, secret.metadata.uid, queryGuard.metadata.uid],
+      triggers: [image, secret.metadata.uid, ...hooks.map(({ configMap }) => configMap.metadata.uid)],
     },
     { dependsOn: [directus, ...record] },
   );

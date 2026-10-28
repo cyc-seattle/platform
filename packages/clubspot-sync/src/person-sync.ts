@@ -475,6 +475,19 @@ export class PersonSync {
     current: Pick<PersonRow, "email" | "phone"> | undefined,
     patch: Partial<PersonRow>,
   ): Promise<void> {
+    if (
+      patch.email !== undefined &&
+      normalizeEmail(patch.email) !== normalizeEmail(current?.email ?? null) &&
+      (await this.inAGroup(personId))
+    ) {
+      // A group member's email can link their login (docs/access.md), and families share one, so
+      // only an admin changes it. The form's address still lands in contact_points.
+      winston.warn(`Not changing the email of person ${personId}, who is in a group; an admin can change it`, {
+        personId,
+      });
+      patch = { ...patch };
+      delete patch.email;
+    }
     if (Object.keys(patch).length === 0) {
       return;
     }
@@ -496,6 +509,15 @@ export class PersonSync {
       }
     }
     await this.directus.updateItem<PersonRow>("people", personId, patch);
+  }
+
+  private async inAGroup(personId: string): Promise<boolean> {
+    const members = await this.directus.readItems<{ id: string }>("group_members", {
+      filter: { person_id: { _eq: personId } },
+      fields: ["id"],
+      limit: 1,
+    });
+    return members.length > 0;
   }
 
   private async fetchCandidatesByEmailOrLastName(

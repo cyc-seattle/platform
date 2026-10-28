@@ -39,7 +39,6 @@ Feature: Registrations from Clubspot
       Then they can see Clubspot's events and registrations
       But they can't change Clubspot's events and registrations
 
-    @pending
     Example: A CRM Reader can see Clubspot's events and registrations, but can't change them
       Given a user with the CRM Reader policy
       Then they can see Clubspot's events and registrations

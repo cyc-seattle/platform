@@ -87,6 +87,11 @@ function stringData(name: string): Record<string, unknown> {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 
+const extensions = {
+  queryGuard: { policies: { Crew: { people: [{ fields: "*" as const, filtered: false }] } } },
+  groupPolicies: { grantable: ["CRM Writer"], roles: ["Community", "Crew", "Admin"] },
+};
+
 beforeAll(async () => {
   const { prodDirectus } = await import("../stacks/backend/prod-state.ts");
   const { deployDirectus } = await import("../stacks/backend/cluster.ts");
@@ -96,7 +101,7 @@ beforeAll(async () => {
     externalDomain: "example.org",
     baseUrl: "https://directus.example.com",
   });
-  await deployDirectus("admin@example.com", true, prod.values);
+  await deployDirectus("admin@example.com", true, extensions, prod.values);
   await settle();
 });
 
@@ -147,7 +152,7 @@ describe("prod's Directus on the cluster", () => {
     expect(secretReads).toEqual(["directus-license-key"]);
   });
 
-  it("names the existing Community role as the default, and in the query guard", () => {
+  it("names the existing Community role as the default", () => {
     const env = Object.fromEntries(
       container().containers[0].env.map((e: { name: string; value?: unknown }) => [e.name, e.value]),
     );
@@ -156,8 +161,6 @@ describe("prod's Directus on the cluster", () => {
       PUBLIC_URL: "https://directus.example.com",
       DB_POOL__MAX: "10",
     });
-    const guard = find("kubernetes:core/v1:ConfigMap", "directus-community-query-guard").inputs["data"];
-    expect(JSON.parse(guard["config.json"]).role).toBe("crm-community-role-id");
   });
 
   it("runs on regular capacity with prod's sizing", () => {

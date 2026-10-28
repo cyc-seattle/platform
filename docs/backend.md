@@ -5,10 +5,12 @@ Cloud SQL database `directus`. It came from isthmia's `crm`, `clubspot-sync`, an
 projects with their resource names unchanged, and their states moved over with `pulumi state move`
 (cyc-seattle/workplace#6). It holds:
 
-- Directus, as a `WebService`, with the Community query guard mounted as a hook extension
+- Directus, as a `WebService`, with the query guard and the `group-policies` hook mounted as hook
+  extensions
 - the schema apply, from every `schemas/<domain>.yaml` merged into one snapshot
-- the roles, policies, and permission rules, including the Community policies and the query guard,
-  which cyc-seattle/workplace#6 steps 15 to 19 remove
+- the roles, policies, and permission rules ([access.md](access.md)), including the Community
+  policies and the query guard, which cyc-seattle/workplace#6 steps 15 to 19 remove
+- the `group-policies` hook, which gives each user the policies their groups give
 - the admins' accounts, and the clubspot-sync and gsuite-sync machine users with their tokens
 - Directus's OIDC client at Authentik
 - the MCP settings

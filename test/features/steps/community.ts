@@ -3,7 +3,7 @@ import { expect } from "vitest";
 import { ACTIVE_CAMP, PARENT_COORDINATOR } from "../../../stacks/backend/community-rules.ts";
 import type { DirectusSession } from "../directus.ts";
 import { expectRefusal, onEachScenario, parameter, setThey, Step, theirSession } from "./index.ts";
-import { createUser, todaysRoleName, type User } from "./logins.ts";
+import { createUser, type User } from "./logins.ts";
 import { admin, adminCreate, email, key, runId } from "./rows.ts";
 
 // The season a family's scenario stands in: camps, rosters, sailors, and the people who sign in. Each
@@ -173,7 +173,7 @@ async function guardianOf(child: Person, dateOfBirth: string | null = ADULT): Pr
 
 /** Gives `who` a user on `role`, matched to their person by email, and makes them "they". */
 async function signIn(who: Person, role = "Community", typed = who.email): Promise<Person> {
-  who.user = await createUser(typed, todaysRoleName(role));
+  who.user = await createUser(typed, role);
   actAs(who);
   return who;
 }

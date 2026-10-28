@@ -143,13 +143,14 @@ export interface CommunityRuleFields {
   /** Omit for unrestricted access to the allowed fields (used only for the public camp/class/
    * program lookups below, none of which carry anything sensitive). */
   permissions?: Filter;
+  /** `["*"]` for every field. */
   fields: string[];
 }
 
 export interface CommunityPolicyData {
   /** Used to derive this policy's Pulumi resource names and the integration test's fixtures -
    * matches the design doc's policy names (`names`/`contacts`/`family`). */
-  key: "names" | "contacts" | "family" | "coordinator-names" | "coordinator-contacts";
+  key: "names" | "contacts" | "family" | "children" | "coordinator-names" | "coordinator-contacts";
   name: string;
   icon: string;
   description: string;
@@ -271,6 +272,16 @@ export const communityPolicies: CommunityPolicyData[] = [
     ],
   },
   {
+    key: "children",
+    name: "Community: own children",
+    icon: "child_care",
+    description: "Read-only: a parent's own children's medical information. See docs/access.md.",
+    // Medical information only. Directus searches, and lists the fields of, every row a field is
+    // granted on anywhere, so a whole-row rule on people or participants would let a parent search
+    // their child's teammates by the fields the other policies hide.
+    rules: [{ collection: "medical_profiles", action: "read", fields: ["*"], permissions: { person_id: GUARDIAN_OF } }],
+  },
+  {
     key: "coordinator-names",
     name: "Community: coordinator names",
     icon: "supervisor_account",
@@ -334,28 +345,3 @@ export const communityPolicies: CommunityPolicyData[] = [
     ],
   },
 ];
-
-export interface QueryGuardConfig {
-  /** Per collection, the fields some Community read rule withholds. */
-  restricted: Record<string, string[]>;
-  /** The collections every Community read rule returns whole. */
-  open: string[];
-}
-
-/** What ./community-query-guard.js needs to reject a query that probes a hidden field. */
-export function queryGuardConfig(policies: CommunityPolicyData[] = communityPolicies): QueryGuardConfig {
-  const reads = new Map<string, CommunityRuleFields[]>();
-  for (const rule of policies.flatMap((policy) => policy.rules)) {
-    if (rule.action === "read") reads.set(rule.collection, [...(reads.get(rule.collection) ?? []), rule]);
-  }
-  const restricted: Record<string, string[]> = {};
-  const open: string[] = [];
-  for (const [collection, rules] of reads) {
-    const every = rules.map((rule) => new Set(rule.fields));
-    const some = [...new Set(rules.flatMap((rule) => rule.fields))];
-    const partial = some.filter((field) => !every.every((fields) => fields.has(field))).sort();
-    if (partial.length > 0) restricted[collection] = partial;
-    if (rules.every((rule) => rule.permissions === undefined)) open.push(collection);
-  }
-  return { restricted, open: open.sort() };
-}

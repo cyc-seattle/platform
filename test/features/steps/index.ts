@@ -2,19 +2,26 @@ import { defineParameterExpression, defineSteps, describeFeature } from "@amicel
 import { afterAll, describe, expect, it } from "vitest";
 import type { DirectusSession } from "../directus.ts";
 import { devDirectusLicensed } from "../directus.ts";
-import { feature } from "../support.ts";
+import { deploymentEnv, devPlatform, feature, optionalDeploymentEnv } from "../support.ts";
 import {
+  addToGroup,
+  adminDelete,
+  createUser,
   deleteUsers,
-  notBuilt,
+  forget,
+  hasPolicies,
+  newGroup,
+  newPerson,
+  policiesOf,
   policyNames,
   roleNames,
   roleOf,
   roleId,
   serviceNames,
   setRole,
-  todaysRoleName,
   userFor,
   type Actor,
+  type User,
 } from "./logins.ts";
 import {
   admin,
@@ -22,6 +29,7 @@ import {
   change,
   created,
   deleteRows,
+  email,
   fixture,
   itemPath,
   newRow,
@@ -69,6 +77,8 @@ parameter("records", recordNames);
 export interface They {
   session(): Promise<DirectusSession>;
   userId(): Promise<string>;
+  /** The shared actor they are, if they are one. */
+  actor?: Actor;
 }
 
 let they: They | undefined;
@@ -114,7 +124,12 @@ function actor(spec: Actor): They {
   return {
     session: async () => (await userFor(spec)).session,
     userId: async () => (await userFor(spec)).userId,
+    actor: spec,
   };
+}
+
+function as(user: User): They {
+  return { session: async () => user.session, userId: async () => user.userId };
 }
 
 Step("a user with the {policy} policy", (_, policy: string) => setThey(actor({ policies: [policy] })));
@@ -329,7 +344,7 @@ Step("they can open the Data Studio", async () => {
 
 for (const text of ["they have the {role} role", "they still have the {role} role"]) {
   Step(text, async (_, role: string) => {
-    expect(await roleOf(await current().userId())).toBe(todaysRoleName(role));
+    expect(await roleOf(await current().userId())).toBe(role);
   });
 }
 
@@ -343,7 +358,7 @@ Step("an admin looks up their roles", async () => {
 });
 Step("each of them has the Community, Crew, or Admin role", () => {
   for (const { id, directus_user_id: user } of signedIn) {
-    expect(["Community", "Crew", "Admin"].map(todaysRoleName), `person ${id}`).toContain(user?.role?.name);
+    expect(["Community", "Crew", "Admin"], `person ${id}`).toContain(user?.role?.name);
   }
 });
 
@@ -354,7 +369,7 @@ Step("an admin gives them the {role} role", async (_, role: string) => {
 Step("they can't change anyone's role, even their own", async () => {
   const user = await session();
   const someone = await userFor({ role: "Community" });
-  const adminRole = await roleId("Administrator");
+  const adminRole = await roleId("Admin");
   for (const [userId, path] of [
     [await current().userId(), "/users/me"],
     [someone.userId, `/users/${someone.userId}`],
@@ -365,23 +380,137 @@ Step("they can't change anyone's role, even their own", async () => {
   }
 });
 
-// Groups, and a first sign-in through the club's single sign-on, come with step 8a.
-for (const text of [
-  "a person in the CRM who has never signed in",
-  "a person in the CRM who has never signed in, in a group that gives the {policy} policy",
-  "a user in a group that gives the {policy} policy",
-  "a user in two groups that each give the {policy} policy",
-  "they sign in for the first time",
-  "they sign in again",
-  "an admin adds them to a group that gives the {policy} policy",
-  "an admin takes them out of the group",
-  "an admin takes them out of one of the groups",
-  "an admin changes the group so it no longer gives that policy",
-  "the first admin account",
-  "an admin adds it to a group that gives the {policy} policy",
-]) {
-  Step(text, () => notBuilt("8a"));
+// Groups. The group-policies hook gives a group's policies after the request that changed the group
+// has answered, so each step waits for it.
+
+interface Membership {
+  groupId: string;
+  memberId: string;
+  grantIds: string[];
 }
+
+let newcomer: { email: string; personId: string; policies: string[] } | undefined;
+let memberships: Membership[] = [];
+let groupPolicy: string | undefined;
+onEachScenario(() => {
+  newcomer = undefined;
+  memberships = [];
+  groupPolicy = undefined;
+});
+
+async function join(personId: string, policy: string): Promise<void> {
+  const { groupId, grantIds } = await newGroup(policy);
+  memberships.push({ groupId, grantIds, memberId: await addToGroup(groupId, personId) });
+}
+
+async function aNewcomer(policies: string[]): Promise<void> {
+  const signIn = email("newcomer");
+  const personId = await newPerson({ email: signIn });
+  for (const policy of policies) {
+    await join(personId, policy);
+  }
+  newcomer = { email: signIn, personId, policies };
+}
+Step("a person in the CRM who has never signed in", () => aNewcomer([]));
+Step("a person in the CRM who has never signed in, in a group that gives the {policy} policy", (_, policy: string) =>
+  aNewcomer([policy]),
+);
+
+// A first sign-in through Authentik makes the user on Directus's default role. Driving Authentik
+// needs credentials the tests don't have, so this makes the user as Directus's OpenID driver does.
+Step("they sign in for the first time", async () => {
+  if (newcomer === undefined) {
+    throw new Error("No Given has made the person who signs in.");
+  }
+  const defaultRole = await deploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_DEFAULT_ROLE_ID");
+  const user = await createUser(newcomer.email, { id: defaultRole });
+  await hasPolicies(user.userId, newcomer.policies);
+  if (newcomer.policies.length > 0) {
+    // Stored, so a later change to the person's email can't move their access to someone else.
+    const person = await (await admin()).ok("GET", `/items/people/${newcomer.personId}?fields=directus_user_id`);
+    expect(person.directus_user_id).toBe(user.userId);
+  }
+  setThey(as(user));
+});
+
+// Directus's OpenID driver sets the role on a later sign-in only when a role mapping is set.
+Step("they sign in again", async () => {
+  const mapping = await optionalDeploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_ROLE_MAPPING");
+  expect(mapping, "AUTH_AUTHENTIK_ROLE_MAPPING would reset the role on every sign-in").toBeUndefined();
+  const again = (await session()).again();
+  await again.ok("GET", "/users/me");
+  const userId = await current().userId();
+  setThey({ session: async () => again, userId: async () => userId });
+});
+
+async function aMemberOf(groups: number, policy: string): Promise<void> {
+  const user = await createUser(email("volunteer"), "Crew");
+  const personId = await newPerson({ email: user.email, directus_user_id: user.userId });
+  for (let i = 0; i < groups; i++) {
+    await join(personId, policy);
+  }
+  await hasPolicies(user.userId, [policy]);
+  groupPolicy = policy;
+  setThey(as(user));
+}
+Step("a user in a group that gives the {policy} policy", (_, policy: string) => aMemberOf(1, policy));
+Step("a user in two groups that each give the {policy} policy", (_, policy: string) => aMemberOf(2, policy));
+
+Step("an admin adds them to a group that gives the {policy} policy", async (_, policy: string) => {
+  const they = current();
+  const userId = await they.userId();
+  // The scenario changes a shared actor's policies, so later scenarios get one of their own.
+  if (they.actor !== undefined) {
+    const user = await userFor(they.actor);
+    forget(they.actor);
+    setThey(as(user));
+  }
+  const { email: signIn } = await (await admin()).ok("GET", `/users/${userId}?fields=email`);
+  await join(await newPerson({ email: signIn, directus_user_id: userId }), policy);
+  await hasPolicies(userId, [...(await policiesOf(userId)), policy]);
+});
+
+/** Waits long enough for the hook to have run, then checks the user's policies. */
+async function afterTheHook(policies: string[]): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 3_000));
+  await hasPolicies(await current().userId(), policies);
+}
+
+Step("an admin takes them out of the group", async () => {
+  await adminDelete("group_members", memberships[0]!.memberId);
+  await afterTheHook([]);
+});
+Step("an admin takes them out of one of the groups", async () => {
+  await adminDelete("group_members", memberships[0]!.memberId);
+  await afterTheHook([groupPolicy!]);
+});
+Step("an admin changes the group so it no longer gives that policy", async () => {
+  await adminDelete("group_policies", memberships[0]!.grantIds[0]!);
+  await afterTheHook([]);
+});
+
+Step("the first admin account", () =>
+  setThey({
+    session: admin,
+    userId: async () => (await (await admin()).ok("GET", "/users/me?fields=id")).id,
+  }),
+);
+
+// A person with the account's email, as someone would add them by mistake. A Crew member in the same
+// group shows when the hook has run.
+Step("an admin adds it to a group that gives the {policy} policy", async (_, policy: string) => {
+  const userId = await current().userId();
+  const { email: signIn } = await (await admin()).ok("GET", `/users/${userId}?fields=email`);
+  const before = await policiesOf(userId);
+  await join(await newPerson({ email: signIn }), policy);
+  const witness = await createUser(email("witness"), "Crew");
+  await addToGroup(
+    memberships[0]!.groupId,
+    await newPerson({ email: witness.email, directus_user_id: witness.userId }),
+  );
+  await hasPolicies(witness.userId, [policy]);
+  expect(await policiesOf(userId)).toEqual(before);
+});
 
 /** A scenario's own steps, for one whose steps no other feature shares. */
 export type ScenarioSteps = (steps: Record<"Given" | "When" | "Then" | "And" | "But", Callback>) => void;

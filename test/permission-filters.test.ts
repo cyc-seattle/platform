@@ -4,7 +4,6 @@ import * as yaml from "js-yaml";
 import { describe, it, expect } from "vitest";
 import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.ts";
 import { communityPolicies } from "../stacks/backend/community-rules.ts";
-import { guardianRules } from "../stacks/backend/guardian-rules.ts";
 
 interface Snapshot {
   fields: { collection: string; field: string }[];
@@ -52,7 +51,6 @@ function unknownFields(collection: string, filter: unknown, path = collection): 
 }
 
 const rules = [
-  ...guardianRules.map((rule) => ({ policy: "Guardian", ...rule })),
   ...communityPolicies.flatMap((policy) => policy.rules.map((rule) => ({ policy: policy.name, ...rule }))),
 ];
 
@@ -62,24 +60,4 @@ describe("permission filters", () => {
       expect(unknownFields(rule.collection, rule.permissions)).toEqual([]);
     });
   }
-});
-
-describe("Guardian rules", () => {
-  it("reach the guardian link through nested relations, not a dotted key", () => {
-    const rule = guardianRules.find((r) => r.collection === "registration_entries");
-    expect(rule?.permissions).toEqual({
-      registration_id: {
-        participant_id: {
-          person_id: {
-            my_contacts: {
-              _and: [
-                { relationship_type: { _eq: "guardian" } },
-                { contact_id: { directus_user_id: { _eq: "$CURRENT_USER" } } },
-              ],
-            },
-          },
-        },
-      },
-    });
-  });
 });
