@@ -1429,48 +1429,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: programs
-    field: revenue_account
-    type: string
-    meta:
-      collection: programs
-      conditions: null
-      display: null
-      display_options: null
-      field: revenue_account
-      group: null
-      hidden: false
-      interface: input
-      note: >-
-        The finance chart-of-accounts code this program's revenue rolls up to, hand-set by staff -
-        never written by a sync. Null means the program isn't mapped to an account yet.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 3
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: revenue_account
-      table: programs
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: programs
     field: product_id
     type: uuid
     meta:
@@ -1482,13 +1440,13 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The product this program is a subtype of, which must be of kind program. Null until the backfill sets it.
+      note: The product this program is a subtype of, which must be of kind program.
       options:
         filter:
           kind:
             _eq: program
       readonly: false
-      required: false
+      required: true
       searchable: true
       sort: 7
       special: null
@@ -1504,7 +1462,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: true
       is_indexed: false
       is_primary_key: false

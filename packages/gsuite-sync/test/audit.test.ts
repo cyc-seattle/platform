@@ -193,8 +193,7 @@ describe("findProgramsWithoutGroup", () => {
     return {
       id: "program-1",
       name: "Double-handed",
-      revenue_account: null,
-      product_id: null,
+      product_id: "product-1",
       google_group_id: null,
       ...overrides,
     };
@@ -311,36 +310,14 @@ describe("findMismatchedRevenueAccounts", () => {
     expect(result).toEqual([]);
   });
 
-  it("raises nothing when a product has no account, or a program no product", () => {
+  it("raises nothing when a product has no account", () => {
     expect(findMismatchedRevenueAccounts([camp({})], classes, programs, products("account-1", null), accounts)).toEqual(
       [],
     );
-    expect(
-      findMismatchedRevenueAccounts(
-        [camp({})],
-        classes,
-        [programs[0]!, { id: "program-2", product_id: null }],
-        products("account-1", "account-2"),
-        accounts,
-      ),
-    ).toEqual([]);
   });
 });
 
 describe("findProgramProductProblems", () => {
-  it("raises program_without_product for a program with no product", () => {
-    const result = findProgramProductProblems([{ id: "program-1", name: "Guppies", product_id: null }], []);
-
-    expect(result).toEqual([
-      {
-        source: "gsuite-sync",
-        kind: "program_without_product",
-        subject: "program-1",
-        detail: 'Program "Guppies" (program-1) has no product_id',
-      },
-    ]);
-  });
-
   it("raises program_product_wrong_kind for a program whose product isn't a program", () => {
     const result = findProgramProductProblems(
       [{ id: "program-1", name: "Guppies", product_id: "product-1" }],
@@ -446,8 +423,8 @@ describe("candidateMemberPeople", () => {
     const tables = {
       groups: [{ id: "group-1", email: "j-pod@cyccommunitysailing.org", archived: false }],
       programs: [
-        { id: "mapped", name: "J Pod", google_group_id: "group-1", revenue_account: null, product_id: null },
-        { id: "groupless", name: "Teen Sailing", google_group_id: null, revenue_account: null, product_id: null },
+        { id: "mapped", name: "J Pod", google_group_id: "group-1", product_id: "product-1" },
+        { id: "groupless", name: "Teen Sailing", google_group_id: null, product_id: "product-1" },
       ],
       camps: [
         {
@@ -493,7 +470,7 @@ describe("candidateMemberPeople", () => {
   it("leaves out a person removed from the group, since the sync won't add them back (cyc-seattle/isthmia#265)", () => {
     const tables = {
       groups: [{ id: "group-1", email: "j-pod@cyccommunitysailing.org", archived: false }],
-      programs: [{ id: "mapped", name: "J Pod", google_group_id: "group-1", revenue_account: null, product_id: null }],
+      programs: [{ id: "mapped", name: "J Pod", google_group_id: "group-1", product_id: "product-1" }],
       camps: [],
       classes: [],
       registrations: [],

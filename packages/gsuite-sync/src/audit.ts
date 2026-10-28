@@ -45,6 +45,8 @@ export const AUDIT_FINDING_KINDS: readonly AuditFindingKind[] = [
   "program_without_group",
   "class_without_program",
   "mismatched_revenue_account",
+  // No longer raised, now that a program requires a product. Listed so the next run resolves any
+  // finding still open.
   "program_without_product",
   "program_product_wrong_kind",
   "invalid_email",
@@ -270,9 +272,8 @@ export function findInvalidEmails(
 /**
  * `mismatched_revenue_account` findings: a camp whose classes map to programs whose products book
  * to more than one revenue account. A Clubspot Camp has a single sales account
- * (`clubspot_sales_account`), so every class within it should share one. A program with no
- * product, or a product with no account, isn't mapped yet and doesn't itself count as a conflict -
- * only two or more distinct accounts do. Tagged `clubspot-sync`, the same as
+ * (`clubspot_sales_account`), so every class within it should share one. A product with no account
+ * isn't mapped yet and doesn't itself count as a conflict - only two or more distinct accounts do. Tagged `clubspot-sync`, the same as
  * `class_without_program`: this is a Clubspot/finance concern, not a Google one, even though this
  * pass computes it.
  */
@@ -288,7 +289,7 @@ export function findMismatchedRevenueAccounts(
   const accountById = byId(accounts);
   const accountOf = (programId: string): string | undefined => {
     const productId = programById.get(programId)?.product_id;
-    const accountId = productId ? productById.get(productId)?.revenue_account_id : undefined;
+    const accountId = productId === undefined ? undefined : productById.get(productId)?.revenue_account_id;
     return accountId ? (accountById.get(accountId)?.number ?? accountId) : undefined;
   };
 
@@ -320,9 +321,8 @@ export function findMismatchedRevenueAccounts(
 }
 
 /**
- * `program_without_product` and `program_product_wrong_kind` findings: a program must be a product
- * of kind `program`, and Directus can't compare a field across collections to enforce it
- * (cyc-seattle/isthmia#213 §2).
+ * `program_product_wrong_kind` findings: a program must be a product of kind `program`, and
+ * Directus can't compare a field across collections to enforce it (cyc-seattle/isthmia#213 §2).
  */
 export function findProgramProductProblems(
   programs: readonly Pick<ProgramRow, "id" | "name" | "product_id">[],
@@ -332,15 +332,6 @@ export function findProgramProductProblems(
   const findings: GsuiteAuditFinding[] = [];
   for (const program of programs) {
     if (!program.id) {
-      continue;
-    }
-    if (!program.product_id) {
-      findings.push({
-        source: GSUITE_SYNC_SOURCE,
-        kind: "program_without_product",
-        subject: program.id,
-        detail: `Program "${program.name}" (${program.id}) has no product_id`,
-      });
       continue;
     }
     const product = productById.get(program.product_id);

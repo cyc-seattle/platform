@@ -69,7 +69,7 @@ erDiagram
     }
     programs {
         uuid id PK
-        uuid product_id FK "unique, kind program"
+        uuid product_id FK "unique, required, kind program"
     }
     organizations {
         uuid id PK
