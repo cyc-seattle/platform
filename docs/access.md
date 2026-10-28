@@ -97,7 +97,7 @@ sync, isn't checked. `backend` writes each policy's read rules into the guard's 
 
 ## Moving to these roles
 
-`mise run migrate-roles` moves an environment's users onto the three roles, after the deploy that
+`scripts/migrate-roles.ts` moves an environment's users onto the three roles, after the deploy that
 built them (cyc-seattle/workplace#6 step 8a). It's a dry run without `--apply`, and safe to run
 again:
 
@@ -109,11 +109,11 @@ again:
 
 For prod, back up Directus's database first, then:
 
-1. `PULUMI_STACK=prod mise run migrate-roles`, before the deploy. It counts users by role.
-2. If it finds Guardian users, `PULUMI_STACK=prod mise run migrate-roles --apply`, so the deploy's
+1. `PULUMI_STACK=prod mise exec -- node scripts/migrate-roles.ts`, before the deploy. It counts users by role.
+2. If it finds Guardian users, `PULUMI_STACK=prod mise exec -- node scripts/migrate-roles.ts --apply`, so the deploy's
    deletion of Guardian leaves no one without a role.
 3. Deploy.
-4. `PULUMI_STACK=prod mise run migrate-roles --apply`. Check the census it prints after: no one left
+4. `PULUMI_STACK=prod mise exec -- node scripts/migrate-roles.ts --apply`. Check the census it prints after: no one left
    on Staff, Coach, Guardian, or no role.
 5. Check that each admin can still sign in to the Data Studio as an admin.
 

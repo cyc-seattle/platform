@@ -6,7 +6,7 @@
 // A dry run unless given --apply. Safe to run again: each step checks what's already done. It never
 // changes a user's role until their new access covers their old access. docs/access.md has the steps.
 //
-//   PULUMI_STACK=dev mise run migrate-roles [--apply]
+//   PULUMI_STACK=dev mise exec -- node scripts/migrate-roles.ts [--apply]
 
 import { GoogleAuth } from "google-auth-library";
 import { outputsObject, parsePlatformOutputs, stateBucket } from "../src/outputs.ts";
