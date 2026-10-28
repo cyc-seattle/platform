@@ -1,5 +1,12 @@
 import winston from "winston";
-import { type ContactPointRow, type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
+import {
+  type AccountRow,
+  type ContactPointRow,
+  type ContactRow,
+  type PersonRow,
+  type ProductRow,
+  type ProgramRoleAssignmentRow,
+} from "@cyc-seattle/crm";
 import {
   type CampRow,
   type ClassRow,
@@ -21,6 +28,7 @@ import {
   findClassesWithoutProgram,
   findInvalidEmails,
   findMismatchedRevenueAccounts,
+  findProgramProductProblems,
   findMissingGroup,
   findMissingGroupForArchivedProgramGroup,
   findProgramsWithoutGroup,
@@ -49,6 +57,8 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     classes,
     camps,
     programs,
+    products,
+    accounts,
     programRoleAssignments,
     people,
     contacts,
@@ -62,6 +72,11 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     directus.readItems<ClassRow>("classes", { limit: -1 }),
     directus.readItems<CampRow>("camps", { limit: -1 }),
     directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
+    directus.readItems<Pick<ProductRow, "id" | "kind" | "revenue_account_id">>("products", {
+      fields: ["id", "kind", "revenue_account_id"],
+      limit: -1,
+    }),
+    directus.readItems<Pick<AccountRow, "id" | "number">>("accounts", { fields: ["id", "number"], limit: -1 }),
     directus.readItems<ProgramRoleAssignmentRow>("program_role_assignments", { limit: -1 }),
     directus.readItems<PersonRow>("people", { limit: -1 }),
     directus.readItems<ContactRow>("contacts", { limit: -1 }),
@@ -83,6 +98,8 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     classes,
     camps,
     programs,
+    products,
+    accounts,
     programRoleAssignments,
     people,
     contacts,
@@ -118,7 +135,8 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
   const findings: GsuiteAuditFinding[] = [
     ...findProgramsWithoutGroup(tables.programs),
     ...findClassesWithoutProgram(tables.classes),
-    ...findMismatchedRevenueAccounts(tables.camps, tables.classes, tables.programs),
+    ...findProgramProductProblems(tables.programs, tables.products),
+    ...findMismatchedRevenueAccounts(tables.camps, tables.classes, tables.programs, tables.products, tables.accounts),
     ...findInvalidEmails(candidatePeople),
   ];
 

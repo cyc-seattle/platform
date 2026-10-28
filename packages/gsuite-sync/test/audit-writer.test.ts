@@ -103,7 +103,8 @@ describe("runAudit", () => {
   it("raises an unexpected_member finding for a live member outside the plan", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "class@cyccommunitysailing.org" }],
-      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", revenue_account: null }],
+      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", product_id: "product-1" }],
+      products: [{ id: "product-1", kind: "program", revenue_account_id: null }],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);
@@ -124,7 +125,8 @@ describe("runAudit", () => {
   it("raises secondary_email_member, not unexpected_member, for a planned person's known secondary address", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "class@cyccommunitysailing.org" }],
-      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", revenue_account: null }],
+      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", product_id: "product-1" }],
+      products: [{ id: "product-1", kind: "program", revenue_account_id: null }],
       program_role_assignments: [
         {
           id: "pra-1",
@@ -174,7 +176,8 @@ describe("runAudit", () => {
   it("raises stale_member, not unexpected_member, for a live member whose camp has ended", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "program@cyccommunitysailing.org" }],
-      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1" }],
+      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", product_id: "product-1" }],
+      products: [{ id: "product-1", kind: "program", revenue_account_id: null }],
       classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
       camps: [{ id: "camp-1", end_date: "2026-06-01T00:00:00Z" }],
       registration_entries: [{ id: "e1", registration_id: "r1", class_id: "class-1", status: "confirmed" }],
@@ -207,8 +210,16 @@ describe("runAudit", () => {
         { id: "class-2", camp_id: "camp-1", program_id: "program-2" },
       ],
       programs: [
-        { id: "program-1", name: "Program 1", google_group_id: "group-1", revenue_account: "4000-YOUTH" },
-        { id: "program-2", name: "Program 2", google_group_id: "group-1", revenue_account: "4100-ADULT" },
+        { id: "program-1", name: "Program 1", google_group_id: "group-1", product_id: "product-1" },
+        { id: "program-2", name: "Program 2", google_group_id: "group-1", product_id: "product-2" },
+      ],
+      products: [
+        { id: "product-1", kind: "program", revenue_account_id: "account-1" },
+        { id: "product-2", kind: "program", revenue_account_id: "account-2" },
+      ],
+      accounts: [
+        { id: "account-1", number: "4000-YOUTH" },
+        { id: "account-2", number: "4100-ADULT" },
       ],
       google_groups: [{ id: "group-1", email: "program@cyccommunitysailing.org" }],
     });
@@ -220,6 +231,21 @@ describe("runAudit", () => {
 
     const findings = tables.get("audit_findings") as unknown as AuditFindingRow[];
     expect(findings).toMatchObject([{ kind: "mismatched_revenue_account", subject: "camp-1", status: "open" }]);
+  });
+
+  it("raises program_product_wrong_kind when a program's product isn't of kind program", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      programs: [{ id: "program-1", name: "Program 1", google_group_id: "group-1", product_id: "product-1" }],
+      products: [{ id: "product-1", kind: "charter", revenue_account_id: null }],
+      google_groups: [{ id: "group-1", email: "program@cyccommunitysailing.org" }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const directus = new DirectusClient(baseUrl, token);
+
+    await runAudit({ directus, directory: fakeDirectory(), settings: fakeSettingsReader(), now, groupOwners: [] });
+
+    const findings = tables.get("audit_findings") as unknown as AuditFindingRow[];
+    expect(findings).toMatchObject([{ kind: "program_product_wrong_kind", subject: "program-1", status: "open" }]);
   });
 
   it("does not re-raise a finding whose fingerprint is already dismissed", async () => {
@@ -305,7 +331,8 @@ describe("runAudit", () => {
     });
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "class@cyccommunitysailing.org" }],
-      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", revenue_account: null }],
+      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", product_id: "product-1" }],
+      products: [{ id: "product-1", kind: "program", revenue_account_id: null }],
       audit_findings: [
         {
           id: "existing-1",
@@ -335,7 +362,8 @@ describe("runAudit", () => {
   it("raises missing_group for an archived group a program still points at, without checking Workspace", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "program@cyccommunitysailing.org", archived: true }],
-      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", revenue_account: null }],
+      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", product_id: "product-1" }],
+      products: [{ id: "product-1", kind: "program", revenue_account_id: null }],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);

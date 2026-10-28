@@ -49,12 +49,24 @@ person-plus-session and Clubspot-derived). Anyone holding an assignment is simpl
 program's Google Group; a role's meaning carries no provider mapping.
 
 `programs.revenue_account` is likewise hand-set by staff and never written by a sync — the finance
-chart-of-accounts code a program's revenue rolls up to. `gsuite-sync`'s audit uses it to flag a
-Clubspot Camp whose classes map to programs with more than one distinct account (cyc-seattle/isthmia#149).
+chart-of-accounts code a program's revenue rolls up to. The backfill copies it to the program's
+product, as `products.revenue_account_id`, and a later PR drops it (cyc-seattle/workplace#6 step 10).
+`gsuite-sync`'s audit reads the product's account to flag a Clubspot Camp whose classes map to
+programs with more than one distinct account (cyc-seattle/isthmia#149).
 
 `programs` lives in `schemas/core.yaml`, the catalog, with `crm` adding `role_assignments` to it.
 `programs.product_id` makes each program a subtype of a product of kind `program`, per `AGENTS.md`'s
-subtype pattern. It stays null until the backfill (cyc-seattle/workplace#6 step 10) sets it.
+subtype pattern. `scripts/backfill-catalog.ts` sets it for every program, and gives each code
+`programs` and `camps` use a revenue account. It stays nullable until a later PR makes it required.
+`gsuite-sync`'s audit reports a program with no product, or a product of the wrong kind.
+
+Run the backfill after a backup, with a dry run first. It prints counts only, and is safe to run
+again. An admin names each new account in the Data Studio, since the CRM holds only its number.
+
+```sh
+PULUMI_STACK=<environment> mise exec -- node scripts/backfill-catalog.ts
+PULUMI_STACK=<environment> mise exec -- node scripts/backfill-catalog.ts --apply
+```
 
 `gsuite-sync` extends collections it doesn't own rather than owning separate ones: it declares
 `programs.google_group_id` in its own schema, even though `programs` belongs to `core`, not this

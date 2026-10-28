@@ -1,3 +1,4 @@
+export * from "./catalog.ts";
 export * from "./contact-points.ts";
 export * from "./email.ts";
 export * from "./people.ts";

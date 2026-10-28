@@ -67,7 +67,6 @@ Feature: Google Groups for programs
       But it can't delete its notes
       And it can't delete the Google groups
 
-  @pending
   Rule: The Google sync can see products and their revenue accounts, to check that classes Clubspot sells together book their money to one revenue account
 
     Example: The Google sync looks up products and revenue accounts
