@@ -205,9 +205,9 @@ Reusing it instead of a homegrown field means:
 
 - `people.directus_user_id` is a nullable, unique FK to `directus_users.id`, declared in
   `packages/directus`'s schema — Directus is itself a provider, so its own identity column is an
-  extension field on `people` like any other. Set only for people who have an actual login: staff
-  now (provisioned directly by an admin); coach/guardian later, once cyc-seattle/isthmia#65's account-linking flow
-  provisions or links a `directus_users` row on first OIDC login.
+  extension field on `people` like any other. Set only for people who have an actual login, and only
+  by an admin or the group hook, which links a group member on their first sign-in
+  ([access.md](access.md#groups)). No policy a person can hold writes it.
 - Directus's own OIDC config does the email-matching (`provider` + `external_identifier` on
   `directus_users`). This schema has no identity/matching logic of its own — it only points `people`
   at the resulting user once one exists.

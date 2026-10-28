@@ -8,6 +8,7 @@ import {
   clubspotCollections,
   crewRules,
   crmCollections,
+  fieldsIn,
   groupPolicies,
   groupPoliciesConfig,
   queryGuardConfig,
@@ -19,6 +20,7 @@ const schemas = discoverSchemaFiles(path.join(import.meta.dirname, "../schemas")
   schema: yaml.load(fs.readFileSync(file, "utf8")),
 }));
 const policies = groupPolicies(schemas);
+const fieldsOf = (collection: string) => fieldsIn(schemas, collection);
 const named = (name: string) => policies.find((policy) => policy.name === name)!;
 const collections = (name: string, action: string) =>
   new Set(
@@ -37,11 +39,11 @@ describe("the policies a group can give", () => {
     ]);
   });
 
-  it("are coarse: no row filters and no field lists, but CRM Writer's two hand-set fields", () => {
+  it("are coarse: no row filters and no field lists, but a person's writable fields and CRM Writer's two hand-set ones", () => {
     for (const rule of policies.flatMap((policy) => policy.rules)) {
       expect(rule.permissions).toBeUndefined();
     }
-    const fielded = named("CRM Writer").rules.filter((rule) => rule.fields);
+    const fielded = named("CRM Writer").rules.filter((rule) => rule.fields && rule.collection !== "people");
     expect(fielded.map(({ collection, fields }) => `${collection}.${fields}`)).toEqual([
       "classes.program_id",
       "participants.person_id",
@@ -75,9 +77,34 @@ describe("the Staff group", () => {
   it("gives everything the retired Staff role did, through CRM Writer and Medical Writer", () => {
     const key = ({ collection, action, fields }: { collection: string; action: string; fields?: string[] }) =>
       `${collection} ${action} ${fields ?? "*"}`;
-    const staff = writerRules(crmCollections(schemas), clubspotCollections(schemas)).map(key).sort();
+    const staff = writerRules(crmCollections(schemas), clubspotCollections(schemas), fieldsOf).map(key).sort();
     const group = [...named("CRM Writer").rules, ...named("Medical Writer").rules].map(key).sort();
     expect(group).toEqual(staff);
+  });
+});
+
+describe("a person's login", () => {
+  it("is linked only by an admin or the group hook, never through a policy a person can hold", () => {
+    const held = [
+      ...policies.flatMap((policy) => policy.rules),
+      ...writerRules(crmCollections(schemas), clubspotCollections(schemas), fieldsOf),
+      ...crewRules,
+      ...communityPolicies.flatMap((policy) => policy.rules),
+    ];
+    const writes = held.filter(
+      (rule) => rule.collection === "people" && rule.action !== "read" && rule.action !== "delete",
+    );
+    expect(writes.length).toBeGreaterThan(0);
+    for (const rule of writes) {
+      expect(rule.fields, `${rule.action} on people`).toBeDefined();
+      expect(rule.fields).not.toContain("*");
+      expect(rule.fields).not.toContain("directus_user_id");
+    }
+  });
+
+  it("leaves every other field of a person to a CRM Writer", () => {
+    const update = named("CRM Writer").rules.find((rule) => rule.collection === "people" && rule.action === "update");
+    expect([...(update?.fields ?? []), "directus_user_id"].sort()).toEqual(fieldsOf("people").sort());
   });
 });
 

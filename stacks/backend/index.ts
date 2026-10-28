@@ -23,6 +23,7 @@ import {
   groupPolicies,
   groupPoliciesConfig,
   queryGuardConfig,
+  fieldsIn,
   writerRules,
   type PolicyData,
 } from "./policies.ts";
@@ -63,7 +64,9 @@ const schema = mergeSchemas(loadedSchemas);
 
 // The policies a group can give (docs/access.md), and the retired Staff role's rules.
 const grantable = groupPolicies(loadedSchemas);
-const staffRules = writerRules(crmCollections(loadedSchemas), clubspotCollections(loadedSchemas));
+const staffRules = writerRules(crmCollections(loadedSchemas), clubspotCollections(loadedSchemas), (collection) =>
+  fieldsIn(loadedSchemas, collection),
+);
 
 // Prod keeps what its Directus had on the VM (./prod-state.ts).
 const prod = isDev
@@ -179,7 +182,8 @@ const crmSchema = new DirectusSchema(
 );
 
 for (const rule of staffRules) {
-  const suffix = rule.fields ? `${rule.action}-${rule.fields.join("-")}` : rule.action;
+  // Named by its field only when it's a hand-set exception, so people's field list keeps its name.
+  const suffix = rule.fields?.length === 1 ? `${rule.action}-${rule.fields[0]}` : rule.action;
   permissionRule(
     `crm-staff-${rule.collection}-${suffix}`,
     { ...auth, policyId: staffPolicyId, ...rule },

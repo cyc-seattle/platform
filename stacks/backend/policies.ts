@@ -46,20 +46,46 @@ export function clubspotCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(clubspot);
 }
 
+/** A collection's fields in the schemas, aliases included, since a write can set those too. */
+export function fieldsIn(schemas: LoadedSchema[], collection: string): string[] {
+  return schemas.flatMap(({ schema }) =>
+    ((schema as { fields?: { collection: string; field: string }[] }).fields ?? [])
+      .filter((field) => field.collection === collection)
+      .map(({ field }) => field),
+  );
+}
+
+/**
+ * Fields only an admin writes. A person's login decides whose groups' policies a user gets
+ * (docs/access.md), so a writer who could set it could take someone else's.
+ */
+const ADMIN_ONLY: Record<string, string[]> = { people: ["directus_user_id"] };
+
 /**
  * Full CRUD on every collection, except each one Clubspot owns, which is read-only. Two exceptions:
  * `promoted_fields` is staff-authored config despite living in the clubspot schema, and
  * `classes.program_id` and `participants.person_id` are set by hand: a class's program, and a
- * participant's match to a person.
+ * participant's match to a person. `fieldsOf` lists a collection's fields, so a rule can leave out
+ * the ones only an admin writes.
  */
-export function writerRules(collections: string[], clubspotOwned: string[]): PermissionRuleInput[] {
+export function writerRules(
+  collections: string[],
+  clubspotOwned: string[],
+  fieldsOf: (collection: string) => string[],
+): PermissionRuleInput[] {
   const readOnly = new Set(clubspotOwned.filter((collection) => collection !== "promoted_fields"));
   const rules: PermissionRuleInput[] = [];
   for (const collection of collections) {
     if (readOnly.has(collection)) {
       rules.push({ collection, action: "read" });
-    } else {
-      for (const action of ["create", "read", "update", "delete"] as const) {
+      continue;
+    }
+    const withheld = ADMIN_ONLY[collection];
+    for (const action of ["create", "read", "update", "delete"] as const) {
+      if (withheld !== undefined && (action === "create" || action === "update")) {
+        const fields = fieldsOf(collection).filter((field) => !withheld.includes(field));
+        rules.push({ collection, action, fields });
+      } else {
         rules.push({ collection, action });
       }
     }
@@ -87,7 +113,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "CRM Writer",
       icon: "person_edit",
       description: "Changes people and their details. Clubspot's own records stay read-only. No medical information.",
-      rules: writerRules(collections, clubspotCollections(schemas)),
+      rules: writerRules(collections, clubspotCollections(schemas), (collection) => fieldsIn(schemas, collection)),
     },
     {
       key: "medical-reader",
