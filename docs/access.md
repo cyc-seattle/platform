@@ -57,6 +57,10 @@ given with a CRM policy. One field is held back: no policy a person can hold set
 admin or the group hook sets it. The Clubspot sync's own policy still can, since a merge moves a
 duplicate's login onto the person it keeps.
 
+One risk is known and accepted: a CRM Writer can edit guardian links in `contacts`, so they could
+make themselves a child's guardian and read that child's medical information. CRM Writers are people
+an admin trusts, and the change log is the check.
+
 To add a policy, add a `PolicyData` to `groupPolicies`, or to the list a role gets. `declarePolicy` in
 `stacks/backend/index.ts` declares it once, with its rules, and attaches it to each role it's given
 to. A role that shares another role's policy gets a `DirectusAccess` link, not a copy.
