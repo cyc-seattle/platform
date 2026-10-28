@@ -249,6 +249,7 @@ async function createRows(): Promise<void> {
     ["session_classes", () => ({})],
     ["entry_caps", () => ({})],
     ["custom_field_definitions", () => ({})],
+    ["promoted_fields", () => ({})],
     ["people", () => ({})],
     ["contacts", () => ({ relationship_type: "guardian" })],
     ["contact_points", () => ({})],
