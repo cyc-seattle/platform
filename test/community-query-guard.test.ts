@@ -41,13 +41,10 @@ const check = (collection: string, query: Record<string, unknown>, access = comm
 
 describe("effectiveAccess", () => {
   it("restricts the fields some Community read rule withholds, and opens the unfiltered lookups", () => {
-    expect(community.restricted["people"]).toEqual(
-      expect.arrayContaining(["email", "phone", "school", "date_of_birth"]),
-    );
-    expect(community.restricted["people"]).not.toEqual(expect.arrayContaining(["id"]));
-    expect(community.restricted["people"]).not.toContain("first_name");
-    expect(community.restricted["registrations"]).toEqual(["camp_id", "share_contact"]);
-    expect(community.open).toEqual(["camps", "classes", "programs"]);
+    expect(community).toEqual({
+      restricted: { people: ["email", "phone", "school"], registrations: ["camp_id", "share_contact"] },
+      open: ["camps", "classes", "programs"],
+    });
   });
 
   it("checks nothing for a user whose rules never limit rows", () => {

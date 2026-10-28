@@ -35,7 +35,9 @@ A policy is a named set of permissions. Each role has a policy of its own, which
 permissions, plus any shared policies it's given:
 
 - Community has the Community policies in `stacks/backend/community-rules.ts`: names, contacts,
-  family, own children, and the coordinator policies.
+  family, own children, and the coordinator policies. Own children gives only a child's medical
+  information: Directus searches every field a rule grants on any row, so a rule giving a child's
+  whole row would let a parent search their child's teammates by their hidden fields.
 - Crew has its own rules, in `stacks/backend/policies.ts`, plus every Community policy, so a Crew
   member who is a parent sees what any parent sees.
 

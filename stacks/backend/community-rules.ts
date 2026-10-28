@@ -275,21 +275,11 @@ export const communityPolicies: CommunityPolicyData[] = [
     key: "children",
     name: "Community: own children",
     icon: "child_care",
-    description:
-      "Read-only: everything the club has on a parent's own children, their medical information " +
-      "included. See docs/access.md.",
-    // Not `registrations`: the portal tells the `family` policy's rows apart by their `camp_id`.
-    rules: [
-      { collection: "people", action: "read", fields: ["*"], permissions: GUARDIAN_OF },
-      { collection: "medical_profiles", action: "read", fields: ["*"], permissions: { person_id: GUARDIAN_OF } },
-      { collection: "participants", action: "read", fields: ["*"], permissions: { person_id: GUARDIAN_OF } },
-      {
-        collection: "registration_entries",
-        action: "read",
-        fields: ["*"],
-        permissions: { registration_id: { participant_id: { person_id: GUARDIAN_OF } } },
-      },
-    ],
+    description: "Read-only: a parent's own children's medical information. See docs/access.md.",
+    // Medical information only. Directus searches, and lists the fields of, every row a field is
+    // granted on anywhere, so a whole-row rule on people or participants would let a parent search
+    // their child's teammates by the fields the other policies hide.
+    rules: [{ collection: "medical_profiles", action: "read", fields: ["*"], permissions: { person_id: GUARDIAN_OF } }],
   },
   {
     key: "coordinator-names",
