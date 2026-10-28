@@ -165,9 +165,14 @@ their role alone. Owners are still audited.
 
 **`mismatched_revenue_account` flags a Clubspot Camp with more than one revenue account.** A camp
 has a single sales account (`camps.clubspot_sales_account`), so every class in it should map to
-programs sharing one `programs.revenue_account`. A program with no `revenue_account` set isn't a
-conflict by itself — only two or more distinct non-null values are. Tagged `clubspot-sync`, like
-`class_without_program`: a finance/Clubspot concern this pass happens to compute.
+programs whose products book to one account (`products.revenue_account_id`). A program with no
+product, or a product with no account, isn't a conflict by itself. Only two or more distinct
+accounts are. Tagged `clubspot-sync`, like `class_without_program`: a finance/Clubspot concern this
+pass happens to compute.
+
+**A program must be a product of kind `program`.** Directus can't compare a field across
+collections, so the audit raises `program_without_product` for a program with no `product_id`, and
+`program_product_wrong_kind` for one whose product is some other kind.
 
 **A dismissed finding never re-raises for the same fingerprint.** A finding's identity is
 `source` + `kind` + `subject` + a hash of its detail. Once staff dismiss a row, the same condition

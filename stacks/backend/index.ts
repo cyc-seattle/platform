@@ -335,6 +335,19 @@ permissionRule(
   { dependsOn: crmSchema },
 );
 
+// The audit checks each program's product is a program, and that a camp's classes book to one
+// revenue account, so it reads only the fields that link a program to its account.
+for (const [collection, fields] of [
+  ["products", ["id", "kind", "revenue_account_id"]],
+  ["accounts", ["id", "number"]],
+] as const) {
+  permissionRule(
+    `crm-gsuite-sync-${collection}-read`,
+    { ...auth, policyId: gsuiteSyncPolicyId, collection, action: "read", fields: [...fields] },
+    { dependsOn: crmSchema },
+  );
+}
+
 // The only collections gsuite-sync writes: its own run queue, the audit findings it raises, the
 // groups discovery mirrors out of Workspace, and the memberships it records (cyc-seattle/isthmia#265). No delete: a
 // group that vanishes from Workspace is archived, and only staff delete a membership row.

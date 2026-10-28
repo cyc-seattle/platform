@@ -1,5 +1,5 @@
 import { type CampRow, type ClassRow } from "@cyc-seattle/clubspot";
-import { type PersonRow, type ProgramRow } from "@cyc-seattle/crm";
+import { type PersonRow } from "@cyc-seattle/crm";
 import { describe, expect, it } from "vitest";
 import {
   type AuditTables,
@@ -7,6 +7,7 @@ import {
   findClassesWithoutProgram,
   findInvalidEmails,
   findMismatchedRevenueAccounts,
+  findProgramProductProblems,
   findMissingGroupForArchivedProgramGroup,
   findProgramsWithoutGroup,
   findSecondaryEmailAddresses,
@@ -189,7 +190,14 @@ describe("findStaleMembers", () => {
 
 describe("findProgramsWithoutGroup", () => {
   function program(overrides: Partial<ProgramWithGoogleGroup>): ProgramWithGoogleGroup {
-    return { id: "program-1", name: "Double-handed", revenue_account: null, google_group_id: null, ...overrides };
+    return {
+      id: "program-1",
+      name: "Double-handed",
+      revenue_account: null,
+      product_id: null,
+      google_group_id: null,
+      ...overrides,
+    };
   }
 
   it("raises a finding for a program with no google_group_id", () => {
@@ -254,20 +262,30 @@ describe("findMismatchedRevenueAccounts", () => {
     return { id: "class-1", camp_id: "camp-1", name: "J-Pod", program_id: "program-1", ...overrides };
   }
 
-  function program(
-    overrides: Partial<Pick<ProgramRow, "id" | "revenue_account">>,
-  ): Pick<ProgramRow, "id" | "revenue_account"> {
-    return { id: "program-1", revenue_account: "4000-YOUTH", ...overrides };
+  const classes = [cls({ id: "class-1", program_id: "program-1" }), cls({ id: "class-2", program_id: "program-2" })];
+  const programs = [
+    { id: "program-1", product_id: "product-1" },
+    { id: "program-2", product_id: "product-2" },
+  ];
+  const accounts = [
+    { id: "account-1", number: "4000-YOUTH" },
+    { id: "account-2", number: "4100-ADULT" },
+  ];
+
+  function products(first: string | null, second: string | null) {
+    return [
+      { id: "product-1", revenue_account_id: first },
+      { id: "product-2", revenue_account_id: second },
+    ];
   }
 
-  it("raises a finding when a camp's classes map to two distinct non-null revenue_account values", () => {
+  it("raises a finding when a camp's classes map to programs whose products book to two accounts", () => {
     const result = findMismatchedRevenueAccounts(
       [camp({})],
-      [cls({ id: "class-1", program_id: "program-1" }), cls({ id: "class-2", program_id: "program-2" })],
-      [
-        program({ id: "program-1", revenue_account: "4000-YOUTH" }),
-        program({ id: "program-2", revenue_account: "4100-ADULT" }),
-      ],
+      classes,
+      programs,
+      products("account-1", "account-2"),
+      accounts,
     );
 
     expect(result).toEqual([
@@ -276,32 +294,73 @@ describe("findMismatchedRevenueAccounts", () => {
         kind: "mismatched_revenue_account",
         subject: "camp-1",
         detail:
-          'Camp "2026 Fall Double-handed" (camp-1, sales account 4000-YOUTH) has classes mapped to programs with different revenue_account values: 4000-YOUTH, 4100-ADULT',
+          'Camp "2026 Fall Double-handed" (camp-1, sales account 4000-YOUTH) has classes mapped to programs whose products book to different revenue accounts: 4000-YOUTH, 4100-ADULT',
       },
     ]);
   });
 
-  it("raises nothing when every class maps to the same revenue_account", () => {
+  it("raises nothing when every class's product books to the same account", () => {
     const result = findMismatchedRevenueAccounts(
       [camp({})],
-      [cls({ id: "class-1", program_id: "program-1" }), cls({ id: "class-2", program_id: "program-2" })],
-      [
-        program({ id: "program-1", revenue_account: "4000-YOUTH" }),
-        program({ id: "program-2", revenue_account: "4000-YOUTH" }),
-      ],
+      classes,
+      programs,
+      products("account-1", "account-1"),
+      accounts,
     );
 
     expect(result).toEqual([]);
   });
 
-  it("raises nothing when a program's revenue_account is null", () => {
-    const result = findMismatchedRevenueAccounts(
-      [camp({})],
-      [cls({ id: "class-1", program_id: "program-1" }), cls({ id: "class-2", program_id: "program-2" })],
-      [
-        program({ id: "program-1", revenue_account: "4000-YOUTH" }),
-        program({ id: "program-2", revenue_account: null }),
-      ],
+  it("raises nothing when a product has no account, or a program no product", () => {
+    expect(findMismatchedRevenueAccounts([camp({})], classes, programs, products("account-1", null), accounts)).toEqual(
+      [],
+    );
+    expect(
+      findMismatchedRevenueAccounts(
+        [camp({})],
+        classes,
+        [programs[0]!, { id: "program-2", product_id: null }],
+        products("account-1", "account-2"),
+        accounts,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("findProgramProductProblems", () => {
+  it("raises program_without_product for a program with no product", () => {
+    const result = findProgramProductProblems([{ id: "program-1", name: "Guppies", product_id: null }], []);
+
+    expect(result).toEqual([
+      {
+        source: "gsuite-sync",
+        kind: "program_without_product",
+        subject: "program-1",
+        detail: 'Program "Guppies" (program-1) has no product_id',
+      },
+    ]);
+  });
+
+  it("raises program_product_wrong_kind for a program whose product isn't a program", () => {
+    const result = findProgramProductProblems(
+      [{ id: "program-1", name: "Guppies", product_id: "product-1" }],
+      [{ id: "product-1", kind: "charter" }],
+    );
+
+    expect(result).toEqual([
+      {
+        source: "gsuite-sync",
+        kind: "program_product_wrong_kind",
+        subject: "program-1",
+        detail: 'Program "Guppies" (program-1) has product product-1 of kind charter, not program',
+      },
+    ]);
+  });
+
+  it("raises nothing for a program whose product is a program", () => {
+    const result = findProgramProductProblems(
+      [{ id: "program-1", name: "Guppies", product_id: "product-1" }],
+      [{ id: "product-1", kind: "program" }],
     );
 
     expect(result).toEqual([]);
@@ -387,8 +446,8 @@ describe("candidateMemberPeople", () => {
     const tables = {
       groups: [{ id: "group-1", email: "j-pod@cyccommunitysailing.org", archived: false }],
       programs: [
-        { id: "mapped", name: "J Pod", google_group_id: "group-1", revenue_account: null },
-        { id: "groupless", name: "Teen Sailing", google_group_id: null, revenue_account: null },
+        { id: "mapped", name: "J Pod", google_group_id: "group-1", revenue_account: null, product_id: null },
+        { id: "groupless", name: "Teen Sailing", google_group_id: null, revenue_account: null, product_id: null },
       ],
       camps: [
         {
@@ -434,7 +493,7 @@ describe("candidateMemberPeople", () => {
   it("leaves out a person removed from the group, since the sync won't add them back (cyc-seattle/isthmia#265)", () => {
     const tables = {
       groups: [{ id: "group-1", email: "j-pod@cyccommunitysailing.org", archived: false }],
-      programs: [{ id: "mapped", name: "J Pod", google_group_id: "group-1", revenue_account: null }],
+      programs: [{ id: "mapped", name: "J Pod", google_group_id: "group-1", revenue_account: null, product_id: null }],
       camps: [],
       classes: [],
       registrations: [],

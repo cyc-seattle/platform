@@ -1,5 +1,13 @@
 import { type CampRow, type ClassRow } from "@cyc-seattle/clubspot";
-import { type ContactPointRow, isValidEmail, normalizeEmail, type PersonRow, type ProgramRow } from "@cyc-seattle/crm";
+import {
+  type AccountRow,
+  type ContactPointRow,
+  isValidEmail,
+  normalizeEmail,
+  type PersonRow,
+  type ProductRow,
+  type ProgramRow,
+} from "@cyc-seattle/crm";
 import { type AuditFindingInput } from "@cyc-seattle/directus";
 import { type GroupMember } from "@cyc-seattle/gsuite-sdk";
 import { removedPersonIds } from "./group-memberships.ts";
@@ -22,6 +30,8 @@ export type AuditFindingKind =
   | "program_without_group"
   | "class_without_program"
   | "mismatched_revenue_account"
+  | "program_without_product"
+  | "program_product_wrong_kind"
   | "invalid_email";
 
 /** Every kind this pass can raise. Scopes `planAuditFindingWrites` to the rows it owns, so it
@@ -35,6 +45,8 @@ export const AUDIT_FINDING_KINDS: readonly AuditFindingKind[] = [
   "program_without_group",
   "class_without_program",
   "mismatched_revenue_account",
+  "program_without_product",
+  "program_product_wrong_kind",
   "invalid_email",
 ];
 
@@ -256,21 +268,29 @@ export function findInvalidEmails(
 }
 
 /**
- * `mismatched_revenue_account` findings: a camp whose classes map to programs with more than one
- * distinct, non-null `revenue_account`. A Clubspot Camp has a single sales account
- * (`clubspot_sales_account`), so every class within it should share one. A program with a null
- * `revenue_account` isn't mapped yet and doesn't itself count as a conflict - only two or more
- * distinct values do. Tagged `clubspot-sync`, the same as `class_without_program`: this is a
- * Clubspot/finance concern, not a Google one, even though this pass computes it.
+ * `mismatched_revenue_account` findings: a camp whose classes map to programs whose products book
+ * to more than one revenue account. A Clubspot Camp has a single sales account
+ * (`clubspot_sales_account`), so every class within it should share one. A program with no
+ * product, or a product with no account, isn't mapped yet and doesn't itself count as a conflict -
+ * only two or more distinct accounts do. Tagged `clubspot-sync`, the same as
+ * `class_without_program`: this is a Clubspot/finance concern, not a Google one, even though this
+ * pass computes it.
  */
 export function findMismatchedRevenueAccounts(
   camps: readonly Pick<CampRow, "id" | "name" | "clubspot_sales_account">[],
   classes: readonly ClassRow[],
-  programs: readonly Pick<ProgramRow, "id" | "revenue_account">[],
+  programs: readonly Pick<ProgramRow, "id" | "product_id">[],
+  products: readonly Pick<ProductRow, "id" | "revenue_account_id">[],
+  accounts: readonly Pick<AccountRow, "id" | "number">[],
 ): GsuiteAuditFinding[] {
-  const programById = new Map(
-    programs.filter((program) => program.id).map((program) => [program.id as string, program]),
-  );
+  const programById = byId(programs);
+  const productById = byId(products);
+  const accountById = byId(accounts);
+  const accountOf = (programId: string): string | undefined => {
+    const productId = programById.get(programId)?.product_id;
+    const accountId = productId ? productById.get(productId)?.revenue_account_id : undefined;
+    return accountId ? (accountById.get(accountId)?.number ?? accountId) : undefined;
+  };
 
   const findings: GsuiteAuditFinding[] = [];
   for (const camp of camps) {
@@ -282,9 +302,9 @@ export function findMismatchedRevenueAccounts(
       if (cls.camp_id !== camp.id || !cls.program_id) {
         continue;
       }
-      const revenueAccount = programById.get(cls.program_id)?.revenue_account;
-      if (revenueAccount) {
-        accounts.add(revenueAccount);
+      const account = accountOf(cls.program_id);
+      if (account) {
+        accounts.add(account);
       }
     }
     if (accounts.size > 1) {
@@ -292,22 +312,66 @@ export function findMismatchedRevenueAccounts(
         source: CLUBSPOT_SYNC_SOURCE,
         kind: "mismatched_revenue_account",
         subject: camp.id,
-        detail: `Camp "${camp.name}" (${camp.id}, sales account ${camp.clubspot_sales_account ?? "none"}) has classes mapped to programs with different revenue_account values: ${[...accounts].sort().join(", ")}`,
+        detail: `Camp "${camp.name}" (${camp.id}, sales account ${camp.clubspot_sales_account ?? "none"}) has classes mapped to programs whose products book to different revenue accounts: ${[...accounts].sort().join(", ")}`,
       });
     }
   }
   return findings;
 }
 
+/**
+ * `program_without_product` and `program_product_wrong_kind` findings: a program must be a product
+ * of kind `program`, and Directus can't compare a field across collections to enforce it
+ * (cyc-seattle/isthmia#213 §2).
+ */
+export function findProgramProductProblems(
+  programs: readonly Pick<ProgramRow, "id" | "name" | "product_id">[],
+  products: readonly Pick<ProductRow, "id" | "kind">[],
+): GsuiteAuditFinding[] {
+  const productById = byId(products);
+  const findings: GsuiteAuditFinding[] = [];
+  for (const program of programs) {
+    if (!program.id) {
+      continue;
+    }
+    if (!program.product_id) {
+      findings.push({
+        source: GSUITE_SYNC_SOURCE,
+        kind: "program_without_product",
+        subject: program.id,
+        detail: `Program "${program.name}" (${program.id}) has no product_id`,
+      });
+      continue;
+    }
+    const product = productById.get(program.product_id);
+    if (product && product.kind !== "program") {
+      findings.push({
+        source: GSUITE_SYNC_SOURCE,
+        kind: "program_product_wrong_kind",
+        subject: program.id,
+        detail: `Program "${program.name}" (${program.id}) has product ${program.product_id} of kind ${product.kind}, not program`,
+      });
+    }
+  }
+  return findings;
+}
+
+function byId<T extends { id?: string }>(rows: readonly T[]): Map<string, T> {
+  return new Map(rows.filter((row) => row.id).map((row) => [row.id as string, row]));
+}
+
 /** Every row the audit pass needs to compute a group's full planned membership, regardless of
  * role - the union of what every write pass would add there. `camps` and `programs` carry the
  * extra fields `findMismatchedRevenueAccounts` and `isCampActive` need, on top of what
- * `MembershipTables` itself requires. `contactPoints` is read only here, for
+ * `MembershipTables` itself requires, and `products` and `accounts` are read only for those two
+ * checks. `contactPoints` is read only here, for
  * `findSecondaryEmailAddresses` - no write pass needs a person's non-primary addresses. */
 export interface AuditTables extends MembershipTables {
   groups: readonly GoogleGroupRow[];
   camps: readonly CampRow[];
   programs: readonly ProgramWithGoogleGroup[];
+  products: readonly Pick<ProductRow, "id" | "kind" | "revenue_account_id">[];
+  accounts: readonly Pick<AccountRow, "id" | "number">[];
   contactPoints: readonly Pick<ContactPointRow, "person_id" | "kind" | "normalized">[];
   groupMemberships: readonly GoogleGroupMembershipRow[];
 }
