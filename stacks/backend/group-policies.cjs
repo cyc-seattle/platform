@@ -10,17 +10,38 @@ const WATCHED = new Set(["groups", "group_members", "group_policies"]);
 const DEBOUNCE_MS = 500;
 
 /**
- * The links to add and remove. `users` are the managed users. A person's user is their
- * `directus_user_id`, or else the managed user with their email, so someone added to a group
- * before they first sign in gets its policies once they do.
+ * The links to add and remove, and the people to link to a login. A person's user is their
+ * `directus_user_id`. A person with none is linked by email, once: only when they're the one person
+ * with that email and no person is linked to the managed user who has it. Families share an email,
+ * and the Clubspot sync rewrites it, so after that the stored link is what counts.
+ *
+ * `emailCounts` is how many people have each lowercased email; `linkedUsers` are the users some
+ * person is already linked to.
  */
-function plan({ users, people, grants, links }) {
+function plan({ users, people, grants, links, emailCounts, linkedUsers }) {
   const managed = new Set(users.map((user) => user.id));
   const byEmail = new Map(users.filter((user) => user.email).map((user) => [user.email.toLowerCase(), user.id]));
+  const taken = new Set(linkedUsers);
   const userOf = new Map();
+  const link = [];
+  const unlinked = [];
   for (const person of people) {
-    const user = person.directus_user_id ?? (person.email ? byEmail.get(person.email.toLowerCase()) : undefined);
-    if (user !== undefined) userOf.set(person.id, user);
+    if (person.directus_user_id) {
+      userOf.set(person.id, person.directus_user_id);
+      continue;
+    }
+    const email = person.email?.toLowerCase();
+    const user = email ? byEmail.get(email) : undefined;
+    if (user === undefined) continue;
+    if ((emailCounts[email] ?? 0) !== 1) {
+      unlinked.push({ person: person.id, reason: "shares their email with another person" });
+    } else if (taken.has(user)) {
+      unlinked.push({ person: person.id, reason: "has the email of a login another person is linked to" });
+    } else {
+      taken.add(user);
+      userOf.set(person.id, user);
+      link.push({ person: person.id, user });
+    }
   }
 
   const wanted = new Set();
@@ -31,13 +52,13 @@ function plan({ users, people, grants, links }) {
 
   const kept = new Set();
   const remove = [];
-  for (const link of links) {
-    if (!managed.has(link.user)) continue;
-    const key = `${link.user} ${link.policy}`;
+  for (const access of links) {
+    if (!managed.has(access.user)) continue;
+    const key = `${access.user} ${access.policy}`;
     if (wanted.has(key) && !kept.has(key)) {
       kept.add(key);
     } else {
-      remove.push(link.id);
+      remove.push(access.id);
     }
   }
   const add = [...wanted]
@@ -46,7 +67,7 @@ function plan({ users, people, grants, links }) {
       const [user, policy] = key.split(" ");
       return { user, policy };
     });
-  return { add, remove };
+  return { add, remove, link, unlinked };
 }
 
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
@@ -92,11 +113,45 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       ids.length === 0
         ? []
         : await database("directus_access").select("id", "user", "policy").whereNotNull("user").whereIn("policy", ids);
+    const emails = [
+      ...new Set(people.filter((person) => !person.directus_user_id && person.email).map((p) => p.email.toLowerCase())),
+    ];
+    const emailCounts = {};
+    const linkedUsers = [];
+    if (emails.length > 0) {
+      const counts = await database("people")
+        .select(database.raw("lower(email) as email"))
+        .count("* as count")
+        .whereIn(database.raw("lower(email)"), emails)
+        .groupByRaw("lower(email)");
+      for (const row of counts) emailCounts[row.email] = Number(row.count);
+      const candidates = users.filter((user) => user.email && emails.includes(user.email.toLowerCase()));
+      if (candidates.length > 0) {
+        const rows = await database("people")
+          .select("directus_user_id")
+          .whereIn(
+            "directus_user_id",
+            candidates.map((user) => user.id),
+          );
+        linkedUsers.push(...rows.map((row) => row.directus_user_id));
+      }
+    }
 
-    const { add, remove } = plan({ users, people, grants, links });
+    const { add, remove, link, unlinked } = plan({ users, people, grants, links, emailCounts, linkedUsers });
+    for (const { person, reason } of unlinked) {
+      logger.warn(`group-policies: person ${person} ${reason}, so an admin must link their login by hand`);
+    }
+    const schema = await getSchema();
+    if (link.length > 0) {
+      const items = new services.ItemsService("people", { schema, knex: database });
+      for (const { person, user } of link) {
+        await items.updateOne(person, { directus_user_id: user }, { emitEvents: false });
+      }
+      logger.info(`group-policies: linked ${link.length} people to their logins`);
+    }
     if (add.length === 0 && remove.length === 0) return;
     // Through the service, so Directus clears its permission caches.
-    const access = new services.AccessService({ schema: await getSchema(), knex: database });
+    const access = new services.AccessService({ schema, knex: database });
     if (remove.length > 0) await access.deleteMany(remove);
     if (add.length > 0) await access.createMany(add);
     logger.info(`group-policies: gave ${add.length} and took away ${remove.length} policy links`);

@@ -872,6 +872,30 @@ describe("PersonSync.syncParticipant - the one CRM field rule (cyc-seattle/isthm
     expect(tables.get("people")![0]).toMatchObject({ email: "form-changed@example.com" });
   });
 
+  it("leaves the email of a person in a group alone, and writes the rest", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ email: "member@example.com" })],
+      group_members: [{ id: "member-1", person_id: "person-1" }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const sync = new PersonSync(new DirectusClient(baseUrl, token));
+
+    const priorMirror = participantRow({
+      id: "participant-1",
+      person_id: "person-1",
+      first_name: "Alex",
+      last_name: "Rivera",
+      email: "member@example.com",
+    });
+    const data = { firstName: "Alexa", lastName: "Rivera", email: "family@example.com" };
+    await sync.syncParticipant(
+      participant(data),
+      options({ existingPersonId: "person-1", priorMirror, mirrorFields: mirrorFieldsFor(data) }),
+    );
+
+    expect(tables.get("people")![0]).toMatchObject({ first_name: "Alexa", email: "member@example.com" });
+  });
+
   it("never writes a blank value, and counts it instead", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       people: [seedPerson({ email: "staff-added@example.com", phone: "2065550100" })],

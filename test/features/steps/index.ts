@@ -389,7 +389,7 @@ interface Membership {
   grantIds: string[];
 }
 
-let newcomer: { email: string; policies: string[] } | undefined;
+let newcomer: { email: string; personId: string; policies: string[] } | undefined;
 let memberships: Membership[] = [];
 let groupPolicy: string | undefined;
 onEachScenario(() => {
@@ -409,7 +409,7 @@ async function aNewcomer(policies: string[]): Promise<void> {
   for (const policy of policies) {
     await join(personId, policy);
   }
-  newcomer = { email: signIn, policies };
+  newcomer = { email: signIn, personId, policies };
 }
 Step("a person in the CRM who has never signed in", () => aNewcomer([]));
 Step("a person in the CRM who has never signed in, in a group that gives the {policy} policy", (_, policy: string) =>
@@ -425,6 +425,11 @@ Step("they sign in for the first time", async () => {
   const defaultRole = await deploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_DEFAULT_ROLE_ID");
   const user = await createUser(newcomer.email, { id: defaultRole });
   await hasPolicies(user.userId, newcomer.policies);
+  if (newcomer.policies.length > 0) {
+    // Stored, so a later change to the person's email can't move their access to someone else.
+    const person = await (await admin()).ok("GET", `/items/people/${newcomer.personId}?fields=directus_user_id`);
+    expect(person.directus_user_id).toBe(user.userId);
+  }
   setThey(as(user));
 });
 

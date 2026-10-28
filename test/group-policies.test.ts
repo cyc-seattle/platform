@@ -5,6 +5,7 @@ const users = [
   { id: "u-crew", email: "crew@example.com" },
   { id: "u-new", email: "new@example.com" },
 ];
+const once = { emailCounts: { "crew@example.com": 1, "new@example.com": 1 }, linkedUsers: [] };
 
 describe("the group-policies hook's plan", () => {
   it("gives a member each policy their groups give, once", () => {
@@ -17,6 +18,7 @@ describe("the group-policies hook's plan", () => {
         { person_id: "p-crew", policy_id: "medical" },
       ],
       links: [],
+      ...once,
     });
     expect(add).toEqual([
       { user: "u-crew", policy: "writer" },
@@ -25,14 +27,56 @@ describe("the group-policies hook's plan", () => {
     expect(remove).toEqual([]);
   });
 
-  it("finds the login of a person added before they first signed in by their email, in any case", () => {
-    const { add } = plan({
+  it("links a person added before they first signed in to their login by their email, in any case", () => {
+    const { add, link } = plan({
       users,
       people: [{ id: "p-new", email: "New@Example.com", directus_user_id: null }],
       grants: [{ person_id: "p-new", policy_id: "writer" }],
       links: [],
+      ...once,
     });
+    expect(link).toEqual([{ person: "p-new", user: "u-new" }]);
     expect(add).toEqual([{ user: "u-new", policy: "writer" }]);
+  });
+
+  it("links nobody by an email two people share, and says why", () => {
+    const { add, link, unlinked } = plan({
+      users,
+      people: [{ id: "p-new", email: "new@example.com", directus_user_id: null }],
+      grants: [{ person_id: "p-new", policy_id: "medical" }],
+      links: [],
+      emailCounts: { "new@example.com": 2 },
+      linkedUsers: [],
+    });
+    expect(link).toEqual([]);
+    expect(add).toEqual([]);
+    expect(unlinked).toEqual([{ person: "p-new", reason: expect.stringContaining("shares their email") }]);
+  });
+
+  it("links nobody by email to a login another person is already linked to", () => {
+    const { add, link, unlinked } = plan({
+      users,
+      people: [{ id: "p-other", email: "crew@example.com", directus_user_id: null }],
+      grants: [{ person_id: "p-other", policy_id: "medical" }],
+      links: [],
+      ...once,
+      linkedUsers: ["u-crew"],
+    });
+    expect(link).toEqual([]);
+    expect(add).toEqual([]);
+    expect(unlinked).toEqual([{ person: "p-other", reason: expect.stringContaining("another person is linked to") }]);
+  });
+
+  it("keeps a linked person's login when their email changes to someone else's", () => {
+    const { add, link } = plan({
+      users,
+      people: [{ id: "p-crew", email: "new@example.com", directus_user_id: "u-crew" }],
+      grants: [{ person_id: "p-crew", policy_id: "writer" }],
+      links: [],
+      ...once,
+    });
+    expect(link).toEqual([]);
+    expect(add).toEqual([{ user: "u-crew", policy: "writer" }]);
   });
 
   it("takes away a link no group gives, and a duplicate, and keeps the rest", () => {
@@ -45,6 +89,7 @@ describe("the group-policies hook's plan", () => {
         { id: "a2", user: "u-crew", policy: "writer" },
         { id: "a3", user: "u-crew", policy: "medical" },
       ],
+      ...once,
     });
     expect(add).toEqual([]);
     expect(remove).toEqual(["a2", "a3"]);
@@ -62,6 +107,7 @@ describe("the group-policies hook's plan", () => {
         { person_id: "p-other", policy_id: "medical" },
       ],
       links: [{ id: "a1", user: "u-sync", policy: "reader" }],
+      ...once,
     });
     expect(add).toEqual([]);
     expect(remove).toEqual([]);
@@ -73,6 +119,7 @@ describe("the group-policies hook's plan", () => {
       people: [{ id: "p", email: "new@example.com", directus_user_id: "u-crew" }],
       grants: [{ person_id: "p", policy_id: "writer" }],
       links: [],
+      ...once,
     });
     expect(add).toEqual([{ user: "u-crew", policy: "writer" }]);
   });
