@@ -274,9 +274,9 @@ depends on, one action, and Thens a staff member could check by hand.
 
 ```gherkin
     Example: A sailor's registration adds the sailor and their parent to the CRM
-      Given a camp running today in Clubspot
+      Given a class running today in Clubspot
       And a sailor registered for it, with a parent
-      When clubspot-sync runs
+      When the Clubspot sync runs
       Then the CRM has the sailor as a person
       And the CRM has the sailor's parent as a person, listed as their parent
 ```

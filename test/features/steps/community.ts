@@ -6,9 +6,9 @@ import { expectRefusal, onEachScenario, parameter, setThey, Step, theirSession }
 import { createUser, todaysRoleName, type User } from "./logins.ts";
 import { admin, adminCreate, email, key, runId } from "./rows.ts";
 
-// The season a family's scenario stands in: camps, teams, sailors, and the people who sign in. Each
-// scenario builds its own, so a Given says everything its Then depends on. A team is a program's
-// class in a camp, and its sailors are the program's confirmed entries in camps running now.
+// The season a family's scenario stands in: camps, rosters, sailors, and the people who sign in. Each
+// scenario builds its own, so a Given says everything its Then depends on. A `Team` is a program's
+// class in a Clubspot camp, and the roster is the program's confirmed entries in camps running now.
 
 type Row = Record<string, unknown>;
 
@@ -38,6 +38,7 @@ interface Person {
   phone?: string;
   /** Their registration on the scenario's team, if they sail on it. */
   registrationId?: string;
+  entryId?: string;
   participantId?: string;
   medicalProfileId?: string;
   guardian?: Person;
@@ -139,14 +140,14 @@ async function register(sailor: Person, on: Team, share: boolean | null): Promis
     participant_id: participant.id,
     share_contact: share,
   });
-  await adminCreate("registration_entries", {
+  const entry = await adminCreate("registration_entries", {
     id: key("entry"),
     registration_id: registration.id,
     session_id: on.camp.sessionId,
     class_id: on.classId,
     status: "confirmed",
   });
-  return { ...sailor, registrationId: registration.id, participantId: participant.id };
+  return { ...sailor, registrationId: registration.id, entryId: entry.id, participantId: participant.id };
 }
 
 async function sailor(
@@ -212,10 +213,14 @@ async function aTeammate(
 
 // Givens: who signs in, and who sails with them.
 
-Step("a parent whose child sails on a team", () => aGuardian("Community"));
-Step("a parent whose child sails on a team and opted in to sharing", () => aGuardian("Community", { share: true }));
-Step("a parent whose child sails on a team and opted out of sharing", () => aGuardian("Community", { share: false }));
-Step("a parent in the CRM whose child sails on a team", async () => {
+Step("a parent whose child is signed up for a program", () => aGuardian("Community"));
+Step("a parent whose child is signed up for a program and opted in to sharing", () =>
+  aGuardian("Community", { share: true }),
+);
+Step("a parent whose child is signed up for a program and opted out of sharing", () =>
+  aGuardian("Community", { share: false }),
+);
+Step("a parent in the CRM whose child is signed up for a program", async () => {
   const child = call("the child", await sailor("child", await theTeam(), {}));
   call("the parent", await guardianOf(child));
   await aTeammate({ share: true, dateOfBirth: ADULT });
@@ -228,8 +233,9 @@ Step("they sign in, typing their email in capitals", async () => {
     guardian.email.replace(/^[^@]+/, (local) => local.toUpperCase()),
   );
 });
-Step("a user with the Crew role whose child sails on a team", () => aGuardian("Crew"));
-Step("a parent whose child sailed only at a camp that has ended, with a teammate who opted in", async () => {
+Step("a user with the Crew role whose child is signed up for a program", () => aGuardian("Crew"));
+Step("a parent whose child's only program has ended", () => aGuardian("Community", { state: "ended" }));
+Step("a parent whose child's only program has ended, with a teammate who opted in", async () => {
   await aGuardian("Community", { state: "ended" });
   await aTeammate({ share: true, dateOfBirth: ADULT });
 });
@@ -245,7 +251,7 @@ Step("a teammate who hasn't answered the sharing question, and their parent", as
   const teammate = await aTeammate({ share: null, fields: { phone: phone() } });
   call("the teammate's parent", await guardianOf(teammate));
 });
-Step("another parent on the team", async () => {
+Step("another parent in the program", async () => {
   const teammate = await aTeammate({ share: null });
   const guardian = call("the teammate's parent", await guardianOf(teammate));
   guardian.user = await createUser(guardian.email, "Community");
@@ -254,12 +260,12 @@ Step("a teammate who is a child and opted in to sharing, and their parent", asyn
   const teammate = await aTeammate({ share: true, fields: { phone: phone() } });
   call("the teammate's parent", await guardianOf(teammate));
 });
-Step("a teammate who opted in on another team but not on this one, and their parent", async () => {
+Step("a teammate who opted in for another program but not for this one, and their parent", async () => {
   const teammate = await aTeammate({ share: false });
   await register(teammate, await team(), true);
   call("the teammate's parent", await guardianOf(teammate));
 });
-Step("a sailor who was on the team only at a camp that has ended", async () => {
+Step("a sailor whose time in the program has ended", async () => {
   const { programId } = await theTeam();
   call("the sailor", await sailor("sailor", await team("ended", programId), { share: true, dateOfBirth: ADULT }));
 });
@@ -267,21 +273,21 @@ let secondTeam: Team | undefined;
 onEachScenario(() => {
   secondTeam = undefined;
 });
-Step("their child is also on a second team", async () => {
+Step("their child is also signed up for a second program", async () => {
   secondTeam = await team();
   await register(the("the child"), secondTeam, false);
 });
-Step("a sailor who is only on the second team", async () => {
+Step("a sailor who is only in the second program", async () => {
   if (!secondTeam) {
     throw new Error("No Given has made the second team.");
   }
   call("the sailor", await sailor("sailor", secondTeam, { share: true }));
 });
 
-Step("an adult who sails on a team", async () => {
+Step("an adult sailor signed up for a program", async () => {
   await signIn(call("the sailor", await sailor("adult", await theTeam(), { share: true, dateOfBirth: ADULT })));
 });
-Step("a sailor with no date of birth on file who sails on a team", async () => {
+Step("a sailor with no date of birth on file, signed up for a program", async () => {
   await signIn(call("the sailor", await sailor("adult", await theTeam(), { share: true, dateOfBirth: null })));
 });
 Step("a user with the Community role whose email isn't in the CRM", async () => {
@@ -311,11 +317,11 @@ async function parentCoordinator(): Promise<string> {
 }
 
 Step("a Parent Coordinator for a program", async () => aVolunteer(await parentCoordinator(), null));
-Step("a Parent Coordinator for a program whose role ended three days ago", async () => {
+Step("a Parent Coordinator for a program, whose program role ended three days ago", async () => {
   await aVolunteer(await parentCoordinator(), daysFromNow(-3));
   await aTeammate({ share: true, dateOfBirth: ADULT }, "the sailor");
 });
-Step("a race committee volunteer for a program", async () => {
+Step("a family member who is on race committee for a program", async () => {
   const role = await adminCreate("program_roles", { name: `Race committee ${key("role")}` });
   await aVolunteer(role.id, null);
   await aTeammate({ share: true, dateOfBirth: ADULT }, "the sailor");
@@ -331,7 +337,7 @@ Step("a sailor in the program whose parent is under 18", async () => {
   const sailing = await aTeammate({ share: null }, "the sailor");
   call("the sailor's parent", await guardianOf(sailing, yearsAgo(16)));
 });
-Step("a sailor in another program at the same camp", async () => {
+Step("a sailor in another program running at the same time", async () => {
   await theTeam();
   call("the sailor", await sailor("sailor", await team(), { share: true, dateOfBirth: ADULT }));
 });
@@ -397,7 +403,7 @@ Step("they see both teammates", () => {
     expect(ids(scene.rows)).toContain(teammate.id);
   }
 });
-Step("they see their child's team", async () => {
+Step("they see their child's roster", async () => {
   const seen = ids(await read(await theirSession(), "people"));
   for (const label of ["the child", "the teammate"]) {
     expect(seen, label).toContain(the(label).id);
@@ -482,12 +488,18 @@ for (const [text, label, session] of [
     expect(await shareContact(await asThe(session), the(label).registrationId, true)).toBeGreaterThanOrEqual(400);
   });
 }
-Step("they can't move their child to another camp", async () => {
-  const ended = await camp("ended");
-  const { status } = await (
-    await asThe("the parent")
-  ).request("PATCH", `/items/registrations/${the("the child").registrationId}`, { camp_id: ended.id });
-  expect(status).toBeGreaterThanOrEqual(400);
+// A sailor's program is their entry's class, and Clubspot's camp holds the class.
+Step("they can't move their child to another program", async () => {
+  const other = await team();
+  const session = await asThe("the parent");
+  const { registrationId, entryId } = the("the child");
+  const moves = [
+    await session.request("PATCH", `/items/registration_entries/${entryId}`, { class_id: other.classId }),
+    await session.request("PATCH", `/items/registrations/${registrationId}`, { camp_id: (await camp("ended")).id }),
+  ];
+  for (const { status } of moves) {
+    expect(status).toBeGreaterThanOrEqual(400);
+  }
 });
 
 // A registration that matches only the names policy comes back with family's fields as null, since
@@ -643,7 +655,7 @@ Step("they open the roster page", async () => {
   rosterPermissions = permissions.body?.data ?? {};
 });
 // The portal shows a family's view when Directus reports its registrations read as partial.
-Step("the page loads without errors and shows their child's team", () => {
+Step("the page loads without errors and shows their child's roster", () => {
   expect(scene.statuses).toEqual(scene.statuses.map(() => 200));
   expect(rosterPermissions.registrations?.read?.access).toBe("partial");
   const sailors = scene.rows.map(

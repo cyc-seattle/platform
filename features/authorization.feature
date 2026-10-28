@@ -3,15 +3,20 @@ Feature: Roles and groups
 
   - Community, for the club's families and members, who can see their own children and their
     children's teammates.
-  - Crew, for coaches and volunteers, who can see every roster, the club's products and revenue
-    accounts, and their own children like any other parent.
+  - Crew, for the people an admin trusts with every roster, such as staff, directors, officers, and
+    trusted volunteers. They can see every roster, the club's products and revenue accounts, and
+    their own children like any other parent.
   - Admin, for the people who run the system.
 
-  Anything more, such as changing people's details or planning a season, comes from groups. A
-  group, such as the Finance Committee, gives its members one or more policies. A policy is a named
-  set of permissions. For example, CRM Writer lets someone add, edit, and delete people and their
-  details. An admin manages the groups in the Data Studio: who is in each one, and which policies
-  each one gives. To change something means to add, edit, or delete it.
+  A program's roster is everyone signed up for it. A sailor's teammates are the others on their
+  roster.
+
+  Anything more than a role gives comes from groups, or from a program role such as Parent
+  Coordinator, which only counts in that program. A program role is a role someone has in one
+  program. A group, such as the Finance Committee, gives its members one or more policies. A policy
+  is a named set of permissions. For example, CRM Writer lets someone add, edit, and delete people
+  and their details. An admin manages the groups in the Data Studio: who is in each one, and which
+  policies each one gives. To change something means to add, edit, or delete it.
 
   Groups only give policies to people. They never change anyone's role. The syncs sign in with
   accounts of their own, and the first admin account is the one the system was set up with. Groups

@@ -9,6 +9,7 @@ for (const text of [
   "they make the second version active",
   "only the second version is active",
   "a plan someone else started",
+  "a plan with a draft",
   "they can save the draft as a version",
   "they can make a saved version active",
   "they can't copy a draft's changes into a saved version",

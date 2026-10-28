@@ -44,6 +44,13 @@ Step("a sailor with two parents and two emergency contacts", async () => {
   family = { sailorId, parentIds, emergencyContactIds };
 });
 
+Step("a sailor with a parent", async () => {
+  const sailorId = await person("sailor");
+  const parentId = await person("parent");
+  await listed(sailorId, parentId, "guardian");
+  family = { sailorId, parentIds: [parentId], emergencyContactIds: [] };
+});
+
 let found: { contact_id: string; relationship_type: string }[] = [];
 Step("an admin looks up the sailor's parents and emergency contacts", async () => {
   const filter = encodeURIComponent(JSON.stringify({ subject_id: { _eq: theFamily().sailorId } }));
@@ -80,7 +87,7 @@ Step("an admin adds a second set of medical information for the sailor", async (
 });
 
 // Directus answers a delete its foreign key refuses with a 500, so the read after it is the check.
-Step("an admin deletes one of the sailor's parents", async () => {
+Step("an admin deletes the sailor's parent", async () => {
   const { status } = await (await admin()).request("DELETE", itemPath("people", theFamily().parentIds[0]));
   expectRefusal(() => expect(status).toBeGreaterThanOrEqual(400));
 });

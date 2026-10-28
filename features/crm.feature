@@ -3,8 +3,9 @@ Feature: The CRM
   The CRM is the club's list of people: sailors, their parents, and the coaches, volunteers, and
   staff who run programs. A person's details are their name, email, and phone, any extra emails and
   phone numbers they've given the club, and who their parents and emergency contacts are. The CRM
-  also has the roles people have in programs. A registration is a sailor's sign-up for a camp, with
-  their answers to the sign-up questions and their payments. The CRM also has each sailor's medical
+  also has each person's program roles: the roles they have in programs, such as coach, Parent
+  Coordinator, or race committee. A registration is a sailor's sign-up for a program, with their
+  answers to the sign-up questions and their payments. The CRM also has each sailor's medical
   information: allergies, medications, and what to do in an emergency. That's the most private
   information the club has, so staff need a separate permission to see it.
 
@@ -17,14 +18,16 @@ Feature: The CRM
   - Medical Reader: can see sailors' medical information, but can't change it.
   - Medical Writer: can change sailors' medical information.
 
-  Crew are the club's coaches and volunteers. They can see every roster: who is signed up for each
-  class. Families sign in to see their own children and their child's team. A team is everyone
-  sailing in the same program at a camp that's running now. When a family signs up in Clubspot, it's
-  asked whether to share its email and phone with the rest of the team. A Parent Coordinator is a
-  parent who helps run one program. "Parent" means anyone listed as a sailor's parent or guardian.
+  A program's roster is everyone signed up for it. A sailor's teammates are the others on their
+  roster. Once a sailor's program has ended, they're no longer on its roster. Crew are the people an
+  admin trusts with every roster, such as staff, directors, officers, and trusted volunteers.
+  Families sign in to see their own children and their children's teammates. "Parent" means anyone
+  listed as a sailor's parent or guardian.
 
-  A family member can also have a role in a program, such as Parent Coordinator or race committee.
-  What that role lets them see applies only to that program.
+  Clubspot asks each family that signs a sailor up whether to share its email and phone with the
+  rest of the roster. A sailor who opted in to sharing is one whose family said yes, or who said yes
+  themselves if they're an adult. A Parent Coordinator is a parent who helps run one program.
+  What a program role lets someone see applies only to that program.
 
   Rule: A sailor can have more than one parent, and more than one emergency contact
 
@@ -43,8 +46,8 @@ Feature: The CRM
   Rule: A person can't be deleted while they're still listed as someone's parent
 
     Example: Deleting a sailor's parent isn't allowed
-      Given a sailor with two parents and two emergency contacts
-      When an admin deletes one of the sailor's parents
+      Given a sailor with a parent
+      When an admin deletes the sailor's parent
       Then the CRM doesn't allow it
       And the parent is still in the CRM
 
@@ -89,16 +92,16 @@ Feature: The CRM
       Given a user with the Medical Writer policy
       Then they can change medical information
 
-  Rule: Crew can see every roster, but can't change them
+  Rule: Crew can see every roster, but can't change any of them
 
-    Example: A coach looks at the rosters
+    Example: A Crew member looks at the rosters
       Given a user with the Crew role
       Then they can see the rosters
       But they can't change the rosters
 
-  Rule: Crew can't see other families' medical information, parents and emergency contacts, extra emails or phone numbers, or registrations
+  Rule: Crew can't see sailors' private information beyond what any parent sees
 
-    Example: A coach can't see a sailor's private information
+    Example: A Crew member who isn't a parent can't see sailors' private information
       Given a user with the Crew role
       Then they can't see medical information
       And they can't see sailors' parents and emergency contacts
@@ -108,39 +111,39 @@ Feature: The CRM
   @pending
   Rule: A Crew member who is also a parent can see their own child, like any other parent
 
-    Example: A volunteer looks up their own child's medical information
-      Given a user with the Crew role whose child sails on a team
+    Example: A Crew member looks up their own child's medical information
+      Given a user with the Crew role whose child is signed up for a program
       And a teammate who opted in to sharing
       When they look up medical information
       Then they see their child's medical information
       But not the teammate's
 
-  Rule: A family can see everyone on their child's team by name, whether or not the teammate's family opted in to sharing
+  Rule: A family can see each of their child's teammates by name, whether or not the teammate opted in to sharing
 
     Background:
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
 
-    Example: The parent sees every teammate by name, whether or not the teammate's family opted in
+    Example: The parent sees every teammate by name, whether or not the teammate opted in
       Given a teammate who opted in to sharing
       And a teammate who hasn't answered the sharing question, and their parent
       When they look at the roster
       Then they see both teammates
 
-    Example: The parent doesn't see a sailor who was on the team only at a past camp
-      Given a sailor who was on the team only at a camp that has ended
+    Example: The parent doesn't see a sailor whose time in the program has ended
+      Given a sailor whose time in the program has ended
       When they look at the roster
       Then they don't see the sailor
 
-    Example: A parent whose child is on two teams sees both teams
-      Given their child is also on a second team
-      And a sailor who is only on the second team
+    Example: A parent whose child is in two programs sees both rosters
+      Given their child is also signed up for a second program
+      And a sailor who is only in the second program
       When they look at the roster
       Then they see the sailor
 
-  Rule: A family can see an adult teammate's email and phone only if they opted in to sharing
+  Rule: A family can see an adult teammate's email and phone only if the teammate opted in to sharing
 
     Background:
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
 
     Example: The parent sees the email of an adult teammate who opted in
       Given an adult teammate who opted in to sharing
@@ -153,16 +156,16 @@ Feature: The CRM
       Then they see the teammate's name
       But they don't see the teammate's or their parent's email or phone
 
-    Example: Opting in on one team doesn't share on another
-      Given a teammate who opted in on another team but not on this one, and their parent
+    Example: Opting in for one program doesn't share in another
+      Given a teammate who opted in for another program but not for this one, and their parent
       When they look at the roster
       Then they see the teammate's name
       But they don't see the teammate's or their parent's email or phone
 
-  Rule: A family never sees a child's own email or phone, only their parent's
+  Rule: A family never sees a child's own email or phone. If the child opted in, the family sees the parent's instead
 
     Background:
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
 
     Example: The parent sees the email of an opted-in child's parent, but not the child's own
       Given a teammate who is a child and opted in to sharing, and their parent
@@ -176,56 +179,56 @@ Feature: The CRM
       Then they see the teammate's name
       But they don't see the teammate's email or phone
 
-  Rule: Once a family's camps have ended, they see only their own family
+  Rule: A family whose child's programs have all ended sees only their own family
 
-    Example: A family whose camp has ended sees none of their old teammates
-      Given a parent whose child sailed only at a camp that has ended, with a teammate who opted in
+    Example: A family whose child's program has ended sees none of the old teammates
+      Given a parent whose child's only program has ended, with a teammate who opted in
       When they look at the roster
       Then they see only themselves and their child
 
-  Rule: A family can opt in or out of sharing for each camp their child is signed up for, while the camp is running
+  Rule: A family can opt in or out of sharing for each program their child is signed up for, while the program is running
 
-    Example: A parent who opts out no longer shares their email with the team
-      Given a parent whose child sails on a team and opted in to sharing
-      And another parent on the team
+    Example: A parent who opts out no longer shares their email with the other families
+      Given a parent whose child is signed up for a program and opted in to sharing
+      And another parent in the program
       When the parent opts out for their child
       Then the other parent no longer sees the parent's email
 
     Example: A parent who opts back in shares their email again
-      Given a parent whose child sails on a team and opted out of sharing
-      And another parent on the team
+      Given a parent whose child is signed up for a program and opted out of sharing
+      And another parent in the program
       When the parent opts in for their child
       Then the other parent sees the parent's email
 
-    Example: A family can't change its answer for a camp that has ended
-      Given a parent whose child sailed only at a camp that has ended, with a teammate who opted in
+    Example: A family can't change its answer for a program that has ended
+      Given a parent whose child's only program has ended
       Then they can't change whether their child shares
 
   Rule: Only an adult sailor, or a sailor's parent, can decide whether the sailor shares
 
     Example: An adult sailor decides for themselves
-      Given an adult who sails on a team
+      Given an adult sailor signed up for a program
       Then they can opt out of sharing and back in
 
     Example: A sailor with no date of birth on file can't decide for themselves
-      Given a sailor with no date of birth on file who sails on a team
+      Given a sailor with no date of birth on file, signed up for a program
       Then they can't change whether they share
 
     Example: A parent can't decide for another family
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
       And a teammate who hasn't answered the sharing question, and their parent
       Then they can't change whether the teammate shares
 
-  Rule: A family can't move their child to another camp
+  Rule: A family can't move their child to another program
 
-    Example: A parent tries to move their child to another camp
-      Given a parent whose child sails on a team
-      Then they can't move their child to another camp
+    Example: A parent tries to move their child to another program
+      Given a parent whose child is signed up for a program
+      Then they can't move their child to another program
 
   Rule: A family can't see another family's sharing answer or sign-up answers
 
     Example: A parent looks up a teammate's registration
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
       And a teammate who opted in to sharing
       When they look up the teammate's registration
       Then they can't see the teammate's sharing answer
@@ -234,7 +237,7 @@ Feature: The CRM
   Rule: A family can see their own child's parents, and a teammate's parents if the teammate opted in
 
     Background:
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
 
     Example: A parent sees their own child's parents, and an opted-in teammate's parent
       Given a teammate who is a child and opted in to sharing, and their parent
@@ -250,7 +253,7 @@ Feature: The CRM
   Rule: A family can't see anyone's extra emails or phone numbers
 
     Example: A parent can't see the extra emails or phone numbers people have given
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
       And a teammate who opted in to sharing
       Then they can't see anyone's extra emails or phone numbers
 
@@ -258,7 +261,7 @@ Feature: The CRM
   Rule: A family can see their own children's medical information, and no one else's
 
     Example: A parent looks up their child's medical information
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
       And a teammate who opted in to sharing
       When they look up medical information
       Then they see their child's medical information
@@ -267,14 +270,14 @@ Feature: The CRM
   Rule: A family can't change their child's details or medical information
 
     Example: A parent can't change their child's details
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
       Then they can't change their child's details
       And they can't change their child's medical information
 
   Rule: A family can't uncover a hidden email or phone by searching, filtering, or sorting
 
     Background:
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
       And a teammate who hasn't answered the sharing question, and their parent
 
     Scenario Outline: Searching for a hidden email or phone doesn't find the teammate
@@ -297,9 +300,9 @@ Feature: The CRM
       When they ask for a list that would reveal hidden emails or phone numbers
       Then the CRM doesn't allow it
 
-  Rule: A Parent Coordinator can see the email and phone of every adult parent in their program, whether or not the family opted in
+  Rule: A Parent Coordinator can see the email and phone of every adult parent on their program's roster, whether or not the sailor opted in
 
-    Example: A Parent Coordinator sees a parent's email, even if they haven't answered the sharing question
+    Example: A Parent Coordinator sees a parent's email, even if the sailor hasn't answered the sharing question
       Given a Parent Coordinator for a program
       And a sailor in the program who hasn't answered the sharing question, and their parent
       When they look at the roster
@@ -320,11 +323,11 @@ Feature: The CRM
       Then they see the sailor's name
       But they don't see the sailor's email or phone
 
-  Rule: A role in a program lets someone see more only in that program
+  Rule: A program role lets someone see more only in that program
 
     Example: A Parent Coordinator of one program sees nothing extra in another
       Given a Parent Coordinator for a program
-      And a sailor in another program at the same camp
+      And a sailor in another program running at the same time
       When they look at the roster
       Then they don't see the sailor
 
@@ -337,23 +340,23 @@ Feature: The CRM
       Then they see who the sailor's parent is
       But they can't see the details of the program's registrations
 
-  Rule: A race committee role doesn't let someone see the program's roster
+  Rule: Being on race committee doesn't let a family member see the program's roster
 
-    Example: A race committee volunteer sees no one in the program
-      Given a race committee volunteer for a program
+    Example: A family member on race committee sees no one in the program
+      Given a family member who is on race committee for a program
       When they look at the roster
       Then they see no one in the program
 
-  Rule: A Parent Coordinator whose role has ended sees no one in the program
+  Rule: A Parent Coordinator whose program role has ended sees no one in the program
 
-    Example: A Parent Coordinator whose role ended three days ago sees no one in the program
-      Given a Parent Coordinator for a program whose role ended three days ago
+    Example: A Parent Coordinator whose program role ended three days ago sees no one in the program
+      Given a Parent Coordinator for a program, whose program role ended three days ago
       When they look at the roster
       Then they see no one in the program
 
   Rule: A family can use the roster page on cycsail.team
 
     Example: A parent opens the roster page
-      Given a parent whose child sails on a team
+      Given a parent whose child is signed up for a program
       When they open the roster page
-      Then the page loads without errors and shows their child's team
+      Then the page loads without errors and shows their child's roster

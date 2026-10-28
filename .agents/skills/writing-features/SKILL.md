@@ -57,7 +57,7 @@ the CRM".
   teammate's email shows".
 - Say a refusal one way: "the CRM doesn't allow it". Not "is refused" in one example and "rejects
   it" in the next.
-- Use "or" in a negative list: "can't see camps or registrations", not "camps and registrations".
+- Use "or" in a negative list: "can't see sessions or registrations", not "sessions and registrations".
 - Name a set once in the description, then use the name: define "a person's details" and write
   "it can delete people's details", not the same five-item list in every step.
 - Use the words staff use: parent, sailor, team, roster, registration, sign-up answers. Don't use
@@ -82,14 +82,14 @@ These came from review comments on [cyc-seattle/platform#48](https://github.com/
 | Groups grant nothing beyond policies                                                    | Groups only give policies to people                                                   |
 | A family reads no one's address book                                                    | A family can't see anyone's extra emails and phone numbers                            |
 | Signing in matches a person in the CRM by email, whatever its case                      | Signing in finds a person in the CRM by their email, even if they type it in capitals |
-| A Parent Coordinator's role that has ended shows no one                                 | Parent Coordinators whose role has ended see no one                                   |
+| A Parent Coordinator's role that has ended shows no one                                 | Parent Coordinators whose program role has ended see no one                           |
 | Given a group in the Workspace fake                                                     | Given a program with a Google group                                                   |
 | the leaver's membership row records that they left                                      | they're still not in the group                                                        |
 | When staff delete that note                                                             | When staff let them back into the group                                               |
 | Teammates show by name                                                                  | The parent sees every teammate by name                                                |
 | Rule: A Plan Writer can edit any draft … Then they can change a draft                   | Rule: A Plan Writer can change any draft … Then they can change a draft               |
 | is refused / the catalog refuses it / they're refused                                   | the CRM doesn't allow it                                                              |
-| can't see camps, sessions, classes, and registrations                                   | can't see camps, sessions, classes, or registrations                                  |
+| can't see sessions, classes, and registrations                                          | can't see sessions, classes, or registrations                                         |
 | it can delete people, their parents and emergency contacts, their other emails…         | it can delete people's details (with "details" defined in the description)            |
 | clubspot-sync runs / gsuite-sync's service account                                      | the Clubspot sync runs / the Google sync's service account                            |
 | Then they get the same people as a search for something no one has                      | Then they don't find the teammate                                                     |
@@ -98,6 +98,11 @@ These came from review comments on [cyc-seattle/platform#48](https://github.com/
 | Each account has its own number (with service accounts in the next file)                | Each revenue account has its own number                                               |
 | billing (in one file), what they paid (in another)                                      | payments, everywhere                                                                  |
 | Crew can't see sailors' medical information (but a Crew parent sees their own child's)  | Crew can't see other families' medical information                                    |
+| A person's roles (in one file), the Crew role (in the next)                             | A person's program roles, the Crew role                                               |
+| Only planners can see plans (when an admin can too)                                     | Only admins and planners can see plans                                                |
+| what came from Clubspot / what it copies from Clubspot (two sets, nearly the same)      | Clubspot's events and registrations / what it copies from Clubspot, each defined once |
+| sharing for each camp (Clubspot's container)                                            | sharing for each program                                                              |
+| Crew are the club's coaches and volunteers                                              | Crew are the people an admin trusts with every roster                                 |
 | Example: Merging two people deletes the duplicate (its steps only check permission)     | Example: The Clubspot sync can delete a duplicate person                              |
 | whether or not they opted in                                                            | whether or not the teammate's family opted in                                         |
 | But not the email or phone of the teammate or the teammate's parent                     | But they don't see the teammate's or their parent's email or phone                    |
@@ -113,8 +118,8 @@ Watch for:
 - test mechanics in a step or a comment: what a search is compared against, which requests a page
   sends, how long a run takes, what the test's stand-in can't do. Those go in the step code;
 - the code's name for a service, such as "clubspot-sync". Say "the Clubspot sync", as staff do;
-- a kind of thing a staffer can't picture, such as "a volunteer in another role". Name the role: "a
-  race committee volunteer".
+- a kind of thing a staffer can't picture, such as "a volunteer in another role". Name the program
+  role: "a family member on race committee".
 - a pronoun with two possible owners: "whether or not they opted in", after a parent and a teammate.
 
 ### Make the rules agree
@@ -124,7 +129,14 @@ contradicts is wrong, however plain it reads.
 
 - Use one word for one thing, in every feature. "Account" can't mean a revenue account in one file
   and a sign-in account in the next: say "revenue account". Don't call one thing two names, such as
-  "billing" and "what they paid".
+  "billing" and "what they paid". "Role" alone means Community, Crew, or Admin; a role someone has
+  in one program, such as coach or Parent Coordinator, is a "program role" everywhere.
+- Use the club's own nouns, not a vendor's. Summer Camp is a program; Clubspot's "camp" is only its
+  container for events, so no rule is "for each camp". Where a feature must name what a vendor
+  sends, say it in plain words once, and keep the vendor's noun out of the rules.
+- Don't define two sets that nearly overlap, such as "what came from Clubspot" and "what it copies
+  from Clubspot". A reader can't tell which a rule means. Name each set for what sets it apart,
+  define it once, and check that every rule using it holds for every item in it.
 - Define a set in the feature that uses it, before its first use. A set defined only in another
   feature is undefined here.
 - Say exactly what a rule covers. "A CRM Writer can change the CRM" is false when the description
@@ -133,8 +145,8 @@ contradicts is wrong, however plain it reads.
 - Scope an absolute rule that has an exception. "Crew can't see medical information" contradicts
   "a Crew parent sees their own child's"; write "other families' medical information".
 - Say where a rule holds, rather than who it leaves out. "Anyone in a role but Parent Coordinator
-  sees no one" leaves a reader asking about Crew, who see every roster. Write "A role in a program
-  lets someone see more only in that program".
+  sees no one" leaves a reader asking about Crew, who see every roster. Write "A program role lets
+  someone see more only in that program".
 - Name the exception in the rule, not elsewhere: "Each plan is for one product, apart from the
   Operations Plan".
 - Each example shows its rule, and only that. An example about who decides doesn't belong under a
@@ -143,6 +155,11 @@ contradicts is wrong, however plain it reads.
   promises more than it tests.
 - When a rule here limits what another feature allows, such as "only planners can see products"
   while the Google sync sees them, add the exception to the rule.
+- An "only" rule names admins too. "Only planners can see plans" is false the moment an example
+  shows an admin looking at one: write "Only admins and planners can see plans".
+- State a permission as a permission. "It deletes something only when it merges two people"
+  promises a condition the example can't check, when the example shows only that it can delete
+  people. Write "It can delete people, but nothing else".
 
 ### Check it before you push
 
@@ -208,7 +225,7 @@ Incidental data (IDs, dates that don't matter, field lists) goes in the glue.
 ### Use the domain's names, and the right kind of name
 
 - Name every actor by what it is in the domain, and keep kinds apart. A **policy** (CRM Reader),
-  a **role** (Crew), a **person** in a role (a Parent Coordinator), and a **service account**
+  a **role** (Crew), a **person** with a program role (a Parent Coordinator), and a **service account**
   (the account the Clubspot sync signs in with) are different kinds of thing. Don't call them all "logins", and
   don't mix kinds in one Examples column.
 - Use names the reader already knows. Introduce a new term in the description before a scenario
@@ -248,7 +265,7 @@ These remove repetition, and each can also hide intent. Use them when the reader
 whole rule.
 
 - **Background** holds Givens that every scenario in the feature, or every example in a `Rule:`,
-  needs and that a reader can keep in mind: `Given a sailor registered in a camp running today`.
+  needs and that a reader can keep in mind: `Given a sailor signed up for a program running today`.
   Keep it to a few lines. Never put the scenarios' differences there, and never use it for setup
   the reader doesn't need to know about: that's a hook in the glue. If only some scenarios need a
   Given, it isn't background. A `Rule:` can have its own Background.

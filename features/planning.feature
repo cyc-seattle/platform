@@ -1,18 +1,19 @@
 Feature: Plans
   A plan sets out how one product will run in a season: what the club offers and when, the prices,
   the schedule, who works it, and the budget. The Operations Plan covers what the products share,
-  such as the office and the boats. Planners work on a plan's draft, and save it as a version when
-  it's ready. A saved version never changes, so the club can always look back at what it agreed to.
-  One saved version of each plan is the active one, and the active versions together are the
-  club's plan for the season.
+  such as the office and the boats. Planners are the people with the Plan Reader or Plan Writer
+  policy, which they get from their groups. They work on a plan's draft, and save it as a version
+  when it's ready. A saved version never changes, so the club can always look back at what it
+  agreed to. One saved version of each plan is the active one, and the active versions together
+  are the club's plan for the season.
 
   Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
   each salaried position is paid per year. Bonus rates set the bonus a head coach earns on the
-  products they run. Anyone who can see plans sees all of these. Planners have the Plan Reader or Plan Writer
-  policy, which they get from their groups. To change something means to add, edit, or delete it.
+  products they run. Anyone who can see plans sees all of these. To change something means to add,
+  edit, or delete it.
 
   @pending
-  Rule: Each plan is for one product, apart from the Operations Plan, and starts with a draft
+  Rule: A new plan starts with a draft
 
     Example: A Plan Writer starts a plan for a product
       Given a user with the Plan Writer policy
@@ -77,11 +78,12 @@ Feature: Plans
 
     Example: A Plan Writer saves a version and makes it active
       Given a user with the Plan Writer policy
+      And a plan with a draft
       Then they can save the draft as a version
       And they can make a saved version active
 
   @pending
-  Rule: Only planners can see plans
+  Rule: Only admins and planners can see plans
 
     Scenario Outline: A role on its own doesn't let someone see plans
       Given a user with the <role> role

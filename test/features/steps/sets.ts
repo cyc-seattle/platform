@@ -38,7 +38,9 @@ const VERSIONED = [
 const versions = (...names: string[]): Target[] =>
   VERSIONED.map((collection) => ({ collection, rows: names.map((name) => `${collection}@${name}`) }));
 
-const CAMPS_AND_REGISTRATIONS = plain(
+// Clubspot's events and registrations, as clubspot.feature defines them, but for who staffs each
+// session. Camps are Clubspot's container for a program's sessions.
+const SESSIONS_CLASSES_AND_REGISTRATIONS = plain(
   "camps",
   "sessions",
   "classes",
@@ -52,6 +54,8 @@ const CAMPS_AND_REGISTRATIONS = plain(
   "registration_billing",
 );
 
+const PROGRAM_ROLES_STAFFING_AND_GROUPS = plain("program_role_assignments", "event_staff", "google_group_memberships");
+
 const sets: Record<string, Target[]> = {
   // A person's details, as crm.feature defines them. Medical information is granted apart.
   "people and their details": plain("people", "contacts", "contact_points"),
@@ -61,9 +65,9 @@ const sets: Record<string, Target[]> = {
   "extra emails or phone numbers": plain("contact_points"),
   registrations: plain("participants", "registrations", "registration_billing"),
   payments: plain("registration_billing"),
-  "what came from Clubspot": [...CAMPS_AND_REGISTRATIONS, ...plain("event_staff")],
-  "camps and registrations": CAMPS_AND_REGISTRATIONS,
-  "camps, sessions, classes, or registrations": plain(
+  "Clubspot's events and registrations": [...SESSIONS_CLASSES_AND_REGISTRATIONS, ...plain("event_staff")],
+  "sessions, classes, and registrations": SESSIONS_CLASSES_AND_REGISTRATIONS,
+  "sessions, classes, or registrations": plain(
     "camps",
     "sessions",
     "classes",
@@ -71,14 +75,19 @@ const sets: Record<string, Target[]> = {
     "registrations",
     "registration_entries",
   ),
-  "a session's classes": plain("session_classes"),
+  "the classes a session offers": plain("session_classes"),
   "a registration's payments": plain("registration_billing"),
-  "people's details and medical information": plain("people", "contacts", "contact_points", "medical_profiles"),
-  "people's roles": plain("program_role_assignments", "event_staff", "google_group_memberships"),
+  "people, their details, and their medical information": plain(
+    "people",
+    "contacts",
+    "contact_points",
+    "medical_profiles",
+  ),
+  "people's program roles, the sessions they staff, and their Google groups": PROGRAM_ROLES_STAFFING_AND_GROUPS,
+  "people's program roles, the sessions they staff, or their Google groups": PROGRAM_ROLES_STAFFING_AND_GROUPS,
   "its notes": plain("sync_tasks", "audit_findings"),
   "its run logs": plain("sync_runs"),
-  "which sign-up answers to copy": plain("promoted_fields"),
-  "sign-up answers to copy": plain("promoted_fields"),
+  "which sign-up answers get copied": plain("promoted_fields"),
   "what it uses to fill groups": plain(
     "programs",
     "camps",

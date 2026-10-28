@@ -38,11 +38,11 @@ function programWithGroup() {
       programId = program.id;
     },
 
-    /** A person with a role in the program, and their email. */
-    async roleHolder(firstName: string): Promise<{ id: string; email: string }> {
-      const email = `${firstName.toLowerCase()}.${runId}@example.test`;
-      const person = await asAdmin("POST", "/items/people", { first_name: firstName, last_name: runId, email });
-      const role = await asAdmin("POST", "/items/program_roles", { name: `${firstName} ${runId}` });
+    /** A person with a program role in the program, and their email. */
+    async roleHolder(roleName: string): Promise<{ id: string; email: string }> {
+      const email = `${roleName.toLowerCase()}.${runId}@example.test`;
+      const person = await asAdmin("POST", "/items/people", { first_name: roleName, last_name: runId, email });
+      const role = await asAdmin("POST", "/items/program_roles", { name: `${roleName} ${runId}` });
       await asAdmin("POST", "/items/program_role_assignments", {
         person_id: person.id,
         program_id: programId,
@@ -89,7 +89,7 @@ describeAccessFeature("gsuite.feature", {
     let coach: { id: string; email: string };
 
     Given("a program with a Google group", () => program.create());
-    And("a person with a role in the program", async () => {
+    And("a coach in the program", async () => {
       coach = await program.roleHolder("Coach");
     });
     When("the Google sync runs", () => program.sync());
@@ -108,8 +108,8 @@ describeAccessFeature("gsuite.feature", {
 
     // The Workspace fake can't remove a member, so the person is out of the group from the start,
     // while the CRM still notes that gsuite-sync added them.
-    And("a person with a role in the program, who has left the group", async () => {
-      leaver = await program.roleHolder("Leaver");
+    And("a coach in the program who has left the group", async () => {
+      leaver = await program.roleHolder("Coach");
       await program.recordMembership(leaver.id, leaver.email, addedAt);
     });
 

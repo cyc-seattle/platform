@@ -1,18 +1,20 @@
 Feature: The catalog
-  The catalog lists what the club sells and how it accounts for the money. A product is something the
-  club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Each product
-  is one kind: a program, a charter, a storage lease, merchandise, event hosting, or other. A program
-  is a product that sailors sign up for, such as a summer camp or the race team. It has details of
-  its own, such as its Google group. The catalog also lists the revenue accounts the club's money is
-  booked to, the qualifications a coach can hold, the boat classes the club sails, such as Opti or
-  420, and the kinds of equipment programs share, such as coach boats and trailers.
+  The catalog lists what the club sells and how it accounts for the money. A product is something
+  the club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Each
+  product is one of these kinds: a program, a charter, a storage lease, merchandise, event hosting,
+  or other. A program is a product that sailors sign up for, such as Summer Camp or the race team.
+  It has details of its own, such as its Google group. The catalog also lists the revenue accounts
+  the club's money is booked to, the qualifications a coach can hold, the boat classes the club
+  sails, such as Opti or 420, and the kinds of equipment programs share, such as coach boats and
+  trailers.
 
-  Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Only the
-  few people who manage the club's products and revenue accounts can change the catalog. They have
-  the Catalog Writer policy. The Catalog Reader policy lets someone see the catalog without changing
-  it. Crew, the club's coaches and volunteers, can see products and revenue accounts too. Staff with
-  a CRM policy can see programs and their details, but not products or revenue accounts unless
-  they're also Crew. To change something means to add, edit, or delete it.
+  Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Besides
+  admins, only the few people who manage the club's products and revenue accounts can change the
+  catalog. They have the Catalog Writer policy. The Catalog Reader policy lets someone see the
+  catalog without changing it. Crew, the people an admin trusts with every roster, can see products
+  and revenue accounts too. People with a CRM policy can see programs and their details, but not
+  products or revenue accounts unless they're also Crew. To change something means to add, edit, or
+  delete it.
 
   Rule: A product that runs a program can't be deleted
 
@@ -73,7 +75,7 @@ Feature: The catalog
   @pending
   Rule: Crew can see products and revenue accounts, but can't change them
 
-    Example: A coach looks up products and revenue accounts
+    Example: A Crew member looks up products and revenue accounts
       Given a user with the Crew role
       Then they can see products
       And they can see revenue accounts
@@ -81,7 +83,7 @@ Feature: The catalog
       And they can't change revenue accounts
 
   @pending
-  Rule: Only Crew, people with a Catalog or Plan policy, and the Google sync can see products and revenue accounts
+  Rule: Only admins, Crew, people with a Catalog or Plan policy, and the Google sync can see products and revenue accounts
 
     Example: A family member can't see products or revenue accounts
       Given a user with the Community role

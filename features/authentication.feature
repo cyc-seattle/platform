@@ -5,15 +5,15 @@ Feature: Signing in
   whose children are theirs. Everyone who signs in can open the Data Studio, the website where
   the club looks at and changes its data. Families mostly use the roster page on cycsail.team instead.
 
-  What someone can do once they're signed in depends on their role and their groups (see "Roles and
-  groups").
+  What someone can do once they're signed in depends on their role, their groups, and any program
+  roles they have (see "Roles and groups"). A program's roster is everyone signed up for it.
 
   Rule: Signing in finds a person in the CRM by their email, even if they type it in capitals
 
-    Example: A parent who types their email in capitals still sees their child's team
-      Given a parent in the CRM whose child sails on a team
+    Example: A parent who types their email in capitals still sees their child's roster
+      Given a parent in the CRM whose child is signed up for a program
       When they sign in, typing their email in capitals
-      Then they see their child's team
+      Then they see their child's roster
 
     Example: Someone whose email isn't in the CRM sees no one
       Given a user with the Community role whose email isn't in the CRM

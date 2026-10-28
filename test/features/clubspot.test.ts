@@ -28,11 +28,14 @@ async function create(className: string, objectId: string, fields: Record<string
 Step("they can set which program a class belongs to", () => canSet("classes", "program_id"));
 Step("they can match a registration's sailor to a person in the CRM", () => canSet("participants", "person_id"));
 
-Step("it can move people's roles to another person", async () => {
-  for (const collection of ["program_role_assignments", "event_staff", "google_group_memberships"]) {
-    await canSet(collection, "person_id");
-  }
-});
+Step(
+  "it can move people's program roles, the sessions they staff, and their Google groups to another person",
+  async () => {
+    for (const collection of ["program_role_assignments", "event_staff", "google_group_memberships"]) {
+      await canSet(collection, "person_id");
+    }
+  },
+);
 
 describeAccessFeature("clubspot.feature", {
   "A sailor's registration adds the sailor and their parent to the CRM": ({ Given, And, When, Then }) => {
@@ -46,7 +49,7 @@ describeAccessFeature("clubspot.feature", {
       guardianEmail: `guardian.${runId}@example.test`,
     };
 
-    Given("a camp running today in Clubspot", async () => {
+    Given("a class running today in Clubspot", async () => {
       const club = pointer("clubs", CLUB_ID);
       await create("camps", id("cmp"), {
         clubObject: club,
