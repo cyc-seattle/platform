@@ -190,7 +190,7 @@ export const directusRoleProvider: pulumi.dynamic.ResourceProvider = {
   ),
 
   // Tolerates the access row(s), role, or policy already being gone (cyc-seattle/isthmia#125) rather than 404-ing the
-  // apply into a dead end — same spirit as DirectusAdminAccessGrant.delete below.
+  // apply into a dead end — same spirit as DirectusUser.delete below.
   delete: reportErrors("DirectusRole", "delete", async (_id: string, props: DirectusRoleOutputs) => {
     const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
     // Directus would set their role to null, leaving them no access, so move them off first.
@@ -529,129 +529,11 @@ export class DirectusUser extends pulumi.dynamic.Resource {
   }
 }
 
-// --- DirectusAdminAccessGrant: an `admin_access: true` policy attached directly to one user, via
-// `/access`'s `user` key rather than its `role` key. For a per-account exception, not a privilege
-// meant to flow through a role — see ./roles.ts for the one instance.
-
-interface DirectusAdminAccessGrantInputs extends DirectusAuthProps {
-  userId: string;
-  name: string;
-  icon?: string;
-  description?: string;
-}
-
-interface DirectusAdminAccessGrantOutputs extends DirectusAdminAccessGrantInputs {
-  policyId: string;
-  accessId: string;
-}
-
-export const directusAdminAccessGrantProvider: pulumi.dynamic.ResourceProvider = {
-  create: reportErrors("DirectusAdminAccessGrant", "create", async (inputs: DirectusAdminAccessGrantInputs) => {
-    await waitForReachable(inputs.baseUrl);
-    const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
-
-    const policy = await directusRequest<{ data: { id: string } }>(inputs.baseUrl, token, "POST", "/policies", {
-      name: inputs.name,
-      icon: inputs.icon,
-      description: inputs.description,
-      admin_access: true,
-    });
-    const policyId = policy.data.id;
-
-    const access = await directusRequest<{ data: { id: string } }>(inputs.baseUrl, token, "POST", "/access", {
-      user: inputs.userId,
-      policy: policyId,
-    });
-
-    const outs: DirectusAdminAccessGrantOutputs = { ...inputs, policyId, accessId: access.data.id };
-    return { id: policyId, outs };
-  }),
-
-  update: reportErrors(
-    "DirectusAdminAccessGrant",
-    "update",
-    async (_id: string, olds: DirectusAdminAccessGrantOutputs, news: DirectusAdminAccessGrantInputs) => {
-      await waitForReachable(news.baseUrl);
-      const token = await login(news.baseUrl, news.adminEmail, news.adminPassword);
-
-      await directusRequest(news.baseUrl, token, "PATCH", `/policies/${olds.policyId}`, {
-        name: news.name,
-        icon: news.icon,
-        description: news.description,
-        admin_access: true,
-      });
-
-      const outs: DirectusAdminAccessGrantOutputs = { ...news, policyId: olds.policyId, accessId: olds.accessId };
-      return { outs };
-    },
-  ),
-
-  // Tolerates the access row or policy already being gone (cyc-seattle/isthmia#125) rather than 404-ing the apply into
-  // a dead end — same spirit as DirectusUser.delete above.
-  delete: reportErrors(
-    "DirectusAdminAccessGrant",
-    "delete",
-    async (_id: string, props: DirectusAdminAccessGrantOutputs) => {
-      const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
-      for (const path of [`/access/${props.accessId}`, `/policies/${props.policyId}`]) {
-        try {
-          await directusRequest(props.baseUrl, token, "DELETE", path);
-        } catch (error) {
-          if (!isNotFound(error)) throw error;
-        }
-      }
-    },
-  ),
-
-  // userId is this row's identity: `/access` ties the policy to one specific user, and there's no
-  // way to repoint that link in place without leaving the old user's grant dangling, so a changed
-  // userId replaces rather than updates.
-  diff: reportErrors(
-    "DirectusAdminAccessGrant",
-    "diff",
-    async (_id: string, olds: DirectusAdminAccessGrantOutputs, news: DirectusAdminAccessGrantInputs) => {
-      const replaces = olds.userId !== news.userId ? ["userId"] : [];
-      const authChanged = (["baseUrl", "adminEmail", "adminPassword"] as const).some((key) => olds[key] !== news[key]);
-      const changes =
-        replaces.length > 0 ||
-        authChanged ||
-        olds.name !== news.name ||
-        olds.icon !== news.icon ||
-        olds.description !== news.description;
-      return { changes, replaces };
-    },
-  ),
-};
-
-export interface DirectusAdminAccessGrantArgs extends DirectusAuthArgs {
-  userId: pulumi.Input<string>;
-  name: pulumi.Input<string>;
-  icon?: pulumi.Input<string>;
-  description?: pulumi.Input<string>;
-}
-
-/** Grants one user `admin_access` via a policy attached to their account directly, not to a role. */
-export class DirectusAdminAccessGrant extends pulumi.dynamic.Resource {
-  declare public readonly policyId: pulumi.Output<string>;
-  declare public readonly accessId: pulumi.Output<string>;
-
-  constructor(name: string, args: DirectusAdminAccessGrantArgs, opts?: pulumi.CustomResourceOptions) {
-    super(
-      directusAdminAccessGrantProvider,
-      name,
-      { ...args, policyId: undefined, accessId: undefined },
-      withSecretOutputs(["adminPassword"], opts),
-    );
-  }
-}
-
 // --- DirectusPolicy: an extra policy attached to an existing role via `/access`'s `role` key, for
 // a role that needs more than the one policy `DirectusRole` bundles with it - e.g. the Community
 // role's three separate policies (../crm/community-rules.ts), one per collection-scoped rule set
-// since a `DirectusPermissionRule` row is keyed on (policy, collection, action). Same shape as
-// `DirectusAdminAccessGrant` above, but role-scoped rather than user-scoped and `admin_access:
-// false` rather than `true` - this grants only whatever `DirectusPermissionRule`s later attach to
-// its `policyId`, nothing on its own.
+// since a `DirectusPermissionRule` row is keyed on (policy, collection, action). It grants only
+// whatever `DirectusPermissionRule`s later attach to its `policyId`, nothing on its own.
 
 interface DirectusPolicyInputs extends DirectusAuthProps {
   /** Omitted for a policy that groups give to users, not a role. */
@@ -715,7 +597,7 @@ export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
   ),
 
   // Tolerates the access row or policy already being gone (cyc-seattle/isthmia#125), same spirit as
-  // DirectusAdminAccessGrant.delete above.
+  // DirectusRole.delete above.
   delete: reportErrors("DirectusPolicy", "delete", async (_id: string, props: DirectusPolicyOutputs) => {
     const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
     const paths = [...(props.accessId ? [`/access/${props.accessId}`] : []), `/policies/${props.policyId}`];
@@ -730,7 +612,7 @@ export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
 
   // roleId is this row's identity: `/access` ties the policy to one specific role, and there's no
   // way to repoint that link in place without leaving the old role's grant dangling, so a changed
-  // roleId replaces rather than updates - same reasoning as DirectusAdminAccessGrant's userId.
+  // roleId replaces rather than updates.
   diff: reportErrors(
     "DirectusPolicy",
     "diff",

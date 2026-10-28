@@ -30,9 +30,9 @@ describe("the Directus resources' outputs", () => {
   const auth = { baseUrl: "https://directus.example.com", adminEmail: "a@example.com", adminPassword: "p" };
 
   it("carry a role's IDs", async () => {
-    const role = new resources.DirectusRole("staff", { ...auth, name: "Staff", appAccess: true });
-    expect(await value(role.roleId)).toBe("staff-role");
-    expect(await value(role.policyId)).toBe("staff-policy");
+    const role = new resources.DirectusRole("crew", { ...auth, name: "Crew", appAccess: true });
+    expect(await value(role.roleId)).toBe("crew-role");
+    expect(await value(role.policyId)).toBe("crew-policy");
   });
 
   it("carry a user's ID", async () => {

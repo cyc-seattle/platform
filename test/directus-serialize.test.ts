@@ -35,7 +35,6 @@ describe("Directus providers", () => {
 
     expect(Object.keys(sizes).sort()).toEqual([
       "directusAccessProvider",
-      "directusAdminAccessGrantProvider",
       "directusPermissionRuleProvider",
       "directusPolicyProvider",
       "directusRoleProvider",

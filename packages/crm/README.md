@@ -15,11 +15,11 @@ later would be its own package alongside this one, sharing the same Directus inf
   anything that reads or writes the CRM. They live here rather than in a consumer because a sync
   maps between two schemas rather than defining one; `packages/clubspot` imports `PersonRow`, and
   `packages/clubspot-sync` and `packages/gsuite-sync` import from both `crm` and `clubspot`.
-- The **Staff/Coach/Guardian roles and their users** are declared in
-  `infrastructure/src/directus/roles.ts`. The `crm` Pulumi project, `infrastructure/src/crm/`, applies
-  them, `schema.yaml`, and this app's permission rules (`DirectusSchema`, `DirectusPermissionRule`).
-  They build on the reusable resource types in `infrastructure/src/directus/`, built directly on Directus's
-  REST API rather than its CLI.
+- The **roles and their users** are declared in `src/directus/roles.ts`, and
+  [docs/access.md](../../docs/access.md) describes them. The `backend` Pulumi project applies them,
+  the schemas, and the permission rules (`DirectusSchema`, `DirectusPermissionRule`). They build on
+  the reusable resource types in `src/directus/`, built directly on Directus's REST API rather than
+  its CLI.
 
 ## Applying the schema
 

@@ -17,9 +17,6 @@ export interface PolicyData {
 /** The roles every person who signs in has one of. The hook manages only these roles' users. */
 export const ROLES = ["Community", "Crew", "Admin"] as const;
 
-/** Retired by cyc-seattle/workplace#6 step 8a. Its users move to Crew, then a later PR deletes it. */
-export const RETIRED_ROLES = ["Staff"];
-
 /** The domains whose collections the CRM policies cover. Newer domains have policies of their own. */
 const CRM_DOMAINS = new Set(["clubspot", "crm", "gsuite", "sync"]);
 
@@ -177,6 +174,5 @@ export interface GroupPoliciesConfig {
 
 /** What ./group-policies.cjs needs. */
 export function groupPoliciesConfig(policies: PolicyData[]): GroupPoliciesConfig {
-  // Staff stays managed until its users move to Crew, so they gain their group's policies first.
-  return { grantable: policies.map(({ name }) => name).sort(), roles: [...ROLES, ...RETIRED_ROLES] };
+  return { grantable: policies.map(({ name }) => name).sort(), roles: [...ROLES] };
 }
