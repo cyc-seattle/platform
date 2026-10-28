@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { newRunId } from "../cluster.ts";
 import { devDirectusAdmin, type DirectusSession } from "../directus.ts";
 
-// The rows every access feature works on: a program, a camp with one session and class, and a child
+// The rows every access feature works on: a row in each of the catalog's collections, a camp with one session and class, and a child
 // registered in it, with one guardian and a medical profile. A second child, in another family, is
 // registered in the same class. Every row is this run's own, and is deleted afterwards.
 
@@ -49,6 +49,27 @@ export async function fresh(collection: string): Promise<string> {
  * builds a collection adds its builder here.
  */
 export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
+  accounts: async () => ({
+    id: randomUUID(),
+    number: key("account"),
+    name: `Account ${runId}`,
+    type: "revenue",
+    retired: false,
+  }),
+  products: async () => ({
+    id: randomUUID(),
+    name: `Product ${runId}`,
+    kind: "other",
+    revenue_account_id: row["accounts"],
+  }),
+  qualifications: async () => ({ id: randomUUID(), name: `Qualification ${key("qualification")}` }),
+  qualification_covers: async () => ({
+    id: randomUUID(),
+    qualification_id: row["qualifications"],
+    covers_id: await fresh("qualifications"),
+  }),
+  boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, sailors_per_boat: 1 }),
+  resource_kinds: async () => ({ id: randomUUID(), name: `Resource ${key("resource")}` }),
   programs: async () => ({ id: randomUUID(), name: `Program ${runId}` }),
   program_roles: async () => ({ id: randomUUID(), name: `Role ${key("role")}` }),
   camps: async () => ({
@@ -202,6 +223,12 @@ async function crmReaderId(): Promise<string> {
 
 /** A harmless change to an existing row of each collection. */
 export const changes: Record<string, () => Row> = {
+  accounts: () => ({ name: `Account ${runId} (renamed)` }),
+  products: () => ({ name: `Product ${runId} (renamed)` }),
+  qualifications: () => ({ name: `Qualification ${key("qualification")}` }),
+  qualification_covers: () => ({ covers_id: row["qualifications"] }),
+  boat_classes: () => ({ sailors_per_boat: 2 }),
+  resource_kinds: () => ({ name: `Resource ${key("resource")}` }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   program_roles: () => ({ description: "Changed." }),
   camps: () => ({ name: `Camp ${runId} (renamed)` }),
@@ -255,6 +282,12 @@ async function createRows(): Promise<void> {
   // In dependency order. people is the child, and each later row hangs off it where it can. Each
   // entry's fields are read at its turn, once the rows before it exist.
   const order: [string, () => Row][] = [
+    ["accounts", () => ({})],
+    ["products", () => ({})],
+    ["qualifications", () => ({})],
+    ["qualification_covers", () => ({})],
+    ["boat_classes", () => ({})],
+    ["resource_kinds", () => ({})],
     ["programs", () => ({})],
     ["program_roles", () => ({})],
     ["camps", () => ({})],

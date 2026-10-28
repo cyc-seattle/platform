@@ -27,10 +27,12 @@ const collections = (name: string, action: string) =>
   );
 
 describe("the policies a group can give", () => {
-  it("are CRM Reader, CRM Writer, Medical Reader, and Medical Writer", () => {
+  it("are the CRM, Medical, and Catalog policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
       "CRM Reader",
       "CRM Writer",
+      "Catalog Reader",
+      "Catalog Writer",
       "Medical Reader",
       "Medical Writer",
     ]);
@@ -55,10 +57,15 @@ describe("the policies a group can give", () => {
     expect([...collections("Medical Writer", "delete")]).toEqual(["medical_profiles"]);
   });
 
-  it("leave groups and the catalog's money to admins and their own policies", () => {
+  it("leave groups to admins, and the catalog's money to the Catalog policies", () => {
     for (const policy of policies) {
-      for (const collection of ["groups", "group_members", "group_policies", "products", "accounts"]) {
-        expect(policy.rules.map((rule) => rule.collection)).not.toContain(collection);
+      const touched = policy.rules.map((rule) => rule.collection);
+      for (const collection of ["groups", "group_members", "group_policies"]) {
+        expect(touched).not.toContain(collection);
+      }
+      if (!policy.name.startsWith("Catalog ")) {
+        expect(touched).not.toContain("products");
+        expect(touched).not.toContain("accounts");
       }
     }
   });
@@ -67,6 +74,38 @@ describe("the policies a group can give", () => {
     expect(collections("CRM Writer", "update").has("people")).toBe(true);
     expect(collections("CRM Writer", "update").has("registrations")).toBe(false);
     expect(collections("CRM Reader", "read")).toEqual(collections("CRM Writer", "read"));
+  });
+});
+
+describe("the Catalog policies", () => {
+  const catalog = [
+    "products",
+    "accounts",
+    "qualifications",
+    "qualification_covers",
+    "boat_classes",
+    "resource_kinds",
+    "programs",
+    "organizations",
+  ];
+
+  it("let a Catalog Reader see the whole catalog, and change none of it", () => {
+    expect([...collections("Catalog Reader", "read")].sort()).toEqual([...catalog].sort());
+    expect(named("Catalog Reader").rules.every((rule) => rule.action === "read")).toBe(true);
+  });
+
+  it("let a Catalog Writer change the whole catalog", () => {
+    for (const action of ["create", "read", "update", "delete"]) {
+      expect([...collections("Catalog Writer", action)].sort()).toEqual([...catalog].sort());
+    }
+  });
+
+  it("are the only policies that change programs", () => {
+    const writers = policies.filter((policy) =>
+      policy.rules.some((rule) => rule.collection === "programs" && rule.action !== "read"),
+    );
+    expect(writers.map(({ name }) => name)).toEqual(["Catalog Writer"]);
+    expect(collections("CRM Writer", "read").has("programs")).toBe(true);
   });
 });
 

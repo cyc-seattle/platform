@@ -15,8 +15,6 @@ export interface Actor {
 
 /** The cyc-seattle/workplace#6 step that builds each policy a later step builds. */
 const laterPolicies: Record<string, string> = {
-  "Catalog Reader": "9",
-  "Catalog Writer": "9",
   "Plan Reader": "11",
   "Plan Writer": "11",
 };
@@ -31,6 +29,8 @@ export const policyNames = [
   "CRM Writer",
   "Medical Reader",
   "Medical Writer",
+  "Catalog Reader",
+  "Catalog Writer",
   ...Object.keys(laterPolicies),
 ];
 export const roleNames = ["Community", "Crew", "Admin"];
