@@ -58,8 +58,17 @@ export function fieldsIn(schemas: LoadedSchema[], collection: string): string[] 
  */
 const ADMIN_ONLY: Record<string, string[]> = { people: ["directus_user_id"] };
 
+/** The catalog's collections: every one in the core schema. */
+export function catalogCollections(schemas: LoadedSchema[]): string[] {
+  const core = schemas.find(({ name }) => name === "core")?.schema;
+  if (core === undefined) {
+    throw new Error("backend: expected a schemas/core.yaml to find the catalog's collections");
+  }
+  return collectionsInSchema(core);
+}
+
 /**
- * Full CRUD on every collection, except each one Clubspot owns, which is read-only. Two exceptions:
+ * Full CRUD on every collection, except each one in `readOnlyCollections`. Two exceptions:
  * `promoted_fields` is staff-authored config despite living in the clubspot schema, and
  * `classes.program_id` and `participants.person_id` are set by hand: a class's program, and a
  * participant's match to a person. `fieldsOf` lists a collection's fields, so a rule can leave out
@@ -67,10 +76,10 @@ const ADMIN_ONLY: Record<string, string[]> = { people: ["directus_user_id"] };
  */
 export function writerRules(
   collections: string[],
-  clubspotOwned: string[],
+  readOnlyCollections: string[],
   fieldsOf: (collection: string) => string[],
 ): PermissionRuleInput[] {
-  const readOnly = new Set(clubspotOwned.filter((collection) => collection !== "promoted_fields"));
+  const readOnly = new Set(readOnlyCollections.filter((collection) => collection !== "promoted_fields"));
   const rules: PermissionRuleInput[] = [];
   for (const collection of collections) {
     if (readOnly.has(collection)) {
@@ -97,6 +106,7 @@ const MEDICAL = "medical_profiles";
 /** The policies a group can give. Each is coarse: whole collections, with no row filter. */
 export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const collections = crmCollections(schemas).filter((collection) => collection !== MEDICAL);
+  const catalog = catalogCollections(schemas);
   return [
     {
       key: "crm-reader",
@@ -110,7 +120,10 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "CRM Writer",
       icon: "person_edit",
       description: "Changes people and their details. Clubspot's own records stay read-only. No medical information.",
-      rules: writerRules(collections, clubspotCollections(schemas), (collection) => fieldsIn(schemas, collection)),
+      // Programs belong to the catalog, so only a Catalog Writer changes them.
+      rules: writerRules(collections, [...clubspotCollections(schemas), "programs"], (collection) =>
+        fieldsIn(schemas, collection),
+      ),
     },
     {
       key: "medical-reader",
@@ -125,6 +138,22 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       icon: "medical_services",
       description: "Changes every sailor's medical information. Given with a CRM policy.",
       rules: (["create", "read", "update", "delete"] as const).map((action) => ({ collection: MEDICAL, action })),
+    },
+    {
+      key: "catalog-reader",
+      name: "Catalog Reader",
+      icon: "menu_book",
+      description: "Sees the catalog: products, revenue accounts, programs, and the rest.",
+      rules: catalog.map((collection) => ({ collection, action: "read" })),
+    },
+    {
+      key: "catalog-writer",
+      name: "Catalog Writer",
+      icon: "edit_note",
+      description: "Changes the catalog: products, revenue accounts, programs, and the rest.",
+      rules: catalog.flatMap((collection) =>
+        (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
+      ),
     },
   ];
 }

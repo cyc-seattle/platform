@@ -31,7 +31,6 @@ Feature: The catalog
       When an admin adds another revenue account with the same number
       Then the catalog doesn't allow it
 
-  @pending
   Rule: A Catalog Reader can see the catalog, but can't change it
 
     Example: A Catalog Reader looks up the catalog
@@ -39,7 +38,6 @@ Feature: The catalog
       Then they can see the catalog
       But they can't change the catalog
 
-  @pending
   Rule: A Catalog Writer can change the catalog, programs' details included
 
     Example: A Catalog Writer adds, edits, and deletes products, revenue accounts, and programs' details
@@ -59,7 +57,6 @@ Feature: The catalog
         | Plan Reader |
         | Plan Writer |
 
-  @pending
   Rule: A CRM Reader or CRM Writer can see programs' details, such as their Google group, but can't change them
 
     Scenario Outline: A CRM policy can see programs' details, but can't change them
@@ -72,7 +69,6 @@ Feature: The catalog
         | CRM Reader |
         | CRM Writer |
 
-  @pending
   Rule: Crew can see products and revenue accounts, but can't change them
 
     Example: A Crew member looks up products and revenue accounts
@@ -82,7 +78,6 @@ Feature: The catalog
       But they can't change products
       And they can't change revenue accounts
 
-  @pending
   Rule: Only admins, Crew, people with a Catalog or Plan policy, and the Google sync can see products and revenue accounts
 
     Example: A family member can't see products or revenue accounts
