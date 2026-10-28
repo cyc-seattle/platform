@@ -10,6 +10,7 @@
 
 import { GoogleAuth } from "google-auth-library";
 import { outputsObject, parsePlatformOutputs, stateBucket } from "../src/outputs.ts";
+import { type Grant, lost, refusedByGuard } from "./access-lost.ts";
 
 const apply = process.argv.includes("--apply");
 const environment = process.env["PULUMI_STACK"];
@@ -103,14 +104,6 @@ function census(all: DirectusUser[]): Record<string, number> {
   return counts;
 }
 
-/** A permission row, as a key that says what it allows. */
-interface Grant {
-  collection: string;
-  action: string;
-  filtered: boolean;
-  fields: string[];
-}
-
 /** What a user can do: every rule of their role's policies and their own. */
 async function grantsOf(userId: string): Promise<Grant[]> {
   const user = await call("GET", `/users/${userId}?fields=role,policies.policy`);
@@ -136,18 +129,20 @@ async function grantsOf(userId: string): Promise<Grant[]> {
   );
 }
 
-/** The grants in `before` that nothing in `after` covers as fully. */
-function lost(before: Grant[], after: Grant[]): Grant[] {
-  return before.filter(
-    (old) =>
-      !after.some(
-        (now) =>
-          now.collection === old.collection &&
-          now.action === old.action &&
-          (!now.filtered || old.filtered) &&
-          (now.fields.includes("*") || old.fields.every((field) => now.fields.includes(field))),
-      ),
-  );
+/** Each collection's fields, without the aliases, as the query guard counts them. */
+const columns = (async () => {
+  const fields: { collection: string; field: string; type: string }[] = await call("GET", "/fields?limit=-1");
+  const by = new Map<string, string[]>();
+  for (const { collection, field, type } of fields) {
+    if (type !== "alias") by.set(collection, [...(by.get(collection) ?? []), field]);
+  }
+  return by;
+})();
+
+/** Where the query guard would refuse a filter or sort that `before` allowed. */
+async function guardLost(before: Grant[], after: Grant[]): Promise<string[]> {
+  const fields = await columns;
+  return refusedByGuard(before, after, (collection) => fields.get(collection) ?? []);
 }
 
 async function waitFor<T>(what: string, check: () => Promise<T | undefined>): Promise<T> {
@@ -286,7 +281,8 @@ if (!crew || roleIds.has("Coach")) {
         return STAFF_POLICIES.every((name) => names.includes(name)) ? true : undefined;
       });
       await call("PATCH", `/users/${user.id}`, { role: crew });
-      const missing = lost(oldGrants, await grantsOf(user.id));
+      const newGrants = await grantsOf(user.id);
+      const missing = [...lost(oldGrants, newGrants), ...(await guardLost(oldGrants, newGrants))];
       if (missing.length > 0) {
         await call("PATCH", `/users/${user.id}`, { role: roleIds.get("Staff") });
         throw new Error(`Back on Staff: Crew would lose ${JSON.stringify(missing)}.`);

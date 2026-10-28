@@ -7,8 +7,8 @@
 // letter, and a Crew member could probe every sailor's allergies through the rule that shows them
 // their own child's. This rejects any query from a user with a row-filtered read rule that filters,
 // sorts, groups, or aggregates on a field they can't read on every row, or that crosses a relation
-// into a collection whose rows they read only in part. Search is left alone: Directus applies
-// permissions to it.
+// into a collection whose rows they read only in part. A query that stays within what they read
+// whole passes. Search is left alone: Directus applies permissions to it.
 
 const OPERATOR_RELATIONS = ["_some", "_none"];
 
@@ -73,8 +73,18 @@ function effectiveAccess(config, names, fieldsOf) {
   return { restricted, open: open.sort() };
 }
 
+/** `$FOLLOW(contacts,subject_id)` joins `contacts` rows whose `subject_id` is the current row. */
+function followed(key) {
+  const match = /^\$FOLLOW\((\w+),\s*\w+\)$/.exec(key);
+  return match ? match[1] : undefined;
+}
+
 /**
  * Returns why `query` on `collection` would reveal a field the viewer can't read, or undefined.
+ *
+ * A relational filter, sort, or group joins the related rows without permissions, so every
+ * collection on its path must be one the viewer reads whole. A `deep` query reads related rows with
+ * permissions, as a top-level query does, so its own filter and sort get the same checks as one.
  *
  * @param config `restricted`: per collection, the fields some of the viewer's read rules withhold.
  *   `open`: the collections the viewer reads every row of.
@@ -88,15 +98,21 @@ function violation(config, relations, collection, query) {
     return undefined;
   }
 
-  function step(current, key) {
-    if (key.startsWith("$FOLLOW") || key.includes(":")) {
-      return { reason: `the relation ${key}` };
-    }
-    const restricted = checkField(current, key);
+  /** The collection a relational key leads to, or why it can't be crossed. */
+  function relation(current, key) {
+    if (key.includes(":")) return { reason: `the relation ${key}` };
+    const restricted = key.startsWith("$FOLLOW") ? undefined : checkField(current, key);
     if (restricted) return { reason: restricted };
-    const target = relatedCollection(relations, current, key);
-    if (!target || !config.open.includes(target)) {
-      return { reason: `the relation ${current}.${key}` };
+    const target = followed(key) ?? relatedCollection(relations, current, key);
+    return target ? { target } : { reason: `the relation ${key.startsWith("$") ? key : `${current}.${key}`}` };
+  }
+
+  /** Crosses a join that ignores permissions, so its target must be read whole. */
+  function step(current, key) {
+    const { target, reason } = relation(current, key);
+    if (reason) return { reason };
+    if (!config.open.includes(target)) {
+      return { reason: `the relation ${key.startsWith("$") ? key : `${current}.${key}`}` };
     }
     return { target };
   }
@@ -123,16 +139,22 @@ function violation(config, relations, collection, query) {
       }
       const { target, reason } = step(current, key);
       if (reason) return reason;
-      const inner = Object.keys(value).find((k) => OPERATOR_RELATIONS.includes(k)) ? Object.values(value)[0] : value;
-      const innerReason = checkFilter(target, inner);
-      if (innerReason) return innerReason;
+      // Directus reads `_some` or `_none` only as the first key. Checking every key covers whichever
+      // filter it builds.
+      for (const [inner, branch] of Object.entries(value)) {
+        const innerReason = OPERATOR_RELATIONS.includes(inner)
+          ? checkFilter(target, branch)
+          : inner.startsWith("_")
+            ? undefined
+            : checkFilter(target, { [inner]: branch });
+        if (innerReason) return innerReason;
+      }
     }
     return undefined;
   }
 
-  function checkPath(path) {
+  function checkPath(current, path) {
     const parts = path.replace(/^-/, "").split(".");
-    let current = collection;
     for (const part of parts.slice(0, -1)) {
       const { target, reason } = step(current, part);
       if (reason) return reason;
@@ -141,20 +163,40 @@ function violation(config, relations, collection, query) {
     return checkField(current, parts.at(-1));
   }
 
-  const aliases = query.alias ?? {};
-  const paths = [...(query.sort ?? []), ...(query.group ?? []), ...Object.values(query.aggregate ?? {}).flat()].map(
-    (path) => aliases[path.replace(/^-/, "")] ?? path,
-  );
-
-  if (query.deep && Object.keys(query.deep).length > 0) return "deep";
-  const reason = checkFilter(collection, query.filter);
-  if (reason) return reason;
-  for (const path of paths) {
-    if (path === "*") continue;
-    const pathReason = checkPath(path);
-    if (pathReason) return pathReason;
+  function checkQuery(current, { filter, sort, group, aggregate, alias }) {
+    const aliases = alias ?? {};
+    const paths = [...(sort ?? []), ...(group ?? []), ...Object.values(aggregate ?? {}).flat()].map(
+      (path) => aliases[path.replace(/^-/, "")] ?? path,
+    );
+    const reason = checkFilter(current, filter);
+    if (reason) return reason;
+    for (const path of paths) {
+      if (path === "*") continue;
+      const pathReason = checkPath(current, path);
+      if (pathReason) return pathReason;
+    }
+    return undefined;
   }
-  return undefined;
+
+  function checkDeep(current, deep) {
+    if (deep === null || typeof deep !== "object") return undefined;
+    for (const [key, value] of Object.entries(deep)) {
+      if (key.startsWith("_")) continue;
+      const { target, reason } = relation(current, key);
+      if (reason) return reason;
+      const nestedReason =
+        checkQuery(target, {
+          filter: value?._filter,
+          sort: value?._sort,
+          group: value?._group,
+          aggregate: value?._aggregate,
+        }) ?? checkDeep(target, value);
+      if (nestedReason) return nestedReason;
+    }
+    return undefined;
+  }
+
+  return checkQuery(collection, query) ?? checkDeep(collection, query.deep);
 }
 
 /** A collection's fields, without the aliases, which a relation's own check covers. */

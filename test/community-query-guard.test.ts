@@ -85,9 +85,29 @@ describe("the Community query guard", () => {
       { filter: { "$FOLLOW(contacts,subject_id)": { contact_id: { _null: false } } } },
       "the relation $FOLLOW(contacts,subject_id)",
     ],
-    [{ deep: { my_contacts: { _filter: { relationship_type: { _eq: "guardian" } } } } }, "deep"],
+    [
+      { deep: { my_contacts: { _filter: { contact_id: { email: { _eq: "x" } } } } } },
+      "the relation contacts.contact_id",
+    ],
+    [{ deep: { participant_links: { _sort: ["-person_id.phone"] } } }, "the relation participants.person_id"],
   ])("rejects %j on people", (query: Record<string, unknown>, reason: string) => {
     expect(check("people", query)).toBe(reason);
+  });
+
+  it("passes a deep filter on a field the viewer reads on every related row they see", () => {
+    expect(check("people", { deep: { my_contacts: { _filter: { relationship_type: { _eq: "guardian" } } } } })).toBe(
+      undefined,
+    );
+  });
+
+  it("follows `_some` the way Directus does, wherever it sits among the keys", () => {
+    const probe = { participant_id: { person_id: { email: { _starts_with: "b" } } } };
+    expect(
+      check("programs", {
+        filter: { classes: { name: { _eq: "x" }, _some: { registration_entries: { registration_id: probe } } } },
+      }),
+    ).toBe("the relation classes.registration_entries");
+    expect(check("programs", { filter: { classes: { _none: { camp_id: { name: { _eq: "x" } } } } } })).toBeUndefined();
   });
 
   it("rejects a filter through an open collection back into a partial one", () => {
@@ -120,5 +140,40 @@ describe("the query guard for Crew", () => {
 
   it("passes the same filter for a Crew member with CRM Writer and Medical Reader, who reads every participant", () => {
     expect(check("people", { filter: allergies }, accessOf([...CREW, "CRM Writer", "Medical Reader"]))).toBeUndefined();
+  });
+
+  it("rejects a deep filter that probes other sailors' medical answers", () => {
+    expect(check("people", { deep: { my_contacts: { _filter: { subject_id: allergies } } } }, crew)).toBe(
+      "the relation people.participant_links",
+    );
+  });
+});
+
+// A Staff user moved to Crew, who has the Staff group's CRM Writer and Medical Writer.
+describe("the query guard for migrated staff", () => {
+  const staff = accessOf([...CREW, "CRM Writer", "Medical Writer"]);
+
+  it.each([
+    ["people", { deep: { participant_links: { _filter: { medical_allergies: { _nnull: true } }, _sort: ["-id"] } } }],
+    ["people", { deep: { my_contacts: { contact_id: { _filter: { email: { _nnull: true } } } } } }],
+    ["people", { filter: { "$FOLLOW(medical_profiles,person_id)": { allergies: { _nnull: true } } } }],
+    ["people", { filter: { my_contacts: { contact_id: { last_name: { _eq: "Simpson" } } } }, sort: ["-email"] }],
+    ["contacts", { filter: { subject_id: { email: { _eq: "x" } } }, sort: ["contact_id.last_name"] }],
+    [
+      "registrations",
+      {
+        filter: { participant_id: { person_id: { last_name: { _eq: "Simpson" } } } },
+        sort: ["participant_id.person_id.last_name"],
+        deep: { registration_entries: { _filter: { class_id: { camp_id: { name: { _eq: "Summer" } } } } } },
+      },
+    ],
+  ])("passes the Data Studio's relational queries on %s: %j", (collection: string, query: Record<string, unknown>) => {
+    expect(check(collection, query, staff)).toBeUndefined();
+  });
+
+  it("still rejects a filter into the accounts, whose other rows Directus hides", () => {
+    expect(check("people", { filter: { directus_user_id: { email: { _starts_with: "a" } } } }, staff)).toBe(
+      "the relation people.directus_user_id",
+    );
   });
 });
