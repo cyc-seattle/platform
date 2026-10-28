@@ -1,27 +1,63 @@
+import fs from "node:fs";
+import path from "node:path";
+import * as yaml from "js-yaml";
 import { describe, it, expect } from "vitest";
-import { violation } from "../stacks/backend/community-query-guard.cjs";
-import { queryGuardConfig } from "../stacks/backend/community-rules.ts";
+import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.ts";
+import { effectiveAccess, violation } from "../stacks/backend/community-query-guard.cjs";
+import { communityPolicies } from "../stacks/backend/community-rules.ts";
+import { crewRules, groupPolicies, queryGuardConfig } from "../stacks/backend/policies.ts";
 
-const config = queryGuardConfig();
+interface Snapshot {
+  fields: { collection: string; field: string; type: string }[];
+  relations: {
+    collection: string;
+    field: string;
+    related_collection: string | null;
+    meta?: { one_field?: string | null };
+  }[];
+}
 
-// The relations the probes cross, as Directus's schema overview has them.
-const relations = [
-  { collection: "registration_entries", field: "class_id", related_collection: "classes" },
-  { collection: "classes", field: "camp_id", related_collection: "camps" },
-  { collection: "classes", field: "program_id", related_collection: "programs" },
-  { collection: "registrations", field: "camp_id", related_collection: "camps" },
-  { collection: "contacts", field: "subject_id", related_collection: "people", meta: { one_field: "my_contacts" } },
-  { collection: "contacts", field: "contact_id", related_collection: "people", meta: { one_field: "contact_for" } },
-];
+const schemas = discoverSchemaFiles(path.join(import.meta.dirname, "../schemas")).map(({ name, path: file }) => ({
+  name,
+  schema: yaml.load(fs.readFileSync(file, "utf8")),
+}));
+const schema = mergeSchemas(schemas) as Snapshot;
+const fieldsOf = (collection: string) =>
+  schema.fields.filter((field) => field.collection === collection && field.type !== "alias").map(({ field }) => field);
 
-const check = (collection: string, query: Record<string, unknown>) => violation(config, relations, collection, query);
+const config = queryGuardConfig([...communityPolicies, { name: "Crew", rules: crewRules }, ...groupPolicies(schemas)]);
+const COMMUNITY = ["Community", ...communityPolicies.map(({ name }) => name)];
+const CREW = ["Crew", ...communityPolicies.map(({ name }) => name)];
 
-describe("queryGuardConfig", () => {
+function accessOf(names: string[]) {
+  const access = effectiveAccess(config, names, fieldsOf);
+  if (access === undefined) throw new Error(`${names.join(", ")} has no row-filtered rule.`);
+  return access;
+}
+
+const community = accessOf(COMMUNITY);
+const check = (collection: string, query: Record<string, unknown>, access = community) =>
+  violation(access, schema.relations, collection, query);
+
+describe("effectiveAccess", () => {
   it("restricts the fields some Community read rule withholds, and opens the unfiltered lookups", () => {
-    expect(config).toEqual({
-      restricted: { people: ["email", "phone", "school"], registrations: ["camp_id", "share_contact"] },
-      open: ["camps", "classes", "programs"],
-    });
+    expect(community.restricted["people"]).toEqual(
+      expect.arrayContaining(["email", "phone", "school", "date_of_birth"]),
+    );
+    expect(community.restricted["people"]).not.toEqual(expect.arrayContaining(["id"]));
+    expect(community.restricted["people"]).not.toContain("first_name");
+    expect(community.restricted["registrations"]).toEqual(["camp_id", "share_contact"]);
+    expect(community.open).toEqual(["camps", "classes", "programs"]);
+  });
+
+  it("checks nothing for a user whose rules never limit rows", () => {
+    expect(effectiveAccess(config, ["CRM Writer", "Medical Reader"], fieldsOf)).toBeUndefined();
+  });
+
+  it("opens a collection someone reads whole, whatever else they hold", () => {
+    const crew = accessOf(CREW);
+    expect(crew.open).toEqual(expect.arrayContaining(["people", "registration_entries"]));
+    expect(crew.restricted["people"]).toBeUndefined();
   });
 });
 
@@ -67,5 +103,25 @@ describe("the Community query guard", () => {
     expect(check("registrations", { filter: { camp_id: { name: { _eq: "Summer Session 2" } } } })).toBe(
       "registrations.camp_id",
     );
+  });
+});
+
+describe("the query guard for Crew", () => {
+  const crew = accessOf(CREW);
+  const allergies = { participant_links: { medical_allergies: { _contains: "peanut" } } };
+
+  it("passes a filter on the people Crew reads whole", () => {
+    expect(check("people", { filter: { email: { _starts_with: "b" } } }, crew)).toBeUndefined();
+  });
+
+  it("rejects probing other sailors' medical answers through the rule that shows a Crew parent their own child's", () => {
+    expect(check("people", { filter: allergies }, crew)).toBe("the relation people.participant_links");
+    expect(
+      check("people", { filter: { "$FOLLOW(medical_profiles,person_id)": { allergies: { _nnull: true } } } }, crew),
+    ).toBe("the relation $FOLLOW(medical_profiles,person_id)");
+  });
+
+  it("passes the same filter for a Crew member with CRM Writer and Medical Reader, who reads every participant", () => {
+    expect(check("people", { filter: allergies }, accessOf([...CREW, "CRM Writer", "Medical Reader"]))).toBeUndefined();
   });
 });

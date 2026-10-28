@@ -8,7 +8,7 @@ export interface CrmIdentityArgs {
   auth: { baseUrl: pulumi.Input<string>; adminEmail: pulumi.Input<string>; adminPassword: pulumi.Input<string> };
   /** What must exist before Directus answers: the roles and admin grants wait on it. */
   readyForApiCalls: pulumi.Input<pulumi.Resource>[];
-  /** Staff accounts given admin access, signed in through Authentik. */
+  /** The admins' accounts, signed in through Authentik. */
   admins: string[];
   /** The sync users' email domain. */
   externalDomain: string;
@@ -19,10 +19,11 @@ export interface CrmIdentityArgs {
 }
 
 export interface CrmIdentities {
-  staffRole: DirectusRole;
-  coachRole: DirectusRole;
-  guardianRole: DirectusRole;
   communityRole: DirectusRole;
+  crewRole: DirectusRole;
+  adminRole: DirectusRole;
+  /** Retired: its users move to Crew, and a later PR deletes it (docs/access.md). */
+  staffRole: DirectusRole;
   clubspotSyncRole: DirectusRole;
   gsuiteSyncRole: DirectusRole;
   clubspotSyncUser: DirectusUser;
@@ -32,6 +33,51 @@ export interface CrmIdentities {
 export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
   const { auth, readyForApiCalls } = args;
 
+  // Everyone who signs in has Community, Crew, or Admin (docs/access.md). Groups give the rest.
+
+  // Everyone's role on their first sign-in, through Directus's AUTH_AUTHENTIK_DEFAULT_ROLE_ID. Its
+  // permissions come from the Community policies in stacks/backend/community-rules.ts.
+  const communityRole = new DirectusRole(
+    "crm-community",
+    {
+      ...auth,
+      name: "Community",
+      icon: "groups",
+      description: "Families and members: their own children, and their children's teammates. See docs/access.md.",
+      appAccess: true,
+      ...(args.communityRoleId !== undefined && { fixedRoleId: args.communityRoleId }),
+    },
+    { dependsOn: readyForApiCalls },
+  );
+
+  // Coach, renamed, so its users are Crew with no data step.
+  const crewRole = new DirectusRole(
+    "crm-crew",
+    {
+      ...auth,
+      name: "Crew",
+      icon: "sports",
+      description:
+        "People an admin trusts with every roster. Also has the Community policies, for their own children. " +
+        "See docs/access.md.",
+      appAccess: true,
+    },
+    { dependsOn: readyForApiCalls, aliases: [{ name: "crm-coach" }] },
+  );
+
+  const adminRole = new DirectusRole(
+    "crm-admin",
+    {
+      ...auth,
+      name: "Admin",
+      icon: "shield_person",
+      description: "The people who run the system. Every permission. See docs/access.md.",
+      appAccess: true,
+      adminAccess: true,
+    },
+    { dependsOn: readyForApiCalls },
+  );
+
   const staffRole = new DirectusRole(
     "crm-staff",
     {
@@ -39,77 +85,26 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
       name: "Staff",
       icon: "badge",
       description:
-        "Full read/write on the CRM, including medical data, except Clubspot collections are read-only " +
-        "(classes.program_id and participants.person_id excepted). Workspace accounts only (native Google OIDC).",
+        "Retired: its users move to Crew and a group that gives CRM Writer and Medical Writer. See docs/access.md.",
       appAccess: true,
     },
     { dependsOn: readyForApiCalls },
   );
 
-  const coachRole = new DirectusRole(
-    "crm-coach",
-    {
-      ...auth,
-      name: "Coach",
-      icon: "sports",
-      description:
-        "Read-only roster access (sessions/registration_entries/people). No medical_profiles. Not scoped to the " +
-        "coach's own sessions yet - KISS for now, see docs/crm-schema.md.",
-      appAccess: true,
-    },
-    { dependsOn: readyForApiCalls },
-  );
-
-  const guardianRole = new DirectusRole(
-    "crm-guardian",
-    {
-      ...auth,
-      name: "Guardian",
-      icon: "family_restroom",
-      description:
-        "Read own minors' people/medical_profiles/registrations/registration_entries. Filtered through contacts. " +
-        "No login yet - needs #65's account-linking.",
-      // Guardians will eventually sign in through a future end-user-facing portal, not the Directus
-      // Data Studio itself - API-only access.
-      appAccess: false,
-    },
-    { dependsOn: readyForApiCalls },
-  );
-
-  // Families and other signed-in community members (cyc-seattle/isthmia#166) - public registration through the
-  // `authentik` OIDC provider (Directus's AUTH_AUTHENTIK_DEFAULT_ROLE_ID), with no login to the Data
-  // Studio. Every grant comes from the three policies in stacks/backend/community-rules.ts, attached
-  // separately (as DirectusPolicy, not this role's own bundled one) since a permission row is keyed
-  // on (policy, collection, action).
-  const communityRole = new DirectusRole(
-    "crm-community",
-    {
-      ...auth,
-      name: "Community",
-      icon: "groups",
-      description:
-        "Families and other signed-in community members (#166), reading only their own teammates - see " +
-        "../crm/community-rules.ts. Public registration, no Data Studio login.",
-      appAccess: false,
-      ...(args.communityRoleId !== undefined && { fixedRoleId: args.communityRoleId }),
-    },
-    { dependsOn: readyForApiCalls },
-  );
-
-  // Staff accounts with admin access, signed in through Authentik with no password.
+  // Admins, signed in through Authentik with no password.
   //
   // Via `authentik` (cyc-seattle/isthmia#166): a Directus username is a unique email, and a staff member who's also a
   // parent would collide with the Community account the `authentik` provider's public registration
   // creates for them. Directus has no second OIDC provider to fall back to - the built-in
   // ADMIN_EMAIL/ADMIN_PASSWORD account is the break-glass login if Authentik is down.
   //
-  // Admin access is attached to each account, not to Staff, pending a better model for granting it
-  // more broadly. The aliases keep the names these had when they were keyed on the email's local part.
+  // The per-account admin grants stay until a later PR, so no admin loses access while they move to
+  // the Admin role. The aliases keep the names these had when they were keyed on the email's local part.
   for (const email of args.admins) {
     const handle = email.replace(/@.*/, "");
     const user = new DirectusUser(
       `crm-staff-${email}`,
-      { ...auth, email, roleId: staffRole.roleId, provider: "authentik", externalIdentifier: email },
+      { ...auth, email, roleId: adminRole.roleId, provider: "authentik", externalIdentifier: email },
       { aliases: [{ name: `crm-staff-${handle}` }] },
     );
     new DirectusAdminAccessGrant(
@@ -174,10 +169,10 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
   });
 
   return {
-    staffRole,
-    coachRole,
-    guardianRole,
     communityRole,
+    crewRole,
+    adminRole,
+    staffRole,
     clubspotSyncRole,
     gsuiteSyncRole,
     clubspotSyncUser,

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   omitUndefined,
+  directusAccessProvider,
+  directusPolicyProvider,
   directusRoleProvider,
   directusSettingsProvider,
   directusUserProvider,
@@ -75,6 +77,7 @@ describe("DirectusRole.delete", () => {
   it("treats an already-gone access row, role, and policy as success (cyc-seattle/isthmia#125)", async () => {
     const fetchMock = vi.fn();
     stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [] })); // GET /users: none
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: "access-1" }] })); // GET /access
     fetchMock.mockResolvedValueOnce(jsonResponse(404, { errors: [{ message: "not found" }] })); // DELETE /access/access-1
     fetchMock.mockResolvedValueOnce(jsonResponse(404, { errors: [{ message: "not found" }] })); // DELETE /roles/role-1
@@ -87,11 +90,22 @@ describe("DirectusRole.delete", () => {
   it("still throws on a non-404 failure", async () => {
     const fetchMock = vi.fn();
     stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [] })); // GET /users: none
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [] })); // GET /access: none
     fetchMock.mockResolvedValueOnce(jsonResponse(403, { errors: [{ message: "forbidden" }] })); // DELETE /roles/role-1
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(directusRoleProvider.delete?.("role-1", props)).rejects.toThrow(/403/);
+  });
+
+  it("refuses while a user still has the role, since Directus would leave them with none", async () => {
+    const fetchMock = vi.fn();
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: "user-1" }] })); // GET /users
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(directusRoleProvider.delete?.("role-1", props)).rejects.toThrow(/Staff role still has 1 user/);
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);
   });
 });
 
@@ -225,5 +239,42 @@ describe("DirectusSettings", () => {
     await directusSettingsProvider.delete?.("settings", { ...auth, settings });
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("DirectusPolicy with no role", () => {
+  it("creates only the policy, which groups give to users", async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: "pong" })); // GET /server/ping
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: "policy-1" } })); // POST /policies
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await directusPolicyProvider.create({ ...auth, name: "CRM Writer" });
+    expect(result.outs).toMatchObject({ policyId: "policy-1" });
+    expect(result.outs.accessId).toBeUndefined();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/access"))).toEqual([]);
+  });
+});
+
+describe("DirectusAccess", () => {
+  it("links a policy to a role, and replaces the link when either changes", async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: "pong" })); // GET /server/ping
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: "access-1" } })); // POST /access
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await directusAccessProvider.create({ ...auth, roleId: "crew", policyId: "names" });
+    expect(result.outs).toMatchObject({ accessId: "access-1" });
+    const [, init] = fetchMock.mock.calls.at(-1)!;
+    expect(JSON.parse(init.body)).toEqual({ role: "crew", policy: "names" });
+
+    const diff = await directusAccessProvider.diff?.("access-1", result.outs, {
+      ...auth,
+      roleId: "admin",
+      policyId: "names",
+    });
+    expect(diff).toMatchObject({ changes: true, replaces: ["roleId"] });
   });
 });

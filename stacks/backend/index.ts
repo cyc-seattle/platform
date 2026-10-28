@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import * as yaml from "js-yaml";
-import { collectionsInSchema, discoverSchemaFiles, mergeSchemas } from "../../src/directus/client.ts";
+import { discoverSchemaFiles, mergeSchemas } from "../../src/directus/client.ts";
 import {
+  DirectusAccess,
   DirectusSchema,
   DirectusPermissionRule,
   type DirectusPermissionRuleArgs,
-  type DirectusPermissionRuleFields,
   DirectusPolicy,
   DirectusSettings,
 } from "../../src/directus/resources.ts";
@@ -16,7 +16,16 @@ import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/app/config.ts";
 import { communityPolicies } from "./community-rules.ts";
-import { guardianRules } from "./guardian-rules.ts";
+import {
+  clubspotCollections,
+  crewRules,
+  crmCollections,
+  groupPolicies,
+  groupPoliciesConfig,
+  queryGuardConfig,
+  writerRules,
+  type PolicyData,
+} from "./policies.ts";
 import { isDev, loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
 import { deployClubspotSync } from "./clubspot-sync.ts";
@@ -43,6 +52,19 @@ function permissionRule(
   return licensed ? new DirectusPermissionRule(name, args, opts) : undefined;
 }
 
+// Every schemas/<domain>.yaml, merged into one snapshot and applied once: a domain's own apply would
+// drop the extension fields another domain declares on its collections.
+const schemaFiles = discoverSchemaFiles(path.resolve(import.meta.dirname, "../../schemas"));
+const loadedSchemas = schemaFiles.map(({ name, path: file }) => ({
+  name,
+  schema: yaml.load(fs.readFileSync(file, "utf8")),
+}));
+const schema = mergeSchemas(loadedSchemas);
+
+// The policies a group can give (docs/access.md), and the retired Staff role's rules.
+const grantable = groupPolicies(loadedSchemas);
+const staffRules = writerRules(crmCollections(loadedSchemas), clubspotCollections(loadedSchemas));
+
 // Prod keeps what its Directus had on the VM (./prod-state.ts).
 const prod = isDev
   ? undefined
@@ -54,16 +76,29 @@ const prod = isDev
       baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
     });
 
-const app = deployDirectus(directusAdminEmail, licensed, prod?.values);
+const app = deployDirectus(
+  directusAdminEmail,
+  licensed,
+  {
+    queryGuard: queryGuardConfig([
+      ...communityPolicies,
+      { name: "Crew", rules: crewRules },
+      { name: "Staff", rules: staffRules },
+      ...grantable,
+    ]),
+    groupPolicies: groupPoliciesConfig(grantable),
+  },
+  prod?.values,
+);
 
 function roleIds(roles: CrmIdentities) {
   return {
     staffPolicyId: roles.staffRole.policyId,
-    coachPolicyId: roles.coachRole.policyId,
-    guardianPolicyId: roles.guardianRole.policyId,
+    crewPolicyId: roles.crewRole.policyId,
     clubspotSyncPolicyId: roles.clubspotSyncRole.policyId,
     gsuiteSyncPolicyId: roles.gsuiteSyncRole.policyId,
     communityRoleId: roles.communityRole.roleId,
+    crewRoleId: roles.crewRole.roleId,
   };
 }
 
@@ -105,15 +140,8 @@ function devIdentities(directus: typeof app) {
 }
 
 const identities = prod ? prodIdentities(prod) : devIdentities(app);
-const {
-  auth,
-  staffPolicyId,
-  coachPolicyId,
-  guardianPolicyId,
-  clubspotSyncPolicyId,
-  gsuiteSyncPolicyId,
-  communityRoleId,
-} = identities;
+const { auth, staffPolicyId, crewPolicyId, clubspotSyncPolicyId, gsuiteSyncPolicyId, communityRoleId, crewRoleId } =
+  identities;
 
 // The syncs' CronJobs take their machine users' tokens straight into their Secrets.
 const { clubspotSyncToken, gsuiteSyncToken } = identities;
@@ -144,75 +172,13 @@ new DirectusSettings(
   { dependsOn: [app.then(({ ready }) => ready)] },
 );
 
-// Every schemas/<domain>.yaml, merged into one snapshot and applied once: a domain's own apply would
-// drop the extension fields another domain declares on its collections.
-const schemaFiles = discoverSchemaFiles(path.resolve(import.meta.dirname, "../../schemas"));
-const loadedSchemas = schemaFiles.map(({ name, path: file }) => ({
-  name,
-  schema: yaml.load(fs.readFileSync(file, "utf8")),
-}));
-const schema = mergeSchemas(loadedSchemas);
-
 const crmSchema = new DirectusSchema(
   "crm-schema",
   { ...auth, schema },
   { dependsOn: [app.then(({ ready }) => ready)] },
 );
 
-// Derived from schema.yaml itself (see cyc-seattle/isthmia#109) rather than hand-maintained, so it can't drift from
-// what the schema actually declares. Only the domains that predate the catalog: a newer domain is reached through
-// its own policies, never Staff's blanket rule (cyc-seattle/platform#48). `programs` moved from crm to core, and keeps
-// the access it had.
-const staffDomains = new Set(["clubspot", "crm", "gsuite", "sync"]);
-const allCollections = [
-  ...loadedSchemas
-    .filter(({ name }) => staffDomains.has(name))
-    .flatMap(({ schema: domainSchema }) => collectionsInSchema(domainSchema)),
-  "programs",
-];
-
-// Every table-backed collection schemas/clubspot.yaml declares - Clubspot is the editor of
-// that data, so Staff gets read there, not write. Derived the same way as allCollections, from the
-// clubspot package's own schema rather than the merged one, since the merged snapshot no longer
-// says which package owns a collection.
-const clubspotSchema = loadedSchemas.find(({ name }) => name === "clubspot")?.schema;
-if (clubspotSchema === undefined) {
-  throw new Error("backend/index.ts: expected a schemas/clubspot.yaml to derive Staff's read-only collections");
-}
-const clubspotOwnedCollections = collectionsInSchema(clubspotSchema);
-
-/**
- * Staff's permission rules: full CRUD on every collection, except each one Clubspot owns, since
- * editing happens in Clubspot, not here. Two exceptions to that carve-out: `promoted_fields` is
- * staff-authored config despite living in the clubspot package, so it keeps full CRUD; and
- * `classes.program_id` and `participants.person_id` are the fields Staff sets by hand - a
- * class's program and a participant's match to a curated person - so each gets a field-scoped
- * update rule alongside its read.
- */
-function staffPermissionRules(
-  allCollections: string[],
-  clubspotOwnedCollections: string[],
-): DirectusPermissionRuleFields[] {
-  const clubspotReadOnly = new Set(clubspotOwnedCollections.filter((collection) => collection !== "promoted_fields"));
-
-  const rules: DirectusPermissionRuleFields[] = [];
-  for (const collection of allCollections) {
-    if (clubspotReadOnly.has(collection)) {
-      rules.push({ collection, action: "read" });
-    } else {
-      for (const action of ["create", "read", "update", "delete"] as const) {
-        rules.push({ collection, action });
-      }
-    }
-  }
-
-  rules.push({ collection: "classes", action: "update", fields: ["program_id"] });
-  rules.push({ collection: "participants", action: "update", fields: ["person_id"] });
-
-  return rules;
-}
-
-for (const rule of staffPermissionRules(allCollections, clubspotOwnedCollections)) {
+for (const rule of staffRules) {
   const suffix = rule.fields ? `${rule.action}-${rule.fields.join("-")}` : rule.action;
   permissionRule(
     `crm-staff-${rule.collection}-${suffix}`,
@@ -221,20 +187,44 @@ for (const rule of staffPermissionRules(allCollections, clubspotOwnedCollections
   );
 }
 
-for (const collection of ["sessions", "registration_entries", "people", "programs", "camps", "classes"]) {
+for (const rule of crewRules) {
+  const name = `${rule.collection}-${rule.action}`;
   permissionRule(
-    `crm-coach-${collection}-read`,
-    { ...auth, policyId: coachPolicyId, collection, action: "read" },
-    { dependsOn: crmSchema },
+    `crm-crew-${name}`,
+    { ...auth, policyId: crewPolicyId, ...rule },
+    { dependsOn: crmSchema, aliases: [{ name: `crm-coach-${name}` }] },
   );
 }
 
-for (const rule of guardianRules) {
-  permissionRule(
-    `crm-guardian-${rule.collection}-${rule.action}`,
-    { ...auth, policyId: guardianPolicyId, ...rule },
+/**
+ * Declares a policy once, attached to each of `roleIds`, or to none for one that groups give. Its
+ * rules are named by collection and action, and by their fields where a policy has two of a pair.
+ */
+function declarePolicy(prefix: string, policy: PolicyData, roleIds: pulumi.Input<string>[] = []): void {
+  const [roleId, ...others] = roleIds;
+  const resource = new DirectusPolicy(
+    prefix,
+    {
+      ...auth,
+      ...(roleId !== undefined && { roleId }),
+      name: policy.name,
+      icon: policy.icon,
+      description: policy.description,
+    },
     { dependsOn: crmSchema },
   );
+  others.forEach((other, index) => {
+    new DirectusAccess(`${prefix}-role-${index + 1}`, { ...auth, roleId: other, policyId: resource.policyId });
+  });
+  const named = new Set<string>();
+  for (const rule of policy.rules) {
+    let name = `${prefix}-${rule.collection}-${rule.action}`;
+    if (named.has(name)) {
+      name = `${name}-${(rule.fields ?? []).join("-")}`;
+    }
+    named.add(name);
+    permissionRule(name, { ...auth, policyId: resource.policyId, ...rule }, { dependsOn: crmSchema });
+  }
 }
 
 // Least privilege for the clubspot-sync machine user (crm-clubspot-sync in
@@ -310,6 +300,14 @@ for (const collection of ["program_role_assignments", "event_staff", "google_gro
   }
 }
 
+// A person merge stops while a duplicate is still in a group (packages/clubspot-sync/src/merge.ts), so
+// it reads who is in each one, and changes none of them.
+permissionRule(
+  "crm-clubspot-sync-group_members-read",
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "group_members", action: "read", fields: ["id", "person_id"] },
+  { dependsOn: crmSchema },
+);
+
 // A person merge folds a duplicate's own rows onto its keeper, then deletes the duplicate - the
 // only deletes clubspot-sync's policy grants (cyc-seattle/isthmia#133).
 for (const collection of ["people", "contacts", "contact_points", "medical_profiles"]) {
@@ -376,27 +374,13 @@ for (const collection of ["sync_tasks", "audit_findings", "google_groups", "goog
   }
 }
 
-// The Community role's policies (src/directus/roles.ts declares the role itself),
-// built from the plain data in ./community-rules.ts so the integration test applies exactly what
-// ships here.
-for (const policyData of communityPolicies) {
-  const policy = new DirectusPolicy(
-    `crm-community-${policyData.key}`,
-    {
-      ...auth,
-      roleId: communityRoleId,
-      name: policyData.name,
-      icon: policyData.icon,
-      description: policyData.description,
-    },
-    { dependsOn: crmSchema },
-  );
+// The Community role's policies (./community-rules.ts), which Crew has too, so a Crew member who is
+// a parent sees what any parent sees.
+for (const policy of communityPolicies) {
+  declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, crewRoleId]);
+}
 
-  for (const rule of policyData.rules) {
-    permissionRule(
-      `crm-community-${policyData.key}-${rule.collection}-${rule.action}`,
-      { ...auth, policyId: policy.policyId, ...rule },
-      { dependsOn: crmSchema },
-    );
-  }
+// The policies a group can give, attached to no role. The group-policies hook gives them to users.
+for (const policy of grantable) {
+  declarePolicy(`crm-${policy.key}`, policy);
 }

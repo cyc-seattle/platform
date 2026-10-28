@@ -35,6 +35,11 @@ export class DirectusSession {
     return this.token;
   }
 
+  /** A new session for the same user, who signs in again. */
+  again(): DirectusSession {
+    return new DirectusSession(this.baseUrl, this.email, this.password);
+  }
+
   /** A REST call that doesn't throw on an error status, since several are expected. */
   async request(method: string, path: string, body?: unknown): Promise<DirectusResponse> {
     let response = await send(this.baseUrl, await this.signIn(), method, path, body);

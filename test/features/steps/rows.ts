@@ -187,7 +187,18 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     added_at: new Date().toISOString(),
   }),
   promoted_fields: async () => ({ id: randomUUID(), target_field: `test_${runId}`, labels: [] }),
+  groups: async () => ({ id: randomUUID(), name: `Group ${key("group")}` }),
+  // The child, who has no login, so the group gives no one in the run anything.
+  group_members: async () => ({ id: randomUUID(), group_id: row["groups"], person_id: row["people"] }),
+  group_policies: async () => ({ id: randomUUID(), group_id: row["groups"], policy_id: await crmReaderId() }),
 };
+
+/** A policy a group may give, for the run's group. */
+async function crmReaderId(): Promise<string> {
+  const filter = encodeURIComponent(JSON.stringify({ name: { _eq: "CRM Reader" } }));
+  const [policy] = await (await admin()).ok("GET", `/policies?filter=${filter}&fields=id`);
+  return policy.id;
+}
 
 /** A harmless change to an existing row of each collection. */
 export const changes: Record<string, () => Row> = {
@@ -216,6 +227,9 @@ export const changes: Record<string, () => Row> = {
   google_groups: () => ({ description: "Changed." }),
   google_group_memberships: () => ({ added_at: new Date().toISOString() }),
   promoted_fields: () => ({ labels: ["Changed"] }),
+  groups: () => ({ description: "Changed." }),
+  group_members: () => ({ person_id: row["people"] }),
+  group_policies: () => ({ group_id: row["groups"] }),
 };
 
 /** A new row for `collection`, with `fixed`'s fields in place of the builder's. */
@@ -266,6 +280,9 @@ async function createRows(): Promise<void> {
     ["audit_findings", () => ({})],
     ["google_groups", () => ({})],
     ["google_group_memberships", () => ({})],
+    ["groups", () => ({})],
+    ["group_members", () => ({})],
+    ["group_policies", () => ({})],
   ];
   for (const [collection, fixed] of order) {
     const item = await adminCreate(collection, await newRow(collection, fixed()));

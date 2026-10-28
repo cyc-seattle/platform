@@ -29,6 +29,9 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   { collection: "event_staff", field: "person_id" },
   { collection: "google_group_memberships", field: "person_id" },
   { collection: "participants", field: "person_id" },
+  // Never repointed: a group gives access, so an admin moves a duplicate's memberships by hand, and
+  // until then the merge stops on the final delete.
+  { collection: "group_members", field: "person_id" },
 ];
 
 /** A `people` row as the merge needs it - every scalar column, plus `directus_user_id` (`packages/directus/schema.yaml`'s extension field). */

@@ -34,6 +34,7 @@ describe("Directus providers", () => {
     const sizes = JSON.parse(output) as Record<string, number>;
 
     expect(Object.keys(sizes).sort()).toEqual([
+      "directusAccessProvider",
       "directusAdminAccessGrantProvider",
       "directusPermissionRuleProvider",
       "directusPolicyProvider",

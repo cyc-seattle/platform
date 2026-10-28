@@ -1,0 +1,601 @@
+version: 1
+directus: 12.3.1
+vendor: postgres
+collections:
+  - collection: Access
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: Access
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: admin_panel_settings
+      item_duplication_fields: null
+      note: Groups, and the policies each gives its members. Only admins change them (docs/access.md).
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+  - collection: groups
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: groups
+      color: null
+      display_template: "{{name}}"
+      group: Access
+      hidden: false
+      icon: group_work
+      item_duplication_fields: null
+      note: A set of people, such as a committee, that gives its members one or more policies. It never sets a role.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: groups
+  - collection: group_members
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: group_members
+      color: null
+      display_template: "{{person_id.first_name}} {{person_id.last_name}} in {{group_id.name}}"
+      group: Access
+      hidden: true
+      icon: person_add
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: group_members
+  - collection: group_policies
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: group_policies
+      color: null
+      display_template: "{{group_id.name}} gives {{policy_id.name}}"
+      group: Access
+      hidden: true
+      icon: policy
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: group_policies
+fields:
+  - collection: groups
+    field: id
+    type: uuid
+    meta:
+      collection: groups
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: groups
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: groups
+    field: name
+    type: string
+    meta:
+      collection: groups
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: groups
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: groups
+    field: description
+    type: text
+    meta:
+      collection: groups
+      conditions: null
+      display: null
+      display_options: null
+      field: description
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: description
+      table: groups
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: groups
+    field: members
+    type: alias
+    meta:
+      collection: groups
+      conditions: null
+      display: null
+      display_options: null
+      field: members
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: The people in this group.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: groups
+    field: policies
+    type: alias
+    meta:
+      collection: groups
+      conditions: null
+      display: null
+      display_options: null
+      field: policies
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: The policies this group gives its members.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: group_members
+    field: id
+    type: uuid
+    meta:
+      collection: group_members
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: group_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: group_members
+    field: group_id
+    type: uuid
+    meta:
+      collection: group_members
+      conditions: null
+      display: null
+      display_options: null
+      field: group_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: group_id
+      table: group_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: groups
+      foreign_key_column: id
+  - collection: group_members
+    field: person_id
+    type: uuid
+    meta:
+      collection: group_members
+      conditions: null
+      display: null
+      display_options: null
+      field: person_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Gets the group's policies through their login, once they have one.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: person_id
+      table: group_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: people
+      foreign_key_column: id
+  - collection: group_policies
+    field: id
+    type: uuid
+    meta:
+      collection: group_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: group_policies
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: group_policies
+    field: group_id
+    type: uuid
+    meta:
+      collection: group_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: group_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: group_id
+      table: group_policies
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: groups
+      foreign_key_column: id
+  - collection: group_policies
+    field: policy_id
+    type: uuid
+    meta:
+      collection: group_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: policy_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "Only a policy groups may give: CRM Reader, CRM Writer, Medical Reader, or Medical Writer, so far."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: policy_id
+      table: group_policies
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_policies
+      foreign_key_column: id
+relations:
+  - collection: group_members
+    field: group_id
+    related_collection: groups
+    meta:
+      junction_field: null
+      many_collection: group_members
+      many_field: group_id
+      one_allowed_collections: null
+      one_collection: groups
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: members
+      sort_field: null
+    schema:
+      table: group_members
+      column: group_id
+      foreign_key_table: groups
+      foreign_key_column: id
+      constraint_name: group_members_group_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: group_members
+    field: person_id
+    related_collection: people
+    meta:
+      junction_field: null
+      many_collection: group_members
+      many_field: person_id
+      one_allowed_collections: null
+      one_collection: people
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: group_members
+      column: person_id
+      foreign_key_table: people
+      foreign_key_column: id
+      constraint_name: group_members_person_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: group_policies
+    field: group_id
+    related_collection: groups
+    meta:
+      junction_field: null
+      many_collection: group_policies
+      many_field: group_id
+      one_allowed_collections: null
+      one_collection: groups
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: policies
+      sort_field: null
+    schema:
+      table: group_policies
+      column: group_id
+      foreign_key_table: groups
+      foreign_key_column: id
+      constraint_name: group_policies_group_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: group_policies
+    field: policy_id
+    related_collection: directus_policies
+    meta:
+      junction_field: null
+      many_collection: group_policies
+      many_field: policy_id
+      one_allowed_collections: null
+      one_collection: directus_policies
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: group_policies
+      column: policy_id
+      foreign_key_table: directus_policies
+      foreign_key_column: id
+      constraint_name: group_policies_policy_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE

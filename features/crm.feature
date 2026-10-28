@@ -51,7 +51,6 @@ Feature: The CRM
       Then the CRM doesn't allow it
       And the parent is still in the CRM
 
-  @pending
   Rule: A CRM Reader can see people and their details, but can't change them
 
     Example: A CRM Reader looks people up
@@ -65,7 +64,6 @@ Feature: The CRM
       Given a user with the CRM Writer policy
       Then they can change people and their details
 
-  @pending
   Rule: A CRM Reader or CRM Writer can't see medical information without a Medical policy
 
     Scenario Outline: A CRM policy alone doesn't let someone see medical information
@@ -77,7 +75,6 @@ Feature: The CRM
         | CRM Reader |
         | CRM Writer |
 
-  @pending
   Rule: A Medical Reader can see every sailor's medical information, but can't change it
 
     Example: A Medical Reader looks up a sailor's allergies
@@ -85,7 +82,6 @@ Feature: The CRM
       Then they can see medical information
       But they can't change medical information
 
-  @pending
   Rule: A Medical Writer can change medical information
 
     Example: A Medical Writer adds, edits, and deletes medical information
@@ -108,7 +104,6 @@ Feature: The CRM
       And they can't see extra emails or phone numbers
       And they can't see registrations
 
-  @pending
   Rule: A Crew member who is also a parent still sees what any parent sees of their own child's team
 
     Example: A Crew member looks up their own child's medical information
@@ -257,7 +252,6 @@ Feature: The CRM
       And a teammate who opted in to sharing
       Then they can't see anyone's extra emails or phone numbers
 
-  @pending
   Rule: A family can see their own children's medical information, and no one else's
 
     Example: A parent looks up their child's medical information

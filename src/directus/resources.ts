@@ -126,6 +126,8 @@ interface DirectusRoleInputs extends DirectusAuthProps {
    * all, as opposed to API-only access. Directus policies default this to `false` — required here
    * (no default) rather than silently shipping a role nobody can actually log into. */
   appAccess: boolean;
+  /** Whether the role's users are admins, with every permission. */
+  adminAccess?: boolean;
   /** The role's ID, when something must know it before the role exists. */
   fixedRoleId?: string;
 }
@@ -145,6 +147,7 @@ export const directusRoleProvider: pulumi.dynamic.ResourceProvider = {
       icon: inputs.icon,
       description: inputs.description,
       app_access: inputs.appAccess,
+      admin_access: inputs.adminAccess ?? false,
     });
     const policyId = policy.data.id;
 
@@ -173,6 +176,7 @@ export const directusRoleProvider: pulumi.dynamic.ResourceProvider = {
         icon: news.icon,
         description: news.description,
         app_access: news.appAccess,
+        admin_access: news.adminAccess ?? false,
       });
       await directusRequest(news.baseUrl, token, "PATCH", `/roles/${olds.roleId}`, {
         name: news.name,
@@ -189,6 +193,18 @@ export const directusRoleProvider: pulumi.dynamic.ResourceProvider = {
   // apply into a dead end — same spirit as DirectusAdminAccessGrant.delete below.
   delete: reportErrors("DirectusRole", "delete", async (_id: string, props: DirectusRoleOutputs) => {
     const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
+    // Directus would set their role to null, leaving them no access, so move them off first.
+    const holders = await directusRequest<{ data: { id: string }[] }>(
+      props.baseUrl,
+      token,
+      "GET",
+      `/users?filter[role][_eq]=${props.roleId}&fields=id&limit=-1`,
+    );
+    if (holders.data.length > 0) {
+      throw new Error(
+        `The ${props.name} role still has ${holders.data.length} user(s). Move them to another role before deleting it.`,
+      );
+    }
     const access = await directusRequest<{ data: { id: string }[] }>(
       props.baseUrl,
       token,
@@ -219,9 +235,9 @@ export const directusRoleProvider: pulumi.dynamic.ResourceProvider = {
       const replaces = olds.fixedRoleId !== news.fixedRoleId ? ["fixedRoleId"] : [];
       const changes =
         replaces.length > 0 ||
-        (["baseUrl", "adminEmail", "adminPassword", "name", "icon", "description", "appAccess"] as const).some(
-          (key) => olds[key] !== news[key],
-        );
+        (
+          ["baseUrl", "adminEmail", "adminPassword", "name", "icon", "description", "appAccess", "adminAccess"] as const
+        ).some((key) => olds[key] !== news[key]);
       return { changes, replaces };
     },
   ),
@@ -235,6 +251,8 @@ export interface DirectusRoleArgs extends DirectusAuthArgs {
    * opposed to API-only access. No default — pick `true` for a role real staff sign into the
    * Directus app with, `false` for API-only access (e.g. a future end-user-facing portal). */
   appAccess: pulumi.Input<boolean>;
+  /** Whether the role's users are admins, with every permission. Defaults to false. */
+  adminAccess?: pulumi.Input<boolean>;
   /**
    * The role's ID, for a role something must name before it exists, such as Directus's own
    * `AUTH_AUTHENTIK_DEFAULT_ROLE_ID`. Changing it replaces the role.
@@ -636,7 +654,8 @@ export class DirectusAdminAccessGrant extends pulumi.dynamic.Resource {
 // its `policyId`, nothing on its own.
 
 interface DirectusPolicyInputs extends DirectusAuthProps {
-  roleId: string;
+  /** Omitted for a policy that groups give to users, not a role. */
+  roleId?: string;
   name: string;
   icon?: string;
   description?: string;
@@ -644,7 +663,7 @@ interface DirectusPolicyInputs extends DirectusAuthProps {
 
 interface DirectusPolicyOutputs extends DirectusPolicyInputs {
   policyId: string;
-  accessId: string;
+  accessId?: string;
 }
 
 export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
@@ -660,12 +679,15 @@ export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
     });
     const policyId = policy.data.id;
 
-    const access = await directusRequest<{ data: { id: string } }>(inputs.baseUrl, token, "POST", "/access", {
-      role: inputs.roleId,
-      policy: policyId,
-    });
+    const access =
+      inputs.roleId === undefined
+        ? undefined
+        : await directusRequest<{ data: { id: string } }>(inputs.baseUrl, token, "POST", "/access", {
+            role: inputs.roleId,
+            policy: policyId,
+          });
 
-    const outs: DirectusPolicyOutputs = { ...inputs, policyId, accessId: access.data.id };
+    const outs: DirectusPolicyOutputs = { ...inputs, policyId, ...(access && { accessId: access.data.id }) };
     return { id: policyId, outs };
   }),
 
@@ -683,7 +705,11 @@ export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
         app_access: false,
       });
 
-      const outs: DirectusPolicyOutputs = { ...news, policyId: olds.policyId, accessId: olds.accessId };
+      const outs: DirectusPolicyOutputs = {
+        ...news,
+        policyId: olds.policyId,
+        ...(olds.accessId !== undefined && { accessId: olds.accessId }),
+      };
       return { outs };
     },
   ),
@@ -692,7 +718,8 @@ export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
   // DirectusAdminAccessGrant.delete above.
   delete: reportErrors("DirectusPolicy", "delete", async (_id: string, props: DirectusPolicyOutputs) => {
     const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
-    for (const path of [`/access/${props.accessId}`, `/policies/${props.policyId}`]) {
+    const paths = [...(props.accessId ? [`/access/${props.accessId}`] : []), `/policies/${props.policyId}`];
+    for (const path of paths) {
       try {
         await directusRequest(props.baseUrl, token, "DELETE", path);
       } catch (error) {
@@ -722,7 +749,8 @@ export const directusPolicyProvider: pulumi.dynamic.ResourceProvider = {
 };
 
 export interface DirectusPolicyArgs extends DirectusAuthArgs {
-  roleId: pulumi.Input<string>;
+  /** The role the policy is attached to. Omit for a policy that groups give to users. */
+  roleId?: pulumi.Input<string>;
   name: pulumi.Input<string>;
   icon?: pulumi.Input<string>;
   description?: pulumi.Input<string>;
@@ -742,6 +770,76 @@ export class DirectusPolicy extends pulumi.dynamic.Resource {
       { ...args, policyId: undefined, accessId: undefined },
       withSecretOutputs(["adminPassword"], opts),
     );
+  }
+}
+
+// --- DirectusAccess: attaches an existing policy to one more role, for a policy that several roles
+// share, such as the Community policies Crew also gets.
+
+interface DirectusAccessInputs extends DirectusAuthProps {
+  roleId: string;
+  policyId: string;
+}
+
+interface DirectusAccessOutputs extends DirectusAccessInputs {
+  accessId: string;
+}
+
+export const directusAccessProvider: pulumi.dynamic.ResourceProvider = {
+  create: reportErrors("DirectusAccess", "create", async (inputs: DirectusAccessInputs) => {
+    await waitForReachable(inputs.baseUrl);
+    const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
+    const access = await directusRequest<{ data: { id: string } }>(inputs.baseUrl, token, "POST", "/access", {
+      role: inputs.roleId,
+      policy: inputs.policyId,
+    });
+    const outs: DirectusAccessOutputs = { ...inputs, accessId: access.data.id };
+    return { id: access.data.id, outs };
+  }),
+
+  update: reportErrors(
+    "DirectusAccess",
+    "update",
+    async (_id: string, olds: DirectusAccessOutputs, news: DirectusAccessInputs) => {
+      const outs: DirectusAccessOutputs = { ...news, accessId: olds.accessId };
+      return { outs };
+    },
+  ),
+
+  delete: reportErrors("DirectusAccess", "delete", async (_id: string, props: DirectusAccessOutputs) => {
+    const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
+    try {
+      await directusRequest(props.baseUrl, token, "DELETE", `/access/${props.accessId}`);
+    } catch (error) {
+      if (!isNotFound(error)) throw error;
+    }
+  }),
+
+  // The role and policy are the row's identity, so a change to either replaces it.
+  diff: reportErrors(
+    "DirectusAccess",
+    "diff",
+    async (_id: string, olds: DirectusAccessOutputs, news: DirectusAccessInputs) => {
+      const replaces = (["roleId", "policyId"] as const).filter((key) => olds[key] !== news[key]);
+      const changes =
+        replaces.length > 0 ||
+        (["baseUrl", "adminEmail", "adminPassword"] as const).some((key) => olds[key] !== news[key]);
+      return { changes, replaces };
+    },
+  ),
+};
+
+export interface DirectusAccessArgs extends DirectusAuthArgs {
+  roleId: pulumi.Input<string>;
+  policyId: pulumi.Input<string>;
+}
+
+/** Attaches a policy to a role, beside whatever else the role has. */
+export class DirectusAccess extends pulumi.dynamic.Resource {
+  declare public readonly accessId: pulumi.Output<string>;
+
+  constructor(name: string, args: DirectusAccessArgs, opts?: pulumi.CustomResourceOptions) {
+    super(directusAccessProvider, name, { ...args, accessId: undefined }, withSecretOutputs(["adminPassword"], opts));
   }
 }
 

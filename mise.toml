@@ -76,6 +76,10 @@ run = "pnpm run -r --include-workspace-root build"
 description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
 run = "./scripts/reset"
 
+[tasks.migrate-roles]
+description = "Move $PULUMI_STACK's users onto Community, Crew, and Admin (docs/access.md). A dry run without --apply"
+run = "node scripts/migrate-roles.ts"
+
 # Needs the dev deploy, so it isn't part of ci.
 [tasks.integration]
 description = "Run the integration tests against dev"

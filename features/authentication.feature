@@ -20,7 +20,6 @@ Feature: Signing in
       When they look at the roster
       Then they see no one
 
-  @pending
   Rule: Someone signing in for the first time gets the Community role
 
     Example: A parent signs in for the first time
@@ -28,7 +27,6 @@ Feature: Signing in
       When they sign in for the first time
       Then they have the Community role
 
-  @pending
   Rule: Signing in again doesn't change a person's role
 
     Example: A Crew member signs in again
@@ -36,7 +34,6 @@ Feature: Signing in
       When they sign in again
       Then they still have the Crew role
 
-  @pending
   Rule: Someone added to a group before they first sign in gets the group's policies when they do
 
     Example: A new committee member signs in for the first time
@@ -56,7 +53,6 @@ Feature: Signing in
         | Crew  |
         | Admin |
 
-    @pending
     Example: A family member can open the Data Studio
       Given a user with the Community role
       Then they can open the Data Studio

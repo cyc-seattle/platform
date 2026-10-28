@@ -228,10 +228,10 @@ policies (`packages/infrastructure/src/crm/community-rules.ts`):
   guardian's email and phone with no opt-in. A minor's own email and phone stay hidden.
 
 Directus runs a filter or sort against the raw column once any rule grants the field, and joins a
-relational filter's rows with no rules at all. So `crm` mounts a hook,
-`packages/infrastructure/src/crm/community-query-guard.js`, that refuses a Community query
-filtering, sorting, grouping, or aggregating on a field some Community rule withholds, or crossing
-a relation into a collection Community reads only in part.
+relational filter's rows with no rules at all. So `backend` mounts the query guard
+([access.md](access.md#the-query-guard)), which refuses a query filtering, sorting, grouping, or
+aggregating on a field some of the user's rules withhold, or crossing a relation into a collection
+they read only in part.
 
 The opt-in is `registrations.share_contact`, nullable, answered per registration rather than
 carried on the person — Clubspot asks the sharing question once per season's signup. It is set
@@ -240,22 +240,7 @@ CRM field rule, above).
 
 ### Permission model
 
-- **Administrator** — Directus's built-in full-access role.
-- **Staff** — authenticates via Directus's native Google OIDC, restricted to Workspace accounts an
-  admin has provisioned as Directus users. Full read/write on every collection above, including
-  `medical_profiles`, except the collections Clubspot owns (`schemas/clubspot.yaml`) are
-  read-only — editing happens in Clubspot, not here — apart from `classes.program_id` and
-  `participants.person_id`, which Staff set by hand. The only role delivered end-to-end by
-  cyc-seattle/isthmia#69/#92-cyc-seattle/isthmia#95.
-- **Coach** — defined now so the schema doesn't need reshaping later, but has no way to log in yet
-  (needs cyc-seattle/isthmia#65). KISS for now: any authenticated Directus user can read `sessions` /
-  `registration_entries` / `people` roster fields (no `medical_profiles`) — scoping a coach to only
-  their own sessions via `event_staff` is a follow-up, not built here.
-- **Guardian** — same login caveat as Coach. Policy: read their own minors' `people` /
-  `medical_profiles` / `registrations` / `registration_entries`, filtered through `contacts` where
-  `relationship_type == 'guardian'`. This scoping isn't KISS'd away like the coach roster case above
-  — it's the medical-data boundary the permission model exists to get right. Collection-level
-  permissions are what's built; whether `medical_profiles` needs field-level restrictions too is a
-  question for whenever a Guardian actually logs in (cyc-seattle/isthmia#65), not settled here.
+[access.md](access.md) has the roles, the policies, and the groups that give them.
+
 - **Emergency contacts get no role or login.** They're informational rows staff can see on a minor's
   record (`contacts` where `relationship_type == 'emergency_contact'`), not a portal audience.
