@@ -16,17 +16,7 @@ import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/app/config.ts";
 import { communityPolicies } from "./community-rules.ts";
-import {
-  clubspotCollections,
-  crewRules,
-  crmCollections,
-  groupPolicies,
-  groupPoliciesConfig,
-  queryGuardConfig,
-  fieldsIn,
-  writerRules,
-  type PolicyData,
-} from "./policies.ts";
+import { crewRules, groupPolicies, groupPoliciesConfig, queryGuardConfig, type PolicyData } from "./policies.ts";
 import { isDev, loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
 import { deployClubspotSync } from "./clubspot-sync.ts";
@@ -62,11 +52,8 @@ const loadedSchemas = schemaFiles.map(({ name, path: file }) => ({
 }));
 const schema = mergeSchemas(loadedSchemas);
 
-// The policies a group can give (docs/access.md), and the retired Staff role's rules.
+// The policies a group can give (docs/access.md).
 const grantable = groupPolicies(loadedSchemas);
-const staffRules = writerRules(crmCollections(loadedSchemas), clubspotCollections(loadedSchemas), (collection) =>
-  fieldsIn(loadedSchemas, collection),
-);
 
 // Prod keeps what its Directus had on the VM (./prod-state.ts).
 const prod = isDev
@@ -83,12 +70,7 @@ const app = deployDirectus(
   directusAdminEmail,
   licensed,
   {
-    queryGuard: queryGuardConfig([
-      ...communityPolicies,
-      { name: "Crew", rules: crewRules },
-      { name: "Staff", rules: staffRules },
-      ...grantable,
-    ]),
+    queryGuard: queryGuardConfig([...communityPolicies, { name: "Crew", rules: crewRules }, ...grantable]),
     groupPolicies: groupPoliciesConfig(grantable),
   },
   prod?.values,
@@ -96,7 +78,6 @@ const app = deployDirectus(
 
 function roleIds(roles: CrmIdentities) {
   return {
-    staffPolicyId: roles.staffRole.policyId,
     crewPolicyId: roles.crewRole.policyId,
     clubspotSyncPolicyId: roles.clubspotSyncRole.policyId,
     gsuiteSyncPolicyId: roles.gsuiteSyncRole.policyId,
@@ -143,8 +124,7 @@ function devIdentities(directus: typeof app) {
 }
 
 const identities = prod ? prodIdentities(prod) : devIdentities(app);
-const { auth, staffPolicyId, crewPolicyId, clubspotSyncPolicyId, gsuiteSyncPolicyId, communityRoleId, crewRoleId } =
-  identities;
+const { auth, crewPolicyId, clubspotSyncPolicyId, gsuiteSyncPolicyId, communityRoleId, crewRoleId } = identities;
 
 // The syncs' CronJobs take their machine users' tokens straight into their Secrets.
 const { clubspotSyncToken, gsuiteSyncToken } = identities;
@@ -180,16 +160,6 @@ const crmSchema = new DirectusSchema(
   { ...auth, schema },
   { dependsOn: [app.then(({ ready }) => ready)] },
 );
-
-for (const rule of staffRules) {
-  // Named by its field only when it's a hand-set exception, so people's field list keeps its name.
-  const suffix = rule.fields?.length === 1 ? `${rule.action}-${rule.fields[0]}` : rule.action;
-  permissionRule(
-    `crm-staff-${rule.collection}-${suffix}`,
-    { ...auth, policyId: staffPolicyId, ...rule },
-    { dependsOn: crmSchema },
-  );
-}
 
 for (const rule of crewRules) {
   const name = `${rule.collection}-${rule.action}`;

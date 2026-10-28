@@ -5,14 +5,11 @@ import { describe, expect, it } from "vitest";
 import { discoverSchemaFiles } from "../src/directus/client.ts";
 import { communityPolicies } from "../stacks/backend/community-rules.ts";
 import {
-  clubspotCollections,
   crewRules,
-  crmCollections,
   fieldsIn,
   groupPolicies,
   groupPoliciesConfig,
   queryGuardConfig,
-  writerRules,
 } from "../stacks/backend/policies.ts";
 
 const schemas = discoverSchemaFiles(path.join(import.meta.dirname, "../schemas")).map(({ name, path: file }) => ({
@@ -73,21 +70,10 @@ describe("the policies a group can give", () => {
   });
 });
 
-describe("the Staff group", () => {
-  it("gives everything the retired Staff role did, through CRM Writer and Medical Writer", () => {
-    const key = ({ collection, action, fields }: { collection: string; action: string; fields?: string[] }) =>
-      `${collection} ${action} ${fields ?? "*"}`;
-    const staff = writerRules(crmCollections(schemas), clubspotCollections(schemas), fieldsOf).map(key).sort();
-    const group = [...named("CRM Writer").rules, ...named("Medical Writer").rules].map(key).sort();
-    expect(group).toEqual(staff);
-  });
-});
-
 describe("a person's login", () => {
   it("is linked only by an admin or the group hook, never through a policy a person can hold", () => {
     const held = [
       ...policies.flatMap((policy) => policy.rules),
-      ...writerRules(crmCollections(schemas), clubspotCollections(schemas), fieldsOf),
       ...crewRules,
       ...communityPolicies.flatMap((policy) => policy.rules),
     ];

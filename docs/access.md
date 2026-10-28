@@ -25,9 +25,8 @@ alone, because Directus's OpenID driver writes a role on a later sign-in only wh
 Crew is the old Coach role, renamed, so it kept its ID. Directus's own Administrator role holds only
 the first admin account, which Directus made when it was set up. The syncs have roles of their own.
 
-Staff and Guardian were roles until cyc-seattle/workplace#6 step 8a. Staff is kept, retired, until
-its users have moved to Crew. Deleting a role leaves its users with no role, so `DirectusRole`
-refuses to delete one that still has users.
+Deleting a role leaves its users with no role, so `DirectusRole` refuses to delete one that still
+has users.
 
 ## Policies
 
@@ -86,9 +85,8 @@ change that emitted no event, such as a cascade.
 - It links by email only when exactly one person has that email and no person is linked to that
   login yet. Families often share an email, so a shared one links nobody. The hook logs it, and an
   admin links the login by hand.
-- It manages only links to the policies a group can give, and only for users on Community, Crew,
-  Admin, or the retired Staff. It never touches a role, a sync's user, the first admin account, or
-  an admin's own admin grant.
+- It manages only links to the policies a group can give, and only for users on Community, Crew, or
+  Admin. It never touches a role, a sync's user, or the first admin account.
 - It refuses a `group_policies` row that names any other policy.
 - It changes links through Directus's `AccessService`, which clears Directus's permission caches.
 
@@ -116,30 +114,3 @@ It works from the user's policies, through their role and their own account, so 
 probe other sailors' medical information through the rule that shows them their own child's, while a
 CRM Writer, who reads everything, isn't held back. A user whose rules never limit rows, such as a
 sync, isn't checked. `backend` writes each policy's read rules into the guard's config.
-
-## Moving to these roles
-
-`scripts/migrate-roles.ts` moves an environment's users onto the three roles, after the deploy that
-built them (cyc-seattle/workplace#6 step 8a). It's a dry run without `--apply`, and safe to run
-again:
-
-- A Guardian user becomes Community. This step works before the deploy too.
-- A Staff user is linked to their person in the CRM, or one is added. They join the Staff group,
-  which gives CRM Writer and Medical Writer. Once the hook has given those, they become Crew. The
-  script checks that their new access covers their old, and puts them back on Staff if it doesn't.
-  It checks both their permission rules and what the query guard would now refuse
-  (`scripts/access-lost.ts`). It can't see Directus's built-in permissions, such as each user's own
-  account, so it doesn't count the one thing staff do lose: filtering on another person's account.
-- Coaches are Crew already. Admins stay Admin.
-
-For prod, back up Directus's database first, then:
-
-1. `PULUMI_STACK=prod mise exec -- node scripts/migrate-roles.ts`, before the deploy. It counts users by role.
-2. If it finds Guardian users, `PULUMI_STACK=prod mise exec -- node scripts/migrate-roles.ts --apply`, so the deploy's
-   deletion of Guardian leaves no one without a role.
-3. Deploy.
-4. `PULUMI_STACK=prod mise exec -- node scripts/migrate-roles.ts --apply`. Check the census it prints after: no one left
-   on Staff, Coach, Guardian, or no role.
-5. Check that each admin can still sign in to the Data Studio as an admin.
-
-A later PR deletes the Staff role and the admins' own admin grants.

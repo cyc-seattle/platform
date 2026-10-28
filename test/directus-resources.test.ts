@@ -65,14 +65,14 @@ describe("describeProviderError", () => {
   });
 
   it("falls back to String(error) for a thrown undefined — the case that was previously invisible", () => {
-    const result = describeProviderError("DirectusAdminAccessGrant", "delete", undefined);
+    const result = describeProviderError("DirectusPolicy", "delete", undefined);
     expect(result.message.length).toBeGreaterThan(0);
-    expect(result.message).toContain("DirectusAdminAccessGrant.delete");
+    expect(result.message).toContain("DirectusPolicy.delete");
   });
 });
 
 describe("DirectusRole.delete", () => {
-  const props = { ...auth, name: "Staff", appAccess: true, roleId: "role-1", policyId: "policy-1" };
+  const props = { ...auth, name: "Crew", appAccess: true, roleId: "role-1", policyId: "policy-1" };
 
   it("treats an already-gone access row, role, and policy as success (cyc-seattle/isthmia#125)", async () => {
     const fetchMock = vi.fn();
@@ -104,7 +104,7 @@ describe("DirectusRole.delete", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: "user-1" }] })); // GET /users
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(directusRoleProvider.delete?.("role-1", props)).rejects.toThrow(/Staff role still has 1 user/);
+    await expect(directusRoleProvider.delete?.("role-1", props)).rejects.toThrow(/Crew role still has 1 user/);
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);
   });
 });
@@ -140,7 +140,7 @@ describe("DirectusRole with a fixed ID", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: 1 } }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await directusRoleProvider.create({ ...auth, name: "Staff", appAccess: true });
+    await directusRoleProvider.create({ ...auth, name: "Crew", appAccess: true });
 
     const [, rolesInit] = fetchMock.mock.calls[3] as [string, { body: string }];
     expect(JSON.parse(rolesInit.body)).not.toHaveProperty("id");
@@ -148,20 +148,20 @@ describe("DirectusRole with a fixed ID", () => {
 });
 
 describe("DirectusRole.diff", () => {
-  const olds = { ...auth, name: "Staff", appAccess: true, roleId: "role-1", policyId: "policy-1" };
+  const olds = { ...auth, name: "Crew", appAccess: true, roleId: "role-1", policyId: "policy-1" };
 
   it("ignores the provider's own code, so editing it updates no role", async () => {
-    const news = { ...auth, name: "Staff", appAccess: true, __provider: "edited" };
+    const news = { ...auth, name: "Crew", appAccess: true, __provider: "edited" };
     await expect(directusRoleProvider.diff?.("role-1", olds, news)).resolves.toEqual({ changes: false, replaces: [] });
   });
 
   it("updates a renamed role in place", async () => {
-    const news = { ...auth, name: "Staff 2", appAccess: true };
+    const news = { ...auth, name: "Crew 2", appAccess: true };
     await expect(directusRoleProvider.diff?.("role-1", olds, news)).resolves.toEqual({ changes: true, replaces: [] });
   });
 
   it("replaces a role whose fixed ID changes", async () => {
-    const news = { ...auth, name: "Staff", appAccess: true, fixedRoleId: "role-2" };
+    const news = { ...auth, name: "Crew", appAccess: true, fixedRoleId: "role-2" };
     await expect(directusRoleProvider.diff?.("role-1", olds, news)).resolves.toEqual({
       changes: true,
       replaces: ["fixedRoleId"],

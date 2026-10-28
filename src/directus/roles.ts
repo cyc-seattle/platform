@@ -1,12 +1,12 @@
 import * as pulumi from "@pulumi/pulumi";
-import { DirectusAdminAccessGrant, DirectusRole, DirectusUser } from "./resources.ts";
+import { DirectusRole, DirectusUser } from "./resources.ts";
 
 // The CRM's roles and the users assigned to them. `backend` declares them for prod's existing Directus
 // and for dev's, so both call this.
 
 export interface CrmIdentityArgs {
   auth: { baseUrl: pulumi.Input<string>; adminEmail: pulumi.Input<string>; adminPassword: pulumi.Input<string> };
-  /** What must exist before Directus answers: the roles and admin grants wait on it. */
+  /** What must exist before Directus answers: the roles wait on it. */
   readyForApiCalls: pulumi.Input<pulumi.Resource>[];
   /** The admins' accounts, signed in through Authentik. */
   admins: string[];
@@ -22,8 +22,6 @@ export interface CrmIdentities {
   communityRole: DirectusRole;
   crewRole: DirectusRole;
   adminRole: DirectusRole;
-  /** Retired: its users move to Crew, and a later PR deletes it (docs/access.md). */
-  staffRole: DirectusRole;
   clubspotSyncRole: DirectusRole;
   gsuiteSyncRole: DirectusRole;
   clubspotSyncUser: DirectusUser;
@@ -78,45 +76,21 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     { dependsOn: readyForApiCalls },
   );
 
-  const staffRole = new DirectusRole(
-    "crm-staff",
-    {
-      ...auth,
-      name: "Staff",
-      icon: "badge",
-      description:
-        "Retired: its users move to Crew and a group that gives CRM Writer and Medical Writer. See docs/access.md.",
-      appAccess: true,
-    },
-    { dependsOn: readyForApiCalls },
-  );
-
   // Admins, signed in through Authentik with no password.
   //
-  // Via `authentik` (cyc-seattle/isthmia#166): a Directus username is a unique email, and a staff member who's also a
+  // Via `authentik` (cyc-seattle/isthmia#166): a Directus username is a unique email, and an admin who's also a
   // parent would collide with the Community account the `authentik` provider's public registration
   // creates for them. Directus has no second OIDC provider to fall back to - the built-in
   // ADMIN_EMAIL/ADMIN_PASSWORD account is the break-glass login if Authentik is down.
   //
-  // The per-account admin grants stay until a later PR, so no admin loses access while they move to
-  // the Admin role. The aliases keep the names these had when they were keyed on the email's local part.
+  // They keep the `crm-staff-` names they had before the Admin role, so prod doesn't replace them. The
+  // aliases keep the names from when they were keyed on the email's local part.
   for (const email of args.admins) {
     const handle = email.replace(/@.*/, "");
-    const user = new DirectusUser(
+    new DirectusUser(
       `crm-staff-${email}`,
       { ...auth, email, roleId: adminRole.roleId, provider: "authentik", externalIdentifier: email },
       { aliases: [{ name: `crm-staff-${handle}` }] },
-    );
-    new DirectusAdminAccessGrant(
-      `crm-staff-${email}-admin`,
-      {
-        ...auth,
-        userId: user.userId,
-        name: `${handle} (admin exception)`,
-        icon: "shield_person",
-        description: "Per-account admin exception; not modeled as a role.",
-      },
-      { dependsOn: readyForApiCalls, aliases: [{ name: `crm-staff-${handle}-admin` }] },
     );
   }
 
@@ -172,7 +146,6 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     communityRole,
     crewRole,
     adminRole,
-    staffRole,
     clubspotSyncRole,
     gsuiteSyncRole,
     clubspotSyncUser,

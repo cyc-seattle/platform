@@ -3,7 +3,7 @@
 //
 // Keeps each user's own policy links equal to what their groups give (docs/access.md). It manages
 // only links to the policies a group may give, and only for users on the roles it's told, so it
-// never touches a role, a machine user, the first admin account, or a per-account admin grant.
+// never touches a role, a machine user, or the first admin account.
 
 const WATCHED = new Set(["groups", "group_members", "group_policies"]);
 // Coalesces a burst of changes, such as a sync updating many people, into one pass.
