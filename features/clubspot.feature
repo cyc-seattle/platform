@@ -10,7 +10,8 @@ Feature: Registrations from Clubspot
   sailor and parent on a registration to the CRM as a person, with their details and medical
   information, so staff work from one list of people. What it copies from Clubspot means those
   sessions, classes, registrations, people, details, and medical information. If it finds the same
-  person in the CRM twice, it merges the two into one.
+  person in the CRM twice, it reports them for staff to check, and merges the two into one once
+  staff approve.
 
   The Clubspot sync signs in to the CRM with an account of its own, called a service account, which
   can only do the work the sync needs. It writes notes in the CRM: a list of tasks, and reports of
@@ -60,15 +61,15 @@ Feature: Registrations from Clubspot
       And it can add, see, and edit its notes
       And it can add, see, and edit its run logs
 
-  Rule: The Clubspot sync can delete people, the classes a session offers, and a registration's payments, but nothing else
+  Rule: The Clubspot sync can delete people, and replace which classes a session offers and a registration's payments, but can't delete anything else
 
     Example: The Clubspot sync can delete people
       Given the Clubspot sync's service account
       Then it can delete people, their details, and their medical information
 
-    Example: A new copy from Clubspot replaces the classes a session offers and a registration's payments
+    Example: A new copy from Clubspot replaces which classes a session offers and a registration's payments
       Given the Clubspot sync's service account
-      Then it can replace the classes a session offers with a new copy from Clubspot
+      Then it can replace which classes a session offers with a new copy from Clubspot
       And it can replace a registration's payments with a new copy from Clubspot
 
     Example: The Clubspot sync can't delete anything else
@@ -92,13 +93,13 @@ Feature: Registrations from Clubspot
       Then the person kept is the coach
       And the duplicate is gone
 
-  Rule: The Clubspot sync can move a person's program roles, the sessions they staff, and their Google groups to someone else, but can't add or delete them
+  Rule: The Clubspot sync can move a person's program roles, the sessions they staff, and which Google groups they're in to someone else, but can't add or delete them
 
     Example: The Clubspot sync can only move what a person takes part in
       Given the Clubspot sync's service account
-      Then it can see people's program roles, the sessions they staff, and their Google groups
-      And it can move people's program roles, the sessions they staff, and their Google groups to another person
-      But it can't add or delete people's program roles, the sessions they staff, or their Google groups
+      Then it can see people's program roles, the sessions they staff, and which Google groups they're in
+      And it can move people's program roles, the sessions they staff, and which Google groups they're in to another person
+      But it can't add or delete people's program roles, the sessions they staff, or which Google groups they're in
 
   Rule: A CRM Writer can change which sign-up answers get copied
 

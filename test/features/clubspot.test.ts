@@ -29,7 +29,7 @@ Step("they can set which program a class belongs to", () => canSet("classes", "p
 Step("they can match a registration's sailor to a person in the CRM", () => canSet("participants", "person_id"));
 
 Step(
-  "it can move people's program roles, the sessions they staff, and their Google groups to another person",
+  "it can move people's program roles, the sessions they staff, and which Google groups they're in to another person",
   async () => {
     for (const collection of ["program_role_assignments", "event_staff", "google_group_memberships"]) {
       await canSet(collection, "person_id");

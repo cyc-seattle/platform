@@ -1,7 +1,7 @@
 Feature: Plans
-  A plan sets out how one product will run in a season: what the club offers and when, the prices,
-  the schedule, who works it, and the budget. The Operations Plan covers what the products share,
-  such as the office and the boats. Planners are the people with the Plan Reader or Plan Writer
+  Most plans set out how one product will run in a season: what the club offers and when, the
+  prices, the schedule, who works it, and the budget. The Operations Plan is the one plan that isn't
+  for a single product: it covers what the products share, such as the office and the boats. Planners are the people with the Plan Reader or Plan Writer
   policy, which they get from their groups. They work on a plan's draft, and save it as a version
   when it's ready. A saved version never changes, so the club can always look back at what it
   agreed to. One saved version of each plan is the active one, and the active versions together

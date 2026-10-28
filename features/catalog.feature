@@ -2,8 +2,8 @@ Feature: The catalog
   The catalog lists what the club sells and how it accounts for the money. A product is something
   the club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Each
   product is one of these kinds: a program, a charter, a storage lease, merchandise, event hosting,
-  or other. A program is a product that sailors sign up for, such as Summer Camp or the race team.
-  It has details of its own, such as its Google group. The catalog also lists the revenue accounts
+  or other. Some products are programs, which sailors sign up for, such as Summer Camp or the race
+  team. A program has details of its own, such as its Google group. The catalog also lists the revenue accounts
   the club's money is booked to, the qualifications a coach can hold, the boat classes the club
   sails, such as Opti or 420, and the kinds of equipment programs share, such as coach boats and
   trailers.
@@ -12,15 +12,15 @@ Feature: The catalog
   admins, only the few people who manage the club's products and revenue accounts can change the
   catalog. They have the Catalog Writer policy. The Catalog Reader policy lets someone see the
   catalog without changing it. Crew, the people an admin trusts with every roster, can see products
-  and revenue accounts too. People with a CRM policy can see programs and their details, but not
-  products or revenue accounts unless they're also Crew. To change something means to add, edit, or
+  and revenue accounts too. People with a CRM policy can see programs' details, but not the rest of
+  the products or the revenue accounts unless they're also Crew. To change something means to add, edit, or
   delete it.
 
-  Rule: A product that runs a program can't be deleted
+  Rule: A program can't be deleted while it has details of its own
 
-    Example: Deleting a product with a program isn't allowed
-      Given a product that runs a program
-      When an admin deletes the product
+    Example: Deleting a program with details isn't allowed
+      Given a program with details of its own
+      When an admin deletes the program's product
       Then the catalog doesn't allow it
       And the product is still in the catalog
 
@@ -40,9 +40,9 @@ Feature: The catalog
       But they can't change the catalog
 
   @pending
-  Rule: A Catalog Writer can change the catalog, programs included
+  Rule: A Catalog Writer can change the catalog, programs' details included
 
-    Example: A Catalog Writer adds, edits, and deletes products, revenue accounts, and programs
+    Example: A Catalog Writer adds, edits, and deletes products, revenue accounts, and programs' details
       Given a user with the Catalog Writer policy
       Then they can change the catalog
 
@@ -60,12 +60,12 @@ Feature: The catalog
         | Plan Writer |
 
   @pending
-  Rule: A CRM Reader or CRM Writer can see programs and their details, such as their Google group, but can't change them
+  Rule: A CRM Reader or CRM Writer can see programs' details, such as their Google group, but can't change them
 
-    Scenario Outline: A CRM policy can see programs, but can't change them
+    Scenario Outline: A CRM policy can see programs' details, but can't change them
       Given a user with the <policy> policy
-      Then they can see programs
-      But they can't change programs
+      Then they can see programs' details
+      But they can't change programs' details
 
       Examples:
         | policy     |
@@ -90,8 +90,8 @@ Feature: The catalog
       Then they can't see products
       And they can't see revenue accounts
 
-    Example: A CRM Writer who isn't Crew can see a program's details, but not its product or revenue account
+    Example: A CRM Writer who isn't Crew can see a program's details, but not the rest of its product or its revenue account
       Given a user with the Community role and the CRM Writer policy
-      Then they can see programs
+      Then they can see programs' details
       But they can't see products
       And they can't see revenue accounts

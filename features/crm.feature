@@ -99,7 +99,7 @@ Feature: The CRM
       Then they can see the rosters
       But they can't change the rosters
 
-  Rule: Crew can't see sailors' private information beyond what any parent sees
+  Rule: Crew can see every roster, but not sailors' medical information, parents, emergency contacts, extra emails or phone numbers, or registrations
 
     Example: A Crew member who isn't a parent can't see sailors' private information
       Given a user with the Crew role
@@ -109,7 +109,7 @@ Feature: The CRM
       And they can't see registrations
 
   @pending
-  Rule: A Crew member who is also a parent can see their own child, like any other parent
+  Rule: A Crew member who is also a parent still sees what any parent sees of their own child's team
 
     Example: A Crew member looks up their own child's medical information
       Given a user with the Crew role whose child is signed up for a program
@@ -300,7 +300,7 @@ Feature: The CRM
       When they ask for a list that would reveal hidden emails or phone numbers
       Then the CRM doesn't allow it
 
-  Rule: A Parent Coordinator can see the email and phone of every adult parent on their program's roster, whether or not the sailor opted in
+  Rule: A Parent Coordinator can see the email and phone of every adult parent of a sailor on their program's roster, whether or not the sailor opted in
 
     Example: A Parent Coordinator sees a parent's email, even if the sailor hasn't answered the sharing question
       Given a Parent Coordinator for a program

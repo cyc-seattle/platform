@@ -12,13 +12,13 @@ onEachScenario(() => {
   accountNumber = undefined;
 });
 
-Step("a product that runs a program", async () => {
+Step("a program with details of its own", async () => {
   const product = await adminCreate("products", { id: randomUUID(), name: `Product ${runId}`, kind: "program" });
   await adminCreate("programs", { id: randomUUID(), name: `Program ${runId}`, product_id: product.id });
   productId = product.id;
 });
 // Directus answers a delete its foreign key refuses with a 500, so the read after it is the check.
-Step("an admin deletes the product", async () => {
+Step("an admin deletes the program's product", async () => {
   const { status } = await (await admin()).request("DELETE", itemPath("products", productId));
   expectRefusal(() => expect(status).toBeGreaterThanOrEqual(400));
 });

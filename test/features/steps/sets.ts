@@ -75,7 +75,7 @@ const sets: Record<string, Target[]> = {
     "registrations",
     "registration_entries",
   ),
-  "the classes a session offers": plain("session_classes"),
+  "which classes a session offers": plain("session_classes"),
   "a registration's payments": plain("registration_billing"),
   "people, their details, and their medical information": plain(
     "people",
@@ -83,8 +83,10 @@ const sets: Record<string, Target[]> = {
     "contact_points",
     "medical_profiles",
   ),
-  "people's program roles, the sessions they staff, and their Google groups": PROGRAM_ROLES_STAFFING_AND_GROUPS,
-  "people's program roles, the sessions they staff, or their Google groups": PROGRAM_ROLES_STAFFING_AND_GROUPS,
+  "people's program roles, the sessions they staff, and which Google groups they're in":
+    PROGRAM_ROLES_STAFFING_AND_GROUPS,
+  "people's program roles, the sessions they staff, or which Google groups they're in":
+    PROGRAM_ROLES_STAFFING_AND_GROUPS,
   "its notes": plain("sync_tasks", "audit_findings"),
   "its run logs": plain("sync_runs"),
   "which sign-up answers get copied": plain("promoted_fields"),
@@ -100,6 +102,7 @@ const sets: Record<string, Target[]> = {
   ),
   "the Google groups": plain("google_groups", "google_group_memberships"),
   programs: plain("programs"),
+  "programs' details": plain("programs"),
   "the catalog": plain(
     "products",
     "accounts",
