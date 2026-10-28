@@ -52,7 +52,10 @@ can give, attached to no role:
 | Medical Writer | Changes every sailor's medical information                                                  |
 
 They're coarse: whole collections, with no row filters and no hidden fields. A Medical policy is
-given with a CRM policy.
+given with a CRM policy. One field is held back: no policy a person can hold sets a person's login,
+`people.directus_user_id`, because the login decides whose groups' policies a user gets. Only an
+admin or the group hook sets it. The Clubspot sync's own policy still can, since a merge moves a
+duplicate's login onto the person it keeps.
 
 To add a policy, add a `PolicyData` to `groupPolicies`, or to the list a role gets. `declarePolicy` in
 `stacks/backend/index.ts` declares it once, with its rules, and attaches it to each role it's given
@@ -73,8 +76,12 @@ equal to what their groups give. It runs after any change to a group, a member, 
 user is made, and when a person's email or login changes. It also runs every 15 minutes, to catch a
 change that emitted no event, such as a cascade.
 
-- A person's login is `people.directus_user_id`, or else the user with their email. So someone added
-  to a group before they first sign in gets its policies once they do.
+- A person's login is `people.directus_user_id`. A group member with none is linked by their email,
+  once, and the hook stores the link. So someone added to a group before they first sign in gets its
+  policies once they do, and a later change to their email doesn't move their access.
+- It links by email only when exactly one person has that email and no person is linked to that
+  login yet. Families often share an email, so a shared one links nobody. The hook logs it, and an
+  admin links the login by hand.
 - It manages only links to the policies a group can give, and only for users on Community, Crew,
   Admin, or the retired Staff. It never touches a role, a sync's user, the first admin account, or
   an admin's own admin grant.
@@ -82,7 +89,9 @@ change that emitted no event, such as a cascade.
 - It changes links through Directus's `AccessService`, which clears Directus's permission caches.
 
 A person merge stops while a duplicate is still in a group, since moving a membership changes who
-has access. An admin moves the membership by hand, and the next sync finishes the merge.
+has access. An admin moves the membership by hand, and the next sync finishes the merge. For the
+same reason the Clubspot sync never changes the email of someone in a group. It logs the new
+address, which it still keeps among the person's other emails.
 
 ## The query guard
 
@@ -90,7 +99,14 @@ Directus checks only that a filter's field is readable on some row, and joins a 
 rows without permissions. Once a user has a rule that limits rows, they could use a filter to probe
 what that rule hides. The query guard (`stacks/backend/community-query-guard.cjs`) refuses such a
 query: a filter, sort, group, or aggregate on a field the user can't read on every row, or a relation
-into a collection they can't read every row of.
+into a collection they can't read every row of. Everything else passes:
+
+- A relational filter or sort passes when every collection on its path is one the user reads whole.
+  That holds for `$FOLLOW` too.
+- A `deep` query reads its related rows with permissions, as a top-level query does, so its own
+  filter and sort get the same checks as one.
+- A filter into `directus_users` is refused unless the user is an admin. Directus lets everyone else
+  read only their own account, so a filter could probe other people's.
 
 It works from the user's policies, through their role and their own account, so a Crew member can't
 probe other sailors' medical information through the rule that shows them their own child's, while a
@@ -107,6 +123,9 @@ again:
 - A Staff user is linked to their person in the CRM, or one is added. They join the Staff group,
   which gives CRM Writer and Medical Writer. Once the hook has given those, they become Crew. The
   script checks that their new access covers their old, and puts them back on Staff if it doesn't.
+  It checks both their permission rules and what the query guard would now refuse
+  (`scripts/access-lost.ts`). It can't see Directus's built-in permissions, such as each user's own
+  account, so it doesn't count the one thing staff do lose: filtering on another person's account.
 - Coaches are Crew already. Admins stay Admin.
 
 For prod, back up Directus's database first, then:
