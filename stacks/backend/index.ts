@@ -16,7 +16,14 @@ import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/app/config.ts";
 import { communityPolicies } from "./community-rules.ts";
-import { crewRules, groupPolicies, groupPoliciesConfig, queryGuardConfig, type PolicyData } from "./policies.ts";
+import {
+  crewRules,
+  groupPolicies,
+  groupPoliciesConfig,
+  queryGuardConfig,
+  savedVersionsConfig,
+  type PolicyData,
+} from "./policies.ts";
 import { isDev, loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
 import { deployClubspotSync } from "./clubspot-sync.ts";
@@ -72,6 +79,7 @@ const app = deployDirectus(
   {
     queryGuard: queryGuardConfig([...communityPolicies, { name: "Crew", rules: crewRules }, ...grantable]),
     groupPolicies: groupPoliciesConfig(grantable),
+    savedVersions: savedVersionsConfig(loadedSchemas, config.getBoolean("savedVersionsDeletable") ?? false),
   },
   prod?.values,
 );

@@ -212,7 +212,121 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   // The child, who has no login, so the group gives no one in the run anything.
   group_members: async () => ({ id: randomUUID(), group_id: row["groups"], person_id: row["people"] }),
   group_policies: async () => ({ id: randomUUID(), group_id: row["groups"], policy_id: await crmReaderId() }),
+  plans: async () => ({ id: randomUUID(), kind: "product", product_id: row["products"], name: `Plan ${key("plan")}` }),
+  plan_versions: async () => ({ id: randomUUID(), plan_id: row["plans"], status: "draft", message: "A test version." }),
+  plan_activations: async () => ({ id: randomUUID(), version_id: row["plan_versions@saved"] }),
+  plan_pools: async (fixed) => versioned(fixed, { name: `Pool ${key("pool")}` }),
+  plan_staff_levels: async (fixed) =>
+    versioned(fixed, { name: `Level ${key("level")}`, pay_type: "hourly", hourly_rate_cents: 2_500 }),
+  plan_offerings: async (fixed) =>
+    versioned(fixed, {
+      product_id: row["products"],
+      name: `Offering ${key("offering")}`,
+      starts_on: "2027-06-01",
+      ends_on: "2027-08-31",
+      capacity: 12,
+      price_cents: 50_000,
+      sailors_per_coach: 6,
+      coach_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? null,
+    }),
+  plan_offering_boat_classes: async (fixed) =>
+    versioned(fixed, {
+      offering_id: sameVersionId("plan_offerings", fixed),
+      boat_class_id: row["boat_classes"],
+      share: 1,
+    }),
+  plan_trips: async (fixed) =>
+    versioned(fixed, { offering_id: sameVersionId("plan_offerings", fixed), name: `Trip ${key("trip")}`, nights: 2 }),
+  plan_activities: async (fixed) =>
+    versioned(fixed, {
+      offering_id: sameVersionId("plan_offerings", fixed),
+      date: "2027-06-02",
+      start_time: "09:00:00",
+      end_time: "12:00:00",
+      kind: "practice",
+      uses_boats: true,
+    }),
+  plan_resources: async (fixed) =>
+    versioned(fixed, {
+      resource_kind_id: row["resource_kinds"],
+      name: `Resource ${key("resource")}`,
+      cost_per_hour_cents: 1_000,
+    }),
+  plan_activity_resources: async (fixed) =>
+    versioned(fixed, {
+      activity_id: sameVersionId("plan_activities", fixed),
+      resource_key: sameVersion("plan_resources", fixed)?.["key"] ?? randomUUID(),
+      quantity: 1,
+    }),
+  plan_labor_lines: async (fixed) =>
+    versioned(fixed, {
+      name: `Training ${key("labor")}`,
+      cost_center_type: "org",
+      staff_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
+      hours: 10,
+      account_id: row["accounts"],
+    }),
+  plan_budget_lines: async (fixed) =>
+    versioned(fixed, {
+      name: `Insurance ${key("budget")}`,
+      account_id: row["accounts"],
+      cost_center_type: "org",
+      amount_cents: 10_000,
+      fiscal_year: 2027,
+      excluded_from_mtdc: false,
+    }),
+  // One row at most in each version, so a new one goes in a draft of its own.
+  plan_rates: async (fixed) => ({
+    id: randomUUID(),
+    version_id: fixed["version_id"] ?? (await fresh("plan_versions")),
+    payroll_tax_rate: 0.1,
+    card_fee_rate: 0.03,
+  }),
+  plan_salaried_positions: async (fixed) =>
+    versioned(fixed, {
+      name: `Position ${key("position")}`,
+      annual_salary_cents: 5_000_000,
+      remainder_pool_id: sameVersionId("plan_pools", fixed),
+    }),
+  plan_salaried_bookings: async (fixed) =>
+    versioned(fixed, {
+      position_id: sameVersionId("plan_salaried_positions", fixed),
+      product_id: row["products"],
+      kind: "management",
+      hours: 40,
+    }),
+  plan_boat_rates: async (fixed) =>
+    versioned(fixed, { boat_class_id: row["boat_classes"], maintenance_per_boat_hour_cents: 100 }),
+  plan_activity_block_rules: async (fixed) =>
+    versioned(fixed, {
+      name: `Block ${key("block")}`,
+      offering_keys: [sameVersion("plan_offerings", fixed)?.["key"] ?? randomUUID()],
+      weekdays: [3],
+    }),
+  plan_bonus_owners: async (fixed) =>
+    versioned(fixed, { role_name: `Head coach ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
+  plan_bonus_owner_products: async (fixed) =>
+    versioned(fixed, { bonus_owner_id: sameVersionId("plan_bonus_owners", fixed), product_id: row["products"] }),
 };
+
+/** The version a new plan row goes in: the one `fixed` names, or the run's draft. */
+function versionOf(fixed: Row): string {
+  return (fixed["version_id"] as string | undefined) ?? row["plan_versions@draft"]!;
+}
+
+function versioned(fixed: Row, data: Row): Row {
+  return { id: randomUUID(), version_id: versionOf(fixed), ...data };
+}
+
+/** The run's row in `collection` in the same version as a new row, which it may point at. */
+function sameVersion(collection: string, fixed: Row): Row | undefined {
+  const name = versionOf(fixed) === row["plan_versions@saved"] ? "saved" : "draft";
+  return fixture[`${collection}@${name}`];
+}
+
+function sameVersionId(collection: string, fixed: Row): unknown {
+  return sameVersion(collection, fixed)?.["id"];
+}
 
 /** A policy a group may give, for the run's group. */
 async function crmReaderId(): Promise<string> {
@@ -257,6 +371,26 @@ export const changes: Record<string, () => Row> = {
   groups: () => ({ description: "Changed." }),
   group_members: () => ({ person_id: row["people"] }),
   group_policies: () => ({ group_id: row["groups"] }),
+  plans: () => ({ name: `Plan ${key("plan")}` }),
+  plan_versions: () => ({ message: "A changed test version." }),
+  plan_activations: () => ({ version_id: row["plan_versions@saved"] }),
+  plan_pools: () => ({ name: `Pool ${key("pool")}` }),
+  plan_staff_levels: () => ({ hourly_rate_cents: 2_600 }),
+  plan_offerings: () => ({ price_cents: 52_000 }),
+  plan_offering_boat_classes: () => ({ share: 0.5 }),
+  plan_trips: () => ({ nights: 3 }),
+  plan_activities: () => ({ end_time: "13:00:00" }),
+  plan_resources: () => ({ cost_per_hour_cents: 1_100 }),
+  plan_activity_resources: () => ({ quantity: 2 }),
+  plan_labor_lines: () => ({ hours: 12 }),
+  plan_budget_lines: () => ({ amount_cents: 11_000 }),
+  plan_rates: () => ({ card_fee_rate: 0.035 }),
+  plan_salaried_positions: () => ({ annual_salary_cents: 5_100_000 }),
+  plan_salaried_bookings: () => ({ hours: 45 }),
+  plan_boat_rates: () => ({ maintenance_per_boat_hour_cents: 110 }),
+  plan_activity_block_rules: () => ({ weekdays: [3, 5] }),
+  plan_bonus_owners: () => ({ bonus_rate: 0.12 }),
+  plan_bonus_owner_products: () => ({ product_id: row["products"] }),
 };
 
 /** A new row for `collection`, with `fixed`'s fields in place of the builder's. */
@@ -341,6 +475,67 @@ async function createRows(): Promise<void> {
 
 let rows: Promise<void> | undefined;
 export const runRows = () => (rows ??= createRows());
+
+/** The rows in each plan version, in the order they can be made. */
+export const PLAN_ROWS = [
+  "plan_pools",
+  "plan_staff_levels",
+  "plan_offerings",
+  "plan_offering_boat_classes",
+  "plan_trips",
+  "plan_activities",
+  "plan_resources",
+  "plan_activity_resources",
+  "plan_labor_lines",
+  "plan_budget_lines",
+  "plan_rates",
+  "plan_salaried_positions",
+  "plan_salaried_bookings",
+  "plan_boat_rates",
+  "plan_activity_block_rules",
+  "plan_bonus_owners",
+  "plan_bonus_owner_products",
+];
+
+/** The platform version a test saves a version with. */
+export const PLATFORM_VERSION = "0.0.0-test";
+
+/** Saves a draft as a version, as the admin. Returns the saved version. */
+export async function adminSave(versionId: string): Promise<Item> {
+  return (await admin()).ok("PATCH", itemPath("plan_versions", versionId), {
+    status: "saved",
+    platform_version: PLATFORM_VERSION,
+    message: "Saved by a test.",
+  });
+}
+
+/**
+ * A plan for the run's product, with a saved version, the active one, and a draft made from it.
+ * Each version holds a row in every collection a version has. Only the planning steps need them.
+ */
+async function createPlanRows(): Promise<void> {
+  await runRows();
+  const make = async (name: string, collection: string, fixed: Row = {}) => {
+    const item = await adminCreate(collection, await newRow(collection, fixed));
+    row[name] = item.id;
+    fixture[name] = item;
+  };
+  await make("plans", "plans");
+  await make("plan_versions@saved", "plan_versions");
+  await make("plan_versions@draft", "plan_versions", { parent_version_id: row["plan_versions@saved"] });
+  for (const version of ["saved", "draft"]) {
+    for (const collection of PLAN_ROWS) {
+      await make(`${collection}@${version}`, collection, { version_id: row[`plan_versions@${version}`] });
+    }
+  }
+  fixture["plan_versions@saved"] = await adminSave(row["plan_versions@saved"]!);
+  await make("plan_activations", "plan_activations");
+  // Read again for its versions, which were made after it.
+  fixture["plans"] = await (await admin()).ok("GET", itemPath("plans", row["plans"]));
+}
+
+let planRowsMade: Promise<void> | undefined;
+export const planRows = () => (planRowsMade ??= createPlanRows());
 
 export const itemPath = (collection: string, id: unknown) => `/items/${collection}/${encodeURIComponent(String(id))}`;
 

@@ -1,4 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
+import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
 
 // Prod's Directus on the cluster keeps what it had on the VM (cyc-seattle/isthmia#231).
@@ -90,6 +93,7 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 const extensions = {
   queryGuard: { policies: { Crew: { people: [{ fields: "*" as const, filtered: false }] } } },
   groupPolicies: { grantable: ["CRM Writer"], roles: ["Community", "Crew", "Admin"] },
+  savedVersions: { versioned: ["plan_offerings"], deletable: false },
 };
 
 beforeAll(async () => {
@@ -166,5 +170,19 @@ describe("prod's Directus on the cluster", () => {
   it("runs on regular capacity with prod's sizing", () => {
     expect(container().nodeSelector).toEqual({});
     expect(container().containers[0].resources.requests).toEqual({ cpu: "500m", memory: "1Gi" });
+  });
+});
+
+describe("prod's saved plan versions", () => {
+  it("can't be deleted: the stack refuses the flag that lets dev's tests delete them", async () => {
+    const { deployDirectus } = await import("../stacks/backend/cluster.ts");
+    const deletable = { ...extensions, savedVersions: { ...extensions.savedVersions, deletable: true } };
+    await expect(deployDirectus("admin@example.com", true, deletable)).rejects.toThrow(/dev's tests only/);
+  });
+
+  it("aren't made deletable by prod's config", () => {
+    const file = path.join(import.meta.dirname, "../stacks/backend/Pulumi.prod.yaml");
+    const { config } = yaml.load(fs.readFileSync(file, "utf8")) as { config: Record<string, unknown> };
+    expect(config["backend:savedVersionsDeletable"]).toBeUndefined();
   });
 });

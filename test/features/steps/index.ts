@@ -33,6 +33,7 @@ import {
   fixture,
   itemPath,
   newRow,
+  planRows,
   row,
   runRows,
   type Row,
@@ -176,14 +177,22 @@ function readQuery(target: Target, fields = "id"): string {
   return `/items/${target.collection}?fields=${encodeURIComponent(fields)}${filter}`;
 }
 
-async function can(actions: Action[], target: Target): Promise<void> {
+/** The run's rows, and its plan's too for a step about plans, which only the planning steps need. */
+async function rowsFor(target: Target): Promise<void> {
   await runRows();
+  if (target.collection.startsWith("plan")) {
+    await planRows();
+  }
+}
+
+async function can(actions: Action[], target: Target): Promise<void> {
+  await rowsFor(target);
   const user = await session();
   const { collection } = target;
   const has = (action: Action) => actions.includes(action);
   if (has("create")) {
     // The rest of the actions work on the row just created.
-    const data = await newRow(collection);
+    const data = await newRow(collection, target.fixed?.());
     const id = data["id"];
     const create = await user.request("POST", `/items/${collection}`, data);
     if (create.status < 300) {
@@ -227,12 +236,12 @@ async function can(actions: Action[], target: Target): Promise<void> {
 }
 
 async function cant(actions: Action[], target: Target): Promise<void> {
-  await runRows();
+  await rowsFor(target);
   const user = await session();
   const { collection } = target;
   for (const action of actions) {
     if (action === "create") {
-      const data = await newRow(collection);
+      const data = await newRow(collection, target.fixed?.());
       const { status, body } = await user.request("POST", `/items/${collection}`, data);
       if (status < 300) {
         created.push({ collection, id: data["id"] });
@@ -298,12 +307,12 @@ Step("it can replace {records} with a new copy from Clubspot", async (_, records
   }
 });
 
-Step("a plan with wages and bonus rates", () => runRows());
+Step("a plan with wages and bonus rates", () => planRows());
 // No field-level hiding: a reader gets wages and bonus rates with the rest.
 Step("they can see every part of the plan, wages and bonus rates included", () => readsEveryDetail());
 
 async function readsEveryDetail(): Promise<void> {
-  await runRows();
+  await planRows();
   const user = await session();
   for (const target of targets("plans")) {
     const { status, body } = await user.request("GET", readQuery(target, "*"));

@@ -10,6 +10,7 @@ import {
   groupPolicies,
   groupPoliciesConfig,
   queryGuardConfig,
+  savedVersionsConfig,
 } from "../stacks/backend/policies.ts";
 
 const schemas = discoverSchemaFiles(path.join(import.meta.dirname, "../schemas")).map(({ name, path: file }) => ({
@@ -27,7 +28,7 @@ const collections = (name: string, action: string) =>
   );
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, and Catalog policies", () => {
+  it("are the CRM, Medical, Catalog, and Plan policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
       "CRM Reader",
       "CRM Writer",
@@ -35,6 +36,8 @@ describe("the policies a group can give", () => {
       "Catalog Writer",
       "Medical Reader",
       "Medical Writer",
+      "Plan Reader",
+      "Plan Writer",
     ]);
   });
 
@@ -63,7 +66,12 @@ describe("the policies a group can give", () => {
       for (const collection of ["groups", "group_members", "group_policies"]) {
         expect(touched).not.toContain(collection);
       }
+      const changed = policy.rules.filter((rule) => rule.action !== "read").map((rule) => rule.collection);
       if (!policy.name.startsWith("Catalog ")) {
+        expect(changed).not.toContain("products");
+        expect(changed).not.toContain("accounts");
+      }
+      if (!policy.name.startsWith("Catalog ") && !policy.name.startsWith("Plan ")) {
         expect(touched).not.toContain("products");
         expect(touched).not.toContain("accounts");
       }
@@ -87,6 +95,7 @@ describe("the Catalog policies", () => {
     "resource_kinds",
     "programs",
     "organizations",
+    "organization_cost_accounts",
   ];
 
   it("let a Catalog Reader see the whole catalog, and change none of it", () => {
@@ -106,6 +115,70 @@ describe("the Catalog policies", () => {
     );
     expect(writers.map(({ name }) => name)).toEqual(["Catalog Writer"]);
     expect(collections("CRM Writer", "read").has("programs")).toBe(true);
+  });
+});
+
+const plans = [
+  "plans",
+  "plan_versions",
+  "plan_activations",
+  "plan_offerings",
+  "plan_offering_boat_classes",
+  "plan_trips",
+  "plan_activities",
+  "plan_activity_resources",
+  "plan_labor_lines",
+  "plan_budget_lines",
+  "plan_rates",
+  "plan_staff_levels",
+  "plan_salaried_positions",
+  "plan_salaried_bookings",
+  "plan_resources",
+  "plan_boat_rates",
+  "plan_activity_block_rules",
+  "plan_pools",
+  "plan_bonus_owners",
+  "plan_bonus_owner_products",
+];
+
+describe("the Plan policies", () => {
+  const catalog = collections("Catalog Reader", "read");
+
+  it("let both see every plan and the catalog, with no field held back", () => {
+    for (const name of ["Plan Reader", "Plan Writer"]) {
+      expect([...collections(name, "read")].sort()).toEqual([...plans, ...catalog].sort());
+      expect(named(name).rules.every((rule) => rule.fields === undefined)).toBe(true);
+    }
+  });
+
+  it("let a Plan Reader change nothing", () => {
+    expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
+  });
+
+  it("let a Plan Writer change plans, add to the activation log, and change none of the catalog", () => {
+    for (const action of ["update", "delete"]) {
+      expect([...collections("Plan Writer", action)].sort()).toEqual(
+        plans.filter((collection) => collection !== "plan_activations").sort(),
+      );
+    }
+    expect([...collections("Plan Writer", "create")].sort()).toEqual([...plans].sort());
+  });
+
+  it("are the only policies that see plans", () => {
+    for (const policy of policies.filter(({ name }) => !name.startsWith("Plan "))) {
+      expect(policy.rules.filter((rule) => plans.includes(rule.collection))).toEqual([]);
+    }
+    expect(crewRules.filter((rule) => plans.includes(rule.collection))).toEqual([]);
+  });
+});
+
+describe("savedVersionsConfig", () => {
+  it("guards every collection whose rows belong to a version, but the activation log", () => {
+    const { versioned, deletable } = savedVersionsConfig(schemas, false);
+    expect(versioned.sort()).toEqual(
+      plans.filter((collection) => !["plans", "plan_versions", "plan_activations"].includes(collection)).sort(),
+    );
+    expect(deletable).toBe(false);
   });
 });
 

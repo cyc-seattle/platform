@@ -1,3 +1,5 @@
+import { PLAN_ROWS, PLATFORM_VERSION, row, type Row } from "./rows.ts";
+
 // The records a step names, in the features' own words, and the collections each covers. They're
 // the tests' own lists, not the stack's, so a mistake in a policy isn't copied into the test that
 // should catch it.
@@ -6,37 +8,28 @@
 export interface Target {
   collection: string;
   rows: string[];
+  /** Fields a new row takes, so it lands where the step means, such as in a saved version. */
+  fixed?: () => Row;
 }
 
 const plain = (...collections: string[]): Target[] =>
   collections.map((collection) => ({ collection, rows: [collection] }));
 
-// docs/planning-schema.md's version-scoped collections, which hold a row in each version.
-const VERSIONED = [
-  "plan_versions",
-  "plan_offerings",
-  "plan_offering_prices",
-  "plan_offering_boat_classes",
-  "plan_trips",
-  "plan_activities",
-  "plan_activity_resources",
-  "plan_labor_lines",
-  "plan_budget_lines",
-  "plan_assumptions",
-  "plan_staff_levels",
-  "plan_salaried_positions",
-  "plan_salaried_bookings",
-  "plan_bonus_owners",
-  "plan_bonus_owner_products",
-  "plan_pools",
-  "plan_pool_shares",
-  "plan_resources",
-  "plan_boat_rates",
-  "plan_activity_block_rules",
-];
+// A plan version, and docs/planning-schema.md's collections that hold rows in one.
+const VERSIONED = ["plan_versions", ...PLAN_ROWS];
 
 const versions = (...names: string[]): Target[] =>
   VERSIONED.map((collection) => ({ collection, rows: names.map((name) => `${collection}@${name}`) }));
+
+/** A saved version's rows. A new one goes in the saved version, and a new version is made saved. */
+const savedVersion = (): Target[] =>
+  versions("saved").map((target) => ({
+    ...target,
+    fixed: () =>
+      target.collection === "plan_versions"
+        ? { status: "saved", platform_version: PLATFORM_VERSION }
+        : { version_id: row["plan_versions@saved"] },
+  }));
 
 // Clubspot's events and registrations, as clubspot.feature defines them, but for who staffs each
 // session. Camps are Clubspot's container for a program's sessions.
@@ -114,9 +107,9 @@ const sets: Record<string, Target[]> = {
   ),
   products: plain("products"),
   "revenue accounts": plain("accounts"),
-  plans: [...plain("plans", "version_sets", "version_set_members", "plan_activations"), ...versions("draft", "saved")],
+  plans: [...plain("plans", "plan_activations"), ...versions("draft", "saved")],
   "a draft": versions("draft"),
-  "a saved version": versions("saved"),
+  "a saved version": savedVersion(),
   groups: plain("groups", "group_members", "group_policies"),
 };
 

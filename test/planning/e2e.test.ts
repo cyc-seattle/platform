@@ -221,9 +221,7 @@ function realisticPlan(): PlanData {
         skip: ["2027-04-13", "2027-04-15"],
       }),
       ...practice(lts, [6], "09:00", "13:00", { on_water_minutes: 192, setup_minutes: 15, putaway_minutes: 15 }),
-      ...campWeeks.flatMap((w) =>
-        practice(w, [1, 2, 3, 4, 5], "09:00", "15:00", { on_water_minutes: 216, kind: "camp_week" }),
-      ),
+      ...campWeeks.flatMap((w) => practice(w, [1, 2, 3, 4, 5], "09:00", "15:00", { on_water_minutes: 216 })),
     ],
     plan_trips: [
       trip(fall.id, { ...v("fall-trip"), name: "Fall championship", nights: 2, miles: 300, airfare_cents: 0 }),

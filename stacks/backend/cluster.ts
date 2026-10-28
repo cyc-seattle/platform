@@ -9,7 +9,7 @@ import { WebService } from "../../src/index.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv } from "./workloads.ts";
-import type { GroupPoliciesConfig, QueryGuardConfig } from "./policies.ts";
+import type { GroupPoliciesConfig, QueryGuardConfig, SavedVersionsConfig } from "./policies.ts";
 
 // Directus on the cluster (cyc-seattle/isthmia#231). Its uploads are ephemeral, as on the VM.
 
@@ -46,6 +46,7 @@ function generated(name: string, length: number): pulumi.Output<string> {
 export interface DirectusExtensions {
   queryGuard: QueryGuardConfig;
   groupPolicies: GroupPoliciesConfig;
+  savedVersions: SavedVersionsConfig;
 }
 
 /**
@@ -59,6 +60,12 @@ export async function deployDirectus(
   extensions: DirectusExtensions,
   existing?: ExistingDirectus,
 ): Promise<DirectusOnCluster> {
+  // Only so dev's tests can clean up the saved plan versions they make (docs/planning-schema.md).
+  if (extensions.savedVersions.deletable && !isDev) {
+    throw new Error(
+      "backend: savedVersionsDeletable is for dev's tests only. A saved plan version never changes in prod.",
+    );
+  }
   const config = new pulumi.Config();
   const cluster = await loadCluster();
   const { platform, provider } = cluster;
@@ -116,6 +123,7 @@ export async function deployDirectus(
   const hooks = [
     hook("community-query-guard", "community-query-guard.cjs", extensions.queryGuard),
     hook("group-policies", "group-policies.cjs", extensions.groupPolicies),
+    hook("saved-versions", "saved-versions.cjs", extensions.savedVersions),
   ];
 
   const directus = new WebService("directus", {
