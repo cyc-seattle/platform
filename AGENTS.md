@@ -27,7 +27,9 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   and the root `Dockerfile` builds the sync images from them. A package reads its workspace
   dependencies' `dist/`, so `mise run check` and `mise run test` build them first.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
-  against dev with `mise run integration`, never in `ci`.
+  against dev with `mise run integration`, never in `ci`. A feature is living documentation of
+  business rules, so write and review one with
+  [`writing-features`](.agents/skills/writing-features/SKILL.md).
 - The code is ESM (`"type": "module"`), run by Node 22's type stripping. Relative import paths end in
   `.ts`, and the code uses only erasable syntax (`erasableSyntaxOnly`).
 
@@ -36,8 +38,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 ## Working in this repo
 
 - Plans live on GitHub issues. `.plans/` is git-ignored, for local drafts.
-- `.agents/skills/` holds this repo's own skills: `cleanup-duplicate-people` and `cleanup-schools`.
-  Each works through one kind of CRM data problem, proposing a code fix that stops it recurring,
+- `.agents/skills/` holds this repo's own skills. `cleanup-duplicate-people` and `cleanup-schools`
+  each work through one kind of CRM data problem, proposing a code fix that stops it recurring,
   then per-row edits for the user to approve. Claude Code reads skills only from `.claude/skills`,
   so link them there once: `mkdir -p .claude && ln -s ../.agents/skills .claude/skills`.
 - PR titles are conventional commits. PRs merge by squash, or by merge commit to keep a branch's
