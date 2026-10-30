@@ -248,6 +248,8 @@ export function groupPoliciesConfig(policies: PolicyData[]): GroupPoliciesConfig
 export interface SavedVersionsConfig {
   /** The collections whose rows belong to one plan version. */
   versioned: string[];
+  /** Each of those collections' links to another one's rows, by field, which must be in the same version. */
+  links: Record<string, Record<string, string>>;
   /** Whether the first admin account may delete a saved version, so the tests can clean up. Dev only. */
   deletable: boolean;
 }
@@ -257,5 +259,16 @@ export function savedVersionsConfig(schemas: LoadedSchema[], deletable: boolean)
   const versioned = planCollections(schemas).filter(
     (collection) => collection !== ACTIVATIONS && fieldsIn(schemas, collection).includes("version_id"),
   );
-  return { versioned, deletable };
+  const relations = schemas.flatMap(
+    ({ schema }) =>
+      (schema as { relations?: { collection: string; field: string; related_collection: string | null }[] })
+        .relations ?? [],
+  );
+  const links: Record<string, Record<string, string>> = {};
+  for (const { collection, field, related_collection: related } of relations) {
+    if (versioned.includes(collection) && related !== null && versioned.includes(related)) {
+      (links[collection] ??= {})[field] = related;
+    }
+  }
+  return { versioned, links, deletable };
 }

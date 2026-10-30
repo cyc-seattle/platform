@@ -180,6 +180,20 @@ describe("savedVersionsConfig", () => {
     );
     expect(deletable).toBe(false);
   });
+
+  it("lists every link from a plan row to another, which must stay in the row's version", () => {
+    const { links } = savedVersionsConfig(schemas, false);
+    expect(links).toEqual({
+      plan_offering_boat_classes: { offering_id: "plan_offerings" },
+      plan_trips: { offering_id: "plan_offerings" },
+      plan_activities: { offering_id: "plan_offerings", trip_id: "plan_trips" },
+      plan_activity_resources: { activity_id: "plan_activities" },
+      plan_salaried_positions: { remainder_pool_id: "plan_pools" },
+      plan_salaried_bookings: { position_id: "plan_salaried_positions" },
+      plan_activity_block_rules: { coach_level_id: "plan_staff_levels" },
+      plan_bonus_owner_products: { bonus_owner_id: "plan_bonus_owners" },
+    });
+  });
 });
 
 describe("a person's login", () => {

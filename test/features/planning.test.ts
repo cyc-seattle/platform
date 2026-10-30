@@ -11,13 +11,13 @@ import {
   newRow,
   PLAN_ROWS,
   planRows,
-  PLATFORM_VERSION,
   row,
+  saving,
   runRows,
   type Row,
 } from "./steps/rows.ts";
 
-// A plan's active version is its newest activation (docs/planning-schema.md).
+// A plan's active version is its last activation (docs/planning-schema.md).
 
 let planId: string | undefined;
 let versionIds: string[] = [];
@@ -50,7 +50,7 @@ async function activeVersion(plan: string): Promise<unknown> {
   const filter = encodeURIComponent(JSON.stringify({ plan_id: { _eq: plan } }));
   const [newest] = await (
     await admin()
-  ).ok("GET", `/items/plan_activations?filter=${filter}&sort=-activated_at&limit=1&fields=version_id`);
+  ).ok("GET", `/items/plan_activations?filter=${filter}&sort=-sequence&limit=1&fields=version_id`);
   return newest?.version_id;
 }
 
@@ -109,11 +109,7 @@ Step("they can save the draft as a version", async () => {
   const draft = versionIds[0]!;
   const { status, body } = await (
     await theirSession()
-  ).request("PATCH", itemPath("plan_versions", draft), {
-    status: "saved",
-    platform_version: PLATFORM_VERSION,
-    message: "Ready for the board.",
-  });
+  ).request("PATCH", itemPath("plan_versions", draft), { ...(await saving()), message: "Ready for the board." });
   expect(status, JSON.stringify(body)).toBe(200);
   const saved = await (await admin()).ok("GET", `${itemPath("plan_versions", draft)}?fields=status,saved_by,saved_at`);
   const me = await (await theirSession()).ok("GET", "/users/me?fields=id");

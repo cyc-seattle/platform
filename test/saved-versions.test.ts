@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { guard, REFUSED, type Lookup, type Version, type Write } from "../stacks/backend/saved-versions.cjs";
+import {
+  databaseError,
+  guard,
+  REFUSED,
+  type Lookup,
+  type Version,
+  type Write,
+} from "../stacks/backend/saved-versions.cjs";
 
 const versions: Record<string, Version> = {
   draft: { id: "draft", plan_id: "plan", status: "draft", platform_version: null },
+  calculated: { id: "calculated", plan_id: "plan", status: "draft", platform_version: "1.4.0" },
   saved: { id: "saved", plan_id: "plan", status: "saved", platform_version: "1.4.0" },
   other: { id: "other", plan_id: "other-plan", status: "saved", platform_version: "1.4.0" },
 };
 // Each offering is named for the version it belongs to.
-const config = { versioned: ["plan_offerings"], deletable: false };
+const config = { versioned: ["plan_offerings"], links: {}, deletable: false };
 
 function lookup(deletesSaved = false): Lookup {
   return {
@@ -106,6 +114,19 @@ describe("the saved-versions hook", () => {
       ).rejects.toThrow(/platform version/);
     });
 
+    it("can't be saved with its platform version cleared", async () => {
+      const payload = { status: "saved", platform_version: null };
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload, keys: ["calculated"] }),
+      ).rejects.toThrow(/platform version/);
+    });
+
+    it("can be saved with the platform version it already has", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload: { status: "saved" }, keys: ["calculated"] }),
+      ).resolves.toMatchObject({ status: "saved", saved_by: "planner" });
+    });
+
     it("can't have its save stamps set by hand", async () => {
       await expect(
         check({ collection: "plan_versions", event: "update", payload: { saved_by: "someone" }, keys: ["draft"] }),
@@ -133,6 +154,23 @@ describe("the saved-versions hook", () => {
       ).resolves.toEqual({ version_id: "saved", plan_id: "plan", activated_by: "planner", activated_at: now });
     });
 
+    it("adds to the plan's history, which no one changes", async () => {
+      await expect(
+        check({ collection: "plan_activations", event: "update", payload: { version_id: "saved" }, keys: ["a"] }),
+      ).rejects.toThrow(/stays in the plan's history/);
+    });
+
+    it("can be undone only by the user dev lets clean up", async () => {
+      const write: Omit<Write, "now"> = {
+        collection: "plan_activations",
+        event: "delete",
+        payload: ["a"],
+        keys: ["a"],
+      };
+      await expect(check(write)).rejects.toThrow(/stays in the plan's history/);
+      await expect(check(write, true)).resolves.toEqual(["a"]);
+    });
+
     it("refuses a draft, or another plan's version", async () => {
       await expect(
         check({ collection: "plan_activations", event: "create", payload: { version_id: "draft" } }),
@@ -147,5 +185,32 @@ describe("the saved-versions hook", () => {
     await expect(
       check({ collection: "people", event: "delete", payload: ["saved"], keys: ["saved"] }),
     ).resolves.toEqual(["saved"]);
+  });
+});
+
+describe("a database error", () => {
+  // knex puts the statement ahead of the trigger's message.
+  const raised = (message: string) =>
+    Object.assign(new Error(`update "plan_versions" set "message" = $1 - ${message}`), { code: "CY001" });
+
+  it("from a trigger's refusal, reads as the hook's own refusal", () => {
+    expect(databaseError(raised(REFUSED))).toMatchObject({ name: "DirectusError", status: 403, message: REFUSED });
+    expect(databaseError(raised("A plan row can only link to rows in its own version."))).toMatchObject({
+      status: 400,
+      message: "A plan row can only link to rows in its own version.",
+    });
+  });
+
+  it("from a second plan for the same product and year, says so", () => {
+    const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field: "organization_id" } };
+    expect(databaseError(duplicate)).toMatchObject({
+      status: 400,
+      message: expect.stringMatching(/one plan for each/),
+    });
+  });
+
+  it("from anything else, stays as it is", () => {
+    const other = Object.assign(new Error("deadlock detected"), { code: "40P01" });
+    expect(databaseError(other)).toBe(other);
   });
 });

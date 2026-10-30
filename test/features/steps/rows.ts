@@ -70,7 +70,17 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   }),
   boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, sailors_per_boat: 1 }),
   resource_kinds: async () => ({ id: randomUUID(), name: `Resource ${key("resource")}` }),
-  programs: async () => ({ id: randomUUID(), name: `Program ${runId}` }),
+  // A program is the subtype of a product of kind `program`, and each has its own.
+  programs: async () => ({
+    id: randomUUID(),
+    name: `Program ${runId}`,
+    product_id: (await adminCreate("products", await newRow("products", { kind: "program" }))).id,
+  }),
+  organizations: async () => ({
+    id: randomUUID(),
+    name: `Organization ${key("organization")}`,
+    fiscal_year_start_month: 10,
+  }),
   program_roles: async () => ({ id: randomUUID(), name: `Role ${key("role")}` }),
   camps: async () => ({
     id: key("camp"),
@@ -212,7 +222,21 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   // The child, who has no login, so the group gives no one in the run anything.
   group_members: async () => ({ id: randomUUID(), group_id: row["groups"], person_id: row["people"] }),
   group_policies: async () => ({ id: randomUUID(), group_id: row["groups"], policy_id: await crmReaderId() }),
-  plans: async () => ({ id: randomUUID(), kind: "product", product_id: row["products"], name: `Plan ${key("plan")}` }),
+  // A product has one plan for each organization and year, so each plan gets a product of its own.
+  plans: async (fixed) => {
+    // Made first, so cleanup deletes it after the product plans saved with it.
+    if (fixed["kind"] !== "operations") {
+      await operationsVersionId();
+    }
+    return {
+      id: randomUUID(),
+      kind: "product",
+      product_id: fixed["kind"] === "operations" ? null : await fresh("products"),
+      organization_id: row["organizations"],
+      fiscal_year: PLAN_YEAR,
+      name: `Plan ${key("plan")}`,
+    };
+  },
   plan_versions: async () => ({ id: randomUUID(), plan_id: row["plans"], status: "draft", message: "A test version." }),
   plan_activations: async () => ({ id: randomUUID(), version_id: row["plan_versions@saved"] }),
   plan_pools: async (fixed) => versioned(fixed, { name: `Pool ${key("pool")}` }),
@@ -422,6 +446,7 @@ async function createRows(): Promise<void> {
     ["qualification_covers", () => ({})],
     ["boat_classes", () => ({})],
     ["resource_kinds", () => ({})],
+    ["organizations", () => ({})],
     ["programs", () => ({})],
     ["program_roles", () => ({})],
     ["camps", () => ({})],
@@ -499,12 +524,36 @@ export const PLAN_ROWS = [
 
 /** The platform version a test saves a version with. */
 export const PLATFORM_VERSION = "0.0.0-test";
+/** The year of every plan a test makes, for the run's own organization. */
+export const PLAN_YEAR = 2027;
 
-/** Saves a draft as a version, as the admin. Returns the saved version. */
-export async function adminSave(versionId: string): Promise<Item> {
-  return (await admin()).ok("PATCH", itemPath("plan_versions", versionId), {
+/** The run's Operations Plan's saved version, which a product's plan is saved with. */
+async function createOperationsVersion(): Promise<string> {
+  await runRows();
+  const plan = await adminCreate("plans", await newRow("plans", { kind: "operations", product_id: null }));
+  const version = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
+  await (
+    await admin()
+  ).ok("PATCH", itemPath("plan_versions", version.id), {
     status: "saved",
     platform_version: PLATFORM_VERSION,
+    message: "Saved by a test.",
+  });
+  return version.id;
+}
+
+let operationsVersion: Promise<string> | undefined;
+export const operationsVersionId = () => (operationsVersion ??= createOperationsVersion());
+
+/** What saving a draft of a product's plan sets. */
+export async function saving(): Promise<Row> {
+  return { status: "saved", platform_version: PLATFORM_VERSION, operations_version_id: await operationsVersionId() };
+}
+
+/** Saves a draft of a product's plan as a version, as the admin. Returns the saved version. */
+export async function adminSave(versionId: string): Promise<Item> {
+  return (await admin()).ok("PATCH", itemPath("plan_versions", versionId), {
+    ...(await saving()),
     message: "Saved by a test.",
   });
 }

@@ -25,6 +25,9 @@ importers:
       '@cyc-seattle/ts-config':
         specifier: ^0.1.2
         version: 0.1.2(@types/node@22.20.5)(eslint@9.39.5)(prettier@3.9.10)(typescript@5.9.3)(vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)))
+      '@electric-sql/pglite':
+        specifier: 0.5.13
+        version: 0.5.13
       '@pulumi/command':
         specifier: 1.2.1
         version: 1.2.1(typescript@5.9.3)
@@ -198,6 +201,9 @@ packages:
 
   '@dabh/diagnostics@2.0.9':
     resolution: {integrity: sha512-R6siwR65Hm+3yfgP7o8DKhNvputQAwfoz9zTc3kyDudnomj2/BcLmD+uGQQPICjuFUp8ounPBU+jmKsocwVVAg==}
+
+  '@electric-sql/pglite@0.5.13':
+    resolution: {integrity: sha512-4rZuxK1k07w6sSpJzjMri0B9+HuXuC7V9pxVB51pR0T9KPqXg6TD0mdaEwBA9rkcL4jdht4tGDf/wYzAiGhT7g==}
 
   '@eslint-community/eslint-utils@4.10.1':
     resolution: {integrity: sha512-cuadcxVFE8sDK6iWJbs8Sn0av2Nrh2QSGQhVlBW9AaAHqHwjWsZHT8LJ4hFGPh7ASBV2deFdM7H/DPjulmh8rg==}
@@ -2318,6 +2324,8 @@ snapshots:
       '@so-ric/colorspace': 1.1.6
       enabled: 2.0.0
       kuler: 2.0.0
+
+  '@electric-sql/pglite@0.5.13': {}
 
   '@eslint-community/eslint-utils@4.10.1(eslint@9.39.5)':
     dependencies:

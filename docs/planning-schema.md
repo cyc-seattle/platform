@@ -113,8 +113,10 @@ erDiagram
 ```mermaid
 erDiagram
     products ||--o{ plans : "has plan"
+    organizations ||--o{ plans : "plans for"
     plans ||--o{ plan_versions : versions
     plan_versions |o--o{ plan_versions : parent
+    plan_versions |o--o{ plan_versions : "calculated with"
     version_sets |o--o{ version_sets : "base set"
     version_sets ||--o{ version_set_members : pins
     plans ||--o{ version_set_members : "pinned in"
@@ -126,6 +128,8 @@ erDiagram
         uuid id PK
         string kind "product|operations"
         uuid product_id FK "null for the operations plan"
+        uuid organization_id FK
+        int fiscal_year "the plan year"
         string name
         boolean archived
     }
@@ -138,6 +142,7 @@ erDiagram
         uuid saved_by
         timestamp saved_at
         string platform_version "the @cyc-seattle/platform that calculated it"
+        uuid operations_version_id FK "a product's plan: the saved Operations Plan version"
     }
     version_sets {
         uuid id PK
@@ -159,24 +164,39 @@ erDiagram
         uuid version_id FK
         timestamp activated_at
         uuid activated_by
+        int sequence "the highest is active"
     }
 ```
 
-A plan starts with a draft. A Plan Writer saves it by setting its `status` to `saved`, with the `platform_version` of the engine (`@cyc-seattle/platform`) that calculated its numbers, so we can recalculate them the same way later. To change a saved plan, make a new draft whose `parent_version_id` is the saved version, and copy its rows, keys included.
+A plan is for one organization and one plan year (`fiscal_year`). A product has one plan for each organization and year, and an organization one Operations Plan for each year. A plan's kind, product, organization, and year can't change once it has a saved version.
 
-A plan's active version is its newest `plan_activations` row, so only one is active at a time. Making a version active adds a row, which must name a saved version of the plan. A Plan Writer adds rows, and never changes or deletes one. `version_sets` and `version_set_members` wait for scenarios and baselines.
+A plan starts with a draft. A Plan Writer saves it by setting its `status` to `saved`, with the `platform_version` of the engine (`@cyc-seattle/platform`) that calculated its numbers, so we can recalculate them the same way later. A product's plan is also saved with `operations_version_id`: the saved version of the same organization's Operations Plan, for the same year, that its numbers were calculated with. A product plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in that version. To change a saved plan, make a new draft whose `parent_version_id` is the saved version, and copy its rows, keys included.
+
+A saved version doesn't copy the catalog. Recalculating an old saved version uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
+
+A plan's active version is the one in its `plan_activations` row with the highest `sequence`, so only one is active at a time. Making a version active adds a row, which must name a saved version of the plan. The database sets the row's `sequence` and `activated_at`. No one changes or deletes a row there. `version_sets` and `version_set_members` wait for scenarios and baselines.
 
 #### A saved version never changes
 
-A saved version, and every row in it, never changes, even for an admin. `schemas/*.yaml` can't declare a database trigger, and Directus skips permissions for an admin, so the `saved-versions` hook (`stacks/backend/saved-versions.cjs`) enforces it. Directus runs its filters for every user. It refuses, with a 403, any request that would:
+A saved version, and every row in it, never changes, even for an admin. Directus skips permissions for an admin, so two things enforce it:
 
-- change or delete a saved version, or turn it back into a draft
-- add, change or delete a row in a saved version, or move a row into one
-- make a new version that isn't a draft
+- The `saved-versions` hook (`stacks/backend/saved-versions.cjs`) refuses such a request with a 403 and a clear reason. Directus runs its filters for every user. The hook also stamps who saved a version and who made one active.
+- Database triggers refuse the same writes on every path, including the ones that skip Directus's filters, such as a flow's data steps. The hook installs them when Directus starts, and again after each schema change. Each one locks the version it checks until the write commits, so a version can't be saved while a write to one of its rows is still open. Directus shows a trigger's refusal with its reason when it creates or updates a row. When it deletes one, it answers with a 500, which shows the reason only to an admin.
 
-It also stamps `saved_by` and `saved_at` when a draft is saved, refuses a save without a `platform_version`, and stamps `activated_by` and `activated_at` on an activation.
+Together they refuse:
 
-Every foreign key from a plan row restricts delete, so deleting a catalog row a version uses, or a plan with versions, fails instead of cascading into a saved version. Archive a plan instead of deleting it. Only SQL run as the database's owner gets past this. In dev, `backend:savedVersionsDeletable` lets the first admin account delete a saved version, so the integration tests can clean up. The prod stack refuses that flag.
+- changing or deleting a saved version, or turning it back into a draft
+- adding, changing, or deleting a row in a saved version
+- moving a row to another version, or a version to another plan
+- a row that links to a row in another version, such as an activity whose `offering_id` is another version's offering
+- a new version that isn't a draft
+- saving a version without a `platform_version`, or a product's plan without its Operations Plan version
+- changing or deleting a `plan_activations` row
+- changing a plan's kind, product, organization, or year once it has a saved version
+
+Every foreign key from a plan row restricts delete, so deleting a catalog row a version uses, or a plan with versions, fails instead of cascading into a saved version. Archive a plan instead of deleting it.
+
+An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the first admin account delete a saved version and its rows and activations, so the integration tests can clean up. The prod stack refuses that flag.
 
 ### Product plan (one version)
 
@@ -293,6 +313,7 @@ erDiagram
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     resource_kinds ||--o{ plan_resources : "kind of"
+    resource_kinds |o--o{ plan_rates : "RIB kind"
     boat_classes ||--o{ plan_boat_rates : "rate for"
     plan_salaried_positions ||--o{ plan_salaried_bookings : "management hours"
     products ||--o{ plan_salaried_bookings : "booked to"
@@ -307,6 +328,7 @@ erDiagram
         decimal card_fee_rate "share of revenue"
         int lodging_per_night_cents
         int mileage_rate_cents
+        uuid rib_resource_kind_id FK "which resource kind is safety boats (RIBs)"
     }
     plan_staff_levels {
         string name

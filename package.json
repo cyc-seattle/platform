@@ -50,6 +50,7 @@
   "devDependencies": {
     "@amiceli/vitest-cucumber": "7.0.0",
     "@cyc-seattle/ts-config": "^0.1.2",
+    "@electric-sql/pglite": "0.5.13",
     "@pulumi/command": "1.2.1",
     "@pulumi/docker-build": "0.0.22",
     "@pulumi/gcp": "10.2.0",

@@ -678,6 +678,86 @@ fields:
       foreign_key_table: products
       foreign_key_column: id
   - collection: plans
+    field: organization_id
+    type: uuid
+    meta:
+      collection: plans
+      conditions: null
+      display: null
+      display_options: null
+      field: organization_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The organization the plan is for. Can't change once the plan has a saved version.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: organization_id
+      table: plans
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: organizations
+      foreign_key_column: id
+  - collection: plans
+    field: fiscal_year
+    type: integer
+    meta:
+      collection: plans
+      conditions: null
+      display: null
+      display_options: null
+      field: fiscal_year
+      group: null
+      hidden: false
+      interface: input
+      note: The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved version.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: fiscal_year
+      table: plans
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plans
     field: name
     type: string
     meta:
@@ -694,7 +774,7 @@ fields:
       readonly: false
       required: true
       searchable: true
-      sort: 4
+      sort: 6
       special: null
       translations: null
       validation: null
@@ -734,7 +814,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 5
+      sort: 7
       special: null
       translations: null
       validation: null
@@ -774,7 +854,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 6
+      sort: 8
       special:
         - o2m
       translations: null
@@ -1111,6 +1191,55 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_versions
+    field: operations_version_id
+    type: uuid
+    meta:
+      collection: plan_versions
+      conditions: null
+      display: null
+      display_options: null
+      field: operations_version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: >-
+        For a product's plan: the saved Operations Plan version its numbers were calculated with, for the same
+        organization and year. Required to save. Empty for the Operations Plan.
+      options:
+        filter:
+          _and:
+            - status:
+                _eq: saved
+            - plan_id:
+                kind:
+                  _eq: operations
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: operations_version_id
+      table: plan_versions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
   - collection: plan_activations
     field: id
     type: uuid
@@ -1244,7 +1373,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: null
+      note: Set when the version is made active.
       options: null
       readonly: true
       required: false
@@ -1263,7 +1392,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -1304,6 +1433,46 @@ fields:
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_activations
+    field: sequence
+    type: integer
+    meta:
+      collection: plan_activations
+      conditions: null
+      display: null
+      display_options: null
+      field: sequence
+      group: null
+      hidden: false
+      interface: input
+      note: Set when the version is made active. The plan's active version is the one with the highest.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sequence
+      table: plan_activations
+      data_type: integer
+      default_value: 0
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -4997,6 +5166,46 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_rates
+    field: rib_resource_kind_id
+    type: uuid
+    meta:
+      collection: plan_rates
+      conditions: null
+      display: null
+      display_options: null
+      field: rib_resource_kind_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The resource kind whose resources price safety-boat (RIB) hours.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: rib_resource_kind_id
+      table: plan_rates
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: resource_kinds
+      foreign_key_column: id
   - collection: plan_staff_levels
     field: id
     type: uuid
@@ -7657,6 +7866,27 @@ relations:
       constraint_name: plans_product_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: plans
+    field: organization_id
+    related_collection: organizations
+    meta:
+      junction_field: null
+      many_collection: plans
+      many_field: organization_id
+      one_allowed_collections: null
+      one_collection: organizations
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plans
+      column: organization_id
+      foreign_key_table: organizations
+      foreign_key_column: id
+      constraint_name: plans_organization_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
   - collection: plan_versions
     field: plan_id
     related_collection: plans
@@ -7697,6 +7927,27 @@ relations:
       foreign_key_table: plan_versions
       foreign_key_column: id
       constraint_name: plan_versions_parent_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_versions
+    field: operations_version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_versions
+      many_field: operations_version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_versions
+      column: operations_version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_versions_operations_version_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_activations
@@ -8117,6 +8368,27 @@ relations:
       foreign_key_table: plan_versions
       foreign_key_column: id
       constraint_name: plan_rates_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_rates
+    field: rib_resource_kind_id
+    related_collection: resource_kinds
+    meta:
+      junction_field: null
+      many_collection: plan_rates
+      many_field: rib_resource_kind_id
+      one_allowed_collections: null
+      one_collection: resource_kinds
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_rates
+      column: rib_resource_kind_id
+      foreign_key_table: resource_kinds
+      foreign_key_column: id
+      constraint_name: plan_rates_rib_resource_kind_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_staff_levels
