@@ -13,12 +13,6 @@ export interface Actor {
   service?: string;
 }
 
-/** The cyc-seattle/workplace#6 step that builds each policy a later step builds. */
-const laterPolicies: Record<string, string> = {
-  "Plan Reader": "11",
-  "Plan Writer": "11",
-};
-
 const services: Record<string, string> = {
   "the Clubspot sync": "Clubspot Sync",
   "the Google sync": "Gsuite Sync",
@@ -31,18 +25,14 @@ export const policyNames = [
   "Medical Writer",
   "Catalog Reader",
   "Catalog Writer",
-  ...Object.keys(laterPolicies),
+  "Plan Reader",
+  "Plan Writer",
 ];
 export const roleNames = ["Community", "Crew", "Admin"];
 export const serviceNames = Object.keys(services);
 
 /** Every user this run created, so cleanup can delete them. */
 export const userIds: string[] = [];
-
-/** Throws for a step that a later step of cyc-seattle/workplace#6 builds. */
-export function notBuilt(step: string): never {
-  throw new Error(`Not built yet: cyc-seattle/workplace#6 step ${step} builds this step.`);
-}
 
 async function idByName(collection: "roles" | "policies", name: string): Promise<string> {
   const filter = encodeURIComponent(JSON.stringify({ name: { _eq: name } }));
@@ -158,13 +148,9 @@ export async function joinGroups(user: User, personId: string, policies: string[
   await hasPolicies(user.userId, policies);
 }
 
-function actorRole({ role, policies = [], service }: Actor): string {
+function actorRole({ role, service }: Actor): string {
   if (service !== undefined) {
     return services[service]!;
-  }
-  for (const policy of policies) {
-    const step = laterPolicies[policy];
-    if (step !== undefined) notBuilt(step);
   }
   // Everyone's role on their first sign-in.
   return role ?? "Community";

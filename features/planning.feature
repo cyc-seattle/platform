@@ -12,7 +12,6 @@ Feature: Plans
   products they run. Anyone who can see plans sees all of these. To change something means to add,
   edit, or delete it.
 
-  @pending
   Rule: A new plan starts with a draft
 
     Example: A Plan Writer starts a plan for a product
@@ -21,7 +20,6 @@ Feature: Plans
       Then the plan has a draft they can change
       And the plan has no saved versions yet
 
-  @pending
   Rule: Only one saved version of each plan is active at a time
 
     Example: Making a version active replaces the one that was active
@@ -30,7 +28,6 @@ Feature: Plans
       When they make the second version active
       Then only the second version is active
 
-  @pending
   Rule: A saved version never changes, even for an admin
 
     Example: A Plan Writer can't change a saved version
@@ -45,7 +42,6 @@ Feature: Plans
       Then they can't change a saved version
       And they can't turn a saved version back into a draft
 
-  @pending
   Rule: Planners can see every plan, including wages and bonus rates
 
     Scenario Outline: Each planning policy can see a plan's wages and bonus rates
@@ -58,14 +54,12 @@ Feature: Plans
         | Plan Reader |
         | Plan Writer |
 
-  @pending
   Rule: A Plan Reader can't change plans
 
     Example: A Plan Reader can't change a plan
       Given a user with the Plan Reader policy
       Then they can't change plans
 
-  @pending
   Rule: A Plan Writer can change any plan's draft, even one someone else started
 
     Example: A Plan Writer changes another planner's draft
@@ -73,7 +67,6 @@ Feature: Plans
       And a plan someone else started
       Then they can change a draft
 
-  @pending
   Rule: A Plan Writer can save a draft as a version, and make a saved version active
 
     Example: A Plan Writer saves a version and makes it active
@@ -82,7 +75,6 @@ Feature: Plans
       Then they can save the draft as a version
       And they can make a saved version active
 
-  @pending
   Rule: Only admins and planners can see plans
 
     Scenario Outline: A role on its own doesn't let someone see plans

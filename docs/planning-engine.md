@@ -24,6 +24,16 @@ named as the schema names them, plus:
 - `rib_resource_kind_id`: which resource kind is RIBs. The engine uses those resources' rates to cost
   each RIB hour.
 
+Planners enter each of these in the plans ([docs/planning-schema.md](planning-schema.md)):
+
+- `fiscal_year` and the organization are the plan's own `fiscal_year` and `organization_id`.
+- The plan versions are a product's plan's version and the saved Operations Plan version it names
+  in `operations_version_id`. A product plan's row that names an Operations Plan row by key means
+  the row with that key in that version.
+- `rib_resource_kind_id` is in that Operations Plan version's `plan_rates`.
+- The catalog is read as it is now. A saved version doesn't copy it, so recalculating an old version
+  uses today's catalog.
+
 It returns:
 
 - `lines`: every cost and revenue line for the year, on its offering, product, pool or the

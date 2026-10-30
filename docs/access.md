@@ -51,8 +51,12 @@ can give, attached to no role:
 | Medical Writer | Changes every sailor's medical information                                                           |
 | Catalog Reader | Reads the catalog: every collection in `schemas/core.yaml`, programs included                        |
 | Catalog Writer | Changes the catalog                                                                                  |
+| Plan Reader    | Reads every plan, wages and bonus rates included, and the catalog                                    |
+| Plan Writer    | Changes any plan's draft, saves it as a version, and makes a saved version active. Reads the catalog |
 
-They're coarse: whole collections, with no row filters and no hidden fields. A Medical policy is
+They're coarse: whole collections, with no row filters and no hidden fields. A saved plan version never
+changes, even for an admin, so the `saved-versions` hook enforces that rather than a policy
+(`docs/planning-schema.md`). A Medical policy is
 given with a CRM policy. Programs belong to the catalog, so only a Catalog Writer changes them. A CRM
 policy reads them, and so do Crew and the Google sync, but none of them changes them.
 

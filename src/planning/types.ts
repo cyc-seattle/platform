@@ -91,7 +91,7 @@ export interface OrganizationCostAccount {
 
 // Program plan
 
-export type ActivityKind = "practice" | "regatta" | "clinic" | "camp_week" | "travel";
+export type ActivityKind = "practice" | "regatta" | "clinic" | "travel";
 
 export interface PlanOffering extends Versioned {
   product_id: Id;

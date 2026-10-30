@@ -81,6 +81,7 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 const extensions = {
   queryGuard: { policies: { Crew: { people: [{ fields: "*" as const, filtered: false }] } } },
   groupPolicies: { grantable: ["CRM Writer"], roles: ["Community", "Crew", "Admin"] },
+  savedVersions: { versioned: ["plan_offerings"], links: {}, deletable: true },
 };
 
 beforeAll(async () => {
@@ -125,12 +126,14 @@ describe("Directus on the cluster", () => {
 });
 
 describe("Directus's hook extensions", () => {
-  it.each(["community-query-guard", "group-policies"])("mounts %s with its config", (name) => {
+  it.each([
+    ["community-query-guard", extensions.queryGuard],
+    ["group-policies", extensions.groupPolicies],
+    ["saved-versions", extensions.savedVersions],
+  ])("mounts %s with its config", (name, config) => {
     const data = find("kubernetes:core/v1:ConfigMap", `directus-${name}`).inputs["data"];
     expect(JSON.parse(data["package.json"])["directus:extension"].type).toBe("hook");
-    expect(JSON.parse(data["config.json"])).toEqual(
-      name === "group-policies" ? extensions.groupPolicies : extensions.queryGuard,
-    );
+    expect(JSON.parse(data["config.json"])).toEqual(config);
     expect(container("directus").volumeMounts).toEqual(
       expect.arrayContaining([expect.objectContaining({ mountPath: `/directus/extensions/${name}` })]),
     );

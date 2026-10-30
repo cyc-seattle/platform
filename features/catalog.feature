@@ -44,7 +44,6 @@ Feature: The catalog
       Given a user with the Catalog Writer policy
       Then they can change the catalog
 
-  @pending
   Rule: Planners can see the catalog, but can't change it
 
     Scenario Outline: Each planning policy can see the catalog

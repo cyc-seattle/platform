@@ -1,0 +1,258 @@
+import { describe, expect, it } from "vitest";
+import {
+  databaseError,
+  guard,
+  REFUSED,
+  type Lookup,
+  type Plan,
+  type Version,
+  type Write,
+} from "../stacks/backend/saved-versions.cjs";
+
+const versions: Record<string, Version> = {
+  draft: { id: "draft", plan_id: "plan", status: "draft", platform_version: null },
+  calculated: { id: "calculated", plan_id: "plan", status: "draft", platform_version: "1.4.0" },
+  saved: { id: "saved", plan_id: "plan", status: "saved", platform_version: "1.4.0" },
+  other: { id: "other", plan_id: "other-plan", status: "saved", platform_version: "1.4.0" },
+};
+// Each offering is named for the version it belongs to.
+const config = { versioned: ["plan_offerings"], links: {}, deletable: false };
+
+// Each plan is named for its kind.
+const plans: Record<string, Plan> = {
+  product: { id: "product", kind: "product", product_id: "boats" },
+  operations: { id: "operations", kind: "operations", product_id: null },
+};
+
+function lookup(deletesSaved = false): Lookup {
+  return {
+    versionIds: async (_, keys) => keys,
+    plans: async (ids) => ids.map((id) => plans[id]!).filter(Boolean),
+    versions: async (ids) => ids.map((id) => versions[id]!).filter(Boolean),
+    deletesSaved: async () => deletesSaved,
+  };
+}
+
+const now = "2027-01-01T00:00:00.000Z";
+const check = (write: Omit<Write, "now">, deletesSaved = false) =>
+  guard({ user: "planner", ...write, now }, config, lookup(deletesSaved));
+
+describe("the saved-versions hook", () => {
+  describe("a saved version", () => {
+    it("can't be changed, or turned back into a draft", async () => {
+      for (const payload of [{ message: "Changed." }, { status: "draft" }]) {
+        await expect(check({ collection: "plan_versions", event: "update", payload, keys: ["saved"] })).rejects.toThrow(
+          REFUSED,
+        );
+      }
+    });
+
+    it("can't be deleted", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "delete", payload: ["saved"], keys: ["saved"] }),
+      ).rejects.toThrow(REFUSED);
+    });
+
+    it("can be deleted only by the user dev lets clean up", async () => {
+      const write: Omit<Write, "now"> = {
+        collection: "plan_versions",
+        event: "delete",
+        payload: ["saved"],
+        keys: ["saved"],
+      };
+      await expect(check(write, true)).resolves.toEqual(["saved"]);
+    });
+
+    it("refuses with a 403 the Data Studio shows as it is", async () => {
+      const error = await check({ collection: "plan_versions", event: "update", payload: {}, keys: ["saved"] }).catch(
+        (e: unknown) => e,
+      );
+      expect(error).toMatchObject({ name: "DirectusError", code: "FORBIDDEN", status: 403 });
+    });
+  });
+
+  describe("a saved version's rows", () => {
+    it("can't be added, changed, or deleted", async () => {
+      const writes: Omit<Write, "now">[] = [
+        { collection: "plan_offerings", event: "create", payload: { version_id: "saved", name: "Copied" } },
+        { collection: "plan_offerings", event: "create", payload: { version_id: { id: "saved" } } },
+        { collection: "plan_offerings", event: "update", payload: { name: "Changed" }, keys: ["saved"] },
+        { collection: "plan_offerings", event: "delete", payload: ["saved"], keys: ["saved"] },
+      ];
+      for (const write of writes) {
+        await expect(check(write), `${write.event}`).rejects.toThrow(REFUSED);
+      }
+    });
+
+    it("can't take a draft's row moved into them", async () => {
+      await expect(
+        check({ collection: "plan_offerings", event: "update", payload: { version_id: "saved" }, keys: ["draft"] }),
+      ).rejects.toThrow(REFUSED);
+    });
+  });
+
+  describe("a draft", () => {
+    it("can be changed, and its rows added, changed, and deleted", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload: { message: "Changed." }, keys: ["draft"] }),
+      ).resolves.toEqual({ message: "Changed." });
+      for (const event of ["update", "delete"] as const) {
+        await expect(
+          check({ collection: "plan_offerings", event, payload: { name: "Changed" }, keys: ["draft"] }),
+        ).resolves.toBeDefined();
+      }
+      await expect(
+        check({ collection: "plan_offerings", event: "create", payload: { version_id: "draft" } }),
+      ).resolves.toEqual({ version_id: "draft" });
+    });
+
+    it("is saved with the platform version that calculated it, stamped with who saved it and when", async () => {
+      const payload = { status: "saved", platform_version: "1.4.0", saved_by: "someone-else", saved_at: "1999-01-01" };
+      await expect(check({ collection: "plan_versions", event: "update", payload, keys: ["draft"] })).resolves.toEqual({
+        status: "saved",
+        platform_version: "1.4.0",
+        saved_by: "planner",
+        saved_at: now,
+      });
+    });
+
+    it("can't be saved without the platform version", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload: { status: "saved" }, keys: ["draft"] }),
+      ).rejects.toThrow(/platform version/);
+    });
+
+    it("can't be saved with its platform version cleared", async () => {
+      const payload = { status: "saved", platform_version: null };
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload, keys: ["calculated"] }),
+      ).rejects.toThrow(/platform version/);
+    });
+
+    it("can be saved with the platform version it already has", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload: { status: "saved" }, keys: ["calculated"] }),
+      ).resolves.toMatchObject({ status: "saved", saved_by: "planner" });
+    });
+
+    it("can't have its save stamps set by hand", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload: { saved_by: "someone" }, keys: ["draft"] }),
+      ).resolves.toEqual({});
+    });
+  });
+
+  describe("a new version", () => {
+    it("starts as a draft", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "create", payload: { plan_id: "plan" } }),
+      ).resolves.toEqual({
+        plan_id: "plan",
+      });
+      await expect(
+        check({ collection: "plan_versions", event: "create", payload: { plan_id: "plan", status: "saved" } }),
+      ).rejects.toThrow(/starts as a draft/);
+    });
+  });
+
+  describe("making a version active", () => {
+    it("takes a saved version of the plan, and records who made it active and when", async () => {
+      await expect(
+        check({ collection: "plan_activations", event: "create", payload: { version_id: "saved", activated_by: "x" } }),
+      ).resolves.toEqual({ version_id: "saved", plan_id: "plan", activated_by: "planner", activated_at: now });
+    });
+
+    it("adds to the plan's history, which no one changes", async () => {
+      await expect(
+        check({ collection: "plan_activations", event: "update", payload: { version_id: "saved" }, keys: ["a"] }),
+      ).rejects.toThrow(/stays in the plan's history/);
+    });
+
+    it("can be undone only by the user dev lets clean up", async () => {
+      const write: Omit<Write, "now"> = {
+        collection: "plan_activations",
+        event: "delete",
+        payload: ["a"],
+        keys: ["a"],
+      };
+      await expect(check(write)).rejects.toThrow(/stays in the plan's history/);
+      await expect(check(write, true)).resolves.toEqual(["a"]);
+    });
+
+    it("refuses a draft, or another plan's version", async () => {
+      await expect(
+        check({ collection: "plan_activations", event: "create", payload: { version_id: "draft" } }),
+      ).rejects.toThrow(/Only a saved version/);
+      await expect(
+        check({ collection: "plan_activations", event: "create", payload: { plan_id: "plan", version_id: "other" } }),
+      ).rejects.toThrow(/its own plan/);
+    });
+  });
+
+  describe("a plan", () => {
+    const message = "A product's plan names its product, and an Operations Plan names none.";
+
+    it("for a product names it, and an Operations Plan names none", async () => {
+      for (const payload of [{ kind: "product" }, { kind: "product", product_id: null }]) {
+        await expect(check({ collection: "plans", event: "create", payload })).rejects.toThrow(message);
+      }
+      await expect(
+        check({ collection: "plans", event: "create", payload: { kind: "operations", product_id: "boats" } }),
+      ).rejects.toThrow(message);
+      for (const payload of [{ kind: "product", product_id: "boats" }, { kind: "operations" }]) {
+        await expect(check({ collection: "plans", event: "create", payload })).resolves.toEqual(payload);
+      }
+    });
+
+    it("keeps that rule when it changes", async () => {
+      const update = (payload: Record<string, unknown>, keys: string[]) =>
+        check({ collection: "plans", event: "update", payload, keys });
+      await expect(update({ product_id: null }, ["product"])).rejects.toThrow(message);
+      await expect(update({ kind: "operations" }, ["product"])).rejects.toThrow(message);
+      await expect(update({ product_id: "boats" }, ["operations"])).rejects.toThrow(message);
+      await expect(update({ kind: "operations", product_id: null }, ["product"])).resolves.toBeDefined();
+      await expect(update({ name: "Renamed" }, ["product", "operations"])).resolves.toEqual({ name: "Renamed" });
+    });
+  });
+
+  it("leaves other collections alone", async () => {
+    await expect(
+      check({ collection: "people", event: "delete", payload: ["saved"], keys: ["saved"] }),
+    ).resolves.toEqual(["saved"]);
+  });
+});
+
+describe("a database error", () => {
+  // knex puts the statement ahead of the trigger's message.
+  const raised = (message: string) =>
+    Object.assign(new Error(`update "plan_versions" set "message" = $1 - ${message}`), { code: "CY001" });
+
+  it("from a trigger's refusal, reads as the hook's own refusal", () => {
+    expect(databaseError(raised(REFUSED))).toMatchObject({ name: "DirectusError", status: 403, message: REFUSED });
+    expect(databaseError(raised("A plan row can only link to rows in its own version."))).toMatchObject({
+      status: 400,
+      message: "A plan row can only link to rows in its own version.",
+    });
+  });
+
+  // Directus names a unique index's columns as one field, from Postgres's detail.
+  it("from a second plan for the same product and year, says so", () => {
+    for (const field of ["organization_id, fiscal_year, product_id", "organization_id, fiscal_year"]) {
+      const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field } };
+      expect(databaseError(duplicate), field).toMatchObject({
+        status: 400,
+        message: expect.stringMatching(/one plan for each/),
+      });
+    }
+  });
+
+  it("from another unique column of plans, stays as it is", () => {
+    const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field: "id" } };
+    expect(databaseError(duplicate)).toBe(duplicate);
+  });
+
+  it("from anything else, stays as it is", () => {
+    const other = Object.assign(new Error("deadlock detected"), { code: "40P01" });
+    expect(databaseError(other)).toBe(other);
+  });
+});

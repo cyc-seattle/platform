@@ -4,6 +4,8 @@ config:
   backend:directusCpu: "1"
   backend:licensed: true
   backend:mcp: true
+  # Lets the integration tests delete the saved plan versions they make. Never set in prod.
+  backend:savedVersionsDeletable: true
   backend:directusAdminEmail: master@cyccommunitysailing.org
   backend:directusAdmins:
     - ungood@onetrue.name

@@ -16,6 +16,7 @@ import {
   directusRequest,
   DirectusHttpError,
   reconcilePermission,
+  waitForSavedVersions,
 } from "../src/directus/client.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
@@ -101,7 +102,7 @@ describe("discoverSchemaFiles", () => {
     const schemasDir = path.resolve(import.meta.dirname, "../schemas");
     const found = discoverSchemaFiles(schemasDir);
 
-    expect(found.map((f) => f.name)).toEqual(["access", "clubspot", "core", "crm", "gsuite", "sync"]);
+    expect(found.map((f) => f.name)).toEqual(["access", "clubspot", "core", "crm", "gsuite", "planning", "sync"]);
     for (const { name, path: file } of found) {
       expect(file).toBe(path.join(schemasDir, `${name}.yaml`));
     }
@@ -779,5 +780,66 @@ describe("reconcileUser", () => {
 
     await expect(reconcileUser(baseUrl, token, "user-1", false, fields)).rejects.toThrow(/Invalid payload/);
     expect(fetchMock).toHaveBeenCalledTimes(2); // never falls through to upsertUserByEmail
+  });
+});
+
+describe("waitForSavedVersions", () => {
+  const status = (overrides: object = {}) => ({
+    fingerprint: "abc",
+    tables: { plans: true, plan_offerings: true },
+    indexes: { cyc_one_product_plan: true },
+    ...overrides,
+  });
+  const wait = () => waitForSavedVersions(baseUrl, token, "abc", { timeoutMs: 200, intervalMs: 10 });
+
+  it("asks the hook, as the admin, and passes once every trigger and index is in place", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, status()));
+    vi.stubGlobal("fetch", fetchMock);
+    await wait();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${baseUrl}/saved-versions/status`,
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: `Bearer ${token}` }) }),
+    );
+  });
+
+  it("waits out a restart's 503s and 404s, and an install that hasn't caught up", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("ECONNRESET"))
+      .mockResolvedValueOnce(jsonResponse(503, {}))
+      .mockResolvedValueOnce(jsonResponse(404, {}))
+      .mockResolvedValueOnce(jsonResponse(200, status({ fingerprint: "old" })))
+      .mockResolvedValueOnce(jsonResponse(200, status({ tables: { plans: true, plan_offerings: false } })))
+      .mockResolvedValue(jsonResponse(200, status()));
+    vi.stubGlobal("fetch", fetchMock);
+    await wait();
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  it("fails naming each table without its trigger and each missing index", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            200,
+            status({ tables: { plans: true, plan_offerings: false }, indexes: { cyc_one_product_plan: false } }),
+          ),
+        ),
+    );
+    await expect(wait()).rejects.toThrow(/plan_offerings has no trigger.*cyc_one_product_plan is missing/s);
+  });
+
+  it("fails when the installed triggers aren't the ones this deploy expects", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, status({ fingerprint: null }))));
+    await expect(wait()).rejects.toThrow(/aren't the ones this deploy installs/);
+  });
+
+  it("fails at once for a caller who isn't an admin", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(403, {}));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(wait()).rejects.toThrow(/403/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

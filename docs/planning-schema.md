@@ -4,7 +4,7 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs` and `organization_cost_accounts`. The rest is proposed and not built yet.
+Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs`. `schemas/planning.yaml` declares plans, their versions, which version is active, and every row a version holds. Version sets, scenarios, baselines and actuals are designed here, but not built yet.
 
 The database stores only what planners enter, not totals calculated from it. Apps and agents ask the [planning engine](planning-engine.md) to calculate a P&L when they need one.
 
@@ -26,7 +26,7 @@ The database stores only what planners enter, not totals calculated from it. App
 
 ### Diagram conventions
 
-Every version-scoped entity also has an `id` (deterministic), a `version_id` and a `key`, and `(version_id, key)` is unique. The diagrams below leave these out except where they matter.
+Every version-scoped entity also has an `id`, a `version_id` and a `key`. A new row gets a random `key` unless it's given one, and a copy into a new draft keeps it. A `key` should be unique within its version, but Directus can't make a pair of columns unique, so nothing checks it. The diagrams below leave these out except where they matter.
 
 Arrays are shown as `json`.
 
@@ -106,15 +106,17 @@ erDiagram
     }
 ```
 
-`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, card fees and so on) is recorded in; `(organization_id, cost_type)` is unique. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
+`programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted. `organizations` holds each organization's fiscal year. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, card fees and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
 
 ### Versioning
 
 ```mermaid
 erDiagram
-    products ||--o| plans : "has plan"
+    products ||--o{ plans : "has plan"
+    organizations ||--o{ plans : "plans for"
     plans ||--o{ plan_versions : versions
     plan_versions |o--o{ plan_versions : parent
+    plan_versions |o--o{ plan_versions : "calculated with"
     version_sets |o--o{ version_sets : "base set"
     version_sets ||--o{ version_set_members : pins
     plans ||--o{ version_set_members : "pinned in"
@@ -126,6 +128,8 @@ erDiagram
         uuid id PK
         string kind "product|operations"
         uuid product_id FK "null for the operations plan"
+        uuid organization_id FK
+        int fiscal_year "the plan year"
         string name
         boolean archived
     }
@@ -138,6 +142,7 @@ erDiagram
         uuid saved_by
         timestamp saved_at
         string platform_version "the @cyc-seattle/platform that calculated it"
+        uuid operations_version_id FK "a product's plan: the saved Operations Plan version"
     }
     version_sets {
         uuid id PK
@@ -159,10 +164,40 @@ erDiagram
         uuid version_id FK
         timestamp activated_at
         uuid activated_by
+        int sequence "the highest is active"
     }
 ```
 
-A saved version records which version of the engine (`@cyc-seattle/platform`) calculated its numbers, so we can recalculate them the same way later.
+A plan is for one organization and one plan year (`fiscal_year`). A product's plan names its product, and an Operations Plan names none. A product has one plan for each organization and year, and an organization one Operations Plan for each year. A plan's kind, product, organization, and year can't change once it has a saved version.
+
+A plan starts with a draft. A Plan Writer saves it by setting its `status` to `saved`, with the `platform_version` of the engine (`@cyc-seattle/platform`) that calculated its numbers, so we can recalculate them the same way later. A product's plan is also saved with `operations_version_id`: the saved version of the same organization's Operations Plan, for the same year, that its numbers were calculated with. A product plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in that version. To change a saved plan, make a new draft whose `parent_version_id` is the saved version, and copy its rows, keys included.
+
+A saved version doesn't copy the catalog. Recalculating an old saved version uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
+
+A plan's active version is the one in its `plan_activations` row with the highest `sequence`, so only one is active at a time. Making a version active adds a row, which must name a saved version of the plan. The database sets the row's `sequence` and `activated_at`. No one changes or deletes a row there. `version_sets` and `version_set_members` wait for scenarios and baselines.
+
+#### A saved version never changes
+
+A saved version, and every row in it, never changes, even for an admin. Directus skips permissions for an admin, so two things enforce it:
+
+- The `saved-versions` hook (`stacks/backend/saved-versions.cjs`) refuses such a request with a 403 and a clear reason. Directus runs its filters for every user. The hook also stamps who saved a version and who made one active. A write that skips the hook, such as a flow's data step, leaves `saved_by` and `activated_by` empty.
+- Database triggers refuse the same writes on every path, including the ones that skip Directus's filters, such as a flow's data steps. The hook installs them when Directus starts, and again after each schema change if they've changed or a table lost its trigger. An install gives up after 5 seconds waiting for a lock, and logs the failure. The hook makes the two unique indexes on `plans` after the triggers, each on its own, so plans that clash leave the triggers in place, and the log names the plans. The `saved-versions-check` step of the `backend` deploy, which runs whenever the schema or the triggers change, fails the deploy if a planning table lacks its trigger or an index is missing. Each one locks the version it checks until the write commits, so a version can't be saved while a write to one of its rows is still open. Directus shows a trigger's refusal with its reason when it creates or updates a row. When it deletes one, it answers with a 500, which shows the reason only to an admin.
+
+Together they refuse:
+
+- changing or deleting a saved version, or turning it back into a draft
+- adding, changing, or deleting a row in a saved version
+- moving a row to another version, or a version to another plan
+- a row that links to a row in another version, such as an activity whose `offering_id` is another version's offering
+- a new version that isn't a draft
+- a product's plan without a product, or an Operations Plan with one
+- saving a version without a `platform_version`, or a product's plan without its Operations Plan version
+- changing or deleting a `plan_activations` row
+- changing a plan's kind, product, organization, or year once it has a saved version
+
+Every foreign key from a plan row restricts delete, so deleting a catalog row a version uses, or a plan with versions, fails instead of cascading into a saved version. Archive a plan instead of deleting it.
+
+An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved version and its rows and activations, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
 
 ### Product plan (one version)
 
@@ -219,7 +254,7 @@ erDiagram
         int on_water_minutes
         int setup_minutes
         int putaway_minutes
-        string kind "practice|regatta|clinic|camp_week|travel"
+        string kind "practice|regatta|clinic|travel"
         boolean uses_boats
         int fixed_coaches "override"
         int fixed_ribs "override"
@@ -279,6 +314,7 @@ erDiagram
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     resource_kinds ||--o{ plan_resources : "kind of"
+    resource_kinds |o--o{ plan_rates : "RIB kind"
     boat_classes ||--o{ plan_boat_rates : "rate for"
     plan_salaried_positions ||--o{ plan_salaried_bookings : "management hours"
     products ||--o{ plan_salaried_bookings : "booked to"
@@ -293,6 +329,7 @@ erDiagram
         decimal card_fee_rate "share of revenue"
         int lodging_per_night_cents
         int mileage_rate_cents
+        uuid rib_resource_kind_id FK "which resource kind is safety boats (RIBs)"
     }
     plan_staff_levels {
         string name

@@ -236,6 +236,32 @@ collections:
       versioning: false
     schema:
       name: organizations
+  - collection: organization_cost_accounts
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: organization_cost_accounts
+      color: null
+      display_template: null
+      group: Catalog
+      hidden: false
+      icon: account_tree
+      item_duplication_fields: null
+      note: The account each cost the planning engine calculates is recorded in. One row per cost type.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: organization_cost_accounts
 fields:
   - collection: accounts
     field: id
@@ -1637,6 +1663,197 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: organization_cost_accounts
+    field: id
+    type: uuid
+    meta:
+      collection: organization_cost_accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: organization_cost_accounts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: organization_cost_accounts
+    field: organization_id
+    type: uuid
+    meta:
+      collection: organization_cost_accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: organization_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: organization_id
+      table: organization_cost_accounts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: organizations
+      foreign_key_column: id
+  - collection: organization_cost_accounts
+    field: cost_type
+    type: string
+    meta:
+      collection: organization_cost_accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: cost_type
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: coach_wages
+            value: coach_wages
+          - text: salaries
+            value: salaries
+          - text: payroll_tax
+            value: payroll_tax
+          - text: ribs
+            value: ribs
+          - text: boat_maintenance
+            value: boat_maintenance
+          - text: resources
+            value: resources
+          - text: travel
+            value: travel
+          - text: cogs
+            value: cogs
+          - text: card_fees
+            value: card_fees
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation:
+        cost_type:
+          _in:
+            - coach_wages
+            - salaries
+            - payroll_tax
+            - ribs
+            - boat_maintenance
+            - resources
+            - travel
+            - cogs
+            - card_fees
+      validation_message: "Must be one of: coach_wages, salaries, payroll_tax, ribs, boat_maintenance, resources, travel, cogs, card_fees."
+      width: full
+    schema:
+      name: cost_type
+      table: organization_cost_accounts
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: organization_cost_accounts
+    field: account_id
+    type: uuid
+    meta:
+      collection: organization_cost_accounts
+      conditions: null
+      display: null
+      display_options: null
+      field: account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: account_id
+      table: organization_cost_accounts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
 relations:
   - collection: accounts
     field: contra_account_id
@@ -1762,5 +1979,47 @@ relations:
       foreign_key_table: products
       foreign_key_column: id
       constraint_name: programs_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: organization_cost_accounts
+    field: organization_id
+    related_collection: organizations
+    meta:
+      junction_field: null
+      many_collection: organization_cost_accounts
+      many_field: organization_id
+      one_allowed_collections: null
+      one_collection: organizations
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: organization_cost_accounts
+      column: organization_id
+      foreign_key_table: organizations
+      foreign_key_column: id
+      constraint_name: organization_cost_accounts_organization_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: organization_cost_accounts
+    field: account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: organization_cost_accounts
+      many_field: account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: organization_cost_accounts
+      column: account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: organization_cost_accounts_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT

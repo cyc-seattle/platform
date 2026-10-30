@@ -58,6 +58,65 @@ export async function waitForReachable(baseUrl: string, timeoutMs = DEFAULT_REAC
   );
 }
 
+/** What the saved-versions hook's `/saved-versions/status` answers (stacks/backend/saved-versions.cjs). */
+export interface SavedVersionsStatus {
+  fingerprint: string | null;
+  tables: Record<string, boolean>;
+  indexes: Record<string, boolean>;
+}
+
+function savedVersionsProblems(status: SavedVersionsStatus, fingerprint: string): string[] {
+  return [
+    ...(status.fingerprint === fingerprint ? [] : ["the installed triggers aren't the ones this deploy installs"]),
+    ...Object.entries(status.tables)
+      .filter(([, ok]) => !ok)
+      .map(([table]) => `${table} has no trigger`),
+    ...Object.entries(status.indexes)
+      .filter(([, ok]) => !ok)
+      .map(([index]) => `the unique index ${index} is missing`),
+  ];
+}
+
+/**
+ * Waits until the saved-versions hook reports every planning table's trigger and both unique
+ * indexes, installed from `fingerprint`'s config. A restart answers 503, or 404 before the hook
+ * loads, and the hook installs a moment after a schema apply, so each of those waits.
+ */
+export async function waitForSavedVersions(
+  baseUrl: string,
+  token: string,
+  fingerprint: string,
+  { timeoutMs = 180_000, intervalMs = 5_000 } = {},
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let last = "no answer";
+  for (;;) {
+    try {
+      const res = await httpFetch(`${baseUrl}/saved-versions/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const problems = savedVersionsProblems((await res.json()) as SavedVersionsStatus, fingerprint);
+        if (problems.length === 0) return;
+        last = problems.join("; ");
+      } else if (res.status === 503 || res.status === 404) {
+        last = `GET /saved-versions/status -> ${res.status}`;
+      } else {
+        throw new DirectusHttpError(res.status, `GET /saved-versions/status -> ${res.status}: ${await res.text()}`);
+      }
+    } catch (error) {
+      if (error instanceof DirectusHttpError) throw error;
+      last = String(error);
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `The saved-versions triggers aren't all in place after ${timeoutMs}ms: ${last}. Directus's log says why.`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+}
+
 export async function login(baseUrl: string, email: string, password: string): Promise<string> {
   const res = await fetchRetrying(`${baseUrl}/auth/login`, {
     method: "POST",
