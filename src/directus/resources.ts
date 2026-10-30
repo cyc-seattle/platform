@@ -14,6 +14,7 @@ import {
   isNotFound,
   isForbidden,
   describeProviderError,
+  waitForSavedVersions,
 } from "./client.ts";
 
 // --- Shared plumbing for the dynamic resources below: all of them talk to Directus's own REST
@@ -109,6 +110,58 @@ export interface DirectusSchemaArgs extends DirectusAuthArgs {
 export class DirectusSchema extends pulumi.dynamic.Resource {
   constructor(name: string, args: DirectusSchemaArgs, opts?: pulumi.CustomResourceOptions) {
     super(directusSchemaProvider, name, { ...args }, withSecretOutputs(["adminPassword"], opts));
+  }
+}
+
+// --- SavedVersionsCheck: fails the deploy unless the saved-versions hook reports every planning
+// table's trigger in place (docs/planning-schema.md). Its inputs change with the schema and the
+// triggers, the only times an install can fail, so an unchanged stack shows no change.
+
+interface SavedVersionsCheckInputs extends DirectusAuthProps {
+  /** The triggers' fingerprint, from ./saved-versions.cjs. */
+  fingerprint: string;
+  /** A hash of the schema the check follows. */
+  schemaHash: string;
+  timeoutMs?: number;
+  intervalMs?: number;
+}
+
+async function checkSavedVersions(inputs: SavedVersionsCheckInputs): Promise<void> {
+  await waitForReachable(inputs.baseUrl);
+  const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
+  await waitForSavedVersions(inputs.baseUrl, token, inputs.fingerprint, {
+    ...(inputs.timeoutMs !== undefined && { timeoutMs: inputs.timeoutMs }),
+    ...(inputs.intervalMs !== undefined && { intervalMs: inputs.intervalMs }),
+  });
+}
+
+export const savedVersionsCheckProvider: pulumi.dynamic.ResourceProvider = {
+  create: reportErrors("SavedVersionsCheck", "create", async (inputs: SavedVersionsCheckInputs) => {
+    await checkSavedVersions(inputs);
+    return { id: "saved-versions", outs: inputs };
+  }),
+
+  update: reportErrors(
+    "SavedVersionsCheck",
+    "update",
+    async (_id: string, _olds: SavedVersionsCheckInputs, news: SavedVersionsCheckInputs) => {
+      await checkSavedVersions(news);
+      return { outs: news };
+    },
+  ),
+
+  delete: reportErrors("SavedVersionsCheck", "delete", async () => {}),
+};
+
+export interface SavedVersionsCheckArgs extends DirectusAuthArgs {
+  fingerprint: pulumi.Input<string>;
+  schemaHash: pulumi.Input<string>;
+}
+
+/** Checks that the saved-versions hook's triggers are in place, after the schema it follows applies. */
+export class SavedVersionsCheck extends pulumi.dynamic.Resource {
+  constructor(name: string, args: SavedVersionsCheckArgs, opts?: pulumi.CustomResourceOptions) {
+    super(savedVersionsCheckProvider, name, { ...args }, withSecretOutputs(["adminPassword"], opts));
   }
 }
 

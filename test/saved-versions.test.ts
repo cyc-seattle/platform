@@ -4,6 +4,7 @@ import {
   guard,
   REFUSED,
   type Lookup,
+  type Plan,
   type Version,
   type Write,
 } from "../stacks/backend/saved-versions.cjs";
@@ -17,9 +18,16 @@ const versions: Record<string, Version> = {
 // Each offering is named for the version it belongs to.
 const config = { versioned: ["plan_offerings"], links: {}, deletable: false };
 
+// Each plan is named for its kind.
+const plans: Record<string, Plan> = {
+  product: { id: "product", kind: "product", product_id: "boats" },
+  operations: { id: "operations", kind: "operations", product_id: null },
+};
+
 function lookup(deletesSaved = false): Lookup {
   return {
     versionIds: async (_, keys) => keys,
+    plans: async (ids) => ids.map((id) => plans[id]!).filter(Boolean),
     versions: async (ids) => ids.map((id) => versions[id]!).filter(Boolean),
     deletesSaved: async () => deletesSaved,
   };
@@ -181,6 +189,32 @@ describe("the saved-versions hook", () => {
     });
   });
 
+  describe("a plan", () => {
+    const message = "A product's plan names its product, and an Operations Plan names none.";
+
+    it("for a product names it, and an Operations Plan names none", async () => {
+      for (const payload of [{ kind: "product" }, { kind: "product", product_id: null }]) {
+        await expect(check({ collection: "plans", event: "create", payload })).rejects.toThrow(message);
+      }
+      await expect(
+        check({ collection: "plans", event: "create", payload: { kind: "operations", product_id: "boats" } }),
+      ).rejects.toThrow(message);
+      for (const payload of [{ kind: "product", product_id: "boats" }, { kind: "operations" }]) {
+        await expect(check({ collection: "plans", event: "create", payload })).resolves.toEqual(payload);
+      }
+    });
+
+    it("keeps that rule when it changes", async () => {
+      const update = (payload: Record<string, unknown>, keys: string[]) =>
+        check({ collection: "plans", event: "update", payload, keys });
+      await expect(update({ product_id: null }, ["product"])).rejects.toThrow(message);
+      await expect(update({ kind: "operations" }, ["product"])).rejects.toThrow(message);
+      await expect(update({ product_id: "boats" }, ["operations"])).rejects.toThrow(message);
+      await expect(update({ kind: "operations", product_id: null }, ["product"])).resolves.toBeDefined();
+      await expect(update({ name: "Renamed" }, ["product", "operations"])).resolves.toEqual({ name: "Renamed" });
+    });
+  });
+
   it("leaves other collections alone", async () => {
     await expect(
       check({ collection: "people", event: "delete", payload: ["saved"], keys: ["saved"] }),
@@ -201,12 +235,20 @@ describe("a database error", () => {
     });
   });
 
+  // Directus names a unique index's columns as one field, from Postgres's detail.
   it("from a second plan for the same product and year, says so", () => {
-    const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field: "organization_id" } };
-    expect(databaseError(duplicate)).toMatchObject({
-      status: 400,
-      message: expect.stringMatching(/one plan for each/),
-    });
+    for (const field of ["organization_id, fiscal_year, product_id", "organization_id, fiscal_year"]) {
+      const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field } };
+      expect(databaseError(duplicate), field).toMatchObject({
+        status: 400,
+        message: expect.stringMatching(/one plan for each/),
+      });
+    }
+  });
+
+  it("from another unique column of plans, stays as it is", () => {
+    const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field: "id" } };
+    expect(databaseError(duplicate)).toBe(duplicate);
   });
 
   it("from anything else, stays as it is", () => {

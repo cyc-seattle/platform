@@ -6,7 +6,15 @@ import { pageinspect } from "@electric-sql/pglite/contrib/pageinspect";
 import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
 import { savedVersionsConfig, type SavedVersionsConfig } from "../stacks/backend/policies.ts";
-import { installTriggers, REFUSED, triggerStatements } from "../stacks/backend/saved-versions.cjs";
+import {
+  fingerprint,
+  INDEXES,
+  installIndex,
+  installTriggers,
+  REFUSED,
+  triggerStatements,
+  triggerStatus,
+} from "../stacks/backend/saved-versions.cjs";
 
 // The saved-versions hook's triggers, in a real Postgres (PGlite), on tables made from the schemas:
 // the only guard on a path that skips Directus's filters, such as a flow's data steps.
@@ -54,8 +62,9 @@ async function database(config: SavedVersionsConfig): Promise<PGlite> {
   const db = await PGlite.create({ extensions: { pageinspect } });
   await db.exec("CREATE EXTENSION pageinspect");
   for (const statement of tables()) await db.exec(statement);
-  const missing = await db.transaction((tx) => installTriggers(config, connect(tx)));
+  const { missing } = await db.transaction((tx) => installTriggers(config, connect(tx)));
   expect(missing).toEqual([]);
+  for (const index of INDEXES) await db.transaction((tx) => installIndex(index, connect(tx)));
   return db;
 }
 
@@ -343,6 +352,21 @@ describe("the saved-versions triggers", () => {
       expect(await w.update("plans", operationsPlan, { fiscal_year: 2115 })).toEqual(refusal(message));
     });
 
+    it("refuse a product's plan without its product, or an Operations Plan with one", async () => {
+      const { organization, product, plan, operationsPlan } = await plans(db, 2125);
+      const message = "A product's plan names its product, and an Operations Plan names none.";
+      const plan2 = { organization_id: organization, fiscal_year: 2126 };
+      expect(await w.refusedInsert("plans", { ...plan2, kind: "product" })).toEqual(refusal(message));
+      expect(await w.refusedInsert("plans", { ...plan2, kind: "operations", product_id: product })).toEqual(
+        refusal(message),
+      );
+      const draftOnly = await w.insert("plans", { ...plan2, kind: "product", product_id: product });
+      expect(await w.update("plans", draftOnly, { product_id: null })).toEqual(refusal(message));
+      expect(await w.update("plans", draftOnly, { kind: "operations" })).toEqual(refusal(message));
+      expect(await w.update("plans", draftOnly, { kind: "operations", product_id: null })).toBeUndefined();
+      expect(plan && operationsPlan).toBeDefined();
+    });
+
     it("let a plan with only drafts change", async () => {
       const { organization, product } = await plans(db, 2116);
       const plan = await w.insert("plans", {
@@ -406,6 +430,7 @@ describe("the saved-versions triggers", () => {
   });
 
   it("install again in place, without a second trigger", async () => {
+    await db.exec(`DROP TRIGGER cyc_saved_versions ON plan_trips`);
     await db.transaction((tx) => installTriggers(config(false), connect(tx)));
     const { rows } = await db.query<{ count: number }>(
       `SELECT count(*)::int AS count FROM pg_trigger WHERE tgname = 'cyc_saved_versions' AND tgrelid = 'plan_offerings'::regclass`,
@@ -419,10 +444,70 @@ describe("installing the saved-versions triggers", () => {
     const db = await PGlite.create();
     for (const statement of tables()) await db.exec(statement);
     await db.exec(`ALTER TABLE plans DROP COLUMN fiscal_year`);
-    const missing = await db.transaction((tx) => installTriggers(config(false), connect(tx)));
+    const { missing } = await db.transaction((tx) => installTriggers(config(false), connect(tx)));
     expect(missing).toEqual(["plans"]);
     const { rows } = await db.query(`SELECT 1 FROM pg_trigger WHERE tgname = 'cyc_saved_versions'`);
     expect(rows).toEqual([]);
+  });
+
+  it("skips the install when the triggers it would install are already there", async () => {
+    const db = await database(config(false));
+    const again = () => db.transaction((tx) => installTriggers(config(false), connect(tx)));
+    expect(await again()).toEqual({ missing: [], installed: false });
+    // A table a schema apply made again has lost its trigger.
+    await db.exec(`DROP TRIGGER cyc_saved_versions ON plan_trips`);
+    expect(await again()).toEqual({ missing: [], installed: true });
+    // So has a config that changed, such as dev's flag.
+    expect(await db.transaction((tx) => installTriggers(config(true), connect(tx)))).toEqual({
+      missing: [],
+      installed: true,
+    });
+  });
+
+  it("gives up after a few seconds waiting for a lock, instead of holding up Directus's start", async () => {
+    const db = await database(config(false));
+    const timeout = await db.transaction(async (tx) => {
+      await installTriggers(config(false), connect(tx));
+      return (await tx.query<{ lock_timeout: string }>(`SHOW lock_timeout`)).rows[0]!.lock_timeout;
+    });
+    expect(timeout).toBe("5s");
+    expect((await db.query<{ lock_timeout: string }>(`SHOW lock_timeout`)).rows[0]!.lock_timeout).toBe("0");
+  });
+
+  it("installs the triggers even when two plans clash, and names the clash", async () => {
+    const db = await PGlite.create();
+    for (const statement of tables()) await db.exec(statement);
+    const w = writer(db);
+    const organization = await w.insert("organizations", { name: "Test club" });
+    const product = await w.insert("products", { name: "Test product", kind: "program" });
+    const clash = { kind: "product", product_id: product, organization_id: organization, fiscal_year: 2127 };
+    await w.insert("plans", clash);
+    await w.insert("plans", clash);
+
+    const { missing } = await db.transaction((tx) => installTriggers(config(false), connect(tx)));
+    expect(missing).toEqual([]);
+    const [productIndex, operationsIndex] = INDEXES;
+    await expect(db.transaction((tx) => installIndex(productIndex!, connect(tx)))).rejects.toThrow(
+      `2 product plans share organization ${organization}, year 2127, and product ${product}`,
+    );
+    await db.transaction((tx) => installIndex(operationsIndex!, connect(tx)));
+    expect(await db.transaction((tx) => triggerStatus(config(false), connect(tx)))).toEqual({
+      fingerprint: fingerprint(config(false)),
+      tables: Object.fromEntries(
+        ["plans", "plan_versions", "plan_activations", ...config(false).versioned].map((table) => [table, true]),
+      ),
+      indexes: { cyc_one_product_plan: false, cyc_one_operations_plan: true },
+    });
+  });
+
+  it("reports a table that lacks its trigger", async () => {
+    const db = await database(config(false));
+    await db.exec(`DROP TRIGGER cyc_saved_versions ON plan_trips`);
+    const status = await db.transaction((tx) => triggerStatus(config(false), connect(tx)));
+    expect(status.tables).toMatchObject({ plan_trips: false, plan_offerings: true, plans: true });
+    expect(status.indexes).toEqual({ cyc_one_product_plan: true, cyc_one_operations_plan: true });
+    expect(status.fingerprint).toBe(fingerprint(config(false)));
+    expect(fingerprint(config(true))).not.toBe(fingerprint(config(false)));
   });
 
   // knex reads a ? as a binding, even in a statement with none.

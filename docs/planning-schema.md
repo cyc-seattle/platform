@@ -168,7 +168,7 @@ erDiagram
     }
 ```
 
-A plan is for one organization and one plan year (`fiscal_year`). A product has one plan for each organization and year, and an organization one Operations Plan for each year. A plan's kind, product, organization, and year can't change once it has a saved version.
+A plan is for one organization and one plan year (`fiscal_year`). A product's plan names its product, and an Operations Plan names none. A product has one plan for each organization and year, and an organization one Operations Plan for each year. A plan's kind, product, organization, and year can't change once it has a saved version.
 
 A plan starts with a draft. A Plan Writer saves it by setting its `status` to `saved`, with the `platform_version` of the engine (`@cyc-seattle/platform`) that calculated its numbers, so we can recalculate them the same way later. A product's plan is also saved with `operations_version_id`: the saved version of the same organization's Operations Plan, for the same year, that its numbers were calculated with. A product plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in that version. To change a saved plan, make a new draft whose `parent_version_id` is the saved version, and copy its rows, keys included.
 
@@ -180,8 +180,8 @@ A plan's active version is the one in its `plan_activations` row with the highes
 
 A saved version, and every row in it, never changes, even for an admin. Directus skips permissions for an admin, so two things enforce it:
 
-- The `saved-versions` hook (`stacks/backend/saved-versions.cjs`) refuses such a request with a 403 and a clear reason. Directus runs its filters for every user. The hook also stamps who saved a version and who made one active.
-- Database triggers refuse the same writes on every path, including the ones that skip Directus's filters, such as a flow's data steps. The hook installs them when Directus starts, and again after each schema change. Each one locks the version it checks until the write commits, so a version can't be saved while a write to one of its rows is still open. Directus shows a trigger's refusal with its reason when it creates or updates a row. When it deletes one, it answers with a 500, which shows the reason only to an admin.
+- The `saved-versions` hook (`stacks/backend/saved-versions.cjs`) refuses such a request with a 403 and a clear reason. Directus runs its filters for every user. The hook also stamps who saved a version and who made one active. A write that skips the hook, such as a flow's data step, leaves `saved_by` and `activated_by` empty.
+- Database triggers refuse the same writes on every path, including the ones that skip Directus's filters, such as a flow's data steps. The hook installs them when Directus starts, and again after each schema change if they've changed or a table lost its trigger. An install gives up after 5 seconds waiting for a lock, and logs the failure. The hook makes the two unique indexes on `plans` after the triggers, each on its own, so plans that clash leave the triggers in place, and the log names the plans. The `saved-versions-check` step of the `backend` deploy, which runs whenever the schema or the triggers change, fails the deploy if a planning table lacks its trigger or an index is missing. Each one locks the version it checks until the write commits, so a version can't be saved while a write to one of its rows is still open. Directus shows a trigger's refusal with its reason when it creates or updates a row. When it deletes one, it answers with a 500, which shows the reason only to an admin.
 
 Together they refuse:
 
@@ -190,13 +190,14 @@ Together they refuse:
 - moving a row to another version, or a version to another plan
 - a row that links to a row in another version, such as an activity whose `offering_id` is another version's offering
 - a new version that isn't a draft
+- a product's plan without a product, or an Operations Plan with one
 - saving a version without a `platform_version`, or a product's plan without its Operations Plan version
 - changing or deleting a `plan_activations` row
 - changing a plan's kind, product, organization, or year once it has a saved version
 
 Every foreign key from a plan row restricts delete, so deleting a catalog row a version uses, or a plan with versions, fails instead of cascading into a saved version. Archive a plan instead of deleting it.
 
-An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the first admin account delete a saved version and its rows and activations, so the integration tests can clean up. The prod stack refuses that flag.
+An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved version and its rows and activations, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
 
 ### Product plan (one version)
 

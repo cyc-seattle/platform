@@ -6,6 +6,7 @@ import {
   directusRoleProvider,
   directusSettingsProvider,
   directusUserProvider,
+  savedVersionsCheckProvider,
 } from "../src/directus/resources.ts";
 import { describeProviderError, DirectusHttpError } from "../src/directus/client.ts";
 
@@ -276,5 +277,33 @@ describe("DirectusAccess", () => {
       policyId: "names",
     });
     expect(diff).toMatchObject({ changes: true, replaces: ["roleId"] });
+  });
+});
+
+describe("SavedVersionsCheck", () => {
+  const inputs = { ...auth, fingerprint: "abc", schemaHash: "def" };
+  const ready = { fingerprint: "abc", tables: { plans: true }, indexes: { cyc_one_product_plan: true } };
+
+  it.each(["create", "update"] as const)("checks the triggers on %s", async (method) => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, "pong")); // GET /server/ping
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, ready));
+    vi.stubGlobal("fetch", fetchMock);
+    const run =
+      method === "create"
+        ? savedVersionsCheckProvider.create!(inputs)
+        : savedVersionsCheckProvider.update!("saved-versions", inputs, inputs);
+    await expect(run).resolves.toMatchObject({ outs: inputs });
+    expect(fetchMock).toHaveBeenLastCalledWith(`${baseUrl}/saved-versions/status`, expect.anything());
+  });
+
+  it("fails the deploy, naming the provider, when a trigger is missing", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, "pong"));
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValue(jsonResponse(200, { ...ready, tables: { plans: false } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(savedVersionsCheckProvider.create!({ ...inputs, timeoutMs: 50, intervalMs: 10 })).rejects.toThrow(
+      /SavedVersionsCheck.create failed: .*plans has no trigger/,
+    );
   });
 });

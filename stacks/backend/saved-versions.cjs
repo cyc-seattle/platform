@@ -6,6 +6,9 @@
 // active. Directus skips filters on some paths, such as a flow's data steps, so the database
 // triggers it installs refuse the same writes on every path.
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
+const crypto = require("node:crypto");
+
 const PLANS = "plans";
 const VERSIONS = "plan_versions";
 const ACTIVATIONS = "plan_activations";
@@ -23,6 +26,7 @@ const PLAN_FIXED = "A plan's kind, product, organization, and year can't change 
 const ACTIVATION_STAYS = "An activation stays in the plan's history. Make another saved version active instead.";
 const ONLY_SAVED_ACTIVE = "Only a saved version can be made active.";
 const OWN_PLAN = "A version can only be made active for its own plan.";
+const PRODUCT_NAMED = "A product's plan names its product, and an Operations Plan names none.";
 const ONE_PLAN =
   "A product has one plan for each organization and year, and an organization one Operations Plan for each year.";
 
@@ -40,6 +44,7 @@ const REASONS = {
   [SAME_VERSION]: 400,
   [ONLY_SAVED_ACTIVE]: 400,
   [OWN_PLAN]: 400,
+  [PRODUCT_NAMED]: 400,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
@@ -63,12 +68,26 @@ function keyOf(value) {
  * Checks one write, and returns the payload to write. `event` is `create`, `update`, or `delete`;
  * `keys` are the rows an update or delete touches. `lookup` reads the database:
  * - `versionIds(collection, keys)`: the `version_id` of each row
+ * - `plans(ids)`: each plan's `id`, `kind`, and `product_id`
  * - `versions(ids)`: each version's `id`, `plan_id`, `status`, and `platform_version`
  * - `deletesSaved(user)`: whether this user may delete a saved version, which only dev allows
  */
 async function guard({ collection, event, payload, keys = [], user, now }, config, lookup) {
   const saved = async (ids) =>
     ids.length > 0 && (await lookup.versions(ids)).some((version) => version.status === "saved");
+
+  if (collection === PLANS) {
+    if (event === "delete" || (event === "update" && !("kind" in payload) && !("product_id" in payload))) {
+      return payload;
+    }
+    const current = event === "create" ? [{}] : await lookup.plans(keys);
+    for (const plan of current) {
+      const kind = "kind" in payload ? payload.kind : plan.kind;
+      const product = keyOf("product_id" in payload ? payload.product_id : plan.product_id) ?? null;
+      if ((kind === "product") !== (product !== null)) throw refuse(PRODUCT_NAMED, 400);
+    }
+    return payload;
+  }
 
   if (collection === VERSIONS) {
     if (event === "create") {
@@ -116,6 +135,19 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
   return payload;
 }
 
+/**
+ * The unique indexes on `plans`, which Directus can't declare. `field` is how Directus names an
+ * index's columns in its error.
+ */
+const INDEXES = [
+  {
+    name: "cyc_one_product_plan",
+    kind: "product",
+    columns: ["organization_id", "fiscal_year", "product_id"],
+  },
+  { name: "cyc_one_operations_plan", kind: "operations", columns: ["organization_id", "fiscal_year"] },
+].map((index) => ({ ...index, field: index.columns.join(", ") }));
+
 /** Directus's error for a write a trigger refused, or for a second plan for the same year. */
 function databaseError(error) {
   if (error?.code === SQLSTATE) {
@@ -123,7 +155,10 @@ function databaseError(error) {
     const reason = Object.keys(REASONS).find((known) => String(error.message).endsWith(known));
     return reason ? refuse(reason, REASONS[reason]) : error;
   }
-  if (error?.code === "RECORD_NOT_UNIQUE" && error.extensions?.collection === PLANS) return refuse(ONE_PLAN, 400);
+  const { collection, field } = error?.extensions ?? {};
+  if (error?.code === "RECORD_NOT_UNIQUE" && collection === PLANS && INDEXES.some((index) => index.field === field)) {
+    return refuse(ONE_PLAN, 400);
+  }
   return error;
 }
 
@@ -235,6 +270,12 @@ $fn$`;
   const plan = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_plan() RETURNS trigger LANGUAGE plpgsql AS $fn$
 BEGIN
+  IF (NEW.kind = 'product') IS DISTINCT FROM (NEW.product_id IS NOT NULL) THEN
+    ${raise(PRODUCT_NAMED)};
+  END IF;
+  IF TG_OP = 'INSERT' THEN
+    RETURN NEW;
+  END IF;
   IF (NEW.kind, NEW.product_id, NEW.organization_id, NEW.fiscal_year)
       IS DISTINCT FROM (OLD.kind, OLD.product_id, OLD.organization_id, OLD.fiscal_year)
     AND EXISTS (SELECT 1 FROM ${VERSIONS} v WHERE v.plan_id = OLD.id AND v.status = 'saved') THEN
@@ -283,23 +324,60 @@ $fn$`;
     version,
     plan,
     activation,
-    ...trigger(PLANS, "cyc_saved_versions_plan", "UPDATE"),
+    ...trigger(PLANS, "cyc_saved_versions_plan", "INSERT OR UPDATE"),
     ...trigger(VERSIONS, "cyc_saved_versions_version", all),
     ...trigger(ACTIVATIONS, "cyc_saved_versions_activation", all),
     ...config.versioned.flatMap((table) =>
       trigger(table, "cyc_saved_versions_row", all, Object.entries(config.links[table] ?? {}).flat()),
     ),
-    `CREATE UNIQUE INDEX IF NOT EXISTS cyc_one_product_plan ON ${PLANS} (organization_id, fiscal_year, product_id) WHERE kind = 'product'`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS cyc_one_operations_plan ON ${PLANS} (organization_id, fiscal_year) WHERE kind = 'operations'`,
   ];
 }
+
+/** The tables that get a trigger. */
+const triggered = (config) => [PLANS, VERSIONS, ACTIVATIONS, ...config.versioned];
+
+/** A hash of the triggers `config` installs, which the install records on a function it makes. */
+function fingerprint(config) {
+  return crypto.createHash("sha256").update(triggerStatements(config).join(";\n")).digest("hex");
+}
+
+/** Which tables have their trigger, which unique indexes exist, and the installed triggers' fingerprint. */
+async function triggerStatus(config, db) {
+  const tables = triggered(config);
+  const [{ fingerprint: installed }] = await db.query(
+    "SELECT obj_description(to_regproc('cyc_saved_versions_row'), 'pg_proc') AS fingerprint",
+  );
+  const triggers = new Set(
+    (
+      await db.query(
+        `SELECT c.relname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+          WHERE t.tgname = 'cyc_saved_versions' AND c.relnamespace = current_schema()::regnamespace`,
+      )
+    ).map((row) => row.relname),
+  );
+  const indexes = new Set(
+    (await db.query("SELECT indexname FROM pg_indexes WHERE schemaname = current_schema()")).map(
+      (row) => row.indexname,
+    ),
+  );
+  return {
+    fingerprint: installed ?? null,
+    tables: Object.fromEntries(tables.map((table) => [table, triggers.has(table)])),
+    indexes: Object.fromEntries(INDEXES.map(({ name }) => [name, indexes.has(name)])),
+  };
+}
+
+// Long enough for a write in flight to commit, short enough not to hold up Directus's start.
+const LOCK_TIMEOUT = "5s";
 
 /**
  * Installs the triggers, inside one transaction the caller opens. `db.query(sql)` returns rows;
  * `db.exec(sql)` runs one statement. Returns the tables whose columns don't all exist yet, and
- * installs nothing unless that's none.
+ * installs nothing unless that's none. Skips the install, which locks every planning table, when
+ * the same triggers are already on every table.
  */
 async function installTriggers(config, db) {
+  await db.exec(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT}'`);
   // Serializes Directus's processes, which each install at startup.
   await db.exec("SELECT pg_advisory_xact_lock(hashtext('cyc_saved_versions'))");
   const rows = await db.query(
@@ -309,9 +387,47 @@ async function installTriggers(config, db) {
   const missing = Object.entries(columnsNeeded(config))
     .filter(([table, columns]) => columns.some((column) => !present.has(`${table}.${column}`)))
     .map(([table]) => table);
-  if (missing.length > 0) return missing;
+  if (missing.length > 0) return { missing, installed: false };
+  const status = await triggerStatus(config, db);
+  const hash = fingerprint(config);
+  if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
+    return { missing: [], installed: false };
+  }
   for (const statement of triggerStatements(config)) await db.exec(statement);
-  return [];
+  await db.exec(`COMMENT ON FUNCTION cyc_saved_versions_row() IS ${literal(hash)}`);
+  return { missing: [], installed: true };
+}
+
+/**
+ * Makes one of `INDEXES`, inside a transaction the caller opens, unless it exists. Throws an error
+ * naming the plans that clash when they keep it from being made.
+ */
+async function installIndex(index, db) {
+  const [found] = await db.query(
+    `SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = ${literal(index.name)}`,
+  );
+  if (found) return false;
+  await db.exec(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT}'`);
+  const columns = index.columns.join(", ");
+  const clashes = await db.query(
+    `SELECT ${columns}, count(*)::int AS count FROM ${PLANS} WHERE kind = ${literal(index.kind)}
+      GROUP BY ${columns} HAVING count(*) > 1`,
+  );
+  if (clashes.length > 0) {
+    const described = clashes.map((clash) => {
+      const what = index.kind === "product" ? "product plans" : "Operations Plans";
+      const product = index.kind === "product" ? `, and product ${clash.product_id}` : "";
+      return `${clash.count} ${what} share organization ${clash.organization_id}, year ${clash.fiscal_year}${product}`;
+    });
+    throw new Error(
+      `saved-versions: couldn't make ${index.name}, since ${described.join("; ")}. ` +
+        "Change or delete all but one of each, then restart Directus.",
+    );
+  }
+  await db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS ${index.name} ON ${PLANS} (${columns}) WHERE kind = ${literal(index.kind)}`,
+  );
+  return true;
 }
 
 // Applying a schema emits these once it commits. A changed table may need its trigger again.
@@ -326,23 +442,32 @@ function register({ filter, action, init }, { env, database, logger }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
   const config = require("./config.json");
   const bootstrapAdmin = String(env["ADMIN_EMAIL"] ?? "").toLowerCase();
-  const watched = new Set([VERSIONS, ACTIVATIONS, ...config.versioned]);
+  const watched = new Set([PLANS, VERSIONS, ACTIVATIONS, ...config.versioned]);
 
+  const connect = (trx) => ({
+    query: async (sql) => (await trx.raw(sql)).rows,
+    exec: (sql) => trx.raw(sql),
+  });
+  // The triggers go first, in their own transaction, so a clash in the indexes can't keep them out.
   const install = async () => {
     try {
-      const missing = await database.transaction((trx) =>
-        installTriggers(config, {
-          query: async (sql) => (await trx.raw(sql)).rows,
-          exec: (sql) => trx.raw(sql),
-        }),
-      );
+      const { missing, installed } = await database.transaction((trx) => installTriggers(config, connect(trx)));
       if (missing.length > 0) {
         logger.warn(`saved-versions: no triggers yet, since these tables lack columns: ${missing.join(", ")}`);
-      } else {
-        logger.info(`saved-versions: installed the triggers on ${config.versioned.length + 3} planning tables`);
+        return;
       }
+      if (installed)
+        logger.info(`saved-versions: installed the triggers on ${triggered(config).length} planning tables`);
     } catch (error) {
-      logger.error(error, "saved-versions: couldn't install the triggers");
+      logger.error(error, "saved-versions: couldn't install the triggers. Writes that skip this hook aren't checked.");
+      return;
+    }
+    for (const index of INDEXES) {
+      try {
+        await database.transaction((trx) => installIndex(index, connect(trx)));
+      } catch (error) {
+        logger.error(error, `saved-versions: couldn't make the unique index ${index.name}`);
+      }
     }
   };
   let pending;
@@ -355,7 +480,26 @@ function register({ filter, action, init }, { env, database, logger }) {
 
   filter("database.error", (error) => databaseError(error));
 
+  // The deploy asks this whether every trigger is in place (`SavedVersionsCheck`). It answers with
+  // names and yes or no, never data.
+  init("routes.custom.before", ({ app }) => {
+    app.get("/saved-versions/status", async (req, res) => {
+      if (req.accountability?.admin !== true) {
+        res.status(403).json({ errors: [{ message: "Only an admin can see the saved-versions triggers." }] });
+        return;
+      }
+      try {
+        res.json(await database.transaction((trx) => triggerStatus(config, connect(trx))));
+      } catch (error) {
+        logger.error(error, "saved-versions: couldn't read the triggers");
+        res.status(500).json({ errors: [{ message: "Couldn't read the saved-versions triggers." }] });
+      }
+    });
+  });
+
   const lookupIn = (database) => ({
+    plans: async (ids) =>
+      ids.length === 0 ? [] : database(PLANS).select("id", "kind", "product_id").whereIn("id", ids),
     versionIds: async (collection, keys) =>
       keys.length === 0
         ? []
@@ -397,5 +541,9 @@ module.exports = register;
 module.exports.guard = guard;
 module.exports.databaseError = databaseError;
 module.exports.installTriggers = installTriggers;
+module.exports.installIndex = installIndex;
+module.exports.triggerStatus = triggerStatus;
+module.exports.fingerprint = fingerprint;
+module.exports.INDEXES = INDEXES;
 module.exports.triggerStatements = triggerStatements;
 module.exports.REFUSED = REFUSED;

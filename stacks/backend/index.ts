@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
@@ -10,6 +11,7 @@ import {
   type DirectusPermissionRuleArgs,
   DirectusPolicy,
   DirectusSettings,
+  SavedVersionsCheck,
 } from "../../src/directus/resources.ts";
 import * as random from "@pulumi/random";
 import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
@@ -28,6 +30,7 @@ import { isDev, loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
 import { deployClubspotSync } from "./clubspot-sync.ts";
 import { deployGsuiteSync } from "./gsuite-sync.ts";
+import { fingerprint } from "./saved-versions.cjs";
 
 // The CRM app's Directus schema and permission rules, matching docs/crm-schema.md, and the roles and
 // users they attach to (src/directus/roles.ts). A second Directus-backed app would define its own
@@ -73,13 +76,15 @@ const prod = isDev
       baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
     });
 
+const savedVersions = savedVersionsConfig(loadedSchemas, config.getBoolean("savedVersionsDeletable") ?? false);
+
 const app = deployDirectus(
   directusAdminEmail,
   licensed,
   {
     queryGuard: queryGuardConfig([...communityPolicies, { name: "Crew", rules: crewRules }, ...grantable]),
     groupPolicies: groupPoliciesConfig(grantable),
-    savedVersions: savedVersionsConfig(loadedSchemas, config.getBoolean("savedVersionsDeletable") ?? false),
+    savedVersions,
   },
   prod?.values,
 );
@@ -167,6 +172,18 @@ const crmSchema = new DirectusSchema(
   "crm-schema",
   { ...auth, schema },
   { dependsOn: [app.then(({ ready }) => ready)] },
+);
+
+// The hook installs the triggers that keep a saved plan version from changing; this fails the
+// deploy if any planning table lacks one.
+new SavedVersionsCheck(
+  "saved-versions-check",
+  {
+    ...auth,
+    fingerprint: fingerprint(savedVersions),
+    schemaHash: createHash("sha256").update(JSON.stringify(schema)).digest("hex"),
+  },
+  { dependsOn: crmSchema },
 );
 
 for (const rule of crewRules) {

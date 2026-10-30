@@ -41,6 +41,7 @@ describe("Directus providers", () => {
       "directusSchemaProvider",
       "directusSettingsProvider",
       "directusUserProvider",
+      "savedVersionsCheckProvider",
     ]);
     for (const [name, size] of Object.entries(sizes)) {
       expect(size, name).toBeLessThan(MAX_BYTES);
