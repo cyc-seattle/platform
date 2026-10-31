@@ -1,13 +1,15 @@
 Feature: Plans
   Each plan covers one program area for one year: what the club offers and when, the prices, the
-  schedule, who works it, and the budget. The area's director plans it. The Operations Plan is the
+  schedule, who works it, and the budget. The area's directors plan it, and can draw up more than
+  one plan for a year to weigh the choices. The Operations Plan is the
   one plan for the whole club. It covers what the program areas share, such as the office, the
   boats, and the year's rates. It also plans the products that belong to no program area:
   merchandise, storage, and charters. Planners are the people with the Plan Reader or Plan Writer
   policy, which they get from their groups. They work on a plan's draft, and save it as a version
   when it's ready. A saved version never changes, so the club can always look back at what it
-  agreed to. One saved version of each plan is the active one, and the active versions together
-  are the club's plan for the year.
+  agreed to. When a program opens for sign-ups, a planner makes one saved version active. For each
+  program area and year, and for the Operations Plan, only one version is active, and the active
+  versions together are the club's plan for the year.
 
   The club's P&L, its profit and loss for the year, is worked out from the plans whenever someone
   asks for it. Nothing worked out is stored. It shows each offering, each program area, and the
@@ -36,21 +38,21 @@ Feature: Plans
       Then the plan has a draft they can change
       And the plan has no saved versions yet
 
-  @pending
-  Rule: Each program area has one plan a year
-
-    Example: A second plan for the same program area and year isn't allowed
-      Given a plan for a program area this year
-      When an admin starts another plan for the same program area and year
-      Then planning doesn't allow it
-
-  Rule: Only one saved version of each plan is active at a time
+  Rule: For each program area and year, only one saved version is active at a time
 
     Example: Making a version active replaces the one that was active
       Given a user with the Plan Writer policy
       And a plan with two saved versions, the first of them active
       When they make the second version active
       Then only the second version is active
+
+    @pending
+    Example: Making another plan active replaces the program area's plan for the year
+      Given a user with the Plan Writer policy
+      And two plans for a program area this year, the first of them active
+      When they make a saved version of the second plan active
+      Then the second plan is the program area's plan for the year
+      And the first plan has no active version
 
   Rule: A saved version never changes, even for an admin
 

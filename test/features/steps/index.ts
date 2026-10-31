@@ -117,7 +117,7 @@ export function expectRefusal(check: () => unknown): void {
   refusal = check;
 }
 
-for (const system of ["the CRM", "the catalog", "planning"]) {
+for (const system of ["the CRM", "the catalog"]) {
   Step(`${system} doesn't allow it`, async () => {
     if (refusal === undefined) {
       throw new Error("No When has asked for anything.");

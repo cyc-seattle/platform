@@ -57,9 +57,6 @@ for (const text of [
   "an admin deletes the program area",
   "the program area is still in the catalog",
   "an admin adds a program area with no revenue account",
-  "a program area with a director",
-  "an admin deletes the director's user account",
-  "it has no director",
 ]) {
   Step(text, () => notBuilt("12a"));
 }

@@ -143,8 +143,10 @@ Step("they can't turn a saved version back into a draft", async () => {
 
 // The P&L and program areas' steps, which step 12a builds.
 for (const text of [
-  "a plan for a program area this year",
-  "an admin starts another plan for the same program area and year",
+  "two plans for a program area this year, the first of them active",
+  "they make a saved version of the second plan active",
+  "the second plan is the program area's plan for the year",
+  "the first plan has no active version",
   "a plan for a program area",
   "an offering in it of a program from another program area",
   "a planner calculates the P&L",

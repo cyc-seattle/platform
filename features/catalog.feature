@@ -11,8 +11,8 @@ Feature: The catalog
   The catalog also lists the program areas. A program area is one part of the club's programs, such
   as Summer or Singlehanded, and is what the club reports to the IRS as one of its program
   services. Each program area has one revenue account, which its programs' fees are booked to, and
-  a director, who plans it. Every program belongs to one program area. Merchandise, storage, and
-  charters belong to none.
+  people in roles such as Director, who plan it. Every program belongs to one program area.
+  Merchandise, storage, and charters belong to none. Anyone who signs in can see the program areas.
 
   Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Besides
   admins, only the few people who manage the club's products and revenue accounts can change the
@@ -45,15 +45,6 @@ Feature: The catalog
     Example: A program area with no revenue account isn't allowed
       When an admin adds a program area with no revenue account
       Then the catalog doesn't allow it
-
-  @pending
-  Rule: A program area stays in the catalog when its director leaves
-
-    Example: Deleting the director's user account leaves the program area with no director
-      Given a program area with a director
-      When an admin deletes the director's user account
-      Then the program area is still in the catalog
-      And it has no director
 
   Rule: Each revenue account has its own number
 
@@ -130,8 +121,9 @@ Feature: The catalog
       And they can't see revenue accounts
 
   @pending
-  Rule: Only admins, Crew, and people with a Catalog or Plan policy can see program areas
+  Rule: Anyone who signs in can see program areas
 
-    Example: A family member can't see program areas
+    Example: A family member can see program areas
       Given a user with the Community role
-      Then they can't see program areas
+      Then they can see program areas
+      But they can't change program areas
