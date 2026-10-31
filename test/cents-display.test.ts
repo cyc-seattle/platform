@@ -12,6 +12,10 @@ describe("the cents-as-dollars display", () => {
     expect(formatCents(value)).toBe(shown);
   });
 
+  it.each([null, undefined, ""])("shows %j as nothing", (value) => {
+    expect(formatCents(value)).toBe("");
+  });
+
   it("leaves a value that isn't a number as it was", () => {
     expect(formatCents("n/a")).toBe("n/a");
   });

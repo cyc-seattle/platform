@@ -6,8 +6,9 @@
 
 const dollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-/** `12500` as `$125.00`. A value that isn't a number comes back as it was. */
+/** `12500` as `$125.00`. An empty value is empty, and one that isn't a number comes back as it was. */
 export function formatCents(value) {
+  if (value === null || value === undefined || value === "") return "";
   const cents = Number(value);
   return Number.isFinite(cents) ? dollars.format(cents / 100) : String(value);
 }
@@ -20,8 +21,7 @@ export default {
   types: ["integer", "bigInteger"],
   options: null,
   handler: formatCents,
-  // Directus shows its own placeholder for an empty value, so this only ever gets a number. Vue
-  // renders a string a render function returns as text.
+  // Vue renders a string a render function returns as text.
   component: {
     props: { value: { type: [Number, String], default: null } },
     render() {

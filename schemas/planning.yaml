@@ -1617,9 +1617,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -2104,9 +2104,9 @@ fields:
       display_options: null
       field: coach_level_key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: A staff level's key in the Operations Plan.
+      note: "The coach level: copy the Key from a staff level in the Operations Plan."
       options: null
       readonly: false
       required: false
@@ -2557,9 +2557,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -2811,9 +2811,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -3143,9 +3143,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -3821,9 +3821,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -3906,9 +3906,9 @@ fields:
       display_options: null
       field: resource_key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: A resource's key in the Operations Plan.
+      note: "The resource it uses: copy the Key from a resource in the Operations Plan."
       options: null
       readonly: false
       required: true
@@ -4111,9 +4111,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -4256,9 +4256,11 @@ fields:
       display_options: null
       field: cost_center_key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: An offering's or pool's key, or a product's id. Empty for the org.
+      note: >-
+        Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
+        page's web address. Leave empty for the whole club.
       options: null
       readonly: false
       required: false
@@ -4296,9 +4298,9 @@ fields:
       display_options: null
       field: staff_level_key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: A staff level's key in the Operations Plan.
+      note: "Who does the work: copy the Key from a staff level in the Operations Plan."
       options: null
       readonly: false
       required: true
@@ -4604,9 +4606,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -4852,9 +4854,11 @@ fields:
       display_options: null
       field: cost_center_key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: An offering's or pool's key, or a product's id. Empty for the org.
+      note: >-
+        Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
+        page's web address. Leave empty for the whole club.
       options: null
       readonly: false
       required: false
@@ -5141,9 +5145,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -5475,9 +5479,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -5652,9 +5656,9 @@ fields:
       display_options: null
       field: qualifications
       group: null
-      hidden: true
+      hidden: false
       interface: tags
-      note: Qualification ids.
+      note: The qualifications this level needs. Add each one's ID, from the end of its page's web address.
       options: null
       readonly: false
       required: false
@@ -5778,9 +5782,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -5941,9 +5945,9 @@ fields:
       display_options: null
       field: qualifications
       group: null
-      hidden: true
+      hidden: false
       interface: tags
-      note: Qualification ids.
+      note: The qualifications this position needs. Add each one's ID, from the end of its page's web address.
       options: null
       readonly: false
       required: false
@@ -6195,9 +6199,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -6498,9 +6502,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -6958,9 +6962,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -7170,9 +7174,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -7251,9 +7255,9 @@ fields:
       display_options: null
       field: offering_keys
       group: null
-      hidden: true
+      hidden: false
       interface: tags
-      note: Offering keys.
+      note: "The offerings this rule fills: add the Key of each one."
       options: null
       readonly: false
       required: true
@@ -7457,9 +7461,9 @@ fields:
       display_options: null
       field: salaried_positions
       group: null
-      hidden: true
+      hidden: false
       interface: tags
-      note: Salaried position keys.
+      note: "The salaried positions it books: add the Key of each one."
       options: null
       readonly: false
       required: false
@@ -7583,9 +7587,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -7749,9 +7753,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -7999,9 +8003,9 @@ fields:
       display_options: null
       field: key
       group: null
-      hidden: true
+      hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false

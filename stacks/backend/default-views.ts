@@ -31,7 +31,7 @@ export const defaultViews: DefaultView[] = [
   },
   {
     collection: "registration_entries",
-    sort: ["-session_id.start_date", "registration_id.participant_id.last_name"],
+    sort: ["-confirmed_at"],
     fields: ["registration_id", "session_id", "class_id", "status", "waitlist_number"],
   },
   {
@@ -79,7 +79,7 @@ export const defaultViews: DefaultView[] = [
   { collection: "people", sort: ["last_name", "first_name"], fields: ["last_name", "first_name", "email", "phone"] },
   {
     collection: "contacts",
-    sort: ["subject_id.last_name", "contact_order"],
+    sort: ["contact_order"],
     fields: ["subject_id", "contact_id", "relationship_type", "contact_order"],
   },
   {
@@ -88,7 +88,7 @@ export const defaultViews: DefaultView[] = [
     fields: ["person_id", "kind", "value", "source"],
   },
   // Medical details stay on the profile's own page.
-  { collection: "medical_profiles", sort: ["person_id.last_name"], fields: ["person_id", "date_updated"] },
+  { collection: "medical_profiles", sort: ["-date_updated"], fields: ["person_id", "date_updated"] },
   { collection: "program_roles", sort: ["name"], fields: ["name", "description"] },
   {
     collection: "program_role_assignments",

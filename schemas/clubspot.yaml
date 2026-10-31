@@ -233,9 +233,7 @@ collections:
       hidden: false
       icon: payments
       item_duplication_fields: null
-      note: >-
-        What a registration was charged and paid. Copied from Clubspot. Kept apart from registrations so only some staff
-        see money.
+      note: What a registration was charged and paid. Copied from Clubspot, so edit it there.
       preview_url: null
       singleton: false
       sort: null

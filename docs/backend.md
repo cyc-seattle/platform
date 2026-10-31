@@ -38,6 +38,8 @@ Directus through Authentik fails. The built-in admin still signs in.
 - Each collection's table opens with the sort and columns in `stacks/backend/default-views.ts`.
   `DirectusPreset` writes them as global presets: no user, no role, and no bookmark. A staffer who
   saved their own view keeps it until they reset it.
+- A default sort never crosses a link the Community query guard refuses, or the table fails to open
+  for Community and Crew. `test/default-views.test.ts` checks every view against the guard.
 - Money is stored in cents. A field that holds cents uses the `cents-as-dollars` display
   (`stacks/backend/cents-display.mjs`), so a table shows 12500 as $125.00. Directus's own displays
   can't divide. A row's own page still edits the number in cents, and its note says so.
