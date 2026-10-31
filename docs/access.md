@@ -83,6 +83,10 @@ to. A role that shares another role's policy gets a `DirectusAccess` link, not a
 
 Only admins can see or change them. A group never sets a role.
 
+An admin changes a group from its own page in the Data Studio. Members and Policies are
+many-to-many lists: "Add existing" picks a person, or one of the policies a group can give. Neither
+list creates a new row, so someone not yet in People is added there first.
+
 The `group-policies` hook (`stacks/backend/group-policies.cjs`) keeps each user's own policy links
 equal to what their groups give. It runs after any change to a group, a member, or a grant, when a
 user is made, and when a person's email or login changes. It also runs every 15 minutes, to catch a

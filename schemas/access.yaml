@@ -232,20 +232,23 @@ fields:
     meta:
       collection: groups
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{person_id.first_name}} {{person_id.last_name}}"
       field: members
       group: null
       hidden: false
-      interface: list-o2m
-      note: The people in this group.
-      options: null
+      interface: list-m2m
+      note: The people in this group. Someone not yet in People is added there first.
+      options:
+        enableCreate: false
+        template: "{{person_id.first_name}} {{person_id.last_name}} ({{person_id.email}})"
       readonly: false
       required: false
       searchable: true
       sort: 4
       special:
-        - o2m
+        - m2m
       translations: null
       validation: null
       validation_message: null
@@ -256,20 +259,35 @@ fields:
     meta:
       collection: groups
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{policy_id.name}}"
       field: policies
       group: null
       hidden: false
-      interface: list-o2m
+      interface: list-m2m
       note: The policies this group gives its members.
-      options: null
+      options:
+        enableCreate: false
+        # The policies a group may give: groupPoliciesConfig in stacks/backend/policies.ts.
+        filter:
+          name:
+            _in:
+              - CRM Reader
+              - CRM Writer
+              - Catalog Reader
+              - Catalog Writer
+              - Medical Reader
+              - Medical Writer
+              - Plan Reader
+              - Plan Writer
+        template: "{{policy_id.name}}"
       readonly: false
       required: false
       searchable: true
       sort: 5
       special:
-        - o2m
+        - m2m
       translations: null
       validation: null
       validation_message: null
@@ -486,7 +504,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: "Only a policy groups may give: CRM Reader, CRM Writer, Medical Reader, or Medical Writer, so far."
+      note: Only a policy groups may give (docs/access.md).
       options: null
       readonly: false
       required: true
@@ -519,7 +537,7 @@ relations:
     field: group_id
     related_collection: groups
     meta:
-      junction_field: null
+      junction_field: person_id
       many_collection: group_members
       many_field: group_id
       one_allowed_collections: null
@@ -540,7 +558,7 @@ relations:
     field: person_id
     related_collection: people
     meta:
-      junction_field: null
+      junction_field: group_id
       many_collection: group_members
       many_field: person_id
       one_allowed_collections: null
@@ -561,7 +579,7 @@ relations:
     field: group_id
     related_collection: groups
     meta:
-      junction_field: null
+      junction_field: policy_id
       many_collection: group_policies
       many_field: group_id
       one_allowed_collections: null
@@ -582,7 +600,7 @@ relations:
     field: policy_id
     related_collection: directus_policies
     meta:
-      junction_field: null
+      junction_field: group_id
       many_collection: group_policies
       many_field: policy_id
       one_allowed_collections: null

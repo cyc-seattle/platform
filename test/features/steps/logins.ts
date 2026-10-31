@@ -113,30 +113,41 @@ export async function newPerson(fields: Record<string, unknown> = {}): Promise<s
   return person.id;
 }
 
+/** The junction collection behind each of a group's many-to-many fields. */
+const groupJunctions = { members: "group_members", policies: "group_policies" } as const;
+type GroupField = keyof typeof groupJunctions;
+
+/** Links a row to a group through the group itself, as the Data Studio's many-to-many list does. */
+async function addThroughGroup(groupId: string, field: GroupField, link: Record<string, string>): Promise<string> {
+  const id = randomUUID();
+  await (
+    await admin()
+  ).ok("PATCH", itemPath("groups", groupId), {
+    [field]: { create: [{ id, ...link }], update: [], delete: [] },
+  });
+  created.push({ collection: groupJunctions[field], id });
+  return id;
+}
+
+/** Unlinks a row from a group through the group itself, as the Data Studio's many-to-many list does. */
+export async function removeFromGroup(groupId: string, field: GroupField, id: string): Promise<void> {
+  await (await admin()).ok("PATCH", itemPath("groups", groupId), { [field]: { create: [], update: [], delete: [id] } });
+  const index = created.findIndex((row) => row.collection === groupJunctions[field] && row.id === id);
+  if (index >= 0) created.splice(index, 1);
+}
+
 /** A group of this run's that gives `policies`. */
 export async function newGroup(...policies: string[]): Promise<{ groupId: string; grantIds: string[] }> {
   const group = await adminCreate("groups", { id: randomUUID(), name: `Test group ${key("group")}` });
   const grantIds: string[] = [];
   for (const policy of policies) {
-    const grant = await adminCreate("group_policies", {
-      id: randomUUID(),
-      group_id: group.id,
-      policy_id: await policyId(policy),
-    });
-    grantIds.push(grant.id);
+    grantIds.push(await addThroughGroup(group.id, "policies", { policy_id: await policyId(policy) }));
   }
   return { groupId: group.id, grantIds };
 }
 
 export async function addToGroup(groupId: string, personId: string): Promise<string> {
-  return (await adminCreate("group_members", { id: randomUUID(), group_id: groupId, person_id: personId })).id;
-}
-
-/** Deletes a row a scenario made, as an admin would in the Data Studio. */
-export async function adminDelete(collection: string, id: string): Promise<void> {
-  await (await admin()).ok("DELETE", itemPath(collection, id));
-  const index = created.findIndex((row) => row.collection === collection && row.id === id);
-  if (index >= 0) created.splice(index, 1);
+  return addThroughGroup(groupId, "members", { person_id: personId });
 }
 
 /** Gives a user each policy through a group of its own, and waits for the hook to link them. */
