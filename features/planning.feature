@@ -18,6 +18,10 @@ Feature: Plans
   club's running costs. Fundraising pays for capital, such as a new coach boat, so capital is never
   charged to a program area.
 
+  Each version of a plan can also hold the planner's rules: what they want that the plan's numbers
+  don't capture, in their own words, for their AI to follow when it fills in the plan. For example:
+  every Monday, Wednesday, and Friday, except on school holidays, from 4pm until dusk.
+
   Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
   each salaried position is paid per year. Bonus rates set the bonus a head coach earns on the
   products they run. Anyone who can see plans sees all of these. To change something means to add,
@@ -186,6 +190,19 @@ Feature: Plans
         | fundraising net | $25,000  |
         | capital         | -$20,000 |
         | total           | $15,000  |
+
+  @pending
+  Rule: A Plan Writer can write the rules on a draft, and a saved version's rules never change
+
+    Example: A Plan Writer writes a draft's rules
+      Given a user with the Plan Writer policy
+      And a plan with a draft
+      Then they can write the draft's rules
+
+    Example: A Plan Writer can't change a saved version's rules
+      Given a user with the Plan Writer policy
+      And a plan with a saved version that has rules
+      Then they can't change the saved version's rules
 
   Rule: Planners can see every plan, including wages and bonus rates
 

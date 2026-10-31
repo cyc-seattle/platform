@@ -186,6 +186,9 @@ for (const text of [
   "programs that take in {money} and cost {money}",
   "donations of {money}, which cost {money} to raise",
   "the club-wide totals are:",
+  "they can write the draft's rules",
+  "a plan with a saved version that has rules",
+  "they can't change the saved version's rules",
 ]) {
   Step(text, () => notBuilt("12a"));
 }
