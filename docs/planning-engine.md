@@ -13,7 +13,7 @@ of the engine calculated its numbers, so we can recalculate them the same way la
 ```ts
 import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/planning";
 
-const { lines, pnl, activities, warnings } = computePlan(data);
+const { lines, pnl, organization, activities, warnings } = computePlan(data);
 ```
 
 `data` holds the catalog, the organization, and every row of the plan versions being calculated,
@@ -23,26 +23,32 @@ named as the schema names them, plus:
   organization's `fiscal_year_start_month`.
 - `rib_resource_kind_id`: which resource kind is RIBs. The engine uses those resources' rates to cost
   each RIB hour.
+- `plans` and `plan_versions`: the plans being calculated and their versions, so the engine can tell
+  which plan each offering is in.
 
 Planners enter each of these in the plans ([docs/planning-schema.md](planning-schema.md)):
 
 - `fiscal_year` and the organization are the plan's own `fiscal_year` and `organization_id`.
-- The plan versions are a product's plan's version and the saved Operations Plan version it names
-  in `operations_version_id`. A product plan's row that names an Operations Plan row by key means
-  the row with that key in that version.
+- The plan versions are the saved Operations Plan version and each program area plan's version
+  that names it in `operations_version_id`. An area plan's row that names an Operations Plan row by
+  key means the row with that key in that version.
+- Every pool is divided among all of the year's offerings, so an area's share of the pools, and the
+  organization's totals, are right only when every area's plan is calculated together. One area's
+  plan alone gives its own costs, but shares the pools as if it were the only area.
 - `rib_resource_kind_id` is in that Operations Plan version's `plan_rates`.
 - The catalog is read as it is now. A saved version doesn't copy it, so recalculating an old version
   uses today's catalog.
 
 It returns:
 
-- `lines`: every cost and revenue line for the year, on its offering, product, pool or the
-  organization, by account. Amounts are always positive cents; the account's type says whether it's
+- `lines`: every cost and revenue line for the year, on its offering, product, program area, pool or
+  the organization, by account. Amounts are always positive cents; the account's type says whether it's
   revenue or expense.
-- `pnl`: each offering's revenue, costs by account, and net, then each product's, which adds up its
-  offerings. Each also has its MTDC, enrollment, days and sailor-days.
-- `perDay(p)` and `perSailorDay(p)`: an offering's or product's P&L for one day it runs, and for one
-  sailor on one day.
+- `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
+  area's, which add up their offerings. Each also has its MTDC, enrollment, days and sailor-days.
+- `organization`: the organization's year. See [The organization's totals](#the-organizations-totals).
+- `perDay(p)` and `perSailorDay(p)`: an offering's, product's or area's P&L for one day it runs, and
+  for one sailor on one day.
 - `activities`: each activity with the coaches, RIBs and boats the engine gave it.
 - `warnings`: anything in the plan the engine had to skip or couldn't price.
 
@@ -59,8 +65,8 @@ It returns:
 1. **Activities.** The plan year's activities, with their paid time and time on the water.
 2. **Staffing.** The engine calculates how many coaches, RIBs and boats each activity needs, and what
    they cost.
-3. **Revenue**, with COGS and card fees.
-4. **Lines.** Budget lines, labor lines and salaried positions. Costs on a product are divided among
+3. **Revenue**, with COGS and the charges set as a share of revenue.
+4. **Lines.** Budget lines, labor lines and salaried positions. Costs on a product or area are divided among
    its offerings last, once every offering's own costs are in.
 5. **Payroll tax** on every wage.
 6. **Pools**, divided among the offerings.
@@ -74,7 +80,7 @@ It returns:
   next year.
 - Each staff level, salaried position, resource and boat rate has one rate for the year.
 - Each cost the engine calculates (coach wages, salaries, payroll tax, RIBs, boat maintenance,
-  resources, travel, COGS and card fees) is recorded in the account set for it in
+  resources, travel and COGS) is recorded in the account set for it in
   `organization_cost_accounts`. If no account is set, the engine leaves that cost out and shows a
   warning.
 
@@ -120,21 +126,39 @@ It returns:
 
 - An offering's revenue is its `price_cents` × its enrollment.
 - COGS is `cogs_rate` × revenue.
-- Card fees are the year's `card_fee_rate` × revenue.
+- A product in a program area books its revenue to the area's account, and one in no area to its
+  own. If a product in an area has its own account, and it differs, the engine warns.
+- Each of the Operations Plan's `plan_revenue_charges` applies to every offering whose product is one
+  of its `product_kinds`: its `rate` × the offering's revenue (price × enrollment), booked to its
+  account on the offering. A charge on a revenue account adds revenue, such as the card fees families
+  pay. One on an expense account adds a cost, such as scholarships or the card company's fees.
+  Charges are figured on revenue before any other charge.
+- A charge counts toward MTDC unless it's `excluded_from_mtdc`.
 
 ### Budget and labor lines
 
 - A budget line counts only in its `fiscal_year`. Equipment is a cost in the year it's bought.
 - A labor line costs its hours × its staff level's rate, and is a wage.
-- A cost on a product is divided among the product's offerings that year by MTDC. If the product has
-  no offerings that year, the cost stays on the product and the engine shows a warning.
+- A cost on a product, or on a program area, is divided among its offerings that year by MTDC. If it
+  has no offerings that year, the cost stays where it is and the engine shows a warning.
+- Capital is a budget line on an asset account. It's the organization's, so a capital line on an
+  offering, product, area or pool is moved to the organization, with a warning.
+
+### Program areas and plans
+
+The engine warns about:
+
+- a program with no program area, or another kind of product with one
+- an offering in an area plan whose product is in another area, and an offering in the Operations
+  Plan whose product is in an area
 
 ### Salaried positions
 
 - A position costs its `annual_salary_cents`.
 - Its hourly rate is `annual_salary_cents / paid_hours_per_year`. The hours it spends coaching in an
   activity block, and its `plan_salaried_bookings` hours, are charged at that rate to the offerings
-  or products they were for.
+  or products they were for. A booking names a product or a program area, whose offerings share it
+  by MTDC. A booking that names both, or neither, is left out with a warning.
 - First, the `ga_share` part of the salary goes to G&A. If the hours charged to programs add up to
   more than what's left, the engine scales them down and shows a warning.
 - The rest of the salary, including the `ga_share` part, goes to the position's `remainder_pool_id`
@@ -172,3 +196,16 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 A bonus owner earns `bonus_rate` × the combined net of its products for the year, after pools, if
 that net is above zero. The bonus is divided among those products' offerings by revenue, and is never
 counted in MTDC.
+
+### The organization's totals
+
+Operating revenue pays for operating costs, and fundraising pays for capital. `organization` adds up
+every line:
+
+- **Capital** is every line on an asset account, such as buying a coach boat.
+- **Fundraising** is revenue and expense whose function is `fundraising`, from the line or its
+  account's `default_function`. Give donation and grant accounts the `fundraising` default.
+- **Operating** is every other revenue and expense.
+
+It gives operating revenue, expenses and net, then fundraising's, then capital, then the total:
+operating net plus fundraising net, less capital.

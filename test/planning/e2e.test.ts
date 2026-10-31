@@ -4,7 +4,9 @@ import { computePlan, perDay, perSailorDay, type CostLine, type PlanData } from 
 import {
   A,
   activity,
+  area,
   blockRule,
+  charge,
   budgetLine,
   emptyPlan,
   laborLine,
@@ -22,9 +24,11 @@ import {
 const v = (id: string) => ({ id, version_id: "v1", key: `${id}-key` });
 
 function realisticPlan(): PlanData {
-  const racing = product({ id: "youth-racing", name: "Youth Racing" });
-  const camp = product({ id: "summer-camp", name: "Summer Camp" });
-  const adult = product({ id: "adult-lts", name: "Adult Learn to Sail" });
+  const youth = area({ id: "youth", name: "Youth" });
+  const adults = area({ id: "adults", name: "Adults" });
+  const racing = product({ id: "youth-racing", name: "Youth Racing", program_area_id: youth.id });
+  const camp = product({ id: "summer-camp", name: "Summer Camp", program_area_id: youth.id });
+  const adult = product({ id: "adult-lts", name: "Adult Learn to Sail", program_area_id: adults.id });
   const charters = product({ id: "charters", name: "Charters", kind: "charter", revenue_account_id: A.charterRevenue });
   const storage = product({
     id: "storage",
@@ -180,6 +184,7 @@ function realisticPlan(): PlanData {
     fiscal_year: 2027,
     organization: { id: "org", name: "A club", fiscal_year_start_month: 7 },
     products: [racing, camp, adult, charters, storage, merch],
+    program_areas: [youth, adults],
     boat_classes: [
       { id: "opti", name: "Opti", sailors_per_boat: 1, footprint_sq_ft: 40 },
       { id: "420", name: "420", sailors_per_boat: 2, footprint_sq_ft: 90 },
@@ -230,9 +235,16 @@ function realisticPlan(): PlanData {
       rates({
         ...v("rates"),
         payroll_tax_rate: 0.0765,
-        card_fee_rate: 0.03,
         lodging_per_night_cents: 15_000,
         mileage_rate_cents: 67,
+      }),
+    ],
+    plan_revenue_charges: [
+      charge({
+        ...v("card-fees"),
+        name: "Card fees",
+        rate: 0.03,
+        product_kinds: ["program", "charter", "storage_lease", "merchandise", "event_hosting", "other"],
       }),
     ],
     plan_staff_levels: [instructor1, instructor2],
@@ -242,6 +254,7 @@ function realisticPlan(): PlanData {
         ...v("director-camp"),
         position_id: director.id,
         product_id: camp.id,
+        program_area_id: null,
         kind: "management",
         hours: 80,
       },
@@ -401,7 +414,7 @@ describe("a realistic plan, end to end", () => {
 
   it("charges card fees on revenue and payroll tax on wages", () => {
     const revenue = sum(lines, (l) => l.line_key.startsWith("revenue:"));
-    expect(Math.abs(sum(lines, (l) => l.line_key.startsWith("card_fees:")) - 0.03 * revenue)).toBeLessThanOrEqual(10);
+    expect(Math.abs(sum(lines, (l) => l.line_key.startsWith("charge:")) - 0.03 * revenue)).toBeLessThanOrEqual(10);
     expect(sum(lines, (l) => l.account_id === A.payrollTax)).toBeGreaterThan(0.0765 * 12_200_000);
   });
 

@@ -369,7 +369,8 @@ permissionRule(
 // The audit checks each program's product is a program, and that a camp's classes book to one
 // revenue account, so it reads only the fields that link a program to its account.
 for (const [collection, fields] of [
-  ["products", ["id", "kind", "revenue_account_id"]],
+  ["products", ["id", "name", "kind", "revenue_account_id", "program_area_id"]],
+  ["program_areas", ["id", "name", "revenue_account_id"]],
   ["accounts", ["id", "number"]],
 ] as const) {
   permissionRule(

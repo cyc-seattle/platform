@@ -62,6 +62,11 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     kind: "other",
     revenue_account_id: row["accounts"],
   }),
+  program_areas: async () => ({
+    id: randomUUID(),
+    name: `Program area ${key("area")}`,
+    revenue_account_id: row["accounts"],
+  }),
   qualifications: async () => ({ id: randomUUID(), name: `Qualification ${key("qualification")}` }),
   qualification_covers: async () => ({
     id: randomUUID(),
@@ -74,7 +79,12 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   programs: async () => ({
     id: randomUUID(),
     name: `Program ${runId}`,
-    product_id: (await adminCreate("products", await newRow("products", { kind: "program" }))).id,
+    product_id: (
+      await adminCreate(
+        "products",
+        await newRow("products", { kind: "program", program_area_id: row["program_areas"] }),
+      )
+    ).id,
   }),
   organizations: async () => ({
     id: randomUUID(),
@@ -222,22 +232,28 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   // The child, who has no login, so the group gives no one in the run anything.
   group_members: async () => ({ id: randomUUID(), group_id: row["groups"], person_id: row["people"] }),
   group_policies: async () => ({ id: randomUUID(), group_id: row["groups"], policy_id: await crmReaderId() }),
-  // A product has one plan for each organization and year, so each plan gets a product of its own.
+  // A program area has one plan for each organization and year, so each plan gets an area of its own.
   plans: async (fixed) => {
-    // Made first, so cleanup deletes it after the product plans saved with it.
+    // Made first, so cleanup deletes it after the area plans saved with it.
     if (fixed["kind"] !== "operations") {
       await operationsVersionId();
     }
     return {
       id: randomUUID(),
-      kind: "product",
-      product_id: fixed["kind"] === "operations" ? null : await fresh("products"),
+      kind: "program_area",
+      program_area_id: fixed["kind"] === "operations" ? null : await fresh("program_areas"),
       organization_id: row["organizations"],
       fiscal_year: PLAN_YEAR,
       name: `Plan ${key("plan")}`,
     };
   },
-  plan_versions: async () => ({ id: randomUUID(), plan_id: row["plans"], status: "draft", message: "A test version." }),
+  plan_versions: async () => ({
+    id: randomUUID(),
+    plan_id: row["plans"],
+    status: "draft",
+    message: "A test version.",
+    rules: "Practice on Wednesdays.",
+  }),
   plan_activations: async () => ({ id: randomUUID(), version_id: row["plan_versions@saved"] }),
   plan_pools: async (fixed) => versioned(fixed, { name: `Pool ${key("pool")}` }),
   plan_staff_levels: async (fixed) =>
@@ -304,8 +320,15 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     id: randomUUID(),
     version_id: fixed["version_id"] ?? (await fresh("plan_versions")),
     payroll_tax_rate: 0.1,
-    card_fee_rate: 0.03,
   }),
+  plan_revenue_charges: async (fixed) =>
+    versioned(fixed, {
+      name: `Scholarships ${key("charge")}`,
+      rate: 0.02,
+      product_kinds: ["program"],
+      account_id: row["accounts"],
+      excluded_from_mtdc: true,
+    }),
   plan_salaried_positions: async (fixed) =>
     versioned(fixed, {
       name: `Position ${key("position")}`,
@@ -363,6 +386,7 @@ async function crmReaderId(): Promise<string> {
 export const changes: Record<string, () => Row> = {
   accounts: () => ({ name: `Account ${runId} (renamed)` }),
   products: () => ({ name: `Product ${runId} (renamed)` }),
+  program_areas: () => ({ name: `Program area ${key("area")}` }),
   qualifications: () => ({ name: `Qualification ${key("qualification")}` }),
   qualification_covers: () => ({ covers_id: row["qualifications"] }),
   boat_classes: () => ({ sailors_per_boat: 2 }),
@@ -408,7 +432,8 @@ export const changes: Record<string, () => Row> = {
   plan_activity_resources: () => ({ quantity: 2 }),
   plan_labor_lines: () => ({ hours: 12 }),
   plan_budget_lines: () => ({ amount_cents: 11_000 }),
-  plan_rates: () => ({ card_fee_rate: 0.035 }),
+  plan_rates: () => ({ payroll_tax_rate: 0.11 }),
+  plan_revenue_charges: () => ({ rate: 0.03 }),
   plan_salaried_positions: () => ({ annual_salary_cents: 5_100_000 }),
   plan_salaried_bookings: () => ({ hours: 45 }),
   plan_boat_rates: () => ({ maintenance_per_boat_hour_cents: 110 }),
@@ -441,6 +466,7 @@ async function createRows(): Promise<void> {
   // entry's fields are read at its turn, once the rows before it exist.
   const order: [string, () => Row][] = [
     ["accounts", () => ({})],
+    ["program_areas", () => ({})],
     ["products", () => ({})],
     ["qualifications", () => ({})],
     ["qualification_covers", () => ({})],
@@ -514,6 +540,7 @@ export const PLAN_ROWS = [
   "plan_labor_lines",
   "plan_budget_lines",
   "plan_rates",
+  "plan_revenue_charges",
   "plan_salaried_positions",
   "plan_salaried_bookings",
   "plan_boat_rates",
@@ -527,10 +554,10 @@ export const PLATFORM_VERSION = "0.0.0-test";
 /** The year of every plan a test makes, for the run's own organization. */
 export const PLAN_YEAR = 2027;
 
-/** The run's Operations Plan's saved version, which a product's plan is saved with. */
+/** The run's Operations Plan's saved version, which a program area's plan is saved with. */
 async function createOperationsVersion(): Promise<string> {
   await runRows();
-  const plan = await adminCreate("plans", await newRow("plans", { kind: "operations", product_id: null }));
+  const plan = await adminCreate("plans", await newRow("plans", { kind: "operations", program_area_id: null }));
   const version = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
   await (
     await admin()
@@ -545,12 +572,12 @@ async function createOperationsVersion(): Promise<string> {
 let operationsVersion: Promise<string> | undefined;
 export const operationsVersionId = () => (operationsVersion ??= createOperationsVersion());
 
-/** What saving a draft of a product's plan sets. */
+/** What saving a draft of a program area's plan sets. */
 export async function saving(): Promise<Row> {
   return { status: "saved", platform_version: PLATFORM_VERSION, operations_version_id: await operationsVersionId() };
 }
 
-/** Saves a draft of a product's plan as a version, as the admin. Returns the saved version. */
+/** Saves a draft of a program area's plan as a version, as the admin. Returns the saved version. */
 export async function adminSave(versionId: string): Promise<Item> {
   return (await admin()).ok("PATCH", itemPath("plan_versions", versionId), {
     ...(await saving()),
@@ -559,7 +586,7 @@ export async function adminSave(versionId: string): Promise<Item> {
 }
 
 /**
- * A plan for the run's product, with a saved version, the active one, and a draft made from it.
+ * A plan for a program area, with a saved version, the active one, and a draft made from it.
  * Each version holds a row in every collection a version has. Only the planning steps need them.
  */
 async function createPlanRows(): Promise<void> {

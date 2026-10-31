@@ -6,7 +6,17 @@ export interface ProductRow {
   id?: string;
   name: string;
   kind: ProductKind;
+  /** For a product in no program area. A product in one books to the area's account. */
   revenue_account_id: string | null;
+  program_area_id: string | null;
+}
+
+/** Row shape for the `program_areas` collection, in `core`'s schema: a part of the club's programs. */
+export interface ProgramAreaRow {
+  id?: string;
+  name: string;
+  revenue_account_id: string;
+  director_id: string | null;
 }
 
 /** Row shape for the `accounts` collection, in `core`'s schema: one line of the chart of accounts. */

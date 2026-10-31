@@ -19,8 +19,8 @@ export interface Version {
 
 export interface Plan {
   id: string;
-  kind: "product" | "operations";
-  product_id: string | null;
+  kind: "program_area" | "operations";
+  program_area_id: string | null;
 }
 
 export interface Lookup {
@@ -53,7 +53,7 @@ export function installTriggers(
 
 export interface UniqueIndex {
   name: string;
-  kind: "product" | "operations";
+  kind: "program_area" | "operations";
   columns: string[];
   /** How Directus names the index's columns in its error. */
   field: string;

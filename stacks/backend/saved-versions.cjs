@@ -17,18 +17,18 @@ const REFUSED = "A saved plan version can't be changed. Make a new draft from it
 const NEW_DRAFT = "A new plan version starts as a draft.";
 const NEEDS_PLATFORM = "Saving a version needs the @cyc-seattle/platform version that calculated it.";
 const NEEDS_OPERATIONS =
-  "Saving a product's plan needs the saved Operations Plan version it was calculated with, for the same organization and year.";
+  "Saving a program area's plan needs the saved Operations Plan version it was calculated with, for the same organization and year.";
 const OPERATIONS_NAMES_NONE = "An Operations Plan's version doesn't name an Operations Plan version.";
 const VERSION_STAYS = "A plan version can't move to another plan.";
 const ROW_STAYS = "A plan row can't move to another version. Copy it into that version instead.";
 const SAME_VERSION = "A plan row can only link to rows in its own version.";
-const PLAN_FIXED = "A plan's kind, product, organization, and year can't change once it has a saved version.";
+const PLAN_FIXED = "A plan's kind, program area, organization, and year can't change once it has a saved version.";
 const ACTIVATION_STAYS = "An activation stays in the plan's history. Make another saved version active instead.";
 const ONLY_SAVED_ACTIVE = "Only a saved version can be made active.";
 const OWN_PLAN = "A version can only be made active for its own plan.";
-const PRODUCT_NAMED = "A product's plan names its product, and an Operations Plan names none.";
+const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
 const ONE_PLAN =
-  "A product has one plan for each organization and year, and an organization one Operations Plan for each year.";
+  "A program area has one plan for each organization and year, and an organization one Operations Plan for each year.";
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
@@ -44,7 +44,7 @@ const REASONS = {
   [SAME_VERSION]: 400,
   [ONLY_SAVED_ACTIVE]: 400,
   [OWN_PLAN]: 400,
-  [PRODUCT_NAMED]: 400,
+  [AREA_NAMED]: 400,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
@@ -68,7 +68,7 @@ function keyOf(value) {
  * Checks one write, and returns the payload to write. `event` is `create`, `update`, or `delete`;
  * `keys` are the rows an update or delete touches. `lookup` reads the database:
  * - `versionIds(collection, keys)`: the `version_id` of each row
- * - `plans(ids)`: each plan's `id`, `kind`, and `product_id`
+ * - `plans(ids)`: each plan's `id`, `kind`, and `program_area_id`
  * - `versions(ids)`: each version's `id`, `plan_id`, `status`, and `platform_version`
  * - `deletesSaved(user)`: whether this user may delete a saved version, which only dev allows
  */
@@ -77,14 +77,14 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     ids.length > 0 && (await lookup.versions(ids)).some((version) => version.status === "saved");
 
   if (collection === PLANS) {
-    if (event === "delete" || (event === "update" && !("kind" in payload) && !("product_id" in payload))) {
+    if (event === "delete" || (event === "update" && !("kind" in payload) && !("program_area_id" in payload))) {
       return payload;
     }
     const current = event === "create" ? [{}] : await lookup.plans(keys);
     for (const plan of current) {
       const kind = "kind" in payload ? payload.kind : plan.kind;
-      const product = keyOf("product_id" in payload ? payload.product_id : plan.product_id) ?? null;
-      if ((kind === "product") !== (product !== null)) throw refuse(PRODUCT_NAMED, 400);
+      const area = keyOf("program_area_id" in payload ? payload.program_area_id : plan.program_area_id) ?? null;
+      if ((kind === "program_area") !== (area !== null)) throw refuse(AREA_NAMED, 400);
     }
     return payload;
   }
@@ -141,9 +141,9 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
  */
 const INDEXES = [
   {
-    name: "cyc_one_product_plan",
-    kind: "product",
-    columns: ["organization_id", "fiscal_year", "product_id"],
+    name: "cyc_one_program_area_plan",
+    kind: "program_area",
+    columns: ["organization_id", "fiscal_year", "program_area_id"],
   },
   { name: "cyc_one_operations_plan", kind: "operations", columns: ["organization_id", "fiscal_year"] },
 ].map((index) => ({ ...index, field: index.columns.join(", ") }));
@@ -168,7 +168,7 @@ const raise = (reason) => `RAISE EXCEPTION USING ERRCODE = '${SQLSTATE}', MESSAG
 /** The columns each trigger reads, by table. The triggers wait until every one exists. */
 function columnsNeeded(config) {
   return {
-    [PLANS]: ["id", "kind", "product_id", "organization_id", "fiscal_year"],
+    [PLANS]: ["id", "kind", "program_area_id", "organization_id", "fiscal_year"],
     [VERSIONS]: ["id", "plan_id", "status", "platform_version", "operations_version_id", "saved_at"],
     [ACTIVATIONS]: ["id", "plan_id", "version_id", "sequence", "activated_at"],
     ...Object.fromEntries(
@@ -270,14 +270,14 @@ $fn$`;
   const plan = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_plan() RETURNS trigger LANGUAGE plpgsql AS $fn$
 BEGIN
-  IF (NEW.kind = 'product') IS DISTINCT FROM (NEW.product_id IS NOT NULL) THEN
-    ${raise(PRODUCT_NAMED)};
+  IF (NEW.kind = 'program_area') IS DISTINCT FROM (NEW.program_area_id IS NOT NULL) THEN
+    ${raise(AREA_NAMED)};
   END IF;
   IF TG_OP = 'INSERT' THEN
     RETURN NEW;
   END IF;
-  IF (NEW.kind, NEW.product_id, NEW.organization_id, NEW.fiscal_year)
-      IS DISTINCT FROM (OLD.kind, OLD.product_id, OLD.organization_id, OLD.fiscal_year)
+  IF (NEW.kind, NEW.program_area_id, NEW.organization_id, NEW.fiscal_year)
+      IS DISTINCT FROM (OLD.kind, OLD.program_area_id, OLD.organization_id, OLD.fiscal_year)
     AND EXISTS (SELECT 1 FROM ${VERSIONS} v WHERE v.plan_id = OLD.id AND v.status = 'saved') THEN
     ${raise(PLAN_FIXED)};
   END IF;
@@ -415,9 +415,9 @@ async function installIndex(index, db) {
   );
   if (clashes.length > 0) {
     const described = clashes.map((clash) => {
-      const what = index.kind === "product" ? "product plans" : "Operations Plans";
-      const product = index.kind === "product" ? `, and product ${clash.product_id}` : "";
-      return `${clash.count} ${what} share organization ${clash.organization_id}, year ${clash.fiscal_year}${product}`;
+      const what = index.kind === "program_area" ? "program area plans" : "Operations Plans";
+      const area = index.kind === "program_area" ? `, and program area ${clash.program_area_id}` : "";
+      return `${clash.count} ${what} share organization ${clash.organization_id}, year ${clash.fiscal_year}${area}`;
     });
     throw new Error(
       `saved-versions: couldn't make ${index.name}, since ${described.join("; ")}. ` +
@@ -499,7 +499,7 @@ function register({ filter, action, init }, { env, database, logger }) {
 
   const lookupIn = (database) => ({
     plans: async (ids) =>
-      ids.length === 0 ? [] : database(PLANS).select("id", "kind", "product_id").whereIn("id", ids),
+      ids.length === 0 ? [] : database(PLANS).select("id", "kind", "program_area_id").whereIn("id", ids),
     versionIds: async (collection, keys) =>
       keys.length === 0
         ? []

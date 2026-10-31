@@ -98,6 +98,7 @@ const sets: Record<string, Target[]> = {
   "programs' details": plain("programs"),
   "the catalog": plain(
     "products",
+    "program_areas",
     "accounts",
     "qualifications",
     "qualification_covers",

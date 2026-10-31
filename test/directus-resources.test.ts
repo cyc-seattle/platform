@@ -283,7 +283,7 @@ describe("DirectusAccess", () => {
 
 describe("SavedVersionsCheck", () => {
   const inputs = { ...auth, fingerprint: "abc", schemaHash: "def" };
-  const ready = { fingerprint: "abc", tables: { plans: true }, indexes: { cyc_one_product_plan: true } };
+  const ready = { fingerprint: "abc", tables: { plans: true }, indexes: { cyc_one_program_area_plan: true } };
 
   it.each(["create", "update"] as const)("checks the triggers on %s", async (method) => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, "pong")); // GET /server/ping

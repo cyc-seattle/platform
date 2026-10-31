@@ -29,7 +29,6 @@ Feature: Plans
   products they run. Anyone who can see plans sees all of these. To change something means to add,
   edit, or delete it.
 
-  @pending
   Rule: A new plan starts with a draft
 
     Example: A Plan Writer starts a plan for a program area
@@ -46,7 +45,6 @@ Feature: Plans
       When they make the second version active
       Then only the second version is active
 
-    @pending
     Example: Making another plan active replaces the program area's plan for the year
       Given a user with the Plan Writer policy
       And two plans for a program area this year, the first of them active
@@ -68,7 +66,6 @@ Feature: Plans
       Then they can't change a saved version
       And they can't turn a saved version back into a draft
 
-  @pending
   Rule: A program area's plan holds only that area's programs
 
     Example: A plan with another program area's program gets a warning
@@ -77,7 +74,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the offering is in the wrong plan
 
-  @pending
   Rule: Merchandise, storage, and charters are planned in the Operations Plan
 
     Example: The Operations Plan sells merchandise
@@ -85,7 +81,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the club-wide totals include $1,000 of merchandise sales
 
-  @pending
   Rule: Every program belongs to a program area
 
     Example: A program with no program area gets a warning
@@ -94,7 +89,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the program has no program area
 
-  @pending
   Rule: A program area's P&L adds up its offerings and the costs charged to the area
 
     Example: A program area's P&L includes its storage
@@ -104,7 +98,6 @@ Feature: Plans
       Then the program area takes in $20,000
       And its costs include the $3,000 of storage
 
-  @pending
   Rule: A cost charged to a program area is shared among the area's offerings by their direct costs
 
     Example: Storage is split two to one when one offering's direct costs are twice the other's
@@ -120,7 +113,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then each offering pays $2,500 of the director's salary
 
-  @pending
   Rule: A charge set as a share of revenue follows each offering's price and enrollment
 
     Scenario Outline: Scholarships are 2% of a program's revenue
@@ -141,7 +133,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the merchandise has no scholarships
 
-  @pending
   Rule: Card fees that families pay are revenue, and the card company's fees are a cost
 
     Example: An offering collects card fees from families and pays them to the card company
@@ -152,7 +143,6 @@ Feature: Plans
       Then the offering takes in $300 of card fees from families
       And the offering pays $300 of card fees
 
-  @pending
   Rule: A charge set as a share of revenue counts toward the split of shared costs only if the Operations Plan says so
 
     Example: Scholarships don't change an offering's share of the office
@@ -162,7 +152,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
-  @pending
   Rule: Capital is never charged to a program area or an offering
 
     Example: Buying a coach boat shows only in the club-wide totals
@@ -178,7 +167,6 @@ Feature: Plans
       And the club-wide totals show $20,000 of capital
       And the planner is warned that capital can't be charged to a program area
 
-  @pending
   Rule: The club-wide totals show the operating net, then fundraising and capital, then the total
 
     Example: Fundraising pays for capital below the operating net
@@ -193,7 +181,6 @@ Feature: Plans
         | capital         | -$20,000 |
         | total           | $15,000  |
 
-  @pending
   Rule: A Plan Writer can write the rules on a draft, and a saved version's rules never change
 
     Example: A Plan Writer writes a draft's rules

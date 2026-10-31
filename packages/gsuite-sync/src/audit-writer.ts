@@ -5,6 +5,7 @@ import {
   type ContactRow,
   type PersonRow,
   type ProductRow,
+  type ProgramAreaRow,
   type ProgramRoleAssignmentRow,
 } from "@cyc-seattle/crm";
 import {
@@ -27,6 +28,7 @@ import {
   candidateMemberPeople,
   findClassesWithoutProgram,
   findInvalidEmails,
+  findAreaAccountMismatches,
   findMismatchedRevenueAccounts,
   findProgramProductProblems,
   findMissingGroup,
@@ -58,6 +60,7 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     camps,
     programs,
     products,
+    programAreas,
     accounts,
     programRoleAssignments,
     people,
@@ -72,8 +75,12 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     directus.readItems<ClassRow>("classes", { limit: -1 }),
     directus.readItems<CampRow>("camps", { limit: -1 }),
     directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
-    directus.readItems<Pick<ProductRow, "id" | "kind" | "revenue_account_id">>("products", {
-      fields: ["id", "kind", "revenue_account_id"],
+    directus.readItems<Pick<ProductRow, "id" | "name" | "kind" | "revenue_account_id" | "program_area_id">>(
+      "products",
+      { fields: ["id", "name", "kind", "revenue_account_id", "program_area_id"], limit: -1 },
+    ),
+    directus.readItems<Pick<ProgramAreaRow, "id" | "name" | "revenue_account_id">>("program_areas", {
+      fields: ["id", "name", "revenue_account_id"],
       limit: -1,
     }),
     directus.readItems<Pick<AccountRow, "id" | "number">>("accounts", { fields: ["id", "number"], limit: -1 }),
@@ -99,6 +106,7 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     camps,
     programs,
     products,
+    programAreas,
     accounts,
     programRoleAssignments,
     people,
@@ -136,7 +144,15 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
     ...findProgramsWithoutGroup(tables.programs),
     ...findClassesWithoutProgram(tables.classes),
     ...findProgramProductProblems(tables.programs, tables.products),
-    ...findMismatchedRevenueAccounts(tables.camps, tables.classes, tables.programs, tables.products, tables.accounts),
+    ...findMismatchedRevenueAccounts(
+      tables.camps,
+      tables.classes,
+      tables.programs,
+      tables.products,
+      tables.accounts,
+      tables.programAreas,
+    ),
+    ...findAreaAccountMismatches(tables.products, tables.programAreas),
     ...findInvalidEmails(candidatePeople),
   ];
 

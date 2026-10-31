@@ -157,14 +157,14 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       key: "catalog-reader",
       name: "Catalog Reader",
       icon: "menu_book",
-      description: "Sees the catalog: products, revenue accounts, programs, and the rest.",
+      description: "Sees the catalog: products, program areas, revenue accounts, programs, and the rest.",
       rules: readCatalog,
     },
     {
       key: "catalog-writer",
       name: "Catalog Writer",
       icon: "edit_note",
-      description: "Changes the catalog: products, revenue accounts, programs, and the rest.",
+      description: "Changes the catalog: products, program areas, revenue accounts, programs, and the rest.",
       rules: catalog.flatMap((collection) =>
         (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
       ),
@@ -204,6 +204,7 @@ export const crewRules: PermissionRuleInput[] = [
     action: "read" as const,
   })),
   { collection: "products", action: "read" },
+  { collection: "program_areas", action: "read" },
   { collection: "accounts", action: "read" },
 ];
 

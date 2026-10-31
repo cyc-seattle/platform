@@ -11,7 +11,7 @@ it, by hand in the Data Studio.
 | Role      | Who                                      | What it gives                                                                                            |
 | --------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Community | Everyone, on their first sign-in         | Their own children, their children's teammates, and what a program role such as Parent Coordinator gives |
-| Crew      | People an admin trusts with every roster | Every roster, the products and revenue accounts to read, and the Community policies                      |
+| Crew      | People an admin trusts with every roster | Every roster, the products, program areas and revenue accounts to read, and the Community policies       |
 | Admin     | The people who run the system            | Everything                                                                                               |
 
 Every role can open the Data Studio. Directus applies the same policies in the Data Studio, through
