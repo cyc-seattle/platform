@@ -59,20 +59,30 @@ export function Step(text: string, fn: Callback): void {
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** A parameter that takes one of `names`, or an outline's `<column>`, which the example fills in. */
-export function parameter(name: string, names: string[]): void {
-  const longestFirst = [...names].sort((a, b) => b.length - a.length).map(escape);
+/** A parameter matching `regexp`, or an outline's `<column>`, which the example fills in. */
+export function pattern(name: string, regexp: RegExp): void {
   defineParameterExpression({
     name,
-    regexp: new RegExp(`(?:${longestFirst.join("|")}|<\\w+>)`),
+    regexp: new RegExp(`(?:${regexp.source}|<\\w+>)`),
     transformer: (value: string) => value,
   });
+}
+
+/** A parameter that takes one of `names`. */
+export function parameter(name: string, names: string[]): void {
+  const longestFirst = [...names].sort((a, b) => b.length - a.length).map(escape);
+  pattern(name, new RegExp(longestFirst.join("|")));
 }
 
 parameter("policy", policyNames);
 parameter("role", roleNames);
 parameter("service", serviceNames);
 parameter("records", recordNames);
+
+// Dollars, such as $1,000 or -$20,000, and a share, such as 2%.
+pattern("money", /-?\$[\d,]+(?:\.\d\d)?/);
+pattern("percent", /[\d.]+%/);
+pattern("count", /\d+/);
 
 /** The session "they" sign in with, and their user's id. */
 export interface They {
@@ -107,7 +117,7 @@ export function expectRefusal(check: () => unknown): void {
   refusal = check;
 }
 
-for (const system of ["the CRM", "the catalog"]) {
+for (const system of ["the CRM", "the catalog", "planning"]) {
   Step(`${system} doesn't allow it`, async () => {
     if (refusal === undefined) {
       throw new Error("No When has asked for anything.");

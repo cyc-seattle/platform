@@ -8,6 +8,12 @@ Feature: The catalog
   sails, such as Opti or 420, and the kinds of equipment programs share, such as coach boats and
   trailers.
 
+  The catalog also lists the program areas. A program area is one part of the club's programs, such
+  as Summer or Singlehanded, and is what the club reports to the IRS as one of its program
+  services. Each program area has one revenue account, which its programs' fees are booked to, and
+  a director, who plans it. Every program belongs to one program area. Merchandise, storage, and
+  charters belong to none.
+
   Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Besides
   admins, only the few people who manage the club's products and revenue accounts can change the
   catalog. They have the Catalog Writer policy. The Catalog Reader policy lets someone see the
@@ -23,6 +29,31 @@ Feature: The catalog
       When an admin deletes the program's product
       Then the catalog doesn't allow it
       And the product is still in the catalog
+
+  @pending
+  Rule: A program area can't be deleted while it has programs
+
+    Example: Deleting a program area with programs isn't allowed
+      Given a program area with a program in it
+      When an admin deletes the program area
+      Then the catalog doesn't allow it
+      And the program area is still in the catalog
+
+  @pending
+  Rule: Each program area has a revenue account
+
+    Example: A program area with no revenue account isn't allowed
+      When an admin adds a program area with no revenue account
+      Then the catalog doesn't allow it
+
+  @pending
+  Rule: A program area stays in the catalog when its director leaves
+
+    Example: Deleting the director's user account leaves the program area with no director
+      Given a program area with a director
+      When an admin deletes the director's user account
+      Then the program area is still in the catalog
+      And it has no director
 
   Rule: Each revenue account has its own number
 
@@ -77,6 +108,14 @@ Feature: The catalog
       But they can't change products
       And they can't change revenue accounts
 
+  @pending
+  Rule: Crew can see program areas, but can't change them
+
+    Example: A Crew member looks up program areas
+      Given a user with the Crew role
+      Then they can see program areas
+      But they can't change program areas
+
   Rule: Only admins, Crew, people with a Catalog or Plan policy, and the Google sync can see products and revenue accounts
 
     Example: A family member can't see products or revenue accounts
@@ -89,3 +128,10 @@ Feature: The catalog
       Then they can see programs' details
       But they can't see products
       And they can't see revenue accounts
+
+  @pending
+  Rule: Only admins, Crew, and people with a Catalog or Plan policy can see program areas
+
+    Example: A family member can't see program areas
+      Given a user with the Community role
+      Then they can't see program areas
