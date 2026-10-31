@@ -125,7 +125,7 @@ describe("Directus on the cluster", () => {
   });
 });
 
-describe("Directus's hook extensions", () => {
+describe("Directus's extensions", () => {
   it.each([
     ["community-query-guard", extensions.queryGuard],
     ["group-policies", extensions.groupPolicies],
@@ -136,6 +136,15 @@ describe("Directus's hook extensions", () => {
     expect(JSON.parse(data["config.json"])).toEqual(config);
     expect(container("directus").volumeMounts).toEqual(
       expect.arrayContaining([expect.objectContaining({ mountPath: `/directus/extensions/${name}` })]),
+    );
+  });
+
+  it("mounts the display that shows cents as dollars, with no config", () => {
+    const data = find("kubernetes:core/v1:ConfigMap", "directus-cents-as-dollars").inputs["data"];
+    expect(JSON.parse(data["package.json"])["directus:extension"].type).toBe("display");
+    expect(data["config.json"]).toBeUndefined();
+    expect(container("directus").volumeMounts).toEqual(
+      expect.arrayContaining([expect.objectContaining({ mountPath: "/directus/extensions/cents-as-dollars" })]),
     );
   });
 });

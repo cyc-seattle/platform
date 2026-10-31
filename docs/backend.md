@@ -6,8 +6,9 @@ projects with their resource names unchanged, and their states moved over with `
 (cyc-seattle/workplace#6). It holds:
 
 - Directus, as a `WebService`, with the query guard and the `group-policies` hook mounted as hook
-  extensions
+  extensions, and the `cents-as-dollars` display
 - the schema apply, from every `schemas/<domain>.yaml` merged into one snapshot
+- each collection's default view in the Data Studio
 - the roles, policies, and permission rules ([access.md](access.md)), including the Community
   policies and the query guard, which cyc-seattle/workplace#6 steps 15 to 19 remove
 - the `group-policies` hook, which gives each user the policies their groups give
@@ -31,6 +32,17 @@ outputs. Dev's client is generated here. Prod's is the one Authentik generated b
 cyc-seattle/workplace#6: client ID `directus`, and the secret `directus-oidc-client-secret`, whose
 state moved into `backend`. While Authentik and Directus hold different clients, signing in to
 Directus through Authentik fails. The built-in admin still signs in.
+
+## What staff see in the Data Studio
+
+- Each collection's table opens with the sort and columns in `stacks/backend/default-views.ts`.
+  `DirectusPreset` writes them as global presets: no user, no role, and no bookmark. A staffer who
+  saved their own view keeps it until they reset it.
+- Money is stored in cents. A field that holds cents uses the `cents-as-dollars` display
+  (`stacks/backend/cents-display.mjs`), so a table shows 12500 as $125.00. Directus's own displays
+  can't divide. A row's own page still edits the number in cents, and its note says so.
+- A field a sync writes is read-only in the Data Studio, since the next sync would overwrite an
+  edit. The syncs write through the API, which ignores that setting.
 
 ## Never destroy it
 
