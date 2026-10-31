@@ -146,7 +146,7 @@ collections:
       collapse: open
       collection: program_area_role_assignments
       color: null
-      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{program_id.name}} ({{program_role_id.name}})"
+      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{program_area_id.name}} ({{program_role_id.name}})"
       group: CRM
       hidden: false
       icon: assignment_ind
@@ -2094,8 +2094,9 @@ fields:
     meta:
       collection: program_area_role_assignments
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: person_id
       group: null
       hidden: false
@@ -2106,8 +2107,11 @@ fields:
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
       validation: null
       validation_message: null
       width: full
@@ -2134,8 +2138,9 @@ fields:
     meta:
       collection: program_area_role_assignments
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: program_area_id
       group: null
       hidden: false
@@ -2146,8 +2151,11 @@ fields:
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program area
       validation: null
       validation_message: null
       width: full
@@ -2174,8 +2182,9 @@ fields:
     meta:
       collection: program_area_role_assignments
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: program_role_id
       group: null
       hidden: false
@@ -2186,8 +2195,11 @@ fields:
       required: false
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Role
       validation: null
       validation_message: null
       width: full
@@ -2219,7 +2231,7 @@ fields:
       field: starts_on
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
       readonly: false
@@ -2259,7 +2271,7 @@ fields:
       field: ends_on
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
       readonly: false
@@ -2440,8 +2452,9 @@ fields:
     meta:
       collection: program_areas
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{person_id.first_name}} {{person_id.last_name}} ({{program_role_id.name}})"
       field: role_assignments
       group: null
       hidden: false
