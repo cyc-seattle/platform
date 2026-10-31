@@ -17,9 +17,7 @@ collections:
       hidden: false
       icon: alternate_email
       item_duplication_fields: null
-      note: >-
-        Every email and phone known for a person, from forms and staff - not just the primary
-        in people.email/people.phone.
+      note: Every email and phone known for a person, from forms and from staff, not only their main ones.
       preview_url: null
       singleton: false
       sort: null
@@ -40,14 +38,14 @@ collections:
       collapse: open
       collection: contacts
       color: null
-      display_template: "{{contact_id.first_name}} {{contact_id.last_name}} ({{relationship_type}} of {{subject_id.first_name}} {{subject_id.last_name}})"
+      display_template: >-
+        {{contact_id.first_name}} {{contact_id.last_name}} ({{relationship_type}} of {{subject_id.first_name}}
+        {{subject_id.last_name}})
       group: CRM
       hidden: false
       icon: contacts
       item_duplication_fields: null
-      note: >-
-        Guardian/emergency-contact relationships, from Clubspot's flat contact
-        fields.
+      note: A person's guardians and emergency contacts, from their Clubspot forms.
       preview_url: null
       singleton: false
       sort: null
@@ -73,9 +71,7 @@ collections:
       hidden: false
       icon: medical_services
       item_duplication_fields: null
-      note: >-
-        One-to-one with people (unique person_id); its own collection for a
-        stricter permission policy.
+      note: A person's medical information, kept apart from People so only some staff see it.
       preview_url: null
       singleton: false
       sort: null
@@ -101,9 +97,7 @@ collections:
       hidden: false
       icon: person
       item_duplication_fields: null
-      note: >-
-        One row per human known to the org. Roles are derived from
-        relationships, not stored.
+      note: One row for each person the club knows.
       preview_url: null
       singleton: false
       sort: null
@@ -130,10 +124,8 @@ collections:
       icon: assignment_ind
       item_duplication_fields: null
       note: >-
-        Who someone is to a program - hand-entered by staff, never written by
-        a sync. Separate from event_staff, which is person-plus-session and
-        Clubspot-derived. No dates means current forever; a row past ends_on
-        is reported by audit, not deleted.
+        The role someone has in a program, such as Parent Coordinator. Entered by staff, never by a sync. With no dates,
+        it lasts until someone ends it.
       preview_url: null
       singleton: false
       sort: null
@@ -159,11 +151,7 @@ collections:
       hidden: false
       icon: label
       item_duplication_fields: null
-      note: >-
-        Lookup of role names staff can assign in program_role_assignments
-        (e.g. Parent Coordinator). Hand-entered; carries no provider behavior
-        - what a role does in a given SaaS product is that provider's own
-        mapping.
+      note: The roles staff can give someone in a program, such as Parent Coordinator.
       preview_url: null
       singleton: false
       sort: null
@@ -246,8 +234,9 @@ fields:
     meta:
       collection: contact_points
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: person_id
       group: null
       hidden: false
@@ -258,8 +247,11 @@ fields:
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
       validation: null
       validation_message: null
       width: full
@@ -286,8 +278,13 @@ fields:
     meta:
       collection: contact_points
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Email
+            value: email
+          - text: Phone
+            value: phone
       field: kind
       group: null
       hidden: false
@@ -295,9 +292,9 @@ fields:
       note: null
       options:
         choices:
-          - text: email
+          - text: Email
             value: email
-          - text: phone
+          - text: Phone
             value: phone
       readonly: false
       required: true
@@ -375,11 +372,9 @@ fields:
       display_options: null
       field: normalized
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: >-
-        The email or phone in comparable form (see normalizeEmail/normalizePhone in
-        clubspot-sync), so the upsert key and the matcher's search don't depend on formatting.
+      note: The email or phone written the same way every time, so the sync can match it.
       options: null
       readonly: false
       required: true
@@ -413,8 +408,13 @@ fields:
     meta:
       collection: contact_points
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Form
+            value: form
+          - text: Staff
+            value: staff
       field: source
       group: null
       hidden: false
@@ -422,9 +422,9 @@ fields:
       note: null
       options:
         choices:
-          - text: form
+          - text: Form
             value: form
-          - text: staff
+          - text: Staff
             value: staff
       readonly: false
       required: true
@@ -539,8 +539,9 @@ fields:
     meta:
       collection: contacts
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: subject_id
       group: null
       hidden: false
@@ -551,8 +552,11 @@ fields:
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
       validation: null
       validation_message: null
       width: full
@@ -579,8 +583,9 @@ fields:
     meta:
       collection: contacts
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: contact_id
       group: null
       hidden: false
@@ -591,8 +596,11 @@ fields:
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Their contact
       validation: null
       validation_message: null
       width: full
@@ -619,8 +627,13 @@ fields:
     meta:
       collection: contacts
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Guardian
+            value: guardian
+          - text: Emergency contact
+            value: emergency_contact
       field: relationship_type
       group: null
       hidden: false
@@ -628,9 +641,9 @@ fields:
       note: null
       options:
         choices:
-          - text: guardian
+          - text: Guardian
             value: guardian
-          - text: emergency_contact
+          - text: Emergency contact
             value: emergency_contact
       readonly: false
       required: true
@@ -785,8 +798,9 @@ fields:
     meta:
       collection: medical_profiles
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: person_id
       group: null
       hidden: false
@@ -797,8 +811,11 @@ fields:
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
       validation: null
       validation_message: null
       width: full
@@ -830,7 +847,7 @@ fields:
       field: allergies
       group: null
       hidden: false
-      interface: input
+      interface: input-multiline
       note: null
       options: null
       readonly: false
@@ -870,7 +887,7 @@ fields:
       field: medications
       group: null
       hidden: false
-      interface: input
+      interface: input-multiline
       note: null
       options: null
       readonly: false
@@ -910,7 +927,7 @@ fields:
       field: conditions
       group: null
       hidden: false
-      interface: input
+      interface: input-multiline
       note: null
       options: null
       readonly: false
@@ -1038,7 +1055,9 @@ fields:
       searchable: true
       sort: 8
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Last tetanus shot
       validation: null
       validation_message: null
       width: full
@@ -1071,7 +1090,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: null
+      note: A whole number, from the Clubspot form.
       options: null
       readonly: false
       required: false
@@ -1090,6 +1109,50 @@ fields:
       max_length: null
       numeric_precision: 32
       numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: medical_profiles
+    field: date_updated
+    type: timestamp
+    meta:
+      collection: medical_profiles
+      conditions: null
+      display: datetime
+      display_options:
+        relative: true
+      field: date_updated
+      group: null
+      hidden: false
+      interface: datetime
+      note: When this profile last changed.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 10
+      special:
+        - date-updated
+      translations:
+        - language: en-US
+          translation: Updated
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: date_updated
+      table: medical_profiles
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
       is_nullable: true
       is_unique: false
       is_indexed: false
@@ -1319,7 +1382,7 @@ fields:
       field: date_of_birth
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
       readonly: false
@@ -1361,7 +1424,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: Reverse of contacts.subject_id.
+      note: This person's guardians and emergency contacts.
       options:
         template: "{{contact_id.first_name}} {{contact_id.last_name}} ({{relationship_type}})"
       readonly: false
@@ -1587,7 +1650,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: Reverse of contacts.contact_id.
+      note: The people this person is a guardian or emergency contact for.
       options:
         template: "{{subject_id.first_name}} {{subject_id.last_name}} ({{relationship_type}})"
       readonly: false
@@ -1606,15 +1669,14 @@ fields:
     meta:
       collection: people
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{kind}}: {{value}}"
       field: contact_point_links
       group: null
       hidden: false
       interface: list-o2m
-      note: >-
-        Reverse of contact_points.person_id - every email and phone known for
-        this person.
+      note: Every email and phone known for this person.
       options: null
       readonly: false
       required: false
@@ -1753,8 +1815,9 @@ fields:
     meta:
       collection: program_role_assignments
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: person_id
       group: null
       hidden: false
@@ -1765,8 +1828,11 @@ fields:
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
       validation: null
       validation_message: null
       width: full
@@ -1793,8 +1859,9 @@ fields:
     meta:
       collection: program_role_assignments
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: program_id
       group: null
       hidden: false
@@ -1805,8 +1872,11 @@ fields:
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program
       validation: null
       validation_message: null
       width: full
@@ -1833,8 +1903,9 @@ fields:
     meta:
       collection: program_role_assignments
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: program_role_id
       group: null
       hidden: false
@@ -1845,8 +1916,11 @@ fields:
       required: false
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Role
       validation: null
       validation_message: null
       width: full
@@ -1878,7 +1952,7 @@ fields:
       field: starts_on
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
       readonly: false
@@ -1918,7 +1992,7 @@ fields:
       field: ends_on
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
       readonly: false
@@ -2074,13 +2148,14 @@ fields:
     meta:
       collection: programs
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{person_id.first_name}} {{person_id.last_name}} - {{program_id.name}} ({{program_role_id.name}})"
       field: role_assignments
       group: null
       hidden: false
       interface: list-o2m
-      note: Reverse of program_role_assignments.program_id.
+      note: Who has a role in this program.
       options: null
       readonly: false
       required: false

@@ -3,6 +3,7 @@ import {
   omitUndefined,
   directusAccessProvider,
   directusPolicyProvider,
+  directusPresetProvider,
   directusRoleProvider,
   directusSettingsProvider,
   directusUserProvider,
@@ -305,5 +306,72 @@ describe("SavedVersionsCheck", () => {
     await expect(savedVersionsCheckProvider.create!({ ...inputs, timeoutMs: 50, intervalMs: 10 })).rejects.toThrow(
       /SavedVersionsCheck.create failed: .*plans has no trigger/,
     );
+  });
+});
+
+describe("DirectusPreset", () => {
+  const view = { collection: "camps", sort: ["-start_date"], fields: ["name", "start_date"] };
+
+  function stubCreate(existing: { id: number }[]) {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: "pong" })); // GET /server/ping
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: existing })); // GET /presets
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: 7 } })); // POST or PATCH /presets
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("creates the collection's global preset, for no user, role, or bookmark", async () => {
+    const fetchMock = stubCreate([]);
+
+    const result = await directusPresetProvider.create({ ...auth, ...view });
+
+    expect(result.outs).toMatchObject({ presetId: 7 });
+    const [url, init] = fetchMock.mock.calls.at(-1)!;
+    expect(url).toBe(`${baseUrl}/presets`);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      collection: "camps",
+      user: null,
+      role: null,
+      bookmark: null,
+      layout: "tabular",
+      layout_query: { tabular: { sort: ["-start_date"], fields: ["name", "start_date"], page: 1 } },
+      filter: null,
+    });
+  });
+
+  it("takes over a global preset an admin already saved, rather than adding a second", async () => {
+    const fetchMock = stubCreate([{ id: 3 }]);
+
+    const result = await directusPresetProvider.create({ ...auth, ...view });
+
+    expect(result.outs).toMatchObject({ presetId: 3 });
+    const [url, init] = fetchMock.mock.calls.at(-1)!;
+    expect(url).toBe(`${baseUrl}/presets/3`);
+    expect(init.method).toBe("PATCH");
+  });
+
+  it("updates in place, and replaces only when the collection changes", async () => {
+    const olds = { ...auth, ...view, presetId: 3 };
+    expect(await directusPresetProvider.diff?.("3", olds, { ...auth, ...view })).toMatchObject({ changes: false });
+    expect(await directusPresetProvider.diff?.("3", olds, { ...auth, ...view, sort: ["name"] })).toMatchObject({
+      changes: true,
+      replaces: [],
+    });
+    expect(await directusPresetProvider.diff?.("3", olds, { ...auth, ...view, collection: "sessions" })).toMatchObject({
+      changes: true,
+      replaces: ["collection"],
+    });
+  });
+
+  it("treats an already-gone preset as deleted", async () => {
+    const fetchMock = vi.fn();
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(404, { errors: [] })); // DELETE /presets/3
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(directusPresetProvider.delete?.("3", { ...auth, ...view, presetId: 3 })).resolves.toBeUndefined();
   });
 });

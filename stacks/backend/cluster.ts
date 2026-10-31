@@ -101,7 +101,7 @@ export async function deployDirectus(
 
   // Directus loads extensions only at start. Unnamed, so a change replaces it under a new name, and
   // the Deployment rolls.
-  const hook = (name: string, source: string, config: object) => {
+  const extension = (name: string, type: "hook" | "display", source: string, files: Record<string, string> = {}) => {
     const configMap = new k8s.core.v1.ConfigMap(
       `directus-${name}`,
       {
@@ -110,20 +110,23 @@ export async function deployDirectus(
           "package.json": JSON.stringify({
             name,
             version: "1.0.0",
-            "directus:extension": { type: "hook", path: "index.js", source: "index.js", host: "^12.0.0" },
+            "directus:extension": { type, path: "index.js", source: "index.js", host: "^12.0.0" },
           }),
           "index.js": fs.readFileSync(path.resolve(import.meta.dirname, source), "utf8"),
-          "config.json": JSON.stringify(config),
+          ...files,
         },
       },
       { provider },
     );
     return { name, configMap };
   };
-  const hooks = [
+  const hook = (name: string, source: string, config: object) =>
+    extension(name, "hook", source, { "config.json": JSON.stringify(config) });
+  const mounts = [
     hook("community-query-guard", "community-query-guard.cjs", extensions.queryGuard),
     hook("group-policies", "group-policies.cjs", extensions.groupPolicies),
     hook("saved-versions", "saved-versions.cjs", extensions.savedVersions),
+    extension("cents-as-dollars", "display", "cents-display.mjs"),
   ];
 
   const directus = new WebService("directus", {
@@ -148,7 +151,7 @@ export async function deployDirectus(
       { name: "pm2", mountPath: "/home/node/.pm2", emptyDir: {} },
       { name: "uploads", mountPath: "/directus/uploads", emptyDir: { sizeLimit: "1Gi" } },
       { name: "extensions", mountPath: "/directus/node_modules/.directus", emptyDir: {} },
-      ...hooks.map(({ name, configMap }) => ({
+      ...mounts.map(({ name, configMap }) => ({
         name,
         mountPath: `/directus/extensions/${name}`,
         configMap: configMap.metadata.name,
@@ -175,7 +178,7 @@ export async function deployDirectus(
       create: 'curl -fsS -o /dev/null --retry 90 --retry-delay 10 --retry-all-errors "$DIRECTUS_URL/server/ping"',
       environment: { DIRECTUS_URL: baseUrl },
       // A changed Secret replaces the Deployment too, so Directus restarts.
-      triggers: [image, secret.metadata.uid, ...hooks.map(({ configMap }) => configMap.metadata.uid)],
+      triggers: [image, secret.metadata.uid, ...mounts.map(({ configMap }) => configMap.metadata.uid)],
     },
     { dependsOn: [directus, ...record] },
   );
