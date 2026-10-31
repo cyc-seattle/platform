@@ -33,7 +33,12 @@ function programWithGroup() {
       });
       // Discovery matches the row to the live group by email. Staff link a program to its row by hand.
       const group = await asAdmin("POST", "/items/google_groups", { email: groupEmail, name: `Program ${runId}` });
-      const program = await asAdmin("POST", "/items/programs", { name: `Program ${runId}`, google_group_id: group.id });
+      const product = await asAdmin("POST", "/items/products", { name: `Program ${runId}`, kind: "program" });
+      const program = await asAdmin("POST", "/items/programs", {
+        name: `Program ${runId}`,
+        product_id: product.id,
+        google_group_id: group.id,
+      });
       groupId = group.id;
       programId = program.id;
     },

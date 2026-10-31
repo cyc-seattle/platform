@@ -4,7 +4,7 @@ import { ACTIVE_CAMP, PARENT_COORDINATOR } from "../../../stacks/backend/communi
 import type { DirectusSession } from "../directus.ts";
 import { expectRefusal, onEachScenario, parameter, setThey, Step, theirSession } from "./index.ts";
 import { createUser, type User } from "./logins.ts";
-import { admin, adminCreate, email, key, runId } from "./rows.ts";
+import { admin, adminCreate, email, key, newRow, runId } from "./rows.ts";
 
 // The season a family's scenario stands in: camps, rosters, sailors, and the people who sign in. Each
 // scenario builds its own, so a Given says everything its Then depends on. A `Team` is a program's
@@ -102,7 +102,8 @@ async function camp(state: "running" | "ended"): Promise<Camp> {
 
 async function team(state: "running" | "ended" = "running", programId?: string): Promise<Team> {
   const inCamp = await camp(state);
-  const program = programId ?? (await adminCreate("programs", { name: `Program ${key("program")}` })).id;
+  const program =
+    programId ?? (await adminCreate("programs", await newRow("programs", { name: `Program ${key("program")}` }))).id;
   const { id } = await adminCreate("classes", {
     id: key("class"),
     name: `Class ${runId}`,

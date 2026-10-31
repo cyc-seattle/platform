@@ -34,14 +34,12 @@ const schema = mergeSchemas(
 
 /** Every subtype collection, per the subtype pattern in AGENTS.md. */
 const subtypes = [
-  // Nullable until the backfill sets every program's product (cyc-seattle/workplace#6 step 10).
   {
     base: "products",
     kind: "program",
     subtype: "programs",
     foreignKey: "product_id",
     alias: "programs",
-    nullable: true,
   },
 ];
 
@@ -58,7 +56,7 @@ function findRelation(collection: string, field: string): Relation {
 }
 
 describe("subtypes", () => {
-  for (const { base, kind, subtype, foreignKey, alias, nullable } of subtypes) {
+  for (const { base, kind, subtype, foreignKey, alias } of subtypes) {
     describe(`${subtype} of ${base}`, () => {
       it(`lists ${kind} among ${base}.kind's choices and allowed values`, () => {
         const field = findField(base, "kind");
@@ -68,8 +66,8 @@ describe("subtypes", () => {
 
       it(`links each ${subtype} row to one ${base} row, and only to one of kind ${kind} in the Data Studio`, () => {
         const field = findField(subtype, foreignKey);
-        expect(field.schema).toMatchObject({ foreign_key_table: base, is_unique: true, is_nullable: nullable });
-        expect(field.meta.required).toBe(!nullable);
+        expect(field.schema).toMatchObject({ foreign_key_table: base, is_unique: true, is_nullable: false });
+        expect(field.meta.required).toBe(true);
         expect(field.meta.options?.filter).toEqual({ kind: { _eq: kind } });
       });
 
