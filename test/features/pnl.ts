@@ -33,6 +33,9 @@ const DECIMALS = new Set([
   "footprint_sq_ft",
 ]);
 
+// Directus refuses an empty `_in`, so an empty list matches no row instead.
+const anyOf = (ids: string[]) => ({ _in: ids.length > 0 ? ids : [randomUUID()] });
+
 function numbers<T extends Row>(rows: T[]): T[] {
   return rows.map(
     (r) =>
@@ -278,8 +281,8 @@ export class PnlPlan {
         organization_id: { _eq: this.organizationId },
       }),
       rib_resource_kind_id: null,
-      products: await read("products", { id: { _in: this.products } }),
-      program_areas: await read("program_areas", { id: { _in: this.areas.length > 0 ? this.areas : [randomUUID()] } }),
+      products: await read("products", { id: anyOf(this.products) }),
+      program_areas: await read("program_areas", { id: anyOf(this.areas) }),
       accounts: await read("accounts", { id: { _in: Object.values(this.accounts) } }),
       qualifications: [],
       qualification_covers: [],
