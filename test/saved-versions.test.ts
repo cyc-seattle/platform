@@ -235,18 +235,7 @@ describe("a database error", () => {
     });
   });
 
-  // Directus names a unique index's columns as one field, from Postgres's detail.
-  it("from a second plan for the same program area and year, says so", () => {
-    for (const field of ["organization_id, fiscal_year, program_area_id", "organization_id, fiscal_year"]) {
-      const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field } };
-      expect(databaseError(duplicate), field).toMatchObject({
-        status: 400,
-        message: expect.stringMatching(/one plan for each/),
-      });
-    }
-  });
-
-  it("from another unique column of plans, stays as it is", () => {
+  it("from a unique column of plans, stays as it is", () => {
     const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field: "id" } };
     expect(databaseError(duplicate)).toBe(duplicate);
   });

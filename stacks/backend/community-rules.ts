@@ -163,7 +163,7 @@ export const communityPolicies: CommunityPolicyData[] = [
     name: "Community: names",
     icon: "groups",
     description:
-      "Read-only: a teammate's name and school, plus the id-only joins the roster page uses to place " +
+      "Read-only: a teammate's name and school, the program areas' names, plus the id-only joins the roster page uses to place " +
       "them on a team (#166). See docs/crm-schema.md.",
     rules: [
       {
@@ -194,6 +194,8 @@ export const communityPolicies: CommunityPolicyData[] = [
       // needs every program's own to group by, not only ones the viewer already has a teammate in.
       { collection: "classes", action: "read", fields: ["id", "name", "camp_id", "program_id"] },
       { collection: "programs", action: "read", fields: ["id", "name"] },
+      // Anyone who signs in can see the program areas, but not the revenue accounts they book to.
+      { collection: "program_areas", action: "read", fields: ["id", "name"] },
       { collection: "camps", action: "read", fields: ["id", "name", "start_date", "end_date"] },
     ],
   },

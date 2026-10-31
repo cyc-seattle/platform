@@ -30,7 +30,8 @@ Planners enter each of these in the plans ([docs/planning-schema.md](planning-sc
 
 - `fiscal_year` and the organization are the plan's own `fiscal_year` and `organization_id`.
 - The plan versions are the saved Operations Plan version and each program area plan's version
-  that names it in `operations_version_id`. An area plan's row that names an Operations Plan row by
+  that names it in `operations_version_id`. For the club's plan, they're the active Operations Plan
+  version and each area's active version. An area plan's row that names an Operations Plan row by
   key means the row with that key in that version.
 - Every pool is divided among all of the year's offerings, so an area's share of the pools, and the
   organization's totals, are right only when every area's plan is calculated together. One area's

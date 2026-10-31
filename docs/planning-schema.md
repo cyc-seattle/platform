@@ -12,7 +12,7 @@ The database stores only what planners enter, not totals calculated from it. App
 
 - **Product:** a lasting thing CYC sells, such as J-Pod Race Team, boat charters or storage leasing. Products live in the new `core` domain.
 - **Program:** a product of kind `program`, such as J-Pod Race Team. Each application groups programs its own way: the website by category, Google Workspace by Group.
-- **Program area:** one part of the club's programs, such as Summer or Singlehanded, with one revenue account and a director, who plans it. Every program belongs to one. Areas are the program services the club reports in Part III of Form 990. Merchandise, storage and charters belong to none.
+- **Program area:** one part of the club's programs, such as Summer or Singlehanded, with one revenue account. People hold roles in it, such as Director, the way they hold program roles, and its directors plan it. Every program belongs to one. Areas are the program services the club reports in Part III of Form 990. Merchandise, storage and charters belong to none.
 - **Offering:** a product sold for a period, such as J-Pod Fall 2027 or Guppies summer week 3. A program offering is one Clubspot session × class, the unit Clubspot caps enrollment on.
 - **Activity:** one dated, timed event that uses coaches, boats or other resources, such as a practice, a regatta day or a travel day. The planner, or a scheduling tool, enters each one.
 - **Activity block:** offerings whose activities share coaches and boats on certain days, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
@@ -41,7 +41,8 @@ erDiagram
     accounts |o--o{ products : "revenue account, outside an area"
     program_areas |o--o{ products : "area of"
     accounts ||--o{ program_areas : "revenue account"
-    directus_users |o--o{ program_areas : director
+    program_areas ||--o{ program_area_role_assignments : "people in roles"
+    program_roles ||--o{ program_area_role_assignments : role
     qualifications ||--o{ qualification_covers : covers
     qualifications ||--o{ qualification_covers : "covered by"
     accounts |o--o{ accounts : "parent, contra"
@@ -60,7 +61,14 @@ erDiagram
         uuid id PK
         string name
         uuid revenue_account_id FK "required"
-        uuid director_id FK "a user; cleared if the user is deleted"
+    }
+    program_area_role_assignments {
+        uuid id PK
+        uuid person_id FK
+        uuid program_area_id FK
+        uuid program_role_id FK "such as Director"
+        date starts_on
+        date ends_on
     }
     accounts {
         uuid id PK
@@ -119,7 +127,7 @@ erDiagram
 
 `programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted.
 
-A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Deleting its director's user clears the director. `organizations` holds each organization's fiscal year. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
+A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` holds each organization's fiscal year. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
 
 ### Versioning
 
@@ -178,11 +186,11 @@ erDiagram
         uuid version_id FK
         timestamp activated_at
         uuid activated_by
-        int sequence "the highest is active"
+        int sequence "the highest for the area and year is active"
     }
 ```
 
-A plan is for one organization and one plan year (`fiscal_year`). A program area's plan names its area, and an Operations Plan names none. An area has one plan for each organization and year, and an organization one Operations Plan for each year. A plan's kind, program area, organization, and year can't change once it has a saved version.
+A plan is for one organization and one plan year (`fiscal_year`). A program area's plan names its area, and an Operations Plan names none. An area can have several plans for the same organization and year, alternatives its directors are weighing, and an organization several Operations Plans for a year. A plan's kind, program area, organization, and year can't change once it has a saved version.
 
 A version's `rules` hold what the planner wants that the plan's numbers don't capture, in their own words, such as "every Monday, Wednesday and Friday, except on school holidays, from 4pm until dusk". Their AI reads them when it fills in the plan. The engine never does. Like every input, they're saved with the version and never change after.
 
@@ -190,14 +198,16 @@ A plan starts with a draft. A Plan Writer saves it by setting its `status` to `s
 
 A saved version doesn't copy the catalog. Recalculating an old saved version uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
 
-A plan's active version is the one in its `plan_activations` row with the highest `sequence`, so only one is active at a time. Making a version active adds a row, which must name a saved version of the plan. The database sets the row's `sequence` and `activated_at`. No one changes or deletes a row there. `version_sets` and `version_set_members` wait for scenarios and baselines.
+Making a version active, when its program opens in Clubspot, makes it the year's plan for its area. Activations are numbered across every plan for the same area, organization and year, or every Operations Plan for the organization and year. The active version for an area and year, or for the Operations Plan, is the one in the `plan_activations` row with the highest `sequence` among those plans, so only one is active at a time, and activating another plan's version replaces it. Making a version active adds a row, which must name a saved version of the plan. The database sets the row's `sequence` and `activated_at`, under a lock on the area and year, so no two activations tie.
+
+The club's plan for a year is the active Operations Plan version and each area's active version. Each saved area version pins the Operations Plan version it was calculated with, and a later activation can pick a different Operations Plan. An app or agent that adds up the club's plan should warn when an active area version pinned an Operations Plan version that isn't the active one. No one changes or deletes a row there. `version_sets` and `version_set_members` wait for scenarios and baselines.
 
 #### A saved version never changes
 
 A saved version, and every row in it, never changes, even for an admin. Directus skips permissions for an admin, so two things enforce it:
 
 - The `saved-versions` hook (`stacks/backend/saved-versions.cjs`) refuses such a request with a 403 and a clear reason. Directus runs its filters for every user. The hook also stamps who saved a version and who made one active. A write that skips the hook, such as a flow's data step, leaves `saved_by` and `activated_by` empty.
-- Database triggers refuse the same writes on every path, including the ones that skip Directus's filters, such as a flow's data steps. The hook installs them when Directus starts, and again after each schema change if they've changed or a table lost its trigger. An install gives up after 5 seconds waiting for a lock, and logs the failure. The hook makes the two unique indexes on `plans` after the triggers, each on its own, so plans that clash leave the triggers in place, and the log names the plans. The `saved-versions-check` step of the `backend` deploy, which runs whenever the schema or the triggers change, fails the deploy if a planning table lacks its trigger or an index is missing. Each one locks the version it checks until the write commits, so a version can't be saved while a write to one of its rows is still open. Directus shows a trigger's refusal with its reason when it creates or updates a row. When it deletes one, it answers with a 500, which shows the reason only to an admin.
+- Database triggers refuse the same writes on every path, including the ones that skip Directus's filters, such as a flow's data steps. The hook installs them when Directus starts, and again after each schema change if they've changed or a table lost its trigger. An install gives up after 5 seconds waiting for a lock, and logs the failure. The install also drops the unique indexes `plans` once had, which allowed one plan per product or year. The `saved-versions-check` step of the `backend` deploy, which runs whenever the schema or the triggers change, fails the deploy if a planning table lacks its trigger. Each one locks the version it checks until the write commits, so a version can't be saved while a write to one of its rows is still open. Directus shows a trigger's refusal with its reason when it creates or updates a row. When it deletes one, it answers with a 500, which shows the reason only to an admin.
 
 Together they refuse:
 

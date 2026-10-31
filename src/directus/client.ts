@@ -62,7 +62,6 @@ export async function waitForReachable(baseUrl: string, timeoutMs = DEFAULT_REAC
 export interface SavedVersionsStatus {
   fingerprint: string | null;
   tables: Record<string, boolean>;
-  indexes: Record<string, boolean>;
 }
 
 function savedVersionsProblems(status: SavedVersionsStatus, fingerprint: string): string[] {
@@ -71,15 +70,12 @@ function savedVersionsProblems(status: SavedVersionsStatus, fingerprint: string)
     ...Object.entries(status.tables)
       .filter(([, ok]) => !ok)
       .map(([table]) => `${table} has no trigger`),
-    ...Object.entries(status.indexes)
-      .filter(([, ok]) => !ok)
-      .map(([index]) => `the unique index ${index} is missing`),
   ];
 }
 
 /**
- * Waits until the saved-versions hook reports every planning table's trigger and both unique
- * indexes, installed from `fingerprint`'s config. A restart answers 503, or 404 before the hook
+ * Waits until the saved-versions hook reports every planning table's trigger, installed from
+ * `fingerprint`'s config. A restart answers 503, or 404 before the hook
  * loads, and the hook installs a moment after a schema apply, so each of those waits.
  */
 export async function waitForSavedVersions(

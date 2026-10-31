@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
-import { admin, adminCreate, created, email, itemPath, key, newRow, runId, runRows, type Row } from "./steps/rows.ts";
+import { admin, adminCreate, created, itemPath, key, newRow, runId, runRows, type Row } from "./steps/rows.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
 
@@ -51,10 +51,8 @@ Step("an admin adds another revenue account with the same number", async () => {
 });
 
 let areaId: string | undefined;
-let directorId: string | undefined;
 onEachScenario(() => {
   areaId = undefined;
-  directorId = undefined;
 });
 
 const programArea = async (fields: Row = {}) =>
@@ -85,26 +83,4 @@ Step("an admin adds a program area with no revenue account", async () => {
     expect(status).toBeLessThan(500);
   });
 });
-// The director is a user of their own, which the scenario deletes.
-Step("a program area with a director", async () => {
-  await runRows();
-  const director = await (
-    await admin()
-  ).ok("POST", "/users", {
-    email: email("director"),
-    status: "active",
-    provider: "default",
-  });
-  directorId = director.id;
-  areaId = await programArea({ director_id: directorId });
-});
-Step("an admin deletes the director's user account", async () => {
-  const { status, body } = await (await admin()).request("DELETE", `/users/${directorId}`);
-  expect(status, JSON.stringify(body)).toBe(204);
-});
-Step("it has no director", async () => {
-  const area = await (await admin()).ok("GET", `${itemPath("program_areas", areaId)}?fields=director_id`);
-  expect(area.director_id).toBeNull();
-});
-
 describeAccessFeature("catalog.feature");

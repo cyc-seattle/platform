@@ -51,27 +51,11 @@ export function installTriggers(
   db: Database,
 ): Promise<{ missing: string[]; installed: boolean }>;
 
-export interface UniqueIndex {
-  name: string;
-  kind: "program_area" | "operations";
-  columns: string[];
-  /** How Directus names the index's columns in its error. */
-  field: string;
-}
-
-/** The unique indexes on `plans`. */
-export const INDEXES: UniqueIndex[];
-
-/** Makes the index unless it exists, and returns whether it did. Throws naming the plans that clash. */
-export function installIndex(index: UniqueIndex, db: Database): Promise<boolean>;
-
 export interface TriggerStatus {
   /** The installed triggers' {@link fingerprint}, or null when there are none. */
   fingerprint: string | null;
   /** Whether each table has its trigger. */
   tables: Record<string, boolean>;
-  /** Whether each of {@link INDEXES} exists. */
-  indexes: Record<string, boolean>;
 }
 
 /** What the hook's `/saved-versions/status` endpoint answers. */

@@ -189,6 +189,12 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     program_id: row["programs"],
     program_role_id: row["program_roles"],
   }),
+  program_area_role_assignments: async () => ({
+    id: randomUUID(),
+    person_id: guardianPersonId,
+    program_area_id: row["program_areas"],
+    program_role_id: row["program_roles"],
+  }),
   // A queue no worker reads, so no sync picks the task up.
   sync_tasks: async () => {
     const queue = `test-${runId}`;
@@ -410,6 +416,7 @@ export const changes: Record<string, () => Row> = {
   registration_billing: () => ({ tax: 1 }),
   event_staff: () => ({ session_id: row["sessions"] }),
   program_role_assignments: () => ({ ends_on: daysFromNow(30) }),
+  program_area_role_assignments: () => ({ ends_on: daysFromNow(30) }),
   sync_tasks: () => ({ last_error: "Changed." }),
   sync_runs: () => ({ error: "Changed." }),
   audit_findings: () => ({ detail: "A changed test finding." }),
@@ -493,6 +500,7 @@ async function createRows(): Promise<void> {
     ["registration_billing", () => ({ registration_id: row["registrations"] })],
     ["event_staff", () => ({})],
     ["program_role_assignments", () => ({})],
+    ["program_area_role_assignments", () => ({})],
     ["sync_tasks", () => ({})],
     ["sync_runs", () => ({})],
     ["audit_findings", () => ({})],

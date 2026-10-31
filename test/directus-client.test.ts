@@ -787,7 +787,6 @@ describe("waitForSavedVersions", () => {
   const status = (overrides: object = {}) => ({
     fingerprint: "abc",
     tables: { plans: true, plan_offerings: true },
-    indexes: { cyc_one_product_plan: true },
     ...overrides,
   });
   const wait = () => waitForSavedVersions(baseUrl, token, "abc", { timeoutMs: 200, intervalMs: 10 });
@@ -816,19 +815,12 @@ describe("waitForSavedVersions", () => {
     expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 
-  it("fails naming each table without its trigger and each missing index", async () => {
+  it("fails naming each table without its trigger", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          jsonResponse(
-            200,
-            status({ tables: { plans: true, plan_offerings: false }, indexes: { cyc_one_product_plan: false } }),
-          ),
-        ),
+      vi.fn().mockResolvedValue(jsonResponse(200, status({ tables: { plans: true, plan_offerings: false } }))),
     );
-    await expect(wait()).rejects.toThrow(/plan_offerings has no trigger.*cyc_one_product_plan is missing/s);
+    await expect(wait()).rejects.toThrow(/plan_offerings has no trigger/);
   });
 
   it("fails when the installed triggers aren't the ones this deploy expects", async () => {

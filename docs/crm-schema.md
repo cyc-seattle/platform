@@ -47,12 +47,17 @@ waitlist bookkeeping: `clubspot_status`, `confirmed_at`, `waitlist_number`, `acc
 Coordinator or Program Lead, hand-entered by staff, not derived from `event_staff` (which is
 person-plus-session and Clubspot-derived). Anyone holding an assignment is simply a member of the
 program's Google Group; a role's meaning carries no provider mapping.
+`program_area_role_assignments` links a person to a program area the same way, with a role from
+the same catalog, such as Director. An area can have any number of people in each role. It's a
+table of its own, so the roster rules and Google Group membership, which read
+`program_role_assignments`, don't change.
 
-A program's revenue account is its product's, `products.revenue_account_id`. `gsuite-sync`'s audit
+A program's revenue account is its program area's, or its product's own for a product in no area. `gsuite-sync`'s audit
 reads it to flag a Clubspot Camp whose classes map to programs with more than one distinct account
 (cyc-seattle/isthmia#149).
 
-`programs` lives in `schemas/core.yaml`, the catalog, with `crm` adding `role_assignments` to it.
+`programs` and `program_areas` live in `schemas/core.yaml`, the catalog, with `crm` adding
+`role_assignments` to each.
 `programs.product_id` makes each program a subtype of a product of kind `program`, per `AGENTS.md`'s
 subtype pattern, so every program has one. `gsuite-sync`'s audit reports a program whose product is
 of another kind.

@@ -33,12 +33,11 @@ export interface Product {
   program_area_id: Id | null;
 }
 
-/** A part of the club's programs, such as Summer, with its revenue account and director. */
+/** A part of the club's programs, such as Summer, with its revenue account. */
 export interface ProgramArea {
   id: Id;
   name: string;
   revenue_account_id: Id;
-  director_id: Id | null;
 }
 
 export interface Account {

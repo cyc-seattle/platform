@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
-import { describeAccessFeature, expectRefusal, onEachScenario, Step, theirSession } from "./steps/index.ts";
+import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
 import type { CostLine } from "../../src/planning/index.ts";
 import { cents, PnlPlan, share } from "./pnl.ts";
 import {
@@ -19,7 +19,8 @@ import {
   type Row,
 } from "./steps/rows.ts";
 
-// A plan's active version is its last activation (docs/planning-schema.md).
+// The active version for a program area and year, or for the Operations Plan, is the last
+// activation across those plans (docs/planning-schema.md).
 
 let planId: string | undefined;
 let versionIds: string[] = [];
@@ -161,22 +162,36 @@ Step("they can't change the saved version's rules", async () => {
   expect(status, JSON.stringify(body)).toBe(403);
 });
 
-Step("a plan for a program area this year", async () => {
+/** Two plans for one program area and year, each with a saved version, the first of them active. */
+let rivals: { plans: string[]; versions: string[] } = { plans: [], versions: [] };
+Step("two plans for a program area this year, the first of them active", async () => {
   await runRows();
-  const plan = await adminCreate("plans", await newRow("plans"));
-  fixture["plan@area"] = plan;
-});
-Step("an admin starts another plan for the same program area and year", async () => {
-  const first = fixture["plan@area"]!;
-  const second = await newRow("plans", { program_area_id: first["program_area_id"] });
-  const { status } = await (await admin()).request("POST", "/items/plans", second);
-  if (status < 300) {
-    created.push({ collection: "plans", id: second["id"] });
+  const area = await adminCreate("program_areas", await newRow("program_areas"));
+  rivals = { plans: [], versions: [] };
+  for (let i = 0; i < 2; i++) {
+    const plan = await adminCreate("plans", await newRow("plans", { program_area_id: area.id }));
+    const { id } = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
+    await adminSave(id);
+    rivals.plans.push(plan.id);
+    rivals.versions.push(id);
   }
-  expectRefusal(() => {
-    expect(status).toBeGreaterThanOrEqual(400);
-    expect(status).toBeLessThan(500);
-  });
+  await adminCreate("plan_activations", { id: randomUUID(), version_id: rivals.versions[0] });
+});
+Step("they make a saved version of the second plan active", () => activate(rivals.versions[1]!));
+
+/** The newest activation across the program area's plans for the year. */
+async function areaActivation(): Promise<Row | undefined> {
+  const filter = encodeURIComponent(JSON.stringify({ plan_id: { _in: rivals.plans } }));
+  const [newest] = await (
+    await admin()
+  ).ok("GET", `/items/plan_activations?filter=${filter}&sort=-sequence&limit=1&fields=plan_id,version_id`);
+  return newest;
+}
+Step("the second plan is the program area's plan for the year", async () => {
+  expect(await areaActivation()).toEqual({ plan_id: rivals.plans[1], version_id: rivals.versions[1] });
+});
+Step("the first plan has no active version", async () => {
+  expect((await areaActivation())?.["plan_id"]).not.toBe(rivals.plans[0]);
 });
 
 // The P&L examples' plans, made fresh for each one.

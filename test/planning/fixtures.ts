@@ -149,7 +149,7 @@ export function product(overrides: Partial<Product> = {}): Product {
 }
 
 export function area(overrides: Partial<ProgramArea> = {}): ProgramArea {
-  return { id: nextId("area"), name: "An area", revenue_account_id: A.programRevenue, director_id: null, ...overrides };
+  return { id: nextId("area"), name: "An area", revenue_account_id: A.programRevenue, ...overrides };
 }
 
 export function charge(overrides: Partial<PlanRevenueCharge> = {}): PlanRevenueCharge {

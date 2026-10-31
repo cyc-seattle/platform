@@ -27,8 +27,6 @@ const ACTIVATION_STAYS = "An activation stays in the plan's history. Make anothe
 const ONLY_SAVED_ACTIVE = "Only a saved version can be made active.";
 const OWN_PLAN = "A version can only be made active for its own plan.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
-const ONE_PLAN =
-  "A program area has one plan for each organization and year, and an organization one Operations Plan for each year.";
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
@@ -135,29 +133,12 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
   return payload;
 }
 
-/**
- * The unique indexes on `plans`, which Directus can't declare. `field` is how Directus names an
- * index's columns in its error.
- */
-const INDEXES = [
-  {
-    name: "cyc_one_program_area_plan",
-    kind: "program_area",
-    columns: ["organization_id", "fiscal_year", "program_area_id"],
-  },
-  { name: "cyc_one_operations_plan", kind: "operations", columns: ["organization_id", "fiscal_year"] },
-].map((index) => ({ ...index, field: index.columns.join(", ") }));
-
-/** Directus's error for a write a trigger refused, or for a second plan for the same year. */
+/** Directus's error for a write a trigger refused. */
 function databaseError(error) {
   if (error?.code === SQLSTATE) {
     // knex puts the statement before the trigger's message.
     const reason = Object.keys(REASONS).find((known) => String(error.message).endsWith(known));
     return reason ? refuse(reason, REASONS[reason]) : error;
-  }
-  const { collection, field } = error?.extensions ?? {};
-  if (error?.code === "RECORD_NOT_UNIQUE" && collection === PLANS && INDEXES.some((index) => index.field === field)) {
-    return refuse(ONE_PLAN, 400);
   }
   return error;
 }
@@ -178,7 +159,7 @@ function columnsNeeded(config) {
 }
 
 /**
- * The statements that install the triggers, in order. Each `CREATE OR REPLACE`s only this hook's
+ * own functions and triggers, on the planning tables, and drops the unique indexes plans once had. Each trigger locks the row it
  * own functions, triggers, and indexes, on the planning tables. Each trigger locks the row it
  * checks, so a version can't be saved, or a plan changed, while a write that read it is still open.
  */
@@ -289,6 +270,7 @@ $fn$`;
 CREATE OR REPLACE FUNCTION cyc_saved_versions_activation() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
   version record;
+  plan record;
 BEGIN
   IF TG_OP = 'UPDATE' OR (TG_OP = 'DELETE' AND NOT ${deletable}) THEN
     ${raise(ACTIVATION_STAYS)};
@@ -304,9 +286,16 @@ BEGIN
     ${raise(OWN_PLAN)};
   END IF;
   NEW.plan_id := version.plan_id;
-  -- One activation of a plan at a time, so no two take the same place.
-  PERFORM 1 FROM ${PLANS} p WHERE p.id = NEW.plan_id FOR NO KEY UPDATE;
-  SELECT coalesce(max(a.sequence), 0) + 1 INTO NEW.sequence FROM ${ACTIVATIONS} a WHERE a.plan_id = NEW.plan_id;
+  -- Activations are ordered across every plan for the same area, organization, and year, or the
+  -- organization's Operations Plans for the year, so the newest is the one active. One at a time,
+  -- so no two take the same place.
+  SELECT p.kind, p.organization_id, p.fiscal_year, p.program_area_id INTO plan FROM ${PLANS} p WHERE p.id = NEW.plan_id;
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    concat_ws('|', 'cyc_activation', plan.kind, plan.organization_id, plan.fiscal_year, plan.program_area_id), 0));
+  SELECT coalesce(max(a.sequence), 0) + 1 INTO NEW.sequence
+    FROM ${ACTIVATIONS} a JOIN ${PLANS} p ON p.id = a.plan_id
+    WHERE p.kind = plan.kind AND p.organization_id = plan.organization_id AND p.fiscal_year = plan.fiscal_year
+      AND p.program_area_id IS NOT DISTINCT FROM plan.program_area_id;
   NEW.activated_at := now();
   RETURN NEW;
 END
@@ -320,6 +309,10 @@ $fn$`;
   ];
   const all = "INSERT OR UPDATE OR DELETE";
   return [
+    // A program area may have several plans for a year, and an organization several Operations Plans.
+    "DROP INDEX IF EXISTS cyc_one_product_plan",
+    "DROP INDEX IF EXISTS cyc_one_program_area_plan",
+    "DROP INDEX IF EXISTS cyc_one_operations_plan",
     row,
     version,
     plan,
@@ -341,7 +334,7 @@ function fingerprint(config) {
   return crypto.createHash("sha256").update(triggerStatements(config).join(";\n")).digest("hex");
 }
 
-/** Which tables have their trigger, which unique indexes exist, and the installed triggers' fingerprint. */
+/** Which tables have their trigger, and the installed triggers' fingerprint. */
 async function triggerStatus(config, db) {
   const tables = triggered(config);
   const [{ fingerprint: installed }] = await db.query(
@@ -355,15 +348,9 @@ async function triggerStatus(config, db) {
       )
     ).map((row) => row.relname),
   );
-  const indexes = new Set(
-    (await db.query("SELECT indexname FROM pg_indexes WHERE schemaname = current_schema()")).map(
-      (row) => row.indexname,
-    ),
-  );
   return {
     fingerprint: installed ?? null,
     tables: Object.fromEntries(tables.map((table) => [table, triggers.has(table)])),
-    indexes: Object.fromEntries(INDEXES.map(({ name }) => [name, indexes.has(name)])),
   };
 }
 
@@ -398,38 +385,6 @@ async function installTriggers(config, db) {
   return { missing: [], installed: true };
 }
 
-/**
- * Makes one of `INDEXES`, inside a transaction the caller opens, unless it exists. Throws an error
- * naming the plans that clash when they keep it from being made.
- */
-async function installIndex(index, db) {
-  const [found] = await db.query(
-    `SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = ${literal(index.name)}`,
-  );
-  if (found) return false;
-  await db.exec(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT}'`);
-  const columns = index.columns.join(", ");
-  const clashes = await db.query(
-    `SELECT ${columns}, count(*)::int AS count FROM ${PLANS} WHERE kind = ${literal(index.kind)}
-      GROUP BY ${columns} HAVING count(*) > 1`,
-  );
-  if (clashes.length > 0) {
-    const described = clashes.map((clash) => {
-      const what = index.kind === "program_area" ? "program area plans" : "Operations Plans";
-      const area = index.kind === "program_area" ? `, and program area ${clash.program_area_id}` : "";
-      return `${clash.count} ${what} share organization ${clash.organization_id}, year ${clash.fiscal_year}${area}`;
-    });
-    throw new Error(
-      `saved-versions: couldn't make ${index.name}, since ${described.join("; ")}. ` +
-        "Change or delete all but one of each, then restart Directus.",
-    );
-  }
-  await db.exec(
-    `CREATE UNIQUE INDEX IF NOT EXISTS ${index.name} ON ${PLANS} (${columns}) WHERE kind = ${literal(index.kind)}`,
-  );
-  return true;
-}
-
 // Applying a schema emits these once it commits. A changed table may need its trigger again.
 const SCHEMA_EVENTS = ["collections", "fields", "relations"].flatMap((scope) =>
   ["create", "update", "delete"].map((event) => `${scope}.${event}`),
@@ -448,7 +403,6 @@ function register({ filter, action, init }, { env, database, logger }) {
     query: async (sql) => (await trx.raw(sql)).rows,
     exec: (sql) => trx.raw(sql),
   });
-  // The triggers go first, in their own transaction, so a clash in the indexes can't keep them out.
   const install = async () => {
     try {
       const { missing, installed } = await database.transaction((trx) => installTriggers(config, connect(trx)));
@@ -460,14 +414,6 @@ function register({ filter, action, init }, { env, database, logger }) {
         logger.info(`saved-versions: installed the triggers on ${triggered(config).length} planning tables`);
     } catch (error) {
       logger.error(error, "saved-versions: couldn't install the triggers. Writes that skip this hook aren't checked.");
-      return;
-    }
-    for (const index of INDEXES) {
-      try {
-        await database.transaction((trx) => installIndex(index, connect(trx)));
-      } catch (error) {
-        logger.error(error, `saved-versions: couldn't make the unique index ${index.name}`);
-      }
     }
   };
   let pending;
@@ -541,9 +487,7 @@ module.exports = register;
 module.exports.guard = guard;
 module.exports.databaseError = databaseError;
 module.exports.installTriggers = installTriggers;
-module.exports.installIndex = installIndex;
 module.exports.triggerStatus = triggerStatus;
 module.exports.fingerprint = fingerprint;
-module.exports.INDEXES = INDEXES;
 module.exports.triggerStatements = triggerStatements;
 module.exports.REFUSED = REFUSED;

@@ -43,7 +43,7 @@ describe("effectiveAccess", () => {
   it("restricts the fields some Community read rule withholds, and opens the unfiltered lookups", () => {
     expect(community).toEqual({
       restricted: { people: ["email", "phone", "school"], registrations: ["camp_id", "share_contact"] },
-      open: ["camps", "classes", "programs"],
+      open: ["camps", "classes", "program_areas", "programs"],
     });
   });
 
