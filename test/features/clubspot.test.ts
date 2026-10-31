@@ -1,7 +1,7 @@
 import { expect } from "vitest";
 import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
 import { canSet, describeAccessFeature, Step } from "./steps/index.ts";
-import { admin, adminCreate, itemPath, key } from "./steps/rows.ts";
+import { admin, adminCreate, itemPath, key, newRow } from "./steps/rows.ts";
 
 // The sync scenarios seed dev's CRM, and its Clubspot fake through Parse's REST API, run the
 // clubspot-sync CronJob once as a Job, and read the result through Directus's REST API. Their camps
@@ -151,7 +151,7 @@ describeAccessFeature("clubspot.feature", {
       const sailor = () => adminCreate("people", { first_name: "Merge", last_name: `Sailor ${runId}` });
       keeperId = (await sailor()).id;
       duplicateId = (await sailor()).id;
-      const program = await adminCreate("programs", { name: `Program ${runId}` });
+      const program = await adminCreate("programs", await newRow("programs", { name: `Program ${runId}` }));
       const coach = await adminCreate("program_roles", { name: `Coach ${key("role")}` });
       assignmentId = (
         await adminCreate("program_role_assignments", {
