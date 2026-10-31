@@ -5,7 +5,6 @@ import { devDirectusLicensed } from "../directus.ts";
 import { deploymentEnv, devPlatform, feature, optionalDeploymentEnv } from "../support.ts";
 import {
   addToGroup,
-  adminDelete,
   createUser,
   deleteUsers,
   forget,
@@ -14,6 +13,7 @@ import {
   newPerson,
   policiesOf,
   policyNames,
+  removeFromGroup,
   roleNames,
   roleOf,
   roleId,
@@ -486,15 +486,15 @@ async function afterTheHook(policies: string[]): Promise<void> {
 }
 
 Step("an admin takes them out of the group", async () => {
-  await adminDelete("group_members", memberships[0]!.memberId);
+  await removeFromGroup(memberships[0]!.groupId, "members", memberships[0]!.memberId);
   await afterTheHook([]);
 });
 Step("an admin takes them out of one of the groups", async () => {
-  await adminDelete("group_members", memberships[0]!.memberId);
+  await removeFromGroup(memberships[0]!.groupId, "members", memberships[0]!.memberId);
   await afterTheHook([groupPolicy!]);
 });
 Step("an admin changes the group so it no longer gives that policy", async () => {
-  await adminDelete("group_policies", memberships[0]!.grantIds[0]!);
+  await removeFromGroup(memberships[0]!.groupId, "policies", memberships[0]!.grantIds[0]!);
   await afterTheHook([]);
 });
 

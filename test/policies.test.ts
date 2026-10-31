@@ -41,6 +41,21 @@ describe("the policies a group can give", () => {
     ]);
   });
 
+  it("are the only ones a group's policy list offers, and the list makes none", () => {
+    const access = schemas.find(({ name }) => name === "access")!.schema as {
+      fields: {
+        collection: string;
+        field: string;
+        meta: { options: { enableCreate: boolean; filter: { name: { _in: string[] } } } };
+      }[];
+    };
+    const { options } = access.fields.find(
+      ({ collection, field }) => collection === "groups" && field === "policies",
+    )!.meta;
+    expect([...options.filter.name._in].sort()).toEqual(groupPoliciesConfig(policies).grantable);
+    expect(options.enableCreate).toBe(false);
+  });
+
   it("are coarse: no row filters and no field lists, but a person's writable fields and CRM Writer's two hand-set ones", () => {
     for (const rule of policies.flatMap((policy) => policy.rules)) {
       expect(rule.permissions).toBeUndefined();
