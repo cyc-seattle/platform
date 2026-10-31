@@ -13,11 +13,13 @@ collections:
       collection: google_groups
       color: null
       display_template: "{{name}} <{{email}}>"
-      group: null
+      group: Google
       hidden: false
       icon: groups
       item_duplication_fields: null
-      note: One row per Google Group - class and program groups, plus non-program groups like all@ and staff@.
+      note: >-
+        One row for each Google Group: class and program groups, and others such as the staff list. Copied from Google
+        Workspace.
       preview_url: null
       singleton: false
       sort: null
@@ -39,13 +41,13 @@ collections:
       collection: google_group_memberships
       color: null
       display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{group_id.email}}"
-      group: null
+      group: Google
       hidden: false
       icon: group_add
       item_duplication_fields: null
       note: >-
-        One row per person gsuite-sync has seen in a program group. Set removed_at to stop the
-        sync adding someone back; delete the row to let the sync add them again (#265).
+        One row for each person the sync has seen in a program's Google Group. Set Removed at to stop the sync adding
+        them back. Delete the row to let the sync add them again.
       preview_url: null
       singleton: false
       sort: null
@@ -56,6 +58,34 @@ collections:
       versioning: false
     schema:
       name: google_group_memberships
+  - collection: Google
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: Google
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: groups
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations:
+        - language: en-US
+          translation: Google Workspace
+          singular: Google Workspace
+          plural: Google Workspace
+      unarchive_value: null
+      versioning: false
 fields:
   - collection: google_groups
     field: id
@@ -110,9 +140,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The group's address, e.g. class-doublehanded@cyccommunitysailing.org.
+      note: The group's email address.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
@@ -152,7 +182,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -184,24 +214,31 @@ fields:
     meta:
       collection: google_groups
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Announcement
+            value: announcement
+          - text: Crew
+            value: crew
+          - text: Inbox
+            value: inbox
+          - text: Participants
+            value: participants
       field: settings_template
       group: null
       hidden: false
       interface: select-dropdown
-      note: >-
-        Name of a @cyc-seattle/gsuite-sdk settings template to apply to this group. Nullable - a group
-        with no template is left as configured by hand. The settings pass resolves the name.
+      note: Which standard settings the sync gives this group. Empty means the group is left as someone set it up by hand.
       options:
         choices:
-          - text: announcement
+          - text: Announcement
             value: announcement
-          - text: crew
+          - text: Crew
             value: crew
-          - text: inbox
+          - text: Inbox
             value: inbox
-          - text: participants
+          - text: Participants
             value: participants
       readonly: false
       required: false
@@ -235,20 +272,24 @@ fields:
     meta:
       collection: google_groups
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}} <{{email}}>"
       field: parent_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The group this one nests under, e.g. a class group's program group. Not yet read - the nesting pass adds it later.
+      note: The group this one sits under, such as a class group's program group. Not used yet.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Parent group
       validation: null
       validation_message: null
       width: full
@@ -281,9 +322,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Mirrored from the Workspace group's own description by discovery. One direction only - nothing writes it back to Workspace.
+      note: Copied from Google Workspace. A change here isn't sent back.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 6
@@ -321,9 +362,9 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: Set by discovery when the group's email no longer appears in Workspace, and cleared if it reappears.
+      note: Set when the group no longer exists in Google Workspace, and cleared if it comes back.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 7
@@ -405,12 +446,15 @@ fields:
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Group
       validation: null
       validation_message: null
       width: full
@@ -446,12 +490,15 @@ fields:
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
       validation: null
       validation_message: null
       width: full
@@ -484,9 +531,11 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The address the sync added, kept for reading. The sync matches on person, and updates this when the person's email changes.
+      note: >-
+        The address the sync added, kept for reading. The sync matches on person, and updates this when the person's
+        email changes.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
@@ -526,7 +575,7 @@ fields:
       interface: datetime
       note: When the sync first saw this person in the group, whether it added them or they were already there.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 5
@@ -564,7 +613,9 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: Set when the person left or was taken out of the group. While set, the sync never adds them back. Delete the row to let it add them again.
+      note: >-
+        Set when the person left or was taken out of the group. While set, the sync never adds them back. Delete the row
+        to let it add them again.
       options: null
       readonly: false
       required: false
@@ -598,22 +649,24 @@ fields:
     meta:
       collection: programs
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}} <{{email}}>"
       field: google_group_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: >-
-        The program's Google Group, if it has one - nullable, since most programs won't. Declared in
-        gsuite-sync's schema.yaml, not crm's: a provider extension field on a canonical collection.
+      note: The program's Google Group, if it has one. Most programs don't.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Google Group
       validation: null
       validation_message: null
       width: full

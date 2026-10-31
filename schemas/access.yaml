@@ -17,7 +17,7 @@ collections:
       hidden: false
       icon: admin_panel_settings
       item_duplication_fields: null
-      note: Groups, and the policies each gives its members. Only admins change them (docs/access.md).
+      note: Groups, and the policies each gives its members. Only admins change them.
       preview_url: null
       singleton: false
       sort: null
@@ -269,7 +269,6 @@ fields:
       note: The policies this group gives its members.
       options:
         enableCreate: false
-        # The policies a group may give: groupPoliciesConfig in stacks/backend/policies.ts.
         filter:
           name:
             _in:
@@ -339,8 +338,9 @@ fields:
     meta:
       collection: group_members
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: group_id
       group: null
       hidden: false
@@ -350,8 +350,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Group
       validation: null
       validation_message: null
       width: full
@@ -378,8 +381,9 @@ fields:
     meta:
       collection: group_members
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: person_id
       group: null
       hidden: false
@@ -390,8 +394,11 @@ fields:
       required: true
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
       validation: null
       validation_message: null
       width: full
@@ -459,8 +466,9 @@ fields:
     meta:
       collection: group_policies
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: group_id
       group: null
       hidden: false
@@ -470,8 +478,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Group
       validation: null
       validation_message: null
       width: full
@@ -498,8 +509,9 @@ fields:
     meta:
       collection: group_policies
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: policy_id
       group: null
       hidden: false
@@ -510,8 +522,11 @@ fields:
       required: true
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Policy
       validation: null
       validation_message: null
       width: full

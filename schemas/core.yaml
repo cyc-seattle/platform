@@ -30,8 +30,8 @@ collections:
     meta:
       accountability: all
       archive_app_filter: true
-      archive_field: null
-      archive_value: null
+      archive_field: retired
+      archive_value: "true"
       autosave_revision_interval: null
       collapse: open
       collection: accounts
@@ -48,7 +48,7 @@ collections:
       sort_field: null
       status: active
       translations: null
-      unarchive_value: null
+      unarchive_value: "false"
       versioning: false
     schema:
       name: accounts
@@ -93,7 +93,7 @@ collections:
       hidden: false
       icon: sell
       item_duplication_fields: null
-      note: A lasting thing CYC sells. A kind with fields of its own has a subtype collection, such as programs.
+      note: A lasting thing the club sells. A program also has a row in Programs.
       preview_url: null
       singleton: false
       sort: null
@@ -142,10 +142,10 @@ collections:
       color: null
       display_template: "{{qualification_id.name}} covers {{covers_id.name}}"
       group: Catalog
-      hidden: false
+      hidden: true
       icon: account_tree
       item_duplication_fields: null
-      note: Holding qualification_id satisfies a requirement for covers_id.
+      note: Holding one qualification also meets a requirement for another.
       preview_url: null
       singleton: false
       sort: null
@@ -197,9 +197,7 @@ collections:
       hidden: false
       icon: school
       item_duplication_fields: null
-      note: >-
-        The durable catalog entry (e.g. Youth Camp, LTS Weekday) a class links
-        to by hand. Not Clubspot's Camp - see camps.
+      note: A lasting program, such as Youth Camp, that staff link each Clubspot class to. Not the same as a Clubspot camp.
       preview_url: null
       singleton: false
       sort: null
@@ -246,7 +244,7 @@ collections:
       collapse: open
       collection: organization_cost_accounts
       color: null
-      display_template: null
+      display_template: "{{organization_id.name}}: {{cost_type}}, {{account_id.number}} {{account_id.name}}"
       group: Catalog
       hidden: false
       icon: account_tree
@@ -390,8 +388,19 @@ fields:
     meta:
       collection: accounts
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Revenue
+            value: revenue
+          - text: Expense
+            value: expense
+          - text: Asset
+            value: asset
+          - text: Liability
+            value: liability
+          - text: Net assets
+            value: net_assets
       field: type
       group: null
       hidden: false
@@ -399,15 +408,15 @@ fields:
       note: null
       options:
         choices:
-          - text: revenue
+          - text: Revenue
             value: revenue
-          - text: expense
+          - text: Expense
             value: expense
-          - text: asset
+          - text: Asset
             value: asset
-          - text: liability
+          - text: Liability
             value: liability
-          - text: net_assets
+          - text: Net assets
             value: net_assets
       readonly: false
       required: true
@@ -461,7 +470,9 @@ fields:
       searchable: true
       sort: 5
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Form 990 part
       validation: null
       validation_message: null
       width: full
@@ -501,7 +512,9 @@ fields:
       searchable: true
       sort: 6
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Form 990 line
       validation: null
       validation_message: null
       width: full
@@ -528,8 +541,15 @@ fields:
     meta:
       collection: accounts
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Program
+            value: program
+          - text: Management
+            value: management
+          - text: Fundraising
+            value: fundraising
       field: default_function
       group: null
       hidden: false
@@ -537,11 +557,11 @@ fields:
       note: The functional-expense column a line booked here takes unless it sets its own.
       options:
         choices:
-          - text: program
+          - text: Program
             value: program
-          - text: management
+          - text: Management
             value: management
-          - text: fundraising
+          - text: Fundraising
             value: fundraising
       readonly: false
       required: false
@@ -583,8 +603,9 @@ fields:
     meta:
       collection: accounts
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
       field: parent_id
       group: null
       hidden: false
@@ -595,8 +616,11 @@ fields:
       required: false
       searchable: true
       sort: 8
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Parent account
       validation: null
       validation_message: null
       width: full
@@ -623,8 +647,9 @@ fields:
     meta:
       collection: accounts
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
       field: contra_account_id
       group: null
       hidden: false
@@ -635,8 +660,11 @@ fields:
       required: false
       searchable: true
       sort: 9
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Contra account
       validation: null
       validation_message: null
       width: full
@@ -837,7 +865,9 @@ fields:
       searchable: true
       sort: 4
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Footprint (sq ft)
       validation: null
       validation_message: null
       width: full
@@ -945,26 +975,39 @@ fields:
     meta:
       collection: products
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Program
+            value: program
+          - text: Charter
+            value: charter
+          - text: Storage lease
+            value: storage_lease
+          - text: Merchandise
+            value: merchandise
+          - text: Event hosting
+            value: event_hosting
+          - text: Other
+            value: other
       field: kind
       group: null
       hidden: false
       interface: select-dropdown
-      note: Must match the product's subtype row, if it has one. Directus can't check that across collections.
+      note: A program also needs a row in Programs. Directus can't check that, so keep them matching.
       options:
         choices:
-          - text: program
+          - text: Program
             value: program
-          - text: charter
+          - text: Charter
             value: charter
-          - text: storage_lease
+          - text: Storage lease
             value: storage_lease
-          - text: merchandise
+          - text: Merchandise
             value: merchandise
-          - text: event_hosting
+          - text: Event hosting
             value: event_hosting
-          - text: other
+          - text: Other
             value: other
       readonly: false
       required: true
@@ -1006,8 +1049,9 @@ fields:
     meta:
       collection: products
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
       field: revenue_account_id
       group: null
       hidden: false
@@ -1018,8 +1062,11 @@ fields:
       required: false
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Revenue account
       validation: null
       validation_message: null
       width: full
@@ -1127,8 +1174,9 @@ fields:
     meta:
       collection: qualifications
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{covers_id.name}}"
       field: covers
       group: null
       hidden: false
@@ -1192,8 +1240,9 @@ fields:
     meta:
       collection: qualification_covers
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: qualification_id
       group: null
       hidden: false
@@ -1204,8 +1253,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Qualification
       validation: null
       validation_message: null
       width: full
@@ -1232,8 +1284,9 @@ fields:
     meta:
       collection: qualification_covers
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: covers_id
       group: null
       hidden: false
@@ -1244,8 +1297,11 @@ fields:
       required: true
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Also covers
       validation: null
       validation_message: null
       width: full
@@ -1434,13 +1490,14 @@ fields:
     meta:
       collection: programs
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: product_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The product this program is a subtype of, which must be of kind program.
+      note: The product this program belongs to. Its kind must be Program.
       options:
         filter:
           kind:
@@ -1449,8 +1506,11 @@ fields:
       required: true
       searchable: true
       sort: 7
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Product
       validation: null
       validation_message: null
       width: full
@@ -1477,13 +1537,14 @@ fields:
     meta:
       collection: products
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: programs
       group: null
       hidden: false
       interface: list-o2m
-      note: "The product's program subtype row: one at most, for kind program."
+      note: This product's program details, if it is a program.
       options: null
       readonly: false
       required: false
@@ -1582,14 +1643,64 @@ fields:
     meta:
       collection: organizations
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: January
+            value: 1
+          - text: February
+            value: 2
+          - text: March
+            value: 3
+          - text: April
+            value: 4
+          - text: May
+            value: 5
+          - text: June
+            value: 6
+          - text: July
+            value: 7
+          - text: August
+            value: 8
+          - text: September
+            value: 9
+          - text: October
+            value: 10
+          - text: November
+            value: 11
+          - text: December
+            value: 12
       field: fiscal_year_start_month
       group: null
       hidden: false
-      interface: input
-      note: "The month the fiscal year starts in: 1 for January."
-      options: null
+      interface: select-dropdown
+      note: The month the fiscal year starts in.
+      options:
+        choices:
+          - text: January
+            value: 1
+          - text: February
+            value: 2
+          - text: March
+            value: 3
+          - text: April
+            value: 4
+          - text: May
+            value: 5
+          - text: June
+            value: 6
+          - text: July
+            value: 7
+          - text: August
+            value: 8
+          - text: September
+            value: 9
+          - text: October
+            value: 10
+          - text: November
+            value: 11
+          - text: December
+            value: 12
       readonly: false
       required: true
       searchable: true
@@ -1668,8 +1779,9 @@ fields:
     meta:
       collection: organization_cost_accounts
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: organization_id
       group: null
       hidden: false
@@ -1680,8 +1792,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Organization
       validation: null
       validation_message: null
       width: full
@@ -1708,8 +1823,27 @@ fields:
     meta:
       collection: organization_cost_accounts
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Coach wages
+            value: coach_wages
+          - text: Salaries
+            value: salaries
+          - text: Payroll tax
+            value: payroll_tax
+          - text: Coach boats (RIBs)
+            value: ribs
+          - text: Boat maintenance
+            value: boat_maintenance
+          - text: Resources
+            value: resources
+          - text: Travel
+            value: travel
+          - text: Cost of goods
+            value: cogs
+          - text: Card fees
+            value: card_fees
       field: cost_type
       group: null
       hidden: false
@@ -1717,23 +1851,23 @@ fields:
       note: null
       options:
         choices:
-          - text: coach_wages
+          - text: Coach wages
             value: coach_wages
-          - text: salaries
+          - text: Salaries
             value: salaries
-          - text: payroll_tax
+          - text: Payroll tax
             value: payroll_tax
-          - text: ribs
+          - text: Coach boats (RIBs)
             value: ribs
-          - text: boat_maintenance
+          - text: Boat maintenance
             value: boat_maintenance
-          - text: resources
+          - text: Resources
             value: resources
-          - text: travel
+          - text: Travel
             value: travel
-          - text: cogs
+          - text: Cost of goods
             value: cogs
-          - text: card_fees
+          - text: Card fees
             value: card_fees
       readonly: false
       required: true
@@ -1778,8 +1912,9 @@ fields:
     meta:
       collection: organization_cost_accounts
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
       field: account_id
       group: null
       hidden: false
@@ -1790,8 +1925,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Account
       validation: null
       validation_message: null
       width: full

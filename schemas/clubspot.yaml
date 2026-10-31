@@ -17,7 +17,7 @@ collections:
       hidden: false
       icon: school
       item_duplication_fields: null
-      note: An age/skill subdivision within a camp (Clubspot's CampClass).
+      note: An age or skill group within a camp. Copied from Clubspot, so edit it there. Only its program is set here.
       preview_url: null
       singleton: false
       sort: null
@@ -44,9 +44,8 @@ collections:
       icon: dynamic_form
       item_duplication_fields: null
       note: >-
-        A custom question defined per camp (Clubspot's CustomField, e.g.
-        School). Keyed per camp, not per club - the same logical question drifts
-        across camp clones.
+        A question a camp's registration form asks, such as School. Each camp has its own copy, so the same question can
+        be worded differently from camp to camp. Copied from Clubspot.
       preview_url: null
       singleton: false
       sort: null
@@ -72,7 +71,7 @@ collections:
       hidden: false
       icon: question_answer
       item_duplication_fields: null
-      note: One registration's answer to a custom_field_definitions question.
+      note: One registration's answer to a camp's question. Copied from Clubspot.
       preview_url: null
       singleton: false
       sort: null
@@ -93,12 +92,12 @@ collections:
       collapse: open
       collection: entry_caps
       color: null
-      display_template: "{{class_id.name}} (cap {{cap}})"
+      display_template: "{{class_id.name}}, {{session_id.name}} (cap {{cap}})"
       group: Schedule
       hidden: false
       icon: pie_chart
       item_duplication_fields: null
-      note: Capacity, matching Clubspot's EntryCap.
+      note: How many sailors a class can take in a session. Copied from Clubspot, so edit it there.
       preview_url: null
       singleton: false
       sort: null
@@ -124,9 +123,7 @@ collections:
       hidden: false
       icon: badge
       item_duplication_fields: null
-      note: >-
-        Coach/staff assigned to a session. Makes someone a 'coach' (derived, not
-        stored).
+      note: A coach or staff member working a session. Copied from Clubspot.
       preview_url: null
       singleton: false
       sort: null
@@ -152,10 +149,7 @@ collections:
       hidden: false
       icon: event_repeat
       item_duplication_fields: null
-      note: >-
-        A dated event (Clubspot's Camp, e.g. "2026 Fall Double-handed Race
-        Team"). Its programs are derived - the distinct programs of its
-        classes.
+      note: A dated event, such as a season's race team. Copied from Clubspot, so edit it there.
       preview_url: null
       singleton: false
       sort: null
@@ -182,8 +176,8 @@ collections:
       icon: upgrade
       item_duplication_fields: null
       note: >-
-        Staff-maintained mapping from a people column to the Clubspot
-        custom-field labels that should populate it.
+        Which Clubspot registration questions fill in a field on a person's CRM record, such as School. Staff keep this
+        list.
       preview_url: null
       singleton: false
       sort: null
@@ -210,9 +204,8 @@ collections:
       icon: badge
       item_duplication_fields: null
       note: >-
-        One row per Clubspot Participant objectId - the registration form's
-        participant, guardian, emergency-contact, and medical answers, held
-        separately from the curated `people` row it resolves to.
+        A sailor as their Clubspot registration form gives them: guardians, emergency contacts, and medical answers.
+        Copied from Clubspot. Edit the person in People instead.
       preview_url: null
       singleton: false
       sort: null
@@ -233,15 +226,14 @@ collections:
       collapse: open
       collection: registration_billing
       color: null
-      display_template: "{{registration_id}}"
+      display_template: >-
+        {{registration_id.participant_id.first_name}} {{registration_id.participant_id.last_name}} -
+        {{registration_id.camp_id.name}}
       group: Registrations
       hidden: false
       icon: payments
       item_duplication_fields: null
-      note: >-
-        One row per registration, mapping Clubspot's
-        BillingRegistrationAttributes. Its own collection, not columns on
-        registrations, so financial data gets its own permission policy.
+      note: What a registration was charged and paid. Copied from Clubspot, so edit it there.
       preview_url: null
       singleton: false
       sort: null
@@ -267,9 +259,7 @@ collections:
       hidden: false
       icon: assignment_turned_in
       item_duplication_fields: null
-      note: >-
-        One row per session + class within a registration (Clubspot's
-        RegistrationCampSession).
+      note: One session and class a registration signed up for. Copied from Clubspot.
       preview_url: null
       singleton: false
       sort: null
@@ -290,12 +280,12 @@ collections:
       collapse: open
       collection: registrations
       color: null
-      display_template: "{{participant_id.person_id.first_name}} {{participant_id.person_id.last_name}} - {{camp_id.name}}"
+      display_template: "{{participant_id.first_name}} {{participant_id.last_name}} - {{camp_id.name}}"
       group: Registrations
       hidden: false
       icon: how_to_reg
       item_duplication_fields: null
-      note: One row per Clubspot Registration object (person + camp).
+      note: One sailor's registration for a camp. Copied from Clubspot.
       preview_url: null
       singleton: false
       sort: null
@@ -321,7 +311,7 @@ collections:
       hidden: false
       icon: link
       item_duplication_fields: null
-      note: Which classes a session offers - the camp schedule itself.
+      note: Which classes a session offers. Copied from Clubspot.
       preview_url: null
       singleton: false
       sort: null
@@ -347,7 +337,7 @@ collections:
       hidden: false
       icon: event
       item_duplication_fields: null
-      note: A dated instance within a camp (Clubspot's CampSession).
+      note: A dated part of a camp, such as one week. Copied from Clubspot, so edit it there.
       preview_url: null
       singleton: false
       sort: null
@@ -441,11 +431,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot CampClass objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -477,20 +467,24 @@ fields:
     meta:
       collection: classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: camp_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Camp
       validation: null
       validation_message: null
       width: full
@@ -525,7 +519,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
@@ -561,11 +555,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot CustomField objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -597,20 +591,24 @@ fields:
     meta:
       collection: custom_field_definitions
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: camp_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Camp
       validation: null
       validation_message: null
       width: full
@@ -643,11 +641,9 @@ fields:
       group: null
       hidden: false
       interface: input-multiline
-      note: >-
-        Clubspot's CustomField.name. Not bounded - one live label is an entire
-        code of conduct.
+      note: The question as Clubspot words it. It can be long.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
@@ -685,9 +681,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "Clubspot's CustomField.type: text, select, radio, or file_upload."
+      note: "Clubspot's kind of question: text, select, radio, or file upload."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
@@ -727,7 +723,7 @@ fields:
       interface: boolean
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 5
@@ -763,11 +759,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The join of registration_id and definition_id ("<registration id>:<definition id>"), assigned by the sync.
+      note: Made from the registration's and the question's Clubspot IDs.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -799,20 +795,24 @@ fields:
     meta:
       collection: custom_field_responses
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{participant_id.first_name}} {{participant_id.last_name}} - {{camp_id.name}}"
       field: registration_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Registration
       validation: null
       validation_message: null
       width: full
@@ -839,20 +839,24 @@ fields:
     meta:
       collection: custom_field_responses
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{label}} ({{camp_id.name}})"
       field: definition_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Question
       validation: null
       validation_message: null
       width: full
@@ -887,7 +891,7 @@ fields:
       interface: input-multiline
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 4
@@ -923,11 +927,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot EntryCap objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -959,20 +963,24 @@ fields:
     meta:
       collection: entry_caps
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: class_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Class
       validation: null
       validation_message: null
       width: full
@@ -999,20 +1007,24 @@ fields:
     meta:
       collection: entry_caps
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{camp_id.name}} - {{name}}"
       field: session_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Session
       validation: null
       validation_message: null
       width: full
@@ -1047,7 +1059,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
@@ -1120,20 +1132,24 @@ fields:
     meta:
       collection: event_staff
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: person_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Staff member
       validation: null
       validation_message: null
       width: full
@@ -1160,20 +1176,24 @@ fields:
     meta:
       collection: event_staff
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{camp_id.name}} - {{name}}"
       field: session_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Session
       validation: null
       validation_message: null
       width: full
@@ -1204,11 +1224,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot Camp objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -1248,7 +1268,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
@@ -1285,10 +1305,10 @@ fields:
       field: start_date
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 4
@@ -1325,10 +1345,10 @@ fields:
       field: end_date
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 5
@@ -1401,25 +1421,32 @@ fields:
     meta:
       collection: promoted_fields
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: School
+            value: school
+          - text: Share contact
+            value: share_contact
       field: target_field
       group: null
       hidden: false
       interface: select-dropdown
-      note: The people column this row's labels promote a response into.
+      note: The field on a person's CRM record that the answers fill in.
       options:
         choices:
-          - text: school
+          - text: School
             value: school
-          - text: share_contact
+          - text: Share contact
             value: share_contact
       readonly: false
       required: true
       searchable: true
       sort: 2
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Fills in
       validation: null
       validation_message: null
       width: full
@@ -1452,7 +1479,7 @@ fields:
       group: null
       hidden: false
       interface: tags
-      note: Clubspot custom-field labels that answer this row's target_field.
+      note: The Clubspot questions, worded exactly as on the form, whose answers fill in this field.
       options: null
       readonly: false
       required: true
@@ -1460,7 +1487,9 @@ fields:
       sort: 3
       special:
         - cast-json
-      translations: null
+      translations:
+        - language: en-US
+          translation: Clubspot questions
       validation: null
       validation_message: null
       width: full
@@ -1491,11 +1520,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot Participant objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -1527,8 +1556,9 @@ fields:
     meta:
       collection: participants
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: person_id
       group: null
       hidden: false
@@ -1539,8 +1569,11 @@ fields:
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person in the CRM
       validation: null
       validation_message: null
       width: full
@@ -1567,20 +1600,24 @@ fields:
     meta:
       collection: participants
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{source}} {{started_at}} ({{status}})"
       field: last_sync_run_id
       group: null
-      hidden: false
+      hidden: true
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Last sync
       validation: null
       validation_message: null
       width: full
@@ -1615,7 +1652,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 4
@@ -1655,7 +1692,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 5
@@ -1695,7 +1732,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 6
@@ -1735,7 +1772,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 7
@@ -1772,10 +1809,10 @@ fields:
       field: date_of_birth
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 8
@@ -1815,7 +1852,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 9
@@ -1855,7 +1892,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 10
@@ -1895,7 +1932,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 11
@@ -1935,7 +1972,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 12
@@ -1975,7 +2012,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 13
@@ -2015,7 +2052,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 14
@@ -2055,7 +2092,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 15
@@ -2095,7 +2132,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 16
@@ -2135,7 +2172,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 17
@@ -2175,7 +2212,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 18
@@ -2215,7 +2252,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 19
@@ -2255,7 +2292,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 20
@@ -2295,7 +2332,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 21
@@ -2335,7 +2372,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 22
@@ -2375,7 +2412,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 23
@@ -2415,7 +2452,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 24
@@ -2455,7 +2492,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 25
@@ -2495,7 +2532,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 26
@@ -2535,7 +2572,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 27
@@ -2572,10 +2609,10 @@ fields:
       field: medical_conditions
       group: null
       hidden: false
-      interface: input
+      interface: input-multiline
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 28
@@ -2612,10 +2649,10 @@ fields:
       field: medical_allergies
       group: null
       hidden: false
-      interface: input
+      interface: input-multiline
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 29
@@ -2652,10 +2689,10 @@ fields:
       field: medical_medications
       group: null
       hidden: false
-      interface: input
+      interface: input-multiline
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 30
@@ -2695,12 +2732,14 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 31
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Medical last tetanus shot
       validation: null
       validation_message: null
       width: full
@@ -2735,7 +2774,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 32
@@ -2775,7 +2814,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 33
@@ -2813,9 +2852,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Raw Clubspot weight string, not yet validated - see parseWeight in clubspot-sync.
+      note: As typed on the Clubspot form, so it may not be a number.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 34
@@ -2851,11 +2890,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot BillingRegistrationAttributes objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -2887,20 +2926,24 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{participant_id.first_name}} {{participant_id.last_name}} - {{camp_id.name}}"
       field: registration_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Registration
       validation: null
       validation_message: null
       width: full
@@ -2927,18 +2970,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: amount
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "The total charged. In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
@@ -2970,18 +3010,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: amount_pending
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "Charged but not paid yet. In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
@@ -3013,18 +3050,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: amount_received
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 5
@@ -3056,18 +3090,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: amount_refunded
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 6
@@ -3099,18 +3130,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: amount_capturable
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "Approved on a card but not collected yet, as Clubspot reports it. In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 7
@@ -3142,18 +3170,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: amount_deferred
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "Left to bill later, such as on a payment plan, as Clubspot reports it. In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 8
@@ -3185,18 +3210,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: deferred_amount_billed
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "How much of the amount left to bill later has been billed so far. In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 9
@@ -3228,18 +3250,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: discount
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 10
@@ -3271,18 +3290,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: processing_fee
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 11
@@ -3314,18 +3330,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: processing_passed_on
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "Card processing fees the family paid on top. In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 12
@@ -3357,18 +3370,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: application_fee_amount
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "Clubspot's own fee on this charge. In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 13
@@ -3400,18 +3410,15 @@ fields:
     meta:
       collection: registration_billing
       conditions: null
-      display: formatted-value
-      display_options:
-        currency: USD
-        format: true
-        type: currency
+      display: cents-as-dollars
+      display_options: null
       field: tax
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 14
@@ -3451,7 +3458,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 15
@@ -3487,11 +3494,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot RegistrationCampSession objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -3523,20 +3530,24 @@ fields:
     meta:
       collection: registration_entries
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{participant_id.first_name}} {{participant_id.last_name}} - {{camp_id.name}}"
       field: registration_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Registration
       validation: null
       validation_message: null
       width: full
@@ -3563,20 +3574,24 @@ fields:
     meta:
       collection: registration_entries
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: session_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Session
       validation: null
       validation_message: null
       width: full
@@ -3603,20 +3618,24 @@ fields:
     meta:
       collection: registration_entries
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: class_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Class
       validation: null
       validation_message: null
       width: full
@@ -3643,8 +3662,15 @@ fields:
     meta:
       collection: registration_entries
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Confirmed
+            value: confirmed
+          - text: Waitlist
+            value: waitlist
+          - text: Cancelled
+            value: cancelled
       field: status
       group: null
       hidden: false
@@ -3652,13 +3678,13 @@ fields:
       note: null
       options:
         choices:
-          - text: confirmed
+          - text: Confirmed
             value: confirmed
-          - text: waitlist
+          - text: Waitlist
             value: waitlist
-          - text: cancelled
+          - text: Cancelled
             value: cancelled
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 5
@@ -3694,11 +3720,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot Registration objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -3730,20 +3756,24 @@ fields:
     meta:
       collection: registrations
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: camp_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Camp
       validation: null
       validation_message: null
       width: full
@@ -3775,10 +3805,10 @@ fields:
       field: registered_at
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
@@ -3818,7 +3848,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 5
@@ -3858,7 +3888,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 6
@@ -3898,7 +3928,7 @@ fields:
       interface: boolean
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 7
@@ -3938,7 +3968,7 @@ fields:
       interface: boolean
       note: Null means never answered - treated as not shared.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 8
@@ -3970,15 +4000,14 @@ fields:
     meta:
       collection: people
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: participant_links
       group: null
       hidden: false
       interface: list-o2m
-      note: >-
-        Reverse of participants.person_id - the participant rows this person
-        is linked to.
+      note: The Clubspot participants linked to this person.
       options: null
       readonly: false
       required: false
@@ -4000,11 +4029,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The join of session_id and class_id ("<session id>:<class id>"), assigned by the sync.
+      note: Made from the session's and the class's Clubspot IDs.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -4036,20 +4065,24 @@ fields:
     meta:
       collection: session_classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{camp_id.name}} - {{name}}"
       field: session_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Session
       validation: null
       validation_message: null
       width: full
@@ -4076,20 +4109,24 @@ fields:
     meta:
       collection: session_classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: class_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Class
       validation: null
       validation_message: null
       width: full
@@ -4120,11 +4157,11 @@ fields:
       display_options: null
       field: id
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: The Clubspot CampSession objectId - assigned by the sync, not generated.
+      note: Clubspot's own ID for this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 1
@@ -4156,20 +4193,24 @@ fields:
     meta:
       collection: sessions
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: camp_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Camp
       validation: null
       validation_message: null
       width: full
@@ -4201,10 +4242,10 @@ fields:
       field: start_date
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 4
@@ -4241,10 +4282,10 @@ fields:
       field: end_date
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 5
@@ -4284,7 +4325,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -4324,7 +4365,7 @@ fields:
       interface: boolean
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 6
@@ -4356,22 +4397,24 @@ fields:
     meta:
       collection: classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: program_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: >-
-        Set by hand, once per class. The sync never writes this field - see
-        planClasses.
+      note: Set by hand, once for each class. The sync never changes it.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program
       validation: null
       validation_message: null
       width: full
@@ -4406,7 +4449,7 @@ fields:
       interface: boolean
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 6
@@ -4444,13 +4487,9 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: >-
-        The instant this camp's own sync last ran, on success - not this run's start, since an
-        earlier camp in the same run can take real time. Null means never synced. A sync that
-        writes nothing still advances this, so the read window it leaves for registrations tiles
-        with the next sync's, with no gap and no replay.
+      note: When this camp last synced from Clubspot. Empty means never.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 7
@@ -4489,10 +4528,10 @@ fields:
       hidden: false
       interface: input
       note: >-
-        Consecutive syncs that wrote nothing. Doubles the polling interval per count, up to a
-        one-week cap, and resets to zero the moment a sync writes something - see backoff.ts.
+        How many syncs in a row found nothing new. The more there are, the less often the sync checks this camp, down to
+        once a week.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 8
@@ -4530,16 +4569,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: >-
-        The Clubspot chart-of-accounts code this camp sells against
-        (Camp.chartOfAccounts). Null means the camp has no accounting set up.
+      note: The account code this camp sells against in Clubspot. Empty means the camp has no accounting set up.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 9
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Clubspot sales account
       validation: null
       validation_message: null
       width: full
@@ -4572,14 +4611,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Clubspot's own per-entry status, stored verbatim alongside the derived status column.
+      note: The status exactly as Clubspot gives it. Use Status instead.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 11
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Clubspot status (raw)
       validation: null
       validation_message: null
       width: full
@@ -4611,10 +4652,10 @@ fields:
       field: confirmed_at
       group: null
       hidden: false
-      interface: input
+      interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 6
@@ -4654,7 +4695,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 7
@@ -4694,7 +4735,7 @@ fields:
       interface: boolean
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 8
@@ -4732,9 +4773,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Nullable despite the Clubspot SDK typing this required - live data has already shown other "required" fields absent.
+      note: Clubspot's priority for this entry. Often empty.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 9
@@ -4766,20 +4807,24 @@ fields:
     meta:
       collection: registrations
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: participant_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 10
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Participant
       validation: null
       validation_message: null
       width: full
@@ -4806,20 +4851,24 @@ fields:
     meta:
       collection: registrations
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{source}} {{started_at}} ({{status}})"
       field: last_sync_run_id
       group: null
-      hidden: false
+      hidden: true
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 11
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Last sync
       validation: null
       validation_message: null
       width: full
@@ -4846,22 +4895,24 @@ fields:
     meta:
       collection: contact_points
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: participant_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: >-
-        The last participant form that used this value, if any - a provider extension field on
-        crm's contact_points collection, declared here because it points at participants.
+      note: The last Clubspot form that gave this email or phone, if any.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 8
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Last Clubspot form
       validation: null
       validation_message: null
       width: full
@@ -4888,13 +4939,14 @@ fields:
     meta:
       collection: programs
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}} ({{camp_id.name}})"
       field: classes
       group: null
       hidden: false
       interface: list-o2m
-      note: Reverse of classes.program_id.
+      note: The Clubspot classes linked to this program.
       options: null
       readonly: false
       required: false
@@ -4912,13 +4964,14 @@ fields:
     meta:
       collection: classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{session_id.name}} - {{class_id.name}}"
       field: registration_entries
       group: null
       hidden: false
       interface: list-o2m
-      note: Reverse of registration_entries.class_id.
+      note: The registrations signed up for this class.
       options: null
       readonly: false
       required: false
@@ -4936,13 +4989,14 @@ fields:
     meta:
       collection: registrations
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{session_id.name}} - {{class_id.name}}"
       field: registration_entries
       group: null
       hidden: false
       interface: list-o2m
-      note: Reverse of registration_entries.registration_id.
+      note: The sessions and classes this registration signed up for.
       options: null
       readonly: false
       required: false
@@ -4960,13 +5014,14 @@ fields:
     meta:
       collection: participants
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{participant_id.first_name}} {{participant_id.last_name}} - {{camp_id.name}}"
       field: registrations
       group: null
       hidden: false
       interface: list-o2m
-      note: Reverse of registrations.participant_id.
+      note: This participant's registrations.
       options: null
       readonly: false
       required: false

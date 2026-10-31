@@ -820,3 +820,118 @@ export class DirectusSettings extends pulumi.dynamic.Resource {
     super(directusSettingsProvider, name, { ...args }, withSecretOutputs(["adminPassword"], opts));
   }
 }
+
+// --- DirectusPreset: a collection's global default view, the one a user sees until they save their
+// own. Directus marks it with no user, role, or bookmark. A user's own saved view still wins over it.
+
+/** How a collection's table opens: its sort, its columns, and an optional filter. */
+export interface DefaultView {
+  collection: string;
+  /** Fields to sort by, `-` first for descending, such as `["-start_date", "name"]`. */
+  sort: string[];
+  /** The columns, in order. A dotted path shows a related row's field. */
+  fields: string[];
+  /** A Directus filter, such as `{ removed_at: { _null: true } }`. */
+  filter?: Record<string, unknown>;
+}
+
+interface DirectusPresetInputs extends DirectusAuthProps, DefaultView {}
+
+interface DirectusPresetOutputs extends DirectusPresetInputs {
+  presetId: number;
+}
+
+function presetBody(view: DefaultView): Record<string, unknown> {
+  return {
+    collection: view.collection,
+    user: null,
+    role: null,
+    bookmark: null,
+    layout: "tabular",
+    layout_query: { tabular: { sort: view.sort, fields: view.fields, page: 1 } },
+    filter: view.filter ?? null,
+  };
+}
+
+/** Writes the collection's global preset, taking over one an admin already saved rather than adding a second. */
+async function writePreset(inputs: DirectusPresetInputs, token: string, presetId?: number): Promise<number> {
+  const body = presetBody(inputs);
+  if (presetId !== undefined) {
+    try {
+      await directusRequest(inputs.baseUrl, token, "PATCH", `/presets/${presetId}`, body);
+      return presetId;
+    } catch (error) {
+      if (!isNotFound(error) && !isForbidden(error)) throw error;
+    }
+  }
+  const existing = await directusRequest<{ data: { id: number }[] }>(
+    inputs.baseUrl,
+    token,
+    "GET",
+    `/presets?filter[collection][_eq]=${encodeURIComponent(inputs.collection)}` +
+      "&filter[user][_null]=true&filter[role][_null]=true&filter[bookmark][_null]=true&fields=id&limit=1",
+  );
+  const found = existing.data[0];
+  if (found !== undefined) {
+    await directusRequest(inputs.baseUrl, token, "PATCH", `/presets/${found.id}`, body);
+    return found.id;
+  }
+  const created = await directusRequest<{ data: { id: number } }>(inputs.baseUrl, token, "POST", "/presets", body);
+  return created.data.id;
+}
+
+export const directusPresetProvider: pulumi.dynamic.ResourceProvider = {
+  create: reportErrors("DirectusPreset", "create", async (inputs: DirectusPresetInputs) => {
+    await waitForReachable(inputs.baseUrl);
+    const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
+    const presetId = await writePreset(inputs, token);
+    const outs: DirectusPresetOutputs = { ...inputs, presetId };
+    return { id: String(presetId), outs };
+  }),
+
+  update: reportErrors(
+    "DirectusPreset",
+    "update",
+    async (_id: string, olds: DirectusPresetOutputs, news: DirectusPresetInputs) => {
+      await waitForReachable(news.baseUrl);
+      const token = await login(news.baseUrl, news.adminEmail, news.adminPassword);
+      const presetId = await writePreset(news, token, olds.presetId);
+      const outs: DirectusPresetOutputs = { ...news, presetId };
+      return { outs };
+    },
+  ),
+
+  delete: reportErrors("DirectusPreset", "delete", async (_id: string, props: DirectusPresetOutputs) => {
+    const token = await login(props.baseUrl, props.adminEmail, props.adminPassword);
+    try {
+      await directusRequest(props.baseUrl, token, "DELETE", `/presets/${props.presetId}`);
+    } catch (error) {
+      if (!isNotFound(error) && !isForbidden(error)) throw error;
+    }
+  }),
+
+  // The collection is the preset's identity, so a change to it replaces the preset.
+  diff: reportErrors(
+    "DirectusPreset",
+    "diff",
+    async (_id: string, olds: DirectusPresetOutputs, news: DirectusPresetInputs) => {
+      const replaces = olds.collection !== news.collection ? ["collection"] : [];
+      const changes =
+        replaces.length > 0 ||
+        (["baseUrl", "adminEmail", "adminPassword"] as const).some((key) => olds[key] !== news[key]) ||
+        JSON.stringify(presetBody(olds)) !== JSON.stringify(presetBody(news));
+      return { changes, replaces };
+    },
+  ),
+};
+
+export interface DirectusPresetArgs extends DirectusAuthArgs, DefaultView {}
+
+/** A collection's global default view: its sort and columns for anyone who hasn't saved their own. */
+export class DirectusPreset extends pulumi.dynamic.Resource {
+  declare public readonly presetId: pulumi.Output<number>;
+
+  constructor(name: string, args: DirectusPresetArgs, opts?: pulumi.CustomResourceOptions) {
+    super(directusPresetProvider, name, { ...args, presetId: undefined }, withSecretOutputs(["adminPassword"], opts));
+  }
+}

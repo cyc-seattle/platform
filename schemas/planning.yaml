@@ -30,8 +30,8 @@ collections:
     meta:
       accountability: all
       archive_app_filter: true
-      archive_field: null
-      archive_value: null
+      archive_field: archived
+      archive_value: "true"
       autosave_revision_interval: null
       collapse: open
       collection: plans
@@ -48,7 +48,7 @@ collections:
       sort_field: null
       status: active
       translations: null
-      unarchive_value: null
+      unarchive_value: "false"
       versioning: false
     schema:
       name: plans
@@ -62,7 +62,7 @@ collections:
       collapse: open
       collection: plan_versions
       color: null
-      display_template: "{{plan_id.name}} {{status}} {{saved_at}}"
+      display_template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       group: Planning
       hidden: false
       icon: history
@@ -88,7 +88,7 @@ collections:
       collapse: open
       collection: plan_activations
       color: null
-      display_template: null
+      display_template: "{{plan_id.name}}: {{version_id.saved_at}}"
       group: Planning
       hidden: false
       icon: check_circle
@@ -140,7 +140,7 @@ collections:
       collapse: open
       collection: plan_offering_boat_classes
       color: null
-      display_template: null
+      display_template: "{{offering_id.name}}: {{boat_class_id.name}}"
       group: Planning
       hidden: false
       icon: sailing
@@ -192,7 +192,7 @@ collections:
       collapse: open
       collection: plan_activities
       color: null
-      display_template: "{{date}} {{kind}}"
+      display_template: "{{offering_id.name}}: {{date}} {{kind}}"
       group: Planning
       hidden: false
       icon: event
@@ -218,7 +218,7 @@ collections:
       collapse: open
       collection: plan_activity_resources
       color: null
-      display_template: null
+      display_template: "{{activity_id.offering_id.name}}: {{activity_id.date}}, {{quantity}}"
       group: Planning
       hidden: false
       icon: construction
@@ -296,7 +296,7 @@ collections:
       collapse: open
       collection: plan_rates
       color: null
-      display_template: null
+      display_template: Rates for {{version_id.plan_id.name}}
       group: Planning
       hidden: false
       icon: percent
@@ -374,7 +374,7 @@ collections:
       collapse: open
       collection: plan_salaried_bookings
       color: null
-      display_template: null
+      display_template: "{{position_id.name}}: {{product_id.name}} ({{hours}} h)"
       group: Planning
       hidden: false
       icon: schedule
@@ -426,7 +426,7 @@ collections:
       collapse: open
       collection: plan_boat_rates
       color: null
-      display_template: null
+      display_template: "{{boat_class_id.name}}"
       group: Planning
       hidden: false
       icon: build
@@ -530,7 +530,7 @@ collections:
       collapse: open
       collection: plan_bonus_owner_products
       color: null
-      display_template: null
+      display_template: "{{bonus_owner_id.role_name}}: {{product_id.name}}"
       group: Planning
       hidden: false
       icon: link
@@ -594,8 +594,13 @@ fields:
     meta:
       collection: plans
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Product
+            value: product
+          - text: Operations
+            value: operations
       field: kind
       group: null
       hidden: false
@@ -603,9 +608,9 @@ fields:
       note: null
       options:
         choices:
-          - text: product
+          - text: Product
             value: product
-          - text: operations
+          - text: Operations
             value: operations
       readonly: false
       required: true
@@ -643,8 +648,9 @@ fields:
     meta:
       collection: plans
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: product_id
       group: null
       hidden: false
@@ -655,8 +661,11 @@ fields:
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Product
       validation: null
       validation_message: null
       width: full
@@ -683,8 +692,9 @@ fields:
     meta:
       collection: plans
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: organization_id
       group: null
       hidden: false
@@ -695,8 +705,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Organization
       validation: null
       validation_message: null
       width: full
@@ -843,8 +856,9 @@ fields:
     meta:
       collection: plans
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: versions
       group: null
       hidden: false
@@ -908,8 +922,9 @@ fields:
     meta:
       collection: plan_versions
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: plan_id
       group: null
       hidden: false
@@ -920,8 +935,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
       validation: null
       validation_message: null
       width: full
@@ -948,8 +966,9 @@ fields:
     meta:
       collection: plan_versions
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: parent_version_id
       group: null
       hidden: false
@@ -960,8 +979,11 @@ fields:
       required: false
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Started from
       validation: null
       validation_message: null
       width: full
@@ -988,8 +1010,13 @@ fields:
     meta:
       collection: plan_versions
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Draft
+            value: draft
+          - text: Saved
+            value: saved
       field: status
       group: null
       hidden: false
@@ -997,9 +1024,9 @@ fields:
       note: Saving a draft sets this to saved. A saved version never changes, even for an admin.
       options:
         choices:
-          - text: draft
+          - text: Draft
             value: draft
-          - text: saved
+          - text: Saved
             value: saved
       readonly: false
       required: true
@@ -1081,7 +1108,7 @@ fields:
       display_options: null
       field: saved_by
       group: null
-      hidden: false
+      hidden: true
       interface: input
       note: Set when the version is saved.
       options: null
@@ -1163,14 +1190,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The @cyc-seattle/platform version that calculated its numbers. Required to save.
+      note: The version of the planning engine that calculated its numbers. Required to save.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 8
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Engine version
       validation: null
       validation_message: null
       width: full
@@ -1197,8 +1226,9 @@ fields:
     meta:
       collection: plan_versions
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: operations_version_id
       group: null
       hidden: false
@@ -1218,8 +1248,11 @@ fields:
       required: false
       searchable: true
       sort: 9
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Operations Plan version
       validation: null
       validation_message: null
       width: full
@@ -1287,8 +1320,9 @@ fields:
     meta:
       collection: plan_activations
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: plan_id
       group: null
       hidden: false
@@ -1299,8 +1333,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
       validation: null
       validation_message: null
       width: full
@@ -1327,8 +1364,9 @@ fields:
     meta:
       collection: plan_activations
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -1339,8 +1377,11 @@ fields:
       required: true
       searchable: true
       sort: 3
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -1411,7 +1452,7 @@ fields:
       display_options: null
       field: activated_by
       group: null
-      hidden: false
+      hidden: true
       interface: input
       note: null
       options: null
@@ -1528,8 +1569,9 @@ fields:
     meta:
       collection: plan_offerings
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -1540,8 +1582,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -1574,9 +1619,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -1609,8 +1654,9 @@ fields:
     meta:
       collection: plan_offerings
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: product_id
       group: null
       hidden: false
@@ -1621,8 +1667,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Product
       validation: null
       validation_message: null
       width: full
@@ -1855,7 +1904,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Whole kids. Or set fill_rate.
+      note: Whole kids. Or set Fill rate instead.
       options: null
       readonly: false
       required: false
@@ -1895,7 +1944,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: A share of capacity, if target_enrollment is empty.
+      note: A share of capacity, used when Target enrollment is empty. 0.8 means 80%.
       options: null
       readonly: false
       required: false
@@ -1929,20 +1978,22 @@ fields:
     meta:
       collection: plan_offerings
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: price_cents
       group: null
       hidden: false
       interface: input
-      note: Per kid.
+      note: "Per kid. In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 12
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Price
       validation: null
       validation_message: null
       width: full
@@ -2055,7 +2106,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: A staff level's key in the Operations Plan.
+      note: "The coach level: copy the Key from a staff level in the Operations Plan."
       options: null
       readonly: false
       required: false
@@ -2089,8 +2140,9 @@ fields:
     meta:
       collection: plan_offerings
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: required_qualification
       group: null
       hidden: false
@@ -2101,8 +2153,11 @@ fields:
       required: false
       searchable: true
       sort: 16
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Required qualification
       validation: null
       validation_message: null
       width: full
@@ -2175,14 +2230,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The share of sailors who bring their own boat.
+      note: The share of sailors who bring their own boat. 0.25 means 25%.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 18
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Bring-own-boat share
       validation: null
       validation_message: null
       width: full
@@ -2335,14 +2392,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Cost of goods sold, as a share of revenue.
+      note: Cost of goods sold, as a share of revenue. 0.1 means 10%.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 22
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Cost of goods rate
       validation: null
       validation_message: null
       width: full
@@ -2450,8 +2509,9 @@ fields:
     meta:
       collection: plan_offering_boat_classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -2462,8 +2522,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -2496,9 +2559,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -2531,8 +2594,9 @@ fields:
     meta:
       collection: plan_offering_boat_classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: offering_id
       group: null
       hidden: false
@@ -2543,8 +2607,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Offering
       validation: null
       validation_message: null
       width: full
@@ -2571,8 +2638,9 @@ fields:
     meta:
       collection: plan_offering_boat_classes
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: boat_class_id
       group: null
       hidden: false
@@ -2583,8 +2651,11 @@ fields:
       required: true
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat class
       validation: null
       validation_message: null
       width: full
@@ -2617,7 +2688,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: null
+      note: This boat class's share of the offering's sailors. 0.5 means 50%.
       options: null
       readonly: false
       required: true
@@ -2692,8 +2763,9 @@ fields:
     meta:
       collection: plan_trips
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -2704,8 +2776,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -2738,9 +2813,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -2773,8 +2848,9 @@ fields:
     meta:
       collection: plan_trips
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: offering_id
       group: null
       hidden: false
@@ -2785,8 +2861,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Offering
       validation: null
       validation_message: null
       width: full
@@ -2893,20 +2972,22 @@ fields:
     meta:
       collection: plan_trips
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: airfare_cents
       group: null
       hidden: false
       interface: input
-      note: Per coach.
+      note: "Per coach. In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 7
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Airfare
       validation: null
       validation_message: null
       width: full
@@ -3014,8 +3095,9 @@ fields:
     meta:
       collection: plan_activities
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -3026,8 +3108,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -3060,9 +3145,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -3095,8 +3180,9 @@ fields:
     meta:
       collection: plan_activities
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: offering_id
       group: null
       hidden: false
@@ -3107,8 +3193,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Offering
       validation: null
       validation_message: null
       width: full
@@ -3135,8 +3224,9 @@ fields:
     meta:
       collection: plan_activities
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: trip_id
       group: null
       hidden: false
@@ -3147,8 +3237,11 @@ fields:
       required: false
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Trip
       validation: null
       validation_message: null
       width: full
@@ -3415,8 +3508,17 @@ fields:
     meta:
       collection: plan_activities
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Practice
+            value: practice
+          - text: Regatta
+            value: regatta
+          - text: Clinic
+            value: clinic
+          - text: Travel
+            value: travel
       field: kind
       group: null
       hidden: false
@@ -3424,13 +3526,13 @@ fields:
       note: null
       options:
         choices:
-          - text: practice
+          - text: Practice
             value: practice
-          - text: regatta
+          - text: Regatta
             value: regatta
-          - text: clinic
+          - text: Clinic
             value: clinic
-          - text: travel
+          - text: Travel
             value: travel
       readonly: false
       required: true
@@ -3671,8 +3773,9 @@ fields:
     meta:
       collection: plan_activity_resources
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -3683,8 +3786,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -3717,9 +3823,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -3752,8 +3858,9 @@ fields:
     meta:
       collection: plan_activity_resources
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{offering_id.name}}: {{date}} {{kind}}"
       field: activity_id
       group: null
       hidden: false
@@ -3764,8 +3871,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Activity
       validation: null
       validation_message: null
       width: full
@@ -3798,7 +3908,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: A resource's key in the Operations Plan.
+      note: "The resource it uses: copy the Key from a resource in the Operations Plan."
       options: null
       readonly: false
       required: true
@@ -3953,8 +4063,9 @@ fields:
     meta:
       collection: plan_labor_lines
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -3965,8 +4076,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -3999,9 +4113,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -4074,8 +4188,17 @@ fields:
     meta:
       collection: plan_labor_lines
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Offering
+            value: offering
+          - text: Product
+            value: product
+          - text: Pool
+            value: pool
+          - text: Whole club
+            value: org
       field: cost_center_type
       group: null
       hidden: false
@@ -4083,13 +4206,13 @@ fields:
       note: null
       options:
         choices:
-          - text: offering
+          - text: Offering
             value: offering
-          - text: product
+          - text: Product
             value: product
-          - text: pool
+          - text: Pool
             value: pool
-          - text: org
+          - text: Whole club
             value: org
       readonly: false
       required: true
@@ -4135,7 +4258,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: An offering's or pool's key, or a product's id. Empty for the org.
+      note: >-
+        Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
+        page's web address. Leave empty for the whole club.
       options: null
       readonly: false
       required: false
@@ -4175,7 +4300,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: A staff level's key in the Operations Plan.
+      note: "Who does the work: copy the Key from a staff level in the Operations Plan."
       options: null
       readonly: false
       required: true
@@ -4249,8 +4374,9 @@ fields:
     meta:
       collection: plan_labor_lines
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
       field: account_id
       group: null
       hidden: false
@@ -4261,8 +4387,11 @@ fields:
       required: true
       searchable: true
       sort: 9
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Account
       validation: null
       validation_message: null
       width: full
@@ -4289,8 +4418,15 @@ fields:
     meta:
       collection: plan_labor_lines
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Program
+            value: program
+          - text: Management
+            value: management
+          - text: Fundraising
+            value: fundraising
       field: function
       group: null
       hidden: false
@@ -4298,11 +4434,11 @@ fields:
       note: null
       options:
         choices:
-          - text: program
+          - text: Program
             value: program
-          - text: management
+          - text: Management
             value: management
-          - text: fundraising
+          - text: Fundraising
             value: fundraising
       readonly: false
       required: false
@@ -4422,8 +4558,9 @@ fields:
     meta:
       collection: plan_budget_lines
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -4434,8 +4571,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -4468,9 +4608,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -4543,8 +4683,9 @@ fields:
     meta:
       collection: plan_budget_lines
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
       field: account_id
       group: null
       hidden: false
@@ -4555,8 +4696,11 @@ fields:
       required: true
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Account
       validation: null
       validation_message: null
       width: full
@@ -4583,8 +4727,15 @@ fields:
     meta:
       collection: plan_budget_lines
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Program
+            value: program
+          - text: Management
+            value: management
+          - text: Fundraising
+            value: fundraising
       field: function
       group: null
       hidden: false
@@ -4592,11 +4743,11 @@ fields:
       note: null
       options:
         choices:
-          - text: program
+          - text: Program
             value: program
-          - text: management
+          - text: Management
             value: management
-          - text: fundraising
+          - text: Fundraising
             value: fundraising
       readonly: false
       required: false
@@ -4635,8 +4786,17 @@ fields:
     meta:
       collection: plan_budget_lines
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Offering
+            value: offering
+          - text: Product
+            value: product
+          - text: Pool
+            value: pool
+          - text: Whole club
+            value: org
       field: cost_center_type
       group: null
       hidden: false
@@ -4644,13 +4804,13 @@ fields:
       note: null
       options:
         choices:
-          - text: offering
+          - text: Offering
             value: offering
-          - text: product
+          - text: Product
             value: product
-          - text: pool
+          - text: Pool
             value: pool
-          - text: org
+          - text: Whole club
             value: org
       readonly: false
       required: true
@@ -4696,7 +4856,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: An offering's or pool's key, or a product's id. Empty for the org.
+      note: >-
+        Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
+        page's web address. Leave empty for the whole club.
       options: null
       readonly: false
       required: false
@@ -4730,20 +4892,22 @@ fields:
     meta:
       collection: plan_budget_lines
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: amount_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: true
       searchable: true
       sort: 9
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Amount
       validation: null
       validation_message: null
       width: full
@@ -4816,14 +4980,16 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: Set for a cost 2 CFR 200.1 leaves out of MTDC, such as equipment.
+      note: Set for a cost left out of modified total direct costs (MTDC), such as equipment.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 11
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Left out of MTDC
       validation: null
       validation_message: null
       width: full
@@ -4931,8 +5097,9 @@ fields:
     meta:
       collection: plan_rates
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -4943,8 +5110,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -4977,9 +5147,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -5018,7 +5188,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Employer payroll costs, as a share of wages.
+      note: Employer payroll costs, as a share of wages. 0.1 means 10%.
       options: null
       readonly: false
       required: false
@@ -5058,7 +5228,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Card processing fees, as a share of revenue.
+      note: Card processing fees, as a share of revenue. 0.03 means 3%.
       options: null
       readonly: false
       required: false
@@ -5092,20 +5262,22 @@ fields:
     meta:
       collection: plan_rates
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: lodging_per_night_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 6
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Lodging per night
       validation: null
       validation_message: null
       width: full
@@ -5132,20 +5304,22 @@ fields:
     meta:
       collection: plan_rates
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: mileage_rate_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 7
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Mileage rate
       validation: null
       validation_message: null
       width: full
@@ -5172,20 +5346,24 @@ fields:
     meta:
       collection: plan_rates
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: rib_resource_kind_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The resource kind whose resources price safety-boat (RIB) hours.
+      note: The kind of resource whose cost prices coach boat (RIB) hours.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 8
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Coach boat kind
       validation: null
       validation_message: null
       width: full
@@ -5253,8 +5431,9 @@ fields:
     meta:
       collection: plan_staff_levels
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -5265,8 +5444,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -5299,9 +5481,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -5374,8 +5556,13 @@ fields:
     meta:
       collection: plan_staff_levels
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Hourly
+            value: hourly
+          - text: Volunteer
+            value: volunteer
       field: pay_type
       group: null
       hidden: false
@@ -5383,9 +5570,9 @@ fields:
       note: null
       options:
         choices:
-          - text: hourly
+          - text: Hourly
             value: hourly
-          - text: volunteer
+          - text: Volunteer
             value: volunteer
       readonly: false
       required: true
@@ -5423,20 +5610,22 @@ fields:
     meta:
       collection: plan_staff_levels
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: hourly_rate_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 6
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Hourly rate
       validation: null
       validation_message: null
       width: full
@@ -5469,7 +5658,7 @@ fields:
       group: null
       hidden: false
       interface: tags
-      note: Qualification ids.
+      note: The qualifications this level needs. Add each one's ID, from the end of its page's web address.
       options: null
       readonly: false
       required: false
@@ -5545,8 +5734,9 @@ fields:
     meta:
       collection: plan_salaried_positions
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -5557,8 +5747,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -5591,9 +5784,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -5666,20 +5859,22 @@ fields:
     meta:
       collection: plan_salaried_positions
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: annual_salary_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: true
       searchable: true
       sort: 5
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Annual salary
       validation: null
       validation_message: null
       width: full
@@ -5752,7 +5947,7 @@ fields:
       group: null
       hidden: false
       interface: tags
-      note: Qualification ids.
+      note: The qualifications this position needs. Add each one's ID, from the end of its page's web address.
       options: null
       readonly: false
       required: false
@@ -5793,14 +5988,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The share of its salary that is general and administrative.
+      note: The share of its salary that is general and administrative (G&A). 0.2 means 20%.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 8
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: G&A share
       validation: null
       validation_message: null
       width: full
@@ -5827,8 +6024,9 @@ fields:
     meta:
       collection: plan_salaried_positions
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: remainder_pool_id
       group: null
       hidden: false
@@ -5839,8 +6037,11 @@ fields:
       required: false
       searchable: true
       sort: 9
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Remainder pool
       validation: null
       validation_message: null
       width: full
@@ -5880,7 +6081,9 @@ fields:
       searchable: true
       sort: 10
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Form 990 line
       validation: null
       validation_message: null
       width: full
@@ -5948,8 +6151,9 @@ fields:
     meta:
       collection: plan_salaried_bookings
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -5960,8 +6164,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -5994,9 +6201,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -6029,8 +6236,9 @@ fields:
     meta:
       collection: plan_salaried_bookings
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: position_id
       group: null
       hidden: false
@@ -6041,8 +6249,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Position
       validation: null
       validation_message: null
       width: full
@@ -6069,8 +6280,9 @@ fields:
     meta:
       collection: plan_salaried_bookings
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: product_id
       group: null
       hidden: false
@@ -6081,8 +6293,11 @@ fields:
       required: true
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Product
       validation: null
       validation_message: null
       width: full
@@ -6109,8 +6324,11 @@ fields:
     meta:
       collection: plan_salaried_bookings
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Management
+            value: management
       field: kind
       group: null
       hidden: false
@@ -6118,7 +6336,7 @@ fields:
       note: null
       options:
         choices:
-          - text: management
+          - text: Management
             value: management
       readonly: false
       required: true
@@ -6236,8 +6454,9 @@ fields:
     meta:
       collection: plan_resources
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -6248,8 +6467,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -6282,9 +6504,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -6317,8 +6539,9 @@ fields:
     meta:
       collection: plan_resources
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: resource_kind_id
       group: null
       hidden: false
@@ -6329,8 +6552,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Resource kind
       validation: null
       validation_message: null
       width: full
@@ -6437,20 +6663,22 @@ fields:
     meta:
       collection: plan_resources
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: cost_per_hour_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 7
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Cost per hour
       validation: null
       validation_message: null
       width: full
@@ -6477,20 +6705,22 @@ fields:
     meta:
       collection: plan_resources
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: cost_per_day_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 8
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Cost per day
       validation: null
       validation_message: null
       width: full
@@ -6517,20 +6747,22 @@ fields:
     meta:
       collection: plan_resources
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: fuel_per_hour_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 9
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Fuel per hour
       validation: null
       validation_message: null
       width: full
@@ -6557,20 +6789,22 @@ fields:
     meta:
       collection: plan_resources
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: maintenance_per_hour_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 10
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Maintenance per hour
       validation: null
       validation_message: null
       width: full
@@ -6603,14 +6837,16 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: Set for a rental, whose cost leaves MTDC.
+      note: Set for a rental, whose cost is left out of modified total direct costs (MTDC).
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 11
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Left out of MTDC
       validation: null
       validation_message: null
       width: full
@@ -6678,8 +6914,9 @@ fields:
     meta:
       collection: plan_boat_rates
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -6690,8 +6927,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -6724,9 +6964,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -6759,8 +6999,9 @@ fields:
     meta:
       collection: plan_boat_rates
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: boat_class_id
       group: null
       hidden: false
@@ -6771,8 +7012,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat class
       validation: null
       validation_message: null
       width: full
@@ -6799,20 +7043,22 @@ fields:
     meta:
       collection: plan_boat_rates
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
       field: maintenance_per_boat_hour_cents
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: true
       searchable: true
       sort: 5
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Maintenance per boat hour
       validation: null
       validation_message: null
       width: full
@@ -6880,8 +7126,9 @@ fields:
     meta:
       collection: plan_activity_block_rules
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -6892,8 +7139,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -6926,9 +7176,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -7007,7 +7257,7 @@ fields:
       group: null
       hidden: false
       interface: tags
-      note: Offering keys.
+      note: "The offerings this rule fills: add the Key of each one."
       options: null
       readonly: false
       required: true
@@ -7163,8 +7413,9 @@ fields:
     meta:
       collection: plan_activity_block_rules
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: coach_level_id
       group: null
       hidden: false
@@ -7175,8 +7426,11 @@ fields:
       required: false
       searchable: true
       sort: 9
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Coach level
       validation: null
       validation_message: null
       width: full
@@ -7209,7 +7463,7 @@ fields:
       group: null
       hidden: false
       interface: tags
-      note: Salaried position keys.
+      note: "The salaried positions it books: add the Key of each one."
       options: null
       readonly: false
       required: false
@@ -7285,8 +7539,9 @@ fields:
     meta:
       collection: plan_pools
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -7297,8 +7552,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -7331,9 +7589,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -7447,8 +7705,9 @@ fields:
     meta:
       collection: plan_bonus_owners
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -7459,8 +7718,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -7493,9 +7755,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -7574,7 +7836,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: A share of its products' combined net, after pools.
+      note: A share of its products' combined net, after pools. 0.05 means 5%.
       options: null
       readonly: false
       required: true
@@ -7608,8 +7870,9 @@ fields:
     meta:
       collection: plan_bonus_owners
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
       field: account_id
       group: null
       hidden: false
@@ -7620,8 +7883,11 @@ fields:
       required: true
       searchable: true
       sort: 6
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Account
       validation: null
       validation_message: null
       width: full
@@ -7689,8 +7955,9 @@ fields:
     meta:
       collection: plan_bonus_owner_products
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
       field: version_id
       group: null
       hidden: false
@@ -7701,8 +7968,11 @@ fields:
       required: true
       searchable: true
       sort: 2
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
       validation: null
       validation_message: null
       width: full
@@ -7735,9 +8005,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Other plans refer to the row by it.
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -7770,8 +8040,9 @@ fields:
     meta:
       collection: plan_bonus_owner_products
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{role_name}}"
       field: bonus_owner_id
       group: null
       hidden: false
@@ -7782,8 +8053,11 @@ fields:
       required: true
       searchable: true
       sort: 4
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Bonus owner
       validation: null
       validation_message: null
       width: full
@@ -7810,8 +8084,9 @@ fields:
     meta:
       collection: plan_bonus_owner_products
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
       field: product_id
       group: null
       hidden: false
@@ -7822,8 +8097,11 @@ fields:
       required: true
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Product
       validation: null
       validation_message: null
       width: full

@@ -37,6 +37,7 @@ describe("Directus providers", () => {
       "directusAccessProvider",
       "directusPermissionRuleProvider",
       "directusPolicyProvider",
+      "directusPresetProvider",
       "directusRoleProvider",
       "directusSchemaProvider",
       "directusSettingsProvider",

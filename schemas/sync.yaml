@@ -17,9 +17,7 @@ collections:
       hidden: false
       icon: list_alt
       item_duplication_fields: null
-      note: >-
-        The durable queue every sync package's job runs on. One worker per queue, so claiming a task is a plain
-        read-then-update, not a lease.
+      note: The work each sync has queued, run, or given up on. Written by the syncs.
       preview_url: null
       singleton: false
       sort: null
@@ -45,7 +43,7 @@ collections:
       hidden: false
       icon: flag
       item_duplication_fields: null
-      note: A discrepancy a sync noticed but didn't fix. Dismissal is keyed by fingerprint, so it survives the next run.
+      note: Something a sync noticed but didn't fix. A dismissed finding stays dismissed on later runs.
       preview_url: null
       singleton: false
       sort: null
@@ -66,12 +64,12 @@ collections:
       collapse: open
       collection: sync_runs
       color: null
-      display_template: "{{source}} ({{status}})"
+      display_template: "{{source}} {{started_at}} ({{status}})"
       group: Sync
       hidden: false
       icon: history
       item_duplication_fields: null
-      note: One row per job execution.
+      note: One row each time a sync runs.
       preview_url: null
       singleton: false
       sort: null
@@ -160,9 +158,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Which sync owns this task, e.g. clubspot-sync or gsuite-sync.
+      note: Which sync owns this task.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
@@ -200,9 +198,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The task type within its queue, e.g. sync_camp. Not a schema enum - each queue defines its own.
+      note: What the task does, such as syncing one camp. Each sync names its own.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
@@ -240,16 +238,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: >-
-        The target's natural key. Unique, so re-enqueuing the same target updates this row instead of piling up a
-        duplicate.
+      note: What the task is about, such as a camp. Queuing the same thing again updates this row.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Target
       validation: null
       validation_message: null
       width: full
@@ -276,20 +274,24 @@ fields:
     meta:
       collection: sync_tasks
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{queue}}/{{kind}} {{key}}"
       field: parent_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The task that enqueued this one, if any - what makes a run a readable tree in the Directus admin UI.
+      note: The task that queued this one, if any.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Queued by
       validation: null
       validation_message: null
       width: full
@@ -316,8 +318,19 @@ fields:
     meta:
       collection: sync_tasks
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Pending
+            value: pending
+          - text: Running
+            value: running
+          - text: Done
+            value: done
+          - text: Failed
+            value: failed
+          - text: Cancelled
+            value: cancelled
       field: status
       group: null
       hidden: false
@@ -325,15 +338,15 @@ fields:
       note: null
       options:
         choices:
-          - text: pending
+          - text: Pending
             value: pending
-          - text: running
+          - text: Running
             value: running
-          - text: done
+          - text: Done
             value: done
-          - text: failed
+          - text: Failed
             value: failed
-          - text: cancelled
+          - text: Cancelled
             value: cancelled
       readonly: false
       required: true
@@ -375,7 +388,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 7
@@ -415,7 +428,7 @@ fields:
       interface: input
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 8
@@ -453,7 +466,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: Not claimable before this time. Null means claimable now.
+      note: The task waits until this time. Empty means it can run now.
       options: null
       readonly: false
       required: false
@@ -495,7 +508,7 @@ fields:
       interface: input-multiline
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 10
@@ -535,7 +548,7 @@ fields:
       interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 11
@@ -575,7 +588,7 @@ fields:
       interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 12
@@ -613,7 +626,7 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: Set once attempts reaches max_attempts. Retries continue regardless - this only flags the task for staff to notice.
+      note: Set once the task has failed too many times. It keeps retrying; this flags it for staff.
       options: null
       readonly: false
       required: true
@@ -694,9 +707,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Which sync raised it, e.g. gsuite-sync.
+      note: Which sync found it.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
@@ -734,9 +747,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: What kind of discrepancy, e.g. unexpected_member. Not a schema enum - each sync defines its own.
+      note: What kind of problem, such as an unexpected group member. Each sync names its own.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
@@ -774,9 +787,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: What the finding is about - a group address, a person id, whatever the kind implies.
+      note: What the finding is about, such as a group's address or a person.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
@@ -816,7 +829,7 @@ fields:
       interface: input-multiline
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 5
@@ -848,8 +861,17 @@ fields:
     meta:
       collection: audit_findings
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Open
+            value: open
+          - text: Approved
+            value: approved
+          - text: Resolved
+            value: resolved
+          - text: Dismissed
+            value: dismissed
       field: status
       group: null
       hidden: false
@@ -857,13 +879,13 @@ fields:
       note: null
       options:
         choices:
-          - text: open
+          - text: Open
             value: open
-          - text: approved
+          - text: Approved
             value: approved
-          - text: resolved
+          - text: Resolved
             value: resolved
-          - text: dismissed
+          - text: Dismissed
             value: dismissed
       readonly: false
       required: true
@@ -901,13 +923,11 @@ fields:
       display_options: null
       field: fingerprint
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: >-
-        source + kind + subject + a hash of detail. Unique, so a staff dismissal survives the next run instead of the
-        finding reappearing.
+      note: Identifies the finding, so a dismissal survives the next run.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 7
@@ -986,9 +1006,9 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Which job ran, e.g. clubspot-sync.
+      note: Which sync ran.
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 2
@@ -1028,7 +1048,7 @@ fields:
       interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 3
@@ -1068,7 +1088,7 @@ fields:
       interface: datetime
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 4
@@ -1100,8 +1120,15 @@ fields:
     meta:
       collection: sync_runs
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Running
+            value: running
+          - text: Succeeded
+            value: succeeded
+          - text: Failed
+            value: failed
       field: status
       group: null
       hidden: false
@@ -1109,13 +1136,13 @@ fields:
       note: null
       options:
         choices:
-          - text: running
+          - text: Running
             value: running
-          - text: succeeded
+          - text: Succeeded
             value: succeeded
-          - text: failed
+          - text: Failed
             value: failed
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 5
@@ -1156,7 +1183,7 @@ fields:
       note: null
       options:
         language: json
-      readonly: false
+      readonly: true
       required: false
       searchable: false
       sort: 6
@@ -1196,7 +1223,7 @@ fields:
       interface: input-multiline
       note: null
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 7
@@ -1228,23 +1255,24 @@ fields:
     meta:
       collection: people
       conditions: null
-      display: null
-      display_options: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
       field: directus_user_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: >-
-        The person's own Directus login, if they have one - nullable, and usually null. A provider
-        extension field on a canonical collection: Directus is a provider in its own right here,
-        same as any other sync package.
+      note: The person's own Directus login, if they have one. Usually empty.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 13
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Directus login
       validation: null
       validation_message: null
       width: full
