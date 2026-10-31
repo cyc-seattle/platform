@@ -75,6 +75,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Schemas
 
+- Staff read every collection in the Data Studio. Write and review a schema change with
+  [`directus-schema`](.agents/skills/directus-schema/SKILL.md). `test/data-studio.test.ts` checks
+  the rules it can from the YAML.
 - A change to the planning design or its collections updates the ER diagrams in
   `docs/planning-schema.md` in the same PR.
 - A subtype, such as `programs` of `products`, is its own collection (cyc-seattle/isthmia#213 §2):

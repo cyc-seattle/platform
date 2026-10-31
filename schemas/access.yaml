@@ -516,7 +516,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: Only a policy groups may give (docs/access.md).
+      note: Only a policy that groups may give.
       options: null
       readonly: false
       required: true
