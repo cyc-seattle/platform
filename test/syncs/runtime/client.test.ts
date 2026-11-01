@@ -44,6 +44,22 @@ describe("readItems", () => {
     expect(params.get("sort")).toBe("-id");
   });
 
+  it("encodes each of an _or's filters under its index", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new DirectusClient(baseUrl, token);
+
+    await client.readItems("sync_tasks", {
+      filter: { status: { _eq: "pending" }, _or: [{ run_after: { _null: true } }, { run_after: { _lte: "2026" } }] },
+    });
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    const params = new URL(url).searchParams;
+    expect(params.get("filter[status][_eq]")).toBe("pending");
+    expect(params.get("filter[_or][0][run_after][_null]")).toBe("true");
+    expect(params.get("filter[_or][1][run_after][_lte]")).toBe("2026");
+  });
+
   it("sends the bearer token in the Authorization header", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: [] }));
     vi.stubGlobal("fetch", fetchMock);
@@ -87,6 +103,25 @@ describe("readItems", () => {
     const client = new DirectusClient(baseUrl, token);
 
     await expect(client.readItems("people")).resolves.toEqual([]);
+  });
+});
+
+describe("updateItemsByQuery", () => {
+  it("sends the filter and the patch in one PATCH to the collection, and returns the rows it updated", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: [{ id: "task-1", status: "running" }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new DirectusClient(baseUrl, token);
+
+    const updated = await client.updateItemsByQuery("sync_tasks", { id: { _eq: "task-1" } }, { status: "running" });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, { method: string; body: string }];
+    expect(url).toBe(`${baseUrl}/items/sync_tasks`);
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body)).toEqual({
+      query: { filter: { id: { _eq: "task-1" } } },
+      data: { status: "running" },
+    });
+    expect(updated).toEqual([{ id: "task-1", status: "running" }]);
   });
 });
 
