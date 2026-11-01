@@ -7,5 +7,5 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src/index.ts", "src/planning/index.ts"]
+  "include": ["src/index.ts", "src/planning/index.ts", "src/schema/index.ts"]
 }
