@@ -231,8 +231,10 @@ export class Staffing {
 
     // The block's salaried positions, and its offerings' named coaches, take its first coaching
     // slots. Those paid out of a salary mean fewer hourly coaches are paid.
+    // An offering with a fixed coach count keeps out of the shared coaches, so its coach does too.
+    for (const s of group) if (s.fixed.coaches) this.staffNamedCoach(s);
     const named = (pay: "salary" | "hourly") =>
-      group.flatMap((s) =>
+      coached.flatMap((s) =>
         s.a.offering.coach_position_key != null && payOf(s.a.offering) === pay ? [s.a.offering.coach_position_key] : [],
       );
     const positions = [...new Set([...(block.salaried_positions ?? []), ...named("salary")])];

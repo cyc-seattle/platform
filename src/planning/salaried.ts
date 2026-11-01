@@ -33,12 +33,6 @@ export function bookSalaries(
   const account = ctx.costAccount("salaries");
   if (account === undefined) return charged;
   const pools = new Map(ctx.data.plan_pools.map((p) => [p.id, p]));
-  const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.key));
-  for (const c of coaching) {
-    if (!known.has(c.position_key)) {
-      ctx.warn("unknown_position", `A block rule names missing salaried position ${c.position_key}`, c.position_key);
-    }
-  }
 
   for (const position of ctx.data.plan_salaried_positions) {
     const salary = position.annual_salary_cents;

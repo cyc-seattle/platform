@@ -299,3 +299,121 @@ describe("closed dates", () => {
     expect(computePlan(data).warnings.map((w) => w.code)).not.toContain("closed_date");
   });
 });
+
+describe("the review's edge cases", () => {
+  it("runs an activity that ends before it starts past midnight, and compares its times", () => {
+    const director = position();
+    const [p, q] = [product(), product()];
+    const late = offering(p.id, { name: "Night sail", min_coaches: 1, coach_position_key: director.key });
+    const other = offering(q.id, { name: "Moonlight", min_coaches: 1, coach_position_key: director.key });
+    const out = computePlan(
+      emptyPlan({
+        products: [p, q],
+        plan_offerings: [late, other],
+        plan_salaried_positions: [director],
+        plan_activities: [
+          activity(late.id, { start_time: "22:00", end_time: "01:00" }),
+          activity(other.id, { start_time: "23:00", end_time: "23:30" }),
+        ],
+      }),
+    );
+    expect(out.activities.find((a) => a.offering_key === late.key)?.paid_minutes).toBe(180);
+    expect(out.warnings.map((w) => w.code)).toContain("position_double_booked");
+  });
+
+  it("treats an activity with no times as overlapping every other on its date", () => {
+    const director = position();
+    const [p, q] = [product(), product()];
+    const a = offering(p.id, { min_coaches: 1, coach_position_key: director.key });
+    const b = offering(q.id, { min_coaches: 1, coach_position_key: director.key });
+    const out = computePlan(
+      emptyPlan({
+        products: [p, q],
+        plan_offerings: [a, b],
+        plan_salaried_positions: [director],
+        plan_activities: [
+          activity(a.id, { start_time: null, end_time: null }),
+          activity(b.id, { start_time: "06:00", end_time: "07:00" }),
+        ],
+      }),
+    );
+    expect(out.warnings.map((w) => w.code)).toContain("position_double_booked");
+  });
+
+  it("keeps a named coach on an offering with a fixed coach count out of its block's shared coaches", () => {
+    const director = position();
+    const [p, q] = [product(), product()];
+    const fixed = offering(p.id, { fixed_coaches: 1, coach_position_key: director.key });
+    const shared = offering(q.id, { target_enrollment: 8, sailors_per_coach: 8 });
+    const out = computePlan(
+      emptyPlan({
+        products: [p, q],
+        plan_offerings: [fixed, shared],
+        plan_salaried_positions: [director],
+        plan_activity_block_rules: [blockRule([fixed.key, shared.key])],
+        plan_activities: [activity(fixed.id), activity(shared.id)],
+      }),
+    );
+    expect(total(out, { line: `salary:${director.key}:coaching`, cost_center_key: shared.key })).toBe(0);
+    expect(total(out, { line: `salary:${director.key}:coaching`, cost_center_key: fixed.key })).toBeGreaterThan(0);
+  });
+
+  it("warns, and books nothing, about a bonus with no offerings to charge it to", () => {
+    const director = position();
+    const p = product();
+    const out = computePlan(
+      emptyPlan({
+        products: [p],
+        plan_salaried_positions: [director],
+        plan_budget_lines: [
+          budgetLine({
+            account_id: A.programRevenue,
+            amount_cents: 100_000,
+            cost_center_type: "product",
+            cost_center_key: p.id,
+          }),
+        ],
+        plan_bonus_owners: [owner({ position_key: director.key })],
+        plan_bonus_owner_products: [owns(p.id)],
+      }),
+    );
+    expect(out.warnings.map((w) => w.code)).toContain("bonus_without_offerings");
+    expect(total(out, { line: "bonus:" })).toBe(0);
+    expect(out.positions[0]?.bonus_cents).toBe(0);
+  });
+
+  it("reads closed days only from the Operations Plan", () => {
+    const area = { id: "area", name: "Summer", revenue_account_id: A.programRevenue };
+    const p = product({ program_area_id: area.id });
+    const o = offering(p.id);
+    const out = computePlan(
+      emptyPlan({
+        program_areas: [area],
+        products: [p],
+        plans: [{ id: "plan", kind: "program_area", program_area_id: area.id }],
+        plan_versions: [{ id: "v1", plan_id: "plan" }],
+        plan_offerings: [o],
+        plan_closed_dates: [{ id: "c", version_id: "v1", key: "c", date: "2027-06-01", name: "A day off" }],
+        plan_activities: [activity(o.id)],
+      }),
+    );
+    expect(out.warnings.map((w) => w.code)).toEqual(expect.arrayContaining(["closed_date_in_area_plan"]));
+    expect(out.warnings.map((w) => w.code)).not.toContain("closed_date");
+  });
+
+  it("warns once about a missing position, however many rows name it", () => {
+    const p = product();
+    const o = offering(p.id, { min_coaches: 1, coach_position_key: "missing" });
+    const out = computePlan(
+      emptyPlan({
+        products: [p],
+        plan_offerings: [o],
+        plan_salaried_positions: [position()],
+        plan_activity_block_rules: [blockRule([o.key], { salaried_positions: ["missing"] })],
+        plan_activities: [activity(o.id)],
+        plan_bonus_owners: [owner({ position_key: "missing" })],
+      }),
+    );
+    expect(out.warnings.filter((w) => w.code === "unknown_position")).toHaveLength(1);
+  });
+});

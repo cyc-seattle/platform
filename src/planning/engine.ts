@@ -90,9 +90,14 @@ function summarizePositions(
 ): PositionSummary[] {
   const taxRate = ctx.rates?.payroll_tax_rate ?? 0;
   const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.key));
-  for (const key of [...bonuses.keys(), ...coaching.filter((c) => c.pay === "hourly").map((c) => c.position_key)]) {
-    if (!known.has(key))
-      ctx.warn("unknown_position", `A bonus or offering names missing salaried position ${key}`, key);
+  const named = [
+    ...coaching.map((c) => c.position_key),
+    ...ctx.data.plan_bonus_owners.flatMap((o) => (o.position_key == null ? [] : [o.position_key])),
+  ];
+  for (const key of new Set(named)) {
+    if (!known.has(key)) {
+      ctx.warn("unknown_position", `A block, offering or bonus names missing salaried position ${key}`, key);
+    }
   }
   return ctx.data.plan_salaried_positions.map((position) => {
     const hourly = coaching.filter((c) => c.position_key === position.key && c.pay === "hourly");
