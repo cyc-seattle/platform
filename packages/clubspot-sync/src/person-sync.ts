@@ -109,7 +109,7 @@ export interface ParticipantSyncResult extends ResolvedPerson {
 
 /**
  * Another registration linked to the same person, resolved earlier in this same run - not yet
- * reflected in Directus, since `participants` rows are only written after the whole batch resolves
+ * reflected in Directus, since `clubspot_participants` rows are only written after the whole batch resolves
  * (see `sync-run.ts`'s two-pass `syncRegistrations`). Without these, two registrations for one
  * person newly linked in the same run would each see zero siblings in Directus and both count as
  * the newest.
@@ -121,7 +121,7 @@ export interface BatchSibling {
 }
 
 export interface SyncParticipantOptions {
-  /** The `person_id` already on this participant's `participants` row, if it has one. */
+  /** The `person_id` already on this participant's `clubspot_participants` row, if it has one. */
   existingPersonId?: string;
   /** The mirror's stored row before this run's write - `undefined` for a participant mirrored for the first time. */
   priorMirror?: ParticipantRow;
@@ -189,7 +189,7 @@ export function logReplacedFields(collection: string, id: string, fields: readon
  * Every curated field on `people`, `medical_profiles`, and a guardian/emergency slot follows the
  * one CRM field rule (cyc-seattle/isthmia#137, `synced-fields.ts`): the newest linked participant's form answer wins,
  * and a staff edit holds until Clubspot sends something new. A participant that isn't currently
- * the newest one linked to its person writes only the `participants` mirror, never `people` or
+ * the newest one linked to its person writes only the `clubspot_participants` mirror, never `people` or
  * `medical_profiles` - see `isNewestParticipant`.
  */
 export class PersonSync {
@@ -327,14 +327,14 @@ export class PersonSync {
    *
    * Two Directus reads, not one: it 403s a dot-notation relational filter on a scoped token (see
    * `sync-run.ts`'s `readByIds`), so this finds the person's other participants first, then their
-   * registrations, rather than filtering `registrations` by `participant_id.person_id` directly.
+   * registrations, rather than filtering `clubspot_registrations` by `participant_id.person_id` directly.
    */
   private async rankAgainstSiblings(
     personId: string,
     registration: RegistrationRank,
     batchSiblings: readonly BatchSibling[],
   ): Promise<{ isNewest: boolean; fallbackMirror?: ParticipantMirrorFields; fallbackRegistrationId?: string }> {
-    const siblingParticipants = await this.directus.readItems<ParticipantRow>("participants", {
+    const siblingParticipants = await this.directus.readItems<ParticipantRow>("clubspot_participants", {
       filter: { person_id: { _eq: personId } },
       limit: -1,
     });
@@ -346,7 +346,7 @@ export class PersonSync {
     const dbParticipantIds = [...dbMirrorByParticipantId.keys()];
     const dbSiblingRegistrations =
       dbParticipantIds.length > 0
-        ? await this.directus.readItems<RegistrationRank & { participant_id: string }>("registrations", {
+        ? await this.directus.readItems<RegistrationRank & { participant_id: string }>("clubspot_registrations", {
             filter: { participant_id: { _in: dbParticipantIds.join(",") } },
             fields: ["id", "archived", "registered_at", "participant_id"],
             limit: -1,

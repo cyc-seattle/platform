@@ -26,7 +26,7 @@ Options:
 - `--since <iso-date>` - backfill: re-read `--camp`'s registrations from this date instead of its
   stored watermark. Requires `--camp`.
 - `--seed-contact-points` - one-time migration (step 4): backfills `contact_points` from the
-  `participants` mirror, then adds a `staff` row for any `people.email`/`people.phone` with no
+  `clubspot_participants` mirror, then adds a `staff` row for any `people.email`/`people.phone` with no
   contact point yet. Bypasses the camp sync entirely. Idempotent - safe to rerun - and supports
   `--dry-run`.
 - `--approve-matching-duplicates` - one-time migration (step 5): approves every open
@@ -54,8 +54,8 @@ pnpm exec clubspot-sync --club <id> --camp <camp-id> --since 2026-01-01 --dry-ru
 ```
 
 `--dry-run` is the way to check a backfill before committing to it: it logs the writes without
-making them. `--since` only widens the registration read; the schedule pass (`camps`,
-`sessions`, `classes`, `session_classes`, `entry_caps`) is already a full reconcile on every run, so
+making them. `--since` only widens the registration read; the schedule pass (`clubspot_camps`,
+`clubspot_sessions`, `clubspot_classes`, `clubspot_session_classes`, `clubspot_entry_caps`) is already a full reconcile on every run, so
 it needs no override.
 
 A successful backfill still advances the camp's stored `synced_through`, same as any other sync,
@@ -69,13 +69,13 @@ almost all of the logic testable with no Directus and no Parse:
 - `camps.ts` - discovers the camps for a club.
 - `backoff.ts` - decides whether a camp is due for a sync this run, and how its watermark and
   backoff state change after one.
-- `schedule.ts` - plans `camps`, `sessions`, `classes`, `session_classes`, `entry_caps`.
+- `schedule.ts` - plans `clubspot_camps`, `clubspot_sessions`, `clubspot_classes`, `clubspot_session_classes`, `clubspot_entry_caps`.
 - `people.ts` / `person-sync.ts` - person matching and the `people`/`contacts`/`medical_profiles`
   plan and its executor.
 - `synced-fields.ts` - the one CRM field rule every curated field follows (cyc-seattle/isthmia#137): pure, and used by
   `person-sync.ts` for `people`, guardian/emergency-contact slots, and `medical_profiles`.
-- `registrations.ts` - plans `registrations`, `registration_entries`, `registration_billing`,
-  `custom_field_definitions`, `custom_field_responses`.
+- `registrations.ts` - plans `clubspot_registrations`, `clubspot_registration_entries`, `clubspot_registration_billing`,
+  `clubspot_custom_field_definitions`, `clubspot_custom_field_responses`.
 - `merge.ts` - plans a `duplicate_person` group's merge onto its keeper; pure, like every other
   plan here.
 - `audit.ts` - raises `duplicate_person` and `unlinked_participant` findings from `merge.ts`'s
@@ -96,7 +96,7 @@ almost all of the logic testable with no Directus and no Parse:
 overwritten on the next run that reconciles that row. `people`, `medical_profiles`, and a
 guardian/emergency contact's own `people` row follow one different rule instead (cyc-seattle/isthmia#137, `synced-fields.ts`):
 the newest linked participant's form answer wins, and a staff edit holds until Clubspot sends
-something new. The `participants` mirror itself keeps Clubspot's last non-blank answer for every
+something new. The `clubspot_participants` mirror itself keeps Clubspot's last non-blank answer for every
 field - a blank form answer never overwrites a value already stored there (`people.ts`'s
 `mergeParticipantMirrorFields`) - so `person-sync.ts` reads `base` (the mirror's own stored value)
 and `v` (what Clubspot sends now) for every curated field; `v` equal to `base` writes nothing, `v`
@@ -112,20 +112,20 @@ from the schema side.
 `people` column (`school`) is written per registration, gated on the same newest-linked-participant
 check as `people` and `medical_profiles`, with a fallback to the previous newest other
 registration's own answer, resolved by target field rather than definition id, since each camp
-clones its own custom field definitions with different ids. A `registrations` column
+clones its own custom field definitions with different ids. A `clubspot_registrations` column
 (`share_contact`) is written the same way but ungated: each registration answers only for itself,
-with no fallback. Both read `custom_field_responses` as their mirror, keeping its own last
-non-blank answer the same way `participants` does: `base` is the response's own stored value before
+with no fallback. Both read `clubspot_custom_field_responses` as their mirror, keeping its own last
+non-blank answer the same way `clubspot_participants` does: `base` is the response's own stored value before
 this run's write, `v` is what Clubspot sends now; `v` equal to `base` writes nothing, `v` different
 writes `v`. `planPromotedFields` then runs once more, at the end of every run across every camp, as
 a fallback gap-fill for a registration the per-registration pass didn't reach this run: for `people`
 it ranks every camp's responses for a person (non-archived before archived, then most recent, with
-a stable tiebreak); for `registrations` it fills a still-null `share_contact` from that
+a stable tiebreak); for `clubspot_registrations` it fills a still-null `share_contact` from that
 registration's own stored answer only, with no ranking. Label matching normalizes punctuation and
 case, so `Race / Ethnicity` and `Race/Ethnicity` match without listing both. Nothing promotes until
-the target's `promoted_fields` row exists — it's created by hand, not by Pulumi.
+the target's `clubspot_promoted_fields` row exists — it's created by hand, not by Pulumi.
 
-**A person reference is pinned, not gap-filled.** `participants.person_id` and `contacts.contact_id`
+**A person reference is pinned, not gap-filled.** `clubspot_participants.person_id` and `contacts.contact_id`
 are set once, at creation, and never re-resolved. That is what makes a manual merge durable: staff
 repoint the FK and delete the duplicate, and no later sync undoes it. See `docs/crm-schema.md` for
 the merge procedure.
@@ -135,12 +135,12 @@ Deleting a session in the Data Studio instead sets `archived` on a row Clubspot 
 unarchived, so the next sync writes `archived: false` and it reappears — intended, since Clubspot
 stays authoritative.
 
-**The sync cancels rather than deletes**, except for `session_classes`. A `registration_entries` row
-whose Clubspot join object vanished gets `status = cancelled`, not deleted. `session_classes` is a
+**The sync cancels rather than deletes**, except for `clubspot_session_classes`. A `clubspot_registration_entries` row
+whose Clubspot join object vanished gets `status = cancelled`, not deleted. `clubspot_session_classes` is a
 pure join with no status field of its own, so a class a session no longer offers is removed outright.
 
-**A missing scalar is stored as null; an unresolvable reference is skipped.** `sessions.start_date`/
-`end_date` and `registration_billing.currency` are written null rather than fabricated when Clubspot
+**A missing scalar is stored as null; an unresolvable reference is skipped.** `clubspot_sessions.start_date`/
+`end_date` and `clubspot_registration_billing.currency` are written null rather than fabricated when Clubspot
 has nothing. An entry cap or registration entry that points at a session not present in the CRM is
 dropped with a warning instead of being written with a guessed reference.
 
@@ -167,7 +167,7 @@ regardless - then decides per camp whether it's due:
   reveals one) is picked up the same as any other change, without needing to be detected first.
 - **Registrations** are still filtered on `updatedAt` between the camp's watermark and the
   moment its own sync starts - not the run's start, since earlier camps in the same run can take
-  real time to process. The watermark is `camps.synced_through`, advanced to that instant on
+  real time to process. The watermark is `clubspot_camps.synced_through`, advanced to that instant on
   every successful sync whether or not it wrote anything, or the epoch if the camp has never
   synced - so a camp coming back from a long backoff still gets registrations from the entire
   gap, not just since its last run, and consecutive syncs' windows tile with no gap between them.

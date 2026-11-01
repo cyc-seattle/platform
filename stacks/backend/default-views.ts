@@ -9,57 +9,56 @@ export const defaultViews: DefaultView[] = [
   { collection: "groups", sort: ["name"], fields: ["name", "description", "members", "policies"] },
 
   // Clubspot: Schedule
-  { collection: "camps", sort: ["-start_date"], fields: ["name", "start_date", "end_date", "archived"] },
-  { collection: "sessions", sort: ["-start_date", "name"], fields: ["camp_id", "name", "start_date", "end_date"] },
-  { collection: "classes", sort: ["-camp_id.start_date", "name"], fields: ["name", "camp_id", "program_id"] },
+  { collection: "clubspot_camps", sort: ["-start_date"], fields: ["name", "start_date", "end_date", "archived"] },
   {
-    collection: "entry_caps",
+    collection: "clubspot_sessions",
+    sort: ["-start_date", "name"],
+    fields: ["camp_id", "name", "start_date", "end_date"],
+  },
+  { collection: "clubspot_classes", sort: ["-camp_id.start_date", "name"], fields: ["name", "camp_id", "program_id"] },
+  {
+    collection: "clubspot_entry_caps",
     sort: ["-session_id.start_date", "class_id.name"],
     fields: ["session_id", "class_id", "cap"],
   },
   {
-    collection: "session_classes",
+    collection: "clubspot_session_classes",
     sort: ["-session_id.start_date", "class_id.name"],
     fields: ["session_id", "class_id"],
   },
 
   // Clubspot: Registrations
   {
-    collection: "registrations",
+    collection: "clubspot_registrations",
     sort: ["-registered_at"],
     fields: ["participant_id", "camp_id", "registered_at", "status", "waiver_status"],
   },
   {
-    collection: "registration_entries",
+    collection: "clubspot_registration_entries",
     sort: ["-confirmed_at"],
     fields: ["registration_id", "session_id", "class_id", "status", "waitlist_number"],
   },
   {
-    collection: "registration_billing",
+    collection: "clubspot_registration_billing",
     sort: ["-registration_id.registered_at"],
     fields: ["registration_id", "amount", "amount_received", "amount_pending", "amount_refunded"],
   },
   {
-    collection: "participants",
+    collection: "clubspot_participants",
     sort: ["last_name", "first_name"],
     fields: ["last_name", "first_name", "date_of_birth", "person_id"],
   },
   {
-    collection: "custom_field_definitions",
+    collection: "clubspot_custom_field_definitions",
     sort: ["-camp_id.start_date", "label"],
     fields: ["camp_id", "label", "field_type", "required"],
   },
   {
-    collection: "custom_field_responses",
+    collection: "clubspot_custom_field_responses",
     sort: ["-registration_id.registered_at", "definition_id.label"],
     fields: ["registration_id", "definition_id", "value"],
   },
-  {
-    collection: "event_staff",
-    sort: ["-session_id.start_date", "person_id.last_name"],
-    fields: ["session_id", "person_id"],
-  },
-  { collection: "promoted_fields", sort: ["target_field"], fields: ["target_field", "labels"] },
+  { collection: "clubspot_promoted_fields", sort: ["target_field"], fields: ["target_field", "labels"] },
 
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
@@ -100,6 +99,16 @@ export const defaultViews: DefaultView[] = [
     collection: "program_area_role_assignments",
     sort: ["program_area_id.name", "person_id.last_name"],
     fields: ["person_id", "program_area_id", "program_role_id", "starts_on", "ends_on"],
+  },
+  {
+    collection: "offerings",
+    sort: ["-starts_on", "program_id.name"],
+    fields: ["program_id", "starts_on", "ends_on", "capacity"],
+  },
+  {
+    collection: "registrations",
+    sort: ["-offering_id.starts_on", "person_id.last_name"],
+    fields: ["person_id", "offering_id", "status"],
   },
 
   // Google Workspace

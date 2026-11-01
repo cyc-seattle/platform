@@ -436,7 +436,7 @@ export function buildMedicalProfileFields(participant: Participant): Omit<Medica
 export type ParticipantMirrorFields = Omit<ParticipantRow, "id" | "person_id" | "last_sync_run_id">;
 
 /**
- * `participants` mirrors the registration form exactly as Clubspot sent it - no trimming, no
+ * `clubspot_participants` mirrors the registration form exactly as Clubspot sent it - no trimming, no
  * empty-string collapsing, no weight parsing - so it stays a faithful record of what the form
  * said even where the builders above normalize or reject the same value. Only `DOB` is converted,
  * since `date_of_birth` is a Directus `date` column and a Parse `Date` object isn't a value the
@@ -482,7 +482,7 @@ export function buildParticipantMirrorFields(participant: Participant): Particip
 /**
  * Null, undefined, or trims to empty - the one definition of "blank" a mirrored answer follows
  * everywhere a blank must not overwrite a value already on file (`mergeParticipantMirrorFields`
- * below, and `registrations.ts`'s `custom_field_responses` merge).
+ * below, and `registrations.ts`'s `clubspot_custom_field_responses` merge).
  */
 export function isBlank(value: string | null | undefined): boolean {
   return value == null || value.trim() === "";
@@ -512,7 +512,7 @@ export function mergeParticipantMirrorFields(
 
 /**
  * The CRM-shaped value each of the participant's own `people` fields becomes, from a stored
- * `participants` row instead of a live `Participant` - unlike `PersonRow`, `first_name` is
+ * `clubspot_participants` row instead of a live `Participant` - unlike `PersonRow`, `first_name` is
  * nullable here, since the one CRM field rule (cyc-seattle/isthmia#137) has to weigh a blank mirror value against
  * whatever base it held, even where `people.first_name` itself is NOT NULL. Built with the same
  * primitives (`toNullableText`, `normalizeEmail`) `buildPersonFieldsFromParticipant` uses, so a

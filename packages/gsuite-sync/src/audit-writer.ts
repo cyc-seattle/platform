@@ -72,8 +72,8 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     groupMemberships,
   ] = await Promise.all([
     directus.readItems<GoogleGroupRow>("google_groups", { limit: -1 }),
-    directus.readItems<ClassRow>("classes", { limit: -1 }),
-    directus.readItems<CampRow>("camps", { limit: -1 }),
+    directus.readItems<ClassRow>("clubspot_classes", { limit: -1 }),
+    directus.readItems<CampRow>("clubspot_camps", { limit: -1 }),
     directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
     directus.readItems<Pick<ProductRow, "id" | "name" | "kind" | "revenue_account_id" | "program_area_id">>(
       "products",
@@ -87,9 +87,9 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     directus.readItems<ProgramRoleAssignmentRow>("program_role_assignments", { limit: -1 }),
     directus.readItems<PersonRow>("people", { limit: -1 }),
     directus.readItems<ContactRow>("contacts", { limit: -1 }),
-    directus.readItems<RegistrationEntryRow>("registration_entries", { limit: -1 }),
-    directus.readItems<RegistrationRow>("registrations", { limit: -1 }),
-    directus.readItems<Pick<ParticipantRow, "id" | "person_id">>("participants", {
+    directus.readItems<RegistrationEntryRow>("clubspot_registration_entries", { limit: -1 }),
+    directus.readItems<RegistrationRow>("clubspot_registrations", { limit: -1 }),
+    directus.readItems<Pick<ParticipantRow, "id" | "person_id">>("clubspot_participants", {
       fields: ["id", "person_id"],
       limit: -1,
     }),

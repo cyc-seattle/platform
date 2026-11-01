@@ -1,6 +1,7 @@
 /**
- * Row shapes for the `participants`, `registrations`, `registration_entries`,
- * `registration_billing`, `custom_field_definitions`, and `custom_field_responses` collections.
+ * Row shapes for the `clubspot_participants`, `clubspot_registrations`,
+ * `clubspot_registration_entries`, `clubspot_registration_billing`,
+ * `clubspot_custom_field_definitions`, and `clubspot_custom_field_responses` collections.
  * See `schemas/clubspot.yaml`.
  */
 export interface RegistrationRow {

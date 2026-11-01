@@ -90,7 +90,7 @@ state, which is what makes today's hand-set `parent_id` redundant going forward.
 staff-set and can't be inferred from Workspace - discovery only creates a row and refreshes its
 `name`, `description`, and `archived` state. `settings_template` is a template _name_ staff pick
 from a Directus dropdown (`announcement`,
-`crew`, `inbox`, or `participants`), not a settings payload - the settings pass resolves it against
+`crew`, `inbox`, or `clubspot_participants`), not a settings payload - the settings pass resolves it against
 `@cyc-seattle/gsuite-sdk`'s `resolveGroupSettingsTemplate`, which throws on an unrecognized name rather
 than leaving the group unmanaged.
 
@@ -101,7 +101,7 @@ off, unarchived on the next discovery run. Every write pass and most of the audi
 row; the audit still raises `missing_group` for one if a program still points at it - the one case
 that needs a human.
 
-**Every write pass is add-only.** A person removed from `registration_entries`, or a role revoked
+**Every write pass is add-only.** A person removed from `clubspot_registration_entries`, or a role revoked
 in `program_role_assignments`, simply stops being re-added on the next run — nobody is ever removed
 from a Google Group by this job.
 
@@ -164,7 +164,7 @@ Directus and Google Groups (cyc-seattle/isthmia#156), so a `MANAGER` is never re
 their role alone. Owners are still audited.
 
 **`mismatched_revenue_account` flags a Clubspot Camp with more than one revenue account.** A camp
-has a single sales account (`camps.clubspot_sales_account`), so every class in it should map to
+has a single sales account (`clubspot_camps.clubspot_sales_account`), so every class in it should map to
 programs whose products book to one account (`products.revenue_account_id`). A product with no
 account isn't a conflict by itself. Only two or more distinct
 accounts are. Tagged `clubspot-sync`, like `class_without_program`: a finance/Clubspot concern this

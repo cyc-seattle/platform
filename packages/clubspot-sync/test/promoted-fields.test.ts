@@ -46,7 +46,7 @@ function registration(id: string, registeredAt: string, overrides: Partial<Regis
   };
 }
 
-/** The `participants` row `registration(id, ...)` links to, resolved to `personId`. */
+/** The `clubspot_participants` row `registration(id, ...)` links to, resolved to `personId`. */
 function linkedParticipant(id: string, personId: string): Pick<ParticipantRow, "id" | "person_id"> {
   return { id: `participant-${id}`, person_id: personId };
 }

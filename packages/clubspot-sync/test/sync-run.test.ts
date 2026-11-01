@@ -171,7 +171,7 @@ describe("syncCamp", () => {
     // Synced five minutes ago with nothing written - due again in an hour, not now.
     const syncedThrough = new Date(now.getTime() - 5 * 60 * 1000);
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -194,12 +194,15 @@ describe("syncCamp", () => {
 
     expect(outcome).toEqual({ status: "skipped" });
     expect(gateway.fetchCampData).not.toHaveBeenCalled();
-    expect(tables.get("camps")![0]).toMatchObject({ synced_through: syncedThrough.toISOString(), quiet_runs: 1 });
+    expect(tables.get("clubspot_camps")![0]).toMatchObject({
+      synced_through: syncedThrough.toISOString(),
+      quiet_runs: 1,
+    });
   });
 
   it("bypasses the backoff check when asked, even when not due", async () => {
     const { fetchMock } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -232,7 +235,7 @@ describe("syncCamp", () => {
     const watermark = new Date("2026-01-01T00:00:00Z");
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -250,7 +253,7 @@ describe("syncCamp", () => {
     await syncCamp({ camp: theCamp, directus, personSync: new PersonSync(directus), gateway });
 
     expect(gateway.fetchCampData).toHaveBeenCalledWith(theCamp, watermark, now);
-    expect(tables.get("camps")![0]).toMatchObject({ synced_through: now.toISOString(), quiet_runs: 0 });
+    expect(tables.get("clubspot_camps")![0]).toMatchObject({ synced_through: now.toISOString(), quiet_runs: 0 });
   });
 
   it("--since widens the read window without disturbing the stored watermark's role next run", async () => {
@@ -260,7 +263,7 @@ describe("syncCamp", () => {
     const since = new Date("2020-01-01T00:00:00Z");
 
     const { fetchMock } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -292,7 +295,7 @@ describe("syncCamp", () => {
     // (null, null, undefined, false), so this camp's own reconcile is a genuine no-op - the case
     // this test needs.
     const { tables: quietTables, fetchMock: quietFetch } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -312,11 +315,11 @@ describe("syncCamp", () => {
       personSync: new PersonSync(quietDirectus),
       gateway: makeGateway(),
     });
-    expect(quietTables.get("camps")![0]).toMatchObject({ quiet_runs: 3 });
+    expect(quietTables.get("clubspot_camps")![0]).toMatchObject({ quiet_runs: 3 });
     vi.unstubAllGlobals();
 
     const { tables: activeTables, fetchMock: activeFetch } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -340,7 +343,7 @@ describe("syncCamp", () => {
       personSync: new PersonSync(activeDirectus),
       gateway: writingGateway,
     });
-    expect(activeTables.get("camps")![0]).toMatchObject({ quiet_runs: 0 });
+    expect(activeTables.get("clubspot_camps")![0]).toMatchObject({ quiet_runs: 0 });
   });
 
   it("records items_skipped-equivalent counts by still syncing when an entry cap references an unresolvable session", async () => {
@@ -370,7 +373,7 @@ describe("syncCamp", () => {
     // scoped read missed cap-a1 (say, by scoping entry_caps to the wrong camp's classes), the
     // plan would see no existing row and create a duplicate instead of reconciling in place.
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-a",
           clubspot_sales_account: null,
@@ -391,11 +394,11 @@ describe("syncCamp", () => {
           quiet_runs: 0,
         },
       ],
-      classes: [
+      clubspot_classes: [
         { id: "class-a1", camp_id: "camp-a", name: "Class A1" },
         { id: "class-b1", camp_id: "camp-b", name: "Class B1" },
       ],
-      entry_caps: [
+      clubspot_entry_caps: [
         { id: "cap-a1", class_id: "class-a1", session_id: null, cap: 10 },
         { id: "cap-b1", class_id: "class-b1", session_id: null, cap: 5 },
       ],
@@ -416,12 +419,16 @@ describe("syncCamp", () => {
     const outcome = await syncCamp({ camp: theCamp, directus, personSync: new PersonSync(directus), gateway });
 
     expect(outcome).toMatchObject({ status: "synced", counts: { created: 0, updated: 0, skipped: 0 } });
-    expect(tables.get("classes")).toHaveLength(2);
-    expect(tables.get("entry_caps")).toHaveLength(2);
-    expect(tables.get("entry_caps")).toContainEqual(expect.objectContaining({ id: "cap-a1", cap: 10 }));
+    expect(tables.get("clubspot_classes")).toHaveLength(2);
+    expect(tables.get("clubspot_entry_caps")).toHaveLength(2);
+    expect(tables.get("clubspot_entry_caps")).toContainEqual(expect.objectContaining({ id: "cap-a1", cap: 10 }));
     // The sibling camp's rows are untouched, proving the scope excluded rather than merely ignored them.
-    expect(tables.get("classes")).toContainEqual(expect.objectContaining({ id: "class-b1", camp_id: "camp-b" }));
-    expect(tables.get("entry_caps")).toContainEqual(expect.objectContaining({ id: "cap-b1", class_id: "class-b1" }));
+    expect(tables.get("clubspot_classes")).toContainEqual(
+      expect.objectContaining({ id: "class-b1", camp_id: "camp-b" }),
+    );
+    expect(tables.get("clubspot_entry_caps")).toContainEqual(
+      expect.objectContaining({ id: "cap-b1", class_id: "class-b1" }),
+    );
   });
 
   it("chunks the registration-hop _in filter so no single request's URL grows unbounded", async () => {
@@ -440,7 +447,7 @@ describe("syncCamp", () => {
         archived: false,
       }));
       const { fetchMock } = makeDirectusStore({
-        camps: [
+        clubspot_camps: [
           {
             id: "camp-1",
             clubspot_sales_account: null,
@@ -451,7 +458,7 @@ describe("syncCamp", () => {
             quiet_runs: 0,
           },
         ],
-        registrations,
+        clubspot_registrations: registrations,
       });
       vi.stubGlobal("fetch", fetchMock);
       const directus = new DirectusClient(baseUrl, token);
@@ -465,7 +472,7 @@ describe("syncCamp", () => {
 
       return (fetchMock.mock.calls as [string, FetchInit | undefined][])
         .map(([url]) => new URL(url))
-        .filter((url) => url.pathname === "/items/registration_entries");
+        .filter((url) => url.pathname === "/items/clubspot_registration_entries");
     }
 
     const withFew = await registrationEntriesRequests(3);
@@ -500,7 +507,7 @@ describe("runSync", () => {
     vi.useFakeTimers();
     vi.setSystemTime(now);
     const { fetchMock } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -527,7 +534,7 @@ describe("runSync", () => {
     const now = new Date("2026-01-15T12:00:00Z");
     const since = new Date("2020-01-01T00:00:00Z");
     const { fetchMock } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-1",
           clubspot_sales_account: null,
@@ -688,7 +695,7 @@ describe("runSync", () => {
   it("promotes a winning custom field response onto people.school once, after the camp loop", async () => {
     const now = new Date("2026-01-15T12:00:00Z");
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-a",
           clubspot_sales_account: null,
@@ -697,8 +704,8 @@ describe("runSync", () => {
           quiet_runs: 0,
         },
       ],
-      promoted_fields: [{ id: "config-1", target_field: "school", labels: ["School"] }],
-      custom_field_definitions: [
+      clubspot_promoted_fields: [{ id: "config-1", target_field: "school", labels: ["School"] }],
+      clubspot_custom_field_definitions: [
         {
           id: "def-1",
           camp_id: "camp-a",
@@ -707,10 +714,10 @@ describe("runSync", () => {
           required: false,
         },
       ],
-      custom_field_responses: [
+      clubspot_custom_field_responses: [
         { id: "reg-1:def-1", registration_id: "reg-1", definition_id: "def-1", value: "Roosevelt High" },
       ],
-      registrations: [
+      clubspot_registrations: [
         {
           id: "reg-1",
           participant_id: "participant-1",
@@ -721,7 +728,7 @@ describe("runSync", () => {
           archived: false,
         },
       ],
-      participants: [{ id: "participant-1", person_id: "person-1" }],
+      clubspot_participants: [{ id: "participant-1", person_id: "person-1" }],
       people: [
         {
           id: "person-1",
@@ -815,17 +822,19 @@ describe("runSync", () => {
     }) as unknown as Registration;
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
-      promoted_fields: [{ id: "config-1", target_field: "school", labels: ["School"] }],
-      custom_field_definitions: [
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_promoted_fields: [{ id: "config-1", target_field: "school", labels: ["School"] }],
+      clubspot_custom_field_definitions: [
         { id: "def-1", camp_id: "camp-a", label: "School", field_type: "text", required: false },
       ],
       // The stored response before this run - "Roosevelt High" is `base`, "Garfield High" is `v`.
-      custom_field_responses: [
+      clubspot_custom_field_responses: [
         { id: "reg-1:def-1", registration_id: "reg-1", definition_id: "def-1", value: "Roosevelt High" },
       ],
-      participants: [existingParticipantRow],
-      registrations: [existingRegistrationRow],
+      clubspot_participants: [existingParticipantRow],
+      clubspot_registrations: [existingRegistrationRow],
       people: [
         {
           id: "person-1",
@@ -882,18 +891,18 @@ describe("runSync", () => {
     }) as unknown as Registration;
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         { id: "camp-2026", clubspot_sales_account: null, name: "Camp 2026", synced_through: null, quiet_runs: 0 },
       ],
-      promoted_fields: [{ id: "config-1", target_field: "school", labels: ["School"] }],
-      custom_field_definitions: [
+      clubspot_promoted_fields: [{ id: "config-1", target_field: "school", labels: ["School"] }],
+      clubspot_custom_field_definitions: [
         { id: "def-2025", camp_id: "camp-2025", label: "School", field_type: "text", required: false },
         { id: "def-2026", camp_id: "camp-2026", label: "School", field_type: "text", required: false },
       ],
-      custom_field_responses: [
+      clubspot_custom_field_responses: [
         { id: "reg-2025:def-2025", registration_id: "reg-2025", definition_id: "def-2025", value: "Roosevelt High" },
       ],
-      registrations: [
+      clubspot_registrations: [
         {
           id: "reg-2025",
           participant_id: "participant-2025",
@@ -904,7 +913,7 @@ describe("runSync", () => {
           archived: false,
         },
       ],
-      participants: [{ id: "participant-2025", person_id: "person-1" }],
+      clubspot_participants: [{ id: "participant-2025", person_id: "person-1" }],
       people: [
         {
           id: "person-1",
@@ -942,7 +951,7 @@ describe("runSync", () => {
     const fetchMock = vi.fn(async (url: string, init?: FetchInit) => {
       const method = init?.method ?? "GET";
       const collection = new URL(url).pathname.split("/")[2];
-      if (method === "GET" && collection === "promoted_fields") {
+      if (method === "GET" && collection === "clubspot_promoted_fields") {
         return jsonResponse(500, { error: "promoted_fields unavailable" });
       }
       return storeFetch(url, init);
@@ -959,7 +968,7 @@ describe("runSync", () => {
     expect(campTask?.status).toBe("done");
   });
 
-  // The regression test for finding 3: `participants` already has a row for participant-1, pointing
+  // The regression test for finding 3: `clubspot_participants` already has a row for participant-1, pointing
   // at person-1. Its name below has since been corrected in Clubspot, which is exactly the case
   // that made a fresh match choose - or create - a different person. The sync must reuse person-1
   // instead of re-matching.
@@ -986,7 +995,7 @@ describe("runSync", () => {
     }) as unknown as Registration;
 
     const { fetchMock } = makeDirectusStore({
-      camps: [
+      clubspot_camps: [
         {
           id: "camp-a",
           clubspot_sales_account: null,
@@ -995,8 +1004,8 @@ describe("runSync", () => {
           quiet_runs: 0,
         },
       ],
-      participants: [{ id: "participant-1", person_id: "person-1" }],
-      registrations: [existingRegistrationRow],
+      clubspot_participants: [{ id: "participant-1", person_id: "person-1" }],
+      clubspot_registrations: [existingRegistrationRow],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);
@@ -1082,9 +1091,11 @@ describe("runSync", () => {
     }) as unknown as Registration;
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
-      participants: [existingParticipantRow],
-      registrations: [existingRegistrationRow],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_participants: [existingParticipantRow],
+      clubspot_registrations: [existingRegistrationRow],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);
@@ -1103,7 +1114,7 @@ describe("runSync", () => {
       expect(syncSpy).not.toHaveBeenCalled();
       expect(result.participantsUnlinkedSkipped).toBe(1);
       expect(tables.get("people") ?? []).toHaveLength(0);
-      expect(tables.get("participants")!.find((row) => row["id"] === "participant-1")).toMatchObject({
+      expect(tables.get("clubspot_participants")!.find((row) => row["id"] === "participant-1")).toMatchObject({
         person_id: null,
         first_name: "John",
       });
@@ -1114,7 +1125,7 @@ describe("runSync", () => {
   });
 
   // The regression test for the rebuild's "no re-matching" rule: a registration whose participant
-  // has never been seen before gets a fresh `participants` row, pinned to whatever person the
+  // has never been seen before gets a fresh `clubspot_participants` row, pinned to whatever person the
   // matcher resolves, and `registrations.participant_id`/`last_sync_run_id` point at it.
   it("creates a participants row for a new participant, links the registration to it, and counts it", async () => {
     const now = new Date("2026-01-15T12:00:00Z");
@@ -1129,7 +1140,9 @@ describe("runSync", () => {
     }) as unknown as Registration;
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);
@@ -1146,7 +1159,7 @@ describe("runSync", () => {
     expect(people).toHaveLength(1);
     const personId = people[0]!["id"];
 
-    expect(tables.get("participants")).toEqual([
+    expect(tables.get("clubspot_participants")).toEqual([
       {
         id: "participant-1",
         person_id: personId,
@@ -1184,17 +1197,17 @@ describe("runSync", () => {
         medical_weight: null,
       },
     ]);
-    expect(tables.get("registrations")![0]).toMatchObject({
+    expect(tables.get("clubspot_registrations")![0]).toMatchObject({
       id: "reg-1",
       participant_id: "participant-1",
     });
-    expect(tables.get("registrations")![0]).not.toHaveProperty("person_id");
+    expect(tables.get("clubspot_registrations")![0]).not.toHaveProperty("person_id");
     const runs = asSyncRuns(tables.get("sync_runs") ?? []);
     expect(runs[0]).toMatchObject({ counts: { participantsCreated: 1, participantsMirrored: 1 } });
   });
 
   // Regression test: a brand-new participant matched to a person with an existing contact point
-  // used to have its own `participants` row created only after the whole registration pass, but
+  // used to have its own `clubspot_participants` row created only after the whole registration pass, but
   // `syncParticipant` patches that existing contact_points row with `participant_id` as part of
   // the same pass - a foreign key pointing at a participant not yet written in this run.
   it("creates a new participant's row before syncParticipant writes a contact_points patch that references it", async () => {
@@ -1217,7 +1230,9 @@ describe("runSync", () => {
     }) as unknown as Registration;
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
       people: [
         {
           id: "person-1",
@@ -1260,7 +1275,7 @@ describe("runSync", () => {
     const calls = fetchMock.mock.calls as [string, FetchInit | undefined][];
     const method = (init: FetchInit | undefined) => init?.method ?? "GET";
     const participantCreateIndex = calls.findIndex(
-      ([url, init]) => new URL(url).pathname === "/items/participants" && method(init) === "POST",
+      ([url, init]) => new URL(url).pathname === "/items/clubspot_participants" && method(init) === "POST",
     );
     const contactPointWriteIndices = calls
       .map(([url, init], index) => ({ index, url: new URL(url), method: method(init) }))
@@ -1351,9 +1366,11 @@ describe("runSync", () => {
     // First: the participant's own field values are unchanged from the stored mirror - no write,
     // no last_sync_run_id bump.
     const { fetchMock: unchangedFetch, tables: unchangedTables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
-      participants: [existingParticipantRow],
-      registrations: [existingRegistrationRow],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_participants: [existingParticipantRow],
+      clubspot_registrations: [existingRegistrationRow],
     });
     vi.stubGlobal("fetch", unchangedFetch);
     const unchangedDirectus = new DirectusClient(baseUrl, token);
@@ -1368,9 +1385,9 @@ describe("runSync", () => {
       }),
     });
     expect(unchangedResult).toMatchObject({ participantsMirrored: 0 });
-    expect(unchangedTables.get("participants")![0]).toEqual(existingParticipantRow);
+    expect(unchangedTables.get("clubspot_participants")![0]).toEqual(existingParticipantRow);
     const unchangedParticipantWrites = (unchangedFetch.mock.calls as [string, FetchInit | undefined][]).filter(
-      ([url, init]) => new URL(url).pathname.startsWith("/items/participants") && init?.method === "PATCH",
+      ([url, init]) => new URL(url).pathname.startsWith("/items/clubspot_participants") && init?.method === "PATCH",
     );
     expect(unchangedParticipantWrites).toHaveLength(0);
     vi.unstubAllGlobals();
@@ -1378,9 +1395,11 @@ describe("runSync", () => {
     // Second: only the email changed on Clubspot's side - the patch carries just that field, plus
     // last_sync_run_id, and clears nothing else.
     const { fetchMock: changedFetch, tables: changedTables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
-      participants: [existingParticipantRow],
-      registrations: [existingRegistrationRow],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_participants: [existingParticipantRow],
+      clubspot_registrations: [existingRegistrationRow],
     });
     vi.stubGlobal("fetch", changedFetch);
     const changedDirectus = new DirectusClient(baseUrl, token);
@@ -1395,7 +1414,7 @@ describe("runSync", () => {
       }),
     });
     expect(changedResult).toMatchObject({ participantsMirrored: 1 });
-    expect(changedTables.get("participants")![0]).toEqual({
+    expect(changedTables.get("clubspot_participants")![0]).toEqual({
       ...existingParticipantRow,
       email: "new@example.com",
       last_sync_run_id: changedResult.syncRunId,
@@ -1405,9 +1424,11 @@ describe("runSync", () => {
     // Third: Clubspot no longer has the email at all on this run's form - the mirror keeps the
     // stored value rather than clearing it, since a blank answer never overwrites a non-blank one.
     const { fetchMock: blankFetch, tables: blankTables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
-      participants: [existingParticipantRow],
-      registrations: [existingRegistrationRow],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_participants: [existingParticipantRow],
+      clubspot_registrations: [existingRegistrationRow],
     });
     vi.stubGlobal("fetch", blankFetch);
     const blankDirectus = new DirectusClient(baseUrl, token);
@@ -1422,11 +1443,11 @@ describe("runSync", () => {
       }),
     });
     expect(blankResult).toMatchObject({ participantsMirrored: 0 });
-    expect(blankTables.get("participants")![0]).toEqual(existingParticipantRow);
+    expect(blankTables.get("clubspot_participants")![0]).toEqual(existingParticipantRow);
   });
 
   // cyc-seattle/isthmia#137 review finding 3: two registrations for the same Clubspot participant in one camp's
-  // batch (e.g. two sessions of the same camp) used to both see no `participants` row yet and
+  // batch (e.g. two sessions of the same camp) used to both see no `clubspot_participants` row yet and
   // both queue a create with the same PK.
   it("dedupes two registrations sharing one Clubspot participant, instead of creating it twice", async () => {
     const now = new Date("2026-01-15T12:00:00Z");
@@ -1450,7 +1471,9 @@ describe("runSync", () => {
     }
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);
@@ -1469,11 +1492,13 @@ describe("runSync", () => {
 
     expect(result.status).toBe("ok");
     expect(result.participantsCreated).toBe(1);
-    const participants = (tables.get("participants") ?? []).filter((row) => row["id"] === "participant-shared");
+    const participants = (tables.get("clubspot_participants") ?? []).filter(
+      (row) => row["id"] === "participant-shared",
+    );
     expect(participants).toHaveLength(1);
     const people = tables.get("people") ?? [];
     expect(people).toHaveLength(1);
-    expect(tables.get("registrations")).toMatchObject([
+    expect(tables.get("clubspot_registrations")).toMatchObject([
       { id: "reg-a", participant_id: "participant-shared" },
       { id: "reg-b", participant_id: "participant-shared" },
     ]);
@@ -1533,8 +1558,10 @@ describe("runSync", () => {
     }
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
-      participants: [existingParticipantRow],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_participants: [existingParticipantRow],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);
@@ -1556,7 +1583,7 @@ describe("runSync", () => {
   });
 
   // The regression test for the same-batch race: two registrations newly linked to the same
-  // person in one camp's batch. Neither has a `participants` row yet - both are only created
+  // person in one camp's batch. Neither has a `clubspot_participants` row yet - both are only created
   // after this whole pass - so ranking each in isolation against Directus alone would see zero
   // siblings for both and let whichever is processed last win, regardless of which registration is
   // actually newer. The older one is listed last here, so the old bug would have picked it.
@@ -1595,7 +1622,9 @@ describe("runSync", () => {
     );
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
       people: [
         {
           id: "person-1",
@@ -1631,7 +1660,7 @@ describe("runSync", () => {
   });
 
   // people-cleanup review finding 1: two *existing* registrations sharing one Clubspot participant,
-  // the older one processed first. The older one's own write updates the `participants` mirror
+  // the older one processed first. The older one's own write updates the `clubspot_participants` mirror
   // (regardless of `isNewest`) before the newer one is processed - if the newer's `priorMirror` came
   // from that same freshly written mirror instead of a pass 1 snapshot, it would see `base === v` and
   // wrongly skip its own, genuinely newest, change.
@@ -1656,8 +1685,10 @@ describe("runSync", () => {
     }
 
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 }],
-      registrations: [
+      clubspot_camps: [
+        { id: "camp-a", clubspot_sales_account: null, name: "Camp", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_registrations: [
         {
           id: "reg-a",
           participant_id: "participant-shared",
@@ -1677,7 +1708,7 @@ describe("runSync", () => {
           archived: false,
         },
       ],
-      participants: [
+      clubspot_participants: [
         {
           id: "participant-shared",
           person_id: "person-1",
@@ -1948,7 +1979,7 @@ describe("runSync", () => {
     it("raises an unlinked_participant finding for a participant with no linked person", async () => {
       const now = new Date("2026-01-15T12:00:00Z");
       const { fetchMock, tables } = makeDirectusStore({
-        participants: [{ id: "participant-1", person_id: null, first_name: "Jane", last_name: "Doe" }],
+        clubspot_participants: [{ id: "participant-1", person_id: null, first_name: "Jane", last_name: "Doe" }],
       });
       vi.stubGlobal("fetch", fetchMock);
       const directus = new DirectusClient(baseUrl, token);

@@ -1,6 +1,6 @@
 # @cyc-seattle/clubspot
 
-The Clubspot-shaped Directus schema: `camps` (a Clubspot Camp), `sessions`, `classes`, and
+The Clubspot-shaped Directus schema: `clubspot_camps` (a Clubspot Camp), `clubspot_sessions`, `clubspot_classes`, and
 every registration and custom-field collection derived from them — a Directus schema and its row
 types, applied alongside `@cyc-seattle/crm`'s. No jobs of its own.
 
@@ -14,8 +14,8 @@ program-role tables, and `core` keeps `programs` — the collections that would.
   and relations. Edited directly; Pulumi's `crm` project applies the merged snapshot of every
   package's schema to the live instance. A PR's dev deploy tests a change.
 - **`src/`** — the TypeScript row types for the collections `schema.yaml` declares, exported for
-  `clubspot-sync` and `gsuite-sync`, both of which read or write this data. `promoted_fields.target_field`
-  names either a `people` column (`school`) or a `registrations` column (`share_contact`, answered
+  `clubspot-sync` and `gsuite-sync`, both of which read or write this data. `clubspot_promoted_fields.target_field`
+  names either a `people` column (`school`) or a `clubspot_registrations` column (`share_contact`, answered
   per registration rather than carried onto the person).
 
 This package depends on `@cyc-seattle/crm` for `PersonRow`; `crm` has no dependencies of its own,

@@ -80,6 +80,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Staff read every collection in the Data Studio. Write and review a schema change with
   [`directus-schema`](.agents/skills/directus-schema/SKILL.md). `test/data-studio.test.ts` checks
   the rules it can from the YAML.
+- The schema apply never renames or deletes a collection. A change it can't make, such as a rename,
+  goes in `stacks/backend/migrations/` as a Directus migration, which Directus runs once at start,
+  before the apply. It must do nothing when run again or on a new database, and be tested in PGlite.
 - A change to the planning design or its collections updates the ER diagrams in
   `docs/planning-schema.md` in the same PR.
 - A subtype, such as `programs` of `products`, is its own collection (cyc-seattle/isthmia#213 §2):

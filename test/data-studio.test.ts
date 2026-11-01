@@ -71,19 +71,19 @@ const shownOnPurpose = (field: Field) =>
 
 /** Status fields that stay free text. */
 const FREE_TEXT_STATUS: Record<string, string> = {
-  "registrations.status": "Clubspot's own code, stored as Clubspot sends it. Its full list isn't known.",
-  "registrations.waiver_status": "Clubspot's own code, stored as Clubspot sends it. Its full list isn't known.",
-  "registration_entries.clubspot_status": "Clubspot's own code, kept beside the status staff use.",
+  "clubspot_registrations.status": "Clubspot's own code, stored as Clubspot sends it. Its full list isn't known.",
+  "clubspot_registrations.waiver_status":
+    "Clubspot's own code, stored as Clubspot sends it. Its full list isn't known.",
+  "clubspot_registration_entries.clubspot_status": "Clubspot's own code, kept beside the status staff use.",
 };
 
 /** Join tables the sidebar still shows. */
 const VISIBLE_JOIN_TABLES: Record<string, string> = {
-  session_classes: "No session or class links to it, so the sidebar is the only way in.",
-  event_staff: "Who coaches each session. No session or person links to it, so the sidebar is the only way in.",
+  clubspot_session_classes: "No session or class links to it, so the sidebar is the only way in.",
 };
 
 /** Fields a Clubspot sync copies but staff set by hand. Matches the writer rules in policies.ts. */
-const SET_BY_HAND = new Set(["classes.program_id", "participants.person_id"]);
+const SET_BY_HAND = new Set(["clubspot_classes.program_id", "clubspot_participants.person_id"]);
 
 /** Words in a field's key a staffer wouldn't know without a label or a note. */
 const ACRONYMS = ["ga", "cogs", "byob", "mtdc", "990"];
@@ -280,7 +280,7 @@ describe("the Data Studio", () => {
   describe("keeps a synced field read-only", () => {
     const clubspot = loaded.find(({ name }) => name === "clubspot")!.schema.collections.filter((c) => c.schema);
     // Staff keep promoted_fields themselves.
-    const synced = clubspot.map((c) => c.collection).filter((c) => c !== "promoted_fields");
+    const synced = clubspot.map((c) => c.collection).filter((c) => c !== "clubspot_promoted_fields");
 
     it.each(synced)("%s", (collection) => {
       const editable = columns

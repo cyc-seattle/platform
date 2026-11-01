@@ -49,9 +49,9 @@ const WRITABLE: Filter = {
   _and: [{ camp_id: ACTIVE_CAMP }, { participant_id: { person_id: FAMILY_SELF } }],
 };
 
-/** A `registration_entries` row for a confirmed, active-camp class whose program has another
+/** A `clubspot_registration_entries` row for a confirmed, active-camp class whose program has another
  * confirmed, active-camp entry belonging to someone the signed-in user acts for - the entries a
- * teammate page is built from. Applied to `registration_entries` directly (the `names` policy's own
+ * teammate page is built from. Applied to `clubspot_registration_entries` directly (the `names` policy's own
  * rule) and reused, nested, everywhere else that needs "this row belongs to a teammate." */
 const TEAM_ENTRY: Filter = {
   _and: [
@@ -173,30 +173,30 @@ export const communityPolicies: CommunityPolicyData[] = [
         permissions: TEAMMATE,
       },
       {
-        collection: "registration_entries",
+        collection: "clubspot_registration_entries",
         action: "read",
         fields: ["id", "status", "class_id", "registration_id"],
         permissions: TEAM_ENTRY,
       },
       {
-        collection: "registrations",
+        collection: "clubspot_registrations",
         action: "read",
         fields: ["id", "participant_id"],
         permissions: { registration_entries: TEAM_ENTRY },
       },
       {
-        collection: "participants",
+        collection: "clubspot_participants",
         action: "read",
         fields: ["id", "person_id"],
         permissions: { registrations: { registration_entries: TEAM_ENTRY } },
       },
       // No filter: a class/program/camp's own name and dates aren't sensitive, and the roster page
       // needs every program's own to group by, not only ones the viewer already has a teammate in.
-      { collection: "classes", action: "read", fields: ["id", "name", "camp_id", "program_id"] },
+      { collection: "clubspot_classes", action: "read", fields: ["id", "name", "camp_id", "program_id"] },
       { collection: "programs", action: "read", fields: ["id", "name"] },
       // Anyone who signs in can see the program areas, but not the revenue accounts they book to.
       { collection: "program_areas", action: "read", fields: ["id", "name"] },
-      { collection: "camps", action: "read", fields: ["id", "name", "start_date", "end_date"] },
+      { collection: "clubspot_camps", action: "read", fields: ["id", "name", "start_date", "end_date"] },
     ],
   },
   {
@@ -243,16 +243,16 @@ export const communityPolicies: CommunityPolicyData[] = [
       "minor's registration, and an adult toggles their own. See docs/crm-schema.md.",
     rules: [
       {
-        collection: "registrations",
+        collection: "clubspot_registrations",
         action: "read",
         fields: ["id", "camp_id", "participant_id", "share_contact"],
         // No other policy may grant `camp_id` - the portal tells this read apart from the `names`
-        // policy's id-only `registrations` read by whether `camp_id` comes back non-null.
+        // policy's id-only `clubspot_registrations` read by whether `camp_id` comes back non-null.
         permissions: WRITABLE,
       },
-      { collection: "registrations", action: "update", fields: ["share_contact"], permissions: WRITABLE },
+      { collection: "clubspot_registrations", action: "update", fields: ["share_contact"], permissions: WRITABLE },
       {
-        collection: "participants",
+        collection: "clubspot_participants",
         action: "read",
         fields: ["id", "person_id"],
         permissions: { person_id: FAMILY_SELF },
@@ -298,20 +298,20 @@ export const communityPolicies: CommunityPolicyData[] = [
         permissions: COORDINATED_PARTICIPANT,
       },
       {
-        collection: "registration_entries",
+        collection: "clubspot_registration_entries",
         action: "read",
         fields: ["id", "status", "class_id", "registration_id"],
         permissions: COORDINATED_ENTRY,
       },
       {
-        collection: "registrations",
+        collection: "clubspot_registrations",
         action: "read",
         // No `camp_id`: the portal uses it to recognise the viewer's own rows.
         fields: ["id", "participant_id"],
         permissions: { registration_entries: COORDINATED_ENTRY },
       },
       {
-        collection: "participants",
+        collection: "clubspot_participants",
         action: "read",
         fields: ["id", "person_id"],
         permissions: { registrations: { registration_entries: COORDINATED_ENTRY } },

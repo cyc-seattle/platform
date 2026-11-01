@@ -50,7 +50,7 @@ export function parseDuplicatePersonFindingMemberIds(detail: string): string[] {
 }
 
 /**
- * `unlinked_participant` findings: a `participants` row `person-sync.ts`'s matcher never linked
+ * `unlinked_participant` findings: a `clubspot_participants` row `person-sync.ts`'s matcher never linked
  * to a person. `detail` carries only the participant's id and name.
  */
 export function findUnlinkedParticipantFindings(

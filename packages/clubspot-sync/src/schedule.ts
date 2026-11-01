@@ -4,15 +4,21 @@ import { type ClassRow, type EntryCapRow, type SessionClassRow, type SessionRow 
 import { type CampWithClubspot } from "./schema.ts";
 
 /**
- * The schedule pass reconciles `camps`, `sessions`, `classes`, `session_classes`, and
- * `entry_caps` in full on every run, not on a watermark: a class, session, or cap can change
+ * The schedule pass reconciles `clubspot_camps`, `clubspot_sessions`, `clubspot_classes`, `clubspot_session_classes`, and
+ * `clubspot_entry_caps` in full on every run, not on a watermark: a class, session, or cap can change
  * without the owning camp's `updatedAt` moving. `cyc-seattle/admin-functions` (`src/sessions.ts`)
  * takes the same approach for the same reason.
  *
- * Creates must happen in this order, since `sessions` and `classes` carry FKs to `camps`, and
- * `session_classes`/`entry_caps` carry FKs to both.
+ * Creates must happen in this order, since `clubspot_sessions` and `clubspot_classes` carry FKs to `clubspot_camps`, and
+ * `clubspot_session_classes`/`clubspot_entry_caps` carry FKs to both.
  */
-export const SCHEDULE_CREATE_ORDER = ["camps", "sessions", "classes", "session_classes", "entry_caps"] as const;
+export const SCHEDULE_CREATE_ORDER = [
+  "clubspot_camps",
+  "clubspot_sessions",
+  "clubspot_classes",
+  "clubspot_session_classes",
+  "clubspot_entry_caps",
+] as const;
 
 export interface CollectionPlan<Row extends { id: string }> {
   toCreate: Row[];
@@ -21,7 +27,7 @@ export interface CollectionPlan<Row extends { id: string }> {
   skipped?: number;
 }
 
-/** The `session_classes`/`custom_field_responses` primary key: their parents' ids, joined. */
+/** The `clubspot_session_classes`/`clubspot_custom_field_responses` primary key: their parents' ids, joined. */
 export function joinedId(a: string, b: string): string {
   return `${a}:${b}`;
 }
@@ -92,7 +98,7 @@ function salesAccountCode(camp: Camp): string | null {
 }
 
 /**
- * Reconciles `camps` by id, the Clubspot Camp objectId. A new camp is created with fresh backoff
+ * Reconciles `clubspot_camps` by id, the Clubspot Camp objectId. A new camp is created with fresh backoff
  * state, but an existing row's `synced_through` and `quiet_runs` are never part of the diff: that
  * state is owned by `backoff.ts`'s executor, not this reconcile. Bypasses `planById`, whose
  * generic diff would otherwise patch those fields back to whatever this function desired - here,
@@ -127,7 +133,7 @@ export function planCamps(camps: Camp[], existing: CampWithClubspot[]): Collecti
 }
 
 /**
- * Reconciles `classes` by id. A new class is created unlinked (`program_id: null`); an existing
+ * Reconciles `clubspot_classes` by id. A new class is created unlinked (`program_id: null`); an existing
  * row's `program_id` is never part of the diff, since staff set it by hand, once per class - see
  * cyc-seattle/isthmia#149. Bypasses `planById`, whose generic diff would otherwise patch it back to null on every run.
  */
@@ -218,7 +224,7 @@ export interface SessionClassPlan {
 }
 
 /**
- * Reconciles `session_classes` by membership rather than by key: the join has no Clubspot id of
+ * Reconciles `clubspot_session_classes` by membership rather than by key: the join has no Clubspot id of
  * its own, so its `id` is `session_id` and `class_id` joined (`joinedId`). A session with no
  * explicit `campClassesArray` offers every class in the camp (Clubspot's `allClasses`), expanded
  * here into one row per class.

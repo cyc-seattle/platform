@@ -12,7 +12,9 @@ interface MembershipRow {
   removed_at: string | null;
 }
 
-Step("it can see only which sailor each registration is for", () => readOnly("participants", ["id", "person_id"]));
+Step("it can see only which sailor each registration is for", () =>
+  readOnly("clubspot_participants", ["id", "person_id"]),
+);
 Step("it can see only each extra email or phone number, and whose it is", () =>
   readOnly("contact_points", ["id", "person_id", "kind", "normalized"]),
 );

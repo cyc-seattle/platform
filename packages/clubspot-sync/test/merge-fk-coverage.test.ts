@@ -55,10 +55,10 @@ describe("merge FK coverage", () => {
     expect(missing).toEqual([]);
   });
 
-  it("has on_delete: RESTRICT on every relation to people except participants.person_id", () => {
+  it("has on_delete: RESTRICT on every relation to people except clubspot_participants.person_id", () => {
     for (const relation of relations) {
       const key = `${relation.collection}.${relation.field}`;
-      const expected = key === "participants.person_id" ? "SET NULL" : "RESTRICT";
+      const expected = key === "clubspot_participants.person_id" ? "SET NULL" : "RESTRICT";
       expect(relation.schema?.on_delete).toBe(expected);
     }
   });

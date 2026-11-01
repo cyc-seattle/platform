@@ -27,9 +27,9 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   { collection: "program_role_assignments", field: "person_id" },
   { collection: "program_area_role_assignments", field: "person_id" },
   { collection: "contact_points", field: "person_id" },
-  { collection: "event_staff", field: "person_id" },
+  { collection: "registrations", field: "person_id" },
   { collection: "google_group_memberships", field: "person_id" },
-  { collection: "participants", field: "person_id" },
+  { collection: "clubspot_participants", field: "person_id" },
   // Never repointed: a group gives access, so an admin moves a duplicate's memberships by hand, and
   // until then the merge stops on the final delete.
   { collection: "group_members", field: "person_id" },
@@ -133,7 +133,7 @@ export interface MergeRelatedData {
   contactPoints: readonly MergeContactPoint[];
   programRoleAssignments: readonly MergePersonReference[];
   programAreaRoleAssignments: readonly MergePersonReference[];
-  eventStaff: readonly MergePersonReference[];
+  registrations: readonly MergePersonReference[];
   googleGroupMemberships: readonly MergePersonReference[];
 }
 
@@ -475,7 +475,12 @@ export function planPersonMerge(
 
   for (const participant of related.participants) {
     if (participant.person_id !== null && duplicateIds.has(participant.person_id)) {
-      steps.push({ type: "update", collection: "participants", id: participant.id, patch: { person_id: keeper.id } });
+      steps.push({
+        type: "update",
+        collection: "clubspot_participants",
+        id: participant.id,
+        patch: { person_id: keeper.id },
+      });
     }
   }
 
@@ -486,7 +491,7 @@ export function planPersonMerge(
   steps.push(
     ...planSimpleRepoint("program_area_role_assignments", keeper.id, duplicateIds, related.programAreaRoleAssignments),
   );
-  steps.push(...planSimpleRepoint("event_staff", keeper.id, duplicateIds, related.eventStaff));
+  steps.push(...planSimpleRepoint("registrations", keeper.id, duplicateIds, related.registrations));
   steps.push(...planSimpleRepoint("google_group_memberships", keeper.id, duplicateIds, related.googleGroupMemberships));
 
   const directusUserHolder = findDirectusUserHolder(keeper, duplicates);

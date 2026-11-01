@@ -214,8 +214,8 @@ export function findProgramsWithoutGroup(programs: readonly ProgramWithGoogleGro
 }
 
 /**
- * `class_without_program` findings: a `classes` row with no `program_id`, the hand-set link from
- * cyc-seattle/isthmia#149. This is a Clubspot-side gap - `program_id` lives on `classes` in `clubspot`'s own schema
+ * `class_without_program` findings: a `clubspot_classes` row with no `program_id`, the hand-set link from
+ * cyc-seattle/isthmia#149. This is a Clubspot-side gap - `program_id` lives on `clubspot_classes` in `clubspot`'s own schema
  * and has nothing to do with a Google Group - so it's tagged `clubspot-sync` rather than
  * `gsuite-sync`, even though this pass is the one computing it today.
  */
@@ -384,7 +384,7 @@ function byId<T extends { id?: string }>(rows: readonly T[]): Map<string, T> {
 }
 
 /** Every row the audit pass needs to compute a group's full planned membership, regardless of
- * role - the union of what every write pass would add there. `camps` and `programs` carry the
+ * role - the union of what every write pass would add there. `clubspot_camps` and `programs` carry the
  * extra fields `findMismatchedRevenueAccounts` and `isCampActive` need, on top of what
  * `MembershipTables` itself requires, and `products`, `programAreas` and `accounts` are read only
  * for those checks. `contactPoints` is read only here, for

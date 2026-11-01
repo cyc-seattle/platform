@@ -238,19 +238,19 @@ function declarePolicy(prefix: string, policy: PolicyData, roleIds: pulumi.Input
 // durable program id to derive one from. Withholding the grant makes that a rule the permission
 // system enforces, not just one the mapping code happens to follow.
 const clubspotSyncCollections = [
-  "camps",
-  "sessions",
-  "classes",
-  "entry_caps",
+  "clubspot_camps",
+  "clubspot_sessions",
+  "clubspot_classes",
+  "clubspot_entry_caps",
   "people",
   "contacts",
   "medical_profiles",
-  "registrations",
-  "registration_entries",
-  "registration_billing",
-  "custom_field_definitions",
-  "custom_field_responses",
-  "participants",
+  "clubspot_registrations",
+  "clubspot_registration_entries",
+  "clubspot_registration_billing",
+  "clubspot_custom_field_definitions",
+  "clubspot_custom_field_responses",
+  "clubspot_participants",
   "contact_points",
   "sync_tasks",
   "sync_runs",
@@ -272,16 +272,27 @@ for (const collection of clubspotSyncCollections) {
 for (const action of ["create", "read", "update", "delete"] as const) {
   permissionRule(
     `crm-clubspot-sync-session_classes-${action}`,
-    { ...auth, policyId: clubspotSyncPolicyId, collection: "session_classes", action },
+    { ...auth, policyId: clubspotSyncPolicyId, collection: "clubspot_session_classes", action },
     { dependsOn: crmSchema },
   );
+}
+
+// The sync derives offerings and registrations from the mirrors, and deletes one whose source is gone.
+for (const collection of ["offerings", "registrations"]) {
+  for (const action of ["create", "read", "update", "delete"] as const) {
+    permissionRule(
+      `crm-clubspot-sync-${collection}-${action}`,
+      { ...auth, policyId: clubspotSyncPolicyId, collection, action },
+      { dependsOn: crmSchema },
+    );
+  }
 }
 
 // registration_billing keys on the billing objectId, so a replaced billing object is a delete of
 // the old row followed by a create, not an update - see planRegistrationBilling.
 permissionRule(
   "crm-clubspot-sync-registration_billing-delete",
-  { ...auth, policyId: clubspotSyncPolicyId, collection: "registration_billing", action: "delete" },
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "clubspot_registration_billing", action: "delete" },
   { dependsOn: crmSchema },
 );
 
@@ -289,19 +300,13 @@ permissionRule(
 // know which custom-field labels feed which people column.
 permissionRule(
   "crm-clubspot-sync-promoted_fields-read",
-  { ...auth, policyId: clubspotSyncPolicyId, collection: "promoted_fields", action: "read" },
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "clubspot_promoted_fields", action: "read" },
   { dependsOn: crmSchema },
 );
 
-// Program and program area role assignments, event_staff, and google_group_memberships are owned
-// elsewhere - the merge executor only repoints person_id off a duplicate onto its keeper
-// (cyc-seattle/isthmia#133).
-for (const collection of [
-  "program_role_assignments",
-  "program_area_role_assignments",
-  "event_staff",
-  "google_group_memberships",
-]) {
+// Program and program area role assignments and google_group_memberships are owned elsewhere - the
+// merge executor only repoints person_id off a duplicate onto its keeper (cyc-seattle/isthmia#133).
+for (const collection of ["program_role_assignments", "program_area_role_assignments", "google_group_memberships"]) {
   for (const action of ["read", "update"] as const) {
     permissionRule(
       `crm-clubspot-sync-${collection}-${action}`,
@@ -334,10 +339,10 @@ for (const collection of ["people", "contacts", "contact_points", "medical_profi
 const gsuiteSyncReadCollections = [
   "people",
   "contacts",
-  "registrations",
-  "registration_entries",
-  "classes",
-  "camps",
+  "clubspot_registrations",
+  "clubspot_registration_entries",
+  "clubspot_classes",
+  "clubspot_camps",
   "programs",
   "program_role_assignments",
 ];
@@ -354,7 +359,13 @@ for (const collection of gsuiteSyncReadCollections) {
 // link back to a person, to find its planned group membership.
 permissionRule(
   "crm-gsuite-sync-participants-read",
-  { ...auth, policyId: gsuiteSyncPolicyId, collection: "participants", action: "read", fields: ["id", "person_id"] },
+  {
+    ...auth,
+    policyId: gsuiteSyncPolicyId,
+    collection: "clubspot_participants",
+    action: "read",
+    fields: ["id", "person_id"],
+  },
   { dependsOn: crmSchema },
 );
 

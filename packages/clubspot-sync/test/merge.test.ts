@@ -37,7 +37,7 @@ function related(overrides: Partial<MergeRelatedData> = {}): MergeRelatedData {
     contactPoints: [],
     programRoleAssignments: [],
     programAreaRoleAssignments: [],
-    eventStaff: [],
+    registrations: [],
     googleGroupMemberships: [],
     ...overrides,
   };
@@ -116,11 +116,11 @@ describe("planPersonMerge", () => {
     );
     expect(steps).toContainEqual({
       type: "update",
-      collection: "participants",
+      collection: "clubspot_participants",
       id: "part-1",
       patch: { person_id: "keep" },
     });
-    expect(steps.filter((step) => step.collection === "participants")).toHaveLength(1);
+    expect(steps.filter((step) => step.collection === "clubspot_participants")).toHaveLength(1);
   });
 
   it("fills the keeper's null medical fields from a duplicate, then deletes the duplicate's profile", () => {
@@ -302,17 +302,17 @@ describe("planPersonMerge", () => {
     );
   });
 
-  it("repoints program and program area role assignments, event_staff, and google_group_memberships with no de-dup", () => {
+  it("repoints program and program area role assignments, registrations, and google_group_memberships with no de-dup", () => {
     const keeper = person({ id: "keep" });
     const duplicates = [person({ id: "dup" })];
     const programRoleAssignments: MergePersonReference[] = [{ id: "pra1", person_id: "dup" }];
     const programAreaRoleAssignments: MergePersonReference[] = [{ id: "para1", person_id: "dup" }];
-    const eventStaff: MergePersonReference[] = [{ id: "es1", person_id: "dup" }];
+    const registrations: MergePersonReference[] = [{ id: "es1", person_id: "dup" }];
     const googleGroupMemberships: MergePersonReference[] = [{ id: "ggm1", person_id: "dup" }];
     const steps = planPersonMerge(
       keeper,
       duplicates,
-      related({ programRoleAssignments, programAreaRoleAssignments, eventStaff, googleGroupMemberships }),
+      related({ programRoleAssignments, programAreaRoleAssignments, registrations, googleGroupMemberships }),
     );
     expect(steps).toContainEqual({
       type: "update",
@@ -334,7 +334,7 @@ describe("planPersonMerge", () => {
     });
     expect(steps).toContainEqual({
       type: "update",
-      collection: "event_staff",
+      collection: "registrations",
       id: "es1",
       patch: { person_id: "keep" },
     });

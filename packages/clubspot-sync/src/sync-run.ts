@@ -42,6 +42,7 @@ import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipa
 import { campBackoff, nextSyncState } from "./backoff.ts";
 import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts";
 import { readByIds } from "./directus-batch.ts";
+import { syncOfferings } from "./offerings.ts";
 import { findDuplicatePeople, MERGE_PERSON_FIELDS, type MergePerson } from "./merge.ts";
 import { runApprovedPersonMerges } from "./merge-executor.ts";
 import { buildParticipantMirrorFields, mergeParticipantMirrorFields, type ParticipantMirrorFields } from "./people.ts";
@@ -81,7 +82,7 @@ import { type RegistrationRank } from "./synced-fields.ts";
 /** No prior successful sync: the registration window starts from the beginning of Clubspot history. */
 export const EPOCH = new Date(0);
 
-/** A stored `custom_field_responses` row, in the raw shape `planPromotedFieldSync`'s fallback expects. */
+/** A stored `clubspot_custom_field_responses` row, in the raw shape `planPromotedFieldSync`'s fallback expects. */
 function toResponseInput(row: CustomFieldResponseRow): CustomFieldResponseInput {
   return row.value == null
     ? { customFieldID: row.definition_id }
@@ -90,7 +91,7 @@ function toResponseInput(row: CustomFieldResponseRow): CustomFieldResponseInput 
 
 /**
  * A fallback registration's own raw responses - read from the batch first (a same-batch sibling's
- * `custom_field_responses` haven't been written yet, see `syncRegistrations`'s pass 1), then this
+ * `clubspot_custom_field_responses` haven't been written yet, see `syncRegistrations`'s pass 1), then this
  * camp's own already-loaded `tables`, and only then a direct read - the fallback can belong to a
  * different camp than the one being synced, which `tables` doesn't cover.
  */
@@ -108,7 +109,7 @@ async function fallbackRawResponses(
   if (sameCampRows.length > 0) {
     return sameCampRows.map(toResponseInput);
   }
-  const otherCampRows = await directus.readItems<CustomFieldResponseRow>("custom_field_responses", {
+  const otherCampRows = await directus.readItems<CustomFieldResponseRow>("clubspot_custom_field_responses", {
     filter: { registration_id: { _eq: fallbackRegistrationId } },
     limit: -1,
   });
@@ -134,11 +135,11 @@ async function resolveFallbackTargetValues(
   }
   const definitions = await readByIds<CustomFieldDefinitionRow>(
     directus,
-    "custom_field_definitions",
+    "clubspot_custom_field_definitions",
     "id",
     definitionIds,
   );
-  // Only `people` fields fall back to another registration's answer - `registrations` fields
+  // Only `people` fields fall back to another registration's answer - `clubspot_registrations` fields
   // (`share_contact`) are answered fresh by each registration, with no fallback (design doc "Sync:
   // a registration-level promoted field").
   const { person: targetByDefinitionId } = splitPromotedFieldTargets(
@@ -211,7 +212,7 @@ interface SharedTables {
   customFieldResponses: CustomFieldResponseRow[];
 }
 
-/** Narrows every `readSharedTables` collection but `camps` to the one camp for this Clubspot camp. */
+/** Narrows every `readSharedTables` collection but `clubspot_camps` to the one camp for this Clubspot camp. */
 interface CampScope {
   clubspotCampId: string;
 }
@@ -220,17 +221,17 @@ interface CampScope {
  * Reads every table the schedule and registration passes reconcile against, scoped to one camp
  * so a camp sync's read no longer grows with the club's whole history (cyc-seattle/isthmia#135) - fetching each
  * collection's state for just this camp and diffing it in avoids a Directus round trip per pass.
- * `classes`, `sessions`, `custom_field_definitions`, and `registrations` carry `camp_id`
- * directly; `session_classes` and `entry_caps` are reached through their classes'
- * (`entry_caps.session_id` can be null, but `class_id` never is); `registration_entries`,
- * `registration_billing`, and `custom_field_responses` are reached through their registrations.
- * `camps` itself is the one exception - its own id is the Clubspot camp id, so it's just the
+ * `clubspot_classes`, `clubspot_sessions`, `clubspot_custom_field_definitions`, and `clubspot_registrations` carry `camp_id`
+ * directly; `clubspot_session_classes` and `clubspot_entry_caps` are reached through their classes'
+ * (`entry_caps.session_id` can be null, but `class_id` never is); `clubspot_registration_entries`,
+ * `clubspot_registration_billing`, and `clubspot_custom_field_responses` are reached through their registrations.
+ * `clubspot_camps` itself is the one exception - its own id is the Clubspot camp id, so it's just the
  * single row for `scope.clubspotCampId`, or none for a camp synced for the first time, in
  * which case every other table is empty too: nothing can reference a camp that doesn't exist
  * in the CRM yet.
  */
 async function readSharedTables(directus: DirectusClient, scope: CampScope): Promise<SharedTables> {
-  const camps = await directus.readItems<CampWithClubspot>("camps", {
+  const camps = await directus.readItems<CampWithClubspot>("clubspot_camps", {
     filter: { id: { _eq: scope.clubspotCampId } },
     limit: -1,
   });
@@ -251,13 +252,13 @@ async function readSharedTables(directus: DirectusClient, scope: CampScope): Pro
   }
 
   const [classes, sessions, customFieldDefinitions, registrations] = await Promise.all([
-    directus.readItems<ClassRow>("classes", { filter: { camp_id: { _eq: campCrmId } }, limit: -1 }),
-    directus.readItems<SessionRow>("sessions", { filter: { camp_id: { _eq: campCrmId } }, limit: -1 }),
-    directus.readItems<CustomFieldDefinitionRow>("custom_field_definitions", {
+    directus.readItems<ClassRow>("clubspot_classes", { filter: { camp_id: { _eq: campCrmId } }, limit: -1 }),
+    directus.readItems<SessionRow>("clubspot_sessions", { filter: { camp_id: { _eq: campCrmId } }, limit: -1 }),
+    directus.readItems<CustomFieldDefinitionRow>("clubspot_custom_field_definitions", {
       filter: { camp_id: { _eq: campCrmId } },
       limit: -1,
     }),
-    directus.readItems<RegistrationRow>("registrations", {
+    directus.readItems<RegistrationRow>("clubspot_registrations", {
       filter: { camp_id: { _eq: campCrmId } },
       limit: -1,
     }),
@@ -268,11 +269,21 @@ async function readSharedTables(directus: DirectusClient, scope: CampScope): Pro
 
   const [sessionClasses, entryCaps, registrationEntries, registrationBilling, customFieldResponses] = await Promise.all(
     [
-      readByIds<SessionClassRow>(directus, "session_classes", "class_id", classIds),
-      readByIds<EntryCapRow>(directus, "entry_caps", "class_id", classIds),
-      readByIds<RegistrationEntryWithClubspot>(directus, "registration_entries", "registration_id", registrationIds),
-      readByIds<RegistrationBillingRow>(directus, "registration_billing", "registration_id", registrationIds),
-      readByIds<CustomFieldResponseRow>(directus, "custom_field_responses", "registration_id", registrationIds),
+      readByIds<SessionClassRow>(directus, "clubspot_session_classes", "class_id", classIds),
+      readByIds<EntryCapRow>(directus, "clubspot_entry_caps", "class_id", classIds),
+      readByIds<RegistrationEntryWithClubspot>(
+        directus,
+        "clubspot_registration_entries",
+        "registration_id",
+        registrationIds,
+      ),
+      readByIds<RegistrationBillingRow>(directus, "clubspot_registration_billing", "registration_id", registrationIds),
+      readByIds<CustomFieldResponseRow>(
+        directus,
+        "clubspot_custom_field_responses",
+        "registration_id",
+        registrationIds,
+      ),
     ],
   );
 
@@ -332,17 +343,19 @@ interface ApplySessionClassResult {
   removed: number;
 }
 
-/** `session_classes` has no status field to cancel, so a row Clubspot no longer offers is deleted outright. */
+/** `clubspot_session_classes` has no status field to cancel, so a row Clubspot no longer offers is deleted outright. */
 async function applySessionClassPlan(
   directus: DirectusClient,
   plan: SessionClassPlan,
   existing: SessionClassRow[],
 ): Promise<ApplySessionClassResult> {
   const createdRows =
-    plan.toCreate.length > 0 ? await directus.createItems<SessionClassRow>("session_classes", plan.toCreate) : [];
+    plan.toCreate.length > 0
+      ? await directus.createItems<SessionClassRow>("clubspot_session_classes", plan.toCreate)
+      : [];
 
   for (const row of plan.toRemove) {
-    await directus.deleteItem("session_classes", row.id);
+    await directus.deleteItem("clubspot_session_classes", row.id);
   }
 
   const removedIds = new Set(plan.toRemove.map((row) => row.id));
@@ -364,16 +377,16 @@ async function applyRegistrationBillingPlan(
   existing: RegistrationBillingRow[],
 ): Promise<ApplyRegistrationBillingResult> {
   for (const id of plan.toDelete) {
-    await directus.deleteItem("registration_billing", id);
+    await directus.deleteItem("clubspot_registration_billing", id);
   }
 
   const createdRows =
     plan.toCreate.length > 0
-      ? await directus.createItems<RegistrationBillingRow>("registration_billing", plan.toCreate)
+      ? await directus.createItems<RegistrationBillingRow>("clubspot_registration_billing", plan.toCreate)
       : [];
 
   for (const update of plan.toUpdate) {
-    await directus.updateItem<RegistrationBillingRow>("registration_billing", update.id, update.patch);
+    await directus.updateItem<RegistrationBillingRow>("clubspot_registration_billing", update.id, update.patch);
   }
 
   const patchById = new Map(plan.toUpdate.map((update) => [update.id, update.patch]));
@@ -410,7 +423,7 @@ interface ScheduleSyncResult {
 }
 
 /**
- * `camps`, `sessions`, `classes`, `session_classes`, `entry_caps` - reconciled in full every
+ * `clubspot_camps`, `clubspot_sessions`, `clubspot_classes`, `clubspot_session_classes`, `clubspot_entry_caps` - reconciled in full every
  * time, not watermark-filtered, following `SCHEDULE_CREATE_ORDER`.
  */
 async function syncSchedule(
@@ -423,19 +436,19 @@ async function syncSchedule(
   let skipped = 0;
 
   const campPlan = planCamps([data.camp], tables.camps);
-  const campResult = await applyPlan(directus, "camps", campPlan, tables.camps);
+  const campResult = await applyPlan(directus, "clubspot_camps", campPlan, tables.camps);
   tables.camps = campResult.rows;
   created += campResult.created;
   updated += campResult.updated;
 
   const sessionPlan = planSessions(data.sessions, tables.sessions);
-  const sessionResult = await applyPlan(directus, "sessions", sessionPlan, tables.sessions);
+  const sessionResult = await applyPlan(directus, "clubspot_sessions", sessionPlan, tables.sessions);
   tables.sessions = sessionResult.rows;
   created += sessionResult.created;
   updated += sessionResult.updated;
 
   const classPlan = planClasses(data.classes, tables.classes);
-  const classResult = await applyPlan(directus, "classes", classPlan, tables.classes);
+  const classResult = await applyPlan(directus, "clubspot_classes", classPlan, tables.classes);
   tables.classes = classResult.rows;
   created += classResult.created;
   updated += classResult.updated;
@@ -449,7 +462,7 @@ async function syncSchedule(
 
   const knownSessionIds = new Set(tables.sessions.map((row) => row.id));
   const entryCapPlan = planEntryCaps(data.entryCaps, knownSessionIds, tables.entryCaps);
-  const entryCapResult = await applyPlan(directus, "entry_caps", entryCapPlan, tables.entryCaps);
+  const entryCapResult = await applyPlan(directus, "clubspot_entry_caps", entryCapPlan, tables.entryCaps);
   tables.entryCaps = entryCapResult.rows;
   created += entryCapResult.created;
   updated += entryCapResult.updated;
@@ -459,9 +472,9 @@ async function syncSchedule(
 }
 
 /**
- * `custom_field_definitions`, `people`/`contacts`/`medical_profiles`/`participants` (via
- * `PersonSync` and the participant lookup below), `registrations`, `registration_entries`,
- * `registration_billing`, `custom_field_responses` - filtered to what's in `data.registrations`,
+ * `clubspot_custom_field_definitions`, `people`/`contacts`/`medical_profiles`/`clubspot_participants` (via
+ * `PersonSync` and the participant lookup below), `clubspot_registrations`, `clubspot_registration_entries`,
+ * `clubspot_registration_billing`, `clubspot_custom_field_responses` - filtered to what's in `data.registrations`,
  * following `REGISTRATION_CREATE_ORDER`.
  */
 async function syncRegistrations(
@@ -478,7 +491,7 @@ async function syncRegistrations(
   const definitionPlan = planCustomFieldDefinitions([data.camp], tables.customFieldDefinitions);
   const definitionResult = await applyPlan(
     directus,
-    "custom_field_definitions",
+    "clubspot_custom_field_definitions",
     definitionPlan,
     tables.customFieldDefinitions,
   );
@@ -487,14 +500,14 @@ async function syncRegistrations(
   updated += definitionResult.updated;
   const knownDefinitionIds = new Set(tables.customFieldDefinitions.map((row) => row.id));
 
-  // `promoted_fields` is staff config, unscoped by camp - small enough to re-read per camp sync.
+  // `clubspot_promoted_fields` is staff config, unscoped by camp - small enough to re-read per camp sync.
   // Mapped against this camp's own definitions, since a promoted label's definition id is only
   // ever good for the camp it was cloned onto (see `buildTargetByDefinitionId`). Caught here, not
   // let propagate: a broken read must not fail this camp's whole sync, same as the run-level
   // `promotePeopleFields` pass is isolated from the camp loop's own result - an empty map just
   // means this camp's registrations skip the promoted-fields sync this run.
   let targetByDefinitionId: ReadonlyMap<string, PromotablePersonField> = new Map();
-  // The `registrations` half of the same split - `share_contact`, synced for every registration
+  // The `clubspot_registrations` half of the same split - `share_contact`, synced for every registration
   // below, never gated on the newest-linked-participant check `targetByDefinitionId` above is.
   let registrationTargetByDefinitionId: ReadonlyMap<string, PromotableRegistrationField> = new Map();
   // Kept alongside `targetByDefinitionId`: a fallback registration's own responses can belong to a
@@ -503,7 +516,7 @@ async function syncRegistrations(
   // `resolveFallbackTargetValues`.
   let promotedFieldsConfig: readonly PromotedFieldRow[] = [];
   try {
-    promotedFieldsConfig = await directus.readItems<PromotedFieldRow>("promoted_fields", { limit: -1 });
+    promotedFieldsConfig = await directus.readItems<PromotedFieldRow>("clubspot_promoted_fields", { limit: -1 });
     const split = splitPromotedFieldTargets(
       buildTargetByDefinitionId(promotedFieldsConfig, tables.customFieldDefinitions),
     );
@@ -515,15 +528,15 @@ async function syncRegistrations(
     });
   }
 
-  // `participants` survives every rebuild and holds each registration's pinned person link. A
+  // `clubspot_participants` survives every rebuild and holds each registration's pinned person link. A
   // registration whose participant is already on file reuses that link (PersonSync.syncParticipant's
   // existingPersonId path) rather than matching again; only a genuinely new participant runs the
-  // matcher and gets a fresh `participants` row.
+  // matcher and gets a fresh `clubspot_participants` row.
   const participantIds = data.registrations.flatMap((registration) => {
     const participant = firstParticipant(registration);
     return participant ? [participant.id] : [];
   });
-  const existingParticipants = await readByIds<ParticipantRow>(directus, "participants", "id", participantIds);
+  const existingParticipants = await readByIds<ParticipantRow>(directus, "clubspot_participants", "id", participantIds);
   const existingParticipantById = new Map(existingParticipants.map((row) => [row.id, row] as const));
 
   const personIdByClubspotParticipantId = new Map<string, string>();
@@ -539,7 +552,7 @@ async function syncRegistrations(
   // `fallbackRegistrationId`. The promoted-fields sync below reuses it the same way.
   const fallbackRegistrationIdByRegistrationId = new Map<string, string>();
   // Every registration's own raw responses, keyed by registration id - so a batch sibling's
-  // fallback response is available even when it hasn't been written to `custom_field_responses`
+  // fallback response is available even when it hasn't been written to `clubspot_custom_field_responses`
   // yet (see the "same-batch race" note below).
   const rawResponsesByRegistrationId = new Map<string, readonly CustomFieldResponseInput[]>();
   const newParticipants: ParticipantRow[] = [];
@@ -554,7 +567,7 @@ async function syncRegistrations(
   let participantsUnlinkedSkipped = 0;
 
   // Pass 1: resolve (match, reuse, or create) every registration's person, without touching any
-  // curated field yet. `participants` rows for a genuinely new registration aren't written until
+  // curated field yet. `clubspot_participants` rows for a genuinely new registration aren't written until
   // after pass 2, so an isNewest ranking that only reads what's already in Directus would let two
   // registrations newly linked to the same person in this same batch both count as newest, and
   // whichever is processed last would win regardless of which is actually newer (cyc-seattle/isthmia#137). Resolving
@@ -586,7 +599,7 @@ async function syncRegistrations(
   // Two registrations can share one Clubspot participant in the same batch (e.g. two sessions of
   // the same camp). Resolving the person only once per participant id, and every later
   // registration reusing that same resolution, is what keeps pass 2 from queuing a second
-  // `participants` create with the same PK (cyc-seattle/isthmia#137 review finding 3).
+  // `clubspot_participants` create with the same PK (cyc-seattle/isthmia#137 review finding 3).
   const resolvedPersonByParticipantId = new Map<string, ResolvedPerson>();
   for (const registration of data.registrations) {
     const participant = firstParticipant(registration);
@@ -674,7 +687,7 @@ async function syncRegistrations(
 
     // Looked up fresh, not the pass 1 snapshot: two registrations can share one Clubspot
     // participant within a batch, and the second must see the first's own write from this same
-    // batch to decide create vs. update below - not queue a second `participants` create with the
+    // batch to decide create vs. update below - not queue a second `clubspot_participants` create with the
     // same PK (cyc-seattle/isthmia#137 review finding 3).
     const priorParticipant = existingParticipantById.get(participant.id);
     // The field rule's own base, unlike `priorParticipant` above - the pass 1 snapshot, so a
@@ -691,7 +704,7 @@ async function syncRegistrations(
         last_sync_run_id: runId ?? null,
         ...mirrorFields,
       };
-      await directus.createItems<ParticipantRow>("participants", [newParticipant]);
+      await directus.createItems<ParticipantRow>("clubspot_participants", [newParticipant]);
       newParticipants.push(newParticipant);
       existingParticipantById.set(participant.id, newParticipant);
       participantsMirrored++;
@@ -699,7 +712,7 @@ async function syncRegistrations(
 
     // The mirror keeps Clubspot's last non-blank answer for every field (cyc-seattle/isthmia#137 review), unlike the
     // CRM row's own one-CRM-field rule - `mergeParticipantMirrorFields` is only what's written to
-    // `participants` here; `mirrorFields` itself stays this run's raw `v` for `syncParticipant`
+    // `clubspot_participants` here; `mirrorFields` itself stays this run's raw `v` for `syncParticipant`
     // below. `last_sync_run_id` only moves in the same patch as an actual change, so an unchanged
     // participant carries no trace of a run that touched nothing of its. The CRM row is written
     // first and the mirror second, crash-safe: a rerun after a crash between the two sees the same
@@ -757,7 +770,7 @@ async function syncRegistrations(
   }
 
   for (const update of participantUpdates) {
-    await directus.updateItem<ParticipantRow>("participants", update.id, update.patch);
+    await directus.updateItem<ParticipantRow>("clubspot_participants", update.id, update.patch);
   }
 
   const registrationPlan = planRegistrations(
@@ -766,7 +779,12 @@ async function syncRegistrations(
     tables.registrations,
     unlinkedParticipantIds,
   );
-  const registrationResult = await applyPlan(directus, "registrations", registrationPlan, tables.registrations);
+  const registrationResult = await applyPlan(
+    directus,
+    "clubspot_registrations",
+    registrationPlan,
+    tables.registrations,
+  );
   tables.registrations = registrationResult.rows;
   created += registrationResult.created;
   updated += registrationResult.updated;
@@ -807,7 +825,12 @@ async function syncRegistrations(
       knownSessionIds,
       tables.registrationEntries,
     );
-    const entryResult = await applyPlan(directus, "registration_entries", entryPlan, tables.registrationEntries);
+    const entryResult = await applyPlan(
+      directus,
+      "clubspot_registration_entries",
+      entryPlan,
+      tables.registrationEntries,
+    );
     tables.registrationEntries = entryResult.rows;
     created += entryResult.created;
     updated += entryResult.updated;
@@ -820,7 +843,7 @@ async function syncRegistrations(
     updated += billingResult.updated;
 
     // Captured before this registration's own custom_field_responses are overwritten below - the
-    // `base` side of the promoted-fields rule, same as `participants` is for every other curated
+    // `base` side of the promoted-fields rule, same as `clubspot_participants` is for every other curated
     // field.
     const existingResponsesForRegistration = tables.customFieldResponses.filter(
       (row) => row.registration_id === registrationCrmId,
@@ -834,7 +857,7 @@ async function syncRegistrations(
     );
     const responseResult = await applyPlan(
       directus,
-      "custom_field_responses",
+      "clubspot_custom_field_responses",
       responsePlan,
       tables.customFieldResponses,
     );
@@ -905,12 +928,16 @@ async function syncRegistrations(
         currentShareContact,
       );
       if (Object.keys(registrationPromotedPlan.patch).length > 0) {
-        await directus.updateItem<RegistrationRow>("registrations", registrationCrmId, registrationPromotedPlan.patch);
+        await directus.updateItem<RegistrationRow>(
+          "clubspot_registrations",
+          registrationCrmId,
+          registrationPromotedPlan.patch,
+        );
         tables.registrations = tables.registrations.map((row) =>
           row.id === registrationCrmId ? { ...row, ...registrationPromotedPlan.patch } : row,
         );
       }
-      logReplacedFields("registrations", registrationCrmId, registrationPromotedPlan.replacedFields);
+      logReplacedFields("clubspot_registrations", registrationCrmId, registrationPromotedPlan.replacedFields);
       fieldsWritten += registrationPromotedPlan.written;
       fieldsReplacedStaffEdits += registrationPromotedPlan.replacedStaffEdits;
       fieldsBlankSkipped += registrationPromotedPlan.blankSkipped;
@@ -983,8 +1010,8 @@ async function runCampPasses(
 /**
  * Copies custom field responses onto `people` columns, once per run after every camp has had
  * its chance to sync - the winning response for a person can come from any camp, so this can't
- * run per-camp - and fills a `registrations` row's own null `share_contact` from its own stored
- * answer. Reads `promoted_fields` and a two-column projection of `people`, plus the collections
+ * run per-camp - and fills a `clubspot_registrations` row's own null `share_contact` from its own stored
+ * answer. Reads `clubspot_promoted_fields` and a two-column projection of `people`, plus the collections
  * `planPromotedFields` ranks candidates from. The returned count is people patches only, matching
  * `RunSyncResult.peoplePromoted`.
  */
@@ -993,11 +1020,11 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
     await Promise.all([
       // Unscoped: the winning custom-field response for a person can come from any camp, so this
       // pass needs every camp's rows, not one.
-      directus.readItems<CustomFieldDefinitionRow>("custom_field_definitions", { limit: -1 }),
-      directus.readItems<CustomFieldResponseRow>("custom_field_responses", { limit: -1 }),
-      directus.readItems<RegistrationRow>("registrations", { limit: -1 }),
-      directus.readItems<ParticipantRow>("participants", { limit: -1, fields: ["id", "person_id"] }),
-      directus.readItems<PromotedFieldRow>("promoted_fields", { limit: -1 }),
+      directus.readItems<CustomFieldDefinitionRow>("clubspot_custom_field_definitions", { limit: -1 }),
+      directus.readItems<CustomFieldResponseRow>("clubspot_custom_field_responses", { limit: -1 }),
+      directus.readItems<RegistrationRow>("clubspot_registrations", { limit: -1 }),
+      directus.readItems<ParticipantRow>("clubspot_participants", { limit: -1, fields: ["id", "person_id"] }),
+      directus.readItems<PromotedFieldRow>("clubspot_promoted_fields", { limit: -1 }),
       directus.readItems<PersonRow>("people", { limit: -1, fields: ["id", "school"] }),
     ]);
 
@@ -1014,7 +1041,7 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
     await directus.updateItem<PersonRow>("people", id, patch);
   }
   for (const { id, patch } of registrationPatches) {
-    await directus.updateItem<RegistrationRow>("registrations", id, patch);
+    await directus.updateItem<RegistrationRow>("clubspot_registrations", id, patch);
   }
 
   return peoplePatches.length;
@@ -1035,7 +1062,7 @@ interface AuditDetectionResult {
 async function detectAuditFindings(directus: DirectusClient): Promise<AuditDetectionResult> {
   const [people, participants] = await Promise.all([
     directus.readItems<MergePerson>("people", { fields: [...MERGE_PERSON_FIELDS], limit: -1 }),
-    directus.readItems<Pick<ParticipantRow, "id" | "person_id" | "first_name" | "last_name">>("participants", {
+    directus.readItems<Pick<ParticipantRow, "id" | "person_id" | "first_name" | "last_name">>("clubspot_participants", {
       fields: ["id", "person_id", "first_name", "last_name"],
       limit: -1,
     }),
@@ -1128,7 +1155,7 @@ export async function syncCamp(options: SyncCampOptions): Promise<SyncCampOutcom
 
   const wroteSomething = counts.created > 0 || counts.updated > 0;
   await directus.updateItem<CampWithClubspot>(
-    "camps",
+    "clubspot_camps",
     camp.id,
     nextSyncState(existing?.quiet_runs ?? 0, wroteSomething, startedAt),
   );
@@ -1158,6 +1185,9 @@ export interface RunSyncResult {
   contactPointsCreated: number;
   contactPointsTouched: number;
   peoplePromoted: number;
+  /** `offerings` and `registrations` rows this run created, changed, or deleted. */
+  offeringsWritten: number;
+  registrationsWritten: number;
   /** The one CRM field rule's own tally (cyc-seattle/isthmia#137) - see `synced-fields.ts`. */
   fieldsWritten: number;
   fieldsReplacedStaffEdits: number;
@@ -1190,6 +1220,8 @@ function toSyncRunOutcome(result: RunSyncResult, runError: string | undefined): 
       contactPointsCreated: result.contactPointsCreated,
       contactPointsTouched: result.contactPointsTouched,
       peoplePromoted: result.peoplePromoted,
+      offeringsWritten: result.offeringsWritten,
+      registrationsWritten: result.registrationsWritten,
       fieldsWritten: result.fieldsWritten,
       fieldsReplacedStaffEdits: result.fieldsReplacedStaffEdits,
       fieldsBlankSkipped: result.fieldsBlankSkipped,
@@ -1448,6 +1480,18 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
     runError = runError ?? (error instanceof Error ? error.message : String(error));
   }
 
+  // After the camp loop and the merges, so it sees this run's mirrors and each participant's person.
+  let offeringsWritten = 0;
+  let registrationsWritten = 0;
+  try {
+    ({ offeringsWritten, registrationsWritten } = await syncOfferings(directus));
+  } catch (error) {
+    winston.error("Making offerings and registrations from the Clubspot mirrors failed", {
+      error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+    });
+    runError = runError ?? (error instanceof Error ? error.message : String(error));
+  }
+
   let auditFindingsRaised = 0;
   let auditFindingsResolved = 0;
   try {
@@ -1473,6 +1517,8 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
     contactPointsCreated,
     contactPointsTouched,
     peoplePromoted,
+    offeringsWritten,
+    registrationsWritten,
     fieldsWritten,
     fieldsReplacedStaffEdits,
     fieldsBlankSkipped,

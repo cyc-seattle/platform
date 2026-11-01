@@ -17,20 +17,20 @@ import { type CollectionPlan, diffFields, joinedId, planById } from "./schedule.
 import { type RegistrationEntryWithClubspot } from "./schema.ts";
 
 /**
- * Pure plan functions for the registration pass: `custom_field_definitions`, `registrations`,
- * `registration_entries`, `registration_billing`, and `custom_field_responses`. Same shape as
+ * Pure plan functions for the registration pass: `clubspot_custom_field_definitions`, `clubspot_registrations`,
+ * `clubspot_registration_entries`, `clubspot_registration_billing`, and `clubspot_custom_field_responses`. Same shape as
  * `schedule.ts` - a thin executor elsewhere reads existing rows and writes the plan.
  *
- * Creates must happen in this order: `custom_field_definitions` and `registrations` have no FK on
- * each other, but everything else carries a FK to `registrations`, and `custom_field_responses`
- * also carries one to `custom_field_definitions`.
+ * Creates must happen in this order: `clubspot_custom_field_definitions` and `clubspot_registrations` have no FK on
+ * each other, but everything else carries a FK to `clubspot_registrations`, and `clubspot_custom_field_responses`
+ * also carries one to `clubspot_custom_field_definitions`.
  */
 export const REGISTRATION_CREATE_ORDER = [
-  "custom_field_definitions",
-  "registrations",
-  "registration_entries",
-  "registration_billing",
-  "custom_field_responses",
+  "clubspot_custom_field_definitions",
+  "clubspot_registrations",
+  "clubspot_registration_entries",
+  "clubspot_registration_billing",
+  "clubspot_custom_field_responses",
 ] as const;
 
 /**
@@ -112,9 +112,9 @@ export function buildRegistrationRow(
 }
 
 /**
- * Reconciles `registrations` by id. `participant_id` is resolved once, at creation, and never
+ * Reconciles `clubspot_registrations` by id. `participant_id` is resolved once, at creation, and never
  * revisited, so an existing row's update patch is pinned to its own stored value even if
- * `firstParticipant` would now resolve differently - `participants` is keyed on that same
+ * `firstParticipant` would now resolve differently - `clubspot_participants` is keyed on that same
  * Clubspot objectId, so no lookup is needed to point at it. `personIdByClubspotParticipantId` is
  * checked only to confirm the participant was synced first - `unlinkedParticipantIds` names one
  * that was, but intentionally has no person (design doc "A participants mirror": an unlinked
@@ -170,7 +170,7 @@ export function planRegistrations(
 }
 
 /**
- * Reconciles one registration's `registration_entries` against its current
+ * Reconciles one registration's `clubspot_registration_entries` against its current
  * `sessionJoinObjects`. When Clubspot drops a session from a registration, the join object simply
  * disappears - there's no id to detect the removal by - so any existing entry whose `id` is no
  * longer present among `joinObjects` is cancelled here, never deleted.
@@ -314,7 +314,7 @@ export function planRegistrationBilling(
 }
 
 /**
- * Reconciles `custom_field_definitions` from each camp's `customFieldsArray`. A definition is per
+ * Reconciles `clubspot_custom_field_definitions` from each camp's `customFieldsArray`. A definition is per
  * camp, not per club: Clubspot gives a cloned field (e.g. "School") a new `objectId` on each camp,
  * and even its label can drift between clones, so one row per camp is expected, and grouping the
  * same logical question across camps is left to reporting.
@@ -345,7 +345,7 @@ export interface CustomFieldResponseInput {
 }
 
 /**
- * Reconciles `custom_field_responses` from the registration's participant, keyed on the join of
+ * Reconciles `clubspot_custom_field_responses` from the registration's participant, keyed on the join of
  * `registration_id` and `definition_id`. A response whose `customFieldID` matches no known
  * definition is skipped - the definition may be archived, or belong to a camp other than this
  * registration's.
@@ -374,7 +374,7 @@ export function planCustomFieldResponses(
     }
     // An absent or whitespace-only response means the participant left this question blank on
     // this run - but this registration's own stored answer keeps its last non-blank value, same
-    // rule as the `participants` mirror (cyc-seattle/isthmia#137 review): a blank never overwrites a value already
+    // rule as the `clubspot_participants` mirror (cyc-seattle/isthmia#137 review): a blank never overwrites a value already
     // on file.
     const incoming = response.response ?? null;
     const stored = existingByDefinitionId.get(response.customFieldID)?.value ?? null;

@@ -11,7 +11,7 @@ export interface ProgramRoleRow {
 
 /**
  * Who someone is to a program. Durable by default: no `starts_on`/`ends_on` means current
- * forever. Separate from `event_staff`, which is person-plus-session and Clubspot-derived.
+ * forever.
  */
 export interface ProgramRoleAssignmentRow {
   id?: string;
