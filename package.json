@@ -47,6 +47,17 @@
     "@pulumi/kubernetes": "^4",
     "@pulumi/pulumi": "^3"
   },
+  "peerDependenciesMeta": {
+    "@pulumi/gcp": {
+      "optional": true
+    },
+    "@pulumi/kubernetes": {
+      "optional": true
+    },
+    "@pulumi/pulumi": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@amiceli/vitest-cucumber": "7.0.0",
     "@cyc-seattle/ts-config": "^0.1.2",
