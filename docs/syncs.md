@@ -1,7 +1,7 @@
 # The syncs
 
 clubspot-sync and gsuite-sync are hourly CronJobs in the `backend` stack. [backend.md](backend.md#the-syncs)
-says how they're built and deployed.
+says how they're built and deployed. calendar-sync isn't deployed: someone runs it by hand.
 
 The code lives in `src/`, outside the published package:
 
@@ -10,7 +10,8 @@ The code lives in `src/`, outside the published package:
   wouldn't survive a move off Clubspot.
 - `src/syncs/runtime/` is what both syncs share: the Directus row client, the `sync_tasks` queue
   and its worker, sync runs, and audit findings.
-- `src/syncs/clubspot/` and `src/syncs/gsuite/` are the syncs. Each has a `main.ts`, the CLI.
+- `src/syncs/clubspot/`, `src/syncs/gsuite/` and `src/syncs/calendar/` are the syncs. Each has a
+  `main.ts`, the CLI.
 
 Node runs a sync's CLI straight from source, so `node src/syncs/<sync>/main.ts --help` lists its
 options.
@@ -400,3 +401,59 @@ and re-enqueues it by hand.
 
 - **Sync notifications.** Deferred (cyc-seattle/isthmia#122). `sync_tasks.needs_attention` makes a chronically failing
   task visible in the Directus admin UI today.
+
+## calendar-sync
+
+Syncs events one way, from a Google Sheets spreadsheet into Google Calendars. It's a stopgap until
+the CRM's own jobs replace it, so it has no image and no CronJob. It moved here from the archived
+`cyc-seattle/calendar-sync` repository.
+
+### Running it
+
+It runs as you, with Application Default Credentials, which need the Calendar and Sheets scopes. A
+user login's scopes are set when you log in, and the workplace's `mise run auth-adc` asks only for
+gcloud's defaults, so log in with them added:
+
+```sh
+gcloud auth application-default login --scopes=openid,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/spreadsheets
+```
+
+Then:
+
+```sh
+mise run calendar-sync -- --spreadsheet-id <spreadsheet ID or URL>
+```
+
+Options:
+
+- `--spreadsheet-id <id>` - the spreadsheet's ID or URL (required)
+- `--events-worksheet <name>` - the Events worksheet's name (default `Events`)
+- `--calendars-worksheet <name>` - the Calendars worksheet's name (default `Calendars`)
+- `--logging <format>` - `pretty` or `json` (default `pretty`)
+- `-v, --verbose` - log more; `-vv` logs debug lines
+
+### The spreadsheet
+
+The Calendars worksheet names each calendar:
+
+| Name | ID                                 |
+| ---- | ---------------------------------- |
+| Team | `team@group.calendar.google.com`   |
+| Camp | `c_<id>@group.calendar.google.com` |
+
+The Events worksheet lists the events:
+
+| Event ID | Start Date | End Date  | Calendar | Labels | Title            | Location | Description  |
+| -------- | ---------- | --------- | -------- | ------ | ---------------- | -------- | ------------ |
+| abc123   | 2/16/2026  | 2/20/2026 | Team     | SPS    | Mid Winter Break | Seattle  | School break |
+|          | 3/15/2026  |           | Camp     | Camp   | Opening Day      | Dock     |              |
+|          |            |           | Team     |        | Summer Party     |          | TBD          |
+
+- Dates are `M/d/yyyy`. A blank End Date is a one-day event. Every event is all-day.
+- A blank Start Date marks a tentative event, which the sync skips.
+- `Labels` is comma-separated, and each becomes a prefix: `SPS, Camp` and `Title` make
+  `[SPS] [Camp] Title`.
+- A blank Event ID is a new event: the sync creates it and writes Google's ID back to the row.
+- An Event ID the calendar has is updated. One the calendar doesn't have is created again, and its
+  new ID written back.
+- If either worksheet is missing, the sync creates it with these headers.
