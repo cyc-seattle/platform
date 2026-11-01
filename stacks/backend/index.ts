@@ -143,10 +143,9 @@ const { auth, crewPolicyId, clubspotSyncPolicyId, gsuiteSyncPolicyId, communityR
 
 // The syncs' CronJobs take their machine users' tokens straight into their Secrets.
 const { clubspotSyncToken, gsuiteSyncToken } = identities;
-void loadCluster().then((cluster) => {
-  deployClubspotSync(cluster, clubspotSyncToken);
-  deployGsuiteSync(cluster, gsuiteSyncToken);
-});
+void loadCluster().then((cluster) =>
+  Promise.all([deployClubspotSync(cluster, clubspotSyncToken), deployGsuiteSync(cluster, gsuiteSyncToken)]),
+);
 
 // Authentik registers Directus's client from these (cyc-seattle/workplace#6).
 export const directusOidcClientId = pulumi.output(app.then(({ oidcClientId }) => oidcClientId));

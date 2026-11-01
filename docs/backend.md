@@ -106,9 +106,11 @@ create or an update. So the guard checks an MCP tool call's filter, sort, group,
 ## The syncs
 
 clubspot-sync and gsuite-sync live in `src/syncs/`, and [syncs.md](syncs.md) describes them. The root
-`Dockerfile` bundles each into one file with esbuild, so its image has no `node_modules`. Dev builds
-both images on every deploy, tagged with the commit. Prod runs the image dev built for its commit,
-so deploy a commit to dev before prod. Each CronJob reads its machine user's Directus token
+`Dockerfile` bundles each into one file with esbuild, so its image has no `node_modules`. An image's
+tag is a hash of what it's built from (`stacks/backend/sync-image.ts`), and each tag is pushed once.
+A deploy runs the tag from the registry if it's there. If it isn't, dev builds it and prod fails, so
+deploy a commit to dev before prod. A commit that doesn't change the syncs changes neither image,
+and its prod deploy is skipped (cyc-seattle/platform#72). Each CronJob reads its machine user's Directus token
 from its own Secret, which `backend` writes from the token it generates.
 
 In prod they run hourly, clubspot-sync on the hour and gsuite-sync at half past. In dev the

@@ -90,13 +90,18 @@ beforeAll(async () => {
   const { deployClubspotSync } = await import("../stacks/backend/clubspot-sync.ts");
   const { deployGsuiteSync } = await import("../stacks/backend/gsuite-sync.ts");
   const cluster = await loadCluster();
-  deployClubspotSync(cluster, "clubspot-token");
-  deployGsuiteSync(cluster, "gsuite-token");
+  await Promise.all([deployClubspotSync(cluster, "clubspot-token"), deployGsuiteSync(cluster, "gsuite-token")]);
   await settle();
 });
 
 describe("The syncs on prod's cluster", () => {
-  it("run the images dev built for this commit, by digest, building none", () => {
+  it("run the images dev built from these inputs, by digest, building none", async () => {
+    const { syncImageTag } = await import("../stacks/backend/sync-image.ts");
+    const looked = calls.filter((c) => c.token === "gcp:artifactregistry/getDockerImage:getDockerImage");
+    expect(looked.map((c) => c.inputs["imageName"]).sort()).toEqual([
+      `clubspot-sync:${syncImageTag}`,
+      `gsuite-sync:${syncImageTag}`,
+    ]);
     expect(container("clubspot-sync").image).toBe(`${platform.registry}/clubspot-sync@sha256:abc`);
     expect(container("gsuite-sync").image).toBe(`${platform.registry}/gsuite-sync@sha256:abc`);
     expect(resources.find((r) => r.type === "docker-build:index:Image")).toBeUndefined();
