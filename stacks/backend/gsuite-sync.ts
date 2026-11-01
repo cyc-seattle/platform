@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import { ScheduledJob, Workload } from "../../src/index.ts";
 import { appSecret, type Cluster, deployedImage, isDev } from "../../src/app/cluster.ts";
+import { syncImageTag } from "./sync-image.ts";
 import { enableService } from "../../src/services.ts";
 
 // gsuite-sync on the cluster (cyc-seattle/isthmia#231): an hourly CronJob that reaches Directus inside the namespace.
@@ -11,7 +12,7 @@ import { enableService } from "../../src/services.ts";
 const fakeImage = "ghcr.io/cyc-seattle/workspace-fake:0.3.0";
 
 /** The CronJob, its Secret and image, and in dev, the Workspace fake. */
-export function deployGsuiteSync(cluster: Cluster, directusToken: pulumi.Input<string>): void {
+export async function deployGsuiteSync(cluster: Cluster, directusToken: pulumi.Input<string>): Promise<void> {
   if (!isDev) {
     // The Directory API, for group membership, nesting, and roles, and the Groups Settings API.
     // Dev's sync calls the Workspace fake instead.
@@ -38,7 +39,11 @@ export function deployGsuiteSync(cluster: Cluster, directusToken: pulumi.Input<s
     DIRECTUS_TOKEN: directusToken,
   });
 
-  const image = deployedImage(cluster, "gsuite-sync", { context: "../..", target: "gsuite-sync" });
+  const image = await deployedImage(cluster, "gsuite-sync", {
+    context: "../..",
+    target: "gsuite-sync",
+    tag: syncImageTag,
+  });
 
   new ScheduledJob("gsuite-sync", {
     platform,

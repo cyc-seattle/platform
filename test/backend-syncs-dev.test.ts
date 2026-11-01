@@ -30,12 +30,19 @@ pulumi.runtime.setMocks(
   {
     newResource: ({ type, name, inputs }) => {
       resources.push({ type, name, inputs });
-      const state = type === "docker-build:index:Image" ? { ...inputs, ref: `${name}@sha256:dev` } : inputs;
+      const state =
+        type === "docker-build:index:Image" ? { ...inputs, ref: `${inputs["tags"][0]}@sha256:built` } : inputs;
       return { id: `${name}-id`, state };
     },
     call: ({ token, inputs }) => {
       if (token === "gcp:storage/getBucketObjectContent:getBucketObjectContent") {
         return { ...inputs, content: JSON.stringify(platform) };
+      }
+      // gsuite-sync's image is already in the registry, and clubspot-sync's isn't.
+      if (token === "gcp:artifactregistry/getDockerImage:getDockerImage") {
+        const [name] = String(inputs["imageName"]).split(":");
+        if (name !== "gsuite-sync") throw new Error("not found");
+        return { ...inputs, selfLink: `${platform.registry}/${name}@sha256:pushed` };
       }
       if (token === "gcp:secretmanager/getSecretVersionAccess:getSecretVersionAccess") {
         return { ...inputs, secretData: `${String(inputs["secret"])}-value` };
@@ -64,9 +71,14 @@ function cronJob(name: string) {
   return find("kubernetes:batch/v1:CronJob", name).inputs["spec"];
 }
 
+function container(name: string) {
+  return cronJob(name).jobTemplate.spec.template.spec.containers[0];
+}
+
 function env(name: string): Record<string, unknown> {
-  const container = cronJob(name).jobTemplate.spec.template.spec.containers[0];
-  return Object.fromEntries((container.env ?? []).map((e: { name: string; value?: unknown }) => [e.name, e.value]));
+  return Object.fromEntries(
+    (container(name).env ?? []).map((e: { name: string; value?: unknown }) => [e.name, e.value]),
+  );
 }
 
 // The mock passes secret values through wrapped, as `{ <signature>, value }`.
@@ -80,8 +92,7 @@ beforeAll(async () => {
   const { deployClubspotSync } = await import("../stacks/backend/clubspot-sync.ts");
   const { deployGsuiteSync } = await import("../stacks/backend/gsuite-sync.ts");
   const cluster = await loadCluster();
-  deployClubspotSync(cluster, "clubspot-token");
-  deployGsuiteSync(cluster, "gsuite-token");
+  await Promise.all([deployClubspotSync(cluster, "clubspot-token"), deployGsuiteSync(cluster, "gsuite-token")]);
   await new Promise((resolve) => setTimeout(resolve, 200));
 });
 
@@ -91,13 +102,19 @@ describe("The syncs on dev's cluster", () => {
     expect(cronJob("gsuite-sync")).toMatchObject({ schedule: "30 * * * *", suspend: true });
   });
 
-  it("build their images from the repo's Dockerfile", () => {
-    for (const name of ["clubspot-sync", "gsuite-sync"]) {
-      expect(find("docker-build:index:Image", name).inputs).toMatchObject({
-        context: { location: "../.." },
-        target: name,
-      });
-    }
+  it("build an image the registry doesn't have, tagged by its inputs, and run it by digest", async () => {
+    const { syncImageTag } = await import("../stacks/backend/sync-image.ts");
+    expect(find("docker-build:index:Image", "clubspot-sync").inputs).toMatchObject({
+      context: { location: "../.." },
+      target: "clubspot-sync",
+      tags: [`${platform.registry}/clubspot-sync:${syncImageTag}`],
+    });
+    expect(container("clubspot-sync").image).toBe(`${platform.registry}/clubspot-sync@sha256:built`);
+  });
+
+  it("reuse an image the registry has, building none", () => {
+    expect(resources.find((r) => r.type === "docker-build:index:Image" && r.name === "gsuite-sync")).toBeUndefined();
+    expect(container("gsuite-sync").image).toBe(`${platform.registry}/gsuite-sync@sha256:pushed`);
   });
 
   it("run the fakes they sync with", () => {

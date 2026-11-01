@@ -1,4 +1,6 @@
-import childProcess from "node:child_process";
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as k8s from "@pulumi/kubernetes";
@@ -103,9 +105,30 @@ export function appDatabase(cluster: Cluster, name: string, existingPassword?: p
   return { name, secret, host, uri };
 }
 
-/** The commit being deployed. Images are tagged with it. */
-export function commitSha(): string {
-  return childProcess.execFileSync("git", ["rev-parse", "HEAD"], { cwd: import.meta.dirname, encoding: "utf8" }).trim();
+/**
+ * A tag for an image built from `inputs`, files and folders relative to `root`. It's a hash of their
+ * contents, so a commit that changes none of them reuses the image, and prod sees no change.
+ */
+export function inputsTag(root: string, inputs: readonly string[]): string {
+  const files = inputs
+    .flatMap((input) =>
+      fs.statSync(path.join(root, input)).isDirectory()
+        ? fs
+            .readdirSync(path.join(root, input), { recursive: true, encoding: "utf8" })
+            .map((file) => path.posix.join(input, file.split(path.sep).join("/")))
+        : [input],
+    )
+    .filter((file) => fs.statSync(path.join(root, file)).isFile())
+    .sort();
+  const hash = crypto.createHash("sha256");
+  for (const file of files) {
+    hash
+      .update(file)
+      .update("\0")
+      .update(fs.readFileSync(path.join(root, file)))
+      .update("\0");
+  }
+  return `in-${hash.digest("hex").slice(0, 20)}`;
 }
 
 export interface AppImageArgs {
@@ -114,54 +137,79 @@ export interface AppImageArgs {
   /** The Dockerfile, relative to the project's directory. Defaults to the context's `Dockerfile`. */
   dockerfile?: string;
   target?: string;
+  /** From `inputsTag`. */
+  tag: string;
 }
 
 /**
- * An image built from this commit and pushed to the environment's registry, tagged with the commit
- * SHA. `ref` pins the digest. The push authenticates with the running credentials' access token.
+ * An image built and pushed to the environment's registry as `<name>:<tag>`. `ref` pins the digest.
+ * The push authenticates with the running credentials' access token.
  */
 export function appImage({ platform }: Cluster, name: string, args: AppImageArgs): docker.Image {
-  return new docker.Image(name, {
-    tags: [`${platform.registry}/${name}:${commitSha()}`],
-    context: { location: args.context },
-    ...(args.dockerfile !== undefined && { dockerfile: { location: args.dockerfile } }),
-    ...(args.target !== undefined && { target: args.target }),
-    platforms: ["linux/amd64"],
-    push: true,
-    // Defaults to true: every preview would otherwise build the image (cyc-seattle/isthmia#114).
-    buildOnPreview: false,
-    registries: [
-      {
-        address: platform.registry.split("/")[0] ?? platform.registry,
-        username: "oauth2accesstoken",
-        password: gcp.organizations.getClientConfigOutput({}).accessToken,
-      },
-    ],
-  });
+  const registry = { address: platform.registry.split("/")[0] ?? platform.registry };
+  const cache = `${platform.registry}/${name}:buildcache`;
+  return new docker.Image(
+    name,
+    {
+      tags: [`${platform.registry}/${name}:${args.tag}`],
+      context: { location: args.context },
+      ...(args.dockerfile !== undefined && { dockerfile: { location: args.dockerfile } }),
+      ...(args.target !== undefined && { target: args.target }),
+      platforms: ["linux/amd64"],
+      push: true,
+      // Defaults to true: every preview would otherwise build the image (cyc-seattle/isthmia#114).
+      buildOnPreview: false,
+      cacheFrom: [{ registry: { ref: cache } }],
+      cacheTo: [{ registry: { ref: cache, mode: docker.CacheMode.Max, imageManifest: true, ociMediaTypes: true } }],
+      registries: [
+        {
+          ...registry,
+          username: "oauth2accesstoken",
+          password: gcp.organizations.getClientConfigOutput({}).accessToken,
+        },
+      ],
+    },
+    // The provider deletes an image's tags with it. A dev deploy drops the resource once its tag is
+    // in the registry, and prod may run that tag (cyc-seattle/platform#72).
+    { retainOnDelete: true },
+  );
 }
 
 /**
- * The image `appImage` builds, by digest. Dev builds and pushes it. Elsewhere it's looked up by the
- * commit's tag, so prod runs what dev ran (cyc-seattle/isthmia#231).
+ * The image `<name>:<tag>`, as `<registry>/<name>@<digest>`. Each tag is pushed once: if it's in the
+ * registry, every environment runs it as it is. Otherwise dev builds it, and prod fails, so prod
+ * runs what dev ran (cyc-seattle/isthmia#231).
  */
-export function deployedImage(cluster: Cluster, name: string, args: AppImageArgs): pulumi.Output<string> {
-  if (isDev) {
-    return appImage(cluster, name, args).ref;
-  }
+export async function deployedImage(
+  cluster: Cluster,
+  name: string,
+  args: AppImageArgs,
+): Promise<pulumi.Output<string>> {
   const { registry } = cluster.platform;
   const [host = "", project = "", repositoryId = ""] = registry.split("/");
-  const sha = commitSha();
-  const image = gcp.artifactregistry
+  const byDigest = (image: string) => `${registry}/${name}@${image.slice(image.indexOf("@") + 1)}`;
+  let error: unknown;
+  const found = await gcp.artifactregistry
     .getDockerImage({
       location: host.replace(/-docker\.pkg\.dev$/, ""),
       project,
       repositoryId,
-      imageName: `${name}:${sha}`,
+      imageName: `${name}:${args.tag}`,
     })
-    .catch((error: unknown) => {
-      throw new Error(
-        `Can't find ${registry}/${name}:${sha}. Dev builds it: deploy this commit to dev first. (${String(error)})`,
-      );
-    });
-  return pulumi.output(image).apply((found) => found.selfLink);
+    .then(
+      (image) => image.selfLink,
+      (reason: unknown) => {
+        error = reason;
+        return undefined;
+      },
+    );
+  if (found !== undefined) {
+    return pulumi.output(byDigest(found));
+  }
+  if (!isDev) {
+    throw new Error(
+      `Can't find ${registry}/${name}:${args.tag}. Dev builds it: deploy this commit to dev first. (${String(error)})`,
+    );
+  }
+  return appImage(cluster, name, args).ref.apply(byDigest);
 }

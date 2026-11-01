@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import { ScheduledJob, Workload } from "../../src/index.ts";
 import { appDatabase, appSecret, type Cluster, deployedImage, isDev } from "../../src/app/cluster.ts";
+import { syncImageTag } from "./sync-image.ts";
 import { Secret } from "../../src/app/secret.ts";
 import { clubspotFakeDatabaseUri, clubspotFakeEnv } from "./clubspot-fake.ts";
 
@@ -13,7 +14,7 @@ import { clubspotFakeDatabaseUri, clubspotFakeEnv } from "./clubspot-fake.ts";
 const fakeImage = "ghcr.io/cyc-seattle/clubspot-fake:0.3.0";
 
 /** The CronJob, its Secret and image, and in dev, the Clubspot fake. */
-export function deployClubspotSync(cluster: Cluster, directusToken: pulumi.Input<string>): void {
+export async function deployClubspotSync(cluster: Cluster, directusToken: pulumi.Input<string>): Promise<void> {
   if (!isDev) {
     // Set by hand. The deploy reads them into the CronJob's Secret.
     new Secret("clubspot-username");
@@ -31,7 +32,11 @@ export function deployClubspotSync(cluster: Cluster, directusToken: pulumi.Input
     CLUBSPOT_PASSWORD: clubspot.password,
   });
 
-  const image = deployedImage(cluster, "clubspot-sync", { context: "../..", target: "clubspot-sync" });
+  const image = await deployedImage(cluster, "clubspot-sync", {
+    context: "../..",
+    target: "clubspot-sync",
+    tag: syncImageTag,
+  });
 
   new ScheduledJob("clubspot-sync", {
     platform,

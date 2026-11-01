@@ -13,10 +13,31 @@ permissions:
 jobs:
   ci:
     uses: cyc-seattle/.github/.github/workflows/ci.yml@v2.5.2
+  # A PR that changes only docs or CI deploys nothing. Elsewhere, projects is empty, so main deploys
+  # them all.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.changes.outputs.projects }}
+    steps:
+      # A PR checks out its merge commit, whose first parent is the base branch.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+      - id: changes
+        if: github.event_name == 'pull_request'
+        # bash adds pipefail. The assignment stops a failure from reading as "deploy nothing".
+        shell: bash
+        run: |
+          projects="$(git diff --name-only --no-renames HEAD^1 HEAD | scripts/changed-projects)"
+          echo "projects=$projects" | tee -a "$GITHUB_OUTPUT"
   dev:
-    needs: ci
+    needs: [ci, changes]
     # A fork's PR gets no OIDC token, so it can't deploy.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && needs.changes.outputs.projects != '')
     uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.5.2
     # actions: read lets a branch's deploy wait for main's, so it can't cancel it (#69).
     permissions:
@@ -26,6 +47,7 @@ jobs:
     with:
       environment: dev
       task: deploy
+      projects: ${{ needs.changes.outputs.projects }}
       integration: true
   # A cancelled dev deploy skips prod, so fail main's run where someone will see it.
   dev-cancelled:
