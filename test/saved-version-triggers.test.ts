@@ -10,6 +10,7 @@ import {
   fingerprint,
   installTriggers,
   REFUSED,
+  RESULTS_BY_SAVE,
   triggerStatements,
   triggerStatus,
 } from "../stacks/backend/saved-versions.cjs";
@@ -70,7 +71,7 @@ const connect = (tx: Transaction) => ({
   exec: (sql: string) => tx.exec(sql),
 });
 
-const config = (deletable: boolean) => savedVersionsConfig(schemas, deletable);
+const config = (deletable: boolean) => savedVersionsConfig(schemas, deletable, "1.0.0+engine.abc");
 
 type Values = Record<string, unknown>;
 
@@ -169,6 +170,51 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     db = await database(config(false));
     w = writer(db);
   }, 30_000);
+
+  describe("on a version's results", () => {
+    /** Writes a warning and then the totals for `version`, as the hook does; returns the error, if any. */
+    const hookWrites = async (version: string) => {
+      try {
+        await db.transaction(async (tx) => {
+          await tx.exec("SET LOCAL cyc.writing_results = 'on'");
+          await tx.query(`INSERT INTO plan_result_warnings (id, version_id, code, message) VALUES ($1, $2, 'x', 'y')`, [
+            randomUUID(),
+            version,
+          ]);
+          await tx.query(`INSERT INTO plan_results (id, version_id, total_cents) VALUES ($1, $2, 0)`, [
+            randomUUID(),
+            version,
+          ]);
+        });
+        return undefined;
+      } catch (error) {
+        return error as { code?: string; message: string };
+      }
+    };
+
+    it("let only the hook write a saved version's results, once", async () => {
+      const { saved } = await plans(db, 2201);
+      expect(await w.refusedInsert("plan_result_warnings", { version_id: saved, code: "x", message: "y" })).toEqual(
+        refusal(RESULTS_BY_SAVE),
+      );
+      expect(await hookWrites(saved)).toBeUndefined();
+      expect(await hookWrites(saved)).toEqual(refusal(RESULTS_BY_SAVE));
+    });
+
+    it("refuse results on a draft, even from the hook", async () => {
+      const { draft } = await plans(db, 2202);
+      expect(await hookWrites(draft)).toEqual(refusal(RESULTS_BY_SAVE));
+    });
+
+    it("refuse to change or delete them", async () => {
+      const { saved } = await plans(db, 2203);
+      await hookWrites(saved);
+      const [{ id }] = (await db.query<{ id: string }>(`SELECT id FROM plan_results WHERE version_id = $1`, [saved]))
+        .rows as [{ id: string }];
+      expect(await w.update("plan_results", id, { total_cents: 1 })).toEqual(refusal(RESULTS_BY_SAVE));
+      expect(await w.remove("plan_results", id)).toEqual(refusal(RESULTS_BY_SAVE));
+    });
+  });
 
   describe("on a saved version's rows", () => {
     it("refuse to add, change, or delete one", async () => {

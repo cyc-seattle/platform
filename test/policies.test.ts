@@ -156,7 +156,15 @@ const plans = [
   "plan_pools",
   "plan_bonus_owners",
   "plan_bonus_owner_products",
+  "plan_closed_dates",
+  "plan_results",
+  "plan_result_versions",
+  "plan_result_lines",
+  "plan_result_pnl",
+  "plan_result_positions",
+  "plan_result_warnings",
 ];
+const results = plans.filter((collection) => collection.startsWith("plan_result"));
 
 describe("the Plan policies", () => {
   const catalog = collections("Catalog Reader", "read");
@@ -172,13 +180,15 @@ describe("the Plan policies", () => {
     expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Plan Writer change plans, add to the activation log, and change none of the catalog", () => {
+  it("let a Plan Writer change plans, add to the activation log, and change none of the catalog or a version's results", () => {
     for (const action of ["update", "delete"]) {
       expect([...collections("Plan Writer", action)].sort()).toEqual(
-        plans.filter((collection) => collection !== "plan_activations").sort(),
+        plans.filter((collection) => collection !== "plan_activations" && !results.includes(collection)).sort(),
       );
     }
-    expect([...collections("Plan Writer", "create")].sort()).toEqual([...plans].sort());
+    expect([...collections("Plan Writer", "create")].sort()).toEqual(
+      plans.filter((collection) => !results.includes(collection)).sort(),
+    );
   });
 
   it("are the only policies that see plans", () => {
@@ -191,15 +201,16 @@ describe("the Plan policies", () => {
 
 describe("savedVersionsConfig", () => {
   it("guards every collection whose rows belong to a version, but the activation log", () => {
-    const { versioned, deletable } = savedVersionsConfig(schemas, false);
+    const { versioned, results: written, deletable } = savedVersionsConfig(schemas, false, "1.0.0");
     expect(versioned.sort()).toEqual(
       plans.filter((collection) => !["plans", "plan_versions", "plan_activations"].includes(collection)).sort(),
     );
+    expect(written.sort()).toEqual([...results].sort());
     expect(deletable).toBe(false);
   });
 
   it("lists every link from a plan row to another, which must stay in the row's version", () => {
-    const { links } = savedVersionsConfig(schemas, false);
+    const { links } = savedVersionsConfig(schemas, false, "1.0.0");
     expect(links).toEqual({
       plan_offering_boat_classes: { offering_id: "plan_offerings" },
       plan_trips: { offering_id: "plan_offerings" },

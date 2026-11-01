@@ -214,6 +214,42 @@ export const defaultViews: DefaultView[] = [
     sort: ["bonus_owner_id.role_name", "product_id.name"],
     fields: ["bonus_owner_id", "product_id", "version_id"],
   },
+  {
+    collection: "plan_closed_dates",
+    sort: ["version_id.plan_id.name", "date"],
+    fields: ["date", "name", "version_id"],
+  },
+  // A saved version's results, newest first.
+  {
+    collection: "plan_results",
+    sort: ["-calculated_at"],
+    fields: ["version_id", "calculated_at", "operating_net_cents", "total_cents"],
+  },
+  {
+    collection: "plan_result_versions",
+    sort: ["version_id.plan_id.name", "calculated_with_id.plan_id.name"],
+    fields: ["version_id", "calculated_with_id"],
+  },
+  {
+    collection: "plan_result_lines",
+    sort: ["version_id.plan_id.name", "cost_center_name", "account_id.number"],
+    fields: ["cost_center_name", "account_id", "amount_cents", "line", "version_id"],
+  },
+  {
+    collection: "plan_result_pnl",
+    sort: ["version_id.plan_id.name", "level", "name"],
+    fields: ["name", "level", "revenue_cents", "expense_cents", "net_cents", "version_id"],
+  },
+  {
+    collection: "plan_result_positions",
+    sort: ["version_id.plan_id.name", "name"],
+    fields: ["name", "salary_cents", "hourly_coaching_cents", "bonus_cents", "total_pay_cents", "version_id"],
+  },
+  {
+    collection: "plan_result_warnings",
+    sort: ["version_id.plan_id.name", "code"],
+    fields: ["message", "code", "version_id"],
+  },
 
   // Sync
   { collection: "sync_runs", sort: ["-started_at"], fields: ["started_at", "source", "status", "finished_at"] },

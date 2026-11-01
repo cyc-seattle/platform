@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { computePlan, type EngineOutput, type PlanData } from "../../src/planning/index.ts";
+import type { DirectusSession } from "./directus.ts";
 import { userFor } from "./steps/logins.ts";
-import { adminCreate, key, PLAN_YEAR, runId, type Item, type Row } from "./steps/rows.ts";
+import { admin, adminCreate, itemPath, key, PLAN_YEAR, runId, type Item, type Row } from "./steps/rows.ts";
 
 // A small plan the P&L examples build in dev, as an app or agent would: rows entered in Directus,
 // read back by a planner, and calculated with the engine. Every figure in them is made up.
@@ -67,6 +68,7 @@ const VERSION_ROWS = [
   "plan_pools",
   "plan_bonus_owners",
   "plan_bonus_owner_products",
+  "plan_closed_dates",
 ] as const;
 
 /** The revenue and expense accounts the examples book to, by what they're for. */
@@ -81,7 +83,10 @@ type AccountName =
   | "donations"
   | "salaries"
   | "office"
-  | "coachBoats";
+  | "coachBoats"
+  | "coachWages"
+  | "payrollTax"
+  | "bonus";
 
 const ACCOUNTS: Record<AccountName, { type: string; default_function?: string }> = {
   programs: { type: "revenue" },
@@ -95,6 +100,16 @@ const ACCOUNTS: Record<AccountName, { type: string; default_function?: string }>
   salaries: { type: "expense" },
   office: { type: "expense", default_function: "management" },
   coachBoats: { type: "asset" },
+  coachWages: { type: "expense" },
+  payrollTax: { type: "expense" },
+  bonus: { type: "expense" },
+};
+
+/** The costs the engine works out, and the account each goes to. */
+const COST_ACCOUNTS: Record<string, AccountName> = {
+  salaries: "salaries",
+  coach_wages: "coachWages",
+  payroll_tax: "payrollTax",
 };
 
 /** One example's plans: an organization's Operations Plan, and a plan for each program area. */
@@ -135,12 +150,14 @@ export class PnlPlan {
           })
         ).id;
       }
-      await adminCreate("organization_cost_accounts", {
-        id: randomUUID(),
-        organization_id: this.organizationId,
-        cost_type: "salaries",
-        account_id: this.accounts.salaries,
-      });
+      for (const [costType, account] of Object.entries(COST_ACCOUNTS)) {
+        await adminCreate("organization_cost_accounts", {
+          id: randomUUID(),
+          organization_id: this.organizationId,
+          cost_type: costType,
+          account_id: this.accounts[account],
+        });
+      }
     }
     return this.organizationId;
   }
@@ -198,7 +215,14 @@ export class PnlPlan {
   }
 
   /** An offering of `product` in `version`, with `costs` cents of its own direct costs. */
-  async offering(version: string, product: string, price: number, sailors: number, costs = 0): Promise<Item> {
+  async offering(
+    version: string,
+    product: string,
+    price: number,
+    sailors: number,
+    costs = 0,
+    extra: Row = {},
+  ): Promise<Item> {
     const offering = await adminCreate("plan_offerings", {
       id: randomUUID(),
       version_id: version,
@@ -209,6 +233,7 @@ export class PnlPlan {
       ends_on: `${PLAN_YEAR}-06-30`,
       target_enrollment: sailors,
       price_cents: price,
+      ...extra,
     });
     this.offerings.push(offering);
     if (costs > 0) {
@@ -260,6 +285,82 @@ export class PnlPlan {
     });
   }
 
+  /** A row in the Operations Plan's version, such as a salaried position. Returns its key. */
+  async operationsRow(collection: string, fields: Row): Promise<string> {
+    const row = await adminCreate(collection, {
+      id: randomUUID(),
+      version_id: await this.operationsVersion(),
+      key: randomUUID(),
+      ...fields,
+    });
+    return row["key"] as string;
+  }
+
+  /** A bonus owner in `version` with `rate` of its products' net, owning `products`. Returns its id. */
+  async bonus(version: string, rate: number, products: string[], extra: Row = {}): Promise<string> {
+    const owner = await adminCreate("plan_bonus_owners", {
+      id: randomUUID(),
+      version_id: version,
+      key: randomUUID(),
+      role_name: "Director",
+      bonus_rate: rate,
+      account_id: await this.account("bonus"),
+      ...extra,
+    });
+    for (const product of products) await this.owns(owner.id, version, product);
+    return owner.id;
+  }
+
+  async owns(owner: string, version: string, product: string): Promise<void> {
+    await adminCreate("plan_bonus_owner_products", {
+      id: randomUUID(),
+      version_id: version,
+      key: randomUUID(),
+      bonus_owner_id: owner,
+      product_id: product,
+    });
+  }
+
+  /** Activities of `offering` on `dates`, from `start` to `end` (`HH:MM`). */
+  async activities(offering: Item, dates: string[], start: string, end: string): Promise<void> {
+    for (const date of dates) {
+      await adminCreate("plan_activities", {
+        id: randomUUID(),
+        version_id: offering["version_id"],
+        key: randomUUID(),
+        offering_id: offering.id,
+        date,
+        start_time: start,
+        end_time: end,
+        kind: "practice",
+        uses_boats: false,
+      });
+    }
+  }
+
+  /** Saves the Operations Plan's draft, as the admin, if it isn't saved yet. */
+  async saveOperations(): Promise<string> {
+    const version = await this.operationsVersion();
+    if (!this.operationsSaved) {
+      await saveVersion(version, {});
+      this.operationsSaved = true;
+    }
+    return version;
+  }
+  private operationsSaved = false;
+
+  /** Saves a program area's draft with the Operations Plan, as `session` or the admin. */
+  async saveArea(area: string, session?: DirectusSession): Promise<string> {
+    const version = this.areaVersion(area);
+    await saveVersion(version, { operations_version_id: await this.saveOperations() }, session);
+    return version;
+  }
+
+  /** Makes a saved version active. */
+  async activate(version: string): Promise<void> {
+    await adminCreate("plan_activations", { id: randomUUID(), version_id: version });
+  }
+
   /** Reads every row back as a Plan Reader, and calculates the P&L with the engine. */
   async calculate(): Promise<EngineOutput> {
     const versions = [await this.operationsVersion(), ...[...this.areaPlans.values()].map((p) => p.version)];
@@ -309,4 +410,34 @@ export class PnlPlan {
   warned(code: string): boolean {
     return this.out.warnings.some((w) => w.code === code);
   }
+}
+
+/** Saves a draft, as `session` or the admin. The saved-versions hook records the engine's version. */
+async function saveVersion(version: string, fields: Row, session?: DirectusSession): Promise<void> {
+  await (session ?? (await admin())).ok("PATCH", itemPath("plan_versions", version), {
+    status: "saved",
+    message: "Saved by a test.",
+    ...fields,
+  });
+}
+
+/**
+ * A saved version's results, read as a Plan Reader. The hook writes them just after the save
+ * answers, so this waits for them.
+ */
+export async function savedResults(version: string): Promise<{ lines: Row[]; pnl: Row[]; totals: Row }> {
+  const planner = (await userFor({ policies: ["Plan Reader"] })).session;
+  const read = (collection: string) =>
+    planner.ok(
+      "GET",
+      `/items/${collection}?limit=-1&filter=${encodeURIComponent(JSON.stringify({ version_id: { _eq: version } }))}`,
+    ) as Promise<Row[]>;
+  for (let tries = 0; tries < 60; tries++) {
+    const [totals] = await read("plan_results");
+    if (totals !== undefined) {
+      return { totals, lines: await read("plan_result_lines"), pnl: await read("plan_result_pnl") };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`Saved version ${version} has no results after a minute.`);
 }

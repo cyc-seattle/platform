@@ -16,6 +16,10 @@ export interface SalariedCoaching {
   position_key: Id;
   offering_key: Id;
   hours: number;
+  /** `salary` hours are charged at the salary's hourly equivalent; `hourly` ones are paid as wages. */
+  pay: "salary" | "hourly";
+  /** The wages for `hourly` hours. */
+  wages: number;
 }
 
 /** Whole kids: `target_enrollment` if set, otherwise `capacity × fill_rate` rounded. */
@@ -36,8 +40,12 @@ interface Staffed {
   fixed: { coaches: boolean; ribs: boolean; boats: boolean };
   salaried: number;
   positions: { key: Id; coaches: number }[];
+  /** Salaried positions coaching for an hourly wage, already among the hourly coaches. */
+  hourlyPositions: { key: Id; coaches: number }[];
   level: PlanStaffLevel | undefined;
   block: PlanActivityBlockRule | null;
+  /** The block group it's staffed with, if any. */
+  group: string | null;
 }
 
 function sum(values: Iterable<number>): number {
@@ -155,8 +163,10 @@ export class Staffing {
       fixed: { coaches: fixedCoaches != null, ribs: fixedRibs != null, boats: fixedBoats != null },
       salaried: 0,
       positions: [],
+      hourlyPositions: [],
       level: undefined,
       block: null,
+      group: null,
     };
   }
 
@@ -219,14 +229,90 @@ export class Staffing {
       );
     }
 
-    // The block's salaried positions take its first coaching slots, so fewer hourly coaches are paid.
-    const positions = block.salaried_positions ?? [];
-    if (positions.length > 0 && coachTotal > 0) {
+    // The block's salaried positions, and its offerings' named coaches, take its first coaching
+    // slots. Those paid out of a salary mean fewer hourly coaches are paid.
+    const named = (pay: "salary" | "hourly") =>
+      group.flatMap((s) =>
+        s.a.offering.coach_position_key != null && payOf(s.a.offering) === pay ? [s.a.offering.coach_position_key] : [],
+      );
+    const positions = [...new Set([...(block.salaried_positions ?? []), ...named("salary")])];
+    const hourlyPositions = [...new Set(named("hourly"))].filter((key) => !positions.includes(key));
+    if (coachTotal > 0) {
       const salariedTotal = Math.min(positions.length, coachTotal);
+      const hourlyTotal = Math.min(hourlyPositions.length, coachTotal - salariedTotal);
       for (const s of coached) {
         s.salaried = (salariedTotal * s.coaches) / coachTotal;
-        s.positions = positions.map((key) => ({ key, coaches: s.salaried / positions.length }));
+        s.positions =
+          salariedTotal > 0 ? positions.map((key) => ({ key, coaches: s.salaried / positions.length })) : [];
+        const hourly = (hourlyTotal * s.coaches) / coachTotal;
+        s.hourlyPositions =
+          hourlyTotal > 0 ? hourlyPositions.map((key) => ({ key, coaches: hourly / hourlyPositions.length })) : [];
       }
+    }
+  }
+
+  /** An offering's named coach, on an activity outside any block: one of its coaches. */
+  private staffNamedCoach(s: Staffed): void {
+    const key = s.a.offering.coach_position_key;
+    if (key == null || s.a.kind === "travel" || s.coaches <= 0) return;
+    const coaches = Math.min(1, s.coaches);
+    if (payOf(s.a.offering) === "salary") {
+      s.salaried = coaches;
+      s.positions = [{ key, coaches }];
+    } else {
+      s.hourlyPositions = [{ key, coaches }];
+    }
+  }
+
+  /**
+   * Splits a block's activities on one date into groups whose times overlap. An activity with no
+   * times overlaps every other.
+   */
+  private overlapping(members: Staffed[]): Staffed[][] {
+    if (members.some((s) => s.a.start_minutes === null || s.a.end_minutes === null)) return [members];
+    const sorted = [...members].sort((x, y) => (x.a.start_minutes as number) - (y.a.start_minutes as number));
+    const groups: Staffed[][] = [];
+    let end = -Infinity;
+    for (const s of sorted) {
+      const last = groups.at(-1);
+      if (last !== undefined && (s.a.start_minutes as number) < end) {
+        last.push(s);
+        end = Math.max(end, s.a.end_minutes as number);
+      } else {
+        groups.push([s]);
+        end = s.a.end_minutes as number;
+      }
+    }
+    return groups;
+  }
+
+  /**
+   * Warns when a salaried position coaches two activities at once that aren't staffed as one block
+   * group. It's still charged to both.
+   */
+  private checkDoubleBooked(staffed: Staffed[]): void {
+    const byDay = new Map<string, Staffed[]>();
+    for (const s of staffed) {
+      for (const p of [...s.positions, ...s.hourlyPositions]) {
+        if (p.coaches <= 0) continue;
+        const id = `${p.key}|${s.a.date}`;
+        byDay.set(id, [...(byDay.get(id) ?? []), s]);
+      }
+    }
+    const names = new Map(this.ctx.data.plan_salaried_positions.map((p) => [p.key, p.name]));
+    for (const [id, list] of byDay) {
+      const [key, date] = id.split("|") as [Id, string];
+      const clash = list.flatMap((x, i) =>
+        list
+          .slice(i + 1)
+          .flatMap((y) => ((x.group !== null && x.group === y.group) || !overlaps(x, y) ? [] : [[x, y] as const])),
+      )[0];
+      if (clash === undefined) continue;
+      this.ctx.warn(
+        "position_double_booked",
+        `${names.get(key) ?? key} coaches ${clash[0].a.offering.name} and ${clash[1].a.offering.name} at the same time on ${date}`,
+        key,
+      );
     }
   }
 
@@ -257,16 +343,25 @@ export class Staffing {
     const { ctx } = this;
     const staffed = scheduled.map((a) => this.initial(a));
 
-    const groups = new Map<string, { block: PlanActivityBlockRule; members: Staffed[] }>();
+    const days = new Map<string, { block: PlanActivityBlockRule; members: Staffed[] }>();
     for (const s of staffed) {
       const block = this.blockFor(s.a);
-      if (block === null) continue;
+      if (block === null) {
+        this.staffNamedCoach(s);
+        continue;
+      }
       const id = `${block.id}|${s.a.date}`;
-      const group = groups.get(id) ?? { block, members: [] };
-      group.members.push(s);
-      groups.set(id, group);
+      const day = days.get(id) ?? { block, members: [] };
+      day.members.push(s);
+      days.set(id, day);
     }
-    for (const { block, members } of groups.values()) this.staffBlock(block, members);
+    for (const [id, { block, members }] of days) {
+      this.overlapping(members).forEach((group, i) => {
+        for (const s of group) s.group = `${id}|${i}`;
+        this.staffBlock(block, group);
+      });
+    }
+    this.checkDoubleBooked(staffed);
 
     const coaching: SalariedCoaching[] = [];
     const resourcesByActivity = new Map<Id, typeof ctx.data.plan_activity_resources>();
@@ -319,7 +414,17 @@ export class Staffing {
       const wages = hourly * paidHours * rate;
       book("coach_wages", wages, "coach_wages", "Hourly coaches × paid hours × the coach level's rate");
       for (const p of s.positions) {
-        coaching.push({ position_key: p.key, offering_key: key, hours: p.coaches * paidHours });
+        coaching.push({
+          position_key: p.key,
+          offering_key: key,
+          hours: p.coaches * paidHours,
+          pay: "salary",
+          wages: 0,
+        });
+      }
+      for (const p of s.hourlyPositions) {
+        const hours = p.coaches * paidHours;
+        coaching.push({ position_key: p.key, offering_key: key, hours, pay: "hourly", wages: hours * rate });
       }
 
       if (s.ribs > 0 && waterHours > 0) {
@@ -427,6 +532,17 @@ export class Staffing {
       });
     }
   }
+}
+
+function payOf(offering: PlanOffering): "salary" | "hourly" {
+  return offering.coach_position_pay ?? "salary";
+}
+
+/** Whether two activities' times overlap. One with no times overlaps everything on its date. */
+function overlaps(x: Staffed, y: Staffed): boolean {
+  const [xs, xe, ys, ye] = [x.a.start_minutes, x.a.end_minutes, y.a.start_minutes, y.a.end_minutes];
+  if (xs === null || xe === null || ys === null || ye === null) return true;
+  return xs < ye && ys < xe;
 }
 
 function hourlyCost(r: PlanResource): number {

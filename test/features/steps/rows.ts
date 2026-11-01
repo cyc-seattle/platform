@@ -382,7 +382,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       weekdays: [3],
     }),
   plan_bonus_owners: async (fixed) =>
-    versioned(fixed, { role_name: `Head coach ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
+    versioned(fixed, { role_name: `Director ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
   plan_bonus_owner_products: async (fixed) =>
     versioned(fixed, { bonus_owner_id: sameVersionId("plan_bonus_owners", fixed), product_id: row["products"] }),
 };
