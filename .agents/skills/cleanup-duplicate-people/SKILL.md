@@ -6,7 +6,7 @@ description: Work through open `duplicate_person` audit findings in the CRM's Di
 # Clean Up Duplicate People
 
 `clubspot-sync` raises one `duplicate_person` finding for each group of `people` rows that share
-a normalized first and last name (`findDuplicatePeople`, `packages/clubspot-sync/src/merge.ts`).
+a normalized first and last name (`findDuplicatePeople`, `src/syncs/clubspot/merge.ts`).
 Read "Matching a new row to an existing person" and "Merging a duplicate" in
 `docs/crm-schema.md` first. They hold the rules this skill applies.
 
@@ -20,7 +20,7 @@ first.
 
 1. Read every `audit_findings` row with `kind = duplicate_person` and `status = open`. `subject` is
    the proposed keeper. `detail` lists each member's id and date of birth
-   (`parseDuplicatePersonFindingMemberIds`, `packages/clubspot-sync/src/audit.ts`).
+   (`parseDuplicatePersonFindingMemberIds`, `src/syncs/clubspot/audit.ts`).
 2. For each member, read the `people` row (`first_name`, `last_name`, `date_of_birth`, `email`,
    `phone`, `directus_user_id`), plus:
    - `participant_links` with each participant's registration and camp — is this row a participant?
@@ -35,7 +35,7 @@ issue, or a doc.
 ## 2. Look for a code fix
 
 Sort the groups by why they exist. A cause shared by many groups is a gap in the matcher
-(`packages/clubspot-sync/src/person-sync.ts` and `people.ts`), not a data problem. Check for:
+(`src/syncs/clubspot/person-sync.ts` and `people.ts`), not a data problem. Check for:
 
 - **Same person, different roles.** For example, an adult participant who is also a guardian. Each
   role has its own matching rule, so one person can get a row for each role.
@@ -77,7 +77,7 @@ or on each row, before you write anything. Then set each finding's `status` to `
 
 A group where every member has the same non-null date of birth is safe to approve without a
 second look. `selectMatchingDuplicateFindings`
-(`packages/clubspot-sync/src/approve-matching-duplicates.ts`) applies the same rule.
+(`src/syncs/clubspot/approve-matching-duplicates.ts`) applies the same rule.
 
 ## 4. Run the merge
 

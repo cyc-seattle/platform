@@ -187,8 +187,8 @@ tables here, as long as the sync always writes through the Directus API (never r
   our own.
 
 This is row history, not run history. Which sync tasks ran, retried, or failed is tracked
-separately, in `packages/directus`'s `sync_tasks` queue — infrastructure shared by every sync
-package, not part of this schema.
+separately, in the `sync_tasks` queue (`src/syncs/runtime/`) — infrastructure shared by every sync,
+not part of this schema.
 
 **What the activity log doesn't give us:** a revision is attributed to the Directus user who made
 the write — for the sync's automated updates that's always its own service account, not _which
@@ -203,7 +203,7 @@ to actually use.
 `clubspot_promoted_fields` maps a Clubspot custom-field question — asked per camp, so
 `clubspot_custom_field_definitions` has no single row for it — onto a `people` column. `school` is the only
 target today; adding another means adding it to `PROMOTABLE_PERSON_FIELDS`
-(`packages/clubspot/src/promoted-fields.ts`) and deploying, not editing config. It follows the same
+(`src/model/clubspot/promoted-fields.ts`) and deploying, not editing config. It follows the same
 one CRM field rule as every other curated field (cyc-seattle/isthmia#137): per registration, `clubspot_custom_field_responses`
 is itself the mirror, keeping its own last non-blank answer the same way `clubspot_participants` does, so
 `base` is the response's own stored value before this run's write and `v` is what Clubspot sends
@@ -223,7 +223,7 @@ Auth info does not live on `people`. Directus already has its own identity table
 Reusing it instead of a homegrown field means:
 
 - `people.directus_user_id` is a nullable, unique FK to `directus_users.id`, declared in
-  `packages/directus`'s schema — Directus is itself a provider, so its own identity column is an
+  `schemas/sync.yaml` — Directus is itself a provider, so its own identity column is an
   extension field on `people` like any other. Set only for people who have an actual login, and only
   by an admin or the group hook, which links a group member on their first sign-in
   ([access.md](access.md#groups)). No policy a person can hold writes it.

@@ -316,7 +316,7 @@ for (const collection of ["program_role_assignments", "program_area_role_assignm
   }
 }
 
-// A person merge stops while a duplicate is still in a group (packages/clubspot-sync/src/merge.ts), so
+// A person merge stops while a duplicate is still in a group (src/syncs/clubspot/merge.ts), so
 // it reads who is in each one, and changes none of them.
 permissionRule(
   "crm-clubspot-sync-group_members-read",

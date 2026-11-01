@@ -6,7 +6,6 @@ export default mergeConfig(
   base,
   defineConfig({
     test: {
-      include: ["packages/*/test/**/*.test.ts"],
       exclude: [...configDefaults.exclude, "test/features/**"],
     },
   }),

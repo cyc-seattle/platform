@@ -24,10 +24,10 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   load it without Pulumi. `docs/planning-engine.md` gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
-- `packages/` is a pnpm workspace of private packages: the two syncs, clubspot-sync and gsuite-sync,
-  and the `crm`, `clubspot`, and `directus` libraries they share. Each builds to `dist/` with `tsc`,
-  and the root `Dockerfile` builds the sync images from them. A package reads its workspace
-  dependencies' `dist/`, so `mise run check` and `mise run test` build them first.
+- `src/syncs/` holds the two syncs, clubspot-sync and gsuite-sync, and the `runtime/` they share.
+  `src/model/` holds the CRM and Clubspot row types they use. The published package never reaches
+  either (`test/published.test.ts`), so the syncs' dependencies are `devDependencies`. The root
+  `Dockerfile` bundles each sync with esbuild into a one-file image. `docs/syncs.md` describes them.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`. A feature is living documentation of
   business rules, so write and review one with the `write-feature` skill from
@@ -115,7 +115,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 The rules for ESM come from cyc-seattle/workplace#6.
 
 - Relative imports end in `.ts`, so `../../src` is `../../src/index.ts`. The build rewrites them to
-  `.js`. That holds in `packages/` too.
+  `.js`.
 - Use only erasable syntax: no enums, namespaces, or parameter properties. Node strips the types and
   runs the rest as written.
 - Use `import.meta.dirname`, never `__dirname` or `require`. Neither `tsc`, eslint, nor vitest flags

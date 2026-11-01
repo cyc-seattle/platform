@@ -153,7 +153,7 @@ Light; you're already in GCP.
 ## Layer 1: Clubspot integration
 
 A one-way sync: Clubspot → CRM. Clubspot stays authoritative for registration data; the hub enriches and
-redistributes it. See `packages/clubspot-sync` for the implementation.
+redistributes it. See [syncs.md](syncs.md#clubspot-sync) for the implementation.
 
 Because the hub — not Clubspot — becomes what the portals, and later Listmonk/Groups/FreeScout, read from, this one
 job is the seam that makes an eventual Clubspot replacement a contained change rather than a rebuild.
@@ -210,7 +210,7 @@ Ordered by permission blast radius: internal and low-stakes first, external acce
 5. **Phase 4 — Guardian medical self-service.** Not started, and gated on its own security review regardless.
    Highest liability, so it goes last.
 6. **Google Group membership sync.** Done. gsuite-sync syncs class and program group membership, managers, owners,
-   and settings from the CRM. See `packages/gsuite-sync/README.md`.
+   and settings from the CRM. See [syncs.md](syncs.md#gsuite-sync).
 7. **Later.** Listmonk ([cyc-seattle/isthmia#71](https://github.com/cyc-seattle/isthmia/issues/71)), FreeScout ([cyc-seattle/isthmia#67](https://github.com/cyc-seattle/isthmia/issues/67)) — both reading from the same hub and identity layer.
 
 ## Open decisions
