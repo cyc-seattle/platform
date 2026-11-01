@@ -30,8 +30,11 @@ async function fetchRetrying(input: string, init?: RequestInit): Promise<HttpRes
   return httpFetch(input, init);
 }
 
-/** A single Directus REST filter, e.g. `{ email: { _eq: "a@b.com" } }`. */
-export type DirectusFilter = Record<string, Record<string, string | number | boolean>>;
+/** A Directus REST filter, e.g. `{ email: { _eq: "a@b.com" } }`. `_or` matches any of its filters. */
+export interface DirectusFilter {
+  _or?: DirectusFilter[];
+  [field: string]: Record<string, string | number | boolean> | DirectusFilter[] | undefined;
+}
 
 export interface ItemQuery {
   filter?: DirectusFilter;
@@ -45,11 +48,15 @@ export interface ItemQuery {
 // at this size rather than trusting the server to hand back everything in one response.
 const PAGE_SIZE = 500;
 
-function filterToParams(filter: DirectusFilter): [string, string][] {
+function filterToParams(filter: DirectusFilter, prefix = "filter"): [string, string][] {
   const params: [string, string][] = [];
   for (const [field, operators] of Object.entries(filter)) {
-    for (const [operator, value] of Object.entries(operators)) {
-      params.push([`filter[${field}][${operator}]`, String(value)]);
+    if (Array.isArray(operators)) {
+      operators.forEach((each, index) => params.push(...filterToParams(each, `${prefix}[${field}][${index}]`)));
+    } else if (operators !== undefined) {
+      for (const [operator, value] of Object.entries(operators)) {
+        params.push([`${prefix}[${field}][${operator}]`, String(value)]);
+      }
     }
   }
   return params;
@@ -150,6 +157,23 @@ export class DirectusClient {
       return patch as T;
     }
     const response = await this.request<{ data: T }>("PATCH", `/items/${collection}/${id}`, patch);
+    return response.data;
+  }
+
+  /**
+   * Updates the rows `filter` matches, in one request, and returns them: none if nothing matched.
+   * Directus finds the rows and then updates them, so this is a conditional update only while
+   * nothing else writes them in between.
+   */
+  async updateItemsByQuery<T>(collection: string, filter: DirectusFilter, patch: Partial<T>): Promise<T[]> {
+    if (this.dryRun) {
+      winston.info("Dry run: skipping update by query", { collection, fields: Object.keys(patch) });
+      return [patch as T];
+    }
+    const response = await this.request<{ data: T[] }>("PATCH", `/items/${collection}`, {
+      query: { filter },
+      data: patch,
+    });
     return response.data;
   }
 
