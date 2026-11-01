@@ -150,8 +150,9 @@ export async function deployDirectus(
     hostname: `directus.${domain}`,
     image,
     port: 8055,
-    // A sync after a reset pins Directus at 250m. Each stack can raise it within its namespace quota.
+    // Autopilot bills the requests. A sync or a reset bursts toward the CPU limit when the node has room.
     requests: { cpu: config.get("directusCpu") ?? "250m", memory: config.get("directusMemory") ?? "768Mi" },
+    limits: { cpu: "1" },
     // Directus 12 answers /server/health only to a signed-in caller, so probes would never pass.
     readinessProbe: { httpGet: { path: "/server/ping", port: 8055 } },
     env: [
@@ -159,6 +160,8 @@ export async function deployDirectus(
       // db-g1-small allows about 50, and 10 is Directus's default, as on the VM.
       ...directusEnv({ domain, adminEmail, dbHost: db.host, communityRoleId, oidcClientId, poolMax: isDev ? 4 : 10 }),
       secretEnv("DB_PASSWORD", db.secret, "password"),
+      // Dev's tests log every request, more than any other pod; its warnings and errors stay.
+      ...(isDev ? [{ name: "LOG_LEVEL", value: "warn" }] : []),
     ],
     envFrom: [{ secretRef: { name: secret.metadata.name, optional: false } }],
     // Where Directus writes: pm2's state, uploads, and the bundled app extensions.
