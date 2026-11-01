@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
-import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
+import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
+import { notBuilt } from "./steps/logins.ts";
 import type { CostLine } from "../../src/planning/index.ts";
 import { cents, PnlPlan, share } from "./pnl.ts";
 import {
@@ -411,5 +412,57 @@ Step("the club-wide totals are:", (_, table: { line: string; amount: string }[])
   };
   for (const { line, amount } of table) expect(shown[line], line).toBe(cents(amount));
 });
+
+// Pay, bonuses, closed days, and saved P&Ls, which step 12c builds.
+parameter("counted", ["after shared costs", "before shared costs", "for the year", "for each season that makes money"]);
+parameter("coaches", ["half a coach", "a whole coach"]);
+pattern("times", /\d+(?:am|pm) to (?:noon|\d+(?:am|pm))/);
+for (const text of [
+  "a program area's plan that pays its head coach {percent} of its programs' net",
+  "its programs make {money} after their costs and shared costs",
+  "the head coach's bonus is {money}",
+  "a program area's plan that pays its head coach a bonus on a program from another program area",
+  "the planner is warned that the bonus is on another program area's program",
+  "the other area's program doesn't count toward the bonus",
+  "a head coach who earns {percent} of their programs' net {counted}",
+  "their programs take in {money} and cost {money}, plus {money} of shared costs",
+  "their programs make {money} in the spring and lose {money} in the fall",
+  "payroll tax at {percent} of wages",
+  "a head coach whose bonus is {money}",
+  "the club pays {money} of payroll tax on the bonus",
+  "a head coach's bonus, with its payroll tax, on the first offering only",
+  "a salaried head coach paid {money} an hour",
+  "an offering they coach, with {count} practices of {count} hours",
+  "the offering pays {money} of the head coach's salary",
+  "a head coach on a {money} salary",
+  "an offering they coach for {money} an hour, with {count} practices of {count} hours",
+  "the offering pays {money} of coaches' wages",
+  "the offering pays none of the head coach's salary",
+  "a bonus for the head coach that comes to {money}",
+  "the head coach's pay for the year is:",
+  "a salaried director who coaches two groups that don't share coaches",
+  "both groups practice from {times} on the same day",
+  "one group practices from {times} and the other from {times} on the same day",
+  "the planner is warned that the director is coaching two groups at once",
+  "the planner isn't warned about the director",
+  "two offerings of {count} sailors each, with a coach for every {count} sailors, that share coaches on Wednesdays",
+  "one practices from {times} and the other from {times} on the same Wednesday",
+  "each offering pays for {coaches}",
+  "the Operations Plan closes the club on Labor Day",
+  "an offering with a practice on Labor Day",
+  "the planner is warned that the practice is on a day the club is closed",
+  "a draft of a program area's plan whose offering takes in {money}",
+  "they save the draft as a version",
+  "the saved version's P&L shows that the offering takes in {money}",
+  "a saved version of a program area's plan whose offering pays {money} of office costs",
+  "a planner saves an Operations Plan with {money} of office costs, and makes it active",
+  "the saved version's P&L still shows that the offering pays {money} of office costs",
+  "another program area's active plan, with the same direct costs as this area's draft",
+  "the saved version's P&L shows that the offering pays {money} of the office costs",
+  "they can't change a saved version's P&L",
+  "they can't add a P&L to a draft",
+]) {
+  Step(text, () => notBuilt("12c"));
+}
 
 describeAccessFeature("planning.feature");

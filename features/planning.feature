@@ -11,10 +11,12 @@ Feature: Plans
   program area and year, and for the Operations Plan, only one version is active, and the active
   versions together are the club's plan for the year.
 
-  The club's P&L, its profit and loss for the year, is worked out from the plans whenever someone
-  asks for it. Nothing worked out is stored. It shows each offering, each program area, and the
-  whole club. A cost that several offerings share, such as the office, is divided among them by
-  their direct costs, counted the way federal grant rules count them. Some charges are set as a
+  The club's P&L, its profit and loss for the year, is worked out from the plans. It shows each
+  offering, each program area, and the whole club. A draft's P&L is worked out whenever someone
+  asks for it. A saved version keeps the P&L it had when it was saved, and that never changes
+  either. Shared costs are the costs that several offerings share, such as the office. They're
+  divided among the offerings by their direct costs, counted the way federal grant rules count
+  them. Some charges are set as a
   share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with its
   rate and the kinds of product it applies to. Revenue from programs and other sales pays for the
   club's running costs. Fundraising pays for capital, such as a new coach boat, so capital is never
@@ -24,10 +26,16 @@ Feature: Plans
   don't capture, in their own words, for their AI to follow when it fills in the plan. For example:
   every Monday, Wednesday, and Friday, except on school holidays, from 4pm until dusk.
 
+  The Operations Plan also lists the days the club is closed, such as Labor Day, so that no one
+  plans a practice on one by mistake.
+
   Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
-  each salaried position is paid per year. Bonus rates set the bonus a head coach earns on the
-  products they run. Anyone who can see plans sees all of these. To change something means to add,
-  edit, or delete it.
+  each salaried position is paid per year. A salaried coach can also be paid by the hour for
+  coaching, on top of their salary. Bonus rates set the bonus a head coach earns on the products
+  they run: a share of those products' net, the money they make after their costs. A bonus for one
+  program area's products is in that area's plan. A bonus on products from more than one area is in
+  the Operations Plan. Anyone who can see plans sees all of these. To change something means to
+  add, edit, or delete it.
 
   Rule: A new plan starts with a draft
 
@@ -180,6 +188,177 @@ Feature: Plans
         | fundraising net | $25,000  |
         | capital         | -$20,000 |
         | total           | $15,000  |
+
+  @pending
+  Rule: A program area's plan can pay a head coach a bonus on that area's programs
+
+    Example: A head coach's bonus in a program area's plan
+      Given a program area's plan that pays its head coach 50% of its programs' net
+      And its programs make $10,000 after their costs and shared costs
+      When a planner calculates the P&L
+      Then the head coach's bonus is $5,000
+
+    Example: A program area's plan can't pay a bonus on another area's program
+      Given a program area's plan that pays its head coach a bonus on a program from another program area
+      When a planner calculates the P&L
+      Then the planner is warned that the bonus is on another program area's program
+      And the other area's program doesn't count toward the bonus
+
+  @pending
+  Rule: A bonus is figured on the net after shared costs, or before them, as the plan says
+
+    Scenario Outline: A head coach's bonus before and after shared costs
+      Given a head coach who earns 50% of their programs' net <counted>
+      And their programs take in $30,000 and cost $20,000, plus $6,000 of shared costs
+      When a planner calculates the P&L
+      Then the head coach's bonus is <bonus>
+
+      Examples:
+        | counted             | bonus  |
+        | after shared costs  | $2,000 |
+        | before shared costs | $5,000 |
+
+  @pending
+  Rule: A bonus can be figured season by season, so that a season that loses money doesn't cancel one that makes money
+
+    Scenario Outline: A head coach's bonus for the year and for each season
+      Given a head coach who earns 50% of their programs' net <counted>
+      And their programs make $10,000 in the spring and lose $4,000 in the fall
+      When a planner calculates the P&L
+      Then the head coach's bonus is <bonus>
+
+      Examples:
+        | counted                          | bonus  |
+        | for the year                     | $3,000 |
+        | for each season that makes money | $5,000 |
+
+  @pending
+  Rule: The club pays payroll tax on a bonus, as on any wage
+
+    Example: A bonus costs payroll tax
+      Given payroll tax at 10% of wages
+      And a head coach whose bonus is $5,000
+      When a planner calculates the P&L
+      Then the club pays $500 of payroll tax on the bonus
+
+  @pending
+  Rule: A bonus and its payroll tax don't count toward the split of shared costs
+
+    Example: A head coach's bonus doesn't change an offering's share of the office
+      Given two offerings with the same direct costs
+      And a head coach's bonus, with its payroll tax, on the first offering only
+      And $1,000 of office costs shared by every offering
+      When a planner calculates the P&L
+      Then each offering pays $500 of the office costs
+
+  @pending
+  Rule: A salaried coach named on an offering coaches all its practices, paid out of their salary
+
+    Example: An offering pays for its salaried coach's hours
+      Given a salaried head coach paid $40 an hour
+      And an offering they coach, with 10 practices of 3 hours
+      When a planner calculates the P&L
+      Then the offering pays $1,200 of the head coach's salary
+
+  @pending
+  Rule: A salaried coach can be paid by the hour for coaching, on top of their salary
+
+    Example: A head coach is paid by the hour for an offering they coach
+      Given a head coach on a $20,000 salary
+      And an offering they coach for $30 an hour, with 10 practices of 3 hours
+      When a planner calculates the P&L
+      Then the offering pays $900 of coaches' wages
+      And the offering pays none of the head coach's salary
+
+  @pending
+  Rule: A salaried person's pay for the year adds up their salary, their hourly coaching, and their bonus
+
+    Example: A head coach's pay for the year
+      Given a head coach on a $20,000 salary
+      And an offering they coach for $30 an hour, with 10 practices of 3 hours
+      And a bonus for the head coach that comes to $5,000
+      When a planner calculates the P&L
+      Then the head coach's pay for the year is:
+        | pay             | amount  |
+        | salary          | $20,000 |
+        | hourly coaching | $900    |
+        | bonus           | $5,000  |
+        | total           | $25,900 |
+
+  @pending
+  Rule: A salaried coach can't coach two groups at the same time
+
+    Example: Two groups at the same time get a warning
+      Given a salaried director who coaches two groups that don't share coaches
+      And both groups practice from 4pm to 7pm on the same day
+      When a planner calculates the P&L
+      Then the planner is warned that the director is coaching two groups at once
+
+    Example: A morning group and an afternoon group don't get a warning
+      Given a salaried director who coaches two groups that don't share coaches
+      And one group practices from 9am to noon and the other from 1pm to 4pm on the same day
+      When a planner calculates the P&L
+      Then the planner isn't warned about the director
+
+  @pending
+  Rule: Offerings that share coaches on a day share them only when their practices overlap
+
+    Scenario Outline: Two groups share a coach only when they're on the water together
+      Given two offerings of 4 sailors each, with a coach for every 8 sailors, that share coaches on Wednesdays
+      And one practices from <first> and the other from <second> on the same Wednesday
+      When a planner calculates the P&L
+      Then each offering pays for <coach>
+
+      Examples:
+        | first       | second      | coach         |
+        | 9am to noon | 9am to noon | half a coach  |
+        | 9am to noon | 1pm to 4pm  | a whole coach |
+
+  @pending
+  Rule: A planner is warned about an activity on a day the club is closed
+
+    Example: A practice on Labor Day gets a warning
+      Given the Operations Plan closes the club on Labor Day
+      And an offering with a practice on Labor Day
+      When a planner calculates the P&L
+      Then the planner is warned that the practice is on a day the club is closed
+
+  @pending
+  Rule: A saved version keeps the P&L it had when it was saved
+
+    Example: A saved version shows the P&L it was saved with
+      Given a user with the Plan Writer policy
+      And a draft of a program area's plan whose offering takes in $10,000
+      When they save the draft as a version
+      Then the saved version's P&L shows that the offering takes in $10,000
+
+    Example: A later Operations Plan doesn't change a saved version's P&L
+      Given a saved version of a program area's plan whose offering pays $1,000 of office costs
+      When a planner saves an Operations Plan with $2,000 of office costs, and makes it active
+      Then the saved version's P&L still shows that the offering pays $1,000 of office costs
+
+  @pending
+  Rule: A saved version's P&L counts the other program areas' active plans
+
+    Example: The office is split with another program area's active plan
+      Given a user with the Plan Writer policy
+      And $1,000 of office costs shared by every offering
+      And another program area's active plan, with the same direct costs as this area's draft
+      When they save the draft as a version
+      Then the saved version's P&L shows that the offering pays $500 of the office costs
+
+  @pending
+  Rule: No one can write a version's P&L by hand, even an admin
+
+    Example: A Plan Writer can't write a version's P&L
+      Given a user with the Plan Writer policy
+      Then they can't change a saved version's P&L
+      And they can't add a P&L to a draft
+
+    Example: An admin can't write a version's P&L either
+      Given a user with the Admin role
+      Then they can't change a saved version's P&L
+      And they can't add a P&L to a draft
 
   Rule: A Plan Writer can write the rules on a draft, and a saved version's rules never change
 
