@@ -100,7 +100,7 @@ built-in admin (`directus-admin-bootstrap-password`, §5) is the break-glass log
 down.
 
 - [ ] Create a `clubspot_promoted_fields` row with `target_field: school` and the Clubspot labels to match
-      (see [packages/clubspot-sync/README.md](../packages/clubspot-sync/README.md)).
+      (see [syncs.md](syncs.md#clubspot-sync)).
 - [ ] Set `directus-license-key` (§5), or `dev-directus-license-key` in dev, before Directus first
       boots, and renew the grant each year.
 

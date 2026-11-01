@@ -63,7 +63,7 @@ Get the user's yes on the batch, or on each cluster, before you write anything. 
 
 A Directus edit holds until the family gives a different answer in Clubspot. The sync writes
 Clubspot's answer only when it changes from the stored one (`planSyncedField`,
-`packages/clubspot-sync/src/synced-fields.ts`). So a correction holds through re-syncs. The same
+`src/syncs/clubspot/synced-fields.ts`). So a correction holds through re-syncs. The same
 family answering differently next season brings back whatever they typed, which is why the
 dropdown matters.
 
