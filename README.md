@@ -46,10 +46,10 @@ releases each merge to `main` with semantic-release, versioned by the convention
 ## Environments
 
 Every app runs on the one GKE Autopilot cluster, in its environment's namespace. Prod runs on
-regular capacity, and dev on Spot pods. isthmia's apps (Authentik, Directus, the portal, and the
-two syncs as CronJobs) run in both, and dev adds Mailpit and the Clubspot and Workspace fakes. In dev,
-platform's `backend` deploys Directus, the syncs, and the fakes, and dev's sync CronJobs are
-suspended: the integration features and `mise run reset` run them as Jobs (cyc-seattle/isthmia#271).
+regular capacity, and dev on Spot pods. isthmia's apps (Authentik and the portal) and platform's
+`backend` (Directus and the two syncs as CronJobs) run in both, and dev adds Mailpit and the Clubspot
+and Workspace fakes. Dev's sync CronJobs are suspended: the integration features and
+`mise run reset` run them as Jobs (cyc-seattle/isthmia#271).
 
 | Stack  | Namespace | Domain             | Deploy identity |
 | ------ | --------- | ------------------ | --------------- |

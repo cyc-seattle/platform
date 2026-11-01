@@ -1,6 +1,6 @@
 /**
  * Row shapes for the `camps`, `sessions`, `classes`, `session_classes`, and `entry_caps`
- * collections. See `schema.yaml`.
+ * collections. See `schemas/clubspot.yaml`.
  */
 
 /** A dated event (Clubspot's Camp). Its programs are derived - the distinct programs of its classes. */

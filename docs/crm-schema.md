@@ -221,7 +221,7 @@ Reusing it instead of a homegrown field means:
 ### Community
 
 `cycsail.team`'s roster (cyc-seattle/isthmia#166) lets a signed-in family see their teammates, through Directus
-policies (`packages/infrastructure/src/crm/community-rules.ts`):
+policies (`stacks/backend/community-rules.ts`):
 
 - **Names.** Everyone sharing an active-camp program sees each teammate's name and school.
 - **Contacts.** A teammate's email and phone show program-wide once one of their registrations has

@@ -31,7 +31,7 @@ Options:
   every group (env `GSUITE_SYNC_GROUP_OWNERS`). Required, with no default: ownership is a security
   boundary, so the deployed value lives in the infrastructure that grants it
   (the `groupOwners` Pulumi config key, read in
-  `infrastructure/src/gsuite-sync/index.ts`) rather than in this package's source.
+  `stacks/backend/gsuite-sync.ts`) rather than in this package's source.
 - `--customer <id>` - the Workspace customer id the discovery pass lists groups for (env
   `GSUITE_SYNC_CUSTOMER`). Required, with no default: the service account holds a direct Groups
   Administrator role rather than impersonating a domain user, so the `my_customer` alias 404s for

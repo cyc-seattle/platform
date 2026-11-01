@@ -17,7 +17,7 @@ export const PROMOTABLE_REGISTRATION_FIELDS = ["share_contact"] as const satisfi
 
 export type PromotableRegistrationField = (typeof PROMOTABLE_REGISTRATION_FIELDS)[number];
 
-/** Row shape for the `promoted_fields` collection. See `schema.yaml`. */
+/** Row shape for the `promoted_fields` collection. See `schemas/clubspot.yaml`. */
 export interface PromotedFieldRow {
   id?: string;
   target_field: PromotablePersonField | PromotableRegistrationField;

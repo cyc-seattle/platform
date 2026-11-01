@@ -28,8 +28,10 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   dependencies' `dist/`, so `mise run check` and `mise run test` build them first.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`. A feature is living documentation of
-  business rules, so write and review one with
-  [`writing-features`](.agents/skills/writing-features/SKILL.md).
+  business rules, so write and review one with the `write-feature` skill from
+  [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills). Here, the `Step` helper
+  registers each text under every keyword, `parameter()` in `test/features/steps/index.ts` defines a
+  parameter type, and a feature tagged `@licensed` needs a licensed Directus.
 - The code is ESM (`"type": "module"`), run by Node 22's type stripping. Relative import paths end in
   `.ts`, and the code uses only erasable syntax (`erasableSyntaxOnly`).
 
