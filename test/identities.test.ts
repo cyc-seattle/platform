@@ -100,14 +100,24 @@ describe("deploy-runner", () => {
     );
   });
 
-  it("edits alert policies and notification channels, and log metrics through its custom role", () => {
+  it("edits alert policies and notification channels, and log metrics and exclusions through its custom role", () => {
     expect(projectMembers(member)).toEqual(
       expect.arrayContaining(["roles/monitoring.alertPolicyEditor", "roles/monitoring.notificationChannelEditor"]),
     );
     expect(byName("deployer").inputs.permissions).toEqual(
-      expect.arrayContaining(["logging.logMetrics.create", "logging.logMetrics.update", "logging.logMetrics.delete"]),
+      expect.arrayContaining([
+        "logging.logMetrics.create",
+        "logging.logMetrics.update",
+        "logging.logMetrics.delete",
+        "logging.exclusions.create",
+        "logging.exclusions.update",
+        "logging.exclusions.delete",
+      ]),
     );
     expect(projectMembers(member)).not.toContain("roles/logging.configWriter");
+    expect(byName("deployer").inputs.permissions).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^logging\.sinks\./)]),
+    );
   });
 
   it("can act as gke-nodes", () => {

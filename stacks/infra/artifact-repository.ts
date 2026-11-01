@@ -15,6 +15,14 @@ export const artifactRepository = new gcp.artifactregistry.Repository(
     dockerConfig: {
       immutableTags: false,
     },
+    // Every dev deploy pushes each image under a new commit tag, and nothing deleted them (#72). A
+    // KEEP outranks a DELETE, so the 20 newest versions of each image stay for a prod rollback.
+    cleanupPolicies: [
+      { id: "delete-old", action: "DELETE", condition: { tagState: "ANY", olderThan: "30d" } },
+      { id: "keep-recent", action: "KEEP", mostRecentVersions: { keepCount: 20 } },
+    ],
+    // Logs what it would delete without deleting it. Check that list against prod's images first.
+    cleanupPolicyDryRun: true,
   },
   { dependsOn: artifactRegistryApi },
 );

@@ -558,3 +558,34 @@ describe("Job alerts", () => {
     expect(condition.conditionAbsent.aggregations[0].crossSeriesReducer).toBeUndefined();
   });
 });
+
+describe("Artifact Registry", () => {
+  const repository = () => byName("gcp:artifactregistry/repository:Repository", "artifact-repository");
+
+  it("keeps each image's 20 newest versions and deletes the rest after 30 days, as a dry run", () => {
+    expect(repository().cleanupPolicies).toEqual([
+      { id: "delete-old", action: "DELETE", condition: { tagState: "ANY", olderThan: "30d" } },
+      { id: "keep-recent", action: "KEEP", mostRecentVersions: { keepCount: 20 } },
+    ]);
+    expect(repository().cleanupPolicyDryRun).toBe(true);
+  });
+});
+
+describe("log exclusions", () => {
+  const exclusions = () => created.filter((r) => r.type === "gcp:logging/projectExclusion:ProjectExclusion");
+
+  it("drop node and kube-system logs below WARNING, and load balancer requests that didn't fail", () => {
+    expect(Object.fromEntries(exclusions().map((r) => [r.name, r.inputs.filter]))).toEqual({
+      "node-info": 'resource.type="k8s_node" AND severity<WARNING',
+      "kube-system-info":
+        'resource.type="k8s_container" AND resource.labels.namespace_name="kube-system" AND severity<WARNING',
+      "load-balancer-ok": 'resource.type="http_load_balancer" AND httpRequest.status<400',
+    });
+  });
+
+  it("never exclude an app's logs", () => {
+    for (const { inputs } of exclusions()) {
+      expect(inputs.filter).not.toMatch(/namespace_name="(dev|prod)"/);
+    }
+  });
+});
