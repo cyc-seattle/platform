@@ -28,8 +28,13 @@ function reachable(entries: string[]): string[] {
 // the package would fail to load anything that reaches them.
 describe("the published package", () => {
   it("reaches none of the syncs or their model", () => {
-    const files = reachable(["index.ts", "planning/index.ts"]);
-    expect(files).toContain("planning/index.ts");
+    // The entry points tsconfig.build.json compiles, so a new export can't be missed here.
+    const { include } = JSON.parse(fs.readFileSync(path.join(src, "../tsconfig.build.json"), "utf8")) as {
+      include: string[];
+    };
+    const entries = include.map((file) => path.relative("src", file));
+    expect(entries).toContain("schema/index.ts");
+    const files = reachable(entries);
     expect(files.filter((file) => file.startsWith("syncs/") || file.startsWith("model/"))).toEqual([]);
   });
 });
