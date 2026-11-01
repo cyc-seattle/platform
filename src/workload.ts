@@ -28,8 +28,13 @@ export interface PodArgs {
   image: pulumi.Input<string>;
   command?: string[];
   args?: string[];
-  /** The container's requests, which are also its limits. */
+  /** The container's requests. Autopilot bills a pod by them. */
   requests: { cpu: pulumi.Input<string>; memory: pulumi.Input<string> };
+  /**
+   * The container's limits, each defaulting to its request. A CPU limit above the request lets the
+   * pod burst into a node's spare CPU. A memory limit above it risks an OOM kill when the node is full.
+   */
+  limits?: { cpu?: pulumi.Input<string>; memory?: pulumi.Input<string> };
   env?: pulumi.Input<EnvVar>[];
   envFrom?: pulumi.Input<EnvFromSource>[];
   volumes?: WorkloadVolume[];
@@ -127,7 +132,13 @@ export function podSpec(
         ...(args.args && { args: args.args }),
         ...container,
         // A LimitRange's default limit could otherwise sit below the request, which the API refuses.
-        resources: { requests: args.requests, limits: args.requests },
+        resources: {
+          requests: args.requests,
+          limits: {
+            cpu: args.limits?.cpu ?? args.requests.cpu,
+            memory: args.limits?.memory ?? args.requests.memory,
+          },
+        },
         ...(args.env && { env: args.env }),
         ...(args.envFrom && { envFrom: args.envFrom }),
         ...(volumes.length > 0 && {
