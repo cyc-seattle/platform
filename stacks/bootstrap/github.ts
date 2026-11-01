@@ -10,6 +10,12 @@ export type StandardRepositoryArgs = github.RepositoryArgs & {
   requiredChecks: string[];
   /** Approving reviews `main` needs. Org admins bypass it. Defaults to 0. */
   requiredApprovingReviewCount?: number;
+  /**
+   * Merges PRs through a merge queue, one at a time, so a repo that deploys each queued PR to a
+   * shared dev uses it in turn (#80). Every required check must also report on `merge_group`, or the
+   * queue waits for it until it times out. Defaults to false.
+   */
+  mergeQueue?: boolean;
 };
 
 // No workflow token may open PRs, org-wide or per repo. Each repo's pin waits on the org policy.
@@ -29,7 +35,7 @@ const orgWorkflowPermissions = new github.ActionsOrganizationWorkflowPermissions
 export class StandardRepository extends github.Repository {
   constructor(
     plainId: string,
-    { requiredChecks, requiredApprovingReviewCount = 0, ...args }: StandardRepositoryArgs,
+    { requiredChecks, requiredApprovingReviewCount = 0, mergeQueue = false, ...args }: StandardRepositoryArgs,
     opts?: pulumi.CustomResourceOptions,
   ) {
     // GitHub rejects edits to an archived repo, so archived repos keep squash-only merges.
@@ -116,6 +122,21 @@ export class StandardRepository extends github.Repository {
         },
         ...(requiredChecks.length > 0
           ? { requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) } }
+          : {}),
+        // The queue squashes. An org admin bypasses it to keep a branch's history with a merge commit.
+        // A dev deploy and its integration tests take about 20 minutes.
+        ...(mergeQueue
+          ? {
+              mergeQueue: {
+                mergeMethod: "SQUASH",
+                groupingStrategy: "ALLGREEN",
+                maxEntriesToBuild: 1,
+                minEntriesToMerge: 1,
+                maxEntriesToMerge: 1,
+                minEntriesToMergeWaitMinutes: 0,
+                checkResponseTimeoutMinutes: 60,
+              },
+            }
           : {}),
       },
     });
@@ -210,7 +231,8 @@ export const platform = new StandardRepository("platform", {
     "Pulumi stacks for CYC's shared Google Cloud platform: identities, the network, databases, and the cluster.",
   visibility: "public",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title"],
+  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
+  mergeQueue: true,
 });
 
 // The club's web app at the apex domain, which takes over from isthmia's portal.
