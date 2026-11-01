@@ -40,8 +40,9 @@ app owns. The apps that run on it live in their own repos, such as
   Google service account.
 - `enableService` enables a Google Cloud API.
 
-`mise run build` builds it into `dist/`, which is all it publishes. `.github/workflows/release.yml`
-releases each merge to `main` with semantic-release, versioned by the conventional commits.
+`mise run build` builds it into `dist/`, which is all it publishes. The `release` job in
+`.github/workflows/pull-request.yml` releases each merge to `main` with semantic-release, once the
+dev deploy passes, versioned by the conventional commits.
 
 ## Environments
 
@@ -95,10 +96,10 @@ deployer needs first.
 authenticates with Workload Identity Federation and stores no credentials. Each job runs in a
 GitHub environment that holds its identity and state bucket:
 
-| Event          | Jobs, in order                                                                            |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| Pull request   | `ci`, then `dev`: `mise run deploy` as `deploy-dev`, then `mise run integration`          |
-| Push to `main` | `ci`, `dev`, then `prod-preview`, then `prod`, which waits for the `maintainers` approval |
+| Event          | Jobs, in order                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| Pull request   | `ci`, then `dev`: `mise run deploy` as `deploy-dev`, then `mise run integration`                           |
+| Push to `main` | `ci`, `dev`, then `release` beside `prod-preview`, then `prod`, which waits for the `maintainers` approval |
 
 `prod-preview` runs `mise run preview` as `deploy-runner` and writes the diff to the job summary.
 `prod` runs `mise run deploy` on the same commit once approved. It runs only when the preview shows

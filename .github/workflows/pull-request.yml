@@ -48,3 +48,13 @@ jobs:
     with:
       environment: prod
       task: deploy
+  # Releases from main only, once the dev deploy and its integration tests pass, so a failing main
+  # never publishes.
+  # Running this workflow on main from the Actions tab retries a release that failed before it tagged.
+  release:
+    needs: dev
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    uses: cyc-seattle/.github/.github/workflows/release.yml@v2.4.0
+    permissions:
+      contents: write
+      id-token: write
