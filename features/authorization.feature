@@ -1,20 +1,19 @@
 Feature: Roles and groups
-  Everyone who signs in has one of three roles, which decides what they can do to start with:
+  Everyone who signs in has one of four roles, which decides what they can do to start with:
 
-  - Community, for the club's families and members, who can see their own children and their
-    children's teammates.
-  - Crew, for the people an admin trusts with every roster, such as staff, directors, officers, and
-    trusted volunteers. They can see every roster, the club's products and revenue accounts, and
-    their own children like any other parent.
+  - Community, for the club's families and members, who can see their own family.
+  - Team, for the families on a team, who can also see everyone on every team.
+  - Crew, for the people an admin has vetted and trusts with every roster, such as staff, coaches,
+    directors, officers, and trusted volunteers. They can see every roster, everyone's contact
+    details and medical information, and the club's products and revenue accounts.
   - Admin, for the people who run the system.
 
-  A program's roster is everyone signed up for it. A sailor's teammates are the others on their
-  roster.
+  A team is a program the club marks as one, such as a race team. A program's roster is everyone
+  signed up for it. A sailor is on a team from when they sign up for it until 12 months after their
+  last time on it ends, and a sailor's parents are on the team with them.
 
-  Anything more than a role gives comes from groups, or from a program role such as Parent
-  Coordinator, which only counts in that program. A program role is a role someone has in one
-  program. A group, such as the Finance Committee, gives its members one or more policies. A policy
-  is a named set of permissions. For example, CRM Writer lets someone add, edit, and delete people
+  Anything more than a role gives comes from groups. A group, such as the Finance Committee, gives
+  its members one or more policies. A policy is a named set of permissions. For example, CRM Writer lets someone add, edit, and delete people
   and their details. An admin manages the groups in the Data Studio: who is in each one, and which
   policies each one gives. To change something means to add, edit, or delete it.
 
@@ -22,14 +21,50 @@ Feature: Roles and groups
   accounts of their own, and the first admin account is the one the system was set up with. Groups
   never change what those accounts can do.
 
-  Rule: Everyone who signs in has the Community, Crew, or Admin role
+  Rule: Everyone who signs in has the Community, Team, Crew, or Admin role
 
-    Example: Everyone who has signed in has one of the three roles
+    Example: Everyone who has signed in has one of the four roles
       Given the people in the CRM who have signed in
       When an admin looks up their roles
-      Then each of them has the Community, Crew, or Admin role
+      Then each of them has the Community, Team, Crew, or Admin role
 
-  Rule: Only an admin can change someone's role
+  @pending
+  Rule: A family on a team has the Team role, and goes back to Community once they're no longer on one
+
+    Example: A parent whose child signs up for a team becomes Team
+      Given a user with the Community role
+      When their child signs up for a team
+      Then they have the Team role
+
+    Example: An adult sailor who signs up for a team becomes Team
+      Given a user with the Community role
+      When they sign up for a team
+      Then they have the Team role
+
+    Example: A parent whose child's last time on a team ended a month ago is still Team
+      Given a user with the Team role
+      When their child's last time on a team ended a month ago
+      Then they still have the Team role
+
+    Example: A parent whose child's last time on a team ended 13 months ago goes back to Community
+      Given a user with the Team role
+      When their child's last time on a team ended 13 months ago
+      Then they have the Community role
+
+  @pending
+  Rule: Joining or leaving a team never changes a Crew member's or an admin's role
+
+    Scenario Outline: A Crew member or admin whose child signs up for a team keeps their role
+      Given a user with the <role> role
+      When their child signs up for a team
+      Then they still have the <role> role
+
+      Examples:
+        | role  |
+        | Crew  |
+        | Admin |
+
+  Rule: Only an admin can change someone's role, apart from moving families between Community and Team
 
     Example: An admin makes a volunteer Crew
       Given a user with the Community role
@@ -48,6 +83,11 @@ Feature: Roles and groups
 
     Example: A volunteer with CRM Writer still can't change roles
       Given a user with the Crew role and the CRM Writer policy
+      Then they can't change anyone's role, even their own
+
+    @pending
+    Example: A Team member can't change anyone's role
+      Given a user with the Team role
       Then they can't change anyone's role, even their own
 
   Rule: Joining a group gives its policies, and doesn't change the person's role
@@ -108,4 +148,9 @@ Feature: Roles and groups
 
     Example: A volunteer with CRM Writer still can't change groups
       Given a user with the Crew role and the CRM Writer policy
+      Then they can't change groups
+
+    @pending
+    Example: A Team member can't change groups
+      Given a user with the Team role
       Then they can't change groups

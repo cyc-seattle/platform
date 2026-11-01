@@ -215,12 +215,6 @@ async function aTeammate(
 // Givens: who signs in, and who sails with them.
 
 Step("a parent whose child is signed up for a program", () => aGuardian("Community"));
-Step("a parent whose child is signed up for a program and opted in to sharing", () =>
-  aGuardian("Community", { share: true }),
-);
-Step("a parent whose child is signed up for a program and opted out of sharing", () =>
-  aGuardian("Community", { share: false }),
-);
 Step("a parent in the CRM whose child is signed up for a program", async () => {
   const child = call("the child", await sailor("child", await theTeam(), {}));
   call("the parent", await guardianOf(child));
@@ -234,57 +228,13 @@ Step("they sign in, typing their email in capitals", async () => {
     guardian.email.replace(/^[^@]+/, (local) => local.toUpperCase()),
   );
 });
-Step("a user with the Crew role whose child is signed up for a program", () => aGuardian("Crew"));
-Step("a parent whose child's only program has ended", () => aGuardian("Community", { state: "ended" }));
-Step("a parent whose child's only program has ended, with a teammate who opted in", async () => {
-  await aGuardian("Community", { state: "ended" });
-  await aTeammate({ share: true, dateOfBirth: ADULT });
-});
 
 // The teammate is an adult wherever their age doesn't matter, so their own email is shareable.
-for (const text of ["an adult teammate who opted in to sharing", "a teammate who opted in to sharing"]) {
-  Step(text, () => aTeammate({ share: true, dateOfBirth: ADULT }));
-}
-Step("a teammate who opted in to sharing but has no date of birth on file", () =>
-  aTeammate({ share: true, dateOfBirth: null }),
-);
+Step("another sailor in the program", () => aTeammate({ share: true, dateOfBirth: ADULT }));
 Step("a teammate who hasn't answered the sharing question, and their parent", async () => {
   const teammate = await aTeammate({ share: null, fields: { phone: phone() } });
   call("the teammate's parent", await guardianOf(teammate));
 });
-Step("another parent in the program", async () => {
-  const teammate = await aTeammate({ share: null });
-  const guardian = call("the teammate's parent", await guardianOf(teammate));
-  guardian.user = await createUser(guardian.email, "Community");
-});
-Step("a teammate who is a child and opted in to sharing, and their parent", async () => {
-  const teammate = await aTeammate({ share: true, fields: { phone: phone() } });
-  call("the teammate's parent", await guardianOf(teammate));
-});
-Step("a teammate who opted in for another program but not for this one, and their parent", async () => {
-  const teammate = await aTeammate({ share: false });
-  await register(teammate, await team(), true);
-  call("the teammate's parent", await guardianOf(teammate));
-});
-Step("a sailor whose time in the program has ended", async () => {
-  const { programId } = await theTeam();
-  call("the sailor", await sailor("sailor", await team("ended", programId), { share: true, dateOfBirth: ADULT }));
-});
-let secondTeam: Team | undefined;
-onEachScenario(() => {
-  secondTeam = undefined;
-});
-Step("their child is also signed up for a second program", async () => {
-  secondTeam = await team();
-  await register(the("the child"), secondTeam, false);
-});
-Step("a sailor who is only in the second program", async () => {
-  if (!secondTeam) {
-    throw new Error("No Given has made the second team.");
-  }
-  call("the sailor", await sailor("sailor", secondTeam, { share: true }));
-});
-
 Step("an adult sailor signed up for a program", async () => {
   await signIn(call("the sailor", await sailor("adult", await theTeam(), { share: true, dateOfBirth: ADULT })));
 });
@@ -318,10 +268,6 @@ async function parentCoordinator(): Promise<string> {
 }
 
 Step("a Parent Coordinator for a program", async () => aVolunteer(await parentCoordinator(), null));
-Step("a Parent Coordinator for a program, whose program role ended three days ago", async () => {
-  await aVolunteer(await parentCoordinator(), daysFromNow(-3));
-  await aTeammate({ share: true, dateOfBirth: ADULT }, "the sailor");
-});
 Step("a family member who is on race committee for a program", async () => {
   const role = await adminCreate("program_roles", { name: `Race committee ${key("role")}` });
   await aVolunteer(role.id, null);
@@ -330,17 +276,6 @@ Step("a family member who is on race committee for a program", async () => {
 Step("a sailor in the program who hasn't answered the sharing question, and their parent", async () => {
   const sailing = await aTeammate({ share: null }, "the sailor");
   call("the sailor's parent", await guardianOf(sailing));
-});
-Step("a sailor in the program who is a child, with an email and phone of their own", () =>
-  aTeammate({ share: null, fields: { phone: phone() } }, "the sailor"),
-);
-Step("a sailor in the program whose parent is under 18", async () => {
-  const sailing = await aTeammate({ share: null }, "the sailor");
-  call("the sailor's parent", await guardianOf(sailing, yearsAgo(16)));
-});
-Step("a sailor in another program running at the same time", async () => {
-  await theTeam();
-  call("the sailor", await sailor("sailor", await team(), { share: true, dateOfBirth: ADULT }));
 });
 
 // Whens: what they look at, or change.
@@ -361,9 +296,6 @@ Step("they look up medical information", async () => {
 Step("they look up who each sailor's parents are", async () => {
   scene.rows = await read(await theirSession(), "contacts");
 });
-Step("they look up who the teammate's parent is", async () => {
-  scene.rows = await read(await theirSession(), "contacts", `?filter[subject_id][_eq]=${the("the teammate").id}`);
-});
 Step("they look up the teammate's registration", async () => {
   const session = await theirSession();
   const { participantId } = the("the teammate");
@@ -376,15 +308,6 @@ Step("they look up the teammate's registration", async () => {
 const shareContact = async (session: DirectusSession, registrationId: string | undefined, value: boolean | null) =>
   (await session.request("PATCH", `/items/clubspot_registrations/${registrationId}`, { share_contact: value })).status;
 
-for (const [text, value] of [
-  ["the parent opts out for their child", false],
-  ["the parent opts in for their child", true],
-] as const) {
-  Step(text, async () => {
-    expect(await shareContact(await asThe("the parent"), the("the child").registrationId, value)).toBeLessThan(300);
-  });
-}
-
 // Then: what they see.
 
 parameter("someone", ["the teammate", "the teammate's parent", "the sailor", "the sailor's parent", "the parent"]);
@@ -396,13 +319,6 @@ Step("they see {someone}", (_, label: string) => {
 });
 Step("they don't see {someone}", (_, label: string) => {
   expect(ids(scene.rows)).not.toContain(the(label).id);
-});
-Step("they see both teammates", () => {
-  const teammates = scene.people["the teammate"] ?? [];
-  expect(teammates).toHaveLength(2);
-  for (const teammate of teammates) {
-    expect(ids(scene.rows)).toContain(teammate.id);
-  }
 });
 Step("they see their child's roster", async () => {
   const seen = ids(await read(await theirSession(), "people"));
@@ -430,7 +346,6 @@ Step("they don't see {someone}'s email or phone", (_, label: string) => noContac
 Step("they don't see {someone}'s or their parent's email or phone", (_, label: string) =>
   noContactDetails(label, `${label}'s parent`),
 );
-Step("they see no email or phone for {someone}", (_, label: string) => noContactDetails(label));
 
 Step("they see only themselves and their child", () => {
   expect(ids(scene.rows)).toEqual(new Set([the("the parent").id, the("the child").id]));
@@ -441,7 +356,7 @@ Step("they see no one", () => {
 Step("they see their child's medical information", () => {
   expect(scene.rows.map((row) => row["person_id"])).toContain(the("the child").id);
 });
-Step("not the teammate's", () => {
+Step("not the other sailor's", () => {
   expect(scene.rows.map((row) => row["person_id"])).not.toContain(the("the teammate").id);
 });
 
@@ -458,33 +373,7 @@ Step("they see who {someone}'s parent is", (_, label: string) => {
   expect(scene.rows).toContainEqual(link(subject, subject.guardian!));
 });
 
-for (const [text, sees] of [
-  ["the other parent sees the parent's email", true],
-  ["the other parent no longer sees the parent's email", false],
-] as const) {
-  Step(text, async () => {
-    const rows = await read(await asThe("the teammate's parent"), "people");
-    const guardian = the("the parent");
-    const shown = rows.find((row) => row["id"] === guardian.id)?.["email"];
-    if (sees) {
-      expect(shown).toBe(guardian.email);
-    } else {
-      expect(shown).toBeFalsy();
-    }
-  });
-}
-
-Step("they can opt out of sharing and back in", async () => {
-  const session = await asThe("the sailor");
-  const { registrationId } = the("the sailor");
-  expect(await shareContact(session, registrationId, false)).toBeLessThan(300);
-  expect(await shareContact(session, registrationId, true)).toBeLessThan(300);
-});
-for (const [text, label, session] of [
-  ["they can't change whether they share", "the sailor", "the sailor"],
-  ["they can't change whether the teammate shares", "the teammate", "the parent"],
-  ["they can't change whether their child shares", "the child", "the parent"],
-] as const) {
+for (const [text, label, session] of [["they can't change whether they share", "the sailor", "the sailor"]] as const) {
   Step(text, async () => {
     expect(await shareContact(await asThe(session), the(label).registrationId, true)).toBeGreaterThanOrEqual(400);
   });
@@ -601,13 +490,6 @@ Step("they ask for a list that would reveal hidden emails or phone numbers", asy
   expectRefusal(() => expect(statuses).toEqual(Object.fromEntries(revealing.map((query) => [query, 403]))));
 });
 
-Step("they can't see the details of the program's registrations", async () => {
-  const rows = await read(await theirSession(), "clubspot_registrations");
-  expect(rows.length).toBeGreaterThan(0);
-  for (const row of rows) {
-    expect(row["camp_id"]).toBeNull();
-  }
-});
 Step("they see no one in the program", async () => {
   const session = await theirSession();
   for (const collection of [
@@ -643,8 +525,6 @@ const rosterRequests: { collection: string; fields: string[]; filter?: Row }[] =
   { collection: "clubspot_participants", fields: ["id", "person_id"] },
 ];
 
-let rosterPermissions: { clubspot_registrations?: { read?: { access?: string } } } = {};
-
 Step("they open the roster page", async () => {
   const session = await theirSession();
   scene.statuses = [];
@@ -659,17 +539,4 @@ Step("they open the roster page", async () => {
       scene.rows = body.data;
     }
   }
-  const permissions = await session.request("GET", "/permissions/me");
-  scene.statuses.push(permissions.status);
-  rosterPermissions = permissions.body?.data ?? {};
-});
-// The portal shows a family's view when Directus reports its registrations read as partial.
-Step("the page loads without errors and shows their child's roster", () => {
-  expect(scene.statuses).toEqual(scene.statuses.map(() => 200));
-  expect(rosterPermissions.clubspot_registrations?.read?.access).toBe("partial");
-  const sailors = scene.rows.map(
-    (entry) =>
-      (entry["registration_id"] as { participant_id?: { person_id?: string } } | null)?.participant_id?.person_id,
-  );
-  expect(sailors).toContain(the("the child").id);
 });

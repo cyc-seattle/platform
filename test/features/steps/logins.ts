@@ -28,7 +28,7 @@ export const policyNames = [
   "Plan Reader",
   "Plan Writer",
 ];
-export const roleNames = ["Community", "Crew", "Admin"];
+export const roleNames = ["Community", "Team", "Crew", "Admin"];
 export const serviceNames = Object.keys(services);
 
 /** Every user this run created, so cleanup can delete them. */
