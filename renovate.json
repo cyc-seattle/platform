@@ -1,1 +1,24 @@
-{ "extends": ["local>cyc-seattle/.github:renovate-config"] }
+{
+  "extends": ["local>cyc-seattle/.github:renovate-config"],
+  "customManagers": [
+    {
+      "description": "The dev fakes' image tags in the backend stack. The SDKs publish them.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^stacks/backend/.+\\.ts$/"],
+      "matchStrings": ["\"(?<depName>ghcr\\.io/cyc-seattle/[a-z-]+-fake):(?<currentValue>[0-9.]+)\""],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Bump each SDK and its fake in one PR, so dev never runs a new SDK against an old fake.",
+      "matchPackageNames": ["@cyc-seattle/clubspot-sdk", "ghcr.io/cyc-seattle/clubspot-fake"],
+      "groupName": "clubspot-sdk and its fake"
+    },
+    {
+      "description": "Bump each SDK and its fake in one PR, so dev never runs a new SDK against an old fake.",
+      "matchPackageNames": ["@cyc-seattle/gsuite-sdk", "ghcr.io/cyc-seattle/workspace-fake"],
+      "groupName": "gsuite-sdk and its fake"
+    }
+  ]
+}

@@ -80,11 +80,11 @@ maintainer's address (#20).
 ```sh
 mise trust
 mise run install
-mise run auth-adc
 ```
 
-`mise run auth-adc` logs Application Default Credentials in as your own account. Pulumi uses them
-for GCP and for the state bucket. [docs/manual-setup.md](docs/manual-setup.md) lists the access a
+Pulumi uses Application Default Credentials for GCP and for the state bucket. Log them in as your own
+account with `mise run auth-adc` in the [workplace](https://github.com/cyc-seattle/workplace), which
+links this checkout's `.gcloud/` to its one login. [docs/manual-setup.md](docs/manual-setup.md) lists the access a
 deployer needs first.
 
 ## Deploy

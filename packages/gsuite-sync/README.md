@@ -20,7 +20,7 @@ DIRECTUS_URL=https://directus.<dev domain> DIRECTUS_TOKEN=... \
 pnpm exec gsuite-sync --dry-run
 ```
 
-Google API calls authenticate with Application Default Credentials — run `mise run auth-adc` first.
+Google API calls authenticate with Application Default Credentials — run the workplace's `mise run auth-adc` first.
 
 Options:
 

@@ -9,8 +9,6 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "bin": {
     "gsuite-sync": "./src/main.ts"
   },

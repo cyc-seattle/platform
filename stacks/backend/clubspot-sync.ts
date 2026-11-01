@@ -9,7 +9,7 @@ import { clubspotFakeDatabaseUri, clubspotFakeEnv } from "./clubspot-fake.ts";
 // In dev it syncs from the Clubspot fake, on its own database on the dev instance. In prod it syncs
 // from Clubspot, with the login set by hand in Secret Manager.
 
-// Renovate bumps it with @cyc-seattle/clubspot-sdk, which publishes the fake.
+// Renovate bumps it with @cyc-seattle/clubspot-sdk, which publishes the fake (renovate.json).
 const fakeImage = "ghcr.io/cyc-seattle/clubspot-fake:0.3.0";
 
 /** The CronJob, its Secret and image, and in dev, the Clubspot fake. */
