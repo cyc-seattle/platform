@@ -34,6 +34,11 @@ export const serviceNames = Object.keys(services);
 /** Every user this run created, so cleanup can delete them. */
 export const userIds: string[] = [];
 
+/** Fails a step a later step of cyc-seattle/workplace#6 builds, so a pending scenario's steps still parse. */
+export function notBuilt(step: string): never {
+  throw new Error(`Not built yet: cyc-seattle/workplace#6 step ${step} builds this step.`);
+}
+
 async function idByName(collection: "roles" | "policies", name: string): Promise<string> {
   const filter = encodeURIComponent(JSON.stringify({ name: { _eq: name } }));
   const [found] = await (await admin()).ok("GET", `/${collection}?filter=${filter}&fields=id`);

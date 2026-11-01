@@ -106,6 +106,7 @@ const sets: Record<string, Target[]> = {
     "programs",
   ),
   products: plain("products"),
+  "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),
   plans: [...plain("plans", "plan_activations"), ...versions("draft", "saved")],
   "a draft": versions("draft"),

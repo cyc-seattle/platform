@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
+import { notBuilt } from "./steps/logins.ts";
 import {
   admin,
   adminCreate,
@@ -67,7 +68,7 @@ async function activate(versionId: string): Promise<void> {
   expect(await activeVersion(body.data.plan_id)).toBe(versionId);
 }
 
-Step("they start a plan for a product", async () => {
+Step("they start a plan for a program area", async () => {
   await runRows();
   const plan = await newRow("plans");
   const draft = { id: randomUUID(), status: "draft" };
@@ -139,5 +140,59 @@ Step("they can't turn a saved version back into a draft", async () => {
   const { status: now } = await (await admin()).ok("GET", `${itemPath("plan_versions", saved)}?fields=status`);
   expect(now).toBe("saved");
 });
+
+// The P&L and program areas' steps, which step 12a builds.
+for (const text of [
+  "two plans for a program area this year, the first of them active",
+  "they make a saved version of the second plan active",
+  "the second plan is the program area's plan for the year",
+  "the first plan has no active version",
+  "a plan for a program area",
+  "an offering in it of a program from another program area",
+  "a planner calculates the P&L",
+  "the planner is warned that the offering is in the wrong plan",
+  "the Operations Plan sells {money} of merchandise",
+  "the club-wide totals include {money} of merchandise sales",
+  "a program with no program area",
+  "a plan with an offering of that program",
+  "the planner is warned that the program has no program area",
+  "a program area with two offerings that each take in {money}",
+  "{money} of storage charged to the program area",
+  "the program area takes in {money}",
+  "its costs include the {money} of storage",
+  "a program area with two offerings, the first with twice the direct costs of the second",
+  "the first offering pays {money} of the storage",
+  "the second offering pays {money} of the storage",
+  "a program area with two offerings with the same direct costs",
+  "a salaried director paid {money} an hour, with {count} hours charged to the program area",
+  "each offering pays {money} of the director's salary",
+  "the Operations Plan sets scholarships at {percent} of programs' revenue",
+  "an offering of a program at {money} a sailor, with {count} sailors",
+  "the offering's scholarships are {money}",
+  "the merchandise has no scholarships",
+  "the Operations Plan collects card fees from families at {percent} of revenue",
+  "the Operations Plan pays card fees at {percent} of revenue",
+  "an offering of a program that takes in {money}",
+  "the offering takes in {money} of card fees from families",
+  "the offering pays {money} of card fees",
+  "two offerings with the same direct costs",
+  "scholarships on the first offering only, which don't count toward the split",
+  "{money} of office costs shared by every offering",
+  "each offering pays {money} of the office costs",
+  "the Operations Plan buys a {money} coach boat",
+  "no offering or program area pays for the coach boat",
+  "the club-wide totals show {money} of capital",
+  "a {money} coach boat charged to a program area",
+  "the program area doesn't pay for the coach boat",
+  "the planner is warned that capital can't be charged to a program area",
+  "programs that take in {money} and cost {money}",
+  "donations of {money}, which cost {money} to raise",
+  "the club-wide totals are:",
+  "they can write the draft's rules",
+  "a plan with a saved version that has rules",
+  "they can't change the saved version's rules",
+]) {
+  Step(text, () => notBuilt("12a"));
+}
 
 describeAccessFeature("planning.feature");

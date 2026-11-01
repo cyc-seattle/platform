@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
+import { notBuilt } from "./steps/logins.ts";
 import { admin, adminCreate, created, itemPath, key, runId } from "./steps/rows.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
@@ -49,5 +50,15 @@ Step("an admin adds another revenue account with the same number", async () => {
     expect(status).toBeLessThan(500);
   });
 });
+
+// Program areas' steps, which step 12a builds.
+for (const text of [
+  "a program area with a program in it",
+  "an admin deletes the program area",
+  "the program area is still in the catalog",
+  "an admin adds a program area with no revenue account",
+]) {
+  Step(text, () => notBuilt("12a"));
+}
 
 describeAccessFeature("catalog.feature");
