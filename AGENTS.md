@@ -16,7 +16,9 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   `WebService`, `ScheduledJob`, `PlatformOutputs`) is a contract the apps code against, so extend it
   rather than renaming. A `feat:` or `fix:` merge to `main` releases it.
 - `schemas/<domain>.yaml` is the Directus data model, one file per domain. `src/directus/` merges
-  them into one snapshot and applies it. The `backend` stack deploys Directus with them, in dev and
+  them into one snapshot and applies it. `src/schema/index.ts` is their TypeScript types, published
+  as `@cyc-seattle/platform/schema` for apps to pass to `@directus/sdk`. It's generated: after a
+  schema change, run `mise run schema-types`, and CI fails until you do. The `backend` stack deploys Directus with them, in dev and
   prod. A schema change is tested on dev, through the PR's deploy.
 - `src/planning/` is the planning engine, published as `@cyc-seattle/platform/planning` so an app can
   load it without Pulumi. `docs/planning-engine.md` gives its rules.

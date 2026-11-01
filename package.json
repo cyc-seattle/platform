@@ -30,6 +30,10 @@
       "types": "./dist/planning/index.d.ts",
       "default": "./dist/planning/index.js"
     },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "default": "./dist/schema/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

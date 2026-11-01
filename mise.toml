@@ -68,6 +68,10 @@ run = "./scripts/each-stack up --yes"
 description = "Build the published package and the workspace's packages into their dist/"
 run = "pnpm run -r --include-workspace-root build"
 
+[tasks.schema-types]
+description = "Regenerate src/schema/index.ts, the Directus schema's types, from schemas/*.yaml"
+run = "node scripts/schema-types.ts"
+
 [tasks.reset]
 description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
 run = "./scripts/reset"
