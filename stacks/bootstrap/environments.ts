@@ -3,7 +3,7 @@ import * as gcp from "@pulumi/gcp";
 import * as github from "@pulumi/github";
 import { deployDev } from "./deploy-dev.ts";
 import { deployRunner } from "./deploy-runner.ts";
-import { isthmia, maintainers, platform } from "./github.ts";
+import { isthmia, maintainers, platform, sailTeam } from "./github.ts";
 import { stateBackends } from "./state.ts";
 import { allowEnvironment, provider, subjectPrefix } from "./workload-identity.ts";
 
@@ -49,10 +49,11 @@ const environments: Environment[] = [
   },
 ];
 
-// platform was created with immutable OIDC subjects; isthmia predates them.
+// Repositories created since platform have immutable OIDC subjects; isthmia predates them.
 const repositories = [
   { name: "isthmia", resource: isthmia, prefix: subjectPrefix("isthmia") },
   { name: "platform", resource: platform, prefix: subjectPrefix("platform", platform.repoId) },
+  { name: "sail-team", resource: sailTeam, prefix: subjectPrefix("sail-team", sailTeam.repoId) },
 ];
 
 for (const { name: repo, resource, prefix } of repositories) {

@@ -213,6 +213,16 @@ export const platform = new StandardRepository("platform", {
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
 });
 
+// The club's web app at the apex domain, which takes over from isthmia's portal.
+export const sailTeam = new StandardRepository("sail-team", {
+  description: "The club's web app: plans, the roster, and links, on the platform's Directus.",
+  visibility: "public",
+  autoInit: true,
+  licenseTemplate: "apache-2.0",
+  hasProjects: false,
+  requiredChecks: ["ci / ci", "pr-title / pr-title"],
+});
+
 new StandardRepository("todo-manager", {
   description: "Syncs camp schedules from TheClubSpot to Todoist. Archived.",
   visibility: "public",
