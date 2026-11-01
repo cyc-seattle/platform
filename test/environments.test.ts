@@ -15,6 +15,7 @@ const email = (accountId: string) => `${accountId}@example-project.iam.gservicea
 const poolName = "projects/123/locations/global/workloadIdentityPools/github";
 const providerName = `${poolName}/providers/github`;
 const orgId = "4242";
+const repos = ["isthmia", "platform", "sail-team"];
 
 let wif: typeof import("../stacks/bootstrap/workload-identity.ts");
 
@@ -107,19 +108,20 @@ describe("workload identity bindings", () => {
       .filter((r) => r.inputs.role === "roles/iam.workloadIdentityUser")
       .map((r) => r.inputs.member)
       .sort();
-  // platform uses immutable subjects (its numeric IDs); isthmia uses names.
+  // platform and sail-team use immutable subjects (their numeric IDs); isthmia uses names.
+  const repoIds: Record<string, number> = { platform: 4242, "sail-team": 1717 };
   const prefix = (repo: string) =>
-    repo === "platform" ? `repo:cyc-seattle@${orgId}/platform@4242` : `repo:cyc-seattle/${repo}`;
+    repo in repoIds ? `repo:cyc-seattle@${orgId}/${repo}@${repoIds[repo]}` : `repo:cyc-seattle/${repo}`;
   const subject = (repo: string, env: string) =>
     `principal://iam.googleapis.com/${poolName}/subject/${prefix(repo)}:environment:${env}`;
 
-  it("lets dev's environment on isthmia and platform assume deploy-dev, and nothing else", () => {
-    expect(bindings("deploy-dev")).toEqual([subject("isthmia", "dev"), subject("platform", "dev")].sort());
+  it("lets dev's environment on isthmia, platform, and sail-team assume deploy-dev, and nothing else", () => {
+    expect(bindings("deploy-dev")).toEqual(repos.map((repo) => subject(repo, "dev")).sort());
   });
 
-  it("lets the prod environments on isthmia and platform assume deploy-runner, and nothing else", () => {
+  it("lets the prod environments on isthmia, platform, and sail-team assume deploy-runner, and nothing else", () => {
     expect(bindings("deploy-runner")).toEqual(
-      ["isthmia", "platform"].flatMap((repo) => ["prod", "prod-preview"].map((env) => subject(repo, env))).sort(),
+      repos.flatMap((repo) => ["prod", "prod-preview"].map((env) => subject(repo, env))).sort(),
     );
   });
 
@@ -139,7 +141,7 @@ describe("the maintainers team", () => {
   });
 });
 
-describe.each(["isthmia", "platform"])("%s's environments", (repo) => {
+describe.each(repos)("%s's environments", (repo) => {
   const env = (name: string) => byName(`${repo}-${name}`).inputs;
   const policies = (name: string) =>
     ofType("github:index/repositoryEnvironmentDeploymentPolicy:RepositoryEnvironmentDeploymentPolicy")
