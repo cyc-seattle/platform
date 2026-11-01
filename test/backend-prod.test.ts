@@ -68,8 +68,6 @@ pulumi.runtime.setMocks(
   false,
 );
 pulumi.runtime.setConfig("gcp:project", "test-project");
-pulumi.runtime.setConfig("backend:directusCpu", "500m");
-pulumi.runtime.setConfig("backend:directusMemory", "1Gi");
 pulumi.runtime.setConfig("backend:safeToEvict", "false");
 
 function find(type: string, name: string): Registered {
@@ -167,9 +165,16 @@ describe("prod's Directus on the cluster", () => {
     });
   });
 
-  it("runs on regular capacity with prod's sizing", () => {
+  it("runs on regular capacity, bursting to 1 vCPU", () => {
     expect(container().nodeSelector).toEqual({});
-    expect(container().containers[0].resources.requests).toEqual({ cpu: "500m", memory: "1Gi" });
+    expect(container().containers[0].resources).toEqual({
+      requests: { cpu: "250m", memory: "768Mi" },
+      limits: { cpu: "1", memory: "768Mi" },
+    });
+  });
+
+  it("keeps Directus's info logs", () => {
+    expect(container().containers[0].env.map((e: { name: string }) => e.name)).not.toContain("LOG_LEVEL");
   });
 });
 

@@ -76,7 +76,9 @@ function clubspotFake(cluster: Cluster, config: pulumi.Config): ClubspotLogin {
     provider,
     image: fakeImage,
     ports: [{ name: "parse", port: 1337 }],
-    requests: { cpu: "100m", memory: "256Mi" },
+    requests: { cpu: "50m", memory: "256Mi" },
+    // Seeding bursts above the request.
+    limits: { cpu: "250m" },
     // 200 only once the seed has finished.
     readinessProbe: { httpGet: { path: "/ready", port: 1337 } },
     env: clubspotFakeEnv(fakeDb.metadata.name),
