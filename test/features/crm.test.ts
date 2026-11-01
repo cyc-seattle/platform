@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import "./steps/community.ts";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
+import { notBuilt } from "./steps/logins.ts";
 import { admin, adminCreate, created, email, itemPath, runId } from "./steps/rows.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
@@ -94,5 +95,54 @@ Step("an admin deletes the sailor's parent", async () => {
 Step("the parent is still in the CRM", async () => {
   await (await admin()).ok("GET", itemPath("people", theFamily().parentIds[0]));
 });
+
+// Teams, Crew's wider reads, and the per-person opt-in (cyc-seattle/workplace#6 decisions 26-29).
+for (const [step, texts] of [
+  [
+    "16",
+    [
+      "they can stop sharing and share again",
+      "they can't change whether the teammate's parent shares",
+      "a parent whose child is on a team, who stopped sharing",
+      "a parent whose child is on a team, who said yes to sharing in Clubspot",
+      "they say yes to sharing when they sign their child up again in Clubspot",
+      "they stop sharing",
+      "they share their email and phone",
+      "they don't share their email and phone",
+    ],
+  ],
+  [
+    "17",
+    [
+      "a sailor in a program who hasn't answered the sharing question, and their parent",
+      "a parent whose child is on a team",
+      "a sailor who is only on another team",
+      "a sailor who is only in a program that isn't a team",
+      "a sailor whose last time on a team ended a month ago",
+      "a sailor whose last time on a team ended 13 months ago",
+      "a parent whose child's last time on a team ended 13 months ago",
+      "an adult teammate who chose to share",
+      "an adult teammate who chose not to share",
+      "a teammate who is a child, and their parent, who chose to share",
+      "a teammate who is a child, with an email and phone of their own, and their parent, who chose to share",
+      "a teammate with no date of birth on file, and an email and phone of their own",
+      "they see their own medical information",
+      "not the teammate's",
+    ],
+  ],
+  ["18", ["the page loads without errors and shows the teams' rosters"]],
+  [
+    "19",
+    [
+      "a parent whose child is signed up for a program that isn't a team",
+      "another sailor in the program who chose to share, and their parent",
+      "they don't see who the sailor's parent is",
+    ],
+  ],
+] as const) {
+  for (const text of texts) {
+    Step(text, () => notBuilt(step));
+  }
+}
 
 describeAccessFeature("crm.feature");

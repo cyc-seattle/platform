@@ -69,6 +69,7 @@ const sets: Record<string, Target[]> = {
   "extra emails or phone numbers": plain("contact_points"),
   registrations: plain("clubspot_participants", "clubspot_registrations", "clubspot_registration_billing"),
   payments: plain("clubspot_registration_billing"),
+  "sign-up answers": plain("clubspot_custom_field_responses"),
   "Clubspot's events and registrations": SESSIONS_CLASSES_AND_REGISTRATIONS,
   "sessions, classes, and registrations": SESSIONS_CLASSES_AND_REGISTRATIONS,
   "offerings and the registrations in them": plain("offerings", "registrations"),
