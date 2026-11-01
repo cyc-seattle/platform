@@ -1,8 +1,0 @@
-{
-  "extends": "@cyc-seattle/ts-config/tsconfig",
-  "compilerOptions": {
-    "rewriteRelativeImportExtensions": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true
-  }
-}

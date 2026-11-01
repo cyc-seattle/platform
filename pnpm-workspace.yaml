@@ -1,16 +1,6 @@
-packages:
-  - "packages/*"
-
-# `pnpm deploy` needs it, and it gives each package a built copy of its workspace dependencies.
-injectWorkspacePackages: true
-
 # From isthmia, for parse's transitive dependencies.
 overrides:
   "@babel/runtime-corejs3": ">=7.26.10"
   axios: ">=1.8.2"
   ws: ^8.21.0
   uuid: ^11.1.1
-
-# An injected copy is taken at install, before the package is built, so refresh it after each build.
-syncInjectedDepsAfterScripts:
-  - build
