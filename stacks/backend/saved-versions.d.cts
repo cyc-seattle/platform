@@ -67,4 +67,21 @@ export function fingerprint(config: SavedVersionsConfig): string;
 /** The statements that install the triggers. */
 export function triggerStatements(config: SavedVersionsConfig): string[];
 
+/** The engine's `computePlan`, as the hook loads it. */
+export interface Engine {
+  computePlan(data: unknown): unknown;
+}
+
+/**
+ * Works out a saved version's results with the engine and writes them, unless it already has them.
+ * `db` is Directus's knex. Returns whether it wrote them.
+ */
+export function writeResults(
+  config: SavedVersionsConfig,
+  db: unknown,
+  versionId: string,
+  engine: Engine,
+): Promise<boolean>;
+
 export const REFUSED: string;
+export const RESULTS_BY_SAVE: string;

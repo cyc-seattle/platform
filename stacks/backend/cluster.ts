@@ -47,6 +47,8 @@ export interface DirectusExtensions {
   queryGuard: QueryGuardConfig;
   groupPolicies: GroupPoliciesConfig;
   savedVersions: SavedVersionsConfig;
+  /** The planning engine's modules, which the saved-versions hook loads (./engine-files.ts). */
+  engine: Record<string, string>;
 }
 
 /**
@@ -120,12 +122,12 @@ export async function deployDirectus(
     );
     return { name, configMap };
   };
-  const hook = (name: string, source: string, config: object) =>
-    extension(name, "hook", source, { "config.json": JSON.stringify(config) });
+  const hook = (name: string, source: string, config: object, files: Record<string, string> = {}) =>
+    extension(name, "hook", source, { "config.json": JSON.stringify(config), ...files });
   const mounts = [
     hook("community-query-guard", "community-query-guard.cjs", extensions.queryGuard),
     hook("group-policies", "group-policies.cjs", extensions.groupPolicies),
-    hook("saved-versions", "saved-versions.cjs", extensions.savedVersions),
+    hook("saved-versions", "saved-versions.cjs", extensions.savedVersions, extensions.engine),
     extension("cents-as-dollars", "display", "cents-display.mjs"),
   ];
   // Directus runs each migration it hasn't recorded at start, before it serves.

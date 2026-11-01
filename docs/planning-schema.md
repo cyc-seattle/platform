@@ -6,7 +6,7 @@ tags: [architecture, planning, directus]
 
 Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs`. `schemas/planning.yaml` declares plans, their versions, which version is active, and every row a version holds. Version sets, scenarios, baselines and actuals are designed here, but not built yet.
 
-The database stores only what planners enter, not totals calculated from it. Apps and agents ask the [planning engine](planning-engine.md) to calculate a P&L when they need one.
+A draft holds only what planners enter. Apps and agents ask the [planning engine](planning-engine.md) to calculate its P&L when they need one. A saved version also holds the results the engine calculated when it was saved, which never change ([A saved version's results](#a-saved-versions-results)).
 
 ### Terms
 
@@ -17,7 +17,7 @@ The database stores only what planners enter, not totals calculated from it. App
 - **Activity:** one dated, timed event that uses coaches, boats or other resources, such as a practice, a regatta day or a travel day. The planner, or a scheduling tool, enters each one.
 - **Activity block:** offerings whose activities share coaches and boats on certain days, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
 - **Cost center:** what a money line belongs to. That is an offering, a product or a program area (each divided among its offerings), a pool (G&A, program admin), or the org. Strictly speaking, an offering that earns revenue is a profit center, but we call all of these cost centers.
-- **Bonus owner:** a role, such as Single-handed head coach. It owns a set of products and earns a bonus on their combined net.
+- **Bonus owner:** a role, such as a program area's director. It owns a set of products and earns a bonus on their net. A bonus on one area's products is in that area's plan; one across areas is in the Operations Plan.
 - **Plan:** one part of the club's overall plan, saved and versioned on its own. A **program area's plan** holds one area's offerings for one year. The **Operations Plan** holds what the areas share, the charges set as a share of revenue, and the products in no area: merchandise, storage and charters.
 - **Version:** either a draft or an immutable saved snapshot of one plan.
 - **Version set:** one version per plan.
@@ -194,7 +194,7 @@ A plan is for one organization and one plan year (`fiscal_year`). A program area
 
 A version's `rules` hold what the planner wants that the plan's numbers don't capture, in their own words, such as "every Monday, Wednesday and Friday, except on school holidays, from 4pm until dusk". Their AI reads them when it fills in the plan. The engine never does. Like every input, they're saved with the version and never change after.
 
-A plan starts with a draft. A Plan Writer saves it by setting its `status` to `saved`, with the `platform_version` of the engine (`@cyc-seattle/platform`) that calculated its numbers, so we can recalculate them the same way later. A program area's plan is also saved with `operations_version_id`: the saved version of the same organization's Operations Plan, for the same year, that its numbers were calculated with. An area plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in that version. To change a saved plan, make a new draft whose `parent_version_id` is the saved version, and copy its rows, keys included.
+A plan starts with a draft. A Plan Writer saves it by setting its `status` to `saved`. The `saved-versions` hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates its results, whatever the request sends: the package's version and a hash of the engine's code. A program area's plan is also saved with `operations_version_id`: the saved version of the same organization's Operations Plan, for the same year, that its numbers were calculated with. An area plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in that version. To change a saved plan, make a new draft whose `parent_version_id` is the saved version, and copy its rows, keys included.
 
 A saved version doesn't copy the catalog. Recalculating an old saved version uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
 
@@ -218,6 +218,7 @@ Together they refuse:
 - a new version that isn't a draft
 - a program area's plan without its area, or an Operations Plan with one
 - saving a version without a `platform_version`, or a program area's plan without its Operations Plan version
+- writing a version's results, except by the hook, once, for a saved version
 - changing or deleting a `plan_activations` row
 - changing a plan's kind, program area, organization, or year once it has a saved version
 
@@ -265,6 +266,8 @@ erDiagram
         int fixed_boats "override"
         decimal cogs_rate
         string note
+        uuid coach_position_key "operations key: its salaried coach"
+        string coach_position_pay "salary|hourly"
     }
     plan_offering_boat_classes {
         uuid offering_id FK
@@ -328,7 +331,9 @@ Each activity is a dated row. The planner enters them, or a tool such as a sched
 
 A program area's plan holds only offerings of that area's programs, and the engine warns about any other.
 
-A budget line counts in its `fiscal_year`. Capital, a line on an asset account such as buying a coach boat, is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest. `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
+A budget line counts in its `fiscal_year`. Capital, a line on an asset account such as buying a coach boat, is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest. An offering's `coach_position_key` names a salaried position that coaches all its activities, paid out of the salary or, with `coach_position_pay` `hourly`, at the offering's coach level on top of it.
+
+`plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
 
 ### Operations plan (one version)
 
@@ -341,6 +346,7 @@ erDiagram
     plan_versions ||--o{ plan_activity_block_rules : contains
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
+    plan_versions ||--o{ plan_closed_dates : contains
     resource_kinds ||--o{ plan_resources : "kind of"
     resource_kinds |o--o{ plan_rates : "RIB kind"
     boat_classes ||--o{ plan_boat_rates : "rate for"
@@ -421,6 +427,12 @@ erDiagram
         string role_name
         decimal bonus_rate
         uuid account_id FK
+        string basis "after_shared_costs|before_shared_costs"
+        uuid position_key "operations key: the position it pays"
+    }
+    plan_closed_dates {
+        date date
+        string name
     }
     plan_bonus_owner_products {
         uuid bonus_owner_id FK
@@ -438,9 +450,92 @@ A salaried booking names a product, or a program area whose offerings share it b
 
 A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. Everything in a pool is divided among all of the year's offerings by MTDC.
 
-A bonus owner's bonus is `bonus_rate` × the combined net of its products for the year, after pools, if that net is above zero.
+A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before the pools (`basis`), if that net is above zero. A bonus on one program area's products can be in that area's plan instead, with its own `plan_bonus_owner_products`; the engine ignores, with a warning, any product from another area. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay.
+
+`plan_closed_dates` lists the days the club is closed, such as Labor Day. Agents read them when they write activities, and the engine warns about an activity on one.
 
 The Operations Plan also holds `plan_budget_lines` and `plan_labor_lines` for pool and org lines (insurance, the clubhouse fee, fundraising, equipment). They have the same shape as an area plan's lines.
+
+### A saved version's results
+
+```mermaid
+erDiagram
+    plan_versions ||--o| plan_results : "club-wide totals"
+    plan_versions ||--o{ plan_result_versions : "calculated with"
+    plan_versions ||--o{ plan_result_lines : lines
+    plan_versions ||--o{ plan_result_pnl : "P&L"
+    plan_versions ||--o{ plan_result_positions : pay
+    plan_versions ||--o{ plan_result_warnings : warnings
+    accounts ||--o{ plan_result_lines : "booked to"
+
+    plan_results {
+        uuid version_id FK "unique"
+        timestamp calculated_at
+        int operating_revenue_cents
+        int operating_expense_cents
+        int operating_net_cents
+        int fundraising_revenue_cents
+        int fundraising_expense_cents
+        int fundraising_net_cents
+        int capital_cents
+        int total_cents
+    }
+    plan_result_versions {
+        uuid version_id FK
+        uuid calculated_with_id FK "another saved version"
+    }
+    plan_result_lines {
+        uuid version_id FK
+        string cost_center_type
+        uuid cost_center_key
+        string cost_center_name
+        uuid account_id FK
+        string function
+        int amount_cents
+        text line
+        text explanation
+    }
+    plan_result_pnl {
+        uuid version_id FK
+        string level "offering|product|program_area"
+        uuid subject_key
+        string name
+        int revenue_cents
+        int expense_cents
+        int net_cents
+        int mtdc_cents
+        int enrollment
+        int days
+        int sailor_days
+    }
+    plan_result_positions {
+        uuid version_id FK
+        uuid position_key
+        string name
+        int salary_cents
+        decimal salaried_coaching_hours
+        int salaried_coaching_cents
+        decimal hourly_coaching_hours
+        int hourly_coaching_cents
+        decimal booking_hours
+        int booking_cents
+        int bonus_cents
+        int total_pay_cents
+        int payroll_tax_cents
+    }
+    plan_result_warnings {
+        uuid version_id FK
+        string code
+        text message
+        string subject_key
+    }
+```
+
+When a version is saved, the `saved-versions` hook runs the engine and writes its results with the version. Directus runs the hook's action only after it has checked access and committed the save, so the results go in a moment after the save answers. The hook calculates with the club's plan as it stands then: the version's Operations Plan version (itself, for an Operations Plan), and each other program area's active version. That way each offering's share of the pools is right. `plan_result_versions` lists those other versions. Activating a version later recalculates nothing, and the club's plan is still calculated whenever someone asks. The results say what each version showed when it was saved.
+
+Each line and P&L row goes with the version that holds what it's charged to: an offering goes with its own version, and a product or program area with that area's plan. Everything else, including pools and the organization, goes with the Operations Plan. `plan_results` holds the club-wide totals of the whole calculation. Positions and warnings are the whole calculation's, too. The hook writes `plan_results` last, so a version that has it has all its results. If the engine fails, the version stays saved with no results, and the hook logs why. A version's Results list in the Data Studio is then empty, as is its `plan_results` row for an agent, so a saved version with neither has no results yet. An admin can fill them in with `POST /saved-versions/results/<version id>`. It works them out with the club's plan as it stands then, and does nothing for a version that already has results.
+
+Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, the version is saved, and it has no results yet. Results never change. A Plan Reader or Plan Writer can see them. A draft never has results.
 
 ### Actuals
 

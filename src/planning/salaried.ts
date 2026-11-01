@@ -10,22 +10,29 @@ interface Charge {
   line: string;
 }
 
+/** What a position's hours charged to programs, by position key, for its summary. */
+export interface PositionCharges {
+  coaching_hours: number;
+  coaching_cents: number;
+  booking_hours: number;
+  booking_cents: number;
+}
+
 /**
  * Charges each salaried position's salary: its coaching and management hours at its hourly
  * equivalent go to what they served, and the rest, including its `ga_share` off the top, goes to its
  * remainder pool, or the organization if it has none.
  */
-export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker: CostCenterBooker): void {
-  if (ctx.data.plan_salaried_positions.length === 0) return;
+export function bookSalaries(
+  ctx: Context,
+  coaching: SalariedCoaching[],
+  booker: CostCenterBooker,
+): Map<Id, PositionCharges> {
+  const charged = new Map<Id, PositionCharges>();
+  if (ctx.data.plan_salaried_positions.length === 0) return charged;
   const account = ctx.costAccount("salaries");
-  if (account === undefined) return;
+  if (account === undefined) return charged;
   const pools = new Map(ctx.data.plan_pools.map((p) => [p.id, p]));
-  const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.key));
-  for (const c of coaching) {
-    if (!known.has(c.position_key)) {
-      ctx.warn("unknown_position", `A block rule names missing salaried position ${c.position_key}`, c.position_key);
-    }
-  }
 
   for (const position of ctx.data.plan_salaried_positions) {
     const salary = position.annual_salary_cents;
@@ -36,7 +43,7 @@ export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker:
 
     const charges: Charge[] = [
       ...coaching
-        .filter((c) => c.position_key === position.key)
+        .filter((c) => c.position_key === position.key && c.pay === "salary")
         .map((c) => ({
           cost_center_type: "offering" as const,
           cost_center_key: c.offering_key,
@@ -84,6 +91,18 @@ export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker:
         position.key,
       );
     }
+    const sums: PositionCharges = { coaching_hours: 0, coaching_cents: 0, booking_hours: 0, booking_cents: 0 };
+    for (const c of charges) {
+      const amount = c.hours * (rate ?? 0) * scale;
+      if (c.line === "coaching") {
+        sums.coaching_hours += c.hours;
+        sums.coaching_cents += amount;
+      } else {
+        sums.booking_hours += c.hours;
+        sums.booking_cents += amount;
+      }
+    }
+    charged.set(position.key, sums);
     for (const c of charges) {
       booker.add({
         cost_center_type: c.cost_center_type,
@@ -109,4 +128,5 @@ export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker:
       wages: true,
     });
   }
+  return charged;
 }

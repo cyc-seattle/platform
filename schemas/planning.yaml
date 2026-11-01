@@ -535,7 +535,7 @@ collections:
       hidden: false
       icon: emoji_events
       item_duplication_fields: null
-      note: A role, such as a head coach, that earns a bonus on the products it owns.
+      note: A role, such as a program area's director, that earns a bonus on the products it owns.
       preview_url: null
       singleton: false
       sort: null
@@ -572,6 +572,188 @@ collections:
       versioning: false
     schema:
       name: plan_bonus_owner_products
+  - collection: plan_closed_dates
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_closed_dates
+      color: null
+      display_template: "{{date}} {{name}}"
+      group: Planning
+      hidden: false
+      icon: event_busy
+      item_duplication_fields: null
+      note: A day the club is closed, such as Labor Day. The P&L warns about an activity on one.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_closed_dates
+  - collection: plan_results
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_results
+      color: null
+      display_template: "{{version_id.plan_id.name}} ({{calculated_at}})"
+      group: Planning
+      hidden: false
+      icon: summarize
+      item_duplication_fields: null
+      note: A saved version's club-wide totals. Worked out when the version was saved, and never changed.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_results
+  - collection: plan_result_versions
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_result_versions
+      color: null
+      display_template: "{{version_id.plan_id.name}}: {{calculated_with_id.plan_id.name}}"
+      group: Planning
+      hidden: false
+      icon: account_tree
+      item_duplication_fields: null
+      note: The other saved versions a version's results were worked out with. Worked out when the version was saved, and never changed.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_result_versions
+  - collection: plan_result_lines
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_result_lines
+      color: null
+      display_template: "{{cost_center_name}}: {{account_id.number}} {{account_id.name}}"
+      group: Planning
+      hidden: false
+      icon: receipt_long
+      item_duplication_fields: null
+      note: Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_result_lines
+  - collection: plan_result_pnl
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_result_pnl
+      color: null
+      display_template: "{{name}}"
+      group: Planning
+      hidden: false
+      icon: query_stats
+      item_duplication_fields: null
+      note: A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_result_pnl
+  - collection: plan_result_positions
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_result_positions
+      color: null
+      display_template: "{{name}}"
+      group: Planning
+      hidden: false
+      icon: badge
+      item_duplication_fields: null
+      note: Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_result_positions
+  - collection: plan_result_warnings
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_result_warnings
+      color: null
+      display_template: "{{message}}"
+      group: Planning
+      hidden: false
+      icon: warning
+      item_duplication_fields: null
+      note: What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_result_warnings
 fields:
   - collection: plans
     field: id
@@ -1339,6 +1521,33 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_versions
+    field: results
+    type: alias
+    meta:
+      collection: plan_versions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{calculated_at}}"
+      field: results
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: >-
+        What the P&L showed when this version was saved, worked out a moment after it's saved. A saved
+        version with none means working them out failed, and an admin can fill them in.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 11
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
   - collection: plan_activations
     field: id
     type: uuid
@@ -2517,6 +2726,104 @@ fields:
       data_type: text
       default_value: null
       max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_offerings
+    field: coach_position_key
+    type: uuid
+    meta:
+      collection: plan_offerings
+      conditions: null
+      display: null
+      display_options: null
+      field: coach_position_key
+      group: null
+      hidden: false
+      interface: input
+      note: "A salaried coach who coaches every practice: copy the Key from a salaried position in the Operations Plan."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 24
+      special: null
+      translations:
+        - language: en-US
+          translation: Salaried coach
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: coach_position_key
+      table: plan_offerings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_offerings
+    field: coach_position_pay
+    type: string
+    meta:
+      collection: plan_offerings
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Out of their salary
+            value: salary
+          - text: By the hour
+            value: hourly
+      field: coach_position_pay
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: Out of their salary, or by the hour at the offering's coach level, on top of their salary.
+      options:
+        choices:
+          - text: Out of their salary
+            value: salary
+          - text: By the hour
+            value: hourly
+      readonly: false
+      required: false
+      searchable: true
+      sort: 25
+      special: null
+      translations:
+        - language: en-US
+          translation: Salaried coach is paid
+      validation:
+        coach_position_pay:
+          _in:
+            - salary
+            - hourly
+      validation_message: "Must be one of: salary, hourly."
+      width: full
+    schema:
+      name: coach_position_pay
+      table: plan_offerings
+      data_type: character varying
+      default_value: salary
+      max_length: 255
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -8315,7 +8622,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: A share of its products' combined net, after pools. 0.05 means 5%.
+      note: A share of its products' net. 0.05 means 5%.
       options: null
       readonly: false
       required: true
@@ -8387,6 +8694,104 @@ fields:
       has_auto_increment: false
       foreign_key_table: accounts
       foreign_key_column: id
+  - collection: plan_bonus_owners
+    field: basis
+    type: string
+    meta:
+      collection: plan_bonus_owners
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: After shared costs
+            value: after_shared_costs
+          - text: Before shared costs
+            value: before_shared_costs
+      field: basis
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: Whether the net is counted after each offering's share of the pools, such as G&A, or before it.
+      options:
+        choices:
+          - text: After shared costs
+            value: after_shared_costs
+          - text: Before shared costs
+            value: before_shared_costs
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Net counted
+      validation:
+        basis:
+          _in:
+            - after_shared_costs
+            - before_shared_costs
+      validation_message: "Must be one of: after_shared_costs, before_shared_costs."
+      width: full
+    schema:
+      name: basis
+      table: plan_bonus_owners
+      data_type: character varying
+      default_value: after_shared_costs
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_bonus_owners
+    field: position_key
+    type: uuid
+    meta:
+      collection: plan_bonus_owners
+      conditions: null
+      display: null
+      display_options: null
+      field: position_key
+      group: null
+      hidden: false
+      interface: input
+      note: "The salaried position this bonus pays, if any: copy the Key from a salaried position in the Operations Plan."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Salaried position
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: position_key
+      table: plan_bonus_owners
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_bonus_owner_products
     field: id
     type: uuid
@@ -8601,6 +9006,2571 @@ fields:
       has_auto_increment: false
       foreign_key_table: products
       foreign_key_column: id
+  - collection: plan_closed_dates
+    field: id
+    type: uuid
+    meta:
+      collection: plan_closed_dates
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_closed_dates
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_closed_dates
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_closed_dates
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_closed_dates
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_closed_dates
+    field: key
+    type: uuid
+    meta:
+      collection: plan_closed_dates
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_closed_dates
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_closed_dates
+    field: date
+    type: date
+    meta:
+      collection: plan_closed_dates
+      conditions: null
+      display: null
+      display_options: null
+      field: date
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date
+      table: plan_closed_dates
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_closed_dates
+    field: name
+    type: string
+    meta:
+      collection: plan_closed_dates
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: Why it's closed, such as Labor Day.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_closed_dates
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: id
+    type: uuid
+    meta:
+      collection: plan_results
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_results
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_results
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The saved version these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_results
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_results
+    field: calculated_at
+    type: timestamp
+    meta:
+      collection: plan_results
+      conditions: null
+      display: null
+      display_options: null
+      field: calculated_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Calculated
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: calculated_at
+      table: plan_results
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: operating_revenue_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: operating_revenue_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Operating revenue
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: operating_revenue_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: operating_expense_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: operating_expense_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Operating expenses
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: operating_expense_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: operating_net_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: operating_net_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Operating net
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: operating_net_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: fundraising_revenue_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: fundraising_revenue_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Fundraising revenue
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: fundraising_revenue_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: fundraising_expense_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: fundraising_expense_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Fundraising expenses
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: fundraising_expense_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: fundraising_net_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: fundraising_net_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 10
+      special: null
+      translations:
+        - language: en-US
+          translation: Fundraising net
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: fundraising_net_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: capital_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: capital_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "Spent on capital, such as a coach boat. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 11
+      special: null
+      translations:
+        - language: en-US
+          translation: Capital
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: capital_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
+    field: total_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: total_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "Operating net, plus fundraising net, less capital. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 12
+      special: null
+      translations:
+        - language: en-US
+          translation: Total
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: total_cents
+      table: plan_results
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_versions
+    field: id
+    type: uuid
+    meta:
+      collection: plan_result_versions
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_result_versions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_versions
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_result_versions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The saved version these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_result_versions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_result_versions
+    field: calculated_with_id
+    type: uuid
+    meta:
+      collection: plan_result_versions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: calculated_with_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Another saved version in the club's plan when this one was saved.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Calculated with
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: calculated_with_id
+      table: plan_result_versions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_result_lines
+    field: id
+    type: uuid
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_result_lines
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The saved version these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_result_lines
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_result_lines
+    field: cost_center_type
+    type: string
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Offering
+            value: offering
+          - text: Product
+            value: product
+          - text: Program area
+            value: program_area
+          - text: Pool
+            value: pool
+          - text: Organization
+            value: org
+      field: cost_center_type
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Offering
+            value: offering
+          - text: Product
+            value: product
+          - text: Program area
+            value: program_area
+          - text: Pool
+            value: pool
+          - text: Organization
+            value: org
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Charged to
+      validation:
+        cost_center_type:
+          _in:
+            - offering
+            - product
+            - program_area
+            - pool
+            - org
+      validation_message: "Must be one of: offering, product, program_area, pool, org."
+      width: full
+    schema:
+      name: cost_center_type
+      table: plan_result_lines
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: cost_center_key
+    type: uuid
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: null
+      display_options: null
+      field: cost_center_key
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: cost_center_key
+      table: plan_result_lines
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: cost_center_name
+    type: string
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: null
+      display_options: null
+      field: cost_center_name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Name
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: cost_center_name
+      table: plan_result_lines
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: account_id
+    type: uuid
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
+      field: account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 7
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Account
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: account_id
+      table: plan_result_lines
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
+  - collection: plan_result_lines
+    field: function
+    type: string
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Program
+            value: program
+          - text: Management
+            value: management
+          - text: Fundraising
+            value: fundraising
+      field: function
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Program
+            value: program
+          - text: Management
+            value: management
+          - text: Fundraising
+            value: fundraising
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation:
+        function:
+          _in:
+            - program
+            - management
+            - fundraising
+      validation_message: "Must be one of: program, management, fundraising."
+      width: full
+    schema:
+      name: function
+      table: plan_result_lines
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: amount_cents
+    type: integer
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: amount_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "Always positive: the account says whether it's revenue or a cost. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Amount
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: amount_cents
+      table: plan_result_lines
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: line
+    type: text
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: null
+      display_options: null
+      field: line
+      group: null
+      hidden: false
+      interface: input
+      note: What the line is, as the P&L names it.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: line
+      table: plan_result_lines
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: explanation
+    type: text
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: null
+      display_options: null
+      field: explanation
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: explanation
+      table: plan_result_lines
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: id
+    type: uuid
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_result_pnl
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The saved version these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_result_pnl
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_result_pnl
+    field: level
+    type: string
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Offering
+            value: offering
+          - text: Product
+            value: product
+          - text: Program area
+            value: program_area
+      field: level
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Offering
+            value: offering
+          - text: Product
+            value: product
+          - text: Program area
+            value: program_area
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation:
+        level:
+          _in:
+            - offering
+            - product
+            - program_area
+      validation_message: "Must be one of: offering, product, program_area."
+      width: full
+    schema:
+      name: level
+      table: plan_result_pnl
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: subject_key
+    type: uuid
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: subject_key
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: subject_key
+      table: plan_result_pnl
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: name
+    type: string
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_result_pnl
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: revenue_cents
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: revenue_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Revenue
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: revenue_cents
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: expense_cents
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: expense_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Expenses
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: expense_cents
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: net_cents
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: net_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Net
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: net_cents
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: mtdc_cents
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: mtdc_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "Modified total direct costs, which shared costs are divided by. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 10
+      special: null
+      translations:
+        - language: en-US
+          translation: MTDC
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: mtdc_cents
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: enrollment
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: enrollment
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: enrollment
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: days
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: days
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 12
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: days
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: sailor_days
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: sailor_days
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 13
+      special: null
+      translations:
+        - language: en-US
+          translation: Sailor-days
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sailor_days
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: id
+    type: uuid
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_result_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The saved version these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_result_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_result_positions
+    field: position_key
+    type: uuid
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: position_key
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: position_key
+      table: plan_result_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: name
+    type: string
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_result_positions
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: salary_cents
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: salary_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Salary
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: salary_cents
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: salaried_coaching_hours
+    type: decimal
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: salaried_coaching_hours
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Hours coached out of salary
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: salaried_coaching_hours
+      table: plan_result_positions
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: salaried_coaching_cents
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: salaried_coaching_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Coaching charged to offerings
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: salaried_coaching_cents
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: hourly_coaching_hours
+    type: decimal
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: hourly_coaching_hours
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Hours coached by the hour
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hourly_coaching_hours
+      table: plan_result_positions
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: hourly_coaching_cents
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: hourly_coaching_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 10
+      special: null
+      translations:
+        - language: en-US
+          translation: Hourly coaching wages
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hourly_coaching_cents
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: booking_hours
+    type: decimal
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: booking_hours
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 11
+      special: null
+      translations:
+        - language: en-US
+          translation: Hours booked
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: booking_hours
+      table: plan_result_positions
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: booking_cents
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: booking_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 12
+      special: null
+      translations:
+        - language: en-US
+          translation: Bookings charged
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: booking_cents
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: bonus_cents
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: bonus_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 13
+      special: null
+      translations:
+        - language: en-US
+          translation: Bonus
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: bonus_cents
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: total_pay_cents
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: total_pay_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "Salary, hourly coaching wages, and bonus. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 14
+      special: null
+      translations:
+        - language: en-US
+          translation: Total pay
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: total_pay_cents
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: payroll_tax_cents
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: payroll_tax_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "The year's payroll tax on the total pay. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 15
+      special: null
+      translations:
+        - language: en-US
+          translation: Payroll tax
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: payroll_tax_cents
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_warnings
+    field: id
+    type: uuid
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_result_warnings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_warnings
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The saved version these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_result_warnings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_result_warnings
+    field: code
+    type: string
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: null
+      display_options: null
+      field: code
+      group: null
+      hidden: false
+      interface: input
+      note: The kind of warning.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: code
+      table: plan_result_warnings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_warnings
+    field: message
+    type: text
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: null
+      display_options: null
+      field: message
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: message
+      table: plan_result_warnings
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_warnings
+    field: subject_key
+    type: string
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: null
+      display_options: null
+      field: subject_key
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: subject_key
+      table: plan_result_warnings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
 relations:
   - collection: plans
     field: program_area_id
@@ -9589,3 +12559,192 @@ relations:
       constraint_name: plan_revenue_charges_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: plan_closed_dates
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_closed_dates
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_closed_dates
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_closed_dates_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_results
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_results
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: results
+      sort_field: null
+    schema:
+      table: plan_results
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_results_version_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_versions
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_result_versions
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_versions
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_result_versions_version_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_versions
+    field: calculated_with_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_result_versions
+      many_field: calculated_with_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_versions
+      column: calculated_with_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_result_versions_calculated_with_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_lines
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_result_lines
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_lines
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_result_lines_version_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_lines
+    field: account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: plan_result_lines
+      many_field: account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_lines
+      column: account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: plan_result_lines_account_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_result_pnl
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_result_pnl
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_pnl
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_result_pnl_version_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_positions
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_result_positions
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_positions
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_result_positions_version_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_warnings
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_result_warnings
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_warnings
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_result_warnings_version_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE

@@ -61,6 +61,8 @@ const PLANNER_KEYS: Record<string, string> = {
   "plan_salaried_positions.qualifications": "Planners add each qualification's ID.",
   "plan_activity_block_rules.offering_keys": "Planners add each offering's Key.",
   "plan_activity_block_rules.salaried_positions": "Planners add each salaried position's Key.",
+  "plan_offerings.coach_position_key": "Planners copy in a salaried position's Key.",
+  "plan_bonus_owners.position_key": "Planners copy in a salaried position's Key.",
 };
 
 /** A planning row's own Key: read-only, and visible so planners can copy it into the fields above. */
@@ -80,6 +82,7 @@ const FREE_TEXT_STATUS: Record<string, string> = {
 /** Join tables the sidebar still shows. */
 const VISIBLE_JOIN_TABLES: Record<string, string> = {
   clubspot_session_classes: "No session or class links to it, so the sidebar is the only way in.",
+  plan_result_versions: "The versions a saved version's results were worked out with. Nothing links to it.",
 };
 
 /** Fields a Clubspot sync copies but staff set by hand. Matches the writer rules in policies.ts. */

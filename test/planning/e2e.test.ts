@@ -365,7 +365,7 @@ function realisticPlan(): PlanData {
     plan_bonus_owners: [
       {
         ...v("owner-racing"),
-        role_name: "Youth racing head coach",
+        role_name: "Youth racing director",
         bonus_rate: 0.05,
         account_id: A.bonus,
       },
