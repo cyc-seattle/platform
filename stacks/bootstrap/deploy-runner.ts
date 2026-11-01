@@ -53,6 +53,12 @@ export const deployerRole = new gcp.projects.IAMCustomRole("deployer", {
     "logging.logMetrics.get",
     "logging.logMetrics.list",
     "logging.logMetrics.update",
+    // The infra stack's log exclusions on the `_Default` sink (cyc-seattle/isthmia#264).
+    "logging.exclusions.create",
+    "logging.exclusions.delete",
+    "logging.exclusions.get",
+    "logging.exclusions.list",
+    "logging.exclusions.update",
   ],
 });
 

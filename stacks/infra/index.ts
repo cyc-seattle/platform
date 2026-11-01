@@ -9,6 +9,7 @@ import { devOutputs } from "./dev.ts";
 import { prodOutputs } from "./prod.ts";
 import "./dev-databases.ts";
 import "./alerts.ts";
+import "./logs.ts";
 
 // What the app stacks read through a StackReference.
 export const networkId = network.id;
