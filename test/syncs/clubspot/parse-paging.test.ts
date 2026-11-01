@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findAll, type PageableQuery } from "../src/parse-paging.ts";
+import { findAll, type PageableQuery } from "../../../src/syncs/clubspot/parse-paging.ts";
 
 /** A fake Parse query: `find()` returns a slice of `rows` based on the last `limit`/`skip` set. */
 function fakeQuery<T>(rows: T[]): PageableQuery<T> {

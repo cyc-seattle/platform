@@ -7,20 +7,20 @@ import {
   type ProductRow,
   type ProgramAreaRow,
   type ProgramRoleAssignmentRow,
-} from "@cyc-seattle/crm";
+} from "../../model/crm/index.ts";
 import {
   type CampRow,
   type ClassRow,
   type ParticipantRow,
   type RegistrationEntryRow,
   type RegistrationRow,
-} from "@cyc-seattle/clubspot";
+} from "../../model/clubspot/index.ts";
 import {
   type AuditFindingRow,
   type DirectusClient,
   fingerprintFinding,
   planAuditFindingWrites,
-} from "@cyc-seattle/directus";
+} from "../runtime/index.ts";
 import { type Group, type GroupMember } from "@cyc-seattle/gsuite-sdk";
 import {
   AUDIT_FINDING_KINDS,

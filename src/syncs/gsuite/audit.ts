@@ -1,4 +1,4 @@
-import { type CampRow, type ClassRow } from "@cyc-seattle/clubspot";
+import { type CampRow, type ClassRow } from "../../model/clubspot/index.ts";
 import {
   type AccountRow,
   type ContactPointRow,
@@ -8,8 +8,8 @@ import {
   type ProductRow,
   type ProgramAreaRow,
   type ProgramRow,
-} from "@cyc-seattle/crm";
-import { type AuditFindingInput } from "@cyc-seattle/directus";
+} from "../../model/crm/index.ts";
+import { type AuditFindingInput } from "../runtime/index.ts";
 import { type GroupMember } from "@cyc-seattle/gsuite-sdk";
 import { removedPersonIds } from "./group-memberships.ts";
 import { type MembershipTables, planProgramMemberPeople, planProgramMembers } from "./membership.ts";

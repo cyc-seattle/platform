@@ -7,9 +7,9 @@ import {
   SyncQueue,
   type SyncRunRow,
   type SyncTaskRow,
-} from "@cyc-seattle/directus";
-import { PersonSync } from "../src/person-sync.ts";
-import { type CampData, EPOCH, runSync, type SyncGateway, syncCamp } from "../src/sync-run.ts";
+} from "../../../src/syncs/runtime/index.ts";
+import { PersonSync } from "../../../src/syncs/clubspot/person-sync.ts";
+import { type CampData, EPOCH, runSync, type SyncGateway, syncCamp } from "../../../src/syncs/clubspot/sync-run.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This

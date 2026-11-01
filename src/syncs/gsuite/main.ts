@@ -5,7 +5,7 @@ import { Command, Option } from "@commander-js/extra-typings";
 import { type Auth, google } from "googleapis";
 import winston from "winston";
 import { LoggingOption, VerboseOption } from "@cyc-seattle/commodore";
-import { DirectusClient, SyncQueue } from "@cyc-seattle/directus";
+import { DirectusClient, SyncQueue } from "../runtime/index.ts";
 import { type ClientOptions, DirectoryClient, GroupSettingsClient } from "@cyc-seattle/gsuite-sdk";
 import { dryRunMemberAdder, type MemberAdder } from "./directory-writer.ts";
 import { runGroupSync } from "./run.ts";

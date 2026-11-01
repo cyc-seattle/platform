@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
-import type { ContactPointWithParticipant } from "@cyc-seattle/clubspot";
+import type { ContactPointWithParticipant } from "../../../src/model/clubspot/index.ts";
 import {
   contactPointCandidatesFromSlots,
   type ContactPointCandidateWithParticipant,
   contactPointKeySet,
   planContactPointUpserts,
   planStaffContactPoints,
-} from "../src/contact-points.ts";
+} from "../../../src/syncs/clubspot/contact-points.ts";
 
 const now = new Date("2026-01-15T00:00:00Z");
 

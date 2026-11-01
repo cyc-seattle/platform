@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { DirectusClient, SyncQueue } from "@cyc-seattle/directus";
+import { DirectusClient, SyncQueue } from "../../../src/syncs/runtime/index.ts";
 import {
   type AddMemberResult,
   type Group,
@@ -8,10 +8,10 @@ import {
   type GroupSettings,
   resolveGroupSettingsTemplate,
 } from "@cyc-seattle/gsuite-sdk";
-import { type SettingsReader } from "../src/audit-settings.ts";
-import { type DirectoryReader } from "../src/audit-writer.ts";
-import { type MemberAdder } from "../src/directory-writer.ts";
-import { type GroupDirectoryReader } from "../src/discovery-writer.ts";
+import { type SettingsReader } from "../../../src/syncs/gsuite/audit-settings.ts";
+import { type DirectoryReader } from "../../../src/syncs/gsuite/audit-writer.ts";
+import { type MemberAdder } from "../../../src/syncs/gsuite/directory-writer.ts";
+import { type GroupDirectoryReader } from "../../../src/syncs/gsuite/discovery-writer.ts";
 import {
   enqueueAudit,
   enqueueDiscovery,
@@ -21,8 +21,8 @@ import {
   enqueueGroupSettings,
   runGroupSync,
   sharedMembershipSnapshot,
-} from "../src/run.ts";
-import { type SettingsApplier } from "../src/settings-writer.ts";
+} from "../../../src/syncs/gsuite/run.ts";
+import { type SettingsApplier } from "../../../src/syncs/gsuite/settings-writer.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This

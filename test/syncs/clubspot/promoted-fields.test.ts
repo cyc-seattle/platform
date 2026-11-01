@@ -1,19 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import winston from "winston";
-import { type PersonRow } from "@cyc-seattle/crm";
+import { type PersonRow } from "../../../src/model/crm/index.ts";
 import {
   type CustomFieldDefinitionRow,
   type CustomFieldResponseRow,
   type ParticipantRow,
   type PromotedFieldRow,
   type RegistrationRow,
-} from "@cyc-seattle/clubspot";
+} from "../../../src/model/clubspot/index.ts";
 import {
   needsFallbackTargetValues,
   planPromotedFields,
   planPromotedFieldSync,
   planRegistrationPromotedFieldSync,
-} from "../src/promoted-fields.ts";
+} from "../../../src/syncs/clubspot/promoted-fields.ts";
 
 function promotedField(labels: string[], targetField = "school"): PromotedFieldRow {
   return { id: "config-1", target_field: targetField as PromotedFieldRow["target_field"], labels };

@@ -4,7 +4,7 @@ import {
   type AuditFindingRow,
   fingerprintFinding,
   planAuditFindingWrites,
-} from "../src/audit-findings.ts";
+} from "../../../src/syncs/runtime/audit-findings.ts";
 
 const ownedKinds = ["unexpected_member"];
 

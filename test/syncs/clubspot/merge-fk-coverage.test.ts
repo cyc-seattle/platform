@@ -1,9 +1,9 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import * as yaml from "js-yaml";
-import { HANDLED_PEOPLE_FOREIGN_KEYS } from "../src/merge.ts";
+import { discoverSchemaFiles } from "../../../src/directus/client.ts";
+import { HANDLED_PEOPLE_FOREIGN_KEYS } from "../../../src/syncs/clubspot/merge.ts";
 
 interface RelationEntry {
   collection: string;
@@ -16,18 +16,9 @@ interface Snapshot {
   relations?: RelationEntry[];
 }
 
-const schemasDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "schemas");
-
-/** Every `schemas/<domain>.yaml`, found by directory rather than a hand-maintained list - matches `discoverSchemaFiles` in `src/directus/client.ts`. */
-function findSchemaFiles(): string[] {
-  return readdirSync(schemasDir)
-    .filter((name) => name.endsWith(".yaml"))
-    .map((name) => join(schemasDir, name));
-}
-
 function readPeopleRelations(): RelationEntry[] {
   const relations: RelationEntry[] = [];
-  for (const path of findSchemaFiles()) {
+  for (const { path } of discoverSchemaFiles(join(import.meta.dirname, "../../../schemas"))) {
     const snapshot = yaml.load(readFileSync(path, "utf8")) as Snapshot;
     for (const relation of snapshot.relations ?? []) {
       if (relation.related_collection === "people") {

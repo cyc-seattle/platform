@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { DirectusClient } from "@cyc-seattle/directus";
+import { DirectusClient } from "../../../src/syncs/runtime/index.ts";
 import { type Group, type GroupMember } from "@cyc-seattle/gsuite-sdk";
-import { type GroupDirectoryReader, runDiscovery } from "../src/discovery-writer.ts";
-import { type GoogleGroupRow } from "../src/schema.ts";
+import { type GroupDirectoryReader, runDiscovery } from "../../../src/syncs/gsuite/discovery-writer.ts";
+import { type GoogleGroupRow } from "../../../src/syncs/gsuite/schema.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This

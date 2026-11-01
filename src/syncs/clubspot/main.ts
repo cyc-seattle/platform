@@ -14,7 +14,7 @@ import {
   queryCampEntries,
 } from "@cyc-seattle/clubspot-sdk";
 import { LoggingOption, VerboseOption } from "@cyc-seattle/commodore";
-import { DirectusClient, SyncQueue } from "@cyc-seattle/directus";
+import { DirectusClient, SyncQueue } from "../runtime/index.ts";
 import { approveMatchingDuplicates } from "./approve-matching-duplicates.ts";
 import { discoverCamps } from "./camps.ts";
 import { findAll } from "./parse-paging.ts";

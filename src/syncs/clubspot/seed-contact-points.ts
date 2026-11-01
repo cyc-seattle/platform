@@ -1,6 +1,6 @@
-import { type ContactRelationshipType, type ContactRow, type PersonRow } from "@cyc-seattle/crm";
-import { type ContactPointWithParticipant, type ParticipantRow } from "@cyc-seattle/clubspot";
-import { type DirectusClient } from "@cyc-seattle/directus";
+import { type ContactRelationshipType, type ContactRow, type PersonRow } from "../../model/crm/index.ts";
+import { type ContactPointWithParticipant, type ParticipantRow } from "../../model/clubspot/index.ts";
+import { type DirectusClient } from "../runtime/index.ts";
 import {
   applyContactPointPlan,
   type ContactPointCandidateWithParticipant,

@@ -1,4 +1,4 @@
-import { isValidEmail, normalizeEmail, type PersonRow } from "@cyc-seattle/crm";
+import { isValidEmail, normalizeEmail, type PersonRow } from "../../model/crm/index.ts";
 import { type GoogleGroupMembershipRow } from "./schema.ts";
 
 export interface MembershipRowUpdate {

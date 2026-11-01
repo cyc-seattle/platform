@@ -5,14 +5,14 @@ import {
   normalizeEmail,
   type PersonRow,
   type ProgramRoleAssignmentRow,
-} from "@cyc-seattle/crm";
+} from "../../model/crm/index.ts";
 import {
   type CampRow,
   type ClassRow,
   type ParticipantRow,
   type RegistrationEntryRow,
   type RegistrationRow,
-} from "@cyc-seattle/clubspot";
+} from "../../model/clubspot/index.ts";
 import { isCampActive } from "./camps.ts";
 
 /**

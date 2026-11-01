@@ -9,7 +9,7 @@ import {
   type RegistrationRank,
   resolveBase,
   resolveFieldBase,
-} from "../src/synced-fields.ts";
+} from "../../../src/syncs/clubspot/synced-fields.ts";
 
 describe("parseYesNo", () => {
   it("parses Yes and No case-insensitively", () => {

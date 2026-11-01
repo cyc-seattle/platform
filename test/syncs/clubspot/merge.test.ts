@@ -8,7 +8,7 @@ import {
   type MergePerson,
   type MergePersonReference,
   type MergeRelatedData,
-} from "../src/merge.ts";
+} from "../../../src/syncs/clubspot/merge.ts";
 
 function person(overrides: Partial<MergePerson> & { id: string }): MergePerson {
   return {

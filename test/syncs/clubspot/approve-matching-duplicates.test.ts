@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { type AuditFindingRow } from "@cyc-seattle/directus";
-import { selectMatchingDuplicateFindings } from "../src/approve-matching-duplicates.ts";
+import { type AuditFindingRow } from "../../../src/syncs/runtime/index.ts";
+import { selectMatchingDuplicateFindings } from "../../../src/syncs/clubspot/approve-matching-duplicates.ts";
 
 function finding(
   overrides: Partial<AuditFindingRow> & Pick<AuditFindingRow, "id" | "subject" | "detail">,

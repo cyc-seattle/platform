@@ -1,4 +1,4 @@
-import { type RegistrationRow } from "@cyc-seattle/clubspot";
+import { type RegistrationRow } from "../../model/clubspot/index.ts";
 import { compareByRegistrationRecency } from "./promoted-fields.ts";
 
 /**

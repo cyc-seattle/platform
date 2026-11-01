@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import winston from "winston";
 import { type Participant } from "@cyc-seattle/clubspot-sdk";
-import { type ContactPointWithParticipant, type ParticipantRow } from "@cyc-seattle/clubspot";
-import { type ContactRow, type MedicalProfileRow, type PersonRow } from "@cyc-seattle/crm";
-import { type DirectusClient } from "@cyc-seattle/directus";
+import { type ContactPointWithParticipant, type ParticipantRow } from "../../model/clubspot/index.ts";
+import { type ContactRow, type MedicalProfileRow, type PersonRow } from "../../model/crm/index.ts";
+import { type DirectusClient } from "../runtime/index.ts";
 import {
   type ContactPointSlot,
   contactPointCandidatesFromSlots,

@@ -1,12 +1,12 @@
 import winston from "winston";
-import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
+import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "../../model/crm/index.ts";
 import {
   type CampRow,
   type ClassRow,
   type ParticipantRow,
   type RegistrationEntryRow,
   type RegistrationRow,
-} from "@cyc-seattle/clubspot";
+} from "../../model/clubspot/index.ts";
 import {
   type DirectusClient,
   runQueue,
@@ -15,7 +15,7 @@ import {
   type SyncTaskRow,
   targetFromKey,
   TaskOrphaned,
-} from "@cyc-seattle/directus";
+} from "../runtime/index.ts";
 import { resolveGroupSettingsTemplate } from "@cyc-seattle/gsuite-sdk";
 import { type DirectoryReader, runAudit } from "./audit-writer.ts";
 import { type SettingsReader } from "./audit-settings.ts";

@@ -1,5 +1,5 @@
 import winston from "winston";
-import { type DirectusClient } from "@cyc-seattle/directus";
+import { type DirectusClient } from "../runtime/index.ts";
 import { type Group, type GroupMember } from "@cyc-seattle/gsuite-sdk";
 import { planGroupNestingDiscovery, planGroupUpserts } from "./discovery.ts";
 import { type GoogleGroupRow } from "./schema.ts";

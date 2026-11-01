@@ -1,5 +1,5 @@
 import winston from "winston";
-import { type PersonRow } from "@cyc-seattle/crm";
+import { type PersonRow } from "../../model/crm/index.ts";
 import {
   type CustomFieldDefinitionRow,
   type CustomFieldResponseRow,
@@ -10,7 +10,7 @@ import {
   type PromotableRegistrationField,
   type PromotedFieldRow,
   type RegistrationRow,
-} from "@cyc-seattle/clubspot";
+} from "../../model/clubspot/index.ts";
 import { normalizeName } from "./people.ts";
 import { type CustomFieldResponseInput } from "./registrations.ts";
 import { emptyFieldTally, type FieldTally, parseYesNo, planSyncedField, resolveBase } from "./synced-fields.ts";

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { type AuditFindingRow, DirectusClient, fingerprintFinding, type ItemQuery } from "@cyc-seattle/directus";
-import { runApprovedPersonMerges } from "../src/merge-executor.ts";
+import {
+  type AuditFindingRow,
+  DirectusClient,
+  fingerprintFinding,
+  type ItemQuery,
+} from "../../../src/syncs/runtime/index.ts";
+import { runApprovedPersonMerges } from "../../../src/syncs/clubspot/merge-executor.ts";
 
 type FetchInit = { method?: string; body?: unknown };
 

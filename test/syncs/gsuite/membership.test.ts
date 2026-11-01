@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import winston from "winston";
-import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "@cyc-seattle/crm";
+import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "../../../src/model/crm/index.ts";
 import {
   type CampRow,
   type ClassRow,
   type ParticipantRow,
   type RegistrationEntryRow,
   type RegistrationRow,
-} from "@cyc-seattle/clubspot";
+} from "../../../src/model/clubspot/index.ts";
 import {
   isCurrentProgramRole,
   type MembershipTables,
   planProgramMemberPeople,
   planProgramMembers,
-} from "../src/membership.ts";
+} from "../../../src/syncs/gsuite/membership.ts";
 
 const now = new Date("2026-06-15T00:00:00Z");
 

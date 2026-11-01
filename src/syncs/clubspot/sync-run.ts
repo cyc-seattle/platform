@@ -7,7 +7,7 @@ import {
   type Participant,
   type Registration,
 } from "@cyc-seattle/clubspot-sdk";
-import { type PersonRow } from "@cyc-seattle/crm";
+import { type PersonRow } from "../../model/crm/index.ts";
 import {
   type ClassRow,
   type ContactPointWithParticipant,
@@ -22,7 +22,7 @@ import {
   type RegistrationRow,
   type SessionClassRow,
   type SessionRow,
-} from "@cyc-seattle/clubspot";
+} from "../../model/clubspot/index.ts";
 import {
   type AuditFindingRow,
   type DirectusClient,
@@ -37,7 +37,7 @@ import {
   runQueue,
   targetFromKey,
   TaskOrphaned,
-} from "@cyc-seattle/directus";
+} from "../runtime/index.ts";
 import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipantFindings } from "./audit.ts";
 import { campBackoff, nextSyncState } from "./backoff.ts";
 import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts";

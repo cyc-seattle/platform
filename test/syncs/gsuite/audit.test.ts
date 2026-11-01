@@ -1,5 +1,5 @@
-import { type CampRow, type ClassRow } from "@cyc-seattle/clubspot";
-import { type PersonRow } from "@cyc-seattle/crm";
+import { type CampRow, type ClassRow } from "../../../src/model/clubspot/index.ts";
+import { type PersonRow } from "../../../src/model/crm/index.ts";
 import { describe, expect, it } from "vitest";
 import {
   type AuditTables,
@@ -15,8 +15,8 @@ import {
   findStaleMembers,
   findUnexpectedMembers,
   isProgramGroup,
-} from "../src/audit.ts";
-import { type ProgramWithGoogleGroup } from "../src/schema.ts";
+} from "../../../src/syncs/gsuite/audit.ts";
+import { type ProgramWithGoogleGroup } from "../../../src/syncs/gsuite/schema.ts";
 
 const NO_SECONDARY_EMAILS = new Set<string>();
 

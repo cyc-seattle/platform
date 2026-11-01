@@ -11,7 +11,7 @@ import {
   type CustomFieldResponseRow,
   type RegistrationBillingRow,
   type RegistrationRow,
-} from "@cyc-seattle/clubspot";
+} from "../../model/clubspot/index.ts";
 import { isBlank } from "./people.ts";
 import { type CollectionPlan, diffFields, joinedId, planById } from "./schedule.ts";
 import { type RegistrationEntryWithClubspot } from "./schema.ts";

@@ -1,4 +1,4 @@
-import type { PersonRow } from "@cyc-seattle/crm";
+import type { PersonRow } from "../crm/index.ts";
 import type { RegistrationRow } from "./registrations.ts";
 
 /**

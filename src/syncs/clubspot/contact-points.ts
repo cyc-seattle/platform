@@ -1,7 +1,7 @@
 import winston from "winston";
-import { type ContactPointKind, isValidEmail, type PersonRow } from "@cyc-seattle/crm";
-import { type ContactPointWithParticipant } from "@cyc-seattle/clubspot";
-import { type DirectusClient } from "@cyc-seattle/directus";
+import { type ContactPointKind, isValidEmail, type PersonRow } from "../../model/crm/index.ts";
+import { type ContactPointWithParticipant } from "../../model/clubspot/index.ts";
+import { type DirectusClient } from "../runtime/index.ts";
 import { normalizeEmail, normalizePhone } from "./people.ts";
 
 /**

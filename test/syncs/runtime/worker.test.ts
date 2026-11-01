@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import winston from "winston";
-import { DirectusClient } from "../src/client.ts";
-import { runQueue, SyncQueue } from "../src/worker.ts";
-import { type SyncTaskRow } from "../src/sync-tasks.ts";
+import { DirectusClient } from "../../../src/syncs/runtime/client.ts";
+import { runQueue, SyncQueue } from "../../../src/syncs/runtime/worker.ts";
+import { type SyncTaskRow } from "../../../src/syncs/runtime/sync-tasks.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type (see client.ts) rather than undici's real one. This local alias covers the

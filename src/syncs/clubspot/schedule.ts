@@ -1,6 +1,6 @@
 import winston from "winston";
 import { type Camp, type CampClass, type CampSession, type EntryCap } from "@cyc-seattle/clubspot-sdk";
-import { type ClassRow, type EntryCapRow, type SessionClassRow, type SessionRow } from "@cyc-seattle/clubspot";
+import { type ClassRow, type EntryCapRow, type SessionClassRow, type SessionRow } from "../../model/clubspot/index.ts";
 import { type CampWithClubspot } from "./schema.ts";
 
 /**

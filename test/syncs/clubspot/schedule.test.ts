@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import winston from "winston";
 import type { Camp, CampClass, CampSession, EntryCap } from "@cyc-seattle/clubspot-sdk";
-import { type ClassRow, type EntryCapRow, type SessionClassRow, type SessionRow } from "@cyc-seattle/clubspot";
+import {
+  type ClassRow,
+  type EntryCapRow,
+  type SessionClassRow,
+  type SessionRow,
+} from "../../../src/model/clubspot/index.ts";
 import {
   planCamps,
   planClasses,
@@ -9,8 +14,8 @@ import {
   planSessionClasses,
   planSessions,
   SCHEDULE_CREATE_ORDER,
-} from "../src/schedule.ts";
-import { type CampWithClubspot } from "../src/schema.ts";
+} from "../../../src/syncs/clubspot/schedule.ts";
+import { type CampWithClubspot } from "../../../src/syncs/clubspot/schema.ts";
 
 // Minimal Parse.Object stand-in: just an id and a `.get(key)` accessor, per roster.test.ts.
 function parseObject(id: string, data: Record<string, unknown>) {

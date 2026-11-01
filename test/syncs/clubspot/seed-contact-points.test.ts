@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { type ContactRow } from "@cyc-seattle/crm";
-import { type ContactPointWithParticipant, type ParticipantRow } from "@cyc-seattle/clubspot";
-import { DirectusClient } from "@cyc-seattle/directus";
-import { seedContactPoints, slotsForMirroredParticipant } from "../src/seed-contact-points.ts";
+import { type ContactRow } from "../../../src/model/crm/index.ts";
+import { type ContactPointWithParticipant, type ParticipantRow } from "../../../src/model/clubspot/index.ts";
+import { DirectusClient } from "../../../src/syncs/runtime/index.ts";
+import { seedContactPoints, slotsForMirroredParticipant } from "../../../src/syncs/clubspot/seed-contact-points.ts";
 
 const baseUrl = "https://directus.example.com";
 const token = "test-token";

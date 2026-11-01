@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import winston from "winston";
 import type { Participant } from "@cyc-seattle/clubspot-sdk";
-import { type ParticipantRow } from "@cyc-seattle/clubspot";
-import { DirectusClient } from "@cyc-seattle/directus";
-import { buildParticipantMirrorFields, type ParticipantMirrorFields } from "../src/people.ts";
-import { PersonSync, type SyncParticipantOptions } from "../src/person-sync.ts";
-import { type RegistrationRank } from "../src/synced-fields.ts";
+import { type ParticipantRow } from "../../../src/model/clubspot/index.ts";
+import { DirectusClient } from "../../../src/syncs/runtime/index.ts";
+import { buildParticipantMirrorFields, type ParticipantMirrorFields } from "../../../src/syncs/clubspot/people.ts";
+import { PersonSync, type SyncParticipantOptions } from "../../../src/syncs/clubspot/person-sync.ts";
+import { type RegistrationRank } from "../../../src/syncs/clubspot/synced-fields.ts";
 
 const baseUrl = "https://directus.example.com";
 const token = "test-token";

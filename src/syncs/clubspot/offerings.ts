@@ -8,9 +8,9 @@ import {
   type RegistrationRow,
   type SessionClassRow,
   type SessionRow,
-} from "@cyc-seattle/clubspot";
-import { type CrmRegistrationRow, type OfferingRow } from "@cyc-seattle/crm";
-import { type DirectusClient } from "@cyc-seattle/directus";
+} from "../../model/clubspot/index.ts";
+import { type CrmRegistrationRow, type OfferingRow } from "../../model/crm/index.ts";
+import { type DirectusClient } from "../runtime/index.ts";
 
 /**
  * The offerings and registrations pass (cyc-seattle/isthmia#241): makes the CRM's own `offerings`

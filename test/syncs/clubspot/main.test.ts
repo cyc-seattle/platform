@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { redactSecrets, validateBackfillOptions } from "../src/main.ts";
+import { redactSecrets, validateBackfillOptions } from "../../../src/syncs/clubspot/main.ts";
 
 describe("redactSecrets", () => {
   it("redacts the Clubspot password and the Directus token, keeping other options", () => {

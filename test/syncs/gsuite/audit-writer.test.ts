@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { type AuditFindingRow, DirectusClient, fingerprintFinding } from "@cyc-seattle/directus";
+import { type AuditFindingRow, DirectusClient, fingerprintFinding } from "../../../src/syncs/runtime/index.ts";
 import { type Group, type GroupMember, type GroupSettings } from "@cyc-seattle/gsuite-sdk";
-import { type SettingsReader } from "../src/audit-settings.ts";
-import { type DirectoryReader, runAudit } from "../src/audit-writer.ts";
+import { type SettingsReader } from "../../../src/syncs/gsuite/audit-settings.ts";
+import { type DirectoryReader, runAudit } from "../../../src/syncs/gsuite/audit-writer.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This

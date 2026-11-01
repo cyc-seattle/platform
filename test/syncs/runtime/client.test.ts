@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import winston from "winston";
-import { CREATE_CHUNK_SIZE, DirectusClient } from "../src/client.ts";
+import { CREATE_CHUNK_SIZE, DirectusClient } from "../../../src/syncs/runtime/client.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type (see client.ts) rather than undici's real one. This local alias covers the

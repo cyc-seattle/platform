@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Participant } from "@cyc-seattle/clubspot-sdk";
-import { type PersonRow } from "@cyc-seattle/crm";
+import { type PersonRow } from "../../../src/model/crm/index.ts";
 import {
   buildEmergencyContactRow,
   buildGuardianContactRow,
@@ -26,7 +26,7 @@ import {
   personFieldValuesFromMirror,
   slotNameMatchesContact,
   splitContactName,
-} from "../src/people.ts";
+} from "../../../src/syncs/clubspot/people.ts";
 
 // Minimal Parse.Object stand-in: just an id and a `.get(key)` accessor, per roster.test.ts.
 function parseObject(id: string, data: Record<string, unknown>) {

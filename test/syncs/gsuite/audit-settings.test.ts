@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveGroupSettingsTemplate } from "@cyc-seattle/gsuite-sdk";
-import { findSettingsDrift } from "../src/audit-settings.ts";
+import { findSettingsDrift } from "../../../src/syncs/gsuite/audit-settings.ts";
 
 function resolveInboxWithout(field: string): Record<string, unknown> {
   const settings = { ...(resolveGroupSettingsTemplate("inbox") as Record<string, unknown>) };

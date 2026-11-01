@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { BASE_INTERVAL_MS, DUE_TOLERANCE_MS, MAX_INTERVAL_MS, nextSyncState, campBackoff } from "../src/backoff.ts";
+import {
+  BASE_INTERVAL_MS,
+  DUE_TOLERANCE_MS,
+  MAX_INTERVAL_MS,
+  nextSyncState,
+  campBackoff,
+} from "../../../src/syncs/clubspot/backoff.ts";
 
 const NOW = new Date("2026-01-15T12:00:00Z");
 

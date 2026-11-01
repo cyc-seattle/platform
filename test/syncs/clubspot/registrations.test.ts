@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import winston from "winston";
 import type { Camp, CustomField, Registration, RegistrationCampSession } from "@cyc-seattle/clubspot-sdk";
-import { type CustomFieldResponseRow, type RegistrationBillingRow, type RegistrationRow } from "@cyc-seattle/clubspot";
+import {
+  type CustomFieldResponseRow,
+  type RegistrationBillingRow,
+  type RegistrationRow,
+} from "../../../src/model/clubspot/index.ts";
 import {
   buildRegistrationRow,
   calculateEntryStatus,
@@ -11,8 +15,8 @@ import {
   planRegistrationEntries,
   planRegistrations,
   REGISTRATION_CREATE_ORDER,
-} from "../src/registrations.ts";
-import { type RegistrationEntryWithClubspot } from "../src/schema.ts";
+} from "../../../src/syncs/clubspot/registrations.ts";
+import { type RegistrationEntryWithClubspot } from "../../../src/syncs/clubspot/schema.ts";
 
 // Minimal Parse.Object stand-in: just an id and a `.get(key)` accessor, per roster.test.ts.
 function parseObject(id: string, data: Record<string, unknown>) {

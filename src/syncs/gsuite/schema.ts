@@ -1,4 +1,4 @@
-import { type ProgramRow } from "@cyc-seattle/crm";
+import { type ProgramRow } from "../../model/crm/index.ts";
 
 /** Row shape for the `google_groups` collection: one row per Google Group. See `schemas/gsuite.yaml`. */
 export interface GoogleGroupRow {

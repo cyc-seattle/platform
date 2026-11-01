@@ -1,5 +1,5 @@
 import winston from "winston";
-import { type AuditFindingRow, type DirectusClient } from "@cyc-seattle/directus";
+import { type AuditFindingRow, type DirectusClient } from "../runtime/index.ts";
 import { parseDuplicatePersonFindingMemberIds } from "./audit.ts";
 import { readByIds } from "./directus-batch.ts";
 import {

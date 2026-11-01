@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type CrmRegistrationRow, type OfferingRow } from "@cyc-seattle/crm";
-import { type Mirrors, planOfferings, planRegistrations } from "../src/offerings.ts";
+import { type CrmRegistrationRow, type OfferingRow } from "../../../src/model/crm/index.ts";
+import { type Mirrors, planOfferings, planRegistrations } from "../../../src/syncs/clubspot/offerings.ts";
 
 const empty: Mirrors = {
   camps: [{ id: "camp-1", start_date: "2026-06-01", end_date: "2026-08-31" }],

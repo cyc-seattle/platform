@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { type AuditFindingRow, fingerprintFinding, planAuditFindingWrites } from "@cyc-seattle/directus";
-import { type DuplicatePersonGroup, findDuplicatePeople, type MergePerson } from "../src/merge.ts";
-import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipantFindings } from "../src/audit.ts";
+import { type AuditFindingRow, fingerprintFinding, planAuditFindingWrites } from "../../../src/syncs/runtime/index.ts";
+import { type DuplicatePersonGroup, findDuplicatePeople, type MergePerson } from "../../../src/syncs/clubspot/merge.ts";
+import {
+  AUDIT_FINDING_KINDS,
+  findDuplicatePersonFindings,
+  findUnlinkedParticipantFindings,
+} from "../../../src/syncs/clubspot/audit.ts";
 
 function person(overrides: Partial<Pick<MergePerson, "id" | "first_name" | "last_name">> & { id: string }) {
   return { first_name: "Jane", last_name: "Doe", ...overrides };

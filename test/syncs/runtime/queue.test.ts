@@ -15,8 +15,8 @@ import {
   staleRunningTasks,
   targetFromKey,
   taskKey,
-} from "../src/queue.ts";
-import { type SyncTaskRow } from "../src/sync-tasks.ts";
+} from "../../../src/syncs/runtime/queue.ts";
+import { type SyncTaskRow } from "../../../src/syncs/runtime/sync-tasks.ts";
 
 const NOW = new Date("2026-01-15T12:00:00Z");
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCampActive } from "../src/camps.ts";
+import { isCampActive } from "../../../src/syncs/gsuite/camps.ts";
 
 const now = new Date("2026-06-15T00:00:00Z");
 

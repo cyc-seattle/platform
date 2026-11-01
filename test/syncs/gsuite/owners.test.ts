@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planGroupOwners } from "../src/owners.ts";
+import { planGroupOwners } from "../../../src/syncs/gsuite/owners.ts";
 
 describe("planGroupOwners", () => {
   it("comes from the given config list, not any CRM row", () => {

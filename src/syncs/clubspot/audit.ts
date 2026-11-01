@@ -1,5 +1,5 @@
-import { type ParticipantRow } from "@cyc-seattle/clubspot";
-import { type AuditFindingInput } from "@cyc-seattle/directus";
+import { type ParticipantRow } from "../../model/clubspot/index.ts";
+import { type AuditFindingInput } from "../runtime/index.ts";
 import { type DuplicatePersonGroup, type MergePerson } from "./merge.ts";
 
 /** The two kinds this run-level detection pass raises (design doc "Merge, unmerge, and review",

@@ -1,4 +1,4 @@
-import type { ContactPointRow } from "@cyc-seattle/crm";
+import type { ContactPointRow } from "../crm/index.ts";
 
 /**
  * `contact_points.participant_id` is a provider extension field: a real column on `crm`'s
