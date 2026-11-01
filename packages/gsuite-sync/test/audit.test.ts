@@ -6,6 +6,7 @@ import {
   candidateMemberPeople,
   findClassesWithoutProgram,
   findInvalidEmails,
+  findAreaAccountMismatches,
   findMismatchedRevenueAccounts,
   findProgramProductProblems,
   findMissingGroupForArchivedProgramGroup,
@@ -273,8 +274,8 @@ describe("findMismatchedRevenueAccounts", () => {
 
   function products(first: string | null, second: string | null) {
     return [
-      { id: "product-1", revenue_account_id: first },
-      { id: "product-2", revenue_account_id: second },
+      { id: "product-1", revenue_account_id: first, program_area_id: null },
+      { id: "product-2", revenue_account_id: second, program_area_id: null },
     ];
   }
 
@@ -314,6 +315,43 @@ describe("findMismatchedRevenueAccounts", () => {
     expect(findMismatchedRevenueAccounts([camp({})], classes, programs, products("account-1", null), accounts)).toEqual(
       [],
     );
+  });
+
+  it("uses a program area's account for a product in the area", () => {
+    const inAreas = [
+      { id: "product-1", revenue_account_id: "account-2", program_area_id: "area-1" },
+      { id: "product-2", revenue_account_id: null, program_area_id: "area-1" },
+    ];
+    const areas = [{ id: "area-1", revenue_account_id: "account-1" }];
+    expect(findMismatchedRevenueAccounts([camp({})], classes, programs, inAreas, accounts, areas)).toEqual([]);
+  });
+});
+
+describe("findAreaAccountMismatches", () => {
+  const areas = [{ id: "area-1", name: "Summer", revenue_account_id: "account-1" }];
+  const product = (revenue_account_id: string | null, program_area_id: string | null) => ({
+    id: "product-1",
+    name: "Guppies",
+    revenue_account_id,
+    program_area_id,
+  });
+
+  it("raises a finding for a product whose own account differs from its area's", () => {
+    expect(findAreaAccountMismatches([product("account-2", "area-1")], areas)).toEqual([
+      {
+        source: "gsuite-sync",
+        kind: "revenue_account_differs_from_area",
+        subject: "product-1",
+        detail:
+          'Product "Guppies" (product-1) books to revenue account account-2, but its program area "Summer" books to account-1',
+      },
+    ]);
+  });
+
+  it("raises nothing for the same account, no account, or no area", () => {
+    for (const p of [product("account-1", "area-1"), product(null, "area-1"), product("account-2", null)]) {
+      expect(findAreaAccountMismatches([p], areas)).toEqual([]);
+    }
   });
 });
 

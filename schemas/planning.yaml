@@ -41,7 +41,7 @@ collections:
       hidden: false
       icon: event_note
       item_duplication_fields: null
-      note: "One part of the club's plan: a product's plan, or the Operations Plan."
+      note: "One part of the club's plan: a program area's plan, or the Operations Plan."
       preview_url: null
       singleton: false
       sort: null
@@ -286,6 +286,32 @@ collections:
       versioning: false
     schema:
       name: plan_budget_lines
+  - collection: plan_revenue_charges
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_revenue_charges
+      color: null
+      display_template: "{{name}}"
+      group: Planning
+      hidden: false
+      icon: percent
+      item_duplication_fields: null
+      note: "A charge set as a share of each offering's revenue, such as scholarships or card fees. Operations Plan only."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_revenue_charges
   - collection: plan_rates
     meta:
       accountability: all
@@ -597,8 +623,8 @@ fields:
       display: labels
       display_options:
         choices:
-          - text: Product
-            value: product
+          - text: Program area
+            value: program_area
           - text: Operations
             value: operations
       field: kind
@@ -608,8 +634,8 @@ fields:
       note: null
       options:
         choices:
-          - text: Product
-            value: product
+          - text: Program area
+            value: program_area
           - text: Operations
             value: operations
       readonly: false
@@ -621,9 +647,9 @@ fields:
       validation:
         kind:
           _in:
-            - product
+            - program_area
             - operations
-      validation_message: "Must be one of: product, operations."
+      validation_message: "Must be one of: program_area, operations."
       width: full
     schema:
       name: kind
@@ -643,7 +669,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plans
-    field: product_id
+    field: program_area_id
     type: uuid
     meta:
       collection: plans
@@ -651,11 +677,11 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: product_id
+      field: program_area_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: Empty for the Operations Plan.
+      note: "The program area the plan is for. Empty for the Operations Plan."
       options: null
       readonly: false
       required: false
@@ -665,12 +691,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Product
+          translation: Program area
       validation: null
       validation_message: null
       width: full
     schema:
-      name: product_id
+      name: program_area_id
       table: plans
       data_type: uuid
       default_value: null
@@ -684,7 +710,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: products
+      foreign_key_table: program_areas
       foreign_key_column: id
   - collection: plans
     field: organization_id
@@ -1234,7 +1260,7 @@ fields:
       hidden: false
       interface: select-dropdown-m2o
       note: >-
-        For a product's plan: the saved Operations Plan version its numbers were calculated with, for the same
+        For a program area's plan: the saved Operations Plan version its numbers were calculated with, for the same
         organization and year. Required to save. Empty for the Operations Plan.
       options:
         filter:
@@ -1273,6 +1299,46 @@ fields:
       has_auto_increment: false
       foreign_key_table: plan_versions
       foreign_key_column: id
+  - collection: plan_versions
+    field: rules
+    type: text
+    meta:
+      collection: plan_versions
+      conditions: null
+      display: null
+      display_options: null
+      field: rules
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: "What you want that the plan's numbers don't capture, for your AI to fill in. For example: every Monday, Wednesday and Friday, except on SPS school holidays, from 4pm until dusk."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: rules
+      table: plan_versions
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_activations
     field: id
     type: uuid
@@ -4195,6 +4261,8 @@ fields:
             value: offering
           - text: Product
             value: product
+          - text: Program area
+            value: program_area
           - text: Pool
             value: pool
           - text: Whole club
@@ -4210,6 +4278,8 @@ fields:
             value: offering
           - text: Product
             value: product
+          - text: Program area
+            value: program_area
           - text: Pool
             value: pool
           - text: Whole club
@@ -4225,9 +4295,10 @@ fields:
           _in:
             - offering
             - product
+            - program_area
             - pool
             - org
-      validation_message: "Must be one of: offering, product, pool, org."
+      validation_message: "Must be one of: offering, product, program_area, pool, org."
       width: full
     schema:
       name: cost_center_type
@@ -4793,6 +4864,8 @@ fields:
             value: offering
           - text: Product
             value: product
+          - text: Program area
+            value: program_area
           - text: Pool
             value: pool
           - text: Whole club
@@ -4808,6 +4881,8 @@ fields:
             value: offering
           - text: Product
             value: product
+          - text: Program area
+            value: program_area
           - text: Pool
             value: pool
           - text: Whole club
@@ -4823,9 +4898,10 @@ fields:
           _in:
             - offering
             - product
+            - program_area
             - pool
             - org
-      validation_message: "Must be one of: offering, product, pool, org."
+      validation_message: "Must be one of: offering, product, program_area, pool, org."
       width: full
     schema:
       name: cost_center_type
@@ -5050,6 +5126,405 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_revenue_charges
+    field: id
+    type: uuid
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_revenue_charges
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_revenue_charges
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_revenue_charges
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_revenue_charges
+    field: key
+    type: uuid
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_revenue_charges
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_revenue_charges
+    field: name
+    type: string
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_revenue_charges
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_revenue_charges
+    field: rate
+    type: decimal
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: null
+      display_options: null
+      field: rate
+      group: null
+      hidden: false
+      interface: input
+      note: "The share of each offering's revenue: 0.02 means 2%."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: rate
+      table: plan_revenue_charges
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_revenue_charges
+    field: product_kinds
+    type: json
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Program
+            value: program
+          - text: Charter
+            value: charter
+          - text: Storage lease
+            value: storage_lease
+          - text: Merchandise
+            value: merchandise
+          - text: Event hosting
+            value: event_hosting
+          - text: Other
+            value: other
+      field: product_kinds
+      group: null
+      hidden: false
+      interface: "select-multiple-dropdown"
+      note: "The kinds of product it applies to. Empty applies it to none."
+      options:
+        choices:
+          - text: Program
+            value: program
+          - text: Charter
+            value: charter
+          - text: Storage lease
+            value: storage_lease
+          - text: Merchandise
+            value: merchandise
+          - text: Event hosting
+            value: event_hosting
+          - text: Other
+            value: other
+      readonly: false
+      required: false
+      searchable: false
+      sort: 6
+      special:
+        - cast-json
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product_kinds
+      table: plan_revenue_charges
+      data_type: json
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_revenue_charges
+    field: account_id
+    type: uuid
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
+      field: account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "A revenue account adds revenue, such as card fees families pay. An expense account adds a cost."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 7
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Account
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: account_id
+      table: plan_revenue_charges
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
+  - collection: plan_revenue_charges
+    field: excluded_from_mtdc
+    type: boolean
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: null
+      display_options: null
+      field: excluded_from_mtdc
+      group: null
+      hidden: false
+      interface: boolean
+      note: "Set for a charge 2 CFR 200.1 leaves out of MTDC, such as scholarships."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Left out of MTDC
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: excluded_from_mtdc
+      table: plan_revenue_charges
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_revenue_charges
+    field: note
+    type: text
+    meta:
+      collection: plan_revenue_charges
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: plan_revenue_charges
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_rates
     field: id
     type: uuid
@@ -5201,46 +5676,6 @@ fields:
       width: full
     schema:
       name: payroll_tax_rate
-      table: plan_rates
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_rates
-    field: card_fee_rate
-    type: decimal
-    meta:
-      collection: plan_rates
-      conditions: null
-      display: null
-      display_options: null
-      field: card_fee_rate
-      group: null
-      hidden: false
-      interface: input
-      note: Card processing fees, as a share of revenue. 0.03 means 3%.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: card_fee_rate
       table: plan_rates
       data_type: numeric
       default_value: null
@@ -6287,10 +6722,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: "The product the hours are for. Set this or the program area, not both."
       options: null
       readonly: false
-      required: true
+      required: false
       searchable: true
       sort: 5
       special:
@@ -6309,7 +6744,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -6317,6 +6752,50 @@ fields:
       generation_expression: null
       has_auto_increment: false
       foreign_key_table: products
+      foreign_key_column: id
+  - collection: plan_salaried_bookings
+    field: program_area_id
+    type: uuid
+    meta:
+      collection: plan_salaried_bookings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_area_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "The program area the hours are for, shared among its offerings. Set this or the product, not both."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program area
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_area_id
+      table: plan_salaried_bookings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: program_areas
       foreign_key_column: id
   - collection: plan_salaried_bookings
     field: kind
@@ -8124,24 +8603,24 @@ fields:
       foreign_key_column: id
 relations:
   - collection: plans
-    field: product_id
-    related_collection: products
+    field: program_area_id
+    related_collection: program_areas
     meta:
       junction_field: null
       many_collection: plans
-      many_field: product_id
+      many_field: program_area_id
       one_allowed_collections: null
-      one_collection: products
+      one_collection: program_areas
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plans
-      column: product_id
-      foreign_key_table: products
+      column: program_area_id
+      foreign_key_table: program_areas
       foreign_key_column: id
-      constraint_name: plans_product_id_foreign
+      constraint_name: plans_program_area_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plans
@@ -8795,6 +9274,27 @@ relations:
       constraint_name: plan_salaried_bookings_product_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: plan_salaried_bookings
+    field: program_area_id
+    related_collection: program_areas
+    meta:
+      junction_field: null
+      many_collection: plan_salaried_bookings
+      many_field: program_area_id
+      one_allowed_collections: null
+      one_collection: program_areas
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_salaried_bookings
+      column: program_area_id
+      foreign_key_table: program_areas
+      foreign_key_column: id
+      constraint_name: plan_salaried_bookings_program_area_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
   - collection: plan_resources
     field: version_id
     related_collection: plan_versions
@@ -9045,5 +9545,47 @@ relations:
       foreign_key_table: products
       foreign_key_column: id
       constraint_name: plan_bonus_owner_products_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_revenue_charges
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_revenue_charges
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_revenue_charges
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_revenue_charges_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_revenue_charges
+    field: account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: plan_revenue_charges
+      many_field: account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_revenue_charges
+      column: account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: plan_revenue_charges_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT

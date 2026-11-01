@@ -9,8 +9,10 @@ import type {
   Id,
   PlanData,
   PlanOffering,
+  Plan,
   PlanRates,
   Product,
+  ProgramArea,
 } from "./types.ts";
 
 /** The step that recorded an entry. Only `direct` entries count toward MTDC. */
@@ -44,6 +46,9 @@ export class Context {
 
   readonly accounts: Map<Id, Account>;
   readonly products: Map<Id, Product>;
+  readonly areas: Map<Id, ProgramArea>;
+  /** Each version's plan. */
+  readonly planOfVersion: Map<Id, Plan>;
   readonly offeringsById: Map<Id, PlanOffering>;
   readonly offeringsByKey: Map<Id, PlanOffering>;
   /** Enrollment per offering id. */
@@ -60,6 +65,14 @@ export class Context {
     this.fy = fiscalYearDates(data.fiscal_year, data.organization.fiscal_year_start_month);
     this.accounts = new Map(data.accounts.map((a) => [a.id, a]));
     this.products = new Map(data.products.map((p) => [p.id, p]));
+    this.areas = new Map(data.program_areas.map((a) => [a.id, a]));
+    const plans = new Map(data.plans.map((p) => [p.id, p]));
+    this.planOfVersion = new Map(
+      data.plan_versions.flatMap((v) => {
+        const plan = plans.get(v.plan_id);
+        return plan === undefined ? [] : [[v.id, plan] as const];
+      }),
+    );
     this.offeringsById = new Map(data.plan_offerings.map((o) => [o.id, o]));
     this.offeringsByKey = new Map(data.plan_offerings.map((o) => [o.key, o]));
     this.rates = data.plan_rates[0];
@@ -100,7 +113,9 @@ export class Context {
     const account = this.accounts.get(accountId);
     if (account?.default_function != null) return account.default_function;
     if (account?.type === "revenue") return null;
-    return costCenter === "offering" || costCenter === "product" ? "program" : "management";
+    return costCenter === "offering" || costCenter === "product" || costCenter === "program_area"
+      ? "program"
+      : "management";
   }
 
   accountType(accountId: Id): Account["type"] | undefined {
@@ -116,6 +131,20 @@ export class Context {
       a = a.parent_id == null ? undefined : this.accounts.get(a.parent_id);
     }
     return false;
+  }
+
+  /** The account a product's sales are booked to: its program area's, or its own outside an area. */
+  revenueAccount(product: Product): Id | null {
+    const area = product.program_area_id == null ? undefined : this.areas.get(product.program_area_id);
+    if (area === undefined) return product.revenue_account_id;
+    if (product.revenue_account_id != null && product.revenue_account_id !== area.revenue_account_id) {
+      this.warn(
+        "revenue_account_differs",
+        `Product ${product.name} has its own revenue account, but its program area ${area.name}'s is used`,
+        product.id,
+      );
+    }
+    return area.revenue_account_id;
   }
 
   /** Whether the offering counts in the plan year: it does, whole, in the year it starts. */

@@ -11,11 +11,13 @@ import type {
   PlanOffering,
   PlanPool,
   PlanRates,
+  PlanRevenueCharge,
   PlanSalariedPosition,
   PlanStaffLevel,
   PlanTrip,
   Pnl,
   Product,
+  ProgramArea,
 } from "../../src/planning/index.ts";
 
 let counter = 0;
@@ -78,7 +80,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
         ["coach_wages", A.coachWages],
         ["salaries", A.salaries],
         ["payroll_tax", A.payrollTax],
-        ["card_fees", A.cardFees],
         ["ribs", A.ribs],
         ["boat_maintenance", A.boats],
         ["resources", A.resources],
@@ -88,6 +89,7 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     ).map(([cost_type, account_id]) => ({ id: `cost-${cost_type}`, organization_id: "org", cost_type, account_id })),
     rib_resource_kind_id: "kind-rib",
     products: [],
+    program_areas: [],
     accounts: [
       account(A.programRevenue, "4100", "revenue"),
       account(A.charterRevenue, "4200", "revenue"),
@@ -111,6 +113,8 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     qualification_covers: [],
     boat_classes: [],
     resource_kinds: [{ id: "kind-rib", name: "RIB" }],
+    plans: [],
+    plan_versions: [],
     plan_offerings: [],
     plan_offering_boat_classes: [],
     plan_trips: [],
@@ -119,6 +123,7 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     plan_labor_lines: [],
     plan_budget_lines: [],
     plan_rates: [],
+    plan_revenue_charges: [],
     plan_staff_levels: [],
     plan_salaried_positions: [],
     plan_salaried_bookings: [],
@@ -138,6 +143,24 @@ export function product(overrides: Partial<Product> = {}): Product {
     name: "A program",
     kind: "program",
     revenue_account_id: A.programRevenue,
+    program_area_id: null,
+    ...overrides,
+  };
+}
+
+export function area(overrides: Partial<ProgramArea> = {}): ProgramArea {
+  return { id: nextId("area"), name: "An area", revenue_account_id: A.programRevenue, ...overrides };
+}
+
+export function charge(overrides: Partial<PlanRevenueCharge> = {}): PlanRevenueCharge {
+  return {
+    ...versioned("charge"),
+    name: "A charge",
+    rate: 0,
+    product_kinds: ["program"],
+    account_id: A.cardFees,
+    excluded_from_mtdc: false,
+    note: null,
     ...overrides,
   };
 }
@@ -299,7 +322,6 @@ export function rates(overrides: Partial<PlanRates> = {}): PlanRates {
   return {
     ...versioned("rates"),
     payroll_tax_rate: null,
-    card_fee_rate: null,
     lodging_per_night_cents: null,
     mileage_rate_cents: null,
     ...overrides,
@@ -315,7 +337,7 @@ export function total(out: EngineOutput, match: Partial<CostLine> & { line?: str
     .reduce((t, l) => t + l.amount_cents, 0);
 }
 
-/** An offering's P&L, or a product's. */
+/** An offering's P&L, or a product's or program area's. */
 export function pnlOf(out: EngineOutput, key: string, level: Pnl["level"] = "offering"): Pnl {
   const found = out.pnl.find((p) => p.level === level && p.key === key);
   if (found === undefined) throw new Error(`No P&L for ${level} ${key}`);

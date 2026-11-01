@@ -8,8 +8,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { savedVersionsConfig, type SavedVersionsConfig } from "../stacks/backend/policies.ts";
 import {
   fingerprint,
-  INDEXES,
-  installIndex,
   installTriggers,
   REFUSED,
   triggerStatements,
@@ -64,7 +62,6 @@ async function database(config: SavedVersionsConfig): Promise<PGlite> {
   for (const statement of tables()) await db.exec(statement);
   const { missing } = await db.transaction((tx) => installTriggers(config, connect(tx)));
   expect(missing).toEqual([]);
-  for (const index of INDEXES) await db.transaction((tx) => installIndex(index, connect(tx)));
   return db;
 }
 
@@ -124,11 +121,12 @@ function writer(db: PGlite) {
 
 const refusal = (message: string) => expect.objectContaining({ code: "CY001", message });
 
-/** An organization's Operations Plan with a saved version, and a product's plan with a saved version and a draft. */
+/** An organization's Operations Plan with a saved version, and a program area's plan with a saved version and a draft. */
 async function plans(db: PGlite, year = 2027) {
   const w = writer(db);
   const organization = await w.insert("organizations", { name: "Test club", fiscal_year_start_month: 10 });
-  const product = await w.insert("products", { name: "Test product", kind: "program" });
+  const area = await w.insert("program_areas", { name: "Test area" });
+  const product = await w.insert("products", { name: "Test product", kind: "program", program_area_id: area });
   const kind = await w.insert("resource_kinds", { name: "Safety boat" });
   const operationsPlan = await w.insert("plans", {
     kind: "operations",
@@ -141,11 +139,11 @@ async function plans(db: PGlite, year = 2027) {
   expect(await w.update("plan_versions", operations, { status: "saved", platform_version: "1.4.0" })).toBeUndefined();
 
   const plan = await w.insert("plans", {
-    kind: "product",
-    product_id: product,
+    kind: "program_area",
+    program_area_id: area,
     organization_id: organization,
     fiscal_year: year,
-    name: "Product",
+    name: "Program area",
   });
   const saved = await w.insert("plan_versions", { plan_id: plan, status: "draft" });
   const draft = await w.insert("plan_versions", { plan_id: plan, status: "draft", parent_version_id: saved });
@@ -160,7 +158,7 @@ async function plans(db: PGlite, year = 2027) {
       operations_version_id: operations,
     }),
   ).toBeUndefined();
-  return { organization, product, operationsPlan, operations, plan, saved, draft, savedOffering, draftOffering };
+  return { organization, area, product, operationsPlan, operations, plan, saved, draft, savedOffering, draftOffering };
 }
 
 describe("the saved-versions triggers", () => {
@@ -294,14 +292,14 @@ describe("the saved-versions triggers", () => {
       }
     });
 
-    it("save a product's plan only with a saved Operations Plan version of the same organization and year", async () => {
+    it("save a program area's plan only with a saved Operations Plan version of the same organization and year", async () => {
       const { draft, operations, organization, plan } = await plans(db, 2109);
       const message =
-        "Saving a product's plan needs the saved Operations Plan version it was calculated with, for the same organization and year.";
+        "Saving a program area's plan needs the saved Operations Plan version it was calculated with, for the same organization and year.";
       const save = (operations_version_id: string | null) =>
         w.update("plan_versions", draft, { status: "saved", platform_version: "1.4.0", operations_version_id });
       expect(await save(null)).toEqual(refusal(message));
-      // A draft of the Operations Plan, a saved version of another product's plan, and another year's.
+      // A draft of the Operations Plan, a saved version of another program area's plan, and another year's.
       const operationsPlan = (await w.read("plan_versions", operations))!["plan_id"] as string;
       const operationsDraft = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
       expect(await save(operationsDraft)).toEqual(refusal(message));
@@ -336,13 +334,13 @@ describe("the saved-versions triggers", () => {
   });
 
   describe("on a plan", () => {
-    it("refuse to change its kind, product, organization, or year once it has a saved version", async () => {
+    it("refuse to change its kind, program area, organization, or year once it has a saved version", async () => {
       const { plan, operationsPlan } = await plans(db, 2113);
       const other = await plans(db, 2114);
-      const message = "A plan's kind, product, organization, and year can't change once it has a saved version.";
+      const message = "A plan's kind, program area, organization, and year can't change once it has a saved version.";
       for (const change of [
-        { kind: "operations", product_id: null },
-        { product_id: other.product },
+        { kind: "operations", program_area_id: null },
+        { program_area_id: other.area },
         { organization_id: other.organization },
         { fiscal_year: 2115 },
       ]) {
@@ -352,26 +350,26 @@ describe("the saved-versions triggers", () => {
       expect(await w.update("plans", operationsPlan, { fiscal_year: 2115 })).toEqual(refusal(message));
     });
 
-    it("refuse a product's plan without its product, or an Operations Plan with one", async () => {
-      const { organization, product, plan, operationsPlan } = await plans(db, 2125);
-      const message = "A product's plan names its product, and an Operations Plan names none.";
+    it("refuse a program area's plan without its program area, or an Operations Plan with one", async () => {
+      const { organization, area, plan, operationsPlan } = await plans(db, 2125);
+      const message = "A program area's plan names its program area, and an Operations Plan names none.";
       const plan2 = { organization_id: organization, fiscal_year: 2126 };
-      expect(await w.refusedInsert("plans", { ...plan2, kind: "product" })).toEqual(refusal(message));
-      expect(await w.refusedInsert("plans", { ...plan2, kind: "operations", product_id: product })).toEqual(
+      expect(await w.refusedInsert("plans", { ...plan2, kind: "program_area" })).toEqual(refusal(message));
+      expect(await w.refusedInsert("plans", { ...plan2, kind: "operations", program_area_id: area })).toEqual(
         refusal(message),
       );
-      const draftOnly = await w.insert("plans", { ...plan2, kind: "product", product_id: product });
-      expect(await w.update("plans", draftOnly, { product_id: null })).toEqual(refusal(message));
+      const draftOnly = await w.insert("plans", { ...plan2, kind: "program_area", program_area_id: area });
+      expect(await w.update("plans", draftOnly, { program_area_id: null })).toEqual(refusal(message));
       expect(await w.update("plans", draftOnly, { kind: "operations" })).toEqual(refusal(message));
-      expect(await w.update("plans", draftOnly, { kind: "operations", product_id: null })).toBeUndefined();
+      expect(await w.update("plans", draftOnly, { kind: "operations", program_area_id: null })).toBeUndefined();
       expect(plan && operationsPlan).toBeDefined();
     });
 
     it("let a plan with only drafts change", async () => {
-      const { organization, product } = await plans(db, 2116);
+      const { organization, area } = await plans(db, 2116);
       const plan = await w.insert("plans", {
-        kind: "product",
-        product_id: product,
+        kind: "program_area",
+        program_area_id: area,
         organization_id: organization,
         fiscal_year: 2117,
       });
@@ -379,13 +377,12 @@ describe("the saved-versions triggers", () => {
       expect(await w.update("plans", plan, { fiscal_year: 2118 })).toBeUndefined();
     });
 
-    it("allow one plan per product, organization, and year, and one Operations Plan per organization and year", async () => {
-      const { organization, product } = await plans(db, 2119);
+    it("allow several plans for one program area, organization, and year, and several Operations Plans", async () => {
+      const { organization, area } = await plans(db, 2119);
       const again = (values: Values) =>
-        w.refusedInsert("plans", { organization_id: organization, fiscal_year: 2119, ...values });
-      expect(await again({ kind: "product", product_id: product })).toMatchObject({ code: "23505" });
-      expect(await again({ kind: "operations" })).toMatchObject({ code: "23505" });
-      expect(await again({ kind: "operations", fiscal_year: 2120 })).toBeUndefined();
+        w.insert("plans", { organization_id: organization, fiscal_year: 2119, ...values });
+      expect(await again({ kind: "program_area", program_area_id: area })).toEqual(expect.any(String));
+      expect(await again({ kind: "operations" })).toEqual(expect.any(String));
     });
   });
 
@@ -399,6 +396,32 @@ describe("the saved-versions triggers", () => {
       expect(await w.read("plan_activations", second)).toMatchObject({ plan_id: plan, sequence: 2 });
       expect(await w.read("plan_activations", other)).toMatchObject({ plan_id: operationsPlan, sequence: 1 });
       expect(((await w.read("plan_activations", first))!["activated_at"] as Date).getFullYear()).toBeGreaterThan(1999);
+    });
+
+    it("order activations across every plan for the same area and year, and every Operations Plan", async () => {
+      const { organization, area, plan, saved, operations } = await plans(db, 2128);
+      const rival = await w.insert("plans", {
+        kind: "program_area",
+        program_area_id: area,
+        organization_id: organization,
+        fiscal_year: 2128,
+      });
+      const version = await w.insert("plan_versions", { plan_id: rival, status: "draft" });
+      expect(
+        await w.update("plan_versions", version, {
+          status: "saved",
+          platform_version: "1.4.0",
+          operations_version_id: operations,
+        }),
+      ).toBeUndefined();
+      const first = await w.insert("plan_activations", { version_id: saved });
+      const second = await w.insert("plan_activations", { version_id: version });
+      expect(await w.read("plan_activations", first)).toMatchObject({ plan_id: plan, sequence: 1 });
+      expect(await w.read("plan_activations", second)).toMatchObject({ plan_id: rival, sequence: 2 });
+
+      const otherYear = await plans(db, 2129);
+      const elsewhere = await w.insert("plan_activations", { version_id: otherYear.saved });
+      expect(await w.read("plan_activations", elsewhere)).toMatchObject({ sequence: 1 });
     });
 
     it("refuse a draft, or another plan's version", async () => {
@@ -474,30 +497,14 @@ describe("installing the saved-versions triggers", () => {
     expect((await db.query<{ lock_timeout: string }>(`SHOW lock_timeout`)).rows[0]!.lock_timeout).toBe("0");
   });
 
-  it("installs the triggers even when two plans clash, and names the clash", async () => {
+  it("drops the unique indexes plans once had", async () => {
     const db = await PGlite.create();
     for (const statement of tables()) await db.exec(statement);
-    const w = writer(db);
-    const organization = await w.insert("organizations", { name: "Test club" });
-    const product = await w.insert("products", { name: "Test product", kind: "program" });
-    const clash = { kind: "product", product_id: product, organization_id: organization, fiscal_year: 2127 };
-    await w.insert("plans", clash);
-    await w.insert("plans", clash);
-
+    await db.exec("CREATE UNIQUE INDEX cyc_one_operations_plan ON plans (organization_id, fiscal_year)");
     const { missing } = await db.transaction((tx) => installTriggers(config(false), connect(tx)));
     expect(missing).toEqual([]);
-    const [productIndex, operationsIndex] = INDEXES;
-    await expect(db.transaction((tx) => installIndex(productIndex!, connect(tx)))).rejects.toThrow(
-      `2 product plans share organization ${organization}, year 2127, and product ${product}`,
-    );
-    await db.transaction((tx) => installIndex(operationsIndex!, connect(tx)));
-    expect(await db.transaction((tx) => triggerStatus(config(false), connect(tx)))).toEqual({
-      fingerprint: fingerprint(config(false)),
-      tables: Object.fromEntries(
-        ["plans", "plan_versions", "plan_activations", ...config(false).versioned].map((table) => [table, true]),
-      ),
-      indexes: { cyc_one_product_plan: false, cyc_one_operations_plan: true },
-    });
+    const { rows } = await db.query("SELECT 1 FROM pg_indexes WHERE indexname = 'cyc_one_operations_plan'");
+    expect(rows).toEqual([]);
   });
 
   it("reports a table that lacks its trigger", async () => {
@@ -505,7 +512,6 @@ describe("installing the saved-versions triggers", () => {
     await db.exec(`DROP TRIGGER cyc_saved_versions ON plan_trips`);
     const status = await db.transaction((tx) => triggerStatus(config(false), connect(tx)));
     expect(status.tables).toMatchObject({ plan_trips: false, plan_offerings: true, plans: true });
-    expect(status.indexes).toEqual({ cyc_one_product_plan: true, cyc_one_operations_plan: true });
     expect(status.fingerprint).toBe(fingerprint(config(false)));
     expect(fingerprint(config(true))).not.toBe(fingerprint(config(false)));
   });

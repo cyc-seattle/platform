@@ -4,7 +4,7 @@ import type { SalariedCoaching } from "./staffing.ts";
 import type { Id } from "./types.ts";
 
 interface Charge {
-  cost_center_type: "offering" | "product";
+  cost_center_type: "offering" | "product" | "program_area";
   cost_center_key: Id;
   hours: number;
   line: string;
@@ -45,12 +45,26 @@ export function bookSalaries(ctx: Context, coaching: SalariedCoaching[], booker:
         })),
       ...ctx.data.plan_salaried_bookings
         .filter((b) => b.position_id === position.id)
-        .map((b) => ({
-          cost_center_type: "product" as const,
-          cost_center_key: b.product_id,
-          hours: b.hours,
-          line: b.kind,
-        })),
+        .flatMap((b) => {
+          if ((b.product_id == null) === (b.program_area_id == null)) {
+            ctx.warn(
+              "booking_cost_center",
+              `Booking ${b.key} must name a product or a program area, not both or neither, so it's left out`,
+              b.key,
+            );
+            return [];
+          }
+          return [
+            b.product_id != null
+              ? { cost_center_type: "product" as const, cost_center_key: b.product_id, hours: b.hours, line: b.kind }
+              : {
+                  cost_center_type: "program_area" as const,
+                  cost_center_key: b.program_area_id as Id,
+                  hours: b.hours,
+                  line: b.kind,
+                },
+          ];
+        }),
     ];
     if (rate === null && charges.length > 0) {
       ctx.warn(

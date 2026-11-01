@@ -24,9 +24,16 @@ export function revenue(ctx: Context, offeringKey: Id): number {
   return sumEntries(ctx, offeringKey, (e) => (ctx.accountType(e.account_id) === "revenue" ? 1 : 0));
 }
 
-/** How a product-level amount divides among the product's plan-year offerings, by MTDC. Null when it has none. */
-export function spreadWeights(ctx: Context, productId: Id): Map<Id, number> | null {
-  const offerings = ctx.fyOfferings().filter((o) => o.product_id === productId);
+/**
+ * How an amount on a product or program area divides among its plan-year offerings, by MTDC. Null
+ * when it has none.
+ */
+export function spreadWeights(ctx: Context, type: "product" | "program_area", key: Id): Map<Id, number> | null {
+  const offerings = ctx
+    .fyOfferings()
+    .filter((o) =>
+      type === "product" ? o.product_id === key : ctx.products.get(o.product_id)?.program_area_id === key,
+    );
   if (offerings.length === 0) return null;
   const weights = new Map(offerings.map((o) => [o.key, Math.max(0, mtdc(ctx, o.key))]));
   const total = [...weights.values()].reduce((t, w) => t + w, 0);

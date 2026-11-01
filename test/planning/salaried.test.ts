@@ -9,6 +9,7 @@ function booking(positionId: string, productId: string, hours: number) {
     key: `booking-${positionId}-${productId}-key`,
     position_id: positionId,
     product_id: productId,
+    program_area_id: null,
     kind: "management" as const,
     hours,
   };

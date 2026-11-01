@@ -6,6 +6,7 @@ import {
   normalizeEmail,
   type PersonRow,
   type ProductRow,
+  type ProgramAreaRow,
   type ProgramRow,
 } from "@cyc-seattle/crm";
 import { type AuditFindingInput } from "@cyc-seattle/directus";
@@ -32,6 +33,7 @@ export type AuditFindingKind =
   | "mismatched_revenue_account"
   | "program_without_product"
   | "program_product_wrong_kind"
+  | "revenue_account_differs_from_area"
   | "invalid_email";
 
 /** Every kind this pass can raise. Scopes `planAuditFindingWrites` to the rows it owns, so it
@@ -49,6 +51,7 @@ export const AUDIT_FINDING_KINDS: readonly AuditFindingKind[] = [
   // finding still open.
   "program_without_product",
   "program_product_wrong_kind",
+  "revenue_account_differs_from_area",
   "invalid_email",
 ];
 
@@ -281,15 +284,19 @@ export function findMismatchedRevenueAccounts(
   camps: readonly Pick<CampRow, "id" | "name" | "clubspot_sales_account">[],
   classes: readonly ClassRow[],
   programs: readonly Pick<ProgramRow, "id" | "product_id">[],
-  products: readonly Pick<ProductRow, "id" | "revenue_account_id">[],
+  products: readonly Pick<ProductRow, "id" | "revenue_account_id" | "program_area_id">[],
   accounts: readonly Pick<AccountRow, "id" | "number">[],
+  areas: readonly Pick<ProgramAreaRow, "id" | "revenue_account_id">[] = [],
 ): GsuiteAuditFinding[] {
   const programById = byId(programs);
   const productById = byId(products);
   const accountById = byId(accounts);
+  const areaById = byId(areas);
   const accountOf = (programId: string): string | undefined => {
     const productId = programById.get(programId)?.product_id;
-    const accountId = productId === undefined ? undefined : productById.get(productId)?.revenue_account_id;
+    const product = productId === undefined ? undefined : productById.get(productId);
+    const area = product?.program_area_id ? areaById.get(product.program_area_id) : undefined;
+    const accountId = area?.revenue_account_id ?? product?.revenue_account_id;
     return accountId ? (accountById.get(accountId)?.number ?? accountId) : undefined;
   };
 
@@ -316,6 +323,31 @@ export function findMismatchedRevenueAccounts(
         detail: `Camp "${camp.name}" (${camp.id}, sales account ${camp.clubspot_sales_account ?? "none"}) has classes mapped to programs whose products book to different revenue accounts: ${[...accounts].sort().join(", ")}`,
       });
     }
+  }
+  return findings;
+}
+
+/**
+ * `revenue_account_differs_from_area` findings: a product in a program area books to the area's
+ * revenue account, so its own account, if set, should be the same one.
+ */
+export function findAreaAccountMismatches(
+  products: readonly Pick<ProductRow, "id" | "name" | "revenue_account_id" | "program_area_id">[],
+  areas: readonly Pick<ProgramAreaRow, "id" | "name" | "revenue_account_id">[],
+): GsuiteAuditFinding[] {
+  const areaById = byId(areas);
+  const findings: GsuiteAuditFinding[] = [];
+  for (const product of products) {
+    const area = product.program_area_id ? areaById.get(product.program_area_id) : undefined;
+    if (!product.id || !area || !product.revenue_account_id || product.revenue_account_id === area.revenue_account_id) {
+      continue;
+    }
+    findings.push({
+      source: GSUITE_SYNC_SOURCE,
+      kind: "revenue_account_differs_from_area",
+      subject: product.id,
+      detail: `Product "${product.name}" (${product.id}) books to revenue account ${product.revenue_account_id}, but its program area "${area.name}" books to ${area.revenue_account_id}`,
+    });
   }
   return findings;
 }
@@ -354,14 +386,15 @@ function byId<T extends { id?: string }>(rows: readonly T[]): Map<string, T> {
 /** Every row the audit pass needs to compute a group's full planned membership, regardless of
  * role - the union of what every write pass would add there. `camps` and `programs` carry the
  * extra fields `findMismatchedRevenueAccounts` and `isCampActive` need, on top of what
- * `MembershipTables` itself requires, and `products` and `accounts` are read only for those two
- * checks. `contactPoints` is read only here, for
+ * `MembershipTables` itself requires, and `products`, `programAreas` and `accounts` are read only
+ * for those checks. `contactPoints` is read only here, for
  * `findSecondaryEmailAddresses` - no write pass needs a person's non-primary addresses. */
 export interface AuditTables extends MembershipTables {
   groups: readonly GoogleGroupRow[];
   camps: readonly CampRow[];
   programs: readonly ProgramWithGoogleGroup[];
-  products: readonly Pick<ProductRow, "id" | "kind" | "revenue_account_id">[];
+  products: readonly Pick<ProductRow, "id" | "name" | "kind" | "revenue_account_id" | "program_area_id">[];
+  programAreas: readonly Pick<ProgramAreaRow, "id" | "name" | "revenue_account_id">[];
   accounts: readonly Pick<AccountRow, "id" | "number">[];
   contactPoints: readonly Pick<ContactPointRow, "person_id" | "kind" | "normalized">[];
   groupMemberships: readonly GoogleGroupMembershipRow[];

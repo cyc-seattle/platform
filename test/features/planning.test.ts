@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
-import { notBuilt } from "./steps/logins.ts";
+import type { CostLine } from "../../src/planning/index.ts";
+import { cents, PnlPlan, share } from "./pnl.ts";
 import {
   admin,
   adminCreate,
@@ -18,7 +19,8 @@ import {
   type Row,
 } from "./steps/rows.ts";
 
-// A plan's active version is its last activation (docs/planning-schema.md).
+// The active version for a program area and year, or for the Operations Plan, is the last
+// activation across those plans (docs/planning-schema.md).
 
 let planId: string | undefined;
 let versionIds: string[] = [];
@@ -141,58 +143,273 @@ Step("they can't turn a saved version back into a draft", async () => {
   expect(now).toBe("saved");
 });
 
-// The P&L and program areas' steps, which step 12a builds.
-for (const text of [
-  "two plans for a program area this year, the first of them active",
-  "they make a saved version of the second plan active",
-  "the second plan is the program area's plan for the year",
-  "the first plan has no active version",
-  "a plan for a program area",
-  "an offering in it of a program from another program area",
-  "a planner calculates the P&L",
-  "the planner is warned that the offering is in the wrong plan",
-  "the Operations Plan sells {money} of merchandise",
-  "the club-wide totals include {money} of merchandise sales",
-  "a program with no program area",
-  "a plan with an offering of that program",
-  "the planner is warned that the program has no program area",
-  "a program area with two offerings that each take in {money}",
-  "{money} of storage charged to the program area",
-  "the program area takes in {money}",
-  "its costs include the {money} of storage",
-  "a program area with two offerings, the first with twice the direct costs of the second",
-  "the first offering pays {money} of the storage",
-  "the second offering pays {money} of the storage",
-  "a program area with two offerings with the same direct costs",
-  "a salaried director paid {money} an hour, with {count} hours charged to the program area",
-  "each offering pays {money} of the director's salary",
-  "the Operations Plan sets scholarships at {percent} of programs' revenue",
-  "an offering of a program at {money} a sailor, with {count} sailors",
-  "the offering's scholarships are {money}",
-  "the merchandise has no scholarships",
-  "the Operations Plan collects card fees from families at {percent} of revenue",
-  "the Operations Plan pays card fees at {percent} of revenue",
-  "an offering of a program that takes in {money}",
-  "the offering takes in {money} of card fees from families",
-  "the offering pays {money} of card fees",
-  "two offerings with the same direct costs",
-  "scholarships on the first offering only, which don't count toward the split",
-  "{money} of office costs shared by every offering",
-  "each offering pays {money} of the office costs",
-  "the Operations Plan buys a {money} coach boat",
-  "no offering or program area pays for the coach boat",
-  "the club-wide totals show {money} of capital",
-  "a {money} coach boat charged to a program area",
-  "the program area doesn't pay for the coach boat",
-  "the planner is warned that capital can't be charged to a program area",
-  "programs that take in {money} and cost {money}",
-  "donations of {money}, which cost {money} to raise",
-  "the club-wide totals are:",
-  "they can write the draft's rules",
-  "a plan with a saved version that has rules",
-  "they can't change the saved version's rules",
-]) {
-  Step(text, () => notBuilt("12a"));
+// A plan's rules: the planner's own words, which a saved version keeps.
+Step("they can write the draft's rules", async () => {
+  const { status, body } = await (
+    await theirSession()
+  ).request("PATCH", itemPath("plan_versions", versionIds[0]), { rules: "Practice on Mondays and Fridays." });
+  expect(status, JSON.stringify(body)).toBe(200);
+});
+Step("a plan with a saved version that has rules", async () => {
+  await aPlan(1, false);
+  const { rules } = await (await admin()).ok("GET", `${itemPath("plan_versions", versionIds[0])}?fields=rules`);
+  expect(rules).toBeTruthy();
+});
+Step("they can't change the saved version's rules", async () => {
+  const { status, body } = await (
+    await theirSession()
+  ).request("PATCH", itemPath("plan_versions", versionIds[0]), { rules: "Practice every day." });
+  expect(status, JSON.stringify(body)).toBe(403);
+});
+
+/** Two plans for one program area and year, each with a saved version, the first of them active. */
+let rivals: { plans: string[]; versions: string[] } = { plans: [], versions: [] };
+Step("two plans for a program area this year, the first of them active", async () => {
+  await runRows();
+  const area = await adminCreate("program_areas", await newRow("program_areas"));
+  rivals = { plans: [], versions: [] };
+  for (let i = 0; i < 2; i++) {
+    const plan = await adminCreate("plans", await newRow("plans", { program_area_id: area.id }));
+    const { id } = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
+    await adminSave(id);
+    rivals.plans.push(plan.id);
+    rivals.versions.push(id);
+  }
+  await adminCreate("plan_activations", { id: randomUUID(), version_id: rivals.versions[0] });
+});
+Step("they make a saved version of the second plan active", () => activate(rivals.versions[1]!));
+
+/** The newest activation across the program area's plans for the year. */
+async function areaActivation(): Promise<Row | undefined> {
+  const filter = encodeURIComponent(JSON.stringify({ plan_id: { _in: rivals.plans } }));
+  const [newest] = await (
+    await admin()
+  ).ok("GET", `/items/plan_activations?filter=${filter}&sort=-sequence&limit=1&fields=plan_id,version_id`);
+  return newest;
 }
+Step("the second plan is the program area's plan for the year", async () => {
+  expect(await areaActivation()).toEqual({ plan_id: rivals.plans[1], version_id: rivals.versions[1] });
+});
+Step("the first plan has no active version", async () => {
+  expect((await areaActivation())?.["plan_id"]).not.toBe(rivals.plans[0]);
+});
+
+// The P&L examples' plans, made fresh for each one.
+let p = new PnlPlan();
+onEachScenario(() => {
+  p = new PnlPlan();
+});
+const first = () => p.offerings[0]!["key"];
+const second = () => p.offerings[1]!["key"];
+const onOffering = (key: unknown, account: string) => (l: CostLine) =>
+  l.cost_center_type === "offering" && l.cost_center_key === key && l.account_id === account;
+
+Step("a plan for a program area", () => p.area());
+Step("an offering in it of a program from another program area", async () => {
+  const [mine] = p.areas;
+  const other = await p.area();
+  await p.offering(p.areaVersion(mine!), await p.product("program", other), 10_000, 1);
+});
+Step("a planner calculates the P&L", () => p.calculate());
+Step("the planner is warned that the offering is in the wrong plan", () => {
+  expect(p.warned("offering_in_wrong_plan")).toBe(true);
+});
+
+Step("the Operations Plan sells {money} of merchandise", async (_, money: string) => {
+  await p.offering(await p.operationsVersion(), await p.product("merchandise", null), cents(money), 1);
+});
+Step("the club-wide totals include {money} of merchandise sales", async (_, money: string) => {
+  const merchandise = await p.account("merchandise");
+  expect(p.total((l) => l.account_id === merchandise)).toBe(cents(money));
+  expect(p.out.organization.operating.revenue_cents).toBeGreaterThanOrEqual(cents(money));
+});
+
+Step("a program with no program area", () => p.product("program", null));
+Step("a plan with an offering of that program", async () => {
+  const area = await p.area();
+  await p.offering(p.areaVersion(area), p.products.at(-1)!, 10_000, 1);
+});
+Step("the planner is warned that the program has no program area", () => {
+  expect(p.warned("program_without_area")).toBe(true);
+});
+
+/** A program area with two programs, each with one offering. */
+async function twoOfferings(price: number, costs: [number, number]): Promise<string> {
+  const area = await p.area();
+  for (const cost of costs) {
+    await p.offering(p.areaVersion(area), await p.product("program", area), price, 1, cost);
+  }
+  return area;
+}
+
+Step("a program area with two offerings that each take in {money}", (_, money: string) =>
+  twoOfferings(cents(money), [0, 0]),
+);
+Step("{money} of storage charged to the program area", async (_, money: string) => {
+  const area = p.areas[0]!;
+  await p.line(
+    p.areaVersion(area),
+    "storage",
+    { cost_center_type: "program_area", cost_center_key: area },
+    cents(money),
+    {
+      excluded_from_mtdc: true,
+    },
+  );
+});
+Step("the program area takes in {money}", (_, money: string) => {
+  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
+  expect(pnl?.revenue_cents).toBe(cents(money));
+});
+Step("its costs include the {money} of storage", async (_, money: string) => {
+  const storage = await p.account("storage");
+  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
+  expect(pnl?.by_account.find((a) => a.account_id === storage)?.amount_cents).toBe(cents(money));
+});
+Step("a program area with two offerings, the first with twice the direct costs of the second", () =>
+  twoOfferings(10_000, [200_000, 100_000]),
+);
+Step("the first offering pays {money} of the storage", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("storage")))).toBe(cents(money));
+});
+Step("the second offering pays {money} of the storage", async (_, money: string) => {
+  expect(p.total(onOffering(second(), await p.account("storage")))).toBe(cents(money));
+});
+Step("a program area with two offerings with the same direct costs", () => twoOfferings(10_000, [100_000, 100_000]));
+Step(
+  "a salaried director paid {money} an hour, with {count} hours charged to the program area",
+  async (_, money: string, hours: string) => {
+    const version = await p.operationsVersion();
+    const position = await adminCreate("plan_salaried_positions", {
+      id: randomUUID(),
+      version_id: version,
+      key: randomUUID(),
+      name: "Director",
+      annual_salary_cents: cents(money) * 2080,
+      paid_hours_per_year: 2080,
+    });
+    await adminCreate("plan_salaried_bookings", {
+      id: randomUUID(),
+      version_id: version,
+      key: randomUUID(),
+      position_id: position.id,
+      program_area_id: p.areas[0],
+      kind: "management",
+      hours: Number(hours),
+    });
+  },
+);
+Step("each offering pays {money} of the director's salary", async (_, money: string) => {
+  const salaries = await p.account("salaries");
+  for (const key of [first(), second()]) {
+    expect(p.total((l) => onOffering(key, salaries)(l) && l.line_key.endsWith(":management"))).toBe(cents(money));
+  }
+});
+
+Step("the Operations Plan sets scholarships at {percent} of programs' revenue", (_, percent: string) =>
+  p.charge("Scholarships", share(percent), "scholarships", ["program"], true),
+);
+Step(
+  "an offering of a program at {money} a sailor, with {count} sailors",
+  async (_, money: string, sailors: string) => {
+    const area = await p.area();
+    await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), Number(sailors));
+  },
+);
+Step("the offering's scholarships are {money}", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("scholarships")))).toBe(cents(money));
+});
+Step("the merchandise has no scholarships", async () => {
+  expect(p.total(onOffering(first(), await p.account("scholarships")))).toBe(0);
+});
+
+const EVERY_KIND = ["program", "charter", "storage_lease", "merchandise", "event_hosting", "other"];
+Step("the Operations Plan collects card fees from families at {percent} of revenue", (_, percent: string) =>
+  p.charge("Card fees collected", share(percent), "cardFeesCollected", EVERY_KIND, false),
+);
+Step("the Operations Plan pays card fees at {percent} of revenue", (_, percent: string) =>
+  p.charge("Card fees", share(percent), "cardFees", EVERY_KIND, false),
+);
+Step("an offering of a program that takes in {money}", async (_, money: string) => {
+  const area = await p.area();
+  await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1);
+});
+Step("the offering takes in {money} of card fees from families", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("cardFeesCollected")))).toBe(cents(money));
+});
+Step("the offering pays {money} of card fees", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("cardFees")))).toBe(cents(money));
+});
+
+// The second offering is free, so only the first has scholarships.
+Step("two offerings with the same direct costs", async () => {
+  const area = await p.area();
+  await p.offering(p.areaVersion(area), await p.product("program", area), 1_000_000, 1, 100_000);
+  await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 100_000);
+});
+Step("scholarships on the first offering only, which don't count toward the split", () =>
+  p.charge("Scholarships", 0.02, "scholarships", ["program"], true),
+);
+Step("{money} of office costs shared by every offering", async (_, money: string) => {
+  await p.line(
+    await p.operationsVersion(),
+    "office",
+    { cost_center_type: "pool", cost_center_key: await p.pool() },
+    cents(money),
+  );
+});
+Step("each offering pays {money} of the office costs", async (_, money: string) => {
+  const office = await p.account("office");
+  for (const key of [first(), second()]) expect(p.total(onOffering(key, office))).toBe(cents(money));
+});
+
+Step("the Operations Plan buys a {money} coach boat", async (_, money: string) => {
+  await p.line(await p.operationsVersion(), "coachBoats", { cost_center_type: "org" }, cents(money));
+});
+Step("no offering or program area pays for the coach boat", async () => {
+  const boats = await p.account("coachBoats");
+  expect(p.total((l) => l.account_id === boats && l.cost_center_type !== "org")).toBe(0);
+});
+Step("the club-wide totals show {money} of capital", (_, money: string) => {
+  expect(p.out.organization.capital_cents).toBe(cents(money));
+});
+Step("a {money} coach boat charged to a program area", async (_, money: string) => {
+  const area = await twoOfferings(10_000, [100_000, 100_000]);
+  await p.line(
+    p.areaVersion(area),
+    "coachBoats",
+    { cost_center_type: "program_area", cost_center_key: area },
+    cents(money),
+  );
+});
+Step("the program area doesn't pay for the coach boat", async () => {
+  const boats = await p.account("coachBoats");
+  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
+  expect(pnl?.by_account.some((a) => a.account_id === boats)).toBe(false);
+  expect(p.total((l) => l.account_id === boats && l.cost_center_type !== "org")).toBe(0);
+});
+Step("the planner is warned that capital can't be charged to a program area", () => {
+  expect(p.warned("capital_off_org")).toBe(true);
+});
+
+Step("programs that take in {money} and cost {money}", async (_, revenue: string, costs: string) => {
+  const area = await p.area();
+  await p.offering(p.areaVersion(area), await p.product("program", area), cents(revenue), 1, cents(costs));
+});
+Step("donations of {money}, which cost {money} to raise", async (_, raised: string, cost: string) => {
+  const version = await p.operationsVersion();
+  await p.line(version, "donations", { cost_center_type: "org" }, cents(raised));
+  await p.line(version, "costs", { cost_center_type: "org" }, cents(cost), { function: "fundraising" });
+});
+Step("the club-wide totals are:", (_, table: { line: string; amount: string }[]) => {
+  const { operating, fundraising, capital_cents, total_cents } = p.out.organization;
+  const shown: Record<string, number> = {
+    "operating net": operating.net_cents,
+    "fundraising net": fundraising.net_cents,
+    capital: -capital_cents,
+    total: total_cents,
+  };
+  for (const { line, amount } of table) expect(shown[line], line).toBe(cents(amount));
+});
 
 describeAccessFeature("planning.feature");

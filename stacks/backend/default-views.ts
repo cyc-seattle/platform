@@ -64,7 +64,8 @@ export const defaultViews: DefaultView[] = [
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
   { collection: "boat_classes", sort: ["name"], fields: ["name", "sailors_per_boat", "footprint_sq_ft"] },
-  { collection: "products", sort: ["name"], fields: ["name", "kind", "revenue_account_id"] },
+  { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
+  { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },
   { collection: "programs", sort: ["name"], fields: ["name", "product_id"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
   { collection: "resource_kinds", sort: ["name"], fields: ["name"] },
@@ -95,6 +96,11 @@ export const defaultViews: DefaultView[] = [
     sort: ["-starts_on", "person_id.last_name"],
     fields: ["person_id", "program_id", "program_role_id", "starts_on", "ends_on"],
   },
+  {
+    collection: "program_area_role_assignments",
+    sort: ["program_area_id.name", "person_id.last_name"],
+    fields: ["person_id", "program_area_id", "program_role_id", "starts_on", "ends_on"],
+  },
 
   // Google Workspace
   { collection: "google_groups", sort: ["name"], fields: ["name", "email", "parent_id", "settings_template"] },
@@ -106,7 +112,7 @@ export const defaultViews: DefaultView[] = [
   },
 
   // Planning
-  { collection: "plans", sort: ["-fiscal_year", "name"], fields: ["name", "fiscal_year", "kind", "product_id"] },
+  { collection: "plans", sort: ["-fiscal_year", "name"], fields: ["name", "fiscal_year", "kind", "program_area_id"] },
   {
     collection: "plan_versions",
     sort: ["plan_id.name", "-saved_at"],
@@ -151,7 +157,12 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_rates",
     sort: ["version_id.plan_id.name"],
-    fields: ["version_id", "payroll_tax_rate", "card_fee_rate", "lodging_per_night_cents", "mileage_rate_cents"],
+    fields: ["version_id", "payroll_tax_rate", "lodging_per_night_cents", "mileage_rate_cents"],
+  },
+  {
+    collection: "plan_revenue_charges",
+    sort: ["version_id.plan_id.name", "name"],
+    fields: ["name", "rate", "product_kinds", "account_id", "excluded_from_mtdc", "version_id"],
   },
   {
     collection: "plan_staff_levels",
@@ -165,8 +176,8 @@ export const defaultViews: DefaultView[] = [
   },
   {
     collection: "plan_salaried_bookings",
-    sort: ["position_id.name", "product_id.name"],
-    fields: ["position_id", "product_id", "kind", "hours", "version_id"],
+    sort: ["position_id.name", "program_area_id.name", "product_id.name"],
+    fields: ["position_id", "program_area_id", "product_id", "kind", "hours", "version_id"],
   },
   {
     collection: "plan_resources",

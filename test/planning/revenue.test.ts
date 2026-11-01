@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computePlan } from "../../src/planning/index.ts";
-import { A, emptyPlan, offering, pnlOf, product, rates, total } from "./fixtures.ts";
+import { A, area, charge, emptyPlan, offering, pnlOf, product, total } from "./fixtures.ts";
 
 function setup(o: Partial<Parameters<typeof offering>[1]> = {}) {
   const p = product();
@@ -35,10 +35,40 @@ describe("revenue", () => {
     expect(total(computePlan(data), { line: "cogs", account_id: A.cogs })).toBe(200_000);
   });
 
-  it("books card fees at the year's rate", () => {
+  it("books a charge set as a share of revenue on each offering of the kinds it names", () => {
     const { data } = setup();
-    data.plan_rates = [rates({ card_fee_rate: 0.03 })];
-    expect(total(computePlan(data), { line: "card_fees", account_id: A.cardFees })).toBe(15_000);
+    const fees = charge({ rate: 0.03 });
+    data.plan_revenue_charges = [fees, charge({ rate: 0.5, product_kinds: ["merchandise"] })];
+    const out = computePlan(data);
+    expect(total(out, { line: `charge:${fees.key}`, account_id: A.cardFees })).toBe(15_000);
+    expect(total(out, { line: "charge:" })).toBe(15_000);
+  });
+
+  it("books a charge on a revenue account as revenue", () => {
+    const { off: o, data } = setup();
+    data.plan_revenue_charges = [charge({ rate: 0.03, account_id: A.charterRevenue })];
+    const out = computePlan(data);
+    expect(pnlOf(out, o.key).revenue_cents).toBe(515_000);
+    expect(pnlOf(out, o.key).mtdc_cents).toBe(0);
+  });
+
+  it("leaves a charge out of MTDC when it says so", () => {
+    const { off: o, data } = setup();
+    data.plan_revenue_charges = [charge({ rate: 0.02, excluded_from_mtdc: true }), charge({ rate: 0.03 })];
+    expect(pnlOf(computePlan(data), o.key).mtdc_cents).toBe(15_000);
+  });
+
+  it("books revenue to the program area's account", () => {
+    const { p, data } = setup();
+    const summer = area({ revenue_account_id: A.charterRevenue });
+    data.program_areas = [summer];
+    p.program_area_id = summer.id;
+    p.revenue_account_id = null;
+    expect(total(computePlan(data), { line: "revenue", account_id: A.charterRevenue })).toBe(500_000);
+    p.revenue_account_id = A.programRevenue;
+    const out = computePlan(data);
+    expect(total(out, { line: "revenue", account_id: A.charterRevenue })).toBe(500_000);
+    expect(out.warnings.map((w) => w.code)).toContain("revenue_account_differs");
   });
 
   it("warns when the product has no revenue account", () => {

@@ -20,8 +20,8 @@ const config = { versioned: ["plan_offerings"], links: {}, deletable: false };
 
 // Each plan is named for its kind.
 const plans: Record<string, Plan> = {
-  product: { id: "product", kind: "product", product_id: "boats" },
-  operations: { id: "operations", kind: "operations", product_id: null },
+  area: { id: "area", kind: "program_area", program_area_id: "summer" },
+  operations: { id: "operations", kind: "operations", program_area_id: null },
 };
 
 function lookup(deletesSaved = false): Lookup {
@@ -190,16 +190,16 @@ describe("the saved-versions hook", () => {
   });
 
   describe("a plan", () => {
-    const message = "A product's plan names its product, and an Operations Plan names none.";
+    const message = "A program area's plan names its program area, and an Operations Plan names none.";
 
-    it("for a product names it, and an Operations Plan names none", async () => {
-      for (const payload of [{ kind: "product" }, { kind: "product", product_id: null }]) {
+    it("for a program area names it, and an Operations Plan names none", async () => {
+      for (const payload of [{ kind: "program_area" }, { kind: "program_area", program_area_id: null }]) {
         await expect(check({ collection: "plans", event: "create", payload })).rejects.toThrow(message);
       }
       await expect(
-        check({ collection: "plans", event: "create", payload: { kind: "operations", product_id: "boats" } }),
+        check({ collection: "plans", event: "create", payload: { kind: "operations", program_area_id: "summer" } }),
       ).rejects.toThrow(message);
-      for (const payload of [{ kind: "product", product_id: "boats" }, { kind: "operations" }]) {
+      for (const payload of [{ kind: "program_area", program_area_id: "summer" }, { kind: "operations" }]) {
         await expect(check({ collection: "plans", event: "create", payload })).resolves.toEqual(payload);
       }
     });
@@ -207,11 +207,11 @@ describe("the saved-versions hook", () => {
     it("keeps that rule when it changes", async () => {
       const update = (payload: Record<string, unknown>, keys: string[]) =>
         check({ collection: "plans", event: "update", payload, keys });
-      await expect(update({ product_id: null }, ["product"])).rejects.toThrow(message);
-      await expect(update({ kind: "operations" }, ["product"])).rejects.toThrow(message);
-      await expect(update({ product_id: "boats" }, ["operations"])).rejects.toThrow(message);
-      await expect(update({ kind: "operations", product_id: null }, ["product"])).resolves.toBeDefined();
-      await expect(update({ name: "Renamed" }, ["product", "operations"])).resolves.toEqual({ name: "Renamed" });
+      await expect(update({ program_area_id: null }, ["area"])).rejects.toThrow(message);
+      await expect(update({ kind: "operations" }, ["area"])).rejects.toThrow(message);
+      await expect(update({ program_area_id: "summer" }, ["operations"])).rejects.toThrow(message);
+      await expect(update({ kind: "operations", program_area_id: null }, ["area"])).resolves.toBeDefined();
+      await expect(update({ name: "Renamed" }, ["area", "operations"])).resolves.toEqual({ name: "Renamed" });
     });
   });
 
@@ -235,18 +235,7 @@ describe("a database error", () => {
     });
   });
 
-  // Directus names a unique index's columns as one field, from Postgres's detail.
-  it("from a second plan for the same product and year, says so", () => {
-    for (const field of ["organization_id, fiscal_year, product_id", "organization_id, fiscal_year"]) {
-      const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field } };
-      expect(databaseError(duplicate), field).toMatchObject({
-        status: 400,
-        message: expect.stringMatching(/one plan for each/),
-      });
-    }
-  });
-
-  it("from another unique column of plans, stays as it is", () => {
+  it("from a unique column of plans, stays as it is", () => {
     const duplicate = { code: "RECORD_NOT_UNIQUE", extensions: { collection: "plans", field: "id" } };
     expect(databaseError(duplicate)).toBe(duplicate);
   });

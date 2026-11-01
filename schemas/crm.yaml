@@ -136,6 +136,32 @@ collections:
       versioning: false
     schema:
       name: program_role_assignments
+  - collection: program_area_role_assignments
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: program_area_role_assignments
+      color: null
+      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{program_area_id.name}} ({{program_role_id.name}})"
+      group: CRM
+      hidden: false
+      icon: assignment_ind
+      item_duplication_fields: null
+      note: "Who holds a role, such as Director, in a program area, and when."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: program_area_role_assignments
   - collection: program_roles
     meta:
       accountability: all
@@ -2021,6 +2047,259 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: program_area_role_assignments
+    field: id
+    type: uuid
+    meta:
+      collection: program_area_role_assignments
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: program_area_role_assignments
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: program_area_role_assignments
+    field: person_id
+    type: uuid
+    meta:
+      collection: program_area_role_assignments
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
+      field: person_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: person_id
+      table: program_area_role_assignments
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: people
+      foreign_key_column: id
+  - collection: program_area_role_assignments
+    field: program_area_id
+    type: uuid
+    meta:
+      collection: program_area_role_assignments
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_area_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "The program area the role is in."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program area
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_area_id
+      table: program_area_role_assignments
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: program_areas
+      foreign_key_column: id
+  - collection: program_area_role_assignments
+    field: program_role_id
+    type: uuid
+    meta:
+      collection: program_area_role_assignments
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_role_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Role
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_role_id
+      table: program_area_role_assignments
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: program_roles
+      foreign_key_column: id
+  - collection: program_area_role_assignments
+    field: starts_on
+    type: date
+    meta:
+      collection: program_area_role_assignments
+      conditions: null
+      display: null
+      display_options: null
+      field: starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: starts_on
+      table: program_area_role_assignments
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: program_area_role_assignments
+    field: ends_on
+    type: date
+    meta:
+      collection: program_area_role_assignments
+      conditions: null
+      display: null
+      display_options: null
+      field: ends_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ends_on
+      table: program_area_role_assignments
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: program_roles
     field: id
     type: uuid
@@ -2156,6 +2435,31 @@ fields:
       hidden: false
       interface: list-o2m
       note: Who has a role in this program.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: program_areas
+    field: role_assignments
+    type: alias
+    meta:
+      collection: program_areas
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{person_id.first_name}} {{person_id.last_name}} ({{program_role_id.name}})"
+      field: role_assignments
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: "Who holds a role in the area, such as Director."
       options: null
       readonly: false
       required: false
@@ -2315,3 +2619,66 @@ relations:
       constraint_name: contact_points_person_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: program_area_role_assignments
+    field: person_id
+    related_collection: people
+    meta:
+      junction_field: null
+      many_collection: program_area_role_assignments
+      many_field: person_id
+      one_allowed_collections: null
+      one_collection: people
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: program_area_role_assignments
+      column: person_id
+      foreign_key_table: people
+      foreign_key_column: id
+      constraint_name: program_area_role_assignments_person_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: program_area_role_assignments
+    field: program_area_id
+    related_collection: program_areas
+    meta:
+      junction_field: null
+      many_collection: program_area_role_assignments
+      many_field: program_area_id
+      one_allowed_collections: null
+      one_collection: program_areas
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: role_assignments
+      sort_field: null
+    schema:
+      table: program_area_role_assignments
+      column: program_area_id
+      foreign_key_table: program_areas
+      foreign_key_column: id
+      constraint_name: program_area_role_assignments_program_area_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: program_area_role_assignments
+    field: program_role_id
+    related_collection: program_roles
+    meta:
+      junction_field: null
+      many_collection: program_area_role_assignments
+      many_field: program_role_id
+      one_allowed_collections: null
+      one_collection: program_roles
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: program_area_role_assignments
+      column: program_role_id
+      foreign_key_table: program_roles
+      foreign_key_column: id
+      constraint_name: program_area_role_assignments_program_role_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE

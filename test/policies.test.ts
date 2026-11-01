@@ -103,6 +103,7 @@ describe("the policies a group can give", () => {
 describe("the Catalog policies", () => {
   const catalog = [
     "products",
+    "program_areas",
     "accounts",
     "qualifications",
     "qualification_covers",
@@ -144,6 +145,7 @@ const plans = [
   "plan_activity_resources",
   "plan_labor_lines",
   "plan_budget_lines",
+  "plan_revenue_charges",
   "plan_rates",
   "plan_staff_levels",
   "plan_salaried_positions",
@@ -239,7 +241,7 @@ describe("Crew", () => {
   it("reads every roster and the catalog's money, and changes nothing", () => {
     expect(crewRules.every((rule) => rule.action === "read" && rule.permissions === undefined)).toBe(true);
     expect(crewRules.map((rule) => rule.collection)).toEqual(
-      expect.arrayContaining(["registration_entries", "people", "products", "accounts"]),
+      expect.arrayContaining(["registration_entries", "people", "products", "program_areas", "accounts"]),
     );
     expect(crewRules.map((rule) => rule.collection)).not.toContain("medical_profiles");
   });

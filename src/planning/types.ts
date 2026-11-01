@@ -16,16 +16,28 @@ export interface Versioned {
   key: Id;
 }
 
-export type CostCenterType = "offering" | "product" | "pool" | "org";
+export type CostCenterType = "offering" | "product" | "program_area" | "pool" | "org";
 export type AccountFunction = "program" | "management" | "fundraising";
 
 // `core` catalog
 
+export type ProductKind = "program" | "charter" | "storage_lease" | "merchandise" | "event_hosting" | "other";
+
 export interface Product {
   id: Id;
   name: string;
-  kind: "program" | "charter" | "storage_lease" | "merchandise" | "event_hosting" | "other";
+  kind: ProductKind;
+  /** For a product in no program area. A product in one uses the area's. */
   revenue_account_id: Id | null;
+  /** Every program has one; merchandise, storage and charters have none. */
+  program_area_id: Id | null;
+}
+
+/** A part of the club's programs, such as Summer, with its revenue account. */
+export interface ProgramArea {
+  id: Id;
+  name: string;
+  revenue_account_id: Id;
 }
 
 export interface Account {
@@ -72,15 +84,7 @@ export interface Organization {
 
 /** A cost the engine calculates. The organization sets which account each is recorded in. */
 export type CostType =
-  | "coach_wages"
-  | "salaries"
-  | "payroll_tax"
-  | "ribs"
-  | "boat_maintenance"
-  | "resources"
-  | "travel"
-  | "cogs"
-  | "card_fees";
+  "coach_wages" | "salaries" | "payroll_tax" | "ribs" | "boat_maintenance" | "resources" | "travel" | "cogs";
 
 export interface OrganizationCostAccount {
   id: Id;
@@ -89,7 +93,22 @@ export interface OrganizationCostAccount {
   account_id: Id;
 }
 
-// Program plan
+// Plans
+
+/** A plan: a program area's for one year, or the organization's Operations Plan. */
+export interface Plan {
+  id: Id;
+  kind: "program_area" | "operations";
+  program_area_id: Id | null;
+}
+
+/** A plan version. The engine reads only which plan it belongs to. */
+export interface PlanVersion {
+  id: Id;
+  plan_id: Id;
+}
+
+// Program area plan
 
 export type ActivityKind = "practice" | "regatta" | "clinic" | "travel";
 
@@ -190,8 +209,6 @@ export interface PlanBudgetLine extends Versioned {
 export interface PlanRates extends Versioned {
   /** Employer payroll costs, as a share of wages. */
   payroll_tax_rate: number | null;
-  /** Card processing fees, as a share of revenue. */
-  card_fee_rate: number | null;
   lodging_per_night_cents: number | null;
   mileage_rate_cents: number | null;
 }
@@ -215,9 +232,11 @@ export interface PlanSalariedPosition extends Versioned {
   form_990_line: string | null;
 }
 
+/** Hours charged to a product, or to a program area and shared among its offerings: one of the two. */
 export interface PlanSalariedBooking extends Versioned {
   position_id: Id;
-  product_id: Id;
+  product_id: Id | null;
+  program_area_id: Id | null;
   kind: "management";
   hours: number;
 }
@@ -268,6 +287,19 @@ export interface PlanBonusOwnerProduct extends Versioned {
   product_id: Id;
 }
 
+/** A charge set as a share of each offering's revenue, such as scholarships or card fees. */
+export interface PlanRevenueCharge extends Versioned {
+  name: string;
+  /** A share, such as 0.02 for 2%. */
+  rate: number;
+  /** The kinds of product it applies to. */
+  product_kinds: ProductKind[] | null;
+  /** A revenue account adds revenue; an expense account adds a cost. */
+  account_id: Id;
+  excluded_from_mtdc: boolean;
+  note: string | null;
+}
+
 /** The catalog plus every row of the plan versions being calculated. */
 export interface PlanData {
   /** The plan year. Fiscal year N ends in calendar year N. */
@@ -278,11 +310,16 @@ export interface PlanData {
   rib_resource_kind_id: Id | null;
 
   products: Product[];
+  program_areas: ProgramArea[];
   accounts: Account[];
   qualifications: Qualification[];
   qualification_covers: QualificationCover[];
   boat_classes: BoatClass[];
   resource_kinds: ResourceKind[];
+
+  /** The plans and versions being calculated, so the engine can tell which plan each offering is in. */
+  plans: Plan[];
+  plan_versions: PlanVersion[];
 
   plan_offerings: PlanOffering[];
   plan_offering_boat_classes: PlanOfferingBoatClass[];
@@ -293,6 +330,7 @@ export interface PlanData {
   plan_budget_lines: PlanBudgetLine[];
 
   plan_rates: PlanRates[];
+  plan_revenue_charges: PlanRevenueCharge[];
   plan_staff_levels: PlanStaffLevel[];
   plan_salaried_positions: PlanSalariedPosition[];
   plan_salaried_bookings: PlanSalariedBooking[];
@@ -325,10 +363,10 @@ export interface Totals {
   net_cents: number;
 }
 
-/** One offering's P&L for the plan year, or a product's, which adds up its offerings. */
+/** One offering's P&L for the plan year, or a product's or program area's, which adds up its offerings. */
 export interface Pnl extends Totals {
-  level: "offering" | "product";
-  /** An offering key, or a product id. */
+  level: "offering" | "product" | "program_area";
+  /** An offering key, a product id, or a program area id. */
   key: Id;
   /** Each account's total, revenue and expense alike. */
   by_account: { account_id: Id; amount_cents: number }[];
@@ -365,10 +403,24 @@ export interface EngineWarning {
   key?: string;
 }
 
+/**
+ * The organization's year: operating revenue pays for operating costs, and fundraising for capital.
+ * Capital is buying something lasting, on an asset account, and never reaches a program area.
+ */
+export interface OrganizationTotals {
+  operating: Totals;
+  fundraising: Totals;
+  /** Spent on capital, positive. */
+  capital_cents: number;
+  /** Operating net, plus fundraising net, less capital. */
+  total_cents: number;
+}
+
 export interface EngineOutput {
   lines: CostLine[];
-  /** Each offering's P&L, then each product's. */
+  /** Each offering's P&L, then each product's, then each program area's. */
   pnl: Pnl[];
+  organization: OrganizationTotals;
   activities: ComputedActivity[];
   warnings: EngineWarning[];
 }

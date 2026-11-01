@@ -104,6 +104,32 @@ collections:
       versioning: false
     schema:
       name: products
+  - collection: program_areas
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: program_areas
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: map
+      item_duplication_fields: null
+      note: "A part of the club's programs, such as Summer or Singlehanded, with its revenue account. People hold roles in it, such as Director. Each is one of the club's program services on Form 990 Part III."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: program_areas
   - collection: qualifications
     meta:
       accountability: all
@@ -1048,7 +1074,16 @@ fields:
     type: uuid
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - name: "A product in a program area uses the area's revenue account"
+          rule:
+            _and:
+              - program_area_id:
+                  _nnull: true
+          hidden: true
+          readonly: false
+          required: false
+          options: null
       display: related-values
       display_options:
         template: "{{number}} {{name}}"
@@ -1056,7 +1091,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: "Where the product's sales are booked, for a product in no program area. A product in a program area uses the area's revenue account."
       options: null
       readonly: false
       required: false
@@ -1556,6 +1591,218 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: products
+    field: program_area_id
+    type: uuid
+    meta:
+      collection: products
+      conditions:
+        - name: Only a program has a program area
+          rule:
+            _and:
+              - kind:
+                  _neq: program
+          hidden: true
+          readonly: false
+          required: false
+          options: null
+        - name: A program needs a program area
+          rule:
+            _and:
+              - kind:
+                  _eq: program
+          hidden: false
+          readonly: false
+          required: true
+          options: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_area_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "The program area a program belongs to. Merchandise, storage, and charters belong to none."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program area
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_area_id
+      table: products
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: program_areas
+      foreign_key_column: id
+  - collection: program_areas
+    field: id
+    type: uuid
+    meta:
+      collection: program_areas
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: program_areas
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: program_areas
+    field: name
+    type: string
+    meta:
+      collection: program_areas
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: program_areas
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: program_areas
+    field: revenue_account_id
+    type: uuid
+    meta:
+      collection: program_areas
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
+      field: revenue_account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "Where the area's programs' fees are booked."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Revenue account
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: revenue_account_id
+      table: program_areas
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
+  - collection: program_areas
+    field: products
+    type: alias
+    meta:
+      collection: program_areas
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: products
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: "The products in the area: its programs."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
   - collection: organizations
     field: id
     type: uuid
@@ -1886,8 +2133,7 @@ fields:
             - resources
             - travel
             - cogs
-            - card_fees
-      validation_message: "Must be one of: coach_wages, salaries, payroll_tax, ribs, boat_maintenance, resources, travel, cogs, card_fees."
+      validation_message: "Must be one of: coach_wages, salaries, payroll_tax, ribs, boat_maintenance, resources, travel, cogs."
       width: full
     schema:
       name: cost_type
@@ -2117,5 +2363,47 @@ relations:
       foreign_key_table: accounts
       foreign_key_column: id
       constraint_name: organization_cost_accounts_account_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: products
+    field: program_area_id
+    related_collection: program_areas
+    meta:
+      junction_field: null
+      many_collection: products
+      many_field: program_area_id
+      one_allowed_collections: null
+      one_collection: program_areas
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: products
+      sort_field: null
+    schema:
+      table: products
+      column: program_area_id
+      foreign_key_table: program_areas
+      foreign_key_column: id
+      constraint_name: products_program_area_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: program_areas
+    field: revenue_account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: program_areas
+      many_field: revenue_account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: program_areas
+      column: revenue_account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: program_areas_revenue_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT

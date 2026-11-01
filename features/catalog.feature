@@ -30,7 +30,6 @@ Feature: The catalog
       Then the catalog doesn't allow it
       And the product is still in the catalog
 
-  @pending
   Rule: A program area can't be deleted while it has programs
 
     Example: Deleting a program area with programs isn't allowed
@@ -39,7 +38,6 @@ Feature: The catalog
       Then the catalog doesn't allow it
       And the program area is still in the catalog
 
-  @pending
   Rule: Each program area has a revenue account
 
     Example: A program area with no revenue account isn't allowed
@@ -99,7 +97,6 @@ Feature: The catalog
       But they can't change products
       And they can't change revenue accounts
 
-  @pending
   Rule: Crew can see program areas, but can't change them
 
     Example: A Crew member looks up program areas
@@ -120,7 +117,6 @@ Feature: The catalog
       But they can't see products
       And they can't see revenue accounts
 
-  @pending
   Rule: Anyone who signs in can see program areas
 
     Example: A family member can see program areas

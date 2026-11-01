@@ -47,7 +47,12 @@ const SESSIONS_CLASSES_AND_REGISTRATIONS = plain(
   "registration_billing",
 );
 
-const PROGRAM_ROLES_STAFFING_AND_GROUPS = plain("program_role_assignments", "event_staff", "google_group_memberships");
+const PROGRAM_ROLES_STAFFING_AND_GROUPS = plain(
+  "program_role_assignments",
+  "program_area_role_assignments",
+  "event_staff",
+  "google_group_memberships",
+);
 
 const sets: Record<string, Target[]> = {
   // A person's details, as crm.feature defines them. Medical information is granted apart.
@@ -98,6 +103,7 @@ const sets: Record<string, Target[]> = {
   "programs' details": plain("programs"),
   "the catalog": plain(
     "products",
+    "program_areas",
     "accounts",
     "qualifications",
     "qualification_covers",
