@@ -31,15 +31,12 @@ run = ["pnpm install", "lefthook install", "gcloud components install gke-gcloud
 description = "Format and fix all files"
 run = ["pnpm exec prettier --write .", "pnpm exec eslint --fix ."]
 
-# Each package's checks and tests read its workspace dependencies' dist/.
 [tasks.check]
 description = "Typecheck, check formatting, and lint"
-depends = ["build"]
 run = "./scripts/check"
 
 [tasks.test]
 description = "Run unit tests"
-depends = ["build"]
 run = "pnpm exec vitest run"
 
 [tasks.ci]
@@ -65,8 +62,8 @@ description = "Apply $PULUMI_STACK's projects"
 run = "./scripts/each-stack up --yes"
 
 [tasks.build]
-description = "Build the published package and the workspace's packages into their dist/"
-run = "pnpm run -r --include-workspace-root build"
+description = "Build the published package into dist/"
+run = "pnpm run build"
 
 [tasks.reset]
 description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
