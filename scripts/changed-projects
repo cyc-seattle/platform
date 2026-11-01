@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Reads changed paths on stdin, one per line, and prints the dev projects a PR must deploy, in
+# each-stack's order. Prints nothing when only docs or CI changed, so the PR skips the dev deploy and
+# the integration features, which load dev's shared database.
+set -euo pipefail
+
+all=(smoke backend)
+deploy=false
+
+while IFS= read -r path || [[ -n "$path" ]]; do
+  [[ -n "$path" ]] || continue
+  case "$path" in
+    # It sets how the deploy itself runs, such as deploy.yml's version.
+    .github/workflows/pull-request.yml) deploy=true ;;
+    *.md | docs/* | .agents/* | .github/*) ;;
+    *) deploy=true ;;
+  esac
+done
+
+if [[ "$deploy" == true ]]; then
+  echo "${all[*]}"
+fi
