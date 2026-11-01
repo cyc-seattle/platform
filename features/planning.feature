@@ -31,7 +31,7 @@ Feature: Plans
 
   Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
   each salaried position is paid per year. A salaried coach can also be paid by the hour for
-  coaching, on top of their salary. Bonus rates set the bonus a head coach earns on the products
+  coaching, on top of their salary. Bonus rates set the bonus a director earns on the products
   they run: a share of those products' net, the money they make after their costs. A bonus for one
   program area's products is in that area's plan. A bonus on products from more than one area is in
   the Operations Plan. Anyone who can see plans sees all of these. To change something means to
@@ -190,16 +190,16 @@ Feature: Plans
         | total           | $15,000  |
 
   @pending
-  Rule: A program area's plan can pay a head coach a bonus on that area's programs
+  Rule: A program area's plan can pay a director a bonus on that area's programs
 
-    Example: A head coach's bonus in a program area's plan
-      Given a program area's plan that pays its head coach 50% of its programs' net
+    Example: A director's bonus in a program area's plan
+      Given a program area's plan that pays its director 50% of its programs' net
       And its programs make $10,000 after their costs and shared costs
       When a planner calculates the P&L
-      Then the head coach's bonus is $5,000
+      Then the director's bonus is $5,000
 
     Example: A program area's plan can't pay a bonus on another area's program
-      Given a program area's plan that pays its head coach a bonus on a program from another program area
+      Given a program area's plan that pays its director a bonus on a program from another program area
       When a planner calculates the P&L
       Then the planner is warned that the bonus is on another program area's program
       And the other area's program doesn't count toward the bonus
@@ -207,11 +207,11 @@ Feature: Plans
   @pending
   Rule: A bonus is figured on the net after shared costs, or before them, as the plan says
 
-    Scenario Outline: A head coach's bonus before and after shared costs
-      Given a head coach who earns 50% of their programs' net <counted>
+    Scenario Outline: A director's bonus before and after shared costs
+      Given a director who earns 50% of their programs' net <counted>
       And their programs take in $30,000 and cost $20,000, plus $6,000 of shared costs
       When a planner calculates the P&L
-      Then the head coach's bonus is <bonus>
+      Then the director's bonus is <bonus>
 
       Examples:
         | counted             | bonus  |
@@ -219,34 +219,20 @@ Feature: Plans
         | before shared costs | $5,000 |
 
   @pending
-  Rule: A bonus can be figured season by season, so that a season that loses money doesn't cancel one that makes money
-
-    Scenario Outline: A head coach's bonus for the year and for each season
-      Given a head coach who earns 50% of their programs' net <counted>
-      And their programs make $10,000 in the spring and lose $4,000 in the fall
-      When a planner calculates the P&L
-      Then the head coach's bonus is <bonus>
-
-      Examples:
-        | counted                          | bonus  |
-        | for the year                     | $3,000 |
-        | for each season that makes money | $5,000 |
-
-  @pending
   Rule: The club pays payroll tax on a bonus, as on any wage
 
     Example: A bonus costs payroll tax
       Given payroll tax at 10% of wages
-      And a head coach whose bonus is $5,000
+      And a director whose bonus is $5,000
       When a planner calculates the P&L
       Then the club pays $500 of payroll tax on the bonus
 
   @pending
   Rule: A bonus and its payroll tax don't count toward the split of shared costs
 
-    Example: A head coach's bonus doesn't change an offering's share of the office
+    Example: A director's bonus doesn't change an offering's share of the office
       Given two offerings with the same direct costs
-      And a head coach's bonus, with its payroll tax, on the first offering only
+      And a director's bonus, with its payroll tax, on the first offering only
       And $1,000 of office costs shared by every offering
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
@@ -255,30 +241,30 @@ Feature: Plans
   Rule: A salaried coach named on an offering coaches all its practices, paid out of their salary
 
     Example: An offering pays for its salaried coach's hours
-      Given a salaried head coach paid $40 an hour
+      Given a salaried director paid $40 an hour
       And an offering they coach, with 10 practices of 3 hours
       When a planner calculates the P&L
-      Then the offering pays $1,200 of the head coach's salary
+      Then the offering pays $1,200 of the director's salary
 
   @pending
   Rule: A salaried coach can be paid by the hour for coaching, on top of their salary
 
-    Example: A head coach is paid by the hour for an offering they coach
-      Given a head coach on a $20,000 salary
+    Example: A director is paid by the hour for an offering they coach
+      Given a director on a $20,000 salary
       And an offering they coach for $30 an hour, with 10 practices of 3 hours
       When a planner calculates the P&L
       Then the offering pays $900 of coaches' wages
-      And the offering pays none of the head coach's salary
+      And the offering pays none of the director's salary
 
   @pending
   Rule: A salaried person's pay for the year adds up their salary, their hourly coaching, and their bonus
 
-    Example: A head coach's pay for the year
-      Given a head coach on a $20,000 salary
+    Example: A director's pay for the year
+      Given a director on a $20,000 salary
       And an offering they coach for $30 an hour, with 10 practices of 3 hours
-      And a bonus for the head coach that comes to $5,000
+      And a bonus for the director that comes to $5,000
       When a planner calculates the P&L
-      Then the head coach's pay for the year is:
+      Then the director's pay for the year is:
         | pay             | amount  |
         | salary          | $20,000 |
         | hourly coaching | $900    |

@@ -414,32 +414,31 @@ Step("the club-wide totals are:", (_, table: { line: string; amount: string }[])
 });
 
 // Pay, bonuses, closed days, and saved P&Ls, which step 12c builds.
-parameter("counted", ["after shared costs", "before shared costs", "for the year", "for each season that makes money"]);
+parameter("counted", ["after shared costs", "before shared costs"]);
 parameter("coaches", ["half a coach", "a whole coach"]);
 pattern("times", /\d+(?:am|pm) to (?:noon|\d+(?:am|pm))/);
 for (const text of [
-  "a program area's plan that pays its head coach {percent} of its programs' net",
+  "a program area's plan that pays its director {percent} of its programs' net",
   "its programs make {money} after their costs and shared costs",
-  "the head coach's bonus is {money}",
-  "a program area's plan that pays its head coach a bonus on a program from another program area",
+  "the director's bonus is {money}",
+  "a program area's plan that pays its director a bonus on a program from another program area",
   "the planner is warned that the bonus is on another program area's program",
   "the other area's program doesn't count toward the bonus",
-  "a head coach who earns {percent} of their programs' net {counted}",
+  "a director who earns {percent} of their programs' net {counted}",
   "their programs take in {money} and cost {money}, plus {money} of shared costs",
-  "their programs make {money} in the spring and lose {money} in the fall",
   "payroll tax at {percent} of wages",
-  "a head coach whose bonus is {money}",
+  "a director whose bonus is {money}",
   "the club pays {money} of payroll tax on the bonus",
-  "a head coach's bonus, with its payroll tax, on the first offering only",
-  "a salaried head coach paid {money} an hour",
+  "a director's bonus, with its payroll tax, on the first offering only",
+  "a salaried director paid {money} an hour",
   "an offering they coach, with {count} practices of {count} hours",
-  "the offering pays {money} of the head coach's salary",
-  "a head coach on a {money} salary",
+  "the offering pays {money} of the director's salary",
+  "a director on a {money} salary",
   "an offering they coach for {money} an hour, with {count} practices of {count} hours",
   "the offering pays {money} of coaches' wages",
-  "the offering pays none of the head coach's salary",
-  "a bonus for the head coach that comes to {money}",
-  "the head coach's pay for the year is:",
+  "the offering pays none of the director's salary",
+  "a bonus for the director that comes to {money}",
+  "the director's pay for the year is:",
   "a salaried director who coaches two groups that don't share coaches",
   "both groups practice from {times} on the same day",
   "one group practices from {times} and the other from {times} on the same day",
