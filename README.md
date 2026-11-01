@@ -31,7 +31,8 @@ app owns. The apps that run on it live in their own repos, such as
   `podAnnotations` sets annotations such as `cluster-autoscaler.kubernetes.io/safe-to-evict`.
 - `WebService` is a `Workload` behind the environment's Gateway at `hostname`. Its Service exposes
   `port` as port 80, and its readiness probe must be an HTTP GET, which the load balancer's health
-  check reuses.
+  check reuses. With `paths`, it claims only those path prefixes on `hostname`, and another
+  `WebService` can serve the rest of it.
 - `ScheduledJob` runs a CronJob on `schedule`, in `America/Los_Angeles` unless `timeZone` says
   otherwise. A run never overlaps the one before it, gets an hour, and doesn't retry, by default.
 - All three run non-root with a read-only root filesystem, no capabilities, and no service account

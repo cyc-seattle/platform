@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { PlatformOutputs } from "../src/outputs.ts";
-import { checkHostname, WebService, type WebServiceArgs } from "../src/web-service.ts";
+import { checkHostname, checkPaths, WebService, type WebServiceArgs } from "../src/web-service.ts";
 
 interface Created {
   type: string;
@@ -150,6 +150,26 @@ describe("WebService routing", () => {
     });
   });
 
+  it("claims only its paths on the hostname when given", async () => {
+    const web = new WebService("some-paths", {
+      ...args("dev"),
+      hostname: "dev.example.org",
+      paths: ["/plans", "/_app"],
+    });
+    await new Promise((r) => setImmediate(r));
+    expect(find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "some-paths").spec.rules).toEqual([
+      {
+        matches: [{ path: { type: "PathPrefix", value: "/plans" } }, { path: { type: "PathPrefix", value: "/_app" } }],
+        backendRefs: [{ name: "some-paths", port: 80 }],
+      },
+    ]);
+    expect(await valueOf(web.url)).toBe("https://dev.example.org/plans");
+  });
+
+  it("serves its whole hostname at its URL when it claims no paths", async () => {
+    expect(await valueOf(new WebService("whole-host", args("dev")).url)).toBe("https://web.dev.example.org/");
+  });
+
   it("health-checks the readiness probe's path", () => {
     expect(find("kubernetes:networking.gke.io/v1:HealthCheckPolicy", "dev-web").spec).toEqual({
       default: {
@@ -185,6 +205,30 @@ describe("checkHostname", () => {
       );
     },
   );
+});
+
+describe("checkPaths", () => {
+  it("accepts absolute path prefixes", () => {
+    expect(checkPaths("web", ["/", "/plans", "/_app/assets"])).toEqual(["/", "/plans", "/_app/assets"]);
+  });
+
+  it.each(["plans", "", "/plans?x=1", "/plans#top", "/a b"])("rejects %j", (path) => {
+    expect(() => checkPaths("web", [path])).toThrow(
+      `WebService "web" has path "${path}", which isn't an absolute path.`,
+    );
+  });
+
+  it("rejects a repeated path", () => {
+    expect(() => checkPaths("web", ["/plans", "/plans"])).toThrow(`WebService "web" lists path "/plans" twice.`);
+  });
+
+  it("rejects an empty list", () => {
+    expect(() => checkPaths("web", [])).toThrow(/lists no paths/);
+  });
+
+  it("is checked when the WebService is made", () => {
+    expect(() => new WebService("bad-path", { ...args("dev"), paths: ["plans"] })).toThrow(/isn't an absolute path/);
+  });
 });
 
 describe("WebService identity", () => {
