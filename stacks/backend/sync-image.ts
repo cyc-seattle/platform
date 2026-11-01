@@ -8,7 +8,9 @@ export const syncImageInputs = [
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
   "src/model",
-  "src/syncs",
+  "src/syncs/runtime",
+  "src/syncs/clubspot",
+  "src/syncs/gsuite",
 ];
 
 export const syncImageTag = inputsTag(path.join(import.meta.dirname, "../.."), syncImageInputs);
