@@ -10,4 +10,4 @@ permissions:
 
 jobs:
   release:
-    uses: cyc-seattle/.github/.github/workflows/release.yml@v2.4.0
+    uses: cyc-seattle/.github/.github/workflows/release.yml@v2.5.2

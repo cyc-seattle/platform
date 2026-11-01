@@ -10,10 +10,12 @@ permissions:
 
 jobs:
   reset:
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.4.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v2.5.2
+    # Only waits for reset-dev runs on main, not main's deploys, but grants it so the wait job doesn't warn.
     permissions:
       id-token: write
       contents: read
+      actions: read
     with:
       environment: dev
       task: reset
