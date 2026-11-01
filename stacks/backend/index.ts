@@ -17,7 +17,7 @@ import {
 import * as random from "@pulumi/random";
 import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
-import { requireStringList } from "../../src/app/config.ts";
+import { requireStringList } from "../../src/config.ts";
 import { communityPolicies } from "./community-rules.ts";
 import {
   crewRules,

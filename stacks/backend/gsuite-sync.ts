@@ -7,7 +7,7 @@ import { enableService } from "../../src/services.ts";
 // In dev it syncs into the Workspace fake, which keeps its state in memory and ignores auth. In prod
 // it calls the Workspace APIs as gsuite-sync@, through Workload Identity.
 
-// Renovate bumps it with @cyc-seattle/gsuite-sdk, which publishes the fake.
+// Renovate bumps it with @cyc-seattle/gsuite-sdk, which publishes the fake (renovate.json).
 const fakeImage = "ghcr.io/cyc-seattle/workspace-fake:0.3.0";
 
 /** The CronJob, its Secret and image, and in dev, the Workspace fake. */
