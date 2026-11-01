@@ -1,19 +1,9 @@
 # Only what the Dockerfile copies. Anything else in the context changes the images' context hash,
-# so a commit that touches only the stacks, schemas, scripts, or docs would rebuild every image.
+# so a commit that touches only the stacks, schemas, scripts, docs, or the published package would
+# rebuild every image.
 *
 !package.json
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
-!packages/tsconfig.base.json
-!packages/*/package.json
-!packages/clubspot/
-!packages/clubspot-sync/
-!packages/crm/
-!packages/directus/
-!packages/gsuite-sync/
-
-# Recreated inside the image; excluded so an explicit `COPY packages/<name>/` in the Dockerfile
-# doesn't sweep in a local build's artifacts.
-**/node_modules
-**/dist
-**/*.tsbuildinfo
+!src/model/
+!src/syncs/
