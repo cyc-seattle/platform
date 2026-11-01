@@ -643,7 +643,7 @@ const rosterRequests: { collection: string; fields: string[]; filter?: Row }[] =
   { collection: "clubspot_participants", fields: ["id", "person_id"] },
 ];
 
-let rosterPermissions: { registrations?: { read?: { access?: string } } } = {};
+let rosterPermissions: { clubspot_registrations?: { read?: { access?: string } } } = {};
 
 Step("they open the roster page", async () => {
   const session = await theirSession();
@@ -666,7 +666,7 @@ Step("they open the roster page", async () => {
 // The portal shows a family's view when Directus reports its registrations read as partial.
 Step("the page loads without errors and shows their child's roster", () => {
   expect(scene.statuses).toEqual(scene.statuses.map(() => 200));
-  expect(rosterPermissions.registrations?.read?.access).toBe("partial");
+  expect(rosterPermissions.clubspot_registrations?.read?.access).toBe("partial");
   const sailors = scene.rows.map(
     (entry) =>
       (entry["registration_id"] as { participant_id?: { person_id?: string } } | null)?.participant_id?.person_id,
