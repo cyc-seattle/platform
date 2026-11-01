@@ -1,4 +1,4 @@
-/** Row shapes for the `people`, `contacts`, and `medical_profiles` collections. See `schema.yaml`. */
+/** Row shapes for the `people`, `contacts`, and `medical_profiles` collections. See `schemas/crm.yaml`. */
 export interface PersonRow {
   id?: string;
   first_name: string;

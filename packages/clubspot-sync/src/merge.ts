@@ -16,7 +16,7 @@ export interface HandledPeopleForeignKey {
 
 /**
  * Every FK to `people` this merge repoints, folds, or deletes through. The FK-coverage test
- * (`test/merge-fk-coverage.test.ts`) reads every package's `schema.yaml` and fails if a relation
+ * (`test/merge-fk-coverage.test.ts`) reads every `schemas/<domain>.yaml` and fails if a relation
  * to `people` is missing from this list - a merge that misses one would either leave a dangling
  * reference or, once `on_delete: RESTRICT` ships, fail loudly on the final delete instead.
  */
@@ -35,7 +35,7 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   { collection: "group_members", field: "person_id" },
 ];
 
-/** A `people` row as the merge needs it - every scalar column, plus `directus_user_id` (`packages/directus/schema.yaml`'s extension field). */
+/** A `people` row as the merge needs it - every scalar column, plus `directus_user_id` (an extension field in `schemas/sync.yaml`). */
 export interface MergePerson {
   id: string;
   first_name: string;

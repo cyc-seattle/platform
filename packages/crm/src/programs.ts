@@ -1,4 +1,4 @@
-/** Row shape for the `programs` collection. See `schema.yaml`. */
+/** Row shape for the `programs` collection. See `schemas/core.yaml`. */
 export interface ProgramRow {
   id?: string;
   name: string;

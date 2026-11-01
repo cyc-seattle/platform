@@ -1,4 +1,4 @@
-/** Row shape for the `contact_points` collection. See `schema.yaml`. */
+/** Row shape for the `contact_points` collection. See `schemas/crm.yaml`. */
 export type ContactPointKind = "email" | "phone";
 export type ContactPointSource = "form" | "staff";
 

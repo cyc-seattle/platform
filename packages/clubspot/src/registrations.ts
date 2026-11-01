@@ -1,7 +1,7 @@
 /**
  * Row shapes for the `participants`, `registrations`, `registration_entries`,
  * `registration_billing`, `custom_field_definitions`, and `custom_field_responses` collections.
- * See `schema.yaml`.
+ * See `schemas/clubspot.yaml`.
  */
 export interface RegistrationRow {
   /** The Clubspot Registration objectId - assigned by the sync, not generated. */
