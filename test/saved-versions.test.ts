@@ -3,6 +3,7 @@ import {
   databaseError,
   guard,
   REFUSED,
+  RESULTS_BY_SAVE,
   type Lookup,
   type Plan,
   type Version,
@@ -16,7 +17,14 @@ const versions: Record<string, Version> = {
   other: { id: "other", plan_id: "other-plan", status: "saved", platform_version: "1.4.0" },
 };
 // Each offering is named for the version it belongs to.
-const config = { versioned: ["plan_offerings"], links: {}, deletable: false };
+const config = {
+  versioned: ["plan_offerings", "plan_result_lines"],
+  results: ["plan_result_lines"],
+  links: {},
+  deletable: false,
+  platformVersion: "1.5.0+engine.abc",
+  decimals: {},
+};
 
 // Each plan is named for its kind.
 const plans: Record<string, Plan> = {
@@ -38,6 +46,22 @@ const check = (write: Omit<Write, "now">, deletesSaved = false) =>
   guard({ user: "planner", ...write, now }, config, lookup(deletesSaved));
 
 describe("the saved-versions hook", () => {
+  describe("a version's results", () => {
+    it("can't be written through the API, even to a draft", async () => {
+      for (const event of ["create", "update", "delete"] as const) {
+        await expect(
+          check({ collection: "plan_result_lines", event, payload: { version_id: "saved" }, keys: ["saved"] }),
+        ).rejects.toThrow(RESULTS_BY_SAVE);
+      }
+    });
+
+    it("can be deleted only where dev's tests clean up", async () => {
+      await expect(
+        check({ collection: "plan_result_lines", event: "delete", payload: ["saved"], keys: ["saved"] }, true),
+      ).resolves.toEqual(["saved"]);
+    });
+  });
+
   describe("a saved version", () => {
     it("can't be changed, or turned back into a draft", async () => {
       for (const payload of [{ message: "Changed." }, { status: "draft" }]) {
@@ -106,33 +130,14 @@ describe("the saved-versions hook", () => {
       ).resolves.toEqual({ version_id: "draft" });
     });
 
-    it("is saved with the platform version that calculated it, stamped with who saved it and when", async () => {
+    it("is saved with the hook's engine version, stamped with who saved it and when", async () => {
       const payload = { status: "saved", platform_version: "1.4.0", saved_by: "someone-else", saved_at: "1999-01-01" };
       await expect(check({ collection: "plan_versions", event: "update", payload, keys: ["draft"] })).resolves.toEqual({
         status: "saved",
-        platform_version: "1.4.0",
+        platform_version: "1.5.0+engine.abc",
         saved_by: "planner",
         saved_at: now,
       });
-    });
-
-    it("can't be saved without the platform version", async () => {
-      await expect(
-        check({ collection: "plan_versions", event: "update", payload: { status: "saved" }, keys: ["draft"] }),
-      ).rejects.toThrow(/platform version/);
-    });
-
-    it("can't be saved with its platform version cleared", async () => {
-      const payload = { status: "saved", platform_version: null };
-      await expect(
-        check({ collection: "plan_versions", event: "update", payload, keys: ["calculated"] }),
-      ).rejects.toThrow(/platform version/);
-    });
-
-    it("can be saved with the platform version it already has", async () => {
-      await expect(
-        check({ collection: "plan_versions", event: "update", payload: { status: "saved" }, keys: ["calculated"] }),
-      ).resolves.toMatchObject({ status: "saved", saved_by: "planner" });
     });
 
     it("can't have its save stamps set by hand", async () => {

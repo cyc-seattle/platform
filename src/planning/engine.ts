@@ -6,9 +6,18 @@ import { mtdc } from "./measures.ts";
 import { bookPayrollTax } from "./payroll.ts";
 import { allocatePools } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
-import { bookSalaries } from "./salaried.ts";
-import { enrollmentOf, Staffing } from "./staffing.ts";
-import type { CostLine, EngineOutput, Id, OrganizationTotals, Pnl, PlanData, Totals } from "./types.ts";
+import { bookSalaries, type PositionCharges } from "./salaried.ts";
+import { enrollmentOf, Staffing, type SalariedCoaching } from "./staffing.ts";
+import type {
+  CostLine,
+  EngineOutput,
+  Id,
+  OrganizationTotals,
+  Pnl,
+  PlanData,
+  PositionSummary,
+  Totals,
+} from "./types.ts";
 
 /**
  * Calculates the plan year's P&L from a plan's rows. The steps run in the order
@@ -26,13 +35,13 @@ export function computePlan(data: PlanData): EngineOutput {
   const booker = new CostCenterBooker(ctx);
   bookBudgetLines(ctx, booker);
   bookLaborLines(ctx, booker);
-  bookSalaries(ctx, coaching, booker);
+  const charged = bookSalaries(ctx, coaching, booker);
   booker.flush();
   bookPayrollTax(ctx);
 
   const mtdcByOffering = new Map(ctx.fyOfferings().map((o) => [o.key, mtdc(ctx, o.key)]));
   allocatePools(ctx);
-  bookBonuses(ctx);
+  const bonuses = bookBonuses(ctx);
 
   const lines = sumLines(ctx);
   return {
@@ -40,6 +49,7 @@ export function computePlan(data: PlanData): EngineOutput {
     pnl: summarize(ctx, lines, mtdcByOffering),
     organization: organizationTotals(ctx, lines),
     activities,
+    positions: summarizePositions(ctx, coaching, charged, bonuses),
     warnings: ctx.warnings,
   };
 }
@@ -69,6 +79,42 @@ function checkAreas(ctx: Context): void {
       ctx.warn("offering_in_wrong_plan", `Offering ${offering.name} of ${product.name} is in ${where}`, offering.key);
     }
   }
+}
+
+/** Each salaried position's year: its salary, where its hours went, and its hourly wages and bonus. */
+function summarizePositions(
+  ctx: Context,
+  coaching: SalariedCoaching[],
+  charged: Map<Id, PositionCharges>,
+  bonuses: Map<Id, number>,
+): PositionSummary[] {
+  const taxRate = ctx.rates?.payroll_tax_rate ?? 0;
+  const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.key));
+  for (const key of [...bonuses.keys(), ...coaching.filter((c) => c.pay === "hourly").map((c) => c.position_key)]) {
+    if (!known.has(key))
+      ctx.warn("unknown_position", `A bonus or offering names missing salaried position ${key}`, key);
+  }
+  return ctx.data.plan_salaried_positions.map((position) => {
+    const hourly = coaching.filter((c) => c.position_key === position.key && c.pay === "hourly");
+    const charges = charged.get(position.key);
+    const hourlyCents = hourly.reduce((t, c) => t + c.wages, 0);
+    const bonus = bonuses.get(position.key) ?? 0;
+    const total = position.annual_salary_cents + hourlyCents + bonus;
+    return {
+      position_key: position.key,
+      name: position.name,
+      salary_cents: position.annual_salary_cents,
+      salaried_coaching_hours: charges?.coaching_hours ?? 0,
+      salaried_coaching_cents: Math.round(charges?.coaching_cents ?? 0),
+      hourly_coaching_hours: hourly.reduce((t, c) => t + c.hours, 0),
+      hourly_coaching_cents: Math.round(hourlyCents),
+      booking_hours: charges?.booking_hours ?? 0,
+      booking_cents: Math.round(charges?.booking_cents ?? 0),
+      bonus_cents: Math.round(bonus),
+      total_pay_cents: Math.round(total),
+      payroll_tax_cents: Math.round(total * taxRate),
+    };
+  });
 }
 
 /**

@@ -135,6 +135,10 @@ export interface PlanOffering extends Versioned {
   fixed_boats: number | null;
   cogs_rate: number | null;
   note: string | null;
+  /** A `plan_salaried_positions` key: the salaried coach who takes one coach on each activity. */
+  coach_position_key?: Id | null;
+  /** How that coach is paid for it: out of the salary (the default), or by the hour at the offering's level. */
+  coach_position_pay?: "salary" | "hourly" | null;
 }
 
 export interface PlanOfferingBoatClass extends Versioned {
@@ -280,6 +284,10 @@ export interface PlanBonusOwner extends Versioned {
   role_name: string;
   bonus_rate: number;
   account_id: Id;
+  /** Whether the net is counted after the pools are shared out (the default), or before. */
+  basis?: "after_shared_costs" | "before_shared_costs" | null;
+  /** A `plan_salaried_positions` key: the position the bonus pays. */
+  position_key?: Id | null;
 }
 
 export interface PlanBonusOwnerProduct extends Versioned {
@@ -298,6 +306,12 @@ export interface PlanRevenueCharge extends Versioned {
   account_id: Id;
   excluded_from_mtdc: boolean;
   note: string | null;
+}
+
+/** A day the club is closed, such as Labor Day. */
+export interface PlanClosedDate extends Versioned {
+  date: DateString;
+  name: string;
 }
 
 /** The catalog plus every row of the plan versions being calculated. */
@@ -340,6 +354,7 @@ export interface PlanData {
   plan_pools: PlanPool[];
   plan_bonus_owners: PlanBonusOwner[];
   plan_bonus_owner_products: PlanBonusOwnerProduct[];
+  plan_closed_dates?: PlanClosedDate[];
 }
 
 // Output
@@ -416,11 +431,35 @@ export interface OrganizationTotals {
   total_cents: number;
 }
 
+/** One salaried position's year: what it's paid, and where its hours went. */
+export interface PositionSummary {
+  position_key: Id;
+  name: string;
+  salary_cents: number;
+  /** Hours it coached out of its salary, and what they charged to the offerings. */
+  salaried_coaching_hours: number;
+  salaried_coaching_cents: number;
+  /** Hours it coached for an hourly wage, on top of its salary, and the wages. */
+  hourly_coaching_hours: number;
+  hourly_coaching_cents: number;
+  /** Its `plan_salaried_bookings` hours, and what they charged. */
+  booking_hours: number;
+  booking_cents: number;
+  /** Every bonus that names it. */
+  bonus_cents: number;
+  /** Salary, hourly wages and bonus. */
+  total_pay_cents: number;
+  /** The year's payroll tax on its total pay. */
+  payroll_tax_cents: number;
+}
+
 export interface EngineOutput {
   lines: CostLine[];
   /** Each offering's P&L, then each product's, then each program area's. */
   pnl: Pnl[];
   organization: OrganizationTotals;
   activities: ComputedActivity[];
+  /** Each salaried position's pay for the year. */
+  positions: PositionSummary[];
   warnings: EngineWarning[];
 }

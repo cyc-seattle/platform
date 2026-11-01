@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
-import { notBuilt } from "./steps/logins.ts";
 import type { CostLine } from "../../src/planning/index.ts";
-import { cents, PnlPlan, share } from "./pnl.ts";
+import { cents, PnlPlan, savedResults, share } from "./pnl.ts";
 import {
   admin,
   adminCreate,
@@ -11,8 +10,10 @@ import {
   created,
   fixture,
   itemPath,
+  type Item,
   newRow,
   PLAN_ROWS,
+  PLAN_YEAR,
   planRows,
   row,
   saving,
@@ -417,51 +418,359 @@ Step("the club-wide totals are:", (_, table: { line: string; amount: string }[])
 parameter("counted", ["after shared costs", "before shared costs"]);
 parameter("coaches", ["half a coach", "a whole coach"]);
 pattern("times", /\d+(?:am|pm) to (?:noon|\d+(?:am|pm))/);
-for (const text of [
-  "a program area's plan that pays its director {percent} of its programs' net",
-  "its programs make {money} after their costs and shared costs",
-  "the director's bonus is {money}",
-  "a program area's plan that pays its director a bonus on a program from another program area",
-  "the planner is warned that the bonus is on another program area's program",
-  "the other area's program doesn't count toward the bonus",
-  "a director who earns {percent} of their programs' net {counted}",
-  "their programs take in {money} and cost {money}, plus {money} of shared costs",
-  "payroll tax at {percent} of wages",
-  "a director whose bonus is {money}",
-  "the club pays {money} of payroll tax on the bonus",
-  "a director's bonus, with its payroll tax, on the first offering only",
-  "a salaried director paid {money} an hour",
-  "an offering they coach, with {count} practices of {count} hours",
-  "the offering pays {money} of the director's salary",
-  "a director on a {money} salary",
-  "an offering they coach for {money} an hour, with {count} practices of {count} hours",
-  "the offering pays {money} of coaches' wages",
-  "the offering pays none of the director's salary",
-  "a bonus for the director that comes to {money}",
-  "the director's pay for the year is:",
-  "a salaried director who coaches two groups that don't share coaches",
-  "both groups practice from {times} on the same day",
-  "one group practices from {times} and the other from {times} on the same day",
-  "the planner is warned that the director is coaching two groups at once",
-  "the planner isn't warned about the director",
-  "two offerings of {count} sailors each, with a coach for every {count} sailors, that share coaches on Wednesdays",
-  "one practices from {times} and the other from {times} on the same Wednesday",
-  "each offering pays for {coaches}",
-  "the Operations Plan closes the club on Labor Day",
-  "an offering with a practice on Labor Day",
-  "the planner is warned that the practice is on a day the club is closed",
-  "a draft of a program area's plan whose offering takes in {money}",
-  "they save the draft as a version",
-  "the saved version's P&L shows that the offering takes in {money}",
-  "a saved version of a program area's plan whose offering pays {money} of office costs",
-  "a planner saves an Operations Plan with {money} of office costs, and makes it active",
-  "the saved version's P&L still shows that the offering pays {money} of office costs",
-  "another program area's active plan, with the same direct costs as this area's draft",
-  "the saved version's P&L shows that the offering pays {money} of the office costs",
-  "they can't change a saved version's P&L",
-  "they can't add a P&L to a draft",
-]) {
-  Step(text, () => notBuilt("12c"));
+/** "4pm" or "noon" as `HH:MM`. */
+function clock(time: string): string {
+  if (time === "noon") return "12:00";
+  const [, hour, half] = /^(\d+)(am|pm)$/.exec(time)!;
+  const h = (Number(hour) % 12) + (half === "pm" ? 12 : 0);
+  return `${String(h).padStart(2, "0")}:00`;
 }
+const span = (times: string) => times.split(" to ").map(clock) as [string, string];
+/** The first `weekday` (0 = Sunday) on or after `from`. */
+function next(weekday: number, from: string): string {
+  const d = new Date(`${from}T00:00:00Z`);
+  while (d.getUTCDay() !== weekday) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+const JUNE = `${PLAN_YEAR}-06-01`;
+const juneDays = (n: number) =>
+  Array.from({ length: n }, (_, i) => `${PLAN_YEAR}-06-${String(i + 1).padStart(2, "0")}`);
+
+// The director's bonus: who owns it, and in which version.
+let earner: { owner: string; version: string; area: string } | undefined;
+let position: string | undefined;
+onEachScenario(() => {
+  earner = undefined;
+  position = undefined;
+});
+const bonusTotal = (prefix = "bonus:") => p.total((l) => l.line_key.startsWith(prefix));
+
+/** A director in a new program area's plan, earning `rate` of the net of the products it's given. */
+async function directorWithBonus(rate: number, extra: Row = {}): Promise<void> {
+  const area = await p.area();
+  const version = p.areaVersion(area);
+  earner = { owner: await p.bonus(version, rate, [], extra), version, area };
+}
+/** A program of the director's area, which the bonus counts, with an offering. */
+async function bonusProgram(price: number, costs: number, extra: Row = {}): Promise<Item> {
+  const product = await p.product("program", earner!.area);
+  await p.owns(earner!.owner, earner!.version, product);
+  return p.offering(earner!.version, product, price, 1, costs, extra);
+}
+
+Step("a program area's plan that pays its director {percent} of its programs' net", (_, percent: string) =>
+  directorWithBonus(share(percent)),
+);
+Step("its programs make {money} after their costs and shared costs", (_, money: string) =>
+  bonusProgram(cents(money), 0),
+);
+Step("the director's bonus is {money}", (_, money: string) => {
+  expect(bonusTotal()).toBe(cents(money));
+});
+Step("a program area's plan that pays its director a bonus on a program from another program area", async () => {
+  await directorWithBonus(0.5);
+  const other = await p.area();
+  const product = await p.product("program", other);
+  await p.offering(p.areaVersion(other), product, 1_000_000, 1);
+  await p.owns(earner!.owner, earner!.version, product);
+});
+Step("the planner is warned that the bonus is on another program area's program", () => {
+  expect(p.warned("bonus_outside_area")).toBe(true);
+});
+Step("the other area's program doesn't count toward the bonus", () => {
+  expect(bonusTotal()).toBe(0);
+});
+
+const COUNTED: Record<string, Row> = {
+  "after shared costs": { basis: "after_shared_costs" },
+  "before shared costs": { basis: "before_shared_costs" },
+};
+Step("a director who earns {percent} of their programs' net {counted}", (_, percent: string, counted: string) =>
+  directorWithBonus(share(percent), COUNTED[counted]),
+);
+Step(
+  "their programs take in {money} and cost {money}, plus {money} of shared costs",
+  async (_, revenue: string, costs: string, shared: string) => {
+    await bonusProgram(cents(revenue), cents(costs));
+    await p.line(
+      await p.operationsVersion(),
+      "office",
+      { cost_center_type: "pool", cost_center_key: await p.pool() },
+      cents(shared),
+    );
+  },
+);
+Step("payroll tax at {percent} of wages", (_, percent: string) =>
+  p.operationsRow("plan_rates", { payroll_tax_rate: share(percent) }),
+);
+Step("a director whose bonus is {money}", async (_, money: string) => {
+  await directorWithBonus(0.5);
+  await bonusProgram(cents(money) * 2, 0);
+});
+Step("the club pays {money} of payroll tax on the bonus", (_, money: string) => {
+  expect(bonusTotal("bonus_payroll_tax:")).toBe(cents(money));
+});
+Step("a director's bonus, with its payroll tax, on the first offering only", async () => {
+  await p.operationsRow("plan_rates", { payroll_tax_rate: 0.1 });
+  const area = p.areas[0]!;
+  await p.bonus(p.areaVersion(area), 0.5, [p.offerings[0]!["product_id"] as string]);
+});
+
+/** A salaried director in the Operations Plan. */
+async function salaried(name: string, salary: number, hours: number): Promise<void> {
+  position = await p.operationsRow("plan_salaried_positions", {
+    name,
+    annual_salary_cents: salary,
+    paid_hours_per_year: hours,
+  });
+}
+/** An offering the salaried coach coaches, in a new program area, with practices in June. */
+async function coachedOffering(practices: number, hours: number, extra: Row = {}): Promise<Item> {
+  const area = await p.area();
+  const offering = await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 0, {
+    min_coaches: 1,
+    coach_position_key: position,
+    ...extra,
+  });
+  await p.activities(offering, juneDays(practices), "16:00", `${16 + hours}:00`);
+  return offering;
+}
+
+Step("a salaried director paid {money} an hour", (_, money: string) => salaried("Director", cents(money) * 2080, 2080));
+Step("an offering they coach, with {count} practices of {count} hours", (_, practices: string, hours: string) =>
+  coachedOffering(Number(practices), Number(hours)),
+);
+Step("the offering pays {money} of the director's salary", async (_, money: string) => {
+  const salaries = await p.account("salaries");
+  expect(p.total((l) => onOffering(first(), salaries)(l) && l.line_key.endsWith(":coaching"))).toBe(cents(money));
+});
+Step("a director on a {money} salary", (_, money: string) => salaried("Director", cents(money), 2000));
+Step(
+  "an offering they coach for {money} an hour, with {count} practices of {count} hours",
+  async (_, money: string, practices: string, hours: string) => {
+    const level = await p.operationsRow("plan_staff_levels", {
+      name: "Director's level",
+      pay_type: "hourly",
+      hourly_rate_cents: cents(money),
+    });
+    await coachedOffering(Number(practices), Number(hours), { coach_level_key: level, coach_position_pay: "hourly" });
+  },
+);
+Step("the offering pays {money} of coaches' wages", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("coachWages")))).toBe(cents(money));
+});
+Step("the offering pays none of the director's salary", async () => {
+  expect(p.total(onOffering(first(), await p.account("salaries")))).toBe(0);
+});
+Step("a bonus for the director that comes to {money}", async (_, money: string) => {
+  const area = p.areas[0]!;
+  const product = await p.product("program", area);
+  await p.offering(p.areaVersion(area), product, cents(money) * 2, 1);
+  await p.bonus(p.areaVersion(area), 0.5, [product], { position_key: position });
+});
+Step("the director's pay for the year is:", (_, table: { pay: string; amount: string }[]) => {
+  const pay = p.out.positions.find((x) => x.position_key === position)!;
+  const shown: Record<string, number> = {
+    salary: pay.salary_cents,
+    "hourly coaching": pay.hourly_coaching_cents,
+    bonus: pay.bonus_cents,
+    total: pay.total_pay_cents,
+  };
+  for (const { pay: line, amount } of table) expect(shown[line], line).toBe(cents(amount));
+});
+
+/** Two offerings the salaried director coaches, with no block between them. */
+let groups: Item[] = [];
+Step("a salaried director who coaches two groups that don't share coaches", async () => {
+  await salaried("Director", 6_000_000, 2000);
+  const area = await p.area();
+  groups = [];
+  for (let i = 0; i < 2; i++) {
+    groups.push(
+      await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 0, {
+        min_coaches: 1,
+        coach_position_key: position,
+      }),
+    );
+  }
+});
+Step("both groups practice from {times} on the same day", async (_, times: string) => {
+  for (const group of groups) await p.activities(group, [JUNE], ...span(times));
+});
+Step(
+  "one group practices from {times} and the other from {times} on the same day",
+  async (_, one: string, other: string) => {
+    await p.activities(groups[0]!, [JUNE], ...span(one));
+    await p.activities(groups[1]!, [JUNE], ...span(other));
+  },
+);
+Step("the planner is warned that the director is coaching two groups at once", () => {
+  expect(p.warned("position_double_booked")).toBe(true);
+});
+Step("the planner isn't warned about the director", () => {
+  expect(p.warned("position_double_booked")).toBe(false);
+});
+
+Step(
+  "two offerings of {count} sailors each, with a coach for every {count} sailors, that share coaches on Wednesdays",
+  async (_, sailors: string, ratio: string) => {
+    const level = await p.operationsRow("plan_staff_levels", {
+      name: "Coach",
+      pay_type: "hourly",
+      hourly_rate_cents: 2000,
+    });
+    const area = await p.area();
+    groups = [];
+    for (let i = 0; i < 2; i++) {
+      groups.push(
+        await p.offering(p.areaVersion(area), await p.product("program", area), 0, Number(sailors), 0, {
+          sailors_per_coach: Number(ratio),
+          coach_level_key: level,
+        }),
+      );
+    }
+    await p.operationsRow("plan_activity_block_rules", {
+      name: "Wednesdays",
+      offering_keys: groups.map((g) => g["key"]),
+      weekdays: [3],
+    });
+  },
+);
+Step(
+  "one practices from {times} and the other from {times} on the same Wednesday",
+  async (_, one: string, other: string) => {
+    const wednesday = next(3, JUNE);
+    await p.activities(groups[0]!, [wednesday], ...span(one));
+    await p.activities(groups[1]!, [wednesday], ...span(other));
+  },
+);
+Step("each offering pays for {coaches}", (_, coaches: string) => {
+  const each = coaches === "half a coach" ? 0.5 : 1;
+  expect(p.out.activities.map((a) => a.coaches)).toEqual([each, each]);
+});
+
+const laborDay = () => next(1, `${PLAN_YEAR}-09-01`);
+Step("the Operations Plan closes the club on Labor Day", () =>
+  p.operationsRow("plan_closed_dates", { date: laborDay(), name: "Labor Day" }),
+);
+Step("an offering with a practice on Labor Day", async () => {
+  const area = await p.area();
+  const offering = await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1);
+  await p.activities(offering, [laborDay()], "09:00", "12:00");
+});
+Step("the planner is warned that the practice is on a day the club is closed", () => {
+  expect(p.warned("closed_date")).toBe(true);
+});
+
+// A saved version's results, which the saved-versions hook writes once the save has gone through.
+let savedVersion: string | undefined;
+onEachScenario(() => {
+  savedVersion = undefined;
+});
+const resultLines = async (account: string) =>
+  (await savedResults(savedVersion!)).lines
+    .filter((l) => l["account_id"] === account && l["cost_center_type"] === "offering")
+    .reduce((t, l) => t + Number(l["amount_cents"]), 0);
+
+Step("a draft of a program area's plan whose offering takes in {money}", async (_, money: string) => {
+  const area = await p.area();
+  await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1);
+});
+Step("they save the draft as a version", async () => {
+  savedVersion = await p.saveArea(p.areas.at(-1)!, await theirSession());
+});
+Step("the saved version's P&L shows that the offering takes in {money}", async (_, money: string) => {
+  const { pnl } = await savedResults(savedVersion!);
+  expect(pnl.find((r) => r["level"] === "offering")?.["revenue_cents"]).toBe(cents(money));
+});
+Step(
+  "a saved version of a program area's plan whose offering pays {money} of office costs",
+  async (_, money: string) => {
+    await p.line(
+      await p.operationsVersion(),
+      "office",
+      { cost_center_type: "pool", cost_center_key: await p.pool() },
+      cents(money),
+    );
+    const area = await p.area();
+    await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 100_000);
+    savedVersion = await p.saveArea(area);
+    expect(await resultLines(await p.account("office"))).toBe(cents(money));
+  },
+);
+Step(
+  "a planner saves an Operations Plan with {money} of office costs, and makes it active",
+  async (_, money: string) => {
+    const [operations] = await (
+      await admin()
+    ).ok(
+      "GET",
+      `/items/plan_versions?filter=${encodeURIComponent(JSON.stringify({ id: { _eq: await p.operationsVersion() } }))}&fields=plan_id`,
+    );
+    const next = await adminCreate("plan_versions", { id: randomUUID(), plan_id: operations.plan_id, status: "draft" });
+    const pool = await adminCreate("plan_pools", {
+      id: randomUUID(),
+      version_id: next.id,
+      key: await p.pool(),
+      name: "Office",
+    });
+    await adminCreate("plan_budget_lines", {
+      id: randomUUID(),
+      version_id: next.id,
+      key: randomUUID(),
+      name: "Office",
+      account_id: await p.account("office"),
+      amount_cents: cents(money),
+      fiscal_year: PLAN_YEAR,
+      excluded_from_mtdc: false,
+      cost_center_type: "pool",
+      cost_center_key: pool["key"],
+    });
+    await (
+      await admin()
+    ).ok("PATCH", itemPath("plan_versions", next.id), { status: "saved", message: "Saved by a test." });
+    await p.activate(next.id);
+  },
+);
+Step("the saved version's P&L still shows that the offering pays {money} of office costs", async (_, money: string) => {
+  expect(await resultLines(await p.account("office"))).toBe(cents(money));
+});
+Step("another program area's active plan, with the same direct costs as this area's draft", async () => {
+  const other = await p.area();
+  await p.offering(p.areaVersion(other), await p.product("program", other), 0, 1, 100_000);
+  await p.activate(await p.saveArea(other));
+  const mine = await p.area();
+  await p.offering(p.areaVersion(mine), await p.product("program", mine), 0, 1, 100_000);
+});
+Step("the saved version's P&L shows that the offering pays {money} of the office costs", async (_, money: string) => {
+  expect(await resultLines(await p.account("office"))).toBe(cents(money));
+});
+
+/** A saved Operations Plan version with its results, and a draft. */
+async function savedWithResults(): Promise<{ results: string; draft: string }> {
+  const version = await p.saveOperations();
+  const { totals } = await savedResults(version);
+  const area = await p.area();
+  return { results: totals["id"] as string, draft: p.areaVersion(area) };
+}
+Step("they can't change a saved version's P&L", async () => {
+  const { results } = await savedWithResults();
+  const { status } = await (
+    await theirSession()
+  ).request("PATCH", itemPath("plan_results", results), { total_cents: 1 });
+  expect(status).toBe(403);
+});
+Step("they can't add a P&L to a draft", async () => {
+  const draft = p.areaVersion(p.areas.at(-1) ?? (await p.area()));
+  const { status } = await (
+    await theirSession()
+  ).request("POST", "/items/plan_result_warnings", {
+    id: randomUUID(),
+    version_id: draft,
+    code: "made_up",
+    message: "Written by hand.",
+  });
+  expect(status).toBe(403);
+});
 
 describeAccessFeature("planning.feature");

@@ -7,7 +7,7 @@ function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
     id: "owner",
     version_id: "v1",
     key: "owner-key",
-    role_name: "Head coach",
+    role_name: "Director",
     bonus_rate: 0.1,
     account_id: A.bonus,
     ...overrides,

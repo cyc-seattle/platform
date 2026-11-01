@@ -189,7 +189,6 @@ Feature: Plans
         | capital         | -$20,000 |
         | total           | $15,000  |
 
-  @pending
   Rule: A program area's plan can pay a director a bonus on that area's programs
 
     Example: A director's bonus in a program area's plan
@@ -204,7 +203,6 @@ Feature: Plans
       Then the planner is warned that the bonus is on another program area's program
       And the other area's program doesn't count toward the bonus
 
-  @pending
   Rule: A bonus is figured on the net after shared costs, or before them, as the plan says
 
     Scenario Outline: A director's bonus before and after shared costs
@@ -218,7 +216,6 @@ Feature: Plans
         | after shared costs  | $2,000 |
         | before shared costs | $5,000 |
 
-  @pending
   Rule: The club pays payroll tax on a bonus, as on any wage
 
     Example: A bonus costs payroll tax
@@ -227,7 +224,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the club pays $500 of payroll tax on the bonus
 
-  @pending
   Rule: A bonus and its payroll tax don't count toward the split of shared costs
 
     Example: A director's bonus doesn't change an offering's share of the office
@@ -237,7 +233,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
-  @pending
   Rule: A salaried coach named on an offering coaches all its practices, paid out of their salary
 
     Example: An offering pays for its salaried coach's hours
@@ -246,7 +241,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays $1,200 of the director's salary
 
-  @pending
   Rule: A salaried coach can be paid by the hour for coaching, on top of their salary
 
     Example: A director is paid by the hour for an offering they coach
@@ -256,7 +250,6 @@ Feature: Plans
       Then the offering pays $900 of coaches' wages
       And the offering pays none of the director's salary
 
-  @pending
   Rule: A salaried person's pay for the year adds up their salary, their hourly coaching, and their bonus
 
     Example: A director's pay for the year
@@ -271,7 +264,6 @@ Feature: Plans
         | bonus           | $5,000  |
         | total           | $25,900 |
 
-  @pending
   Rule: A salaried coach can't coach two groups at the same time
 
     Example: Two groups at the same time get a warning
@@ -286,7 +278,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about the director
 
-  @pending
   Rule: Offerings that share coaches on a day share them only when their practices overlap
 
     Scenario Outline: Two groups share a coach only when they're on the water together
@@ -300,7 +291,6 @@ Feature: Plans
         | 9am to noon | 9am to noon | half a coach  |
         | 9am to noon | 1pm to 4pm  | a whole coach |
 
-  @pending
   Rule: A planner is warned about an activity on a day the club is closed
 
     Example: A practice on Labor Day gets a warning
@@ -309,7 +299,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice is on a day the club is closed
 
-  @pending
   Rule: A saved version keeps the P&L it had when it was saved
 
     Example: A saved version shows the P&L it was saved with
@@ -323,7 +312,6 @@ Feature: Plans
       When a planner saves an Operations Plan with $2,000 of office costs, and makes it active
       Then the saved version's P&L still shows that the offering pays $1,000 of office costs
 
-  @pending
   Rule: A saved version's P&L counts the other program areas' active plans
 
     Example: The office is split with another program area's active plan
@@ -333,7 +321,6 @@ Feature: Plans
       When they save the draft as a version
       Then the saved version's P&L shows that the offering pays $500 of the office costs
 
-  @pending
   Rule: No one can write a version's P&L by hand, even an admin
 
     Example: A Plan Writer can't write a version's P&L
