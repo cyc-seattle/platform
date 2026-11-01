@@ -35,9 +35,9 @@ app owns. The apps that run on it live in their own repos, such as
 - `ScheduledJob` runs a CronJob on `schedule`, in `America/Los_Angeles` unless `timeZone` says
   otherwise. A run never overlaps the one before it, gets an hour, and doesn't retry, by default.
 - All three run non-root with a read-only root filesystem, no capabilities, and no service account
-  token, on Spot pods in dev only. Their limits equal their requests. Their pods get no IAM; grant
-  roles to `member`, a Workload Identity principal, or set `serviceAccountAnnotations` to run as a
-  Google service account.
+  token, on Spot pods in dev only. Their limits equal their requests, unless `limits` raises one,
+  such as CPU to burst. Their pods get no IAM; grant roles to `member`, a Workload Identity
+  principal, or set `serviceAccountAnnotations` to run as a Google service account.
 - `enableService` enables a Google Cloud API.
 
 `mise run build` builds it into `dist/`, which is all it publishes. `.github/workflows/release.yml`
