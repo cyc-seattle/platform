@@ -15,7 +15,7 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
   the camp schedule (camps/sessions/classes/capacity), registrations, and billing. No household
   grouping — Clubspot has no concept of a household, only per-registration guardians and emergency
   contacts, so that's what the schema keys off.
-- Terminology matches Clubspot and the website. **Camp** (`camps`) is Clubspot's own `Camp` — one
+- Terminology matches Clubspot and the website. **Camp** (`clubspot_camps`) is Clubspot's own `Camp` — one
   row per season, e.g. "2026 Fall Double-handed Race Team". **Program** is the durable catalog
   entry a class links to by hand, e.g. "Double-handed Race Team", the thing a Google Group or a
   volunteer role attaches to; a camp's own programs are derived — the distinct programs of its
@@ -33,19 +33,32 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
 ### Collections
 
 Collections and fields are defined in `schemas/crm.yaml` and `schemas/clubspot.yaml`
-— the Clubspot-shaped collections (`camps`, `sessions`, `classes`, registrations, and custom
+— the Clubspot-shaped collections (`clubspot_camps`, `clubspot_sessions`, `clubspot_classes`, registrations, and custom
 fields) live in the latter, split out because they wouldn't survive Clubspot being replaced. Both
 are the source of truth Pulumi applies to Directus as one merged snapshot. The sections below cover
 identity, provenance, and permissions — behavior that isn't visible in either schema file itself.
 
-`registration_entries` also carries five nullable columns for Clubspot's own per-entry status and
+Every collection that mirrors Clubspot carries the `clubspot_` prefix, since Directus keeps every
+collection in one namespace and Clubspot's terms are ours only at the sync boundary
+(cyc-seattle/isthmia#241). The CRM's own `offerings` and `registrations` are made from them:
+
+- An **offering** is a program sold for one dated period: a class with a program, in one session.
+  A class whose cap covers every session (a cap with no session) is one offering, from its first
+  session to its last.
+- A **registration** is one person in one offering, from one `clubspot_registration_entries` row,
+  with its status. An entry waits until its participant is matched to a person.
+
+clubspot-sync makes both after each run's camps, from every camp's mirrors, archived ones included,
+and deletes a row whose class lost its program or whose session was archived. Staff read them, and
+no one edits them.
+
+`clubspot_registration_entries` also carries five nullable columns for Clubspot's own per-entry status and
 waitlist bookkeeping: `clubspot_status`, `confirmed_at`, `waitlist_number`, `accepted_from_waitlist`,
 `priority`. Their field notes in `schema.yaml` cover the why. This file does not repeat it.
 
 `programs` and `program_roles` are hand-maintained catalogs, not synced from Clubspot.
 `program_role_assignments` links a person to a program with a role from that catalog — a Parent
-Coordinator or Program Lead, hand-entered by staff, not derived from `event_staff` (which is
-person-plus-session and Clubspot-derived). Anyone holding an assignment is simply a member of the
+Coordinator or Program Lead, hand-entered by staff. Anyone holding an assignment is simply a member of the
 program's Google Group; a role's meaning carries no provider mapping.
 `program_area_role_assignments` links a person to a program area the same way, with a role from
 the same catalog, such as Director. An area can have any number of people in each role. It's a
@@ -64,21 +77,21 @@ of another kind.
 
 `gsuite-sync` extends collections it doesn't own rather than owning separate ones: it declares
 `programs.google_group_id` in its own schema, even though `programs` belongs to `core`, not this
-package - groups hang off programs only. `classes.program_id`, by contrast, is a plain field
+package - groups hang off programs only. `clubspot_classes.program_id`, by contrast, is a plain field
 declared directly in `schemas/clubspot.yaml`, since `clubspot-sync` owns the collection it
 came from. Every package's schema is merged into one snapshot and applied together, so a
 collection here can carry another package's field without this package knowing about that
 provider.
 
 Every Clubspot collection keys on the Clubspot objectId itself, entered by the sync rather than
-generated (`schemas/clubspot.yaml`'s field notes cover each collection). `session_classes`
-and `custom_field_responses` have no Clubspot id of their own, so their key is their two parents'
+generated (`schemas/clubspot.yaml`'s field notes cover each collection). `clubspot_session_classes`
+and `clubspot_custom_field_responses` have no Clubspot id of their own, so their key is their two parents'
 ids joined (`"<parent id>:<parent id>"`); both parents stay as real FK columns alongside it.
 
 ### Person identity and merging
 
 A `contacts` row links two people: `subject_id` is the person the record is about (a minor, usually
-— the same person `registrations.participant_id` -> `participants.person_id` points to), and
+— the same person `clubspot_registrations.participant_id` -> `clubspot_participants.person_id` points to), and
 `contact_id` is their guardian or emergency contact. Both are resolved **once, when the row is
 created**, and never re-resolved. A later sync run leaves an existing row's person field alone —
 that's what makes a manual merge (below) durable: nothing undoes it on the next run.
@@ -108,9 +121,9 @@ always wins**, whether it was made in Directus or in Clubspot. The sync does not
 this yet (cyc-seattle/isthmia#171): with no edit times, it treats a repeated or first-ever form answer as older than a
 staff edit, as described below. A
 person's newest linked participant is ranked non-archived registrations first, then
-`registered_at` descending, then `registrations.id` as a tiebreak — the same order `promoted_fields`
-falls back to below. The mirror itself — `participants` for every field but a promoted one,
-`custom_field_responses` for that — keeps Clubspot's **last non-blank answer**: a blank form value
+`registered_at` descending, then `clubspot_registrations.id` as a tiebreak — the same order `clubspot_promoted_fields`
+falls back to below. The mirror itself — `clubspot_participants` for every field but a promoted one,
+`clubspot_custom_field_responses` for that — keeps Clubspot's **last non-blank answer**: a blank form value
 never overwrites a value already stored there. The sync compares `base` (the mirror's own stored
 value) against `v` (what Clubspot sends now): `v` equal to `base` writes nothing, so a staff edit
 holds; `v` different from `base` writes `v`, and counts a replaced staff edit if the CRM value was
@@ -146,7 +159,7 @@ two rows both hold a `directus_user_id`, or something still references a duplica
 durable. Move that participant's contacts and `contact_points` rows onto the new person by hand.
 
 **Deleting a person by hand** in the Data Studio is refused while anything still references them —
-every FK to `people` except `participants.person_id` is `on_delete: RESTRICT`. Delete or repoint
+every FK to `people` except `clubspot_participants.person_id` is `on_delete: RESTRICT`. Delete or repoint
 their contacts, contact points, medical profile, and role assignments first, or approve a
 `duplicate_person` merge instead.
 
@@ -158,7 +171,7 @@ delta — for every collection, no opt-in needed, so there's no need for bespoke
 tables here, as long as the sync always writes through the Directus API (never raw SQL):
 
 - **Registration status** (waitlist → confirmed → cancelled) doesn't need its own event log — the
-  revision history on a `registration_entries` row already shows every state it's been in and when
+  revision history on a `clubspot_registration_entries` row already shows every state it's been in and when
   Directus recorded each change. If Clubspot's own historical timestamps
   (`RegistrationCampSession.waitlist_updates`) matter and not just "when we noticed," the sync's
   first import of a registration can replay each transition as its own sequential write so the
@@ -179,20 +192,20 @@ package, not part of this schema.
 
 **What the activity log doesn't give us:** a revision is attributed to the Directus user who made
 the write — for the sync's automated updates that's always its own service account, not _which
-registration_ supplied a given value. No dedicated pointer for that here: `registrations.participant_id`
--> `participants.person_id` already gives every registration a person touched, so "which one most
+registration_ supplied a given value. No dedicated pointer for that here: `clubspot_registrations.participant_id`
+-> `clubspot_participants.person_id` already gives every registration a person touched, so "which one most
 recently supplied this email" is a join against that plus the revision timestamps, not a separate FK
 on `people`. That join is untested against real staff workflows; revisit if it turns out too awkward
 to actually use.
 
 ### Promoted fields
 
-`promoted_fields` maps a Clubspot custom-field question — asked per camp, so
-`custom_field_definitions` has no single row for it — onto a `people` column. `school` is the only
+`clubspot_promoted_fields` maps a Clubspot custom-field question — asked per camp, so
+`clubspot_custom_field_definitions` has no single row for it — onto a `people` column. `school` is the only
 target today; adding another means adding it to `PROMOTABLE_PERSON_FIELDS`
 (`packages/clubspot/src/promoted-fields.ts`) and deploying, not editing config. It follows the same
-one CRM field rule as every other curated field (cyc-seattle/isthmia#137): per registration, `custom_field_responses`
-is itself the mirror, keeping its own last non-blank answer the same way `participants` does, so
+one CRM field rule as every other curated field (cyc-seattle/isthmia#137): per registration, `clubspot_custom_field_responses`
+is itself the mirror, keeping its own last non-blank answer the same way `clubspot_participants` does, so
 `base` is the response's own stored value before this run's write and `v` is what Clubspot sends
 now, gated on the same newest-linked-participant check. A separate pass runs
 once more at the end of every run, across every camp, purely as a gap-fill fallback for a
@@ -239,7 +252,7 @@ relational filter's rows with no rules at all. So `backend` mounts the query gua
 aggregating on a field some of the user's rules withhold, or crossing a relation into a collection
 they read only in part.
 
-The opt-in is `registrations.share_contact`, nullable, answered per registration rather than
+The opt-in is `clubspot_registrations.share_contact`, nullable, answered per registration rather than
 carried on the person — Clubspot asks the sharing question once per season's signup. It is set
 from Clubspot, as a promoted field, or from the portal's toggle, whichever edit is newer (the one
 CRM field rule, above).

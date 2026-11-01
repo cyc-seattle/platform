@@ -377,11 +377,11 @@ describe("planSessionClasses", () => {
 describe("SCHEDULE_CREATE_ORDER", () => {
   it("puts camps before its dependents, and sessions/classes before their dependents", () => {
     const index = (name: (typeof SCHEDULE_CREATE_ORDER)[number]) => SCHEDULE_CREATE_ORDER.indexOf(name);
-    expect(index("camps")).toBeLessThan(index("sessions"));
-    expect(index("camps")).toBeLessThan(index("classes"));
-    expect(index("sessions")).toBeLessThan(index("session_classes"));
-    expect(index("classes")).toBeLessThan(index("session_classes"));
-    expect(index("sessions")).toBeLessThan(index("entry_caps"));
-    expect(index("classes")).toBeLessThan(index("entry_caps"));
+    expect(index("clubspot_camps")).toBeLessThan(index("clubspot_sessions"));
+    expect(index("clubspot_camps")).toBeLessThan(index("clubspot_classes"));
+    expect(index("clubspot_sessions")).toBeLessThan(index("clubspot_session_classes"));
+    expect(index("clubspot_classes")).toBeLessThan(index("clubspot_session_classes"));
+    expect(index("clubspot_sessions")).toBeLessThan(index("clubspot_entry_caps"));
+    expect(index("clubspot_classes")).toBeLessThan(index("clubspot_entry_caps"));
   });
 });

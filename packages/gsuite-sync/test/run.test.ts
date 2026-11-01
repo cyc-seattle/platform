@@ -374,12 +374,12 @@ describe("runGroupSync", () => {
   it("adds every planned program member as MEMBER and reports the task as checked", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1" }],
-      classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
-      camps: [{ id: "camp-1", end_date: null }],
+      clubspot_classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
+      clubspot_camps: [{ id: "camp-1", end_date: null }],
       google_groups: [{ id: "group-1", email: "program-1@cyccommunitysailing.org" }],
-      registration_entries: [{ id: "e1", registration_id: "r1", class_id: "class-1", status: "confirmed" }],
-      registrations: [{ id: "r1", participant_id: "participant-r1" }],
-      participants: [{ id: "participant-r1", person_id: "participant" }],
+      clubspot_registration_entries: [{ id: "e1", registration_id: "r1", class_id: "class-1", status: "confirmed" }],
+      clubspot_registrations: [{ id: "r1", participant_id: "participant-r1" }],
+      clubspot_participants: [{ id: "participant-r1", person_id: "participant" }],
       people: [{ id: "participant", email: "participant@example.com" }],
       contacts: [],
     });
@@ -485,8 +485,8 @@ describe("runGroupSync", () => {
   it("cancels a program-members task instead of failing when its group can't be found", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       programs: [{ id: "program-1", name: "Double-handed", google_group_id: "missing-group" }],
-      classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
-      camps: [{ id: "camp-1", end_date: null }],
+      clubspot_classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
+      clubspot_camps: [{ id: "camp-1", end_date: null }],
       google_groups: [],
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -530,11 +530,11 @@ describe("runGroupSync", () => {
         { id: "program-1", name: "Double-handed", google_group_id: "shared-group" },
         { id: "program-2", name: "Single-handed", google_group_id: "shared-group" },
       ],
-      classes: [
+      clubspot_classes: [
         { id: "class-1", camp_id: "camp-1", program_id: "program-1" },
         { id: "class-2", camp_id: "camp-1", program_id: "program-2" },
       ],
-      camps: [{ id: "camp-1", end_date: null }],
+      clubspot_camps: [{ id: "camp-1", end_date: null }],
       program_role_assignments: [
         {
           id: "pra-1",
@@ -756,8 +756,8 @@ describe("runGroupSync", () => {
         },
       ],
       programs: [{ id: "program-1", name: "Double-handed", google_group_id: "program-group" }],
-      classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
-      camps: [{ id: "camp-1", end_date: null }],
+      clubspot_classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
+      clubspot_camps: [{ id: "camp-1", end_date: null }],
       program_role_assignments: [
         {
           id: "pra-1",
@@ -889,7 +889,7 @@ describe("sharedMembershipSnapshot", () => {
     expect(first).toBe(second);
     expect(first.programs).toEqual([{ id: "program-1" }]);
     expect(countReads(fetchMock, "programs")).toBe(1);
-    expect(countReads(fetchMock, "registration_entries")).toBe(1);
+    expect(countReads(fetchMock, "clubspot_registration_entries")).toBe(1);
   });
 
   it("reads again after a failed read, rather than failing every later task", async () => {

@@ -62,8 +62,8 @@ describe("the policies a group can give", () => {
     }
     const fielded = named("CRM Writer").rules.filter((rule) => rule.fields && rule.collection !== "people");
     expect(fielded.map(({ collection, fields }) => `${collection}.${fields}`)).toEqual([
-      "classes.program_id",
-      "participants.person_id",
+      "clubspot_classes.program_id",
+      "clubspot_participants.person_id",
     ]);
   });
 
@@ -95,7 +95,7 @@ describe("the policies a group can give", () => {
 
   it("let a CRM Writer change people, but not Clubspot's own records", () => {
     expect(collections("CRM Writer", "update").has("people")).toBe(true);
-    expect(collections("CRM Writer", "update").has("registrations")).toBe(false);
+    expect(collections("CRM Writer", "update").has("clubspot_registrations")).toBe(false);
     expect(collections("CRM Reader", "read")).toEqual(collections("CRM Writer", "read"));
   });
 });
@@ -241,7 +241,7 @@ describe("Crew", () => {
   it("reads every roster and the catalog's money, and changes nothing", () => {
     expect(crewRules.every((rule) => rule.action === "read" && rule.permissions === undefined)).toBe(true);
     expect(crewRules.map((rule) => rule.collection)).toEqual(
-      expect.arrayContaining(["registration_entries", "people", "products", "program_areas", "accounts"]),
+      expect.arrayContaining(["clubspot_registration_entries", "people", "products", "program_areas", "accounts"]),
     );
     expect(crewRules.map((rule) => rule.collection)).not.toContain("medical_profiles");
   });

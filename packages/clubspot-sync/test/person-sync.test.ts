@@ -121,7 +121,7 @@ function mirrorFieldsFor(data: Record<string, unknown>, id = "participant-1"): P
 
 const emptyMirror: ParticipantMirrorFields = mirrorFieldsFor({});
 
-/** A stored `participants` row, filled in with `emptyMirror` for every field this test doesn't care about. */
+/** A stored `clubspot_participants` row, filled in with `emptyMirror` for every field this test doesn't care about. */
 function participantRow(overrides: Partial<ParticipantRow> & { id: string; person_id: string }): ParticipantRow {
   return { last_sync_run_id: null, ...emptyMirror, ...overrides };
 }
@@ -950,8 +950,8 @@ describe("PersonSync.syncParticipant - the one CRM field rule (cyc-seattle/isthm
     };
     const { fetchMock, tables } = makeDirectusStore({
       people: [seedPerson({ email: "staff-added@example.com" })],
-      participants: [{ id: "participant-newer", person_id: "person-1" }],
-      registrations: [newerRegistration],
+      clubspot_participants: [{ id: "participant-newer", person_id: "person-1" }],
+      clubspot_registrations: [newerRegistration],
     });
     vi.stubGlobal("fetch", fetchMock);
     const sync = new PersonSync(new DirectusClient(baseUrl, token));
@@ -992,8 +992,8 @@ describe("PersonSync.syncParticipant - the one CRM field rule (cyc-seattle/isthm
     };
     const { fetchMock, tables } = makeDirectusStore({
       people: [seedPerson({ email: "staff-added@example.com" })],
-      participants: [{ id: "participant-older", person_id: "person-1" }],
-      registrations: [olderRegistration],
+      clubspot_participants: [{ id: "participant-older", person_id: "person-1" }],
+      clubspot_registrations: [olderRegistration],
     });
     vi.stubGlobal("fetch", fetchMock);
     const sync = new PersonSync(new DirectusClient(baseUrl, token));
@@ -1036,10 +1036,10 @@ describe("PersonSync.syncParticipant - the one CRM field rule (cyc-seattle/isthm
     };
     const { fetchMock, tables } = makeDirectusStore({
       people: [seedPerson({ phone: "2065550100" })],
-      participants: [
+      clubspot_participants: [
         { id: "participant-2025", person_id: "person-1", first_name: "Alex", last_name: "Rivera", phone: "2065550100" },
       ],
-      registrations: [olderRegistration],
+      clubspot_registrations: [olderRegistration],
     });
     vi.stubGlobal("fetch", fetchMock);
     const sync = new PersonSync(new DirectusClient(baseUrl, token));
@@ -1245,8 +1245,8 @@ describe("PersonSync.syncParticipant - guardian and emergency-contact slots", ()
     const { fetchMock, tables } = makeDirectusStore({
       people: [seedMinor(), seedGuardian({ email: "robert@example.com" })],
       contacts: [seedGuardianContact()],
-      participants: [{ id: "participant-newer", person_id: "person-1" }],
-      registrations: [newerRegistration],
+      clubspot_participants: [{ id: "participant-newer", person_id: "person-1" }],
+      clubspot_registrations: [newerRegistration],
     });
     vi.stubGlobal("fetch", fetchMock);
     const warn = vi.spyOn(winston, "warn").mockReturnThis();

@@ -173,7 +173,7 @@ export class DirectusClient {
     return updated;
   }
 
-  // The sync never soft-deletes `session_classes` - it's a pure join with no status field of its
+  // The sync never soft-deletes `clubspot_session_classes` - it's a pure join with no status field of its
   // own (see docs/crm-schema.md) - so a class no longer offered by a session is removed outright.
   async deleteItem(collection: string, id: string | number): Promise<void> {
     if (this.dryRun) {

@@ -34,7 +34,7 @@ export interface GoogleGroupMembershipRow {
  * `programs.google_group_id` is a provider extension field: a real column on `crm`'s `programs`
  * collection, declared in `schemas/gsuite.yaml` rather than `schemas/crm.yaml`. `crm`'s own `ProgramRow` doesn't carry it, so a caller
  * that needs both intersects this with the canonical type. Groups hang off programs only -
- * `classes` carries no such field.
+ * `clubspot_classes` carries no such field.
  */
 export interface GoogleGroupFields {
   google_group_id: string | null;

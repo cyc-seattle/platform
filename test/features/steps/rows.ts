@@ -92,7 +92,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     fiscal_year_start_month: 10,
   }),
   program_roles: async () => ({ id: randomUUID(), name: `Role ${key("role")}` }),
-  camps: async () => ({
+  clubspot_camps: async () => ({
     id: key("camp"),
     name: `Camp ${runId}`,
     start_date: daysFromNow(-7),
@@ -100,26 +100,35 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     archived: false,
     quiet_runs: 0,
   }),
-  sessions: async () => ({ id: key("session"), camp_id: row["camps"], archived: false }),
-  classes: async () => ({
+  clubspot_sessions: async () => ({ id: key("session"), camp_id: row["clubspot_camps"], archived: false }),
+  clubspot_classes: async () => ({
     id: key("class"),
-    camp_id: row["camps"],
+    camp_id: row["clubspot_camps"],
     name: `Class ${runId}`,
     program_id: row["programs"],
   }),
-  session_classes: async () => ({ id: key("session-class"), session_id: row["sessions"], class_id: row["classes"] }),
-  entry_caps: async () => ({ id: key("entry-cap"), class_id: row["classes"], session_id: row["sessions"], cap: 10 }),
-  custom_field_definitions: async () => ({
+  clubspot_session_classes: async () => ({
+    id: key("session-class"),
+    session_id: row["clubspot_sessions"],
+    class_id: row["clubspot_classes"],
+  }),
+  clubspot_entry_caps: async () => ({
+    id: key("entry-cap"),
+    class_id: row["clubspot_classes"],
+    session_id: row["clubspot_sessions"],
+    cap: 10,
+  }),
+  clubspot_custom_field_definitions: async () => ({
     id: key("field"),
-    camp_id: row["camps"],
+    camp_id: row["clubspot_camps"],
     label: "Shirt size",
     field_type: "text",
     required: false,
   }),
-  custom_field_responses: async () => ({
+  clubspot_custom_field_responses: async () => ({
     id: key("response"),
-    registration_id: row["registrations"],
-    definition_id: row["custom_field_definitions"],
+    registration_id: row["clubspot_registrations"],
+    definition_id: row["clubspot_custom_field_definitions"],
     value: "M",
   }),
   people: async () => ({ id: randomUUID(), first_name: "Pat", last_name: `Test ${runId}`, email: email("pat") }),
@@ -141,29 +150,29 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     person_id: fixed["person_id"] ?? (await fresh("people")),
     allergies: "none",
   }),
-  participants: async (fixed) => ({
+  clubspot_participants: async (fixed) => ({
     id: key("participant"),
     person_id: fixed["person_id"] ?? (await fresh("people")),
     first_name: "Pat",
   }),
-  registrations: async (fixed) => ({
+  clubspot_registrations: async (fixed) => ({
     id: key("registration"),
-    camp_id: row["camps"],
+    camp_id: row["clubspot_camps"],
     registered_at: new Date().toISOString(),
     status: "confirmed",
     archived: false,
-    participant_id: fixed["participant_id"] ?? (await fresh("participants")),
+    participant_id: fixed["participant_id"] ?? (await fresh("clubspot_participants")),
   }),
-  registration_entries: async (fixed) => ({
+  clubspot_registration_entries: async (fixed) => ({
     id: key("entry"),
-    registration_id: fixed["registration_id"] ?? (await fresh("registrations")),
-    session_id: row["sessions"],
-    class_id: row["classes"],
+    registration_id: fixed["registration_id"] ?? (await fresh("clubspot_registrations")),
+    session_id: row["clubspot_sessions"],
+    class_id: row["clubspot_classes"],
     status: "confirmed",
   }),
-  registration_billing: async (fixed) => ({
+  clubspot_registration_billing: async (fixed) => ({
     id: key("billing"),
-    registration_id: fixed["registration_id"] ?? (await fresh("registrations")),
+    registration_id: fixed["registration_id"] ?? (await fresh("clubspot_registrations")),
     ...Object.fromEntries(
       [
         "amount",
@@ -182,7 +191,23 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     ),
     currency: "usd",
   }),
-  event_staff: async () => ({ id: randomUUID(), person_id: guardianPersonId, session_id: row["sessions"] }),
+  // As clubspot-sync makes them from the run's rows, so a sync run during the tests leaves them be.
+  offerings: async () => ({
+    id: randomUUID(),
+    program_id: row["programs"],
+    starts_on: null,
+    ends_on: null,
+    capacity: 10,
+    clubspot_class_id: row["clubspot_classes"],
+    clubspot_session_id: row["clubspot_sessions"],
+  }),
+  registrations: async (fixed) => ({
+    id: randomUUID(),
+    person_id: row["people"],
+    offering_id: row["offerings"],
+    status: "confirmed",
+    clubspot_entry_id: fixed["clubspot_entry_id"] ?? (await fresh("clubspot_registration_entries")),
+  }),
   program_role_assignments: async () => ({
     id: randomUUID(),
     person_id: guardianPersonId,
@@ -233,7 +258,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     email: email("member"),
     added_at: new Date().toISOString(),
   }),
-  promoted_fields: async () => ({ id: randomUUID(), target_field: `test_${runId}`, labels: [] }),
+  clubspot_promoted_fields: async () => ({ id: randomUUID(), target_field: `test_${runId}`, labels: [] }),
   groups: async () => ({ id: randomUUID(), name: `Group ${key("group")}` }),
   // The child, who has no login, so the group gives no one in the run anything.
   group_members: async () => ({ id: randomUUID(), group_id: row["groups"], person_id: row["people"] }),
@@ -399,22 +424,23 @@ export const changes: Record<string, () => Row> = {
   resource_kinds: () => ({ name: `Resource ${key("resource")}` }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   program_roles: () => ({ description: "Changed." }),
-  camps: () => ({ name: `Camp ${runId} (renamed)` }),
-  sessions: () => ({ name: `Session ${runId}` }),
-  classes: () => ({ name: `Class ${runId} (renamed)` }),
-  session_classes: () => ({ class_id: row["classes"] }),
-  entry_caps: () => ({ cap: 11 }),
-  custom_field_definitions: () => ({ label: "T-shirt size" }),
-  custom_field_responses: () => ({ value: "L" }),
+  clubspot_camps: () => ({ name: `Camp ${runId} (renamed)` }),
+  clubspot_sessions: () => ({ name: `Session ${runId}` }),
+  clubspot_classes: () => ({ name: `Class ${runId} (renamed)` }),
+  clubspot_session_classes: () => ({ class_id: row["clubspot_classes"] }),
+  clubspot_entry_caps: () => ({ cap: 11 }),
+  clubspot_custom_field_definitions: () => ({ label: "T-shirt size" }),
+  clubspot_custom_field_responses: () => ({ value: "L" }),
   people: () => ({ last_name: `Test ${runId} (renamed)` }),
   contacts: () => ({ relationship_detail: "Changed" }),
   contact_points: () => ({ last_seen_at: new Date().toISOString() }),
   medical_profiles: () => ({ medications: "none" }),
-  participants: () => ({ last_name: `Test ${runId}` }),
-  registrations: () => ({ waiver_status: "signed" }),
-  registration_entries: () => ({ priority: 1 }),
-  registration_billing: () => ({ tax: 1 }),
-  event_staff: () => ({ session_id: row["sessions"] }),
+  clubspot_participants: () => ({ last_name: `Test ${runId}` }),
+  clubspot_registrations: () => ({ waiver_status: "signed" }),
+  clubspot_registration_entries: () => ({ priority: 1 }),
+  clubspot_registration_billing: () => ({ tax: 1 }),
+  offerings: () => ({ capacity: 11 }),
+  registrations: () => ({ status: "waitlist" }),
   program_role_assignments: () => ({ ends_on: daysFromNow(30) }),
   program_area_role_assignments: () => ({ ends_on: daysFromNow(30) }),
   sync_tasks: () => ({ last_error: "Changed." }),
@@ -422,7 +448,7 @@ export const changes: Record<string, () => Row> = {
   audit_findings: () => ({ detail: "A changed test finding." }),
   google_groups: () => ({ description: "Changed." }),
   google_group_memberships: () => ({ added_at: new Date().toISOString() }),
-  promoted_fields: () => ({ labels: ["Changed"] }),
+  clubspot_promoted_fields: () => ({ labels: ["Changed"] }),
   groups: () => ({ description: "Changed." }),
   group_members: () => ({ person_id: row["people"] }),
   group_policies: () => ({ group_id: row["groups"] }),
@@ -482,23 +508,24 @@ async function createRows(): Promise<void> {
     ["organizations", () => ({})],
     ["programs", () => ({})],
     ["program_roles", () => ({})],
-    ["camps", () => ({})],
-    ["sessions", () => ({})],
-    ["classes", () => ({})],
-    ["session_classes", () => ({})],
-    ["entry_caps", () => ({})],
-    ["custom_field_definitions", () => ({})],
-    ["promoted_fields", () => ({})],
+    ["clubspot_camps", () => ({})],
+    ["clubspot_sessions", () => ({})],
+    ["clubspot_classes", () => ({})],
+    ["clubspot_session_classes", () => ({})],
+    ["clubspot_entry_caps", () => ({})],
+    ["clubspot_custom_field_definitions", () => ({})],
+    ["clubspot_promoted_fields", () => ({})],
     ["people", () => ({})],
     ["contacts", () => ({ relationship_type: "guardian" })],
     ["contact_points", () => ({})],
     ["medical_profiles", () => ({ person_id: row["people"] })],
-    ["participants", () => ({ person_id: row["people"] })],
-    ["registrations", () => ({ participant_id: row["participants"] })],
-    ["custom_field_responses", () => ({})],
-    ["registration_entries", () => ({ registration_id: row["registrations"] })],
-    ["registration_billing", () => ({ registration_id: row["registrations"] })],
-    ["event_staff", () => ({})],
+    ["clubspot_participants", () => ({ person_id: row["people"] })],
+    ["clubspot_registrations", () => ({ participant_id: row["clubspot_participants"] })],
+    ["clubspot_custom_field_responses", () => ({})],
+    ["clubspot_registration_entries", () => ({ registration_id: row["clubspot_registrations"] })],
+    ["clubspot_registration_billing", () => ({ registration_id: row["clubspot_registrations"] })],
+    ["offerings", () => ({})],
+    ["registrations", () => ({ clubspot_entry_id: row["clubspot_registration_entries"] })],
     ["program_role_assignments", () => ({})],
     ["program_area_role_assignments", () => ({})],
     ["sync_tasks", () => ({})],
@@ -524,12 +551,18 @@ async function createRows(): Promise<void> {
     await newRow("contacts", { subject_id: other.id, contact_id: otherGuardian.id, relationship_type: "guardian" }),
   );
   await adminCreate("medical_profiles", await newRow("medical_profiles", { person_id: other.id }));
-  const participant = await adminCreate("participants", await newRow("participants", { person_id: other.id }));
-  const registration = await adminCreate(
-    "registrations",
-    await newRow("registrations", { participant_id: participant.id }),
+  const participant = await adminCreate(
+    "clubspot_participants",
+    await newRow("clubspot_participants", { person_id: other.id }),
   );
-  await adminCreate("registration_entries", await newRow("registration_entries", { registration_id: registration.id }));
+  const registration = await adminCreate(
+    "clubspot_registrations",
+    await newRow("clubspot_registrations", { participant_id: participant.id }),
+  );
+  await adminCreate(
+    "clubspot_registration_entries",
+    await newRow("clubspot_registration_entries", { registration_id: registration.id }),
+  );
 }
 
 let rows: Promise<void> | undefined;

@@ -2,7 +2,7 @@ version: 1
 directus: 12.3.1
 vendor: postgres
 collections:
-  - collection: classes
+  - collection: clubspot_classes
     meta:
       accountability: all
       archive_app_filter: true
@@ -10,7 +10,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: classes
+      collection: clubspot_classes
       color: null
       display_template: "{{name}} ({{camp_id.name}})"
       group: Schedule
@@ -27,8 +27,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: classes
-  - collection: custom_field_definitions
+      name: clubspot_classes
+  - collection: clubspot_custom_field_definitions
     meta:
       accountability: all
       archive_app_filter: true
@@ -36,7 +36,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: custom_field_definitions
+      collection: clubspot_custom_field_definitions
       color: null
       display_template: "{{label}} ({{camp_id.name}})"
       group: Registrations
@@ -55,8 +55,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: custom_field_definitions
-  - collection: custom_field_responses
+      name: clubspot_custom_field_definitions
+  - collection: clubspot_custom_field_responses
     meta:
       accountability: all
       archive_app_filter: true
@@ -64,7 +64,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: custom_field_responses
+      collection: clubspot_custom_field_responses
       color: null
       display_template: "{{definition_id.label}}: {{value}}"
       group: Registrations
@@ -81,8 +81,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: custom_field_responses
-  - collection: entry_caps
+      name: clubspot_custom_field_responses
+  - collection: clubspot_entry_caps
     meta:
       accountability: all
       archive_app_filter: true
@@ -90,7 +90,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: entry_caps
+      collection: clubspot_entry_caps
       color: null
       display_template: "{{class_id.name}}, {{session_id.name}} (cap {{cap}})"
       group: Schedule
@@ -107,34 +107,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: entry_caps
-  - collection: event_staff
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: event_staff
-      color: null
-      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{session_id.name}}"
-      group: Registrations
-      hidden: false
-      icon: badge
-      item_duplication_fields: null
-      note: A coach or staff member working a session. Copied from Clubspot.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: event_staff
-  - collection: camps
+      name: clubspot_entry_caps
+  - collection: clubspot_camps
     meta:
       accountability: all
       archive_app_filter: true
@@ -142,7 +116,7 @@ collections:
       archive_value: "true"
       autosave_revision_interval: null
       collapse: open
-      collection: camps
+      collection: clubspot_camps
       color: null
       display_template: "{{name}}"
       group: Schedule
@@ -159,8 +133,8 @@ collections:
       unarchive_value: "false"
       versioning: false
     schema:
-      name: camps
-  - collection: promoted_fields
+      name: clubspot_camps
+  - collection: clubspot_promoted_fields
     meta:
       accountability: all
       archive_app_filter: true
@@ -168,7 +142,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: promoted_fields
+      collection: clubspot_promoted_fields
       color: null
       display_template: "{{target_field}}"
       group: Registrations
@@ -187,8 +161,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: promoted_fields
-  - collection: participants
+      name: clubspot_promoted_fields
+  - collection: clubspot_participants
     meta:
       accountability: all
       archive_app_filter: true
@@ -196,7 +170,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: participants
+      collection: clubspot_participants
       color: null
       display_template: "{{first_name}} {{last_name}}"
       group: Registrations
@@ -215,8 +189,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: participants
-  - collection: registration_billing
+      name: clubspot_participants
+  - collection: clubspot_registration_billing
     meta:
       accountability: all
       archive_app_filter: true
@@ -224,7 +198,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: registration_billing
+      collection: clubspot_registration_billing
       color: null
       display_template: >-
         {{registration_id.participant_id.first_name}} {{registration_id.participant_id.last_name}} -
@@ -243,8 +217,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: registration_billing
-  - collection: registration_entries
+      name: clubspot_registration_billing
+  - collection: clubspot_registration_entries
     meta:
       accountability: all
       archive_app_filter: true
@@ -252,7 +226,7 @@ collections:
       archive_value: cancelled
       autosave_revision_interval: null
       collapse: open
-      collection: registration_entries
+      collection: clubspot_registration_entries
       color: null
       display_template: "{{session_id.name}} - {{class_id.name}}"
       group: Registrations
@@ -269,8 +243,8 @@ collections:
       unarchive_value: confirmed
       versioning: false
     schema:
-      name: registration_entries
-  - collection: registrations
+      name: clubspot_registration_entries
+  - collection: clubspot_registrations
     meta:
       accountability: all
       archive_app_filter: true
@@ -278,7 +252,7 @@ collections:
       archive_value: "true"
       autosave_revision_interval: null
       collapse: open
-      collection: registrations
+      collection: clubspot_registrations
       color: null
       display_template: "{{participant_id.first_name}} {{participant_id.last_name}} - {{camp_id.name}}"
       group: Registrations
@@ -295,8 +269,8 @@ collections:
       unarchive_value: "false"
       versioning: false
     schema:
-      name: registrations
-  - collection: session_classes
+      name: clubspot_registrations
+  - collection: clubspot_session_classes
     meta:
       accountability: all
       archive_app_filter: true
@@ -304,7 +278,7 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: session_classes
+      collection: clubspot_session_classes
       color: null
       display_template: "{{session_id.name}} - {{class_id.name}}"
       group: Schedule
@@ -321,8 +295,8 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: session_classes
-  - collection: sessions
+      name: clubspot_session_classes
+  - collection: clubspot_sessions
     meta:
       accountability: all
       archive_app_filter: true
@@ -330,7 +304,7 @@ collections:
       archive_value: "true"
       autosave_revision_interval: null
       collapse: open
-      collection: sessions
+      collection: clubspot_sessions
       color: null
       display_template: "{{camp_id.name}} - {{name}}"
       group: Schedule
@@ -347,7 +321,7 @@ collections:
       unarchive_value: "false"
       versioning: false
     schema:
-      name: sessions
+      name: clubspot_sessions
   - collection: Clubspot
     meta:
       accountability: all
@@ -421,11 +395,11 @@ collections:
       unarchive_value: null
       versioning: false
 fields:
-  - collection: classes
+  - collection: clubspot_classes
     field: id
     type: string
     meta:
-      collection: classes
+      collection: clubspot_classes
       conditions: null
       display: null
       display_options: null
@@ -446,7 +420,7 @@ fields:
       width: full
     schema:
       name: id
-      table: classes
+      table: clubspot_classes
       data_type: character varying
       default_value: null
       max_length: 255
@@ -461,11 +435,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: classes
+  - collection: clubspot_classes
     field: camp_id
     type: string
     meta:
-      collection: classes
+      collection: clubspot_classes
       conditions: null
       display: related-values
       display_options:
@@ -490,7 +464,7 @@ fields:
       width: full
     schema:
       name: camp_id
-      table: classes
+      table: clubspot_classes
       data_type: character varying
       default_value: null
       max_length: 255
@@ -503,13 +477,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-  - collection: classes
+  - collection: clubspot_classes
     field: name
     type: string
     meta:
-      collection: classes
+      collection: clubspot_classes
       conditions: null
       display: null
       display_options: null
@@ -530,7 +504,7 @@ fields:
       width: full
     schema:
       name: name
-      table: classes
+      table: clubspot_classes
       data_type: character varying
       default_value: null
       max_length: 255
@@ -545,11 +519,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: custom_field_definitions
+  - collection: clubspot_custom_field_definitions
     field: id
     type: string
     meta:
-      collection: custom_field_definitions
+      collection: clubspot_custom_field_definitions
       conditions: null
       display: null
       display_options: null
@@ -570,7 +544,7 @@ fields:
       width: full
     schema:
       name: id
-      table: custom_field_definitions
+      table: clubspot_custom_field_definitions
       data_type: character varying
       default_value: null
       max_length: 255
@@ -585,11 +559,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: custom_field_definitions
+  - collection: clubspot_custom_field_definitions
     field: camp_id
     type: string
     meta:
-      collection: custom_field_definitions
+      collection: clubspot_custom_field_definitions
       conditions: null
       display: related-values
       display_options:
@@ -614,7 +588,7 @@ fields:
       width: full
     schema:
       name: camp_id
-      table: custom_field_definitions
+      table: clubspot_custom_field_definitions
       data_type: character varying
       default_value: null
       max_length: 255
@@ -627,13 +601,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-  - collection: custom_field_definitions
+  - collection: clubspot_custom_field_definitions
     field: label
     type: text
     meta:
-      collection: custom_field_definitions
+      collection: clubspot_custom_field_definitions
       conditions: null
       display: null
       display_options: null
@@ -654,7 +628,7 @@ fields:
       width: full
     schema:
       name: label
-      table: custom_field_definitions
+      table: clubspot_custom_field_definitions
       data_type: text
       default_value: null
       max_length: null
@@ -669,11 +643,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: custom_field_definitions
+  - collection: clubspot_custom_field_definitions
     field: field_type
     type: string
     meta:
-      collection: custom_field_definitions
+      collection: clubspot_custom_field_definitions
       conditions: null
       display: null
       display_options: null
@@ -694,7 +668,7 @@ fields:
       width: full
     schema:
       name: field_type
-      table: custom_field_definitions
+      table: clubspot_custom_field_definitions
       data_type: character varying
       default_value: null
       max_length: 255
@@ -709,11 +683,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: custom_field_definitions
+  - collection: clubspot_custom_field_definitions
     field: required
     type: boolean
     meta:
-      collection: custom_field_definitions
+      collection: clubspot_custom_field_definitions
       conditions: null
       display: null
       display_options: null
@@ -734,7 +708,7 @@ fields:
       width: full
     schema:
       name: required
-      table: custom_field_definitions
+      table: clubspot_custom_field_definitions
       data_type: boolean
       default_value: false
       max_length: null
@@ -749,11 +723,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: custom_field_responses
+  - collection: clubspot_custom_field_responses
     field: id
     type: string
     meta:
-      collection: custom_field_responses
+      collection: clubspot_custom_field_responses
       conditions: null
       display: null
       display_options: null
@@ -774,7 +748,7 @@ fields:
       width: full
     schema:
       name: id
-      table: custom_field_responses
+      table: clubspot_custom_field_responses
       data_type: character varying
       default_value: null
       max_length: 255
@@ -789,11 +763,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: custom_field_responses
+  - collection: clubspot_custom_field_responses
     field: registration_id
     type: string
     meta:
-      collection: custom_field_responses
+      collection: clubspot_custom_field_responses
       conditions: null
       display: related-values
       display_options:
@@ -818,7 +792,7 @@ fields:
       width: full
     schema:
       name: registration_id
-      table: custom_field_responses
+      table: clubspot_custom_field_responses
       data_type: character varying
       default_value: null
       max_length: 255
@@ -831,13 +805,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: registrations
+      foreign_key_table: clubspot_registrations
       foreign_key_column: id
-  - collection: custom_field_responses
+  - collection: clubspot_custom_field_responses
     field: definition_id
     type: string
     meta:
-      collection: custom_field_responses
+      collection: clubspot_custom_field_responses
       conditions: null
       display: related-values
       display_options:
@@ -862,7 +836,7 @@ fields:
       width: full
     schema:
       name: definition_id
-      table: custom_field_responses
+      table: clubspot_custom_field_responses
       data_type: character varying
       default_value: null
       max_length: 255
@@ -875,13 +849,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: custom_field_definitions
+      foreign_key_table: clubspot_custom_field_definitions
       foreign_key_column: id
-  - collection: custom_field_responses
+  - collection: clubspot_custom_field_responses
     field: value
     type: text
     meta:
-      collection: custom_field_responses
+      collection: clubspot_custom_field_responses
       conditions: null
       display: null
       display_options: null
@@ -902,7 +876,7 @@ fields:
       width: full
     schema:
       name: value
-      table: custom_field_responses
+      table: clubspot_custom_field_responses
       data_type: text
       default_value: null
       max_length: null
@@ -917,11 +891,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: entry_caps
+  - collection: clubspot_entry_caps
     field: id
     type: string
     meta:
-      collection: entry_caps
+      collection: clubspot_entry_caps
       conditions: null
       display: null
       display_options: null
@@ -942,7 +916,7 @@ fields:
       width: full
     schema:
       name: id
-      table: entry_caps
+      table: clubspot_entry_caps
       data_type: character varying
       default_value: null
       max_length: 255
@@ -957,11 +931,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: entry_caps
+  - collection: clubspot_entry_caps
     field: class_id
     type: string
     meta:
-      collection: entry_caps
+      collection: clubspot_entry_caps
       conditions: null
       display: related-values
       display_options:
@@ -986,7 +960,7 @@ fields:
       width: full
     schema:
       name: class_id
-      table: entry_caps
+      table: clubspot_entry_caps
       data_type: character varying
       default_value: null
       max_length: 255
@@ -999,13 +973,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: classes
+      foreign_key_table: clubspot_classes
       foreign_key_column: id
-  - collection: entry_caps
+  - collection: clubspot_entry_caps
     field: session_id
     type: string
     meta:
-      collection: entry_caps
+      collection: clubspot_entry_caps
       conditions: null
       display: related-values
       display_options:
@@ -1030,7 +1004,7 @@ fields:
       width: full
     schema:
       name: session_id
-      table: entry_caps
+      table: clubspot_entry_caps
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1043,13 +1017,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: sessions
+      foreign_key_table: clubspot_sessions
       foreign_key_column: id
-  - collection: entry_caps
+  - collection: clubspot_entry_caps
     field: cap
     type: integer
     meta:
-      collection: entry_caps
+      collection: clubspot_entry_caps
       conditions: null
       display: null
       display_options: null
@@ -1070,7 +1044,7 @@ fields:
       width: full
     schema:
       name: cap
-      table: entry_caps
+      table: clubspot_entry_caps
       data_type: integer
       default_value: null
       max_length: null
@@ -1085,140 +1059,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: event_staff
-    field: id
-    type: uuid
-    meta:
-      collection: event_staff
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: event_staff
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: event_staff
-    field: person_id
-    type: uuid
-    meta:
-      collection: event_staff
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{first_name}} {{last_name}}"
-      field: person_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Staff member
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: person_id
-      table: event_staff
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: people
-      foreign_key_column: id
-  - collection: event_staff
-    field: session_id
-    type: string
-    meta:
-      collection: event_staff
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{camp_id.name}} - {{name}}"
-      field: session_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Session
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: session_id
-      table: event_staff
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: sessions
-      foreign_key_column: id
-  - collection: camps
+  - collection: clubspot_camps
     field: id
     type: string
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -1239,7 +1084,7 @@ fields:
       width: full
     schema:
       name: id
-      table: camps
+      table: clubspot_camps
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1254,11 +1099,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: camps
+  - collection: clubspot_camps
     field: name
     type: string
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -1279,7 +1124,7 @@ fields:
       width: full
     schema:
       name: name
-      table: camps
+      table: clubspot_camps
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1294,11 +1139,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: camps
+  - collection: clubspot_camps
     field: start_date
     type: date
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -1319,7 +1164,7 @@ fields:
       width: full
     schema:
       name: start_date
-      table: camps
+      table: clubspot_camps
       data_type: date
       default_value: null
       max_length: null
@@ -1334,11 +1179,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: camps
+  - collection: clubspot_camps
     field: end_date
     type: date
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -1359,7 +1204,7 @@ fields:
       width: full
     schema:
       name: end_date
-      table: camps
+      table: clubspot_camps
       data_type: date
       default_value: null
       max_length: null
@@ -1374,11 +1219,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: promoted_fields
+  - collection: clubspot_promoted_fields
     field: id
     type: uuid
     meta:
-      collection: promoted_fields
+      collection: clubspot_promoted_fields
       conditions: null
       display: null
       display_options: null
@@ -1400,7 +1245,7 @@ fields:
       width: full
     schema:
       name: id
-      table: promoted_fields
+      table: clubspot_promoted_fields
       data_type: uuid
       default_value: null
       max_length: null
@@ -1415,11 +1260,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: promoted_fields
+  - collection: clubspot_promoted_fields
     field: target_field
     type: string
     meta:
-      collection: promoted_fields
+      collection: clubspot_promoted_fields
       conditions: null
       display: labels
       display_options:
@@ -1452,7 +1297,7 @@ fields:
       width: full
     schema:
       name: target_field
-      table: promoted_fields
+      table: clubspot_promoted_fields
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1467,11 +1312,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: promoted_fields
+  - collection: clubspot_promoted_fields
     field: labels
     type: json
     meta:
-      collection: promoted_fields
+      collection: clubspot_promoted_fields
       conditions: null
       display: null
       display_options: null
@@ -1495,7 +1340,7 @@ fields:
       width: full
     schema:
       name: labels
-      table: promoted_fields
+      table: clubspot_promoted_fields
       data_type: json
       default_value: null
       max_length: null
@@ -1510,11 +1355,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: id
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1535,7 +1380,7 @@ fields:
       width: full
     schema:
       name: id
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1550,11 +1395,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: person_id
     type: uuid
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: related-values
       display_options:
@@ -1579,7 +1424,7 @@ fields:
       width: full
     schema:
       name: person_id
-      table: participants
+      table: clubspot_participants
       data_type: uuid
       default_value: null
       max_length: null
@@ -1594,11 +1439,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: people
       foreign_key_column: id
-  - collection: participants
+  - collection: clubspot_participants
     field: last_sync_run_id
     type: uuid
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: related-values
       display_options:
@@ -1623,7 +1468,7 @@ fields:
       width: full
     schema:
       name: last_sync_run_id
-      table: participants
+      table: clubspot_participants
       data_type: uuid
       default_value: null
       max_length: null
@@ -1638,11 +1483,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: sync_runs
       foreign_key_column: id
-  - collection: participants
+  - collection: clubspot_participants
     field: first_name
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1663,7 +1508,7 @@ fields:
       width: full
     schema:
       name: first_name
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1678,11 +1523,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: last_name
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1703,7 +1548,7 @@ fields:
       width: full
     schema:
       name: last_name
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1718,11 +1563,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: email
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1743,7 +1588,7 @@ fields:
       width: full
     schema:
       name: email
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1758,11 +1603,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: phone
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1783,7 +1628,7 @@ fields:
       width: full
     schema:
       name: phone
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1798,11 +1643,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: date_of_birth
     type: date
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1823,7 +1668,7 @@ fields:
       width: full
     schema:
       name: date_of_birth
-      table: participants
+      table: clubspot_participants
       data_type: date
       default_value: null
       max_length: null
@@ -1838,11 +1683,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: gender
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1863,7 +1708,7 @@ fields:
       width: full
     schema:
       name: gender
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1878,11 +1723,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: street
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1903,7 +1748,7 @@ fields:
       width: full
     schema:
       name: street
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1918,11 +1763,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: city
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1943,7 +1788,7 @@ fields:
       width: full
     schema:
       name: city
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1958,11 +1803,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: state
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -1983,7 +1828,7 @@ fields:
       width: full
     schema:
       name: state
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1998,11 +1843,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: postal_code
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2023,7 +1868,7 @@ fields:
       width: full
     schema:
       name: postal_code
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2038,11 +1883,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: guardian_1_name
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2063,7 +1908,7 @@ fields:
       width: full
     schema:
       name: guardian_1_name
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2078,11 +1923,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: guardian_1_email
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2103,7 +1948,7 @@ fields:
       width: full
     schema:
       name: guardian_1_email
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2118,11 +1963,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: guardian_1_mobile
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2143,7 +1988,7 @@ fields:
       width: full
     schema:
       name: guardian_1_mobile
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2158,11 +2003,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: guardian_2_name
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2183,7 +2028,7 @@ fields:
       width: full
     schema:
       name: guardian_2_name
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2198,11 +2043,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: guardian_2_email
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2223,7 +2068,7 @@ fields:
       width: full
     schema:
       name: guardian_2_email
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2238,11 +2083,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: guardian_2_mobile
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2263,7 +2108,7 @@ fields:
       width: full
     schema:
       name: guardian_2_mobile
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2278,11 +2123,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_1_name
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2303,7 +2148,7 @@ fields:
       width: full
     schema:
       name: emergency_1_name
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2318,11 +2163,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_1_phone
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2343,7 +2188,7 @@ fields:
       width: full
     schema:
       name: emergency_1_phone
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2358,11 +2203,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_1_email
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2383,7 +2228,7 @@ fields:
       width: full
     schema:
       name: emergency_1_email
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2398,11 +2243,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_1_relationship
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2423,7 +2268,7 @@ fields:
       width: full
     schema:
       name: emergency_1_relationship
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2438,11 +2283,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_2_name
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2463,7 +2308,7 @@ fields:
       width: full
     schema:
       name: emergency_2_name
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2478,11 +2323,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_2_phone
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2503,7 +2348,7 @@ fields:
       width: full
     schema:
       name: emergency_2_phone
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2518,11 +2363,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_2_email
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2543,7 +2388,7 @@ fields:
       width: full
     schema:
       name: emergency_2_email
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2558,11 +2403,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: emergency_2_relationship
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2583,7 +2428,7 @@ fields:
       width: full
     schema:
       name: emergency_2_relationship
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2598,11 +2443,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: medical_conditions
     type: text
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2623,7 +2468,7 @@ fields:
       width: full
     schema:
       name: medical_conditions
-      table: participants
+      table: clubspot_participants
       data_type: text
       default_value: null
       max_length: null
@@ -2638,11 +2483,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: medical_allergies
     type: text
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2663,7 +2508,7 @@ fields:
       width: full
     schema:
       name: medical_allergies
-      table: participants
+      table: clubspot_participants
       data_type: text
       default_value: null
       max_length: null
@@ -2678,11 +2523,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: medical_medications
     type: text
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2703,7 +2548,7 @@ fields:
       width: full
     schema:
       name: medical_medications
-      table: participants
+      table: clubspot_participants
       data_type: text
       default_value: null
       max_length: null
@@ -2718,11 +2563,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: medical_last_tetanus
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2745,7 +2590,7 @@ fields:
       width: full
     schema:
       name: medical_last_tetanus
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2760,11 +2605,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: medical_physician_name
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2785,7 +2630,7 @@ fields:
       width: full
     schema:
       name: medical_physician_name
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2800,11 +2645,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: medical_physician_phone
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2825,7 +2670,7 @@ fields:
       width: full
     schema:
       name: medical_physician_phone
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2840,11 +2685,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: participants
+  - collection: clubspot_participants
     field: medical_weight
     type: string
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: null
       display_options: null
@@ -2865,7 +2710,7 @@ fields:
       width: full
     schema:
       name: medical_weight
-      table: participants
+      table: clubspot_participants
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2880,11 +2725,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: id
     type: string
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: null
       display_options: null
@@ -2905,7 +2750,7 @@ fields:
       width: full
     schema:
       name: id
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2920,11 +2765,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: registration_id
     type: string
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: related-values
       display_options:
@@ -2949,7 +2794,7 @@ fields:
       width: full
     schema:
       name: registration_id
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: character varying
       default_value: null
       max_length: 255
@@ -2962,13 +2807,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: registrations
+      foreign_key_table: clubspot_registrations
       foreign_key_column: id
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: amount
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -2989,7 +2834,7 @@ fields:
       width: full
     schema:
       name: amount
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3004,11 +2849,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: amount_pending
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3029,7 +2874,7 @@ fields:
       width: full
     schema:
       name: amount_pending
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3044,11 +2889,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: amount_received
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3069,7 +2914,7 @@ fields:
       width: full
     schema:
       name: amount_received
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3084,11 +2929,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: amount_refunded
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3109,7 +2954,7 @@ fields:
       width: full
     schema:
       name: amount_refunded
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3124,11 +2969,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: amount_capturable
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3149,7 +2994,7 @@ fields:
       width: full
     schema:
       name: amount_capturable
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3164,11 +3009,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: amount_deferred
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3189,7 +3034,7 @@ fields:
       width: full
     schema:
       name: amount_deferred
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3204,11 +3049,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: deferred_amount_billed
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3229,7 +3074,7 @@ fields:
       width: full
     schema:
       name: deferred_amount_billed
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3244,11 +3089,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: discount
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3269,7 +3114,7 @@ fields:
       width: full
     schema:
       name: discount
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3284,11 +3129,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: processing_fee
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3309,7 +3154,7 @@ fields:
       width: full
     schema:
       name: processing_fee
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3324,11 +3169,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: processing_passed_on
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3349,7 +3194,7 @@ fields:
       width: full
     schema:
       name: processing_passed_on
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3364,11 +3209,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: application_fee_amount
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3389,7 +3234,7 @@ fields:
       width: full
     schema:
       name: application_fee_amount
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3404,11 +3249,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: tax
     type: integer
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: cents-as-dollars
       display_options: null
@@ -3429,7 +3274,7 @@ fields:
       width: full
     schema:
       name: tax
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: integer
       default_value: 0
       max_length: null
@@ -3444,11 +3289,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: currency
     type: string
     meta:
-      collection: registration_billing
+      collection: clubspot_registration_billing
       conditions: null
       display: null
       display_options: null
@@ -3469,7 +3314,7 @@ fields:
       width: full
     schema:
       name: currency
-      table: registration_billing
+      table: clubspot_registration_billing
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3484,11 +3329,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: id
     type: string
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: null
       display_options: null
@@ -3509,7 +3354,7 @@ fields:
       width: full
     schema:
       name: id
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3524,11 +3369,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: registration_id
     type: string
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: related-values
       display_options:
@@ -3553,7 +3398,7 @@ fields:
       width: full
     schema:
       name: registration_id
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3566,13 +3411,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: registrations
+      foreign_key_table: clubspot_registrations
       foreign_key_column: id
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: session_id
     type: string
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: related-values
       display_options:
@@ -3597,7 +3442,7 @@ fields:
       width: full
     schema:
       name: session_id
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3610,13 +3455,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: sessions
+      foreign_key_table: clubspot_sessions
       foreign_key_column: id
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: class_id
     type: string
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: related-values
       display_options:
@@ -3641,7 +3486,7 @@ fields:
       width: full
     schema:
       name: class_id
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3654,13 +3499,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: classes
+      foreign_key_table: clubspot_classes
       foreign_key_column: id
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: status
     type: string
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: labels
       display_options:
@@ -3695,7 +3540,7 @@ fields:
       width: full
     schema:
       name: status
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3710,11 +3555,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registrations
+  - collection: clubspot_registrations
     field: id
     type: string
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: null
       display_options: null
@@ -3735,7 +3580,7 @@ fields:
       width: full
     schema:
       name: id
-      table: registrations
+      table: clubspot_registrations
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3750,11 +3595,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registrations
+  - collection: clubspot_registrations
     field: camp_id
     type: string
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: related-values
       display_options:
@@ -3779,7 +3624,7 @@ fields:
       width: full
     schema:
       name: camp_id
-      table: registrations
+      table: clubspot_registrations
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3792,13 +3637,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-  - collection: registrations
+  - collection: clubspot_registrations
     field: registered_at
     type: timestamp
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: null
       display_options: null
@@ -3819,7 +3664,7 @@ fields:
       width: full
     schema:
       name: registered_at
-      table: registrations
+      table: clubspot_registrations
       data_type: timestamp with time zone
       default_value: null
       max_length: null
@@ -3834,11 +3679,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registrations
+  - collection: clubspot_registrations
     field: status
     type: string
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: null
       display_options: null
@@ -3859,7 +3704,7 @@ fields:
       width: full
     schema:
       name: status
-      table: registrations
+      table: clubspot_registrations
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3874,11 +3719,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registrations
+  - collection: clubspot_registrations
     field: waiver_status
     type: string
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: null
       display_options: null
@@ -3899,7 +3744,7 @@ fields:
       width: full
     schema:
       name: waiver_status
-      table: registrations
+      table: clubspot_registrations
       data_type: character varying
       default_value: null
       max_length: 255
@@ -3914,11 +3759,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registrations
+  - collection: clubspot_registrations
     field: archived
     type: boolean
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: null
       display_options: null
@@ -3939,7 +3784,7 @@ fields:
       width: full
     schema:
       name: archived
-      table: registrations
+      table: clubspot_registrations
       data_type: boolean
       default_value: false
       max_length: null
@@ -3954,11 +3799,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registrations
+  - collection: clubspot_registrations
     field: share_contact
     type: boolean
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: null
       display_options: null
@@ -3979,7 +3824,7 @@ fields:
       width: full
     schema:
       name: share_contact
-      table: registrations
+      table: clubspot_registrations
       data_type: boolean
       default_value: null
       max_length: null
@@ -4019,11 +3864,11 @@ fields:
       validation: null
       validation_message: null
       width: full
-  - collection: session_classes
+  - collection: clubspot_session_classes
     field: id
     type: string
     meta:
-      collection: session_classes
+      collection: clubspot_session_classes
       conditions: null
       display: null
       display_options: null
@@ -4044,7 +3889,7 @@ fields:
       width: full
     schema:
       name: id
-      table: session_classes
+      table: clubspot_session_classes
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4059,11 +3904,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: session_classes
+  - collection: clubspot_session_classes
     field: session_id
     type: string
     meta:
-      collection: session_classes
+      collection: clubspot_session_classes
       conditions: null
       display: related-values
       display_options:
@@ -4088,7 +3933,7 @@ fields:
       width: full
     schema:
       name: session_id
-      table: session_classes
+      table: clubspot_session_classes
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4101,13 +3946,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: sessions
+      foreign_key_table: clubspot_sessions
       foreign_key_column: id
-  - collection: session_classes
+  - collection: clubspot_session_classes
     field: class_id
     type: string
     meta:
-      collection: session_classes
+      collection: clubspot_session_classes
       conditions: null
       display: related-values
       display_options:
@@ -4132,7 +3977,7 @@ fields:
       width: full
     schema:
       name: class_id
-      table: session_classes
+      table: clubspot_session_classes
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4145,13 +3990,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: classes
+      foreign_key_table: clubspot_classes
       foreign_key_column: id
-  - collection: sessions
+  - collection: clubspot_sessions
     field: id
     type: string
     meta:
-      collection: sessions
+      collection: clubspot_sessions
       conditions: null
       display: null
       display_options: null
@@ -4172,7 +4017,7 @@ fields:
       width: full
     schema:
       name: id
-      table: sessions
+      table: clubspot_sessions
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4187,11 +4032,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: sessions
+  - collection: clubspot_sessions
     field: camp_id
     type: string
     meta:
-      collection: sessions
+      collection: clubspot_sessions
       conditions: null
       display: related-values
       display_options:
@@ -4216,7 +4061,7 @@ fields:
       width: full
     schema:
       name: camp_id
-      table: sessions
+      table: clubspot_sessions
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4229,13 +4074,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-  - collection: sessions
+  - collection: clubspot_sessions
     field: start_date
     type: date
     meta:
-      collection: sessions
+      collection: clubspot_sessions
       conditions: null
       display: null
       display_options: null
@@ -4256,7 +4101,7 @@ fields:
       width: full
     schema:
       name: start_date
-      table: sessions
+      table: clubspot_sessions
       data_type: date
       default_value: null
       max_length: null
@@ -4271,11 +4116,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: sessions
+  - collection: clubspot_sessions
     field: end_date
     type: date
     meta:
-      collection: sessions
+      collection: clubspot_sessions
       conditions: null
       display: null
       display_options: null
@@ -4296,7 +4141,7 @@ fields:
       width: full
     schema:
       name: end_date
-      table: sessions
+      table: clubspot_sessions
       data_type: date
       default_value: null
       max_length: null
@@ -4311,11 +4156,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: sessions
+  - collection: clubspot_sessions
     field: name
     type: string
     meta:
-      collection: sessions
+      collection: clubspot_sessions
       conditions: null
       display: null
       display_options: null
@@ -4336,7 +4181,7 @@ fields:
       width: full
     schema:
       name: name
-      table: sessions
+      table: clubspot_sessions
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4351,11 +4196,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: sessions
+  - collection: clubspot_sessions
     field: archived
     type: boolean
     meta:
-      collection: sessions
+      collection: clubspot_sessions
       conditions: null
       display: null
       display_options: null
@@ -4376,7 +4221,7 @@ fields:
       width: full
     schema:
       name: archived
-      table: sessions
+      table: clubspot_sessions
       data_type: boolean
       default_value: false
       max_length: null
@@ -4391,11 +4236,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: classes
+  - collection: clubspot_classes
     field: program_id
     type: uuid
     meta:
-      collection: classes
+      collection: clubspot_classes
       conditions: null
       display: related-values
       display_options:
@@ -4420,7 +4265,7 @@ fields:
       width: full
     schema:
       name: program_id
-      table: classes
+      table: clubspot_classes
       data_type: uuid
       default_value: null
       max_length: null
@@ -4435,11 +4280,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: programs
       foreign_key_column: id
-  - collection: camps
+  - collection: clubspot_camps
     field: archived
     type: boolean
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -4460,7 +4305,7 @@ fields:
       width: full
     schema:
       name: archived
-      table: camps
+      table: clubspot_camps
       data_type: boolean
       default_value: false
       max_length: null
@@ -4475,11 +4320,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: camps
+  - collection: clubspot_camps
     field: synced_through
     type: timestamp
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -4500,7 +4345,7 @@ fields:
       width: full
     schema:
       name: synced_through
-      table: camps
+      table: clubspot_camps
       data_type: timestamp with time zone
       default_value: null
       max_length: null
@@ -4515,11 +4360,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: camps
+  - collection: clubspot_camps
     field: quiet_runs
     type: integer
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -4542,7 +4387,7 @@ fields:
       width: full
     schema:
       name: quiet_runs
-      table: camps
+      table: clubspot_camps
       data_type: integer
       default_value: 0
       max_length: null
@@ -4557,11 +4402,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: camps
+  - collection: clubspot_camps
     field: clubspot_sales_account
     type: string
     meta:
-      collection: camps
+      collection: clubspot_camps
       conditions: null
       display: null
       display_options: null
@@ -4584,7 +4429,7 @@ fields:
       width: full
     schema:
       name: clubspot_sales_account
-      table: camps
+      table: clubspot_camps
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4599,11 +4444,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: clubspot_status
     type: string
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: null
       display_options: null
@@ -4626,7 +4471,7 @@ fields:
       width: full
     schema:
       name: clubspot_status
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4641,11 +4486,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: confirmed_at
     type: timestamp
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: null
       display_options: null
@@ -4666,7 +4511,7 @@ fields:
       width: full
     schema:
       name: confirmed_at
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: timestamp with time zone
       default_value: null
       max_length: null
@@ -4681,11 +4526,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: waitlist_number
     type: integer
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: null
       display_options: null
@@ -4706,7 +4551,7 @@ fields:
       width: full
     schema:
       name: waitlist_number
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: integer
       default_value: null
       max_length: null
@@ -4721,11 +4566,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: accepted_from_waitlist
     type: boolean
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: null
       display_options: null
@@ -4746,7 +4591,7 @@ fields:
       width: full
     schema:
       name: accepted_from_waitlist
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: boolean
       default_value: null
       max_length: null
@@ -4761,11 +4606,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: priority
     type: integer
     meta:
-      collection: registration_entries
+      collection: clubspot_registration_entries
       conditions: null
       display: null
       display_options: null
@@ -4786,7 +4631,7 @@ fields:
       width: full
     schema:
       name: priority
-      table: registration_entries
+      table: clubspot_registration_entries
       data_type: integer
       default_value: null
       max_length: null
@@ -4801,11 +4646,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: registrations
+  - collection: clubspot_registrations
     field: participant_id
     type: string
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: related-values
       display_options:
@@ -4830,7 +4675,7 @@ fields:
       width: full
     schema:
       name: participant_id
-      table: registrations
+      table: clubspot_registrations
       data_type: character varying
       default_value: null
       max_length: 255
@@ -4843,13 +4688,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: participants
+      foreign_key_table: clubspot_participants
       foreign_key_column: id
-  - collection: registrations
+  - collection: clubspot_registrations
     field: last_sync_run_id
     type: uuid
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: related-values
       display_options:
@@ -4874,7 +4719,7 @@ fields:
       width: full
     schema:
       name: last_sync_run_id
-      table: registrations
+      table: clubspot_registrations
       data_type: uuid
       default_value: null
       max_length: null
@@ -4931,7 +4776,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: participants
+      foreign_key_table: clubspot_participants
       foreign_key_column: id
   - collection: programs
     field: classes
@@ -4958,11 +4803,11 @@ fields:
       validation: null
       validation_message: null
       width: full
-  - collection: classes
+  - collection: clubspot_classes
     field: registration_entries
     type: alias
     meta:
-      collection: classes
+      collection: clubspot_classes
       conditions: null
       display: related-values
       display_options:
@@ -4983,11 +4828,11 @@ fields:
       validation: null
       validation_message: null
       width: full
-  - collection: registrations
+  - collection: clubspot_registrations
     field: registration_entries
     type: alias
     meta:
-      collection: registrations
+      collection: clubspot_registrations
       conditions: null
       display: related-values
       display_options:
@@ -5008,11 +4853,11 @@ fields:
       validation: null
       validation_message: null
       width: full
-  - collection: participants
+  - collection: clubspot_participants
     field: registrations
     type: alias
     meta:
-      collection: participants
+      collection: clubspot_participants
       conditions: null
       display: related-values
       display_options:
@@ -5036,13 +4881,13 @@ fields:
 relations:
   - collection: contact_points
     field: participant_id
-    related_collection: participants
+    related_collection: clubspot_participants
     meta:
       junction_field: null
       many_collection: contact_points
       many_field: participant_id
       one_allowed_collections: null
-      one_collection: participants
+      one_collection: clubspot_participants
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
@@ -5050,290 +4895,248 @@ relations:
     schema:
       table: contact_points
       column: participant_id
-      foreign_key_table: participants
+      foreign_key_table: clubspot_participants
       foreign_key_column: id
       constraint_name: contact_points_participant_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL
-  - collection: classes
+  - collection: clubspot_classes
     field: camp_id
-    related_collection: camps
+    related_collection: clubspot_camps
     meta:
       junction_field: null
-      many_collection: classes
+      many_collection: clubspot_classes
       many_field: camp_id
       one_allowed_collections: null
-      one_collection: camps
+      one_collection: clubspot_camps
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: classes
+      table: clubspot_classes
       column: camp_id
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-      constraint_name: classes_camp_id_foreign
+      constraint_name: clubspot_classes_camp_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: custom_field_definitions
+  - collection: clubspot_custom_field_definitions
     field: camp_id
-    related_collection: camps
+    related_collection: clubspot_camps
     meta:
       junction_field: null
-      many_collection: custom_field_definitions
+      many_collection: clubspot_custom_field_definitions
       many_field: camp_id
       one_allowed_collections: null
-      one_collection: camps
+      one_collection: clubspot_camps
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: custom_field_definitions
+      table: clubspot_custom_field_definitions
       column: camp_id
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-      constraint_name: custom_field_definitions_camp_id_foreign
+      constraint_name: clubspot_custom_field_definitions_camp_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: custom_field_responses
+  - collection: clubspot_custom_field_responses
     field: registration_id
-    related_collection: registrations
+    related_collection: clubspot_registrations
     meta:
       junction_field: null
-      many_collection: custom_field_responses
+      many_collection: clubspot_custom_field_responses
       many_field: registration_id
       one_allowed_collections: null
-      one_collection: registrations
+      one_collection: clubspot_registrations
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: custom_field_responses
+      table: clubspot_custom_field_responses
       column: registration_id
-      foreign_key_table: registrations
+      foreign_key_table: clubspot_registrations
       foreign_key_column: id
-      constraint_name: custom_field_responses_registration_id_foreign
+      constraint_name: clubspot_custom_field_responses_registration_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: custom_field_responses
+  - collection: clubspot_custom_field_responses
     field: definition_id
-    related_collection: custom_field_definitions
+    related_collection: clubspot_custom_field_definitions
     meta:
       junction_field: null
-      many_collection: custom_field_responses
+      many_collection: clubspot_custom_field_responses
       many_field: definition_id
       one_allowed_collections: null
-      one_collection: custom_field_definitions
+      one_collection: clubspot_custom_field_definitions
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: custom_field_responses
+      table: clubspot_custom_field_responses
       column: definition_id
-      foreign_key_table: custom_field_definitions
+      foreign_key_table: clubspot_custom_field_definitions
       foreign_key_column: id
-      constraint_name: custom_field_responses_definition_id_foreign
+      constraint_name: clubspot_custom_field_responses_definition_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: entry_caps
+  - collection: clubspot_entry_caps
     field: class_id
-    related_collection: classes
+    related_collection: clubspot_classes
     meta:
       junction_field: null
-      many_collection: entry_caps
+      many_collection: clubspot_entry_caps
       many_field: class_id
       one_allowed_collections: null
-      one_collection: classes
+      one_collection: clubspot_classes
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: entry_caps
+      table: clubspot_entry_caps
       column: class_id
-      foreign_key_table: classes
+      foreign_key_table: clubspot_classes
       foreign_key_column: id
-      constraint_name: entry_caps_class_id_foreign
+      constraint_name: clubspot_entry_caps_class_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: entry_caps
+  - collection: clubspot_entry_caps
     field: session_id
-    related_collection: sessions
+    related_collection: clubspot_sessions
     meta:
       junction_field: null
-      many_collection: entry_caps
+      many_collection: clubspot_entry_caps
       many_field: session_id
       one_allowed_collections: null
-      one_collection: sessions
+      one_collection: clubspot_sessions
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: entry_caps
+      table: clubspot_entry_caps
       column: session_id
-      foreign_key_table: sessions
+      foreign_key_table: clubspot_sessions
       foreign_key_column: id
-      constraint_name: entry_caps_session_id_foreign
+      constraint_name: clubspot_entry_caps_session_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: event_staff
-    field: person_id
-    related_collection: people
-    meta:
-      junction_field: null
-      many_collection: event_staff
-      many_field: person_id
-      one_allowed_collections: null
-      one_collection: people
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: event_staff
-      column: person_id
-      foreign_key_table: people
-      foreign_key_column: id
-      constraint_name: event_staff_person_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: event_staff
-    field: session_id
-    related_collection: sessions
-    meta:
-      junction_field: null
-      many_collection: event_staff
-      many_field: session_id
-      one_allowed_collections: null
-      one_collection: sessions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: event_staff
-      column: session_id
-      foreign_key_table: sessions
-      foreign_key_column: id
-      constraint_name: event_staff_session_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: registration_billing
+  - collection: clubspot_registration_billing
     field: registration_id
-    related_collection: registrations
+    related_collection: clubspot_registrations
     meta:
       junction_field: null
-      many_collection: registration_billing
+      many_collection: clubspot_registration_billing
       many_field: registration_id
       one_allowed_collections: null
-      one_collection: registrations
+      one_collection: clubspot_registrations
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: registration_billing
+      table: clubspot_registration_billing
       column: registration_id
-      foreign_key_table: registrations
+      foreign_key_table: clubspot_registrations
       foreign_key_column: id
-      constraint_name: registration_billing_registration_id_foreign
+      constraint_name: clubspot_registration_billing_registration_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: registration_id
-    related_collection: registrations
+    related_collection: clubspot_registrations
     meta:
       junction_field: null
-      many_collection: registration_entries
+      many_collection: clubspot_registration_entries
       many_field: registration_id
       one_allowed_collections: null
-      one_collection: registrations
+      one_collection: clubspot_registrations
       one_collection_field: null
       one_deselect_action: nullify
       one_field: registration_entries
       sort_field: null
     schema:
-      table: registration_entries
+      table: clubspot_registration_entries
       column: registration_id
-      foreign_key_table: registrations
+      foreign_key_table: clubspot_registrations
       foreign_key_column: id
-      constraint_name: registration_entries_registration_id_foreign
+      constraint_name: clubspot_registration_entries_registration_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: session_id
-    related_collection: sessions
+    related_collection: clubspot_sessions
     meta:
       junction_field: null
-      many_collection: registration_entries
+      many_collection: clubspot_registration_entries
       many_field: session_id
       one_allowed_collections: null
-      one_collection: sessions
+      one_collection: clubspot_sessions
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: registration_entries
+      table: clubspot_registration_entries
       column: session_id
-      foreign_key_table: sessions
+      foreign_key_table: clubspot_sessions
       foreign_key_column: id
-      constraint_name: registration_entries_session_id_foreign
+      constraint_name: clubspot_registration_entries_session_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: registration_entries
+  - collection: clubspot_registration_entries
     field: class_id
-    related_collection: classes
+    related_collection: clubspot_classes
     meta:
       junction_field: null
-      many_collection: registration_entries
+      many_collection: clubspot_registration_entries
       many_field: class_id
       one_allowed_collections: null
-      one_collection: classes
+      one_collection: clubspot_classes
       one_collection_field: null
       one_deselect_action: nullify
       one_field: registration_entries
       sort_field: null
     schema:
-      table: registration_entries
+      table: clubspot_registration_entries
       column: class_id
-      foreign_key_table: classes
+      foreign_key_table: clubspot_classes
       foreign_key_column: id
-      constraint_name: registration_entries_class_id_foreign
+      constraint_name: clubspot_registration_entries_class_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: registrations
+  - collection: clubspot_registrations
     field: camp_id
-    related_collection: camps
+    related_collection: clubspot_camps
     meta:
       junction_field: null
-      many_collection: registrations
+      many_collection: clubspot_registrations
       many_field: camp_id
       one_allowed_collections: null
-      one_collection: camps
+      one_collection: clubspot_camps
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: registrations
+      table: clubspot_registrations
       column: camp_id
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-      constraint_name: registrations_camp_id_foreign
+      constraint_name: clubspot_registrations_camp_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: participants
+  - collection: clubspot_participants
     field: person_id
     related_collection: people
     meta:
       junction_field: null
-      many_collection: participants
+      many_collection: clubspot_participants
       many_field: person_id
       one_allowed_collections: null
       one_collection: people
@@ -5342,19 +5145,19 @@ relations:
       one_field: participant_links
       sort_field: null
     schema:
-      table: participants
+      table: clubspot_participants
       column: person_id
       foreign_key_table: people
       foreign_key_column: id
-      constraint_name: participants_person_id_foreign
+      constraint_name: clubspot_participants_person_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL
-  - collection: participants
+  - collection: clubspot_participants
     field: last_sync_run_id
     related_collection: sync_runs
     meta:
       junction_field: null
-      many_collection: participants
+      many_collection: clubspot_participants
       many_field: last_sync_run_id
       one_allowed_collections: null
       one_collection: sync_runs
@@ -5363,40 +5166,40 @@ relations:
       one_field: null
       sort_field: null
     schema:
-      table: participants
+      table: clubspot_participants
       column: last_sync_run_id
       foreign_key_table: sync_runs
       foreign_key_column: id
-      constraint_name: participants_last_sync_run_id_foreign
+      constraint_name: clubspot_participants_last_sync_run_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL
-  - collection: registrations
+  - collection: clubspot_registrations
     field: participant_id
-    related_collection: participants
+    related_collection: clubspot_participants
     meta:
       junction_field: null
-      many_collection: registrations
+      many_collection: clubspot_registrations
       many_field: participant_id
       one_allowed_collections: null
-      one_collection: participants
+      one_collection: clubspot_participants
       one_collection_field: null
       one_deselect_action: nullify
       one_field: registrations
       sort_field: null
     schema:
-      table: registrations
+      table: clubspot_registrations
       column: participant_id
-      foreign_key_table: participants
+      foreign_key_table: clubspot_participants
       foreign_key_column: id
-      constraint_name: registrations_participant_id_foreign
+      constraint_name: clubspot_registrations_participant_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: registrations
+  - collection: clubspot_registrations
     field: last_sync_run_id
     related_collection: sync_runs
     meta:
       junction_field: null
-      many_collection: registrations
+      many_collection: clubspot_registrations
       many_field: last_sync_run_id
       one_allowed_collections: null
       one_collection: sync_runs
@@ -5405,82 +5208,82 @@ relations:
       one_field: null
       sort_field: null
     schema:
-      table: registrations
+      table: clubspot_registrations
       column: last_sync_run_id
       foreign_key_table: sync_runs
       foreign_key_column: id
-      constraint_name: registrations_last_sync_run_id_foreign
+      constraint_name: clubspot_registrations_last_sync_run_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL
-  - collection: session_classes
+  - collection: clubspot_session_classes
     field: session_id
-    related_collection: sessions
+    related_collection: clubspot_sessions
     meta:
       junction_field: null
-      many_collection: session_classes
+      many_collection: clubspot_session_classes
       many_field: session_id
       one_allowed_collections: null
-      one_collection: sessions
+      one_collection: clubspot_sessions
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: session_classes
+      table: clubspot_session_classes
       column: session_id
-      foreign_key_table: sessions
+      foreign_key_table: clubspot_sessions
       foreign_key_column: id
-      constraint_name: session_classes_session_id_foreign
+      constraint_name: clubspot_session_classes_session_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: session_classes
+  - collection: clubspot_session_classes
     field: class_id
-    related_collection: classes
+    related_collection: clubspot_classes
     meta:
       junction_field: null
-      many_collection: session_classes
+      many_collection: clubspot_session_classes
       many_field: class_id
       one_allowed_collections: null
-      one_collection: classes
+      one_collection: clubspot_classes
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: session_classes
+      table: clubspot_session_classes
       column: class_id
-      foreign_key_table: classes
+      foreign_key_table: clubspot_classes
       foreign_key_column: id
-      constraint_name: session_classes_class_id_foreign
+      constraint_name: clubspot_session_classes_class_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: sessions
+  - collection: clubspot_sessions
     field: camp_id
-    related_collection: camps
+    related_collection: clubspot_camps
     meta:
       junction_field: null
-      many_collection: sessions
+      many_collection: clubspot_sessions
       many_field: camp_id
       one_allowed_collections: null
-      one_collection: camps
+      one_collection: clubspot_camps
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: sessions
+      table: clubspot_sessions
       column: camp_id
-      foreign_key_table: camps
+      foreign_key_table: clubspot_camps
       foreign_key_column: id
-      constraint_name: sessions_camp_id_foreign
+      constraint_name: clubspot_sessions_camp_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: classes
+  - collection: clubspot_classes
     field: program_id
     related_collection: programs
     meta:
       junction_field: null
-      many_collection: classes
+      many_collection: clubspot_classes
       many_field: program_id
       one_allowed_collections: null
       one_collection: programs
@@ -5489,10 +5292,10 @@ relations:
       one_field: classes
       sort_field: null
     schema:
-      table: classes
+      table: clubspot_classes
       column: program_id
       foreign_key_table: programs
       foreign_key_column: id
-      constraint_name: classes_program_id_foreign
+      constraint_name: clubspot_classes_program_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL

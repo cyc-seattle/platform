@@ -208,10 +208,10 @@ describe("deleteItem", () => {
     vi.stubGlobal("fetch", fetchMock);
     const client = new DirectusClient(baseUrl, token);
 
-    await client.deleteItem("session_classes", "1");
+    await client.deleteItem("clubspot_session_classes", "1");
 
     const [url, init] = fetchMock.mock.calls[0] as [string, FetchInit];
-    expect(url).toBe(`${baseUrl}/items/session_classes/1`);
+    expect(url).toBe(`${baseUrl}/items/clubspot_session_classes/1`);
     expect(init.method).toBe("DELETE");
   });
 
@@ -220,7 +220,7 @@ describe("deleteItem", () => {
     vi.stubGlobal("fetch", fetchMock);
     const client = new DirectusClient(baseUrl, token, true);
 
-    await client.deleteItem("session_classes", "1");
+    await client.deleteItem("clubspot_session_classes", "1");
 
     expect(fetchMock).not.toHaveBeenCalled();
   });

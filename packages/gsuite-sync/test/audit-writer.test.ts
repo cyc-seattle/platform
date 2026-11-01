@@ -178,11 +178,11 @@ describe("runAudit", () => {
       google_groups: [{ id: "group-1", email: "program@cyccommunitysailing.org" }],
       programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", product_id: "product-1" }],
       products: [{ id: "product-1", kind: "program", revenue_account_id: null }],
-      classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
-      camps: [{ id: "camp-1", end_date: "2026-06-01T00:00:00Z" }],
-      registration_entries: [{ id: "e1", registration_id: "r1", class_id: "class-1", status: "confirmed" }],
-      registrations: [{ id: "r1", participant_id: "participant-r1" }],
-      participants: [{ id: "participant-r1", person_id: "participant" }],
+      clubspot_classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
+      clubspot_camps: [{ id: "camp-1", end_date: "2026-06-01T00:00:00Z" }],
+      clubspot_registration_entries: [{ id: "e1", registration_id: "r1", class_id: "class-1", status: "confirmed" }],
+      clubspot_registrations: [{ id: "r1", participant_id: "participant-r1" }],
+      clubspot_participants: [{ id: "participant-r1", person_id: "participant" }],
       people: [{ id: "participant", email: "participant@example.com" }],
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -204,8 +204,10 @@ describe("runAudit", () => {
 
   it("raises mismatched_revenue_account when a camp's classes map to programs with different revenue accounts", async () => {
     const { fetchMock, tables } = makeDirectusStore({
-      camps: [{ id: "camp-1", name: "2026 Fall Sailing", clubspot_sales_account: "4000-YOUTH", end_date: null }],
-      classes: [
+      clubspot_camps: [
+        { id: "camp-1", name: "2026 Fall Sailing", clubspot_sales_account: "4000-YOUTH", end_date: null },
+      ],
+      clubspot_classes: [
         { id: "class-1", camp_id: "camp-1", program_id: "program-1" },
         { id: "class-2", camp_id: "camp-1", program_id: "program-2" },
       ],

@@ -614,7 +614,7 @@ describe("planCustomFieldResponses", () => {
   });
 
   // cyc-seattle/isthmia#137 review: a blank answer on a later run must never overwrite a value this registration
-  // already has on file for the same field, same rule as the `participants` mirror.
+  // already has on file for the same field, same rule as the `clubspot_participants` mirror.
   it("never overwrites a stored non-blank response with a blank one", () => {
     const reg = confirmedRegistration("reg-1", {
       participantsArray: [participant("participant-1", { customFieldsArray: [{ customFieldID: "field-1" }] })],
@@ -646,9 +646,9 @@ describe("planCustomFieldResponses", () => {
 describe("REGISTRATION_CREATE_ORDER", () => {
   it("puts registrations before its dependents, and definitions before responses", () => {
     const index = (name: (typeof REGISTRATION_CREATE_ORDER)[number]) => REGISTRATION_CREATE_ORDER.indexOf(name);
-    expect(index("registrations")).toBeLessThan(index("registration_entries"));
-    expect(index("registrations")).toBeLessThan(index("registration_billing"));
-    expect(index("registrations")).toBeLessThan(index("custom_field_responses"));
-    expect(index("custom_field_definitions")).toBeLessThan(index("custom_field_responses"));
+    expect(index("clubspot_registrations")).toBeLessThan(index("clubspot_registration_entries"));
+    expect(index("clubspot_registrations")).toBeLessThan(index("clubspot_registration_billing"));
+    expect(index("clubspot_registrations")).toBeLessThan(index("clubspot_custom_field_responses"));
+    expect(index("clubspot_custom_field_definitions")).toBeLessThan(index("clubspot_custom_field_responses"));
   });
 });

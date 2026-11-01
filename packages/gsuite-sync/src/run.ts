@@ -82,11 +82,11 @@ async function readMembershipSnapshot(directus: DirectusClient): Promise<Members
   ] = await Promise.all([
     directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
     directus.readItems<GoogleGroupRow>("google_groups", { limit: -1 }),
-    directus.readItems<ClassRow>("classes", { limit: -1 }),
-    directus.readItems<CampRow>("camps", { limit: -1 }),
-    directus.readItems<RegistrationEntryRow>("registration_entries", { limit: -1 }),
-    directus.readItems<RegistrationRow>("registrations", { limit: -1 }),
-    directus.readItems<Pick<ParticipantRow, "id" | "person_id">>("participants", {
+    directus.readItems<ClassRow>("clubspot_classes", { limit: -1 }),
+    directus.readItems<CampRow>("clubspot_camps", { limit: -1 }),
+    directus.readItems<RegistrationEntryRow>("clubspot_registration_entries", { limit: -1 }),
+    directus.readItems<RegistrationRow>("clubspot_registrations", { limit: -1 }),
+    directus.readItems<Pick<ParticipantRow, "id" | "person_id">>("clubspot_participants", {
       fields: ["id", "person_id"],
       limit: -1,
     }),

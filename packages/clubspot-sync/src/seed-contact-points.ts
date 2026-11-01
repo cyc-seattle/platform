@@ -83,7 +83,7 @@ export interface SeedContactPointsResult {
  */
 export async function seedContactPoints(directus: DirectusClient, now: Date): Promise<SeedContactPointsResult> {
   const [participants, contacts, existingContactPoints, people] = await Promise.all([
-    directus.readItems<ParticipantRow>("participants", { limit: -1 }),
+    directus.readItems<ParticipantRow>("clubspot_participants", { limit: -1 }),
     directus.readItems<ContactRow>("contacts", { limit: -1 }),
     directus.readItems<ContactPointWithParticipant>("contact_points", { limit: -1 }),
     directus.readItems<PersonRow>("people", { limit: -1, fields: ["id", "email", "phone"] }),

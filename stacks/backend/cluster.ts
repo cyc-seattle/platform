@@ -128,6 +128,21 @@ export async function deployDirectus(
     hook("saved-versions", "saved-versions.cjs", extensions.savedVersions),
     extension("cents-as-dollars", "display", "cents-display.mjs"),
   ];
+  // Directus runs each migration it hasn't recorded at start, before it serves.
+  const migrationsDir = path.resolve(import.meta.dirname, "migrations");
+  const migrations = new k8s.core.v1.ConfigMap(
+    "directus-migrations",
+    {
+      metadata: { namespace: platform.namespace },
+      data: Object.fromEntries(
+        fs
+          .readdirSync(migrationsDir)
+          .filter((file) => file.endsWith(".cjs"))
+          .map((file) => [file, fs.readFileSync(path.join(migrationsDir, file), "utf8")]),
+      ),
+    },
+    { provider },
+  );
 
   const directus = new WebService("directus", {
     platform,
@@ -157,6 +172,7 @@ export async function deployDirectus(
         configMap: configMap.metadata.name,
         readOnly: true,
       })),
+      { name: "migrations", mountPath: "/directus/migrations", configMap: migrations.metadata.name, readOnly: true },
     ],
     // The image's user is `node`, a name, which runAsNonRoot can't check.
     runAsUser: 1000,
@@ -178,7 +194,12 @@ export async function deployDirectus(
       create: 'curl -fsS -o /dev/null --retry 90 --retry-delay 10 --retry-all-errors "$DIRECTUS_URL/server/ping"',
       environment: { DIRECTUS_URL: baseUrl },
       // A changed Secret replaces the Deployment too, so Directus restarts.
-      triggers: [image, secret.metadata.uid, ...mounts.map(({ configMap }) => configMap.metadata.uid)],
+      triggers: [
+        image,
+        secret.metadata.uid,
+        migrations.metadata.uid,
+        ...mounts.map(({ configMap }) => configMap.metadata.uid),
+      ],
     },
     { dependsOn: [directus, ...record] },
   );

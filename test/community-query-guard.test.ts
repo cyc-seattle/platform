@@ -42,8 +42,8 @@ const check = (collection: string, query: Record<string, unknown>, access = comm
 describe("effectiveAccess", () => {
   it("restricts the fields some Community read rule withholds, and opens the unfiltered lookups", () => {
     expect(community).toEqual({
-      restricted: { people: ["email", "phone", "school"], registrations: ["camp_id", "share_contact"] },
-      open: ["camps", "classes", "program_areas", "programs"],
+      restricted: { people: ["email", "phone", "school"], clubspot_registrations: ["camp_id", "share_contact"] },
+      open: ["clubspot_camps", "clubspot_classes", "program_areas", "programs"],
     });
   });
 
@@ -53,7 +53,7 @@ describe("effectiveAccess", () => {
 
   it("opens a collection someone reads whole, whatever else they hold", () => {
     const crew = accessOf(CREW);
-    expect(crew.open).toEqual(expect.arrayContaining(["people", "registration_entries"]));
+    expect(crew.open).toEqual(expect.arrayContaining(["people", "clubspot_registration_entries"]));
     expect(crew.restricted["people"]).toBeUndefined();
   });
 });
@@ -61,7 +61,7 @@ describe("effectiveAccess", () => {
 describe("the Community query guard", () => {
   it("passes the portal's roster requests", () => {
     const activeCamp = { start_date: { _lte: "$NOW" }, end_date: { _gte: "$NOW(-36 hours)" } };
-    expect(check("registration_entries", { filter: { class_id: { camp_id: activeCamp } } })).toBeUndefined();
+    expect(check("clubspot_registration_entries", { filter: { class_id: { camp_id: activeCamp } } })).toBeUndefined();
     expect(check("people", {})).toBeUndefined();
     expect(check("contacts", { filter: { subject_id: { _eq: "p1" } } })).toBeUndefined();
   });
@@ -89,7 +89,7 @@ describe("the Community query guard", () => {
       { deep: { my_contacts: { _filter: { contact_id: { email: { _eq: "x" } } } } } },
       "the relation contacts.contact_id",
     ],
-    [{ deep: { participant_links: { _sort: ["-person_id.phone"] } } }, "the relation participants.person_id"],
+    [{ deep: { participant_links: { _sort: ["-person_id.phone"] } } }, "the relation clubspot_participants.person_id"],
   ])("rejects %j on people", (query: Record<string, unknown>, reason: string) => {
     expect(check("people", query)).toBe(reason);
   });
@@ -106,7 +106,7 @@ describe("the Community query guard", () => {
       check("programs", {
         filter: { classes: { name: { _eq: "x" }, _some: { registration_entries: { registration_id: probe } } } },
       }),
-    ).toBe("the relation classes.registration_entries");
+    ).toBe("the relation clubspot_classes.registration_entries");
     expect(check("programs", { filter: { classes: { _none: { camp_id: { name: { _eq: "x" } } } } } })).toBeUndefined();
   });
 
@@ -117,8 +117,8 @@ describe("the Community query guard", () => {
   });
 
   it("rejects a relation through a field the viewer can't read on every row", () => {
-    expect(check("registrations", { filter: { camp_id: { name: { _eq: "Summer Session 2" } } } })).toBe(
-      "registrations.camp_id",
+    expect(check("clubspot_registrations", { filter: { camp_id: { name: { _eq: "Summer Session 2" } } } })).toBe(
+      "clubspot_registrations.camp_id",
     );
   });
 });
@@ -160,7 +160,7 @@ describe("the query guard for migrated staff", () => {
     ["people", { filter: { my_contacts: { contact_id: { last_name: { _eq: "Simpson" } } } }, sort: ["-email"] }],
     ["contacts", { filter: { subject_id: { email: { _eq: "x" } } }, sort: ["contact_id.last_name"] }],
     [
-      "registrations",
+      "clubspot_registrations",
       {
         filter: { participant_id: { person_id: { last_name: { _eq: "Simpson" } } } },
         sort: ["participant_id.person_id.last_name"],

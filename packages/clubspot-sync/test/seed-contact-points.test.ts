@@ -132,7 +132,7 @@ describe("seedContactPoints", () => {
         const items = JSON.parse(init!.body as string) as Record<string, unknown>[];
         return jsonResponse(200, { data: items.map((item) => ({ id: `generated-${nextId++}`, ...item })) });
       }
-      if (url.includes("/items/participants")) {
+      if (url.includes("/items/clubspot_participants")) {
         return jsonResponse(200, { data: participants });
       }
       if (url.includes("/items/contacts")) {

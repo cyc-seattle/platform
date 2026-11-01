@@ -133,7 +133,7 @@ export function planProgramMemberPeople(
 
 /**
  * The member emails one program's Google Group should have: participants with a confirmed
- * `registration_entries` row for one of the program's classes (`classes.program_id`), their
+ * `clubspot_registration_entries` row for one of the program's classes (`classes.program_id`), their
  * guardians, the participant's own email when set - which is what makes an adult with no guardian
  * row work with no special case - and every person with a current `program_role_assignments` row
  * for the program. Every role grants plain `MEMBER`; there's no separate manager mapping. Never

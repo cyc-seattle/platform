@@ -17,21 +17,21 @@ import { emptyFieldTally, type FieldTally, parseYesNo, planSyncedField, resolveB
 
 /**
  * Copies a staff-configured set of custom field responses onto `people` columns (e.g. "School"),
- * or onto a `registrations` column answered fresh by each registration (`share_contact`; design
+ * or onto a `clubspot_registrations` column answered fresh by each registration (`share_contact`; design
  * doc "Sync: a registration-level promoted field").
  *
  * Both targets share the same two paths, pure, and both following the one CRM field rule (cyc-seattle/isthmia#137):
  * - `planPromotedFieldSync`/`planRegistrationPromotedFieldSync` run once per registration, inside
  *   `syncRegistrations` (`sync-run.ts`). The `people` path is gated on the same
- *   newest-linked-participant check `people` and `medical_profiles` use; the `registrations` path
- *   isn't, since each registration answers only for itself. `custom_field_responses` is itself the
+ *   newest-linked-participant check `people` and `medical_profiles` use; the `clubspot_registrations` path
+ *   isn't, since each registration answers only for itself. `clubspot_custom_field_responses` is itself the
  *   mirror here: `base` is what the response row held before this run's write, `v` is what
  *   Clubspot sends now - so a changed answer replaces a stale one (and counts as a replaced staff
  *   edit if the CRM value was neither), and a blank is never written.
  * - `planPromotedFields` runs once at the end of every run, across every camp, as a fallback: it
  *   fills a `people` column that's still null for a registration the per-registration path didn't
  *   reach this run - one outside every camp's watermark, say - ranked across every camp, since the
- *   winning response for a person can come from any of them. It also fills a `registrations` row's
+ *   winning response for a person can come from any of them. It also fills a `clubspot_registrations` row's
  *   own null `share_contact` from that registration's own stored answer, with no ranking, since the
  *   field is per registration rather than per person.
  */
@@ -45,8 +45,8 @@ export interface PersonPatch {
 const SCALAR_FIELD_TYPES = new Set(["text", "select", "radio"]);
 
 /**
- * A `promoted_fields` row's resolved destination - `people` (carried onto the person) or
- * `registrations` (answered fresh by each registration; see `synced-fields.ts`'s boolean
+ * A `clubspot_promoted_fields` row's resolved destination - `people` (carried onto the person) or
+ * `clubspot_registrations` (answered fresh by each registration; see `synced-fields.ts`'s boolean
  * `SyncedFieldValue` and {@link planRegistrationPromotedFieldSync}).
  */
 export type PromotedFieldTarget =
@@ -63,7 +63,7 @@ function resolveTarget(targetField: string): PromotedFieldTarget | undefined {
 }
 
 /**
- * Splits a unified {@link buildTargetByDefinitionId} map into its `people` and `registrations`
+ * Splits a unified {@link buildTargetByDefinitionId} map into its `people` and `clubspot_registrations`
  * halves, so each pass's own plan function sees only the definitions it can write - a
  * `share_contact` target must never reach the `people` pass, and vice versa.
  */
@@ -93,7 +93,7 @@ type DefinitionWithId = CustomFieldDefinitionRow & { id: string };
 
 /**
  * Maps each scalar-typed definition to the target it promotes to - a `people` column or a
- * `registrations` one (see {@link PromotedFieldTarget}) - by matching its normalized label against
+ * `clubspot_registrations` one (see {@link PromotedFieldTarget}) - by matching its normalized label against
  * the configured labels. A configured label matching no definition at all warns once per run,
  * naming the label - it's a typo or a question no camp asks any more. A config row naming a target
  * outside `PROMOTABLE_PERSON_FIELDS`/`PROMOTABLE_REGISTRATION_FIELDS` also warns and is skipped,
@@ -180,7 +180,7 @@ export interface PromotedFieldSyncPlan extends FieldTally {
  * Whether the per-registration promoted-fields sync needs a fallback lookup at all (cyc-seattle/isthmia#137 review,
  * read-volume finding). {@link planPromotedFieldSync} only reaches for `fallbackByTargetField`
  * through {@link resolveBase} when a response's own definition has no stored row yet, so a
- * registration whose own `custom_field_responses` already cover every promotable response it sent
+ * registration whose own `clubspot_custom_field_responses` already cover every promotable response it sent
  * never needs the fallback registration's answers read at all.
  */
 export function needsFallbackTargetValues(
@@ -198,8 +198,8 @@ export function needsFallbackTargetValues(
 /**
  * Applies the one CRM field rule (cyc-seattle/isthmia#137) to one registration's promotable responses. `response` is
  * this registration's own raw `customFieldsArray`; `existingResponses` is its own
- * `custom_field_responses` rows as stored before this run's write - the `base` side of the rule,
- * same as `participants` is for every other curated field. `fallbackByTargetField` is the person's
+ * `clubspot_custom_field_responses` rows as stored before this run's write - the `base` side of the rule,
+ * same as `clubspot_participants` is for every other curated field. `fallbackByTargetField` is the person's
  * previous newest OTHER linked registration's own answer, keyed by target field rather than
  * definition id - a fallback registration can belong to a different camp, whose custom field
  * definitions were cloned with different ids (see `buildTargetByDefinitionId`'s note), so matching
@@ -263,9 +263,9 @@ export interface RegistrationPromotedFieldSyncPlan extends FieldTally {
  * registration-level promoted field"). Each registration answers only for itself: there's no
  * newest-linked-participant gate and no fallback to another registration's answer, because
  * `share_contact` is never carried onto the person. `rawAnswers` and `storedResponses` are already
- * narrowed to the definitions a `promoted_fields` row maps to `share_contact` - the caller does
+ * narrowed to the definitions a `clubspot_promoted_fields` row maps to `share_contact` - the caller does
  * that matching the same way {@link buildTargetByDefinitionId} does for `people` fields.
- * `storedResponses` is this registration's own `custom_field_responses` as stored before this
+ * `storedResponses` is this registration's own `clubspot_custom_field_responses` as stored before this
  * run's write - the `base` side of the field rule (cyc-seattle/isthmia#137).
  */
 export function planRegistrationPromotedFieldSync(
@@ -347,10 +347,10 @@ function planRegistrationGapFill(
 }
 
 /**
- * Plans the `people` and `registrations` patches for one run of the promotion pass. Takes every
- * input as CRM rows - `promoted_fields`, `custom_field_definitions`, `custom_field_responses`,
- * `registrations`, `participants`, and the current `people` rows - and returns only the ids whose
- * column is currently empty and has a winning response to fill it. An empty `promoted_fields` does
+ * Plans the `people` and `clubspot_registrations` patches for one run of the promotion pass. Takes every
+ * input as CRM rows - `clubspot_promoted_fields`, `clubspot_custom_field_definitions`, `clubspot_custom_field_responses`,
+ * `clubspot_registrations`, `clubspot_participants`, and the current `people` rows - and returns only the ids whose
+ * column is currently empty and has a winning response to fill it. An empty `clubspot_promoted_fields` does
  * nothing, logged at info so "not seeded yet" doesn't look like a bug.
  */
 export function planPromotedFields(

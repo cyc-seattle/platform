@@ -310,7 +310,7 @@ describe("SavedVersionsCheck", () => {
 });
 
 describe("DirectusPreset", () => {
-  const view = { collection: "camps", sort: ["-start_date"], fields: ["name", "start_date"] };
+  const view = { collection: "clubspot_camps", sort: ["-start_date"], fields: ["name", "start_date"] };
 
   function stubCreate(existing: { id: number }[]) {
     const fetchMock = vi.fn();
@@ -332,7 +332,7 @@ describe("DirectusPreset", () => {
     expect(url).toBe(`${baseUrl}/presets`);
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
-      collection: "camps",
+      collection: "clubspot_camps",
       user: null,
       role: null,
       bookmark: null,
@@ -360,7 +360,9 @@ describe("DirectusPreset", () => {
       changes: true,
       replaces: [],
     });
-    expect(await directusPresetProvider.diff?.("3", olds, { ...auth, ...view, collection: "sessions" })).toMatchObject({
+    expect(
+      await directusPresetProvider.diff?.("3", olds, { ...auth, ...view, collection: "clubspot_sessions" }),
+    ).toMatchObject({
       changes: true,
       replaces: ["collection"],
     });

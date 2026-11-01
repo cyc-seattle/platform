@@ -90,13 +90,13 @@ async function camp(state: "running" | "ended"): Promise<Camp> {
     return existing;
   }
   const [start, end] = state === "running" ? [-7, 7] : [-60, -30];
-  const { id } = await adminCreate("camps", {
+  const { id } = await adminCreate("clubspot_camps", {
     id: key("camp"),
     name: `Camp ${runId}`,
     start_date: daysFromNow(start),
     end_date: daysFromNow(end),
   });
-  const session = await adminCreate("sessions", { id: key("session"), camp_id: id });
+  const session = await adminCreate("clubspot_sessions", { id: key("session"), camp_id: id });
   return (scene.camps[state] = { id, sessionId: session.id });
 }
 
@@ -104,7 +104,7 @@ async function team(state: "running" | "ended" = "running", programId?: string):
   const inCamp = await camp(state);
   const program =
     programId ?? (await adminCreate("programs", await newRow("programs", { name: `Program ${key("program")}` }))).id;
-  const { id } = await adminCreate("classes", {
+  const { id } = await adminCreate("clubspot_classes", {
     id: key("class"),
     name: `Class ${runId}`,
     camp_id: inCamp.id,
@@ -132,8 +132,8 @@ async function person(name: string, dateOfBirth: string | null, fields: Row = {}
 
 /** Registers `sailor` for `on`, with their answer to the sharing question. */
 async function register(sailor: Person, on: Team, share: boolean | null): Promise<Person> {
-  const participant = await adminCreate("participants", { id: key("participant"), person_id: sailor.id });
-  const registration = await adminCreate("registrations", {
+  const participant = await adminCreate("clubspot_participants", { id: key("participant"), person_id: sailor.id });
+  const registration = await adminCreate("clubspot_registrations", {
     id: key("registration"),
     camp_id: on.camp.id,
     registered_at: new Date().toISOString(),
@@ -141,7 +141,7 @@ async function register(sailor: Person, on: Team, share: boolean | null): Promis
     participant_id: participant.id,
     share_contact: share,
   });
-  const entry = await adminCreate("registration_entries", {
+  const entry = await adminCreate("clubspot_registration_entries", {
     id: key("entry"),
     registration_id: registration.id,
     session_id: on.camp.sessionId,
@@ -368,13 +368,13 @@ Step("they look up the teammate's registration", async () => {
   const session = await theirSession();
   const { participantId } = the("the teammate");
   scene.rows = [
-    ...(await read(session, "registrations", `?filter[participant_id][_eq]=${participantId}`)),
-    ...(await read(session, "participants", `?filter[id][_eq]=${participantId}`)),
+    ...(await read(session, "clubspot_registrations", `?filter[participant_id][_eq]=${participantId}`)),
+    ...(await read(session, "clubspot_participants", `?filter[id][_eq]=${participantId}`)),
   ];
 });
 
 const shareContact = async (session: DirectusSession, registrationId: string | undefined, value: boolean | null) =>
-  (await session.request("PATCH", `/items/registrations/${registrationId}`, { share_contact: value })).status;
+  (await session.request("PATCH", `/items/clubspot_registrations/${registrationId}`, { share_contact: value })).status;
 
 for (const [text, value] of [
   ["the parent opts out for their child", false],
@@ -495,8 +495,10 @@ Step("they can't move their child to another program", async () => {
   const session = await asThe("the parent");
   const { registrationId, entryId } = the("the child");
   const moves = [
-    await session.request("PATCH", `/items/registration_entries/${entryId}`, { class_id: other.classId }),
-    await session.request("PATCH", `/items/registrations/${registrationId}`, { camp_id: (await camp("ended")).id }),
+    await session.request("PATCH", `/items/clubspot_registration_entries/${entryId}`, { class_id: other.classId }),
+    await session.request("PATCH", `/items/clubspot_registrations/${registrationId}`, {
+      camp_id: (await camp("ended")).id,
+    }),
   ];
   for (const { status } of moves) {
     expect(status).toBeGreaterThanOrEqual(400);
@@ -600,7 +602,7 @@ Step("they ask for a list that would reveal hidden emails or phone numbers", asy
 });
 
 Step("they can't see the details of the program's registrations", async () => {
-  const rows = await read(await theirSession(), "registrations");
+  const rows = await read(await theirSession(), "clubspot_registrations");
   expect(rows.length).toBeGreaterThan(0);
   for (const row of rows) {
     expect(row["camp_id"]).toBeNull();
@@ -608,7 +610,13 @@ Step("they can't see the details of the program's registrations", async () => {
 });
 Step("they see no one in the program", async () => {
   const session = await theirSession();
-  for (const collection of ["people", "contacts", "registrations", "registration_entries", "participants"]) {
+  for (const collection of [
+    "people",
+    "contacts",
+    "clubspot_registrations",
+    "clubspot_registration_entries",
+    "clubspot_participants",
+  ]) {
     expect(await read(session, collection), collection).toEqual([]);
   }
 });
@@ -616,7 +624,7 @@ Step("they see no one in the program", async () => {
 /** The roster page's requests (isthmia's packages/portal/src/roster/browser.ts), copied by hand. */
 const rosterRequests: { collection: string; fields: string[]; filter?: Row }[] = [
   {
-    collection: "registration_entries",
+    collection: "clubspot_registration_entries",
     fields: [
       "id",
       "class_id.id",
@@ -631,8 +639,8 @@ const rosterRequests: { collection: string; fields: string[]; filter?: Row }[] =
   { collection: "people", fields: ["id", "first_name", "last_name", "school", "email", "phone"] },
   { collection: "contacts", fields: ["subject_id", "contact_id", "relationship_type"] },
   // Community sends no filter.
-  { collection: "registrations", fields: ["id", "camp_id", "participant_id", "share_contact"] },
-  { collection: "participants", fields: ["id", "person_id"] },
+  { collection: "clubspot_registrations", fields: ["id", "camp_id", "participant_id", "share_contact"] },
+  { collection: "clubspot_participants", fields: ["id", "person_id"] },
 ];
 
 let rosterPermissions: { registrations?: { read?: { access?: string } } } = {};
@@ -647,7 +655,7 @@ Step("they open the roster page", async () => {
     }
     const { status, body } = await session.request("GET", `/items/${request.collection}?${params.toString()}`);
     scene.statuses.push(status);
-    if (request.collection === "registration_entries" && status === 200) {
+    if (request.collection === "clubspot_registration_entries" && status === 200) {
       scene.rows = body.data;
     }
   }

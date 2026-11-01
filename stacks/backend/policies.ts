@@ -43,6 +43,9 @@ export function clubspotCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(clubspot);
 }
 
+/** The CRM's collections the Clubspot sync makes from Clubspot's records, so they're edited in Clubspot. */
+export const DERIVED_FROM_CLUBSPOT = ["offerings", "registrations"];
+
 /** A collection's fields in the schemas, aliases included, since a write can set those too. */
 export function fieldsIn(schemas: LoadedSchema[], collection: string): string[] {
   return schemas.flatMap(({ schema }) =>
@@ -81,7 +84,7 @@ const ACTIVATIONS = "plan_activations";
 
 /**
  * Full CRUD on every collection, except each one in `readOnlyCollections`. Two exceptions:
- * `promoted_fields` is staff-authored config despite living in the clubspot schema, and
+ * `clubspot_promoted_fields` is staff-authored config despite living in the clubspot schema, and
  * `classes.program_id` and `participants.person_id` are set by hand: a class's program, and a
  * participant's match to a person. `fieldsOf` lists a collection's fields, so a rule can leave out
  * the ones only an admin writes.
@@ -91,7 +94,7 @@ export function writerRules(
   readOnlyCollections: string[],
   fieldsOf: (collection: string) => string[],
 ): PermissionRuleInput[] {
-  const readOnly = new Set(readOnlyCollections.filter((collection) => collection !== "promoted_fields"));
+  const readOnly = new Set(readOnlyCollections.filter((collection) => collection !== "clubspot_promoted_fields"));
   const rules: PermissionRuleInput[] = [];
   for (const collection of collections) {
     if (readOnly.has(collection)) {
@@ -108,8 +111,8 @@ export function writerRules(
       }
     }
   }
-  rules.push({ collection: "classes", action: "update", fields: ["program_id"] });
-  rules.push({ collection: "participants", action: "update", fields: ["person_id"] });
+  rules.push({ collection: "clubspot_classes", action: "update", fields: ["program_id"] });
+  rules.push({ collection: "clubspot_participants", action: "update", fields: ["person_id"] });
   return rules;
 }
 
@@ -135,8 +138,10 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       icon: "person_edit",
       description: "Changes people and their details. Clubspot's own records stay read-only. No medical information.",
       // Programs belong to the catalog, so only a Catalog Writer changes them.
-      rules: writerRules(collections, [...clubspotCollections(schemas), "programs"], (collection) =>
-        fieldsIn(schemas, collection),
+      rules: writerRules(
+        collections,
+        [...clubspotCollections(schemas), ...DERIVED_FROM_CLUBSPOT, "programs"],
+        (collection) => fieldsIn(schemas, collection),
       ),
     },
     {
@@ -199,7 +204,15 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
 
 /** Crew's own rules, beside the Community policies it also has: every roster, and the catalog's money. */
 export const crewRules: PermissionRuleInput[] = [
-  ...["sessions", "registration_entries", "people", "programs", "camps", "classes"].map((collection) => ({
+  ...[
+    "clubspot_sessions",
+    "clubspot_registration_entries",
+    "people",
+    "programs",
+    "clubspot_camps",
+    "clubspot_classes",
+    ...DERIVED_FROM_CLUBSPOT,
+  ].map((collection) => ({
     collection,
     action: "read" as const,
   })),
