@@ -99,6 +99,8 @@ beforeAll(async () => {
     backoffLimit: 2,
   });
   new ScheduledJob("suspended-sync", { ...jobArgs("dev"), suspend: true });
+  new Workload("bursty-worker", { ...workloadArgs("prod"), limits: { cpu: "1" } });
+  new ScheduledJob("bursty-sync", { ...jobArgs("prod"), limits: { cpu: "500m", memory: "512Mi" } });
   await new Promise((r) => setImmediate(r));
 });
 
@@ -310,5 +312,21 @@ describe("ScheduledJob", () => {
 describe("pods", () => {
   it("create no IAM", () => {
     expect(created.filter((r) => r.type.startsWith("gcp:"))).toEqual([]);
+  });
+});
+
+describe("limits", () => {
+  it("default each to its request, so a CPU limit alone keeps memory capped at its request", () => {
+    expect(podSpec("bursty-worker").containers[0].resources).toEqual({
+      requests: { cpu: "250m", memory: "768Mi" },
+      limits: { cpu: "1", memory: "768Mi" },
+    });
+  });
+
+  it("apply to a ScheduledJob's pods too", () => {
+    expect(jobPodSpec("bursty-sync").containers[0].resources).toEqual({
+      requests: { cpu: "100m", memory: "256Mi" },
+      limits: { cpu: "500m", memory: "512Mi" },
+    });
   });
 });
