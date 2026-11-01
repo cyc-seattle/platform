@@ -35,6 +35,7 @@ beforeAll(async () => {
   });
   new StandardRepository("unchecked-example", { description: "Unchecked.", requiredChecks: [] });
   new StandardRepository("archived-example", { description: "Archived.", archived: true, requiredChecks: ["build"] });
+  new StandardRepository("queued-example", { description: "Queued.", requiredChecks: ["build"], mergeQueue: true });
   await new Promise((r) => setImmediate(r));
 });
 
@@ -92,6 +93,18 @@ describe("StandardRepository", () => {
 
   it("leaves out the status-check rule when no checks are named", () => {
     expect(byName("unchecked-example-main").inputs.rules.requiredStatusChecks).toBeUndefined();
+  });
+
+  it("merges through no queue unless asked", () => {
+    expect(byName("example-main").inputs.rules.mergeQueue).toBeUndefined();
+  });
+
+  it("squashes queued PRs one at a time", () => {
+    expect(byName("queued-example-main").inputs.rules.mergeQueue).toMatchObject({
+      mergeMethod: "SQUASH",
+      maxEntriesToBuild: 1,
+      maxEntriesToMerge: 1,
+    });
   });
 
   it("blocks tag deletion and moves", () => {
@@ -194,21 +207,27 @@ describe("approving reviews on main", () => {
 });
 
 describe("platform", () => {
-  it("requires only checks that a job in a PR workflow reports", () => {
-    const dir = resolve(import.meta.dirname, "../.github/workflows");
-    const workflows = readdirSync(dir).map(
+  const dir = resolve(import.meta.dirname, "../.github/workflows");
+  const workflows = () =>
+    readdirSync(dir).map(
       (file) =>
         yaml.load(readFileSync(resolve(dir, file), "utf8")) as {
           on: Record<string, unknown>;
           jobs: Record<string, { name?: string; uses?: string }>;
         },
     );
-    const jobs = workflows.filter((w) => "pull_request" in w.on).flatMap((w) => Object.entries(w.jobs));
+  const main = () =>
+    ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "platform-main")!;
+
+  // The queue needs each required check on its own runs too, or it waits until it times out.
+  it.each(["pull_request", "merge_group"])("requires only checks that a job in a %s workflow reports", (event) => {
+    const jobs = workflows()
+      .filter((w) => event in w.on)
+      .flatMap((w) => Object.entries(w.jobs));
     const jobNames = jobs.map(([id, job]) => job.name ?? id);
     // A job that calls a reusable workflow reports `<caller job> / <called job>`.
     const callers = jobs.filter(([, job]) => job.uses).map(([id, job]) => job.name ?? id);
-    const main = ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "platform-main")!;
-    const contexts: string[] = main.inputs.rules.requiredStatusChecks.requiredChecks.map(
+    const contexts: string[] = main().inputs.rules.requiredStatusChecks.requiredChecks.map(
       (c: { context: string }) => c.context,
     );
     expect(contexts.length).toBeGreaterThan(0);
@@ -216,5 +235,10 @@ describe("platform", () => {
       const caller = context.split(" / ")[0]!;
       expect(jobNames.includes(context) || (context.includes(" / ") && callers.includes(caller))).toBe(true);
     }
+  });
+
+  it("deploys to dev from a merge queue, so the queue requires the deploy", () => {
+    expect(main().inputs.rules.mergeQueue).toBeDefined();
+    expect(main().inputs.rules.requiredStatusChecks.requiredChecks).toContainEqual({ context: "dev-passed" });
   });
 });
