@@ -26,14 +26,16 @@ const RENAMED = [
 
 const PREFIX = "clubspot_";
 
-/** Directus's tables that name a collection, and their columns that do. Each is skipped if missing. */
+/**
+ * Directus's tables that name a collection, and their columns that do. Each is skipped if missing.
+ * Permissions and the default views are the backend stack's: it creates them under the new names and
+ * deletes the old ones. Renamed here, the stack would adopt a renamed row, then delete it.
+ */
 const REFERENCES = [
   ["directus_collections", "collection"],
   ["directus_fields", "collection"],
   ["directus_relations", "many_collection"],
   ["directus_relations", "one_collection"],
-  ["directus_permissions", "collection"],
-  ["directus_presets", "collection"],
   ["directus_revisions", "collection"],
   ["directus_activity", "collection"],
   ["directus_comments", "collection"],
@@ -81,6 +83,9 @@ BEGIN
         EXECUTE format('UPDATE %I SET %I = $1 WHERE %I = $2', ref[1], ref[2], ref[2]) USING to_name, from_name;
       END IF;
     END LOOP;
+    -- A user's own saved views and bookmarks, but not the default views.
+    UPDATE directus_presets SET collection = to_name
+    WHERE collection = from_name AND NOT ("user" IS NULL AND role IS NULL AND bookmark IS NULL);
     RAISE NOTICE 'Renamed % to %', from_name, to_name;
   END LOOP;
 

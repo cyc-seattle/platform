@@ -59,7 +59,7 @@ const DIRECTUS = [
   "CREATE TABLE directus_fields (id serial PRIMARY KEY, collection varchar(64), field varchar(64))",
   "CREATE TABLE directus_relations (id serial PRIMARY KEY, many_collection varchar(64), many_field varchar(64), one_collection varchar(64))",
   "CREATE TABLE directus_permissions (id serial PRIMARY KEY, collection varchar(64))",
-  "CREATE TABLE directus_presets (id serial PRIMARY KEY, collection varchar(64))",
+  'CREATE TABLE directus_presets (id serial PRIMARY KEY, collection varchar(64), "user" uuid, role uuid, bookmark varchar(255))',
   "CREATE TABLE directus_revisions (id serial PRIMARY KEY, collection varchar(64), item varchar(255))",
   "CREATE TABLE directus_activity (id serial PRIMARY KEY, collection varchar(64), item varchar(255))",
 ];
@@ -71,7 +71,12 @@ async function database(): Promise<PGlite> {
     await db.query("INSERT INTO directus_collections (collection) VALUES ($1)", [table]);
     await db.query("INSERT INTO directus_fields (collection, field) VALUES ($1, 'id')", [table]);
     await db.query("INSERT INTO directus_permissions (collection) VALUES ($1)", [table]);
+    // A default view, which is the stack's, and one user's own.
     await db.query("INSERT INTO directus_presets (collection) VALUES ($1)", [table]);
+    await db.query(
+      "INSERT INTO directus_presets (collection, \"user\") VALUES ($1, '00000000-0000-4000-8000-00000000000a')",
+      [table],
+    );
     await db.query("INSERT INTO directus_revisions (collection, item) VALUES ($1, 'a')", [table]);
     await db.query("INSERT INTO directus_activity (collection, item) VALUES ($1, 'a')", [table]);
   }
@@ -148,20 +153,33 @@ describe("the Clubspot prefix migration", () => {
     await migrate(db);
 
     const expected = [...prefixed, "people"].sort();
-    for (const table of ["directus_collections", "directus_fields", "directus_permissions", "directus_presets"]) {
-      expect(await collections(db, table, "collection"), table).toEqual(
-        // event_staff's permissions and default view are the stack's to delete.
-        table === "directus_permissions" || table === "directus_presets"
-          ? [...expected, "event_staff"].sort()
-          : expected,
-      );
+    for (const table of ["directus_collections", "directus_fields"]) {
+      expect(await collections(db, table, "collection"), table).toEqual(expected);
     }
     for (const table of ["directus_revisions", "directus_activity"]) {
       expect(await collections(db, table, "collection"), table).toEqual([...expected, "event_staff"].sort());
     }
+    const presets = await db.query<{ collection: string; user: string | null }>(
+      'SELECT collection, "user" FROM directus_presets',
+    );
+    expect(new Set(presets.rows.filter((p) => p.user !== null).map((p) => p.collection))).toEqual(
+      new Set([...expected, "event_staff"]),
+    );
     expect(await collections(db, "directus_relations", "many_collection")).toEqual(
       [...prefixed.filter((name) => schema.relations.some((r) => r.collection === name)), "contact_points"].sort(),
     );
+  });
+
+  it("leaves the stack's permissions and default views under their old names", async () => {
+    const db = await database();
+    await migrate(db);
+
+    const old = [...RENAMED, "event_staff", "people"].sort();
+    expect(await collections(db, "directus_permissions", "collection")).toEqual(old);
+    const presets = await db.query<{ collection: string }>(
+      'SELECT collection FROM directus_presets WHERE "user" IS NULL ORDER BY 1',
+    );
+    expect(presets.rows.map((p) => p.collection)).toEqual(old);
   });
 
   it("drops event_staff only when it's empty", async () => {
