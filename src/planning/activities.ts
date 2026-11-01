@@ -23,7 +23,19 @@ export interface ScheduledActivity {
  */
 export function scheduleActivities(ctx: Context): ScheduledActivity[] {
   const trips = new Map(ctx.data.plan_trips.map((t) => [t.id, t]));
-  const closed = new Map((ctx.data.plan_closed_dates ?? []).map((c) => [c.date, c.name]));
+  const closed = new Map<string, string>();
+  for (const c of ctx.data.plan_closed_dates ?? []) {
+    // The club's closed days are the Operations Plan's, not an area's.
+    if (ctx.planOfVersion.get(c.version_id)?.kind === "program_area") {
+      ctx.warn(
+        "closed_date_in_area_plan",
+        `${c.name} is a closed day in a program area's plan, so it's ignored`,
+        c.key,
+      );
+      continue;
+    }
+    closed.set(c.date, c.name);
+  }
   const result: ScheduledActivity[] = [];
   for (const activity of ctx.data.plan_activities) {
     const offering = ctx.offeringsById.get(activity.offering_id);
@@ -34,7 +46,9 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
     if (!ctx.inYear(offering)) continue;
     const timed = activity.start_time != null && activity.end_time != null;
     const start = timed ? minutesOf(activity.start_time as string) : null;
-    const end = timed ? minutesOf(activity.end_time as string) : null;
+    let end = timed ? minutesOf(activity.end_time as string) : null;
+    // An activity that ends before it starts runs past midnight.
+    if (start !== null && end !== null && end < start) end += 24 * 60;
     const span = start !== null && end !== null ? end - start : 0;
     const closedFor = closed.get(activity.date);
     if (closedFor !== undefined && activity.kind !== "travel") {

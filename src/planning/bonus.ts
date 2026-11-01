@@ -28,8 +28,24 @@ export function bookBonuses(ctx: Context): Map<Id, number> {
       const r = revenue(ctx, key);
       if (r > 0) weights.set(key, r);
     }
+    if (weights.size === 0) {
+      if (base.offeringKeys.length === 0) {
+        ctx.warn(
+          "bonus_without_offerings",
+          `${owner.role_name}'s bonus has no offerings this year to charge it to, so it's left out`,
+          owner.key,
+        );
+        continue;
+      }
+      // Its net came from elsewhere, such as revenue booked on a product, so its offerings share it evenly.
+      ctx.warn(
+        "bonus_without_revenue",
+        `${owner.role_name}'s offerings have no revenue of their own, so its bonus is split evenly among them`,
+        owner.key,
+      );
+      for (const key of base.offeringKeys) weights.set(key, 1);
+    }
     const total = [...weights.values()].reduce((t, w) => t + w, 0);
-    if (total <= 0) continue;
     if (owner.position_key != null) {
       byPosition.set(owner.position_key, (byPosition.get(owner.position_key) ?? 0) + bonus);
     }

@@ -90,13 +90,15 @@ It returns:
 
 ### Activities
 
-- An activity is paid from `start_time` to `end_time`, plus setup and put-away.
+- An activity is paid from `start_time` to `end_time`, plus setup and put-away. One that ends before it
+  starts runs past midnight.
 - Time on the water is `on_water_minutes` if set, otherwise start to end. It's zero for travel days
   and for activities that don't use boats.
 - An offering's days are the dates it has an activity other than travel. Its sailor-days are its
   enrollment × its days.
 - The engine warns about an activity, other than a travel day, on one of the Operations Plan's
-  `plan_closed_dates`. It still counts it.
+  `plan_closed_dates`. It still counts it. A closed day in a program area's plan is ignored, with a
+  warning.
 
 ### Staffing
 
@@ -121,7 +123,8 @@ It returns:
   takes one of its coaches on each activity other than travel. With `coach_position_pay` `salary`,
   the default, those hours are charged at the salary's hourly equivalent, as in a block. With
   `hourly`, the coach is paid the offering's coach level for them, on top of the salary. In a block,
-  the coach joins the block's salaried staff, counted once.
+  the coach joins the block's salaried staff, counted once, unless the offering fixes its coaches:
+  then the coach is one of its own.
 - The engine warns when a salaried position coaches two activities whose times overlap and that
   aren't in the same block group. It still charges both.
 - Hourly coaches cost their paid hours × their level's `hourly_rate_cents`. Volunteers cost nothing.
@@ -222,7 +225,8 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
   `basis` `after_shared_costs`, the default, counts each offering's share of the pools;
   `before_shared_costs` doesn't.
 - No bonus counts in any bonus's base.
-- The bonus is divided among its products' offerings by revenue.
+- The bonus is divided among its products' offerings by revenue. If none has revenue, they share it
+  evenly; if there are none this year, it's left out. Either way the engine warns.
 - The year's `payroll_tax_rate` × the bonus is booked as payroll tax on the same offerings.
 - Neither the bonus nor its tax counts in MTDC.
 - A bonus owner in a program area's plan counts only that area's products. The engine warns about

@@ -572,7 +572,22 @@ async function writeResults(config, db, versionId, engine) {
           sailor_days: p.sailor_days,
         }),
       ),
-    plan_result_positions: out.positions.map((p) => row(p)),
+    plan_result_positions: out.positions.map((p) =>
+      row({
+        position_key: p.position_key,
+        name: p.name,
+        salary_cents: p.salary_cents,
+        salaried_coaching_hours: p.salaried_coaching_hours,
+        salaried_coaching_cents: p.salaried_coaching_cents,
+        hourly_coaching_hours: p.hourly_coaching_hours,
+        hourly_coaching_cents: p.hourly_coaching_cents,
+        booking_hours: p.booking_hours,
+        booking_cents: p.booking_cents,
+        bonus_cents: p.bonus_cents,
+        total_pay_cents: p.total_pay_cents,
+        payroll_tax_cents: p.payroll_tax_cents,
+      }),
+    ),
     plan_result_warnings: out.warnings.map((w) =>
       row({ code: w.code, message: w.message, subject_key: w.key ?? null }),
     ),
