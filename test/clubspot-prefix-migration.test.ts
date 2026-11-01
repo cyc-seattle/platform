@@ -122,7 +122,8 @@ async function collections(db: PGlite, table: string, column: string): Promise<s
 
 const prefixed = RENAMED.map((name) => `${PREFIX}${name}`);
 
-describe("the Clubspot prefix migration", () => {
+// Starting a PGlite can take longer than the 5s default on a CI runner.
+describe("the Clubspot prefix migration", { timeout: 30_000 }, () => {
   it("renames each mirror's table, keeping its rows", async () => {
     const db = await database();
     await migrate(db);

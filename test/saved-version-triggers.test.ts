@@ -161,13 +161,14 @@ async function plans(db: PGlite, year = 2027) {
   return { organization, area, product, operationsPlan, operations, plan, saved, draft, savedOffering, draftOffering };
 }
 
-describe("the saved-versions triggers", () => {
+// Starting a PGlite can take longer than the 5s default on a CI runner.
+describe("the saved-versions triggers", { timeout: 30_000 }, () => {
   let db: PGlite;
   let w: ReturnType<typeof writer>;
   beforeAll(async () => {
     db = await database(config(false));
     w = writer(db);
-  });
+  }, 30_000);
 
   describe("on a saved version's rows", () => {
     it("refuse to add, change, or delete one", async () => {
@@ -462,7 +463,7 @@ describe("the saved-versions triggers", () => {
   });
 });
 
-describe("installing the saved-versions triggers", () => {
+describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
   it("waits until every planning table has the columns they read", async () => {
     const db = await PGlite.create();
     for (const statement of tables()) await db.exec(statement);
@@ -522,7 +523,7 @@ describe("installing the saved-versions triggers", () => {
   });
 });
 
-describe("the saved-versions triggers with dev's flag", () => {
+describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () => {
   it("let a saved version, its rows, and its activations be deleted, but not changed", async () => {
     const db = await database(config(true));
     const w = writer(db);
