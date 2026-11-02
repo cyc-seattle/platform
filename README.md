@@ -28,7 +28,9 @@ app owns. The apps that run on it live in their own repos, such as
 - `Workload` runs a long-lived process with no route: a Deployment, a ServiceAccount, and, when it
   has `ports`, a ClusterIP Service that other pods in the namespace reach at `host`. With more than
   one replica, `spreadAcrossZones` spreads them, and `minAvailable` adds a PodDisruptionBudget.
-  `podAnnotations` sets annotations such as `cluster-autoscaler.kubernetes.io/safe-to-evict`.
+  `podAnnotations` sets annotations such as `cluster-autoscaler.kubernetes.io/safe-to-evict`. A
+  pod with `safe-to-evict: "false"` gets at least 500m CPU and 512Mi from Autopilot, so ask for that
+  much, or every preview shows a change.
 - `WebService` is a `Workload` behind the environment's Gateway at `hostname`. Its Service exposes
   `port` as port 80, and its readiness probe must be an HTTP GET, which the load balancer's health
   check reuses. With `paths`, it claims only those path prefixes on `hostname`, and another
