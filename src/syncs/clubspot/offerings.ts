@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import winston from "winston";
 import {
   type CampRow,
   type ClassRow,
@@ -170,16 +171,45 @@ export interface OfferingSyncCounts {
   registrationsWritten: number;
 }
 
-async function apply<Row extends { id: string }>(
+/** Directus's answer when a row points at one that's gone, such as a mirror row deleted mid-run. */
+const isVanishedLink = (error: unknown) => error instanceof Error && error.message.includes('"INVALID_FOREIGN_KEY"');
+
+/** Runs `write`, or skips it if the row it links to was deleted since this pass read the mirrors. */
+async function unlessVanished(write: () => Promise<unknown>): Promise<boolean> {
+  try {
+    await write();
+    return true;
+  } catch (error) {
+    if (isVanishedLink(error)) return false;
+    throw error;
+  }
+}
+
+export async function apply<Row extends { id: string }>(
   directus: DirectusClient,
   collection: string,
   plan: RowPlan<Row>,
 ): Promise<number> {
   // Deletes first, so a registration whose offering goes away goes with it before anything new lands.
   for (const id of plan.toDelete) await directus.deleteItem(collection, id);
-  if (plan.toCreate.length > 0) await directus.createItems<Row>(collection, plan.toCreate);
-  for (const { id, patch } of plan.toUpdate) await directus.updateItem<Row>(collection, id, patch);
-  return plan.toCreate.length + plan.toUpdate.length + plan.toDelete.length;
+  let written = plan.toDelete.length;
+  let skipped = 0;
+  const count = (ok: boolean) => (ok ? written++ : skipped++);
+  if (plan.toCreate.length > 0) {
+    // One vanished link fails the whole batch, so a failed batch is retried a row at a time.
+    if (await unlessVanished(() => directus.createItems<Row>(collection, plan.toCreate))) {
+      written += plan.toCreate.length;
+    } else {
+      for (const row of plan.toCreate) count(await unlessVanished(() => directus.createItems<Row>(collection, [row])));
+    }
+  }
+  for (const { id, patch } of plan.toUpdate) {
+    count(await unlessVanished(() => directus.updateItem<Row>(collection, id, patch)));
+  }
+  if (skipped > 0) {
+    winston.warn(`Skipped ${skipped} ${collection} whose Clubspot row was deleted during the run`, { skipped });
+  }
+  return written;
 }
 
 /** Reads the mirrors, then brings `offerings` and `registrations` in line with them. */

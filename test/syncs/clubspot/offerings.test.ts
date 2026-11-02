@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type CrmRegistrationRow, type OfferingRow } from "../../../src/model/crm/index.ts";
-import { type Mirrors, planOfferings, planRegistrations } from "../../../src/syncs/clubspot/offerings.ts";
+import { apply, type Mirrors, planOfferings, planRegistrations } from "../../../src/syncs/clubspot/offerings.ts";
+import { type DirectusClient } from "../../../src/syncs/runtime/index.ts";
 
 const empty: Mirrors = {
   camps: [{ id: "camp-1", start_date: "2026-06-01", end_date: "2026-08-31" }],
@@ -252,5 +253,67 @@ describe("planRegistrations", () => {
       toUpdate: [{ id: "r-1", patch: { status: "cancelled" } }],
       toDelete: ["r-2"],
     });
+  });
+});
+
+describe("apply", () => {
+  const vanished = (id: string) =>
+    new Error(
+      `POST /items/registrations -> 400: {"errors":[{"message":"Invalid foreign key \\"${id}\\"","extensions":{"code":"INVALID_FOREIGN_KEY"}}]}`,
+    );
+
+  /** A client whose writes fail for any row linking to an entry in `gone`. */
+  function client(gone: Set<string>) {
+    const created: string[] = [];
+    const updated: string[] = [];
+    const fake = {
+      deleteItem: async () => {},
+      createItems: async (_: string, rows: CrmRegistrationRow[]) => {
+        const bad = rows.find((row) => gone.has(row.clubspot_entry_id));
+        if (bad) throw vanished(bad.clubspot_entry_id);
+        created.push(...rows.map((row) => row.id));
+      },
+      updateItem: async (_: string, id: string, patch: Partial<CrmRegistrationRow>) => {
+        if (patch.clubspot_entry_id !== undefined && gone.has(patch.clubspot_entry_id)) {
+          throw vanished(patch.clubspot_entry_id);
+        }
+        updated.push(id);
+      },
+    };
+    return { directus: fake as unknown as DirectusClient, created, updated };
+  }
+
+  const registration = (id: string): CrmRegistrationRow => ({
+    id,
+    person_id: "person-1",
+    offering_id: "offering-1",
+    status: "confirmed",
+    clubspot_entry_id: `entry-${id}`,
+  });
+
+  it("skips a row whose Clubspot entry was deleted during the run, and writes the rest", async () => {
+    const { directus, created, updated } = client(new Set(["entry-2", "entry-9"]));
+    const written = await apply(directus, "registrations", {
+      toCreate: [registration("1"), registration("2"), registration("3")],
+      toUpdate: [
+        { id: "8", patch: { status: "waitlist" } },
+        { id: "9", patch: { clubspot_entry_id: "entry-9" } },
+      ],
+      toDelete: [],
+    });
+    expect(created).toEqual(["1", "3"]);
+    expect(updated).toEqual(["8"]);
+    expect(written).toBe(3);
+  });
+
+  it("still fails on any other error", async () => {
+    const directus = {
+      createItems: async () => {
+        throw new Error("POST /items/registrations -> 500: boom");
+      },
+    } as unknown as DirectusClient;
+    await expect(
+      apply(directus, "registrations", { toCreate: [registration("1")], toUpdate: [], toDelete: [] }),
+    ).rejects.toThrow("500");
   });
 });
