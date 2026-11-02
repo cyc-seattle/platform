@@ -182,6 +182,8 @@ export class PnlPlan {
 
   /** A new program area, with a plan for this year. Returns the area. */
   async area(): Promise<string> {
+    // The Operations Plan comes first, so cleanup deletes the area plans that name it before it.
+    await this.operationsVersion();
     const area = await adminCreate("program_areas", {
       id: randomUUID(),
       name: `Program area ${key("area")}`,
