@@ -23,6 +23,8 @@ import {
   sharedMembershipSnapshot,
 } from "../../../src/syncs/gsuite/run.ts";
 import { type SettingsApplier } from "../../../src/syncs/gsuite/settings-writer.ts";
+import { filterFromParams, matchesFilter } from "../fake-filter.ts";
+import { type DirectusFilter } from "../../../src/syncs/runtime/client.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
 // structural type rather than undici's real one (see @cyc-seattle/directus's client.ts). This
@@ -62,23 +64,13 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
     return tables.get(collection)!;
   }
 
-  function matchesFilter(row: Record<string, unknown>, search: URLSearchParams): boolean {
-    for (const [key, value] of search.entries()) {
-      const match = /^filter\[([^\]]+)\]\[_eq\]$/.exec(key);
-      if (match && String(row[match[1]!] ?? "") !== value) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   const fetchMock = vi.fn(async (url: string, init?: FetchInit) => {
     const method = init?.method ?? "GET";
     const parsed = new URL(url);
     const [, , collection, id] = parsed.pathname.split("/");
 
     if (method === "GET") {
-      const rows = table(collection!).filter((row) => matchesFilter(row, parsed.searchParams));
+      const rows = table(collection!).filter((row) => matchesFilter(row, filterFromParams(parsed.searchParams)));
       return jsonResponse(200, { data: rows });
     }
     if (method === "POST") {
@@ -86,6 +78,18 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
       const created = items.map((item) => ({ id: `generated-${nextId++}`, ...item }));
       table(collection!).push(...created);
       return jsonResponse(200, { data: created });
+    }
+    if (method === "PATCH" && id === undefined) {
+      // An update by query, as the queue claims a task.
+      const { query, data } = JSON.parse(init!.body as string) as {
+        query: { filter: DirectusFilter };
+        data: Record<string, unknown>;
+      };
+      const rows = table(collection!);
+      const updated = rows.flatMap((row, index) =>
+        matchesFilter(row, query.filter) ? [(rows[index] = { ...row, ...data })] : [],
+      );
+      return jsonResponse(200, { data: updated });
     }
     if (method === "PATCH") {
       const patch = JSON.parse(init!.body as string) as Record<string, unknown>;

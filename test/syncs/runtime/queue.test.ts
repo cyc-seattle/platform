@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   BASE_RETRY_MS,
+  claimableFilter,
   claimableTasks,
+  claimTaskFilter,
   hasExhaustedAttempts,
   isDue,
   MAX_RETRY_MS,
@@ -12,11 +14,13 @@ import {
   planSuccess,
   planSweep,
   RETRY_BACKOFF_FACTOR,
+  staleRunningFilter,
   staleRunningTasks,
   targetFromKey,
   taskKey,
 } from "../../../src/syncs/runtime/queue.ts";
 import { type SyncTaskRow } from "../../../src/syncs/runtime/sync-tasks.ts";
+import { matchesFilter } from "../fake-filter.ts";
 
 const NOW = new Date("2026-01-15T12:00:00Z");
 
@@ -94,6 +98,36 @@ describe("staleRunningTasks", () => {
     const done = task({ id: "done", status: "done" });
     const failed = task({ id: "failed", status: "failed" });
     expect(staleRunningTasks([pending, done, failed])).toEqual([]);
+  });
+});
+
+// The worker reads with the filters, so they must pick the same rows the functions do.
+describe("the queue's Directus filters", () => {
+  const rows = [
+    task({ id: "due", run_after: null }),
+    task({ id: "elapsed", run_after: "2026-01-15T11:00:00Z" }),
+    task({ id: "deferred", run_after: "2026-01-15T13:00:00Z" }),
+    task({ id: "running", status: "running" }),
+    task({ id: "done", status: "done" }),
+    task({ id: "other-queue", queue: "gsuite-sync" }),
+  ];
+  const ids = (found: readonly SyncTaskRow[]) => found.map((row) => row.id);
+  const matching = (filter: Parameters<typeof matchesFilter>[1]) =>
+    ids(rows.filter((row) => matchesFilter(row as unknown as Record<string, unknown>, filter)));
+  const inQueue = rows.filter((row) => row.queue === "clubspot-sync");
+
+  it("claimableFilter picks what claimableTasks picks, in the one queue", () => {
+    expect(matching(claimableFilter("clubspot-sync", NOW))).toEqual(ids(claimableTasks(inQueue, NOW)));
+    expect(matching(claimableFilter("clubspot-sync", NOW))).toEqual(["due", "elapsed"]);
+  });
+
+  it("staleRunningFilter picks what staleRunningTasks picks, in the one queue", () => {
+    expect(matching(staleRunningFilter("clubspot-sync"))).toEqual(ids(staleRunningTasks(inQueue)));
+  });
+
+  it("claimTaskFilter picks the one task, only while it's pending", () => {
+    expect(matching(claimTaskFilter("due"))).toEqual(["due"]);
+    expect(matching(claimTaskFilter("running"))).toEqual([]);
   });
 });
 

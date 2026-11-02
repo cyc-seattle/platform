@@ -1,3 +1,4 @@
+import { type DirectusFilter } from "./client.ts";
 import { type SyncTaskRow } from "./sync-tasks.ts";
 
 /** A fresh task's default retry budget, when the caller enqueuing it doesn't specify one. */
@@ -27,6 +28,26 @@ export function claimableTasks(tasks: readonly SyncTaskRow[], now: Date): SyncTa
  * second worker owning a task left `running` by a worker that crashed. Both rely on parallelism
  * being 1, but if that ever changes, sweeping stale `running` rows needs a real lease.
  */
+/** `claimableTasks` as a Directus filter, so the worker reads only what it may claim. */
+export function claimableFilter(queue: string, now: Date): DirectusFilter {
+  return {
+    queue: { _eq: queue },
+    status: { _eq: "pending" },
+    _or: [{ run_after: { _null: true } }, { run_after: { _lte: now.toISOString() } }],
+  };
+}
+
+/** The one task, if it's still pending. A claim with this filter skips a task that changed since
+ * the worker read it, such as one staff cancelled mid-run. */
+export function claimTaskFilter(id: string): DirectusFilter {
+  return { id: { _eq: id }, status: { _eq: "pending" } };
+}
+
+/** `staleRunningTasks` as a Directus filter. */
+export function staleRunningFilter(queue: string): DirectusFilter {
+  return { queue: { _eq: queue }, status: { _eq: "running" } };
+}
+
 export function staleRunningTasks(tasks: readonly SyncTaskRow[]): SyncTaskRow[] {
   return tasks.filter((task) => task.status === "running");
 }

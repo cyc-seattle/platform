@@ -87,11 +87,22 @@ describe("runQueue", () => {
     needs_attention: false,
   };
 
+  const secondTask: SyncTaskRow = { ...dueTask, id: "task-3", key: "camp-3" };
+
+  function calls(fetchMock: ReturnType<typeof vi.fn>): { method: string; url: URL; body: unknown }[] {
+    return (fetchMock.mock.calls as [string, FetchInit][]).map(([url, init]) => ({
+      method: init.method ?? "GET",
+      url: new URL(url),
+      body: init.body === undefined ? undefined : JSON.parse(init.body as string),
+    }));
+  }
+
   it("claims a due task, runs its handler, and marks it done", async () => {
     const fetchMock = vi
       .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] })) // no stale running tasks
       .mockResolvedValueOnce(jsonResponse(200, { data: [dueTask] })) // read claimable
-      .mockResolvedValueOnce(jsonResponse(200, { data: { ...dueTask, status: "running", attempts: 1 } })) // claim
+      .mockResolvedValueOnce(jsonResponse(200, { data: [{ ...dueTask, status: "running", attempts: 1 }] })) // claim
       .mockResolvedValueOnce(jsonResponse(200, { data: { ...dueTask, status: "done" } })) // success
       .mockResolvedValueOnce(jsonResponse(200, { data: [] })); // no more claimable tasks
     vi.stubGlobal("fetch", fetchMock);
@@ -101,17 +112,75 @@ describe("runQueue", () => {
 
     expect(result.processed).toBe(1);
     expect(handler).toHaveBeenCalledOnce();
-    const [, claimInit] = fetchMock.mock.calls[1] as [string, FetchInit];
-    expect(JSON.parse(claimInit.body as string)).toMatchObject({ status: "running", attempts: 1 });
-    const [, successInit] = fetchMock.mock.calls[2] as [string, FetchInit];
-    expect(JSON.parse(successInit.body as string)).toMatchObject({ status: "done" });
+    const [, , claim, success] = calls(fetchMock);
+    expect(claim).toMatchObject({
+      method: "PATCH",
+      body: {
+        query: { filter: { id: { _eq: "task-1" }, status: { _eq: "pending" } } },
+        data: { status: "running", attempts: 1 },
+      },
+    });
+    expect(claim!.url.pathname).toBe("/items/sync_tasks");
+    expect(success).toMatchObject({ method: "PATCH", body: { status: "done" } });
+  });
+
+  it("reads only the stale running tasks, then only the claimable ones, once per batch", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [dueTask, secondTask] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [{ ...dueTask, status: "running", attempts: 1 }] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ...dueTask, status: "done" } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [{ ...secondTask, status: "running", attempts: 1 }] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ...secondTask, status: "done" } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runQueue(
+      new DirectusClient(baseUrl, token),
+      "clubspot-sync",
+      { sync_camp: vi.fn().mockResolvedValue(undefined) },
+      () => new Date("2026-01-15T12:00:00Z"),
+    );
+
+    expect(result.taskIds).toEqual(["task-1", "task-3"]);
+    const reads = calls(fetchMock).filter((call) => call.method === "GET");
+    expect(reads).toHaveLength(3);
+    expect(Object.fromEntries(reads[0]!.url.searchParams)).toMatchObject({
+      "filter[queue][_eq]": "clubspot-sync",
+      "filter[status][_eq]": "running",
+    });
+    expect(Object.fromEntries(reads[1]!.url.searchParams)).toMatchObject({
+      "filter[queue][_eq]": "clubspot-sync",
+      "filter[status][_eq]": "pending",
+      "filter[_or][0][run_after][_null]": "true",
+      "filter[_or][1][run_after][_lte]": "2026-01-15T12:00:00.000Z",
+    });
+  });
+
+  it("skips a task that changed since the batch was read, such as one staff cancelled", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [dueTask] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] })) // the claim matched no row
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const handler = vi.fn();
+
+    const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler });
+
+    expect(result.processed).toBe(0);
+    expect(handler).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("marks a task pending with backoff when its handler throws and attempts remain", async () => {
     const fetchMock = vi
       .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }))
       .mockResolvedValueOnce(jsonResponse(200, { data: [dueTask] }))
-      .mockResolvedValueOnce(jsonResponse(200, { data: { ...dueTask, status: "running", attempts: 1 } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [{ ...dueTask, status: "running", attempts: 1 }] }))
       .mockResolvedValueOnce(jsonResponse(200, { data: { ...dueTask, status: "pending" } }))
       .mockResolvedValueOnce(jsonResponse(200, { data: [] }));
     vi.stubGlobal("fetch", fetchMock);
@@ -120,8 +189,7 @@ describe("runQueue", () => {
 
     await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler });
 
-    const [, failureInit] = fetchMock.mock.calls[2] as [string, FetchInit];
-    expect(JSON.parse(failureInit.body as string)).toMatchObject({ status: "pending", last_error: "clubspot is down" });
+    expect(calls(fetchMock)[3]!.body).toMatchObject({ status: "pending", last_error: "clubspot is down" });
     expect(warnSpy).toHaveBeenCalledWith(
       "Sync task failed",
       expect.objectContaining({ queue: "clubspot-sync", key: "camp-1", attempts: 1, error: "clubspot is down" }),
@@ -131,13 +199,16 @@ describe("runQueue", () => {
   });
 
   it("throws when a claimable task's kind has no registered handler, without claiming it", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: [dueTask] }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [dueTask] }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", {})).rejects.toThrow(
       /No handler registered for sync_tasks kind "sync_camp"/,
     );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("resets a task still running at the start of a run back to pending, keeping its attempts, and reports the count", async () => {
@@ -146,16 +217,16 @@ describe("runQueue", () => {
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, { data: [stuck] })) // read: one stale running task
       .mockResolvedValueOnce(jsonResponse(200, { data: { ...stuck, status: "pending" } })) // sweep
-      .mockResolvedValueOnce(jsonResponse(200, { data: [] })); // re-read: nothing left claimable
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] })); // nothing claimable
     vi.stubGlobal("fetch", fetchMock);
     const warnSpy = vi.spyOn(winston, "warn").mockReturnThis();
 
     const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", {});
 
     expect(result.processed).toBe(0);
-    const [sweepUrl, sweepInit] = fetchMock.mock.calls[1] as [string, FetchInit];
-    expect(sweepUrl).toBe(`${baseUrl}/items/sync_tasks/task-2`);
-    expect(JSON.parse(sweepInit.body as string)).toEqual({ status: "pending", started_at: null });
+    const sweep = calls(fetchMock)[1]!;
+    expect(sweep.url.pathname).toBe("/items/sync_tasks/task-2");
+    expect(sweep.body).toEqual({ status: "pending", started_at: null });
     expect(warnSpy).toHaveBeenCalledWith(
       'Reset 1 stale "running" sync_tasks back to pending',
       expect.objectContaining({ queue: "clubspot-sync", count: 1 }),

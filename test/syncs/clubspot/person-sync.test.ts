@@ -6,6 +6,7 @@ import { DirectusClient } from "../../../src/syncs/runtime/index.ts";
 import { buildParticipantMirrorFields, type ParticipantMirrorFields } from "../../../src/syncs/clubspot/people.ts";
 import { PersonSync, type SyncParticipantOptions } from "../../../src/syncs/clubspot/person-sync.ts";
 import { type RegistrationRank } from "../../../src/syncs/clubspot/synced-fields.ts";
+import { filterFromParams, matchesFilter } from "../fake-filter.ts";
 
 const baseUrl = "https://directus.example.com";
 const token = "test-token";
@@ -44,39 +45,13 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
     return tables.get(collection)!;
   }
 
-  function matchesFilter(row: Record<string, unknown>, search: URLSearchParams): boolean {
-    for (const [key, value] of search.entries()) {
-      const eqMatch = /^filter\[([^\]]+)\]\[_eq\]$/.exec(key);
-      if (eqMatch) {
-        if (String(row[eqMatch[1]!] ?? "") !== value) {
-          return false;
-        }
-        continue;
-      }
-      const neqMatch = /^filter\[([^\]]+)\]\[_neq\]$/.exec(key);
-      if (neqMatch) {
-        if (String(row[neqMatch[1]!] ?? "") === value) {
-          return false;
-        }
-        continue;
-      }
-      const inMatch = /^filter\[([^\]]+)\]\[_in\]$/.exec(key);
-      if (inMatch) {
-        if (!value.split(",").includes(String(row[inMatch[1]!] ?? ""))) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
   const fetchMock = vi.fn(async (url: string, init?: FetchInit) => {
     const method = init?.method ?? "GET";
     const parsed = new URL(url);
     const [, , collection, id] = parsed.pathname.split("/");
 
     if (method === "GET") {
-      const rows = table(collection!).filter((row) => matchesFilter(row, parsed.searchParams));
+      const rows = table(collection!).filter((row) => matchesFilter(row, filterFromParams(parsed.searchParams)));
       return jsonResponse(200, { data: rows });
     }
     if (method === "POST") {

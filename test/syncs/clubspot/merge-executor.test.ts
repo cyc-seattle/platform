@@ -6,6 +6,7 @@ import {
   type ItemQuery,
 } from "../../../src/syncs/runtime/index.ts";
 import { runApprovedPersonMerges } from "../../../src/syncs/clubspot/merge-executor.ts";
+import { filterFromParams, matchesFilter } from "../fake-filter.ts";
 
 type FetchInit = { method?: string; body?: unknown };
 
@@ -78,32 +79,13 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
     return uniqueConflictAmong(table(collection), collection, ownId, row);
   }
 
-  function matchesFilter(row: Record<string, unknown>, search: URLSearchParams): boolean {
-    for (const [key, value] of search.entries()) {
-      const eqMatch = /^filter\[([^\]]+)\]\[_eq\]$/.exec(key);
-      if (eqMatch) {
-        if (String(row[eqMatch[1]!] ?? "") !== value) {
-          return false;
-        }
-        continue;
-      }
-      const inMatch = /^filter\[([^\]]+)\]\[_in\]$/.exec(key);
-      if (inMatch) {
-        if (!value.split(",").includes(String(row[inMatch[1]!] ?? ""))) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
   const fetchMock = vi.fn(async (url: string, init?: FetchInit) => {
     const method = init?.method ?? "GET";
     const parsed = new URL(url);
     const [, , collection, id] = parsed.pathname.split("/");
 
     if (method === "GET") {
-      const rows = table(collection!).filter((row) => matchesFilter(row, parsed.searchParams));
+      const rows = table(collection!).filter((row) => matchesFilter(row, filterFromParams(parsed.searchParams)));
       return jsonResponse(200, { data: rows });
     }
     if (method === "POST") {

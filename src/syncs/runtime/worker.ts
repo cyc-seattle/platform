@@ -1,7 +1,8 @@
 import winston from "winston";
 import { type DirectusClient } from "./client.ts";
 import {
-  claimableTasks,
+  claimableFilter,
+  claimTaskFilter,
   type EnqueueInput,
   planCancel,
   planClaim,
@@ -9,7 +10,7 @@ import {
   planFailure,
   planSuccess,
   planSweep,
-  staleRunningTasks,
+  staleRunningFilter,
   taskKey,
 } from "./queue.ts";
 import { type SyncTaskRow } from "./sync-tasks.ts";
@@ -53,10 +54,9 @@ export class SyncQueue {
 }
 
 /**
- * Claims and runs every due task in `queue`, one at a time, until none remain. A handler may
- * enqueue its own children mid-run; those become claimable on their own once written, so this loop
- * makes no assumption about the shape of the tree it's walking - it only ever sees a flat list of
- * what's due right now.
+ * Claims and runs every due task in `queue`, one at a time, until none remain. It reads the due tasks
+ * in batches: a handler may enqueue children mid-run, and the next batch picks them up. So a run
+ * reads the queue once per level of the task tree, not once per task (cyc-seattle/platform#81).
  */
 export async function runQueue(
   directus: DirectusClient,
@@ -64,57 +64,58 @@ export async function runQueue(
   handlers: Readonly<Record<string, SyncTaskHandler>>,
   now: () => Date = () => new Date(),
 ): Promise<{ processed: number; taskIds: string[] }> {
+  // A `running` row this early can only be one a prior run's worker crashed on - see
+  // `staleRunningTasks`.
+  const stale = await directus.readItems<SyncTaskRow>("sync_tasks", { filter: staleRunningFilter(queue), limit: -1 });
+  for (const task of stale) {
+    if (task.id) {
+      await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planSweep());
+    }
+  }
+  if (stale.length > 0) {
+    winston.warn(`Reset ${stale.length} stale "running" sync_tasks back to pending`, { queue, count: stale.length });
+  }
+
   const taskIds: string[] = [];
-  let swept = false;
   for (;;) {
-    const tasks = await directus.readItems<SyncTaskRow>("sync_tasks", {
-      filter: { queue: { _eq: queue } },
+    const batch = await directus.readItems<SyncTaskRow>("sync_tasks", {
+      filter: claimableFilter(queue, now()),
       limit: -1,
     });
-
-    // A `running` row this early can only be one a prior run's worker crashed on - see
-    // `staleRunningTasks`. Reset once, up front, rather than on every iteration.
-    if (!swept) {
-      swept = true;
-      const stale = staleRunningTasks(tasks);
-      if (stale.length > 0) {
-        for (const task of stale) {
-          if (task.id) {
-            await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planSweep());
-          }
-        }
-        winston.warn(`Reset ${stale.length} stale "running" sync_tasks back to pending`, {
-          queue,
-          count: stale.length,
-        });
-        continue; // re-read so claimableTasks sees the rows this just reset
-      }
-    }
-
-    const [task] = claimableTasks(tasks, now());
-    if (!task?.id) {
+    if (batch.length === 0) {
       return { processed: taskIds.length, taskIds };
     }
-
-    const handler = handlers[task.kind];
-    if (!handler) {
-      throw new Error(`No handler registered for sync_tasks kind "${task.kind}" in queue "${queue}"`);
-    }
-
-    const claimed = await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planClaim(task, now()));
-    try {
-      await handler(claimed);
-      await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planSuccess(now()));
-    } catch (error) {
-      if (error instanceof TaskOrphaned) {
-        await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planCancel(error.message, now()));
-      } else {
-        const message = error instanceof Error ? error.message : String(error);
-        // A later success clears `last_error`, so the log is the only lasting record of a failure.
-        winston.warn("Sync task failed", { queue, key: task.key, attempts: claimed.attempts, error: message });
-        await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planFailure(claimed, message, now()));
+    for (const task of batch) {
+      if (!task.id) {
+        continue;
       }
+      const handler = handlers[task.kind];
+      if (!handler) {
+        throw new Error(`No handler registered for sync_tasks kind "${task.kind}" in queue "${queue}"`);
+      }
+
+      const [claimed] = await directus.updateItemsByQuery<SyncTaskRow>(
+        "sync_tasks",
+        claimTaskFilter(task.id),
+        planClaim(task, now()),
+      );
+      if (!claimed) {
+        continue;
+      }
+      try {
+        await handler(claimed);
+        await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planSuccess(now()));
+      } catch (error) {
+        if (error instanceof TaskOrphaned) {
+          await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planCancel(error.message, now()));
+        } else {
+          const message = error instanceof Error ? error.message : String(error);
+          // A later success clears `last_error`, so the log is the only lasting record of a failure.
+          winston.warn("Sync task failed", { queue, key: task.key, attempts: claimed.attempts, error: message });
+          await directus.updateItem<SyncTaskRow>("sync_tasks", task.id, planFailure(claimed, message, now()));
+        }
+      }
+      taskIds.push(task.id);
     }
-    taskIds.push(task.id);
   }
 }
