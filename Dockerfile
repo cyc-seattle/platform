@@ -17,7 +17,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
 COPY src/model/ src/model/
-COPY src/syncs/ src/syncs/
+COPY src/syncs/runtime/ src/syncs/runtime/
+COPY src/syncs/clubspot/ src/syncs/clubspot/
+COPY src/syncs/gsuite/ src/syncs/gsuite/
 # Each sync becomes one file with its dependencies inside, so the images need no node_modules. The
 # banner gives the CommonJS dependencies the `require` an ES module lacks.
 RUN pnpm exec esbuild src/syncs/clubspot/main.ts src/syncs/gsuite/main.ts \

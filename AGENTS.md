@@ -24,7 +24,8 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   load it without Pulumi. `docs/planning-engine.md` gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
-- `src/syncs/` holds the two syncs, clubspot-sync and gsuite-sync, and the `runtime/` they share.
+- `src/syncs/` holds the two deployed syncs, clubspot-sync and gsuite-sync, and the `runtime/` they
+  share, plus calendar-sync, which someone runs by hand.
   `src/model/` holds the CRM and Clubspot row types they use. The published package never reaches
   either (`test/published.test.ts`), so the syncs' dependencies are `devDependencies`. The root
   `Dockerfile` bundles each sync with esbuild into a one-file image. `docs/syncs.md` describes them.

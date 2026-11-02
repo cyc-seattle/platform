@@ -69,6 +69,11 @@ run = "pnpm run build"
 description = "Regenerate src/schema/index.ts, the Directus schema's types, from schemas/*.yaml"
 run = "node scripts/schema-types.ts"
 
+# Run by hand, with your own Google login (docs/syncs.md).
+[tasks.calendar-sync]
+description = "Sync a spreadsheet's events into Google Calendar"
+run = "node src/syncs/calendar/main.ts"
+
 [tasks.reset]
 description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
 run = "./scripts/reset"

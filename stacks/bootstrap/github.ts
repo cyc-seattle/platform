@@ -255,8 +255,10 @@ new StandardRepository("todo-manager", {
 });
 
 new StandardRepository("calendar-sync", {
-  description: "One-way sync from a Google Sheets spreadsheet to Google Calendar.",
+  description:
+    "One-way sync from a Google Sheets spreadsheet to Google Calendar. Archived; moved to cyc-seattle/platform.",
   visibility: "public",
+  archived: true,
   hasProjects: false,
   requiredChecks: ["ci / ci", "pr-title / pr-title"],
 });
