@@ -52,6 +52,7 @@ pulumi.runtime.setMocks(
   false,
 );
 pulumi.runtime.setConfig("gcp:project", "test-project");
+pulumi.runtime.setConfig("backend:directusCpu", "500m");
 
 function find(type: string, name: string): Registered {
   const found = resources.find((r) => r.type === type && r.name === name);
@@ -116,6 +117,16 @@ describe("Directus on the cluster", () => {
 
   it("keeps its connection pool small", () => {
     expect(envNames("directus")).toMatchObject({ DB_POOL__MAX: "4", PUBLIC_URL: "https://directus.dev.example.com" });
+  });
+
+  it("logs only warnings and errors", () => {
+    expect(envNames("directus")).toMatchObject({ LOG_LEVEL: "warn" });
+  });
+
+  it("asks for half a vCPU and bursts to 1 for a reset", () => {
+    expect(
+      find("kubernetes:apps/v1:Deployment", "directus").inputs["spec"].template.spec.containers[0].resources,
+    ).toEqual({ requests: { cpu: "500m", memory: "768Mi" }, limits: { cpu: "1", memory: "768Mi" } });
   });
 
   it("leaves dev's Spot pods movable", () => {

@@ -1,7 +1,8 @@
 config:
   gcp:project: cyc-admin-scripts
   gcp:region: us-west1
-  backend:directusCpu: "1"
+  # Resets burst to the 1 vCPU limit; this keeps half of it when the node is busy.
+  backend:directusCpu: 500m
   backend:licensed: true
   backend:mcp: true
   # Lets the integration tests delete the saved plan versions they make. Never set in prod.
