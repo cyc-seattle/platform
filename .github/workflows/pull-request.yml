@@ -28,7 +28,7 @@ jobs:
     outputs:
       projects: ${{ steps.changes.outputs.projects }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The base is the main commit the queue builds on, which may be more than one commit back.
       - id: changes
         # bash adds pipefail. The assignment stops a failure from reading as "deploy nothing".

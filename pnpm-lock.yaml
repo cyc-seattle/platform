@@ -37,14 +37,14 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(@types/node@22.20.5)(eslint@9.39.5)(prettier@3.9.10)(typescript@5.9.3)(vitest@5.0.5(@opentelemetry/api@1.10.0)(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)))
       '@electric-sql/pglite':
-        specifier: 0.5.13
-        version: 0.5.13
+        specifier: 0.5.14
+        version: 0.5.14
       '@pulumi/command':
-        specifier: 1.2.1
-        version: 1.2.1(typescript@5.9.3)
+        specifier: 1.3.0
+        version: 1.3.0(typescript@5.9.3)
       '@pulumi/docker-build':
-        specifier: 0.0.22
-        version: 0.0.22(typescript@5.9.3)
+        specifier: 0.0.23
+        version: 0.0.23(typescript@5.9.3)
       '@pulumi/gcp':
         specifier: 10.2.0
         version: 10.2.0(typescript@5.9.3)
@@ -55,8 +55,8 @@ importers:
         specifier: 4.34.2
         version: 4.34.2(typescript@5.9.3)
       '@pulumi/pulumi':
-        specifier: 3.272.0
-        version: 3.272.0(typescript@5.9.3)
+        specifier: 3.273.0
+        version: 3.273.0(typescript@5.9.3)
       '@pulumi/random':
         specifier: 4.21.4
         version: 4.21.4(typescript@5.9.3)
@@ -147,8 +147,8 @@ packages:
   '@dabh/diagnostics@2.0.9':
     resolution: {integrity: sha512-R6siwR65Hm+3yfgP7o8DKhNvputQAwfoz9zTc3kyDudnomj2/BcLmD+uGQQPICjuFUp8ounPBU+jmKsocwVVAg==}
 
-  '@electric-sql/pglite@0.5.13':
-    resolution: {integrity: sha512-4rZuxK1k07w6sSpJzjMri0B9+HuXuC7V9pxVB51pR0T9KPqXg6TD0mdaEwBA9rkcL4jdht4tGDf/wYzAiGhT7g==}
+  '@electric-sql/pglite@0.5.14':
+    resolution: {integrity: sha512-aAQe7iArcFB2w1xtx91l3l9trxhMzD6aZf+WnosSHNhwgp70EJz80Igw/bHnW14fUEFYWPBoQ1sGom8Xc0Jttg==}
 
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
@@ -615,11 +615,11 @@ packages:
   '@protobufjs/utf8@1.1.2':
     resolution: {integrity: sha512-b1UQwcEZ4yCnMCD8DAL1VlbvBJE9/IX4FTIp7BG1xYpf29SLazLSrqUkj4w7Y5y7cCVP6E5tcqqcI0xemPkHug==}
 
-  '@pulumi/command@1.2.1':
-    resolution: {integrity: sha512-mutNDIUYP67yCBYOVIidQyxuTwZDY9v/sx9EGbgIv4PXfyfolOKGgGLeoHEbI1lxRwaw2wbTZ3VNIynDnA5VKA==}
+  '@pulumi/command@1.3.0':
+    resolution: {integrity: sha512-KrRVG/CmN9yCYJ1Rqn5mkond5wbeLNbgrclityNNN8hgltjSVZ2xwlxAw84fApNk9Bu3AV1bwN5Q/XD56Kisvg==}
 
-  '@pulumi/docker-build@0.0.22':
-    resolution: {integrity: sha512-DcnwoDv7kBM6MBhuEfkiATDwKDqGCNPICxUt7gbYSdpb/UuT+6K7pNMQu7mCNZV7feqZh9EJ3P20UXCq1R+YQg==}
+  '@pulumi/docker-build@0.0.23':
+    resolution: {integrity: sha512-ggnIlbBvDst1LSTfsAvg7ZoJrZphm9pxCW2+L5c2qCSLg7ZcYcAP4iHaUfFonHhXp3dK2yNHDwFCCw8x+/xy6Q==}
 
   '@pulumi/gcp@10.2.0':
     resolution: {integrity: sha512-SkNSx0MhAVQI/TI4/np9lrM41U1I1L6YeSrtq0D9flkwr3bHWcXKpvgYasJR6qL+3eoLt9UwZmGQuPpYUxIxdQ==}
@@ -630,8 +630,8 @@ packages:
   '@pulumi/kubernetes@4.34.2':
     resolution: {integrity: sha512-OcIe8OUwivkEngmjinrmke54INbJ0L6u/CWm8mLh6F7pmIDXyHGTM8PzcZsg5QbSm24HnNUHLl2tEUoOBxDo3w==}
 
-  '@pulumi/pulumi@3.272.0':
-    resolution: {integrity: sha512-DepbT+tA3HnNo5+OtEMEevK1pC45PD/71sQh3tlWYFtW4tjuZijAQprvgCYcQUKNwRP3/Y3z83Kbvxn7y9HR2w==}
+  '@pulumi/pulumi@3.273.0':
+    resolution: {integrity: sha512-Yh2k0Kry4u5LM730KUO5HZFnqHdlW9ypoQ8zgO0Tqam1G6urFXjIUTUaLxvWrdsm6gKCoyVS6CPdeOGcV+Msvg==}
     engines: {node: '>=22'}
     peerDependencies:
       ts-node: '>= 7.0.1 < 12'
@@ -2431,7 +2431,7 @@ snapshots:
       enabled: 2.0.0
       kuler: 2.0.0
 
-  '@electric-sql/pglite@0.5.13': {}
+  '@electric-sql/pglite@0.5.14': {}
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true
@@ -2883,17 +2883,17 @@ snapshots:
 
   '@protobufjs/utf8@1.1.2': {}
 
-  '@pulumi/command@1.2.1(typescript@5.9.3)':
+  '@pulumi/command@1.3.0(typescript@5.9.3)':
     dependencies:
-      '@pulumi/pulumi': 3.272.0(typescript@5.9.3)
+      '@pulumi/pulumi': 3.273.0(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
       - ts-node
       - typescript
 
-  '@pulumi/docker-build@0.0.22(typescript@5.9.3)':
+  '@pulumi/docker-build@0.0.23(typescript@5.9.3)':
     dependencies:
-      '@pulumi/pulumi': 3.272.0(typescript@5.9.3)
+      '@pulumi/pulumi': 3.273.0(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
       - ts-node
@@ -2901,7 +2901,7 @@ snapshots:
 
   '@pulumi/gcp@10.2.0(typescript@5.9.3)':
     dependencies:
-      '@pulumi/pulumi': 3.272.0(typescript@5.9.3)
+      '@pulumi/pulumi': 3.273.0(typescript@5.9.3)
       '@types/express': 4.17.25
     transitivePeerDependencies:
       - supports-color
@@ -2910,7 +2910,7 @@ snapshots:
 
   '@pulumi/github@6.15.0(typescript@5.9.3)':
     dependencies:
-      '@pulumi/pulumi': 3.272.0(typescript@5.9.3)
+      '@pulumi/pulumi': 3.273.0(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
       - ts-node
@@ -2918,7 +2918,7 @@ snapshots:
 
   '@pulumi/kubernetes@4.34.2(typescript@5.9.3)':
     dependencies:
-      '@pulumi/pulumi': 3.272.0(typescript@5.9.3)
+      '@pulumi/pulumi': 3.273.0(typescript@5.9.3)
       glob: 12.0.0
       shell-quote: 1.12.0
     transitivePeerDependencies:
@@ -2926,7 +2926,7 @@ snapshots:
       - ts-node
       - typescript
 
-  '@pulumi/pulumi@3.272.0(typescript@5.9.3)':
+  '@pulumi/pulumi@3.273.0(typescript@5.9.3)':
     dependencies:
       '@grpc/grpc-js': 1.14.7
       '@logdna/tail-file': 2.2.0
@@ -2960,7 +2960,7 @@ snapshots:
 
   '@pulumi/random@4.21.4(typescript@5.9.3)':
     dependencies:
-      '@pulumi/pulumi': 3.272.0(typescript@5.9.3)
+      '@pulumi/pulumi': 3.273.0(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
       - ts-node
