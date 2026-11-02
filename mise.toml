@@ -5,7 +5,7 @@ lockfile = true
 node = "22"
 pnpm = "10.34.9"
 lefthook = "2"
-pulumi = "3.272.0"
+pulumi = "3.273.0"
 # Needs a system Python on macOS.
 gcloud = "latest"
 # For scripts/reset.
