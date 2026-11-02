@@ -7,13 +7,15 @@ tags: [architecture, planning]
 The planning engine calculates a plan's P&L for one year from the plan's rows in
 [the planning schema](planning-schema.md). It's part of `@cyc-seattle/platform`, imported as
 `@cyc-seattle/platform/planning`. It doesn't read from or save to the database: an app or an agent
-loads the rows, calls `computePlan`, and shows the answer. A saved plan version records which version
-of the engine calculated its numbers, so we can recalculate them the same way later.
+loads the rows, calls `computePlan`, and shows the answer. When a version is saved, the
+`saved-versions` hook runs the engine deployed with `backend` and records its results with the
+version ([docs/planning-schema.md](planning-schema.md#a-saved-versions-results)), with which version
+of the engine calculated them.
 
 ```ts
 import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/planning";
 
-const { lines, pnl, organization, activities, warnings } = computePlan(data);
+const { lines, pnl, organization, activities, positions, warnings } = computePlan(data);
 ```
 
 `data` holds the catalog, the organization, and every row of the plan versions being calculated,
@@ -51,6 +53,7 @@ It returns:
 - `perDay(p)` and `perSailorDay(p)`: an offering's, product's or area's P&L for one day it runs, and
   for one sailor on one day.
 - `activities`: each activity with the coaches, RIBs and boats the engine gave it.
+- `positions`: each salaried position's year. See [Salaried positions](#salaried-positions).
 - `warnings`: anything in the plan the engine had to skip or couldn't price.
 
 ## Terms
@@ -71,7 +74,7 @@ It returns:
    its offerings last, once every offering's own costs are in.
 5. **Payroll tax** on every wage.
 6. **Pools**, divided among the offerings.
-7. **Bonuses.**
+7. **Bonuses**, with their payroll tax.
 
 ## Rules
 
@@ -87,11 +90,15 @@ It returns:
 
 ### Activities
 
-- An activity is paid from `start_time` to `end_time`, plus setup and put-away.
+- An activity is paid from `start_time` to `end_time`, plus setup and put-away. One that ends before it
+  starts runs past midnight.
 - Time on the water is `on_water_minutes` if set, otherwise start to end. It's zero for travel days
   and for activities that don't use boats.
 - An offering's days are the dates it has an activity other than travel. Its sailor-days are its
   enrollment × its days.
+- The engine warns about an activity, other than a travel day, on one of the Operations Plan's
+  `plan_closed_dates`. It still counts it. A closed day in a program area's plan is ignored, with a
+  warning.
 
 ### Staffing
 
@@ -110,6 +117,16 @@ It returns:
   for all their sailors together. Each offering pays its share by its number of kids, so it can pay
   for part of a coach. The block's `coach_level_id` sets the coaches' pay level. Salaried staff in
   the block coach first, and hourly coaches fill the rest.
+- A block groups its activities on one date only when their times overlap, so a morning and an
+  afternoon practice each get their own coaches. An activity with no times overlaps every other.
+- **An offering's salaried coach.** An offering's `coach_position_key` names a salaried position that
+  takes one of its coaches on each activity other than travel. With `coach_position_pay` `salary`,
+  the default, those hours are charged at the salary's hourly equivalent, as in a block. With
+  `hourly`, the coach is paid the offering's coach level for them, on top of the salary. In a block,
+  the coach joins the block's salaried staff, counted once, unless the offering fixes its coaches:
+  then the coach is one of its own.
+- The engine warns when a salaried position coaches two activities whose times overlap and that
+  aren't in the same block group. It still charges both.
 - Hourly coaches cost their paid hours × their level's `hourly_rate_cents`. Volunteers cost nothing.
 - If a coach level lacks the offering's `required_qualification`, directly or through
   `qualification_covers`, the engine shows a warning.
@@ -165,6 +182,16 @@ The engine warns about:
 - The rest of the salary, including the `ga_share` part, goes to the position's `remainder_pool_id`
   pool, or to the organization if it has none.
 
+`positions` gives each position's year:
+
+- its salary
+- the hours it coached out of its salary, and what they charged
+- the hours it coached by the hour, and their wages
+- its booking hours, and what they charged
+- the bonuses that name it in `position_key`
+- its total pay: salary, hourly wages and bonus
+- the year's payroll tax on that total
+
 ### Payroll tax
 
 Payroll tax is the year's `payroll_tax_rate` × every wage (hourly coaches, labor lines and salaries),
@@ -194,9 +221,16 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 
 ### Bonuses
 
-A bonus owner earns `bonus_rate` × the combined net of its products for the year, after pools, if
-that net is above zero. The bonus is divided among those products' offerings by revenue, and is never
-counted in MTDC.
+- A bonus owner earns `bonus_rate` × the net of its products for the year, if it's above zero.
+  `basis` `after_shared_costs`, the default, counts each offering's share of the pools;
+  `before_shared_costs` doesn't.
+- No bonus counts in any bonus's base.
+- The bonus is divided among its products' offerings by revenue. If none has revenue, they share it
+  evenly; if there are none this year, it's left out. Either way the engine warns.
+- The year's `payroll_tax_rate` × the bonus is booked as payroll tax on the same offerings.
+- Neither the bonus nor its tax counts in MTDC.
+- A bonus owner in a program area's plan counts only that area's products. The engine warns about
+  any other, and leaves it out.
 
 ### The organization's totals
 

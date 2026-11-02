@@ -382,7 +382,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       weekdays: [3],
     }),
   plan_bonus_owners: async (fixed) =>
-    versioned(fixed, { role_name: `Head coach ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
+    versioned(fixed, { role_name: `Director ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
   plan_bonus_owner_products: async (fixed) =>
     versioned(fixed, { bonus_owner_id: sameVersionId("plan_bonus_owners", fixed), product_id: row["products"] }),
 };
@@ -645,10 +645,24 @@ async function createPlanRows(): Promise<void> {
       await make(`${collection}@${version}`, collection, { version_id: row[`plan_versions@${version}`] });
     }
   }
-  fixture["plan_versions@saved"] = await adminSave(row["plan_versions@saved"]!);
+  await adminSave(row["plan_versions@saved"]!);
+  // The saved-versions hook writes the version's results just after the save, and they're in its
+  // Results list, so read it back once they're in.
+  fixture["plan_versions@saved"] = await withResults(row["plan_versions@saved"]!);
   await make("plan_activations", "plan_activations");
   // Read again for its versions, which were made after it.
   fixture["plans"] = await (await admin()).ok("GET", itemPath("plans", row["plans"]));
+}
+
+/** A saved version, read once the saved-versions hook has written its results. */
+async function withResults(versionId: string): Promise<Item> {
+  const filter = encodeURIComponent(JSON.stringify({ version_id: { _eq: versionId } }));
+  for (let tries = 0; tries < 60; tries++) {
+    const [results] = await (await admin()).ok("GET", `/items/plan_results?filter=${filter}&fields=id`);
+    if (results !== undefined) return (await admin()).ok("GET", itemPath("plan_versions", versionId));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`Saved version ${versionId} has no results after a minute.`);
 }
 
 let planRowsMade: Promise<void> | undefined;

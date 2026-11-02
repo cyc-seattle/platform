@@ -33,6 +33,7 @@ import { deployClubspotSync } from "./clubspot-sync.ts";
 import { deployGsuiteSync } from "./gsuite-sync.ts";
 import { fingerprint } from "./saved-versions.cjs";
 import { defaultViews } from "./default-views.ts";
+import { engineFiles, engineVersion } from "./engine-files.ts";
 
 // The CRM app's Directus schema and permission rules, matching docs/crm-schema.md, and the roles and
 // users they attach to (src/directus/roles.ts). A second Directus-backed app would define its own
@@ -78,7 +79,13 @@ const prod = isDev
       baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
     });
 
-const savedVersions = savedVersionsConfig(loadedSchemas, config.getBoolean("savedVersionsDeletable") ?? false);
+// The hook runs the engine when a version is saved, and records which engine it was.
+const engine = engineFiles();
+const savedVersions = savedVersionsConfig(
+  loadedSchemas,
+  config.getBoolean("savedVersionsDeletable") ?? false,
+  engineVersion(engine),
+);
 
 const app = deployDirectus(
   directusAdminEmail,
@@ -87,6 +94,7 @@ const app = deployDirectus(
     queryGuard: queryGuardConfig([...communityPolicies, { name: "Crew", rules: crewRules }, ...grantable]),
     groupPolicies: groupPoliciesConfig(grantable),
     savedVersions,
+    engine,
   },
   prod?.values,
 );

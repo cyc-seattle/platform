@@ -8,6 +8,9 @@ export interface ScheduledActivity {
   trip: PlanTrip | null;
   stored: PlanActivity;
   date: string;
+  /** Minutes after midnight, or null when the activity has no times. */
+  start_minutes: number | null;
+  end_minutes: number | null;
   kind: ActivityKind;
   paid_minutes: number;
   on_water_minutes: number;
@@ -20,6 +23,19 @@ export interface ScheduledActivity {
  */
 export function scheduleActivities(ctx: Context): ScheduledActivity[] {
   const trips = new Map(ctx.data.plan_trips.map((t) => [t.id, t]));
+  const closed = new Map<string, string>();
+  for (const c of ctx.data.plan_closed_dates ?? []) {
+    // The club's closed days are the Operations Plan's, not an area's.
+    if (ctx.planOfVersion.get(c.version_id)?.kind === "program_area") {
+      ctx.warn(
+        "closed_date_in_area_plan",
+        `${c.name} is a closed day in a program area's plan, so it's ignored`,
+        c.key,
+      );
+      continue;
+    }
+    closed.set(c.date, c.name);
+  }
   const result: ScheduledActivity[] = [];
   for (const activity of ctx.data.plan_activities) {
     const offering = ctx.offeringsById.get(activity.offering_id);
@@ -28,16 +44,28 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
       continue;
     }
     if (!ctx.inYear(offering)) continue;
-    const span =
-      activity.start_time != null && activity.end_time != null
-        ? minutesOf(activity.end_time) - minutesOf(activity.start_time)
-        : 0;
+    const timed = activity.start_time != null && activity.end_time != null;
+    const start = timed ? minutesOf(activity.start_time as string) : null;
+    let end = timed ? minutesOf(activity.end_time as string) : null;
+    // An activity that ends before it starts runs past midnight.
+    if (start !== null && end !== null && end < start) end += 24 * 60;
+    const span = start !== null && end !== null ? end - start : 0;
+    const closedFor = closed.get(activity.date);
+    if (closedFor !== undefined && activity.kind !== "travel") {
+      ctx.warn(
+        "closed_date",
+        `${offering.name} has an activity on ${activity.date}, when the club is closed for ${closedFor}`,
+        activity.key,
+      );
+    }
     const usesBoats = activity.kind !== "travel" && activity.uses_boats;
     result.push({
       offering,
       trip: activity.trip_id == null ? null : (trips.get(activity.trip_id) ?? null),
       stored: activity,
       date: activity.date,
+      start_minutes: start,
+      end_minutes: end,
       kind: activity.kind,
       paid_minutes: span + (activity.setup_minutes ?? 0) + (activity.putaway_minutes ?? 0),
       on_water_minutes: usesBoats ? (activity.on_water_minutes ?? span) : 0,

@@ -37,12 +37,19 @@ export interface Schema {
   plan_bonus_owner_products: PlanBonusOwnerProducts[];
   plan_bonus_owners: PlanBonusOwners[];
   plan_budget_lines: PlanBudgetLines[];
+  plan_closed_dates: PlanClosedDates[];
   plan_labor_lines: PlanLaborLines[];
   plan_offering_boat_classes: PlanOfferingBoatClasses[];
   plan_offerings: PlanOfferings[];
   plan_pools: PlanPools[];
   plan_rates: PlanRates[];
   plan_resources: PlanResources[];
+  plan_result_lines: PlanResultLines[];
+  plan_result_pnl: PlanResultPnl[];
+  plan_result_positions: PlanResultPositions[];
+  plan_result_versions: PlanResultVersions[];
+  plan_result_warnings: PlanResultWarnings[];
+  plan_results: PlanResults[];
   plan_revenue_charges: PlanRevenueCharges[];
   plan_salaried_bookings: PlanSalariedBookings[];
   plan_salaried_positions: PlanSalariedPositions[];
@@ -556,7 +563,7 @@ export interface PlanBonusOwnerProducts {
   product_id: string | Products;
 }
 
-/** A role, such as a head coach, that earns a bonus on the products it owns. */
+/** A role, such as a program area's director, that earns a bonus on the products it owns. */
 export interface PlanBonusOwners {
   id: string;
   /** The version this row belongs to. */
@@ -564,9 +571,13 @@ export interface PlanBonusOwners {
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
   role_name: string;
-  /** A share of its products' combined net, after pools. 0.05 means 5%. */
+  /** A share of its products' net. 0.05 means 5%. */
   bonus_rate: string;
   account_id: string | Accounts;
+  /** Whether the net is counted after each offering's share of the pools, such as G&A, or before it. */
+  basis: "after_shared_costs" | "before_shared_costs" | null;
+  /** The salaried position this bonus pays, if any: copy the Key from a salaried position in the Operations Plan. */
+  position_key: string | null;
 }
 
 /** A cost or revenue entered as an amount. */
@@ -588,6 +599,18 @@ export interface PlanBudgetLines {
   /** Set for a cost left out of modified total direct costs (MTDC), such as equipment. */
   excluded_from_mtdc: boolean;
   note: string | null;
+}
+
+/** A day the club is closed, such as Labor Day. The P&L warns about an activity on one. */
+export interface PlanClosedDates {
+  id: string;
+  /** The version this row belongs to. */
+  version_id: string | PlanVersions;
+  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  key: string;
+  date: string;
+  /** Why it's closed, such as Labor Day. */
+  name: string;
 }
 
 /** Labor not tied to an activity, such as training, priced at a staff level. */
@@ -658,6 +681,10 @@ export interface PlanOfferings {
   /** Cost of goods sold, as a share of revenue. 0.1 means 10%. */
   cogs_rate: string | null;
   note: string | null;
+  /** A salaried coach who coaches every practice: copy the Key from a salaried position in the Operations Plan. */
+  coach_position_key: string | null;
+  /** Out of their salary, or by the hour at the offering's coach level, on top of their salary. */
+  coach_position_pay: "salary" | "hourly" | null;
 }
 
 /** Shared costs no single offering owns, such as G&A, divided among the year's offerings by MTDC. */
@@ -707,6 +734,114 @@ export interface PlanResources {
   maintenance_per_hour_cents: number | null;
   /** Set for a rental, whose cost is left out of modified total direct costs (MTDC). */
   excluded_from_mtdc: boolean;
+}
+
+/** Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed. */
+export interface PlanResultLines {
+  id: string;
+  /** The saved version these results are for. */
+  version_id: string | PlanVersions;
+  cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
+  cost_center_key: string | null;
+  cost_center_name: string;
+  account_id: string | Accounts;
+  function: "program" | "management" | "fundraising" | null;
+  /** Always positive: the account says whether it's revenue or a cost. In cents: 12500 is $125.00. */
+  amount_cents: number;
+  /** What the line is, as the P&L names it. */
+  line: string;
+  explanation: string | null;
+}
+
+/** A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed. */
+export interface PlanResultPnl {
+  id: string;
+  /** The saved version these results are for. */
+  version_id: string | PlanVersions;
+  level: "offering" | "product" | "program_area";
+  subject_key: string;
+  name: string;
+  /** In cents: 12500 is $125.00. */
+  revenue_cents: number;
+  /** In cents: 12500 is $125.00. */
+  expense_cents: number;
+  /** In cents: 12500 is $125.00. */
+  net_cents: number;
+  /** Modified total direct costs, which shared costs are divided by. In cents: 12500 is $125.00. */
+  mtdc_cents: number;
+  enrollment: number;
+  days: number;
+  sailor_days: number;
+}
+
+/** Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed. */
+export interface PlanResultPositions {
+  id: string;
+  /** The saved version these results are for. */
+  version_id: string | PlanVersions;
+  position_key: string;
+  name: string;
+  /** In cents: 12500 is $125.00. */
+  salary_cents: number;
+  salaried_coaching_hours: string;
+  /** In cents: 12500 is $125.00. */
+  salaried_coaching_cents: number;
+  hourly_coaching_hours: string;
+  /** In cents: 12500 is $125.00. */
+  hourly_coaching_cents: number;
+  booking_hours: string;
+  /** In cents: 12500 is $125.00. */
+  booking_cents: number;
+  /** In cents: 12500 is $125.00. */
+  bonus_cents: number;
+  /** Salary, hourly coaching wages, and bonus. In cents: 12500 is $125.00. */
+  total_pay_cents: number;
+  /** The year's payroll tax on the total pay. In cents: 12500 is $125.00. */
+  payroll_tax_cents: number;
+}
+
+/** The other saved versions a version's results were worked out with. Worked out when the version was saved, and never changed. */
+export interface PlanResultVersions {
+  id: string;
+  /** The saved version these results are for. */
+  version_id: string | PlanVersions;
+  /** Another saved version in the club's plan when this one was saved. */
+  calculated_with_id: string | PlanVersions;
+}
+
+/** What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed. */
+export interface PlanResultWarnings {
+  id: string;
+  /** The saved version these results are for. */
+  version_id: string | PlanVersions;
+  /** The kind of warning. */
+  code: string;
+  message: string;
+  subject_key: string | null;
+}
+
+/** A saved version's club-wide totals. Worked out when the version was saved, and never changed. */
+export interface PlanResults {
+  id: string;
+  /** The saved version these results are for. */
+  version_id: string | PlanVersions;
+  calculated_at: string;
+  /** In cents: 12500 is $125.00. */
+  operating_revenue_cents: number;
+  /** In cents: 12500 is $125.00. */
+  operating_expense_cents: number;
+  /** In cents: 12500 is $125.00. */
+  operating_net_cents: number;
+  /** In cents: 12500 is $125.00. */
+  fundraising_revenue_cents: number;
+  /** In cents: 12500 is $125.00. */
+  fundraising_expense_cents: number;
+  /** In cents: 12500 is $125.00. */
+  fundraising_net_cents: number;
+  /** Spent on capital, such as a coach boat. In cents: 12500 is $125.00. */
+  capital_cents: number;
+  /** Operating net, plus fundraising net, less capital. In cents: 12500 is $125.00. */
+  total_cents: number;
 }
 
 /** A charge set as a share of each offering's revenue, such as scholarships or card fees. Operations Plan only. */
@@ -814,6 +949,8 @@ export interface PlanVersions {
   operations_version_id: string | PlanVersions | null;
   /** What you want that the plan's numbers don't capture, for your AI to fill in. For example: every Monday, Wednesday and Friday, except on SPS school holidays, from 4pm until dusk. */
   rules: string | null;
+  /** What the P&L showed when this version was saved, worked out a moment after it's saved. A saved version with none means working them out failed, and an admin can fill them in. */
+  results: (string | PlanResults)[];
 }
 
 /** One part of the club's plan: a program area's plan, or the Operations Plan. */

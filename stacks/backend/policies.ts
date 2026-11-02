@@ -82,6 +82,11 @@ export function planCollections(schemas: LoadedSchema[]): string[] {
 /** The log of which saved version is active. A writer adds to it, and never rewrites it. */
 const ACTIVATIONS = "plan_activations";
 
+/** A saved version's results, which only the saved-versions hook writes, once, when it's saved. */
+export function isResultCollection(collection: string): boolean {
+  return collection === "plan_results" || collection.startsWith("plan_result_");
+}
+
 /**
  * Full CRUD on every collection, except each one in `readOnlyCollections`. Two exceptions:
  * `clubspot_promoted_fields` is staff-authored config despite living in the clubspot schema, and
@@ -192,9 +197,11 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       rules: [
         ...readCatalog,
         ...plans.flatMap((collection) =>
-          (collection === ACTIVATIONS
-            ? (["create", "read"] as const)
-            : (["create", "read", "update", "delete"] as const)
+          (isResultCollection(collection)
+            ? (["read"] as const)
+            : collection === ACTIVATIONS
+              ? (["create", "read"] as const)
+              : (["create", "read", "update", "delete"] as const)
           ).map((action) => ({ collection, action })),
         ),
       ],
@@ -262,6 +269,12 @@ export function groupPoliciesConfig(policies: PolicyData[]): GroupPoliciesConfig
 export interface SavedVersionsConfig {
   /** The collections whose rows belong to one plan version. */
   versioned: string[];
+  /** Those that hold a saved version's results, which only the hook writes. */
+  results: string[];
+  /** The engine version the hook calculates results with, which it records on each saved version. */
+  platformVersion: string;
+  /** Each table's decimal fields, which the database returns as strings and the engine needs as numbers. */
+  decimals: Record<string, string[]>;
   /** Each of those collections' links to another one's rows, by field, which must be in the same version. */
   links: Record<string, Record<string, string>>;
   /** Whether the first admin account may delete a saved version, so the tests can clean up. Dev only. */
@@ -269,7 +282,11 @@ export interface SavedVersionsConfig {
 }
 
 /** What ./saved-versions.cjs needs. */
-export function savedVersionsConfig(schemas: LoadedSchema[], deletable: boolean): SavedVersionsConfig {
+export function savedVersionsConfig(
+  schemas: LoadedSchema[],
+  deletable: boolean,
+  platformVersion: string,
+): SavedVersionsConfig {
   const versioned = planCollections(schemas).filter(
     (collection) => collection !== ACTIVATIONS && fieldsIn(schemas, collection).includes("version_id"),
   );
@@ -284,5 +301,20 @@ export function savedVersionsConfig(schemas: LoadedSchema[], deletable: boolean)
       (links[collection] ??= {})[field] = related;
     }
   }
-  return { versioned, links, deletable };
+  const decimals: Record<string, string[]> = {};
+  for (const { schema } of schemas) {
+    for (const { collection, field, type } of (
+      schema as { fields?: { collection: string; field: string; type: string }[] }
+    ).fields ?? []) {
+      if (type === "decimal") (decimals[collection] ??= []).push(field);
+    }
+  }
+  return {
+    versioned,
+    results: versioned.filter(isResultCollection),
+    links,
+    deletable,
+    platformVersion,
+    decimals,
+  };
 }
