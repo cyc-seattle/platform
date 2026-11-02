@@ -19,7 +19,7 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   them into one snapshot and applies it. `src/schema/index.ts` is their TypeScript types, published
   as `@cyc-seattle/platform/schema` for apps to pass to `@directus/sdk`. It's generated: after a
   schema change, run `mise run schema-types`, and CI fails until you do. The `backend` stack deploys Directus with them, in dev and
-  prod. A schema change is tested on dev, through the PR's deploy.
+  prod. A schema change is tested on dev in the merge queue, or earlier with a manual deploy.
 - `src/planning/` is the planning engine, published as `@cyc-seattle/platform/planning` so an app can
   load it without Pulumi. `docs/planning-engine.md` gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
@@ -46,18 +46,23 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   each work through one kind of CRM data problem, proposing a code fix that stops it recurring,
   then per-row edits for the user to approve. Claude Code reads skills only from `.claude/skills`,
   so link them there once: `mkdir -p .claude && ln -s ../.agents/skills .claude/skills`.
-- PR titles are conventional commits. PRs merge by squash, or by merge commit to keep a branch's
-  history (cyc-seattle/workplace#6). Either way, the PR title is the commit's title.
+- PR titles are conventional commits. PRs merge through the merge queue, which squashes them. To keep
+  a branch's history with a merge commit (cyc-seattle/workplace#6), an org admin bypasses the queue,
+  after deploying the branch to dev by hand. Either way, the PR title is the commit's title.
 - Never push to `main`.
 
 ## Deploys
 
 - `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
-  the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR deploys
-  `smoke` and `backend` to dev and runs the integration tests. A push to `main` also previews prod,
-  then applies it once a maintainer approves. `prod` is skipped when the preview shows no changes.
-- A PR that changes only docs, `.agents/` or `.github/` skips the dev deploy and the integration
-  features (`scripts/changed-projects`), except a change to `pull-request.yml` itself.
+  the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR's push runs
+  only CI. The merge queue deploys each PR to dev, one at a time, and runs the integration tests; the
+  PR merges only if they pass (`dev-passed`, #80). A push to `main` skips dev, which the queue already
+  ran on that commit, previews prod, and applies it once a maintainer approves. `prod` is skipped
+  when the preview shows no changes.
+- `gh workflow run pull-request.yml --ref <branch>` deploys a branch to dev before it's queued. It
+  shares dev with the queue, so use it only when a PR needs early feedback.
+- A queued PR that changes only docs, `.agents/` or `.github/` skips the dev deploy and the
+  integration features (`scripts/changed-projects`), except a change to `pull-request.yml` itself.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, then
   `backend`, and `prod` is `infra`, then `backend`. `DEPLOY_PROJECTS` narrows the list. Its preview
   appends each project's `true` or `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip

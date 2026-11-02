@@ -18,7 +18,7 @@ projects with their resource names unchanged, and their states moved over with `
 - the clubspot-sync and gsuite-sync CronJobs, their images, and the Secrets that hold their tokens
 - in dev, the Clubspot and Workspace fakes the syncs talk to
 
-Dev deploys it on every PR, and a push to `main` deploys prod after `infra`.
+Dev deploys it for each PR in the merge queue, and a push to `main` deploys prod after `infra`.
 
 ## Outputs
 
