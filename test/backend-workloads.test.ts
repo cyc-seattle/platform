@@ -25,7 +25,7 @@ describe("directusEnv", () => {
       AUTH_AUTHENTIK_ISSUER_URL: "https://login.dev.example.com/application/o/directus/",
       AUTH_AUTHENTIK_DEFAULT_ROLE_ID: "r",
       CORS_ORIGIN: "https://dev.example.com",
-      AUTH_AUTHENTIK_REDIRECT_ALLOW_LIST: "https://dev.example.com",
+      AUTH_AUTHENTIK_REDIRECT_ALLOW_LIST: "https://dev.example.com,https://dev.example.com/plans",
       DB_HOST: "10.0.0.5",
       DB_POOL__MAX: "7",
     });

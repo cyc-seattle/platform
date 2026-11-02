@@ -49,7 +49,9 @@ export function directusEnv({
     AUTH_AUTHENTIK_MODE: "session",
     AUTH_AUTHENTIK_ALLOW_PUBLIC_REGISTRATION: "true",
     AUTH_AUTHENTIK_DEFAULT_ROLE_ID: communityRoleId,
-    AUTH_AUTHENTIK_REDIRECT_ALLOW_LIST: site,
+    // Directus allows a sign-in redirect only to a listed address, matched on its path too. The portal comes back to
+    // `/`, and sail-team to `/plans` until it takes over `/` (cyc-seattle/sail-team#1).
+    AUTH_AUTHENTIK_REDIRECT_ALLOW_LIST: `${site},${site}/plans`,
     CORS_ENABLED: "true",
     CORS_ORIGIN: site,
     CORS_CREDENTIALS: "true",
