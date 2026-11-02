@@ -2,8 +2,10 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import "./steps/community.ts";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
+import { asAdmin, runCronJob } from "./cluster.ts";
+import { clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
 import { notBuilt } from "./steps/logins.ts";
-import { admin, adminCreate, created, email, itemPath, runId } from "./steps/rows.ts";
+import { admin, adminCreate, created, email, itemPath, newRow, runId } from "./steps/rows.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
 
@@ -103,11 +105,8 @@ for (const [step, texts] of [
     [
       "they can stop sharing and share again",
       "they can't change whether the teammate's parent shares",
-      "a parent whose child is on a team, who stopped sharing",
       "a parent whose child is on a team, who said yes to sharing in Clubspot",
-      "they say yes to sharing when they sign their child up again in Clubspot",
       "they stop sharing",
-      "they share their email and phone",
       "they don't share their email and phone",
     ],
   ],
@@ -145,4 +144,40 @@ for (const [step, texts] of [
   }
 }
 
-describeAccessFeature("crm.feature");
+describeAccessFeature("crm.feature", {
+  "A parent who stopped sharing says yes on a later sign-up": ({ Given, When, Then }) => {
+    const run = clubspotRun();
+    let parentId: string;
+
+    Given("a parent whose child is on a team, who stopped sharing", async () => {
+      await seedClass(run);
+      await seedSailor(run, { share: true });
+      await adminCreate("clubspot_promoted_fields", {
+        id: randomUUID(),
+        target_field: "share_contact",
+        labels: [run.sharingQuestion],
+      });
+      await runCronJob("clubspot-sync", run.runId);
+      const team = await adminCreate("programs", await newRow("programs", { name: `Team ${run.runId}`, team: true }));
+      await asAdmin("PATCH", `/items/clubspot_classes/${run.id("cls")}`, { program_id: team.id });
+      const sailor = await asAdmin(
+        "GET",
+        `/items/clubspot_participants/${run.id("par")}?fields=person_id.my_contacts.contact_id,person_id.my_contacts.relationship_type`,
+      );
+      parentId = sailor.person_id.my_contacts.find(
+        (link: { relationship_type: string }) => link.relationship_type === "guardian",
+      ).contact_id;
+      // The family's own edit, which an admin makes for them until step 17 lets families make it.
+      await asAdmin("PATCH", `/items/people/${parentId}`, { share_contact: false });
+    });
+
+    When("they say yes to sharing when they sign their child up again in Clubspot", async () => {
+      await seedSailor(run, { share: true, signUp: 2 });
+      await runCronJob("clubspot-sync", `${run.runId}again`);
+    });
+
+    Then("they share their email and phone", async () => {
+      expect((await asAdmin("GET", `/items/people/${parentId}?fields=share_contact`)).share_contact).toBe(true);
+    });
+  },
+});

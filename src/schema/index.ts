@@ -1032,6 +1032,8 @@ export interface Programs {
   name: string;
   /** The product this program belongs to. Its kind must be Program. */
   product_id: string | Products;
+  /** A team, such as a race team. Families on a team see everyone on every team. */
+  team: boolean;
   /** Who has a role in this program. */
   role_assignments: (string | ProgramRoleAssignments)[];
   /** The program's Google Group, if it has one. Most programs don't. */

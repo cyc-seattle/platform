@@ -1,29 +1,11 @@
 import { expect } from "vitest";
-import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
+import { asAdmin, newRunId, runCronJob } from "./cluster.ts";
+import { clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
 import { canSet, describeAccessFeature, Step } from "./steps/index.ts";
 import { admin, adminCreate, itemPath, key, newRow, type Row } from "./steps/rows.ts";
 
-// The sync scenarios seed dev's CRM, and its Clubspot fake through Parse's REST API, run the
-// clubspot-sync CronJob once as a Job, and read the result through Directus's REST API. Their camps
-// and people carry the run's ID, so runs never depend on each other (cyc-seattle/isthmia#185).
-
-// The fake's seed, which the dev stack's clubspot-sync config names (contract: public test values).
-const CLUB_ID = "seedClub01";
-const parseHeaders = {
-  "x-parse-application-id": "myclubspot2017",
-  "x-parse-master-key": "fake-master-key-for-tests-only",
-};
-
-const pointer = (className: string, objectId: string) => ({ __type: "Pointer", className, objectId });
-const date = (offsetDays: number) => ({
-  __type: "Date",
-  iso: new Date(Date.now() + offsetDays * 86_400_000).toISOString(),
-});
-
-/** Creates a Parse object with a chosen objectId, which the fake allows, so later objects can point at it. */
-async function create(className: string, objectId: string, fields: Record<string, unknown>): Promise<void> {
-  await proxyOk("clubspot-fake", 1337, "POST", `/parse/classes/${className}`, { objectId, ...fields }, parseHeaders);
-}
+// The sync scenarios seed dev's CRM and its Clubspot fake, run the clubspot-sync CronJob once as a
+// Job, and read the result through Directus's REST API.
 
 Step("they can set which program a class belongs to", () => canSet("clubspot_classes", "program_id"));
 Step("they can match a registration's sailor to a person in the CRM", () =>
@@ -35,80 +17,6 @@ Step("it can move people's program roles and which Google groups they're in to a
     await canSet(collection, "person_id");
   }
 });
-
-/** A run's names for its rows in the Clubspot fake, and its sailor and parent. */
-function clubspotRun() {
-  const runId = newRunId();
-  const id = (kind: string) => `${kind}${runId}`;
-  const participant = {
-    firstName: "Sync",
-    lastName: `Sailor ${runId}`,
-    guardianFirst: "Guardian",
-    guardianLast: `Sailor ${runId}`,
-    guardianEmail: `guardian.${runId}@example.test`,
-  };
-  return { runId, id, participant };
-}
-
-/** A camp running today in the Clubspot fake, with one session and one class. */
-async function seedClass({ runId, id }: ReturnType<typeof clubspotRun>): Promise<void> {
-  const club = pointer("clubs", CLUB_ID);
-  await create("camps", id("cmp"), {
-    clubObject: club,
-    name: `Integration camp ${runId}`,
-    startDate: date(-7),
-    endDate: date(30),
-  });
-  await create("campSessions", id("ses"), {
-    clubObject: club,
-    campObject: pointer("camps", id("cmp")),
-    name: "Week 1",
-    startDate: date(-7),
-    endDate: date(30),
-  });
-  await create("campClasses", id("cls"), {
-    clubObject: club,
-    campObject: pointer("camps", id("cmp")),
-    name: `Integration class ${runId}`,
-  });
-}
-
-/** The run's sailor, with a parent, registered for its class in the Clubspot fake. */
-async function seedSailor({ id, participant }: ReturnType<typeof clubspotRun>): Promise<void> {
-  const camp = pointer("camps", id("cmp"));
-  const session = pointer("campSessions", id("ses"));
-  const campClass = pointer("campClasses", id("cls"));
-  const confirmed = date(0);
-  await create("participants", id("par"), {
-    firstName: participant.firstName,
-    lastName: participant.lastName,
-    DOB: { __type: "Date", iso: "2015-05-01T00:00:00.000Z" },
-    parentGuardianName: `${participant.guardianFirst} ${participant.guardianLast}`,
-    parentGuardianEmail: participant.guardianEmail,
-    parentGuardianMobile: "206-555-0199",
-  });
-  // The join points back at the registration, so it names the registration's objectId first.
-  await create("registration_campSession", id("jn"), {
-    campObject: camp,
-    campSessionObject: session,
-    campClassObject: campClass,
-    registrationObject: pointer("registrations", id("reg")),
-    confirmed_at: confirmed,
-    status: "confirmed",
-    priority: 1,
-    waitlist: false,
-  });
-  await create("registrations", id("reg"), {
-    clubObject: pointer("clubs", CLUB_ID),
-    campObject: camp,
-    confirmed_at: confirmed,
-    status: "confirmed",
-    participantsArray: [pointer("participants", id("par"))],
-    sessions: [session],
-    classes: [campClass],
-    sessionJoinObjects: [pointer("registration_campSession", id("jn"))],
-  });
-}
 
 describeAccessFeature("clubspot.feature", {
   "A sailor's registration adds the sailor and their parent to the CRM": ({ Given, And, When, Then }) => {
