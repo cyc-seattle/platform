@@ -106,7 +106,6 @@ Feature: The CRM
       Then they can see the rosters
       But they can't change the rosters
 
-  @pending
   Rule: Crew can see everyone's email and phone, parents, and emergency contacts, whether or not they chose to share
 
     Example: A Crew member looks people up
@@ -120,7 +119,6 @@ Feature: The CRM
       When they look at the roster
       Then they see the sailor's parent's email
 
-  @pending
   Rule: Crew can see every sailor's medical information, but can't change it
 
     Example: A Crew member looks up a sailor's allergies
@@ -128,7 +126,6 @@ Feature: The CRM
       Then they can see medical information
       But they can't change medical information
 
-  @pending
   Rule: Crew can see who is signed up for what, but not the sign-up answers or payments
 
     Example: A Crew member looks up a sailor's registrations
@@ -162,7 +159,6 @@ Feature: The CRM
       Then they see their child's medical information
       But not the other sailor's
 
-    @pending
     Example: An adult sailor looks up their own medical information
       Given an adult sailor signed up for a program
       When they look up medical information
@@ -181,7 +177,6 @@ Feature: The CRM
       Given a parent whose child is signed up for a program
       Then they can't move their child to another program
 
-  @pending
   Rule: A family on a team sees everyone on every team by name, whether or not they chose to share
 
     Background:
@@ -218,7 +213,6 @@ Feature: The CRM
       When they look at the roster
       Then they don't see the sailor
 
-  @pending
   Rule: A family on a team sees an adult's email and phone only if that adult chose to share
 
     Background:
@@ -246,7 +240,6 @@ Feature: The CRM
       Then they see the teammate's name
       But they don't see the teammate's email or phone
 
-  @pending
   Rule: A family on a team never sees a child's own email or phone
 
     Background:
@@ -264,7 +257,6 @@ Feature: The CRM
       Then they see the teammate's name
       But they don't see the teammate's email or phone
 
-  @pending
   Rule: A family whose last time on a team ended over a year ago sees only their own family
 
     Example: A parent whose child left the team 13 months ago sees none of the old teammates
@@ -273,7 +265,6 @@ Feature: The CRM
       When they look at the roster
       Then they see only themselves and their child
 
-  @pending
   Rule: A family on a team can't see anyone's sharing answer, sign-up answers, extra emails or phone numbers, or medical information
 
     Background:
@@ -293,7 +284,6 @@ Feature: The CRM
       Then they see their child's medical information
       But not the teammate's
 
-  @pending
   Rule: A family on a team can't uncover a hidden email or phone by searching, filtering, or sorting
 
     Background:
@@ -320,7 +310,6 @@ Feature: The CRM
       When they ask for a list that would reveal hidden emails or phone numbers
       Then the CRM doesn't allow it
 
-  @pending
   Rule: Each adult decides for themselves whether to share their email and phone
 
     Example: An adult sailor stops sharing, then shares again
@@ -347,7 +336,6 @@ Feature: The CRM
       When they say yes to sharing when they sign their child up again in Clubspot
       Then they share their email and phone
 
-    @pending
     Example: A parent who said yes in Clubspot stops sharing
       Given a parent whose child is on a team, who said yes to sharing in Clubspot
       When they stop sharing

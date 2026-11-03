@@ -5,14 +5,20 @@ how `backend` builds them.
 
 ## Roles
 
-Everyone who signs in has one of three roles. A role gives base access, and only an admin changes
-it, by hand in the Data Studio.
+Everyone who signs in has one of four roles. A role gives base access. The `group-policies` hook
+moves families between Community and Team, and only an admin changes any other role, by hand in the
+Data Studio.
 
-| Role      | Who                                      | What it gives                                                                                            |
-| --------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Community | Everyone, on their first sign-in         | Their own children, their children's teammates, and what a program role such as Parent Coordinator gives |
-| Crew      | People an admin trusts with every roster | Every roster, the products, program areas and revenue accounts to read, and the Community policies       |
-| Admin     | The people who run the system            | Everything                                                                                               |
+| Role      | Who                                 | What it gives                                                                                                                  |
+| --------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Community | Everyone, on their first sign-in    | Their own family. Until step 19 of cyc-seattle/workplace#6, also their children's teammates and what a Parent Coordinator gets |
+| Team      | Families on a team, set by the hook | The Community policies, everyone on every team by name, and the email and phone of team adults who chose to share              |
+| Crew      | People an admin vets and trusts     | Every roster, everyone's contact details and medical information, the catalog's money to read, and the Community policies      |
+| Admin     | The people who run the system       | Everything                                                                                                                     |
+
+A team is a program with `team` set. Someone is on a team while they have a confirmed registration in
+one of its offerings that hasn't ended, or ended less than 12 months ago, and a sailor's guardians are
+on the team with them.
 
 Every role can open the Data Studio. Directus applies the same policies in the Data Studio, through
 the API, and through MCP.
@@ -37,8 +43,16 @@ permissions, plus any shared policies it's given:
   family, own children, and the coordinator policies. Own children gives only a child's medical
   information: Directus searches every field a rule grants on any row, so a rule giving a child's
   whole row would let a parent search their child's teammates by their hidden fields.
+- Community: own family matches the signed-in user by their login, `people.directus_user_id`, not
+  their email. It gives them and their children's names, registrations, and medical information, and
+  lets an adult change their own `share_contact`. Step 19 deletes the older Community policies, which
+  match by email.
+- Team has every Community policy, plus Team: names and Team: contacts. A team member's email and
+  phone show only if they're an adult, or a guardian not known to be under 18, whose `share_contact`
+  is yes.
 - Crew has its own rules, in `stacks/backend/policies.ts`, plus every Community policy, so a Crew
-  member who is a parent sees what any parent sees.
+  member who is a parent sees what any parent sees. It reads every person, contact, contact point,
+  medical profile, offering, and registration, but not Clubspot's sign-up answers or payments.
 
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
@@ -89,17 +103,22 @@ list creates a new row, so someone not yet in People is added there first.
 
 The `group-policies` hook (`stacks/backend/group-policies.cjs`) keeps each user's own policy links
 equal to what their groups give. It runs after any change to a group, a member, or a grant, when a
-user is made, and when a person's email or login changes. It also runs every 15 minutes, to catch a
+user or person is made, and when a person's email or login changes. It also runs every 15 minutes, to catch a
 change that emitted no event, such as a cascade.
 
 - A person's login is `people.directus_user_id`. A group member with none is linked by their email,
   once, and the hook stores the link. So someone added to a group before they first sign in gets its
   policies once they do, and a later change to their email doesn't move their access.
+- It links every signed-in user's person this way, not only group members', since the Community
+  rules match by login.
 - It links by email only when exactly one person has that email and no person is linked to that
-  login yet. Families often share an email, so a shared one links nobody. The hook logs it, and an
-  admin links the login by hand.
-- It manages only links to the policies a group can give, and only for users on Community, Crew, or
-  Admin. It never touches a role, a sync's user, or the first admin account.
+  login yet, or when everyone else with the email is that person's child. Otherwise a shared email
+  links nobody. The hook logs it, and an admin links the login by hand.
+- It manages only links to the policies a group can give, and only for users on Community, Team,
+  Crew, or Admin. It never touches a sync's user or the first admin account.
+- It moves a Community user whose person is on a team to Team, and a Team user who isn't back to
+  Community. It never changes Crew or Admin. Registrations, offerings, programs, and contacts set it
+  off too, and the 15-minute run closes the 12-month window as time passes.
 - It refuses a `group_policies` row that names any other policy.
 - It changes links through Directus's `AccessService`, which clears Directus's permission caches.
 

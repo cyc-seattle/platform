@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { DirectusSession } from "../directus.ts";
 import { admin, adminCreate, created, email, guardianPersonId, itemPath, key, runRows } from "./rows.ts";
+import { onATeam } from "./teams.ts";
 
 // The users a scenario signs in as. An actor's user is made the first time a scenario names it, and
 // shared by every scenario in the file after that.
@@ -176,7 +177,11 @@ const users: Record<string, Promise<User>> = {};
 
 async function actorUser(actor: Actor): Promise<User> {
   const role = actorRole(actor);
-  const user = await createUser(email(JSON.stringify(actor).replace(/\W+/g, "-")), role);
+  // The hook makes a family Team only while they're on a team, so a Team user starts as Community.
+  const user = await createUser(
+    email(JSON.stringify(actor).replace(/\W+/g, "-")),
+    role === "Team" ? "Community" : role,
+  );
   const policies = actor.policies ?? [];
   if (actor.service !== undefined) {
     return user;
@@ -191,6 +196,10 @@ async function actorUser(actor: Actor): Promise<User> {
       directus_user_id: user.userId,
     });
     return user;
+  }
+  if (role === "Team") {
+    await onATeam(await newPerson({ email: user.email, directus_user_id: user.userId, date_of_birth: "1980-01-01" }));
+    await hasRole(user.userId, "Team");
   }
   if (policies.length > 0) {
     await joinGroups(user, await newPerson({ email: user.email, directus_user_id: user.userId }), policies);
@@ -214,6 +223,11 @@ export function forget(actor: Actor): void {
 export async function roleOf(userId: string): Promise<string | undefined> {
   const user = await (await admin()).ok("GET", `/users/${userId}?fields=role.name`);
   return user.role?.name;
+}
+
+/** Waits until the hook has given a user `role`. */
+export async function hasRole(userId: string, role: string): Promise<void> {
+  await eventually(async () => expect(await roleOf(userId)).toBe(role));
 }
 
 export async function setRole(userId: string, role: string): Promise<void> {
