@@ -340,7 +340,6 @@ Feature: The CRM
       Given a sailor with no date of birth on file, signed up for a program
       Then they can't change whether they share
 
-  @pending
   Rule: The latest answer to the sharing question counts, from Clubspot or from the family
 
     Example: A parent who stopped sharing says yes on a later sign-up
@@ -348,6 +347,7 @@ Feature: The CRM
       When they say yes to sharing when they sign their child up again in Clubspot
       Then they share their email and phone
 
+    @pending
     Example: A parent who said yes in Clubspot stops sharing
       Given a parent whose child is on a team, who said yes to sharing in Clubspot
       When they stop sharing

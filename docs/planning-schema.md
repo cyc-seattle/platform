@@ -89,6 +89,7 @@ erDiagram
     programs {
         uuid id PK
         uuid product_id FK "unique, required, kind program"
+        bool team "a team, such as a race team"
     }
     organizations {
         uuid id PK

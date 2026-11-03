@@ -143,6 +143,15 @@ registration's own stored answer only, with no ranking. Label matching normalize
 case, so `Race / Ethnicity` and `Race/Ethnicity` match without listing both. Nothing promotes until
 the target's `clubspot_promoted_fields` row exists — it's created by hand, not by Pulumi.
 
+**A sharing answer also counts for the people it speaks for.** When a registration's `share_contact`
+gets a new or changed Clubspot answer, and the registration is the newest for its sailor, the sync
+writes the answer to `people.share_contact`: the sailor's own if they were an adult when they
+registered, otherwise each guardian the form names (the guardian links with that slot's
+`contact_order`). So the latest answer wins over a family's or staff's edit, and an edit stands until
+the family answers again. At the end of each run, a person whose `share_contact` is still blank gets
+the newest answer any registration gave for them. It never replaces a value
+(`src/syncs/clubspot/sharing.ts`).
+
 **A person reference is pinned, not gap-filled.** `clubspot_participants.person_id` and `contacts.contact_id`
 are set once, at creation, and never re-resolved. That is what makes a manual merge durable: staff
 repoint the FK and delete the duplicate, and no later sync undoes it. See `docs/crm-schema.md` for
