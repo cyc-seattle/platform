@@ -173,6 +173,8 @@ describeAccessFeature("crm.feature", {
 
     When("they say yes to sharing when they sign their child up again in Clubspot", async () => {
       await seedSailor(run, { share: true, signUp: 2 });
+      // A camp synced minutes ago isn't due for an hour, so clearing its watermark stands in for the wait.
+      await asAdmin("PATCH", `/items/clubspot_camps/${run.id("cmp")}`, { synced_through: null });
       await runCronJob("clubspot-sync", `${run.runId}again`);
     });
 
