@@ -45,6 +45,8 @@ export function directusEnv({
     AUTH_AUTHENTIK_CLIENT_ID: oidcClientId,
     AUTH_AUTHENTIK_ISSUER_URL: `https://login.${domain}/application/o/directus/`,
     AUTH_AUTHENTIK_IDENTIFIER_KEY: "email",
+    // openid-client gives up on Authentik after 3.5s by default, and Directus then turns the sign-in away as invalid.
+    AUTH_AUTHENTIK_CLIENT_HTTP_TIMEOUT: "10000",
     // The portal's roster calls Directus with fetch, which needs a session cookie, not a refresh token.
     AUTH_AUTHENTIK_MODE: "session",
     AUTH_AUTHENTIK_ALLOW_PUBLIC_REGISTRATION: "true",
