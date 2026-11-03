@@ -111,6 +111,7 @@ export function bookSalaries(
         function: ctx.functionFor(account, null, "offering"),
         amount: c.hours * (rate ?? 0) * scale,
         line_key: `salary:${position.key}:${c.line}`,
+        line_name: `${position.name}: ${c.line}`,
         explanation: `${position.name}: ${c.line} hours at the salary's hourly equivalent`,
         wages: true,
       });
@@ -124,6 +125,7 @@ export function bookSalaries(
       function: ctx.functionFor(account, null, "pool"),
       amount: salary - demand * scale,
       line_key: `salary:${position.key}:remainder`,
+      line_name: `${position.name}: rest of salary`,
       explanation: `${position.name}: salary not charged to coaching or bookings`,
       wages: true,
     });

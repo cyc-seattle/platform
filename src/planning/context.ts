@@ -26,6 +26,8 @@ export interface Entry {
   function: AccountFunction | null;
   amount: number;
   line_key: string;
+  /** What the line is, in plain words. */
+  line_name: string;
   explanation: string;
   stage: Stage;
   /** How much of the amount MTDC counts: 0 when excluded, a fraction for a mix of rented and owned RIBs. */

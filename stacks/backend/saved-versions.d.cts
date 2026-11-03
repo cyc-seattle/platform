@@ -85,3 +85,16 @@ export function writeResults(
 
 export const REFUSED: string;
 export const RESULTS_BY_SAVE: string;
+export const SET_STAYS: string;
+export const MEMBERS_BY_SAVE: string;
+
+/**
+ * Works out a club plan's results with the engine, from the versions it holds, and writes them,
+ * unless it already has them. Returns whether it wrote them.
+ */
+export function writeSetResults(
+  config: SavedVersionsConfig,
+  db: unknown,
+  setId: string,
+  engine: Engine,
+): Promise<boolean>;

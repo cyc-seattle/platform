@@ -163,6 +163,8 @@ const plans = [
   "plan_result_pnl",
   "plan_result_positions",
   "plan_result_warnings",
+  "version_sets",
+  "version_set_members",
 ];
 const results = plans.filter((collection) => collection.startsWith("plan_result"));
 
@@ -180,14 +182,19 @@ describe("the Plan policies", () => {
     expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Plan Writer change plans, add to the activation log, and change none of the catalog or a version's results", () => {
+  it("let a Plan Writer change plans, add to the activation log and the club plans, and change none of the catalog or the results", () => {
+    const added = ["plan_activations", "version_sets"];
     for (const action of ["update", "delete"]) {
       expect([...collections("Plan Writer", action)].sort()).toEqual(
-        plans.filter((collection) => collection !== "plan_activations" && !results.includes(collection)).sort(),
+        plans
+          .filter(
+            (collection) => ![...added, "version_set_members"].includes(collection) && !results.includes(collection),
+          )
+          .sort(),
       );
     }
     expect([...collections("Plan Writer", "create")].sort()).toEqual(
-      plans.filter((collection) => !results.includes(collection)).sort(),
+      plans.filter((collection) => collection !== "version_set_members" && !results.includes(collection)).sort(),
     );
   });
 
@@ -203,7 +210,12 @@ describe("savedVersionsConfig", () => {
   it("guards every collection whose rows belong to a version, but the activation log", () => {
     const { versioned, results: written, deletable } = savedVersionsConfig(schemas, false, "1.0.0");
     expect(versioned.sort()).toEqual(
-      plans.filter((collection) => !["plans", "plan_versions", "plan_activations"].includes(collection)).sort(),
+      plans
+        .filter(
+          (collection) =>
+            !["plans", "plan_versions", "plan_activations", "version_sets", "version_set_members"].includes(collection),
+        )
+        .sort(),
     );
     expect(written.sort()).toEqual([...results].sort());
     expect(deletable).toBe(false);

@@ -81,6 +81,10 @@ export function planCollections(schemas: LoadedSchema[]): string[] {
 
 /** The log of which saved version is active. A writer adds to it, and never rewrites it. */
 const ACTIVATIONS = "plan_activations";
+/** Club plans. Adding one saves it, and it never changes. */
+const SETS = "version_sets";
+/** A club plan's versions, which the database sets when it's saved. */
+const MEMBERS = "version_set_members";
 
 /** A saved version's results, which only the saved-versions hook writes, once, when it's saved. */
 export function isResultCollection(collection: string): boolean {
@@ -193,13 +197,13 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Plan Writer",
       icon: "edit_calendar",
       description:
-        "Changes any plan's draft, saves it as a version, and makes a saved version active. Sees the catalog.",
+        "Changes any plan's draft, saves it as a version, makes a saved version active, and saves a club plan. Sees the catalog.",
       rules: [
         ...readCatalog,
         ...plans.flatMap((collection) =>
-          (isResultCollection(collection)
+          (isResultCollection(collection) || collection === MEMBERS
             ? (["read"] as const)
-            : collection === ACTIVATIONS
+            : collection === ACTIVATIONS || collection === SETS
               ? (["create", "read"] as const)
               : (["create", "read", "update", "delete"] as const)
           ).map((action) => ({ collection, action })),
@@ -271,6 +275,8 @@ export interface SavedVersionsConfig {
   versioned: string[];
   /** Those that hold a saved version's results, which only the hook writes. */
   results: string[];
+  /** Those of them that hold a club plan's results too. */
+  setResults: string[];
   /** The engine version the hook calculates results with, which it records on each saved version. */
   platformVersion: string;
   /** Each table's decimal fields, which the database returns as strings and the engine needs as numbers. */
@@ -288,7 +294,8 @@ export function savedVersionsConfig(
   platformVersion: string,
 ): SavedVersionsConfig {
   const versioned = planCollections(schemas).filter(
-    (collection) => collection !== ACTIVATIONS && fieldsIn(schemas, collection).includes("version_id"),
+    (collection) =>
+      collection !== ACTIVATIONS && collection !== MEMBERS && fieldsIn(schemas, collection).includes("version_id"),
   );
   const relations = schemas.flatMap(
     ({ schema }) =>
@@ -312,6 +319,9 @@ export function savedVersionsConfig(
   return {
     versioned,
     results: versioned.filter(isResultCollection),
+    setResults: versioned.filter(
+      (collection) => isResultCollection(collection) && fieldsIn(schemas, collection).includes("version_set_id"),
+    ),
     links,
     deletable,
     platformVersion,

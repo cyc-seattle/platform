@@ -86,6 +86,7 @@ const extensions = {
   savedVersions: {
     versioned: ["plan_offerings"],
     results: [],
+    setResults: [],
     links: {},
     deletable: true,
     platformVersion: "1.0.0+engine.abc",

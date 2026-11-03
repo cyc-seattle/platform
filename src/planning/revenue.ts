@@ -32,7 +32,14 @@ export function bookRevenue(ctx: Context): void {
       ctx.warn("no_revenue_account", `Product ${product.name} has no revenue account`, product.id);
       continue;
     }
-    const book = (account: string, amount: number, line: string, explanation: string, mtdc_share = 1): void =>
+    const book = (
+      account: string,
+      amount: number,
+      line: string,
+      name: string,
+      explanation: string,
+      mtdc_share = 1,
+    ): void =>
       ctx.book({
         cost_center_type: "offering",
         cost_center_key: offering.key,
@@ -40,14 +47,16 @@ export function bookRevenue(ctx: Context): void {
         function: ctx.functionFor(account, null, "offering"),
         amount,
         line_key: `${line}:${offering.key}`,
+        line_name: name,
         explanation,
         mtdc_share,
       });
 
-    book(revenueAccount, total, "revenue", `${price}¢ × ${enrollment} enrolled`);
+    book(revenueAccount, total, "revenue", "Revenue", `${price}¢ × ${enrollment} enrolled`);
     if (offering.cogs_rate != null && offering.cogs_rate > 0) {
       const cogs = ctx.costAccount("cogs");
-      if (cogs !== undefined) book(cogs, total * offering.cogs_rate, "cogs", `${offering.cogs_rate} × revenue`);
+      if (cogs !== undefined)
+        book(cogs, total * offering.cogs_rate, "cogs", "Cost of goods sold", `${offering.cogs_rate} × revenue`);
     }
     for (const charge of ctx.data.plan_revenue_charges) {
       if (!(charge.product_kinds ?? []).includes(product.kind)) continue;
@@ -55,6 +64,7 @@ export function bookRevenue(ctx: Context): void {
         charge.account_id,
         total * charge.rate,
         `charge:${charge.key}`,
+        charge.name,
         `${charge.name}: ${charge.rate} × revenue`,
         charge.excluded_from_mtdc ? 0 : 1,
       );

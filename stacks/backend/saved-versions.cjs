@@ -18,6 +18,9 @@ const VERSIONS = "plan_versions";
 const ACTIVATIONS = "plan_activations";
 // Written last when a version's results go in, so a version that has one has them all.
 const RESULTS = "plan_results";
+// Club plans, saved when they're added, and the versions the database fills each one with.
+const SETS = "version_sets";
+const MEMBERS = "version_set_members";
 
 const REFUSED = "A saved plan version can't be changed. Make a new draft from it.";
 const NEW_DRAFT = "A new plan version starts as a draft.";
@@ -34,6 +37,11 @@ const ONLY_SAVED_ACTIVE = "Only a saved version can be made active.";
 const OWN_PLAN = "A version can only be made active for its own plan.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
 const RESULTS_BY_SAVE = "A version's results are worked out when it's saved, and can't be written by hand.";
+const SET_STAYS = "A club plan can't be changed or deleted. Save another one instead.";
+const MEMBERS_BY_SAVE = "A club plan holds the versions active when it's saved, and they can't be written by hand.";
+const NEEDS_ACTIVE_OPERATIONS = "A club plan needs an active Operations Plan version for its organization and year.";
+const NEEDS_ACTIVE_AREAS =
+  "A club plan needs an active version for every program area with a plan for its organization and year.";
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
@@ -51,6 +59,10 @@ const REASONS = {
   [OWN_PLAN]: 400,
   [AREA_NAMED]: 400,
   [RESULTS_BY_SAVE]: 403,
+  [SET_STAYS]: 403,
+  [MEMBERS_BY_SAVE]: 403,
+  [NEEDS_ACTIVE_OPERATIONS]: 400,
+  [NEEDS_ACTIVE_AREAS]: 400,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
@@ -129,6 +141,19 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     return { ...payload, plan_id: version.plan_id, activated_by: user ?? null, activated_at: now };
   }
 
+  if (collection === SETS) {
+    if (event === "create") {
+      // The hook works out a club plan's results, so it records its own engine's version.
+      return { ...payload, platform_version: config.platformVersion, saved_by: user ?? null, saved_at: now };
+    }
+    if (event === "delete" && (await lookup.deletesSaved(user))) return payload;
+    throw refuse(SET_STAYS);
+  }
+  if (collection === MEMBERS) {
+    if (event === "delete" && (await lookup.deletesSaved(user))) return payload;
+    throw refuse(MEMBERS_BY_SAVE);
+  }
+
   if (!config.versioned.includes(collection)) return payload;
   if (config.results.includes(collection)) {
     if (event === "delete" && (await lookup.deletesSaved(user))) return payload;
@@ -143,12 +168,13 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
   return payload;
 }
 
-/** Directus's error for a write a trigger refused. */
+/** Directus's error for a write a trigger refused, with what it found, such as which area. */
 function databaseError(error) {
   if (error?.code === SQLSTATE) {
     // knex puts the statement before the trigger's message.
     const reason = Object.keys(REASONS).find((known) => String(error.message).endsWith(known));
-    return reason ? refuse(reason, REASONS[reason]) : error;
+    if (!reason) return error;
+    return refuse(error.detail ? `${reason} ${error.detail}` : reason, REASONS[reason]);
   }
   return error;
 }
@@ -159,11 +185,21 @@ const raise = (reason) => `RAISE EXCEPTION USING ERRCODE = '${SQLSTATE}', MESSAG
 /** The columns each trigger reads, by table. The triggers wait until every one exists. */
 function columnsNeeded(config) {
   return {
-    [PLANS]: ["id", "kind", "program_area_id", "organization_id", "fiscal_year"],
+    [PLANS]: ["id", "kind", "program_area_id", "organization_id", "fiscal_year", "archived"],
     [VERSIONS]: ["id", "plan_id", "status", "platform_version", "operations_version_id", "saved_at"],
     [ACTIVATIONS]: ["id", "plan_id", "version_id", "sequence", "activated_at"],
+    [SETS]: ["id", "organization_id", "fiscal_year", "platform_version", "saved_at"],
+    [MEMBERS]: ["id", "version_set_id", "plan_id", "version_id"],
     ...Object.fromEntries(
-      config.versioned.map((table) => [table, ["id", "version_id", ...Object.keys(config.links[table] ?? {})]]),
+      config.versioned.map((table) => [
+        table,
+        [
+          "id",
+          "version_id",
+          ...(config.setResults.includes(table) ? ["version_set_id"] : []),
+          ...Object.keys(config.links[table] ?? {}),
+        ],
+      ]),
     ),
   };
 }
@@ -214,6 +250,7 @@ $fn$`;
 CREATE OR REPLACE FUNCTION cyc_saved_versions_result() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
   version_status text;
+  set_id uuid;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     IF NOT ${deletable} THEN
@@ -223,6 +260,16 @@ BEGIN
   END IF;
   IF TG_OP = 'UPDATE' OR current_setting('cyc.writing_results', true) IS DISTINCT FROM 'on' THEN
     ${raise(RESULTS_BY_SAVE)};
+  END IF;
+  -- A club plan's results have its version_set_id and no version_id; a version's, the reverse.
+  set_id := (to_jsonb(NEW) ->> 'version_set_id')::uuid;
+  IF set_id IS NOT NULL THEN
+    PERFORM 1 FROM ${SETS} s WHERE s.id = set_id FOR SHARE;
+    IF NOT FOUND OR NEW.version_id IS NOT NULL
+      OR EXISTS (SELECT 1 FROM ${RESULTS} r WHERE r.version_set_id = set_id) THEN
+      ${raise(RESULTS_BY_SAVE)};
+    END IF;
+    RETURN NEW;
   END IF;
   SELECT v.status INTO version_status FROM ${VERSIONS} v WHERE v.id = NEW.version_id FOR SHARE;
   IF version_status IS DISTINCT FROM 'saved'
@@ -335,6 +382,67 @@ BEGIN
 END
 $fn$`;
 
+  // A club plan is saved when it's added: it takes the year's active versions, and needs one for the
+  // Operations Plan and for every program area with a plan that isn't archived.
+  const activeVersions = (set) => `
+    SELECT DISTINCT ON (p.kind, p.program_area_id) p.kind, p.program_area_id, a.plan_id, a.version_id
+      FROM ${ACTIVATIONS} a JOIN ${PLANS} p ON p.id = a.plan_id
+      WHERE p.organization_id = ${set}.organization_id AND p.fiscal_year = ${set}.fiscal_year
+        AND p.archived IS NOT TRUE
+      ORDER BY p.kind, p.program_area_id, a.sequence DESC`;
+  const clubPlan = `
+CREATE OR REPLACE FUNCTION cyc_saved_versions_set() RETURNS trigger LANGUAGE plpgsql AS $fn$
+DECLARE
+  missing text;
+BEGIN
+  IF TG_OP = 'UPDATE' OR (TG_OP = 'DELETE' AND NOT ${deletable}) THEN
+    ${raise(SET_STAYS)};
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  IF coalesce(btrim(NEW.platform_version), '') = '' THEN
+    ${raise(NEEDS_PLATFORM)};
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM (${activeVersions("NEW")}) active WHERE active.kind = 'operations') THEN
+    ${raise(NEEDS_ACTIVE_OPERATIONS)};
+  END IF;
+  SELECT string_agg(DISTINCT area.name, ', ' ORDER BY area.name) INTO missing
+    FROM ${PLANS} p JOIN program_areas area ON area.id = p.program_area_id
+    WHERE p.kind = 'program_area' AND p.organization_id = NEW.organization_id AND p.fiscal_year = NEW.fiscal_year
+      AND p.archived IS NOT TRUE
+      AND NOT EXISTS (SELECT 1 FROM (${activeVersions("NEW")}) active WHERE active.program_area_id = p.program_area_id);
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '${SQLSTATE}', MESSAGE = ${literal(NEEDS_ACTIVE_AREAS)},
+      DETAIL = format('These have none: %s.', missing);
+  END IF;
+  NEW.saved_at := now();
+  RETURN NEW;
+END
+$fn$`;
+  const clubPlanMembers = `
+CREATE OR REPLACE FUNCTION cyc_saved_versions_set_members() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+  PERFORM set_config('cyc.writing_members', 'on', true);
+  INSERT INTO ${MEMBERS} (id, version_set_id, plan_id, version_id)
+    SELECT gen_random_uuid(), NEW.id, active.plan_id, active.version_id FROM (${activeVersions("NEW")}) active;
+  PERFORM set_config('cyc.writing_members', 'off', true);
+  RETURN NULL;
+END
+$fn$`;
+  const member = `
+CREATE OR REPLACE FUNCTION cyc_saved_versions_member() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+  IF TG_OP = 'DELETE' AND ${deletable} THEN
+    RETURN OLD;
+  END IF;
+  IF TG_OP <> 'INSERT' OR current_setting('cyc.writing_members', true) IS DISTINCT FROM 'on' THEN
+    ${raise(MEMBERS_BY_SAVE)};
+  END IF;
+  RETURN NEW;
+END
+$fn$`;
+
   const trigger = (table, fn, events, args = []) => [
     `DROP TRIGGER IF EXISTS cyc_saved_versions ON ${table}`,
     `CREATE TRIGGER cyc_saved_versions BEFORE ${events} ON ${table} FOR EACH ROW EXECUTE FUNCTION ${fn}(${args
@@ -352,9 +460,16 @@ $fn$`;
     version,
     plan,
     activation,
+    clubPlan,
+    clubPlanMembers,
+    member,
     ...trigger(PLANS, "cyc_saved_versions_plan", "INSERT OR UPDATE"),
     ...trigger(VERSIONS, "cyc_saved_versions_version", all),
     ...trigger(ACTIVATIONS, "cyc_saved_versions_activation", all),
+    ...trigger(SETS, "cyc_saved_versions_set", all),
+    `DROP TRIGGER IF EXISTS cyc_saved_versions_members ON ${SETS}`,
+    `CREATE TRIGGER cyc_saved_versions_members AFTER INSERT ON ${SETS} FOR EACH ROW EXECUTE FUNCTION cyc_saved_versions_set_members()`,
+    ...trigger(MEMBERS, "cyc_saved_versions_member", all),
     ...config.versioned.flatMap((table) =>
       config.results.includes(table)
         ? trigger(table, "cyc_saved_versions_result", all)
@@ -364,7 +479,7 @@ $fn$`;
 }
 
 /** The tables that get a trigger. */
-const triggered = (config) => [PLANS, VERSIONS, ACTIVATIONS, ...config.versioned];
+const triggered = (config) => [PLANS, VERSIONS, ACTIVATIONS, SETS, MEMBERS, ...config.versioned];
 
 /** A hash of the triggers `config` installs, which the install records on a function it makes. */
 function fingerprint(config) {
@@ -476,13 +591,16 @@ async function versionSet(db, version) {
   return { plan, operations, ids: [...new Set(ids)] };
 }
 
-/** Everything `computePlan` reads, for the versions in `ids`. */
+/**
+ * Everything `computePlan` reads, for the versions in `ids`. `plan` is a plan or a club plan: its
+ * organization and year are the calculation's.
+ */
 async function loadPlan(config, db, plan, operations, ids) {
   const read = async (table, query = (q) => q) => engineRows(config, table, await query(db(table).select("*")));
   const data = Object.fromEntries(await Promise.all(CATALOG.map(async (table) => [table, await read(table)])));
   const inputs = config.versioned.filter((table) => !config.results.includes(table));
   for (const table of inputs) data[table] = await read(table, (q) => q.whereIn("version_id", ids));
-  const versions = await db(VERSIONS).whereIn("id", ids).select("id", "plan_id");
+  const versions = await db(VERSIONS).whereIn("id", ids).select("id", "plan_id", "operations_version_id");
   const plans = await db(PLANS)
     .whereIn(
       "id",
@@ -505,18 +623,11 @@ async function loadPlan(config, db, plan, operations, ids) {
 }
 
 /**
- * Works out a saved version's results with the engine, and writes them, once. Each line and P&L goes
- * with the version that holds what it's charged to: an offering's version, an area's plan for its
- * products and the area, and the Operations Plan for the rest.
+ * The engine's results for `data`, as rows. Each line and P&L row names `owner`, the version that
+ * holds what it's charged to: an offering's version, an area's plan for its products and the area,
+ * and the Operations Plan for the rest.
  */
-async function writeResults(config, db, versionId, engine) {
-  const version = await db(VERSIONS).where("id", versionId).first();
-  if (version?.status !== "saved") return false;
-  if (await db(RESULTS).where("version_id", versionId).first()) return false;
-  const { plan, operations, ids } = await versionSet(db, version);
-  const data = await loadPlan(config, db, plan, operations, ids);
-  const out = engine.computePlan(data);
-
+function resultRows(data, out, operations) {
   const planOf = new Map(data.plan_versions.map((v) => [v.id, data.plans.find((p) => p.id === v.plan_id)]));
   const areaVersion = new Map();
   for (const [id, p] of planOf) if (p?.kind === "program_area") areaVersion.set(p.program_area_id, id);
@@ -537,81 +648,135 @@ async function writeResults(config, db, versionId, engine) {
       program_area: () => areas.get(key)?.name,
       pool: () => pools.get(key)?.name,
     })[type]?.() ?? "Organization";
-  const own = (type, key) => ownerOf(type, key) === versionId;
-  const row = (fields) => ({ id: crypto.randomUUID(), version_id: versionId, ...fields });
-
-  const rows = {
-    plan_result_versions: ids.filter((id) => id !== versionId).map((id) => row({ calculated_with_id: id })),
-    plan_result_lines: out.lines
-      .filter((l) => own(l.cost_center_type, l.cost_center_key))
-      .map((l) =>
-        row({
-          cost_center_type: l.cost_center_type,
-          cost_center_key: l.cost_center_key,
-          cost_center_name: nameOf(l.cost_center_type, l.cost_center_key),
-          account_id: l.account_id,
-          function: l.function,
-          amount_cents: l.amount_cents,
-          line: l.line_key,
-          explanation: l.explanation,
-        }),
-      ),
-    plan_result_pnl: out.pnl
-      .filter((p) => own(p.level, p.key))
-      .map((p) =>
-        row({
-          level: p.level,
-          subject_key: p.key,
-          name: nameOf(p.level, p.key),
-          revenue_cents: p.revenue_cents,
-          expense_cents: p.expense_cents,
-          net_cents: p.net_cents,
-          mtdc_cents: p.mtdc_cents,
-          enrollment: p.enrollment,
-          days: p.days,
-          sailor_days: p.sailor_days,
-        }),
-      ),
-    plan_result_positions: out.positions.map((p) =>
-      row({
-        position_key: p.position_key,
-        name: p.name,
-        salary_cents: p.salary_cents,
-        salaried_coaching_hours: p.salaried_coaching_hours,
-        salaried_coaching_cents: p.salaried_coaching_cents,
-        hourly_coaching_hours: p.hourly_coaching_hours,
-        hourly_coaching_cents: p.hourly_coaching_cents,
-        booking_hours: p.booking_hours,
-        booking_cents: p.booking_cents,
-        bonus_cents: p.bonus_cents,
-        total_pay_cents: p.total_pay_cents,
-        payroll_tax_cents: p.payroll_tax_cents,
-      }),
-    ),
-    plan_result_warnings: out.warnings.map((w) =>
-      row({ code: w.code, message: w.message, subject_key: w.key ?? null }),
-    ),
-  };
   const { operating, fundraising } = out.organization;
+  return {
+    plan_result_lines: out.lines.map((l) => ({
+      owner: ownerOf(l.cost_center_type, l.cost_center_key),
+      cost_center_type: l.cost_center_type,
+      cost_center_key: l.cost_center_key,
+      cost_center_name: nameOf(l.cost_center_type, l.cost_center_key),
+      account_id: l.account_id,
+      function: l.function,
+      amount_cents: l.amount_cents,
+      line: l.line_key,
+      line_name: l.line_name,
+      explanation: l.explanation,
+    })),
+    plan_result_pnl: out.pnl.map((p) => ({
+      owner: ownerOf(p.level, p.key),
+      level: p.level,
+      subject_key: p.key,
+      name: nameOf(p.level, p.key),
+      revenue_cents: p.revenue_cents,
+      expense_cents: p.expense_cents,
+      net_cents: p.net_cents,
+      mtdc_cents: p.mtdc_cents,
+      enrollment: p.enrollment,
+      days: p.days,
+      sailor_days: p.sailor_days,
+    })),
+    plan_result_positions: out.positions.map((p) => ({
+      position_key: p.position_key,
+      name: p.name,
+      salary_cents: p.salary_cents,
+      salaried_coaching_hours: p.salaried_coaching_hours,
+      salaried_coaching_cents: p.salaried_coaching_cents,
+      hourly_coaching_hours: p.hourly_coaching_hours,
+      hourly_coaching_cents: p.hourly_coaching_cents,
+      booking_hours: p.booking_hours,
+      booking_cents: p.booking_cents,
+      bonus_cents: p.bonus_cents,
+      total_pay_cents: p.total_pay_cents,
+      payroll_tax_cents: p.payroll_tax_cents,
+      double_booked_hours: p.double_booked_hours,
+      double_booked_dates: p.double_booked_dates,
+    })),
+    plan_result_warnings: out.warnings.map((w) => ({ code: w.code, message: w.message, subject_key: w.key ?? null })),
+    totals: {
+      calculated_at: new Date().toISOString(),
+      operating_revenue_cents: operating.revenue_cents,
+      operating_expense_cents: operating.expense_cents,
+      operating_net_cents: operating.net_cents,
+      fundraising_revenue_cents: fundraising.revenue_cents,
+      fundraising_expense_cents: fundraising.expense_cents,
+      fundraising_net_cents: fundraising.net_cents,
+      capital_cents: out.organization.capital_cents,
+      total_cents: out.organization.total_cents,
+    },
+  };
+}
+
+/** Writes one set of results, all or nothing, with `plan_results` last. */
+async function insertResults(db, rows, totals) {
   await db.transaction(async (trx) => {
     await trx.raw("SET LOCAL cyc.writing_results = 'on'");
     for (const [table, list] of Object.entries(rows)) {
       for (let i = 0; i < list.length; i += 500) await trx(table).insert(list.slice(i, i + 500));
     }
-    await trx(RESULTS).insert(
-      row({
-        calculated_at: new Date().toISOString(),
-        operating_revenue_cents: operating.revenue_cents,
-        operating_expense_cents: operating.expense_cents,
-        operating_net_cents: operating.net_cents,
-        fundraising_revenue_cents: fundraising.revenue_cents,
-        fundraising_expense_cents: fundraising.expense_cents,
-        fundraising_net_cents: fundraising.net_cents,
-        capital_cents: out.organization.capital_cents,
-        total_cents: out.organization.total_cents,
-      }),
-    );
+    await trx(RESULTS).insert(totals);
   });
+}
+
+function withoutOwner(fields) {
+  const row = { ...fields };
+  delete row.owner;
+  return row;
+}
+
+/**
+ * Works out a saved version's results with the engine, and writes them, once. Its lines and P&L
+ * are those it holds; the totals, positions and warnings are the whole calculation's.
+ */
+async function writeResults(config, db, versionId, engine) {
+  const version = await db(VERSIONS).where("id", versionId).first();
+  if (version?.status !== "saved") return false;
+  if (await db(RESULTS).where("version_id", versionId).first()) return false;
+  const { plan, operations, ids } = await versionSet(db, version);
+  const data = await loadPlan(config, db, plan, operations, ids);
+  const { totals, ...all } = resultRows(data, engine.computePlan(data), operations);
+  const row = (fields) => ({ id: crypto.randomUUID(), version_id: versionId, ...withoutOwner(fields) });
+  const rows = {
+    plan_result_versions: ids.filter((id) => id !== versionId).map((id) => row({ calculated_with_id: id })),
+    plan_result_lines: all.plan_result_lines.filter((l) => l.owner === versionId).map(row),
+    plan_result_pnl: all.plan_result_pnl.filter((p) => p.owner === versionId).map(row),
+    plan_result_positions: all.plan_result_positions.map(row),
+    plan_result_warnings: all.plan_result_warnings.map(row),
+  };
+  await insertResults(db, rows, row(totals));
+  return true;
+}
+
+/**
+ * Works out a club plan's results with the engine, from the versions it holds, and writes them,
+ * once. Each line and P&L row names the member that holds what it's charged to.
+ */
+async function writeSetResults(config, db, setId, engine) {
+  const set = await db(SETS).where("id", setId).first();
+  if (set === undefined) return false;
+  if (await db(RESULTS).where("version_set_id", setId).first()) return false;
+  const members = await db(MEMBERS)
+    .join(`${PLANS} as p`, "p.id", `${MEMBERS}.plan_id`)
+    .where(`${MEMBERS}.version_set_id`, setId)
+    .select(`${MEMBERS}.id`, `${MEMBERS}.version_id`, "p.kind");
+  const operations = members.find((m) => m.kind === "operations")?.version_id;
+  const data = await loadPlan(
+    config,
+    db,
+    set,
+    operations,
+    members.map((m) => m.version_id),
+  );
+  const { totals, ...all } = resultRows(data, engine.computePlan(data), operations);
+  const memberOf = new Map(members.map((m) => [m.version_id, m.id]));
+  const row = (fields) => ({ id: crypto.randomUUID(), version_set_id: setId, ...withoutOwner(fields) });
+  const owned = (fields) => ({ ...row(fields), version_set_member_id: memberOf.get(fields.owner) ?? null });
+  const rows = {
+    plan_result_lines: all.plan_result_lines.map(owned),
+    plan_result_pnl: all.plan_result_pnl.map(owned),
+    plan_result_positions: all.plan_result_positions.map(row),
+    plan_result_warnings: all.plan_result_warnings.map(row),
+  };
+  await insertResults(db, rows, row(totals));
   return true;
 }
 
@@ -627,7 +792,7 @@ function register({ filter, action, init }, { env, database, logger }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
   const config = require("./config.json");
   const bootstrapAdmin = String(env["ADMIN_EMAIL"] ?? "").toLowerCase();
-  const watched = new Set([PLANS, VERSIONS, ACTIVATIONS, ...config.versioned]);
+  const watched = new Set([PLANS, VERSIONS, ACTIVATIONS, SETS, MEMBERS, ...config.versioned]);
 
   const connect = (trx) => ({
     query: async (sql) => (await trx.raw(sql)).rows,
@@ -660,11 +825,14 @@ function register({ filter, action, init }, { env, database, logger }) {
   let engine;
   const loadEngine = async () =>
     (engine ??= await import(url.pathToFileURL(path.join(__dirname, "planning-index.mjs")).href));
-  const results = async (versionId) => {
+  // `id` is a saved version's or a club plan's.
+  const results = async (id) => {
     try {
-      return await writeResults(config, database, versionId, await loadEngine());
+      const engine = await loadEngine();
+      if (await database(SETS).where("id", id).first()) return await writeSetResults(config, database, id, engine);
+      return await writeResults(config, database, id, engine);
     } catch (error) {
-      logger.error(error, `saved-versions: couldn't write the results of saved version ${versionId}`);
+      logger.error(error, `saved-versions: couldn't write the results of ${id}`);
       throw error;
     }
   };
@@ -673,20 +841,23 @@ function register({ filter, action, init }, { env, database, logger }) {
     if (collection !== VERSIONS || payload?.status !== "saved") return;
     for (const key of keys ?? []) await results(key).catch(() => {});
   });
+  action("items.create", async ({ collection, key }) => {
+    if (collection === SETS) await results(key).catch(() => {});
+  });
 
   // The deploy asks this whether every trigger is in place (`SavedVersionsCheck`). It answers with
   // names and yes or no, never data.
   init("routes.custom.before", ({ app }) => {
-    // Fills in a saved version's results, if writing them failed when it was saved.
+    // Fills in a saved version's or club plan's results, if writing them failed when it was saved.
     app.post("/saved-versions/results/:id", async (req, res) => {
       if (req.accountability?.admin !== true) {
-        res.status(403).json({ errors: [{ message: "Only an admin can fill in a saved version's results." }] });
+        res.status(403).json({ errors: [{ message: "Only an admin can fill in saved results." }] });
         return;
       }
       try {
         res.json({ written: await results(req.params.id) });
       } catch {
-        res.status(500).json({ errors: [{ message: "Couldn't work out the saved version's results." }] });
+        res.status(500).json({ errors: [{ message: "Couldn't work out the saved results." }] });
       }
     });
     app.get("/saved-versions/status", async (req, res) => {
@@ -751,5 +922,8 @@ module.exports.triggerStatus = triggerStatus;
 module.exports.fingerprint = fingerprint;
 module.exports.triggerStatements = triggerStatements;
 module.exports.writeResults = writeResults;
+module.exports.writeSetResults = writeSetResults;
 module.exports.REFUSED = REFUSED;
 module.exports.RESULTS_BY_SAVE = RESULTS_BY_SAVE;
+module.exports.SET_STAYS = SET_STAYS;
+module.exports.MEMBERS_BY_SAVE = MEMBERS_BY_SAVE;

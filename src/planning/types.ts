@@ -106,6 +106,8 @@ export interface Plan {
 export interface PlanVersion {
   id: Id;
   plan_id: Id;
+  /** A saved area plan's: the Operations Plan version it was saved with. */
+  operations_version_id?: Id | null;
 }
 
 // Program area plan
@@ -234,6 +236,8 @@ export interface PlanSalariedPosition extends Versioned {
   /** The pool that takes the salary its hours don't charge to programs. */
   remainder_pool_id: Id | null;
   form_990_line: string | null;
+  /** What it's paid an hour to coach an offering that pays it by the hour, instead of the offering's level. */
+  hourly_coaching_rate_cents?: number | null;
 }
 
 /** Hours charged to a product, or to a program area and shared among its offerings: one of the two. */
@@ -368,6 +372,8 @@ export interface CostLine {
   /** Always positive: the account's type says whether it's revenue or expense. */
   amount_cents: number;
   line_key: string;
+  /** What the line is, in plain words, such as "G&A share: Payroll tax". */
+  line_name: string;
   explanation: string;
 }
 
@@ -451,6 +457,10 @@ export interface PositionSummary {
   total_pay_cents: number;
   /** The year's payroll tax on its total pay. */
   payroll_tax_cents: number;
+  /** Hours another coach would need while it's on two or more groups at once: n − 1 for n groups. */
+  double_booked_hours: number;
+  /** Dates it's on two or more groups at once. */
+  double_booked_dates: number;
 }
 
 export interface EngineOutput {

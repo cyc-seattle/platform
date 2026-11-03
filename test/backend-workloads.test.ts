@@ -31,6 +31,10 @@ describe("directusEnv", () => {
     });
   });
 
+  it("gives Authentik 10 seconds to answer a sign-in, rather than openid-client's 3.5", () => {
+    expect(env).toMatchObject({ AUTH_AUTHENTIK_CLIENT_HTTP_TIMEOUT: "10000" });
+  });
+
   it("lets only Claude's MCP clients register, by metadata document", () => {
     expect(env).toMatchObject({
       MCP_OAUTH_ENABLED: "true",

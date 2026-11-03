@@ -223,7 +223,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_results",
     sort: ["-calculated_at"],
-    fields: ["version_id", "calculated_at", "operating_net_cents", "total_cents"],
+    fields: ["version_id", "version_set_id", "calculated_at", "operating_net_cents", "total_cents"],
   },
   {
     collection: "plan_result_versions",
@@ -233,22 +233,42 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_result_lines",
     sort: ["version_id.plan_id.name", "cost_center_name", "account_id.number"],
-    fields: ["cost_center_name", "account_id", "amount_cents", "line", "version_id"],
+    fields: ["cost_center_name", "line_name", "account_id", "amount_cents", "version_id", "version_set_id"],
   },
   {
     collection: "plan_result_pnl",
     sort: ["version_id.plan_id.name", "level", "name"],
-    fields: ["name", "level", "revenue_cents", "expense_cents", "net_cents", "version_id"],
+    fields: ["name", "level", "revenue_cents", "expense_cents", "net_cents", "version_id", "version_set_id"],
   },
   {
     collection: "plan_result_positions",
     sort: ["version_id.plan_id.name", "name"],
-    fields: ["name", "salary_cents", "hourly_coaching_cents", "bonus_cents", "total_pay_cents", "version_id"],
+    fields: [
+      "name",
+      "salary_cents",
+      "hourly_coaching_cents",
+      "bonus_cents",
+      "total_pay_cents",
+      "double_booked_hours",
+      "version_id",
+      "version_set_id",
+    ],
   },
   {
     collection: "plan_result_warnings",
     sort: ["version_id.plan_id.name", "code"],
-    fields: ["message", "code", "version_id"],
+    fields: ["message", "code", "version_id", "version_set_id"],
+  },
+  // Club plans, newest first.
+  {
+    collection: "version_sets",
+    sort: ["-saved_at"],
+    fields: ["name", "organization_id", "fiscal_year", "saved_at", "message"],
+  },
+  {
+    collection: "version_set_members",
+    sort: ["version_set_id.name", "plan_id.name"],
+    fields: ["version_set_id", "plan_id", "version_id"],
   },
 
   // Sync

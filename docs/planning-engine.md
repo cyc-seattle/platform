@@ -7,10 +7,10 @@ tags: [architecture, planning]
 The planning engine calculates a plan's P&L for one year from the plan's rows in
 [the planning schema](planning-schema.md). It's part of `@cyc-seattle/platform`, imported as
 `@cyc-seattle/platform/planning`. It doesn't read from or save to the database: an app or an agent
-loads the rows, calls `computePlan`, and shows the answer. When a version is saved, the
-`saved-versions` hook runs the engine deployed with `backend` and records its results with the
-version ([docs/planning-schema.md](planning-schema.md#a-saved-versions-results)), with which version
-of the engine calculated them.
+loads the rows, calls `computePlan`, and shows the answer. When a version or a club plan is
+saved, the `saved-versions` hook runs the engine deployed with `backend` and records its results with
+it ([docs/planning-schema.md](planning-schema.md#a-saved-versions-results)), with which version of
+the engine calculated them.
 
 ```ts
 import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/planning";
@@ -26,14 +26,15 @@ named as the schema names them, plus:
 - `rib_resource_kind_id`: which resource kind is RIBs. The engine uses those resources' rates to cost
   each RIB hour.
 - `plans` and `plan_versions`: the plans being calculated and their versions, so the engine can tell
-  which plan each offering is in.
+  which plan each offering is in. An area version's `operations_version_id` lets the engine warn when
+  it was saved with another Operations Plan version.
 
 Planners enter each of these in the plans ([docs/planning-schema.md](planning-schema.md)):
 
 - `fiscal_year` and the organization are the plan's own `fiscal_year` and `organization_id`.
 - The plan versions are the saved Operations Plan version and each program area plan's version
   that names it in `operations_version_id`. For the club's plan, they're the active Operations Plan
-  version and each area's active version. An area plan's row that names an Operations Plan row by
+  version and each area's active version, or a club plan's members. An area plan's row that names an Operations Plan row by
   key means the row with that key in that version.
 - Every pool is divided among all of the year's offerings, so an area's share of the pools, and the
   organization's totals, are right only when every area's plan is calculated together. One area's
@@ -46,7 +47,8 @@ It returns:
 
 - `lines`: every cost and revenue line for the year, on its offering, product, program area, pool or
   the organization, by account. Amounts are always positive cents; the account's type says whether it's
-  revenue or expense.
+  revenue or expense. Each has a `line_key`, and a `line_name` that says in plain words what it is.
+  See [Line names](#line-names).
 - `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
   area's, which add up their offerings. Each also has its MTDC, enrollment, days and sailor-days.
 - `organization`: the organization's year. See [The organization's totals](#the-organizations-totals).
@@ -122,11 +124,14 @@ It returns:
 - **An offering's salaried coach.** An offering's `coach_position_key` names a salaried position that
   takes one of its coaches on each activity other than travel. With `coach_position_pay` `salary`,
   the default, those hours are charged at the salary's hourly equivalent, as in a block. With
-  `hourly`, the coach is paid the offering's coach level for them, on top of the salary. In a block,
+  `hourly`, the coach is paid by the hour for them, on top of the salary: at the position's own
+  `hourly_coaching_rate_cents` if it has one, even on a volunteer level, otherwise at the offering's
+  coach level. The offering's other coaches are paid its level. In a block,
   the coach joins the block's salaried staff, counted once, unless the offering fixes its coaches:
   then the coach is one of its own.
 - The engine warns when a salaried position coaches two activities whose times overlap and that
-  aren't in the same block group. It still charges both.
+  aren't in the same block group. It still charges both. The warning names one pair for each date,
+  and the hours another coach would need that date.
 - Hourly coaches cost their paid hours × their level's `hourly_rate_cents`. Volunteers cost nothing.
 - If a coach level lacks the offering's `required_qualification`, directly or through
   `qualification_covers`, the engine shows a warning.
@@ -169,6 +174,8 @@ The engine warns about:
 - a program with no program area, or another kind of product with one
 - an offering in an area plan whose product is in another area, and an offering in the Operations
   Plan whose product is in an area
+- an area version whose `operations_version_id` isn't the Operations Plan version it's calculated
+  with
 
 ### Salaried positions
 
@@ -191,6 +198,11 @@ The engine warns about:
 - the bonuses that name it in `position_key`
 - its total pay: salary, hourly wages and bonus
 - the year's payroll tax on that total
+- its double-booked hours: the hours another coach would need while it's on two or more groups at
+  once, not staffed as one block group. At each moment it's on n groups, it counts n − 1, so three
+  groups at once for 3 hours count 6. It uses each activity's start-to-end time, without setup or
+  put-away. An activity with no times adds no hours.
+- its double-booked dates: the dates it's warned about
 
 ### Payroll tax
 
@@ -231,6 +243,19 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 - Neither the bonus nor its tax counts in MTDC.
 - A bonus owner in a program area's plan counts only that area's products. The engine warns about
   any other, and leaves it out.
+
+### Line names
+
+Each line's `line_name` says what it is:
+
+- revenue is "Revenue", COGS "Cost of goods sold", and a revenue charge its own name
+- coaches' wages are "Coach wages", RIBs "RIBs", and boats "Boat maintenance: <boat class>"
+- a resource, a trip, a budget line or a labor line has its own name
+- a salaried position's hours are "<position>: coaching" or "<position>: management", and the rest
+  of its salary "<position>: rest of salary"
+- payroll tax is "Payroll tax"
+- a bonus is "Bonus: <role>", and its tax "Payroll tax on bonus: <role>"
+- a share of a pool is "<pool> share: <the line it shares>", such as "G&A share: Payroll tax"
 
 ### The organization's totals
 

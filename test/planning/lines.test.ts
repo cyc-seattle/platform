@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { computePlan } from "../../src/planning/index.ts";
-import { A, budgetLine, emptyPlan, laborLine, pnlOf, offering, product, rates, staffLevel, total } from "./fixtures.ts";
+import {
+  A,
+  activity,
+  budgetLine,
+  emptyPlan,
+  laborLine,
+  pnlOf,
+  offering,
+  pool,
+  position,
+  product,
+  rates,
+  staffLevel,
+  total,
+} from "./fixtures.ts";
 
 function twoOfferings() {
   const p = product();
@@ -129,5 +143,44 @@ describe("payroll tax", () => {
     expect(total(out, { line: "payroll_tax", account_id: A.payrollTax, cost_center_key: spring.key })).toBe(10_000);
     expect(total(out, { line: "payroll_tax", cost_center_type: "org" })).toBe(2500);
     expect(pnlOf(out, spring.key).mtdc_cents).toBe(100_000 + 10_000 + 50_000);
+  });
+});
+
+describe("line names", () => {
+  it("say in plain words what each line is", () => {
+    const p = product();
+    const ga = pool({ name: "G&A" });
+    const level = staffLevel({ hourly_rate_cents: 2000 });
+    const director = position({ name: "Director", remainder_pool_id: ga.id });
+    const o = offering(p.id, {
+      target_enrollment: 1,
+      price_cents: 100_000,
+      min_coaches: 1,
+      coach_level_key: level.key,
+      coach_position_key: director.key,
+    });
+    const data = emptyPlan({
+      products: [p],
+      plan_offerings: [o],
+      plan_activities: [activity(o.id)],
+      plan_staff_levels: [level],
+      plan_salaried_positions: [director],
+      plan_pools: [ga],
+      plan_rates: [rates({ payroll_tax_rate: 0.1 })],
+      plan_budget_lines: [
+        budgetLine({ name: "Office", amount_cents: 1000, cost_center_type: "pool", cost_center_key: ga.key }),
+      ],
+    });
+    const names = new Set(computePlan(data).lines.map((l) => l.line_name));
+    for (const name of [
+      "Revenue",
+      "Director: coaching",
+      "Payroll tax",
+      "G&A share: Office",
+      "G&A share: Payroll tax",
+    ]) {
+      expect(names, name).toContain(name);
+    }
+    expect(names).toContain("G&A share: Director: rest of salary");
   });
 });
