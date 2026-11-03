@@ -676,8 +676,20 @@ export async function deleteRows(): Promise<string[]> {
     return [];
   }
   const session = await adminSession;
+  let remaining = created.reverse();
+  // One request per collection, most recently made first. A batch that fails because another row
+  // still points at it is retried on a later pass, once that row is gone.
+  for (let pass = 0; pass < 5 && remaining.length > 0; pass++) {
+    const before = remaining.length;
+    for (const collection of new Set(remaining.map((row) => row.collection))) {
+      const ids = remaining.filter((row) => row.collection === collection).map((row) => row.id);
+      const { status } = await session.request("DELETE", `/items/${collection}`, ids);
+      if (status === 204) remaining = remaining.filter((row) => row.collection !== collection);
+    }
+    if (remaining.length === before) break;
+  }
   const failures: string[] = [];
-  for (const { collection, id } of created.reverse()) {
+  for (const { collection, id } of remaining) {
     const { status, body } = await session.request("DELETE", itemPath(collection, id));
     // Directus answers 403 for a row that's gone, as when a scenario deleted it, or a cascade did.
     if (status !== 204 && status !== 403) {
