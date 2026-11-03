@@ -22,6 +22,14 @@ export interface SalariedCoaching {
   wages: number;
 }
 
+/** A salaried position's year of coaching two groups at once. */
+export interface DoubleBooked {
+  /** Hours another coach would need: n − 1 for each hour it's on n groups at once. */
+  hours: number;
+  /** Dates it's on two groups at once. */
+  dates: number;
+}
+
 /** Whole kids: `target_enrollment` if set, otherwise `capacity × fill_rate` rounded. */
 export function enrollmentOf(offering: PlanOffering): number {
   if (offering.target_enrollment != null) return Math.round(offering.target_enrollment);
@@ -290,9 +298,9 @@ export class Staffing {
 
   /**
    * Warns when a salaried position coaches two activities at once that aren't staffed as one block
-   * group. It's still charged to both.
+   * group. It's still charged to both. Returns each position's double-booked hours and dates.
    */
-  private checkDoubleBooked(staffed: Staffed[]): void {
+  private checkDoubleBooked(staffed: Staffed[]): Map<Id, DoubleBooked> {
     const byDay = new Map<string, Staffed[]>();
     for (const s of staffed) {
       for (const p of [...s.positions, ...s.hourlyPositions]) {
@@ -302,6 +310,7 @@ export class Staffing {
       }
     }
     const names = new Map(this.ctx.data.plan_salaried_positions.map((p) => [p.key, p.name]));
+    const result = new Map<Id, DoubleBooked>();
     for (const [id, list] of byDay) {
       const [key, date] = id.split("|") as [Id, string];
       const clash = list.flatMap((x, i) =>
@@ -310,12 +319,17 @@ export class Staffing {
           .flatMap((y) => ((x.group !== null && x.group === y.group) || !overlaps(x, y) ? [] : [[x, y] as const])),
       )[0];
       if (clash === undefined) continue;
+      const hours = extraCoachMinutes(list) / 60;
+      const sum = result.get(key) ?? { hours: 0, dates: 0 };
+      result.set(key, { hours: sum.hours + hours, dates: sum.dates + 1 });
       this.ctx.warn(
         "position_double_booked",
-        `${names.get(key) ?? key} coaches ${clash[0].a.offering.name} and ${clash[1].a.offering.name} at the same time on ${date}`,
+        `${names.get(key) ?? key} coaches ${clash[0].a.offering.name} and ${clash[1].a.offering.name} at the same time on ${date}` +
+          (hours > 0 ? `, so another coach is needed for ${round2(hours)} hours` : ""),
         key,
       );
     }
+    return result;
   }
 
   /**
@@ -341,7 +355,11 @@ export class Staffing {
   }
 
   /** Staffs every activity, and records what its coaches, RIBs, boats and resources cost. */
-  run(scheduled: ScheduledActivity[]): { activities: ComputedActivity[]; coaching: SalariedCoaching[] } {
+  run(scheduled: ScheduledActivity[]): {
+    activities: ComputedActivity[];
+    coaching: SalariedCoaching[];
+    doubleBooked: Map<Id, DoubleBooked>;
+  } {
     const { ctx } = this;
     const staffed = scheduled.map((a) => this.initial(a));
 
@@ -363,7 +381,7 @@ export class Staffing {
         this.staffBlock(block, group);
       });
     }
-    this.checkDoubleBooked(staffed);
+    const doubleBooked = this.checkDoubleBooked(staffed);
 
     const coaching: SalariedCoaching[] = [];
     const resourcesByActivity = new Map<Id, typeof ctx.data.plan_activity_resources>();
@@ -371,6 +389,8 @@ export class Staffing {
       resourcesByActivity.set(r.activity_id, [...(resourcesByActivity.get(r.activity_id) ?? []), r]);
     }
     const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
+    const boatClasses = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
+    const salaried = new Map(ctx.data.plan_salaried_positions.map((p) => [p.key, p]));
     const ribRate = this.ribRate();
 
     for (const s of staffed) {
@@ -380,7 +400,14 @@ export class Staffing {
       const paidHours = a.paid_minutes / 60;
       const waterHours = a.on_water_minutes / 60;
 
-      const book = (type: CostType, amount: number, line: string, explanation: string, mtdcShare = 1): void => {
+      const book = (
+        type: CostType,
+        amount: number,
+        line: string,
+        name: string,
+        explanation: string,
+        mtdcShare = 1,
+      ): void => {
         if (amount === 0) return;
         const account = ctx.costAccount(type);
         if (account === undefined) return;
@@ -391,6 +418,7 @@ export class Staffing {
           function: ctx.functionFor(account, null, "offering"),
           amount,
           line_key: `${line}:${key}`,
+          line_name: name,
           explanation,
           mtdc_share: mtdcShare,
           wages: type === "coach_wages",
@@ -413,8 +441,11 @@ export class Staffing {
       }
       const volunteer = s.level?.pay_type === "volunteer";
       const rate = volunteer ? 0 : (s.level?.hourly_rate_cents ?? 0);
-      const wages = hourly * paidHours * rate;
-      book("coach_wages", wages, "coach_wages", "Hourly coaches × paid hours × the coach level's rate");
+      // A salaried coach paid by the hour may have their own rate, even on a volunteer level.
+      const rateOf = (p: { key: Id }) => salaried.get(p.key)?.hourly_coaching_rate_cents ?? rate;
+      const own = s.hourlyPositions.reduce((t, p) => t + p.coaches * (rateOf(p) - rate), 0);
+      const wages = (hourly * rate + own) * paidHours;
+      book("coach_wages", wages, "coach_wages", "Coach wages", "Hourly coaches × paid hours × each one's rate");
       for (const p of s.positions) {
         coaching.push({
           position_key: p.key,
@@ -426,7 +457,7 @@ export class Staffing {
       }
       for (const p of s.hourlyPositions) {
         const hours = p.coaches * paidHours;
-        coaching.push({ position_key: p.key, offering_key: key, hours, pay: "hourly", wages: hours * rate });
+        coaching.push({ position_key: p.key, offering_key: key, hours, pay: "hourly", wages: hours * rateOf(p) });
       }
 
       if (s.ribs > 0 && waterHours > 0) {
@@ -439,6 +470,7 @@ export class Staffing {
             "ribs",
             cost,
             "ribs",
+            "RIBs",
             "RIBs × on-water hours × the RIB rate, plus a day rate",
             cost > 0 ? 1 - rental / cost : 1,
           );
@@ -453,6 +485,7 @@ export class Staffing {
           "boat_maintenance",
           boats * waterHours * boatRate.maintenance_per_boat_hour_cents,
           `boats:${classId}`,
+          `Boat maintenance: ${boatClasses.get(classId)?.name ?? "boats"}`,
           "Boats × on-water hours × the class's maintenance rate",
         );
       }
@@ -468,6 +501,7 @@ export class Staffing {
           "resources",
           use.quantity * (hours * hourlyCost(resource) + (resource.cost_per_day_cents ?? 0)),
           `resource:${use.resource_key}`,
+          resource.name,
           `${resource.name}: quantity × hours × hourly cost, plus a day rate`,
           resource.excluded_from_mtdc ? 0 : 1,
         );
@@ -478,6 +512,7 @@ export class Staffing {
 
     return {
       coaching,
+      doubleBooked,
       activities: staffed.map((s) => ({
         offering_id: s.a.offering.id,
         offering_key: s.a.offering.key,
@@ -530,6 +565,7 @@ export class Staffing {
         function: ctx.functionFor(account, null, "offering"),
         amount,
         line_key: `trip:${trip.key}`,
+        line_name: trip.name,
         explanation: `${trip.name}: ${round2(coaches)} coaches, ${trip.nights ?? 0} nights, ${trip.miles ?? 0} miles`,
       });
     }
@@ -545,6 +581,38 @@ function overlaps(x: Staffed, y: Staffed): boolean {
   const [xs, xe, ys, ye] = [x.a.start_minutes, x.a.end_minutes, y.a.start_minutes, y.a.end_minutes];
   if (xs === null || xe === null || ys === null || ye === null) return true;
   return xs < ye && ys < xe;
+}
+
+/**
+ * Minutes another coach would cover among one position's activities on one date: at each moment
+ * it's on n groups, n − 1. A block group staffed together is one. Untimed activities add nothing.
+ */
+function extraCoachMinutes(list: Staffed[]): number {
+  const spans = new Map<string, { start: number; end: number }>();
+  list.forEach((s, i) => {
+    if (s.a.start_minutes === null || s.a.end_minutes === null) return;
+    const id = s.group ?? `own|${i}`;
+    const span = spans.get(id);
+    spans.set(id, {
+      start: Math.min(span?.start ?? Infinity, s.a.start_minutes),
+      end: Math.max(span?.end ?? -Infinity, s.a.end_minutes),
+    });
+  });
+  const edges = [...spans.values()]
+    .flatMap(({ start, end }) => [
+      { at: start, step: 1 },
+      { at: end, step: -1 },
+    ])
+    .sort((x, y) => x.at - y.at || x.step - y.step);
+  let on = 0;
+  let last = 0;
+  let minutes = 0;
+  for (const { at, step } of edges) {
+    if (on > 1) minutes += (on - 1) * (at - last);
+    on += step;
+    last = at;
+  }
+  return minutes;
 }
 
 function hourlyCost(r: PlanResource): number {

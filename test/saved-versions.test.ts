@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   databaseError,
   guard,
+  MEMBERS_BY_SAVE,
   REFUSED,
   RESULTS_BY_SAVE,
+  SET_STAYS,
   type Lookup,
   type Plan,
   type Version,
@@ -20,6 +22,7 @@ const versions: Record<string, Version> = {
 const config = {
   versioned: ["plan_offerings", "plan_result_lines"],
   results: ["plan_result_lines"],
+  setResults: ["plan_result_lines"],
   links: {},
   deletable: false,
   platformVersion: "1.5.0+engine.abc",
@@ -59,6 +62,39 @@ describe("the saved-versions hook", () => {
       await expect(
         check({ collection: "plan_result_lines", event: "delete", payload: ["saved"], keys: ["saved"] }, true),
       ).resolves.toEqual(["saved"]);
+    });
+  });
+
+  describe("a club plan", () => {
+    it("is stamped with who saved it, when, and the hook's engine", async () => {
+      await expect(
+        check({ collection: "version_sets", event: "create", payload: { name: "Budget", saved_by: "someone" } }),
+      ).resolves.toEqual({
+        name: "Budget",
+        saved_by: "planner",
+        saved_at: now,
+        platform_version: "1.5.0+engine.abc",
+      });
+    });
+
+    it("can't be changed, or deleted but where dev's tests clean up", async () => {
+      await expect(
+        check({ collection: "version_sets", event: "update", payload: { name: "Changed" }, keys: ["set"] }),
+      ).rejects.toThrow(SET_STAYS);
+      await expect(
+        check({ collection: "version_sets", event: "delete", payload: ["set"], keys: ["set"] }),
+      ).rejects.toThrow(SET_STAYS);
+      await expect(
+        check({ collection: "version_sets", event: "delete", payload: ["set"], keys: ["set"] }, true),
+      ).resolves.toEqual(["set"]);
+    });
+
+    it("holds versions no one writes by hand", async () => {
+      for (const event of ["create", "update", "delete"] as const) {
+        await expect(
+          check({ collection: "version_set_members", event, payload: { version_id: "saved" }, keys: ["member"] }),
+        ).rejects.toThrow(MEMBERS_BY_SAVE);
+      }
     });
   });
 
@@ -238,6 +274,13 @@ describe("a database error", () => {
       status: 400,
       message: "A plan row can only link to rows in its own version.",
     });
+  });
+
+  it("adds what the trigger found, such as which program areas", () => {
+    const reason =
+      "A club plan needs an active version for every program area with a plan for its organization and year.";
+    const error = Object.assign(raised(reason), { detail: "These have none: Summer." });
+    expect(databaseError(error)).toMatchObject({ status: 400, message: `${reason} These have none: Summer.` });
   });
 
   it("from a unique column of plans, stays as it is", () => {

@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
 import type { CostLine } from "../../src/planning/index.ts";
-import { notBuilt } from "./steps/logins.ts";
-import { cents, PnlPlan, savedResults, share } from "./pnl.ts";
+import { cents, clubPlanResults, PnlPlan, savedResults, share } from "./pnl.ts";
 import {
   admin,
   adminCreate,
@@ -18,6 +17,7 @@ import {
   planRows,
   row,
   saving,
+  runId,
   runRows,
   type Row,
 } from "./steps/rows.ts";
@@ -582,11 +582,12 @@ Step("the director's pay for the year is:", (_, table: { pay: string; amount: st
 
 /** Two offerings the salaried director coaches, with no block between them. */
 let groups: Item[] = [];
-Step("a salaried director who coaches two groups that don't share coaches", async () => {
+/** `count` offerings the salaried director coaches, with no block between them. */
+async function directorsGroups(count: number): Promise<void> {
   await salaried("Director", 6_000_000, 2000);
   const area = await p.area();
   groups = [];
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < count; i++) {
     groups.push(
       await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 0, {
         min_coaches: 1,
@@ -594,7 +595,8 @@ Step("a salaried director who coaches two groups that don't share coaches", asyn
       }),
     );
   }
-});
+}
+Step("a salaried director who coaches two groups that don't share coaches", () => directorsGroups(2));
 Step("both groups practice from {times} on the same day", async (_, times: string) => {
   for (const group of groups) await p.activities(group, [JUNE], ...span(times));
 });
@@ -699,16 +701,23 @@ Step(
     expect(await resultLines(await p.account("office"))).toBe(cents(money));
   },
 );
-Step(
-  "a planner saves an Operations Plan with {money} of office costs, and makes it active",
-  async (_, money: string) => {
-    const [operations] = await (
-      await admin()
-    ).ok(
-      "GET",
-      `/items/plan_versions?filter=${encodeURIComponent(JSON.stringify({ id: { _eq: await p.operationsVersion() } }))}&fields=plan_id`,
-    );
-    const next = await adminCreate("plan_versions", { id: randomUUID(), plan_id: operations.plan_id, status: "draft" });
+/** A new saved version of the Operations Plan, made active, with `build` adding its rows first. */
+async function newOperationsVersion(build: (version: string) => Promise<void> = async () => {}): Promise<string> {
+  const next = await adminCreate("plan_versions", {
+    id: randomUUID(),
+    plan_id: await p.operationsPlan(),
+    status: "draft",
+  });
+  await build(next.id);
+  await (
+    await admin()
+  ).ok("PATCH", itemPath("plan_versions", next.id), { status: "saved", message: "Saved by a test." });
+  await p.activate(next.id);
+  return next.id;
+}
+Step("a planner saves an Operations Plan with {money} of office costs, and makes it active", (_, money: string) =>
+  newOperationsVersion(async (version) => {
+    const next = { id: version };
     const pool = await adminCreate("plan_pools", {
       id: randomUUID(),
       version_id: next.id,
@@ -727,11 +736,7 @@ Step(
       cost_center_type: "pool",
       cost_center_key: pool["key"],
     });
-    await (
-      await admin()
-    ).ok("PATCH", itemPath("plan_versions", next.id), { status: "saved", message: "Saved by a test." });
-    await p.activate(next.id);
-  },
+  }),
 );
 Step("the saved version's P&L still shows that the offering pays {money} of office costs", async (_, money: string) => {
   expect(await resultLines(await p.account("office"))).toBe(cents(money));
@@ -774,42 +779,244 @@ Step("they can't add a P&L to a draft", async () => {
   expect(status).toBe(403);
 });
 
-// The club plan, readable result lines, a coach's own rate, and double-booked hours, which step 12d
-// builds.
-for (const text of [
-  "a director on a {money} salary, who's paid {money} an hour to coach",
+// A salaried coach's own hourly rate.
+Step("a director on a {money} salary, who's paid {money} an hour to coach", async (_, salary: string, rate: string) => {
+  position = await p.operationsRow("plan_salaried_positions", {
+    name: "Director",
+    annual_salary_cents: cents(salary),
+    paid_hours_per_year: 2000,
+    hourly_coaching_rate_cents: cents(rate),
+  });
+});
+Step(
   "an offering they coach with one more coach, for {money} an hour, with {count} practices of {count} hours",
-  "a salaried director who coaches three groups that don't share coaches",
-  "all three groups practice from {times} on the same day",
-  "the director's groups need {count} hours of another coach",
-  "{money} of office costs in a pool named {string}",
-  "the saved version's P&L names the offering's share of the office {string}",
-  "a program area's active plan, saved before any other area's was active",
-  "another program area's active plan, with the same direct costs as the first",
-  "they save the club plan for the year",
-  "the club plan shows that the first area's offering pays {money} of the office costs",
-  "the first area's saved version still shows that its offering pays {money} of the office costs",
-  "a saved club plan whose offering pays {money} of office costs",
-  "the club plan still shows that the offering pays {money} of office costs",
-  "an active Operations Plan, and a program area's plan with no active version",
-  "they try to save the club plan for the year",
-  "they're told that the program area has no active plan",
-  "no club plan is saved",
-  "a program area's active plan, but no active Operations Plan",
-  "they're told that the Operations Plan has no active plan",
-  "an active Operations Plan, and an archived program area's plan with no active version",
-  "the club plan is saved without the archived plan",
-  "a program area's active plan, saved with an Operations Plan that's no longer active",
-  "the planner is warned that the area's plan was worked out with another Operations Plan",
-  "a saved club plan",
-  "they can't change the club plan or its plans",
-  "they can't delete the club plan",
-  "an active Operations Plan, and a program area's active plan",
-  "the club plan holds both active versions",
-  "they can see the club plan and its P&L",
-  "they can't save a club plan",
-]) {
-  Step(text, () => notBuilt("12d"));
+  async (_, money: string, practices: string, hours: string) => {
+    const level = await p.operationsRow("plan_staff_levels", {
+      name: "Coach",
+      pay_type: "hourly",
+      hourly_rate_cents: cents(money),
+    });
+    await coachedOffering(Number(practices), Number(hours), {
+      coach_level_key: level,
+      coach_position_pay: "hourly",
+      min_coaches: 2,
+    });
+  },
+);
+
+// Double-booked hours.
+Step("a salaried director who coaches three groups that don't share coaches", () => directorsGroups(3));
+Step("all three groups practice from {times} on the same day", async (_, times: string) => {
+  for (const group of groups) await p.activities(group, [JUNE], ...span(times));
+});
+Step("the director's groups need {count} hours of another coach", (_, hours: string) => {
+  expect(p.out.positions.find((x) => x.position_key === position)?.double_booked_hours).toBe(Number(hours));
+});
+
+// Readable result lines.
+Step("{money} of office costs in a pool named {string}", async (_, money: string, name: string) => {
+  const pool = await p.operationsRow("plan_pools", { name });
+  await p.line(
+    await p.operationsVersion(),
+    "office",
+    { cost_center_type: "pool", cost_center_key: pool },
+    cents(money),
+    { name: "Office" },
+  );
+});
+Step("a draft of a program area's plan with one offering", async () => {
+  const area = await p.area();
+  await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 100_000);
+});
+Step("the saved version's P&L names the offering's share of the office {string}", async (_, name: string) => {
+  const office = await p.account("office");
+  const lines = (await savedResults(savedVersion!)).lines.filter(
+    (l) => l["account_id"] === office && l["cost_center_type"] === "offering",
+  );
+  expect(lines.map((l) => l["line_name"])).toEqual([name]);
+});
+
+// Club plans: the year's active versions, saved together with the P&L they make.
+let clubPlan: string | undefined;
+let attempt: { status: number; body: { errors?: { message: string }[] } } | undefined;
+let firstVersion: string | undefined;
+onEachScenario(() => {
+  clubPlan = undefined;
+  attempt = undefined;
+  firstVersion = undefined;
+});
+
+/** Adds a club plan for the run's organization and year, as `session`. */
+async function saveClubPlan(session: Awaited<ReturnType<typeof theirSession>>) {
+  const id = randomUUID();
+  const { status, body } = await session.request("POST", "/items/version_sets", {
+    id,
+    organization_id: await p.organization(),
+    fiscal_year: PLAN_YEAR,
+    name: `Club plan ${runId}`,
+  });
+  if (status < 300) {
+    created.push({ collection: "version_sets", id });
+    clubPlan = id;
+  }
+  attempt = { status, body };
 }
+/** A new program area whose saved plan has an offering with `costs` of direct costs, made active. */
+async function activeArea(costs = 100_000): Promise<{ area: string; version: string }> {
+  const area = await p.area();
+  await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, costs);
+  const version = await p.saveArea(area);
+  await p.activate(version);
+  return { area, version };
+}
+const officeOn = (lines: Row[], offering: unknown, office: string) =>
+  lines
+    .filter((l) => l["account_id"] === office && l["cost_center_key"] === offering)
+    .reduce((t, l) => t + Number(l["amount_cents"]), 0);
+async function membersOf(set: string): Promise<unknown[]> {
+  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set } }));
+  return (
+    (await (await admin()).ok("GET", `/items/version_set_members?filter=${filter}&fields=id,version_id`)) as Row[]
+  ).map((m) => m["version_id"]);
+}
+
+Step("a program area's active plan, saved before any other area's was active", async () => {
+  await p.activateOperations();
+  firstVersion = (await activeArea()).version;
+});
+Step("another program area's active plan, with the same direct costs as the first", () => activeArea());
+Step("they save the club plan for the year", async () => {
+  await saveClubPlan(await theirSession());
+  expect(attempt?.status, JSON.stringify(attempt?.body)).toBe(200);
+});
+Step("they try to save the club plan for the year", async () => saveClubPlan(await theirSession()));
+Step(
+  "the club plan shows that the first area's offering pays {money} of the office costs",
+  async (_, money: string) => {
+    const { lines } = await clubPlanResults(clubPlan!);
+    expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
+  },
+);
+Step(
+  "the first area's saved version still shows that its offering pays {money} of the office costs",
+  async (_, money: string) => {
+    const { lines } = await savedResults(firstVersion!);
+    expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
+  },
+);
+
+Step("a saved club plan whose offering pays {money} of office costs", async (_, money: string) => {
+  await p.line(
+    await p.operationsVersion(),
+    "office",
+    { cost_center_type: "pool", cost_center_key: await p.pool() },
+    cents(money),
+  );
+  await p.activateOperations();
+  await activeArea();
+  await saveClubPlan(await admin());
+  const { lines } = await clubPlanResults(clubPlan!);
+  expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
+});
+Step("the club plan still shows that the offering pays {money} of office costs", async (_, money: string) => {
+  const { lines } = await clubPlanResults(clubPlan!);
+  expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
+});
+
+Step("an active Operations Plan, and a program area's plan with no active version", async () => {
+  await p.activateOperations();
+  await p.area();
+});
+Step("a program area's active plan, but no active Operations Plan", () => activeArea());
+Step("an active Operations Plan, and an archived program area's plan with no active version", async () => {
+  await p.activateOperations();
+  const area = await p.area();
+  await (await admin()).ok("PATCH", itemPath("plans", p.areaPlan(area)), { archived: true });
+});
+Step("an active Operations Plan, and a program area's active plan", async () => {
+  await p.activateOperations();
+  await activeArea();
+});
+Step("they're told that the program area has no active plan", async () => {
+  const [area] = (await (
+    await admin()
+  ).ok(
+    "GET",
+    `/items/program_areas?filter=${encodeURIComponent(JSON.stringify({ id: { _eq: p.areas[0] } }))}&fields=name`,
+  )) as Row[];
+  expect(attempt?.status).toBe(400);
+  const message = attempt?.body.errors?.[0]?.message ?? "";
+  expect(message).toContain("A club plan needs an active version for every program area");
+  expect(message).toContain(String(area?.["name"]));
+});
+Step("they're told that the Operations Plan has no active plan", () => {
+  expect(attempt?.status).toBe(400);
+  expect(attempt?.body.errors?.[0]?.message).toContain("A club plan needs an active Operations Plan version");
+});
+Step("no club plan is saved", async () => {
+  const filter = encodeURIComponent(JSON.stringify({ organization_id: { _eq: await p.organization() } }));
+  expect(await (await admin()).ok("GET", `/items/version_sets?filter=${filter}&fields=id`)).toEqual([]);
+});
+Step("the club plan is saved without the archived plan", async () => {
+  expect(await membersOf(clubPlan!)).toEqual([await p.operationsVersion()]);
+});
+Step("the club plan holds both active versions", async () => {
+  expect((await membersOf(clubPlan!)).sort()).toEqual([await p.operationsVersion(), p.areaVersion(p.areas[0]!)].sort());
+});
+
+Step("a program area's active plan, saved with an Operations Plan that's no longer active", async () => {
+  await p.activateOperations();
+  await activeArea(0);
+  p.useOperationsVersion(await newOperationsVersion());
+});
+
+Step("the planner is warned that the area's plan was worked out with another Operations Plan", () => {
+  expect(p.warned("other_operations_version")).toBe(true);
+});
+
+Step("a saved club plan", async () => {
+  await p.activateOperations();
+  await activeArea();
+  await saveClubPlan(await admin());
+  await clubPlanResults(clubPlan!);
+});
+Step("they can't change the club plan or its plans", async () => {
+  const they = await theirSession();
+  const [member] = (await (
+    await admin()
+  ).ok(
+    "GET",
+    `/items/version_set_members?filter=${encodeURIComponent(JSON.stringify({ version_set_id: { _eq: clubPlan } }))}&fields=id`,
+  )) as Row[];
+  expect((await they.request("PATCH", itemPath("version_sets", clubPlan!), { name: "Changed" })).status).toBe(403);
+  expect(
+    (await they.request("PATCH", itemPath("version_set_members", String(member?.["id"])), { version_id: null })).status,
+  ).toBe(403);
+  expect(
+    (
+      await they.request("POST", "/items/version_set_members", {
+        id: randomUUID(),
+        version_set_id: clubPlan,
+        plan_id: await p.operationsPlan(),
+        version_id: await p.operationsVersion(),
+      })
+    ).status,
+  ).toBe(403);
+});
+Step("they can't delete the club plan", async () => {
+  expect((await (await theirSession()).request("DELETE", itemPath("version_sets", clubPlan!))).status).toBe(403);
+});
+Step("they can see the club plan and its P&L", async () => {
+  const they = await theirSession();
+  expect((await they.request("GET", itemPath("version_sets", clubPlan!))).status).toBe(200);
+  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: clubPlan } }));
+  const { status, body } = await they.request("GET", `/items/plan_results?filter=${filter}`);
+  expect(status).toBe(200);
+  expect(body.data).toHaveLength(1);
+});
+Step("they can't save a club plan", async () => {
+  await saveClubPlan(await theirSession());
+  expect(attempt?.status).toBe(403);
+});
 
 describeAccessFeature("planning.feature");

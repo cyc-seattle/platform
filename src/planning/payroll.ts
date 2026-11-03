@@ -26,6 +26,7 @@ export function bookPayrollTax(ctx: Context): void {
       function: w.function,
       amount: w.amount * rate,
       line_key: "payroll_tax",
+      line_name: "Payroll tax",
       explanation: `${rate} × wages`,
     });
   }

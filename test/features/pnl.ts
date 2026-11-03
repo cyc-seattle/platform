@@ -130,7 +130,7 @@ export class PnlPlan {
     return this.accounts[name];
   }
 
-  private async organization(): Promise<string> {
+  async organization(): Promise<string> {
     if (this.organizationId === undefined) {
       this.organizationId = (
         await adminCreate("organizations", {
@@ -192,6 +192,25 @@ export class PnlPlan {
     this.areas.push(area.id);
     this.areaPlans.set(area.id, await this.plan("program_area", area.id));
     return area.id;
+  }
+
+  /** A program area's plan. */
+  areaPlan(area: string): string {
+    const plan = this.areaPlans.get(area);
+    if (plan === undefined) throw new Error(`No plan for program area ${area}.`);
+    return plan.plan;
+  }
+
+  /** The Operations Plan itself. */
+  async operationsPlan(): Promise<string> {
+    await this.operationsVersion();
+    return this.operations!.plan;
+  }
+
+  /** Calculates with another version of the Operations Plan from now on, such as a newer one. */
+  useOperationsVersion(version: string): void {
+    this.operations = { plan: this.operations!.plan, version };
+    this.operationsSaved = true;
   }
 
   areaVersion(area: string): string {
@@ -363,6 +382,13 @@ export class PnlPlan {
     await adminCreate("plan_activations", { id: randomUUID(), version_id: version });
   }
 
+  /** Saves the Operations Plan, if it isn't saved yet, and makes it active. */
+  async activateOperations(): Promise<string> {
+    const version = await this.saveOperations();
+    await this.activate(version);
+    return version;
+  }
+
   /** Reads every row back as a Plan Reader, and calculates the P&L with the engine. */
   async calculate(): Promise<EngineOutput> {
     const versions = [await this.operationsVersion(), ...[...this.areaPlans.values()].map((p) => p.version)];
@@ -423,17 +449,13 @@ async function saveVersion(version: string, fields: Row, session?: DirectusSessi
   });
 }
 
-/**
- * A saved version's results, read as a Plan Reader. The hook writes them just after the save
- * answers, so this waits for them.
- */
-export async function savedResults(version: string): Promise<{ lines: Row[]; pnl: Row[]; totals: Row }> {
+/** Results, read as a Plan Reader. The hook writes them just after the save answers, so this waits for them. */
+async function resultsWhere(filter: Row, what: string): Promise<{ lines: Row[]; pnl: Row[]; totals: Row }> {
   const planner = (await userFor({ policies: ["Plan Reader"] })).session;
   const read = (collection: string) =>
-    planner.ok(
-      "GET",
-      `/items/${collection}?limit=-1&filter=${encodeURIComponent(JSON.stringify({ version_id: { _eq: version } }))}`,
-    ) as Promise<Row[]>;
+    planner.ok("GET", `/items/${collection}?limit=-1&filter=${encodeURIComponent(JSON.stringify(filter))}`) as Promise<
+      Row[]
+    >;
   for (let tries = 0; tries < 60; tries++) {
     const [totals] = await read("plan_results");
     if (totals !== undefined) {
@@ -441,5 +463,12 @@ export async function savedResults(version: string): Promise<{ lines: Row[]; pnl
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
-  throw new Error(`Saved version ${version} has no results after a minute.`);
+  throw new Error(`${what} has no results after a minute.`);
 }
+
+/** A saved version's results. */
+export const savedResults = (version: string) =>
+  resultsWhere({ version_id: { _eq: version } }, `Saved version ${version}`);
+
+/** A saved club plan's results. */
+export const clubPlanResults = (set: string) => resultsWhere({ version_set_id: { _eq: set } }, `Club plan ${set}`);

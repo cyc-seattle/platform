@@ -221,6 +221,60 @@ describe("an offering's salaried coach", () => {
   });
 });
 
+describe("a salaried coach's own hourly rate", () => {
+  // 10 practices of 3 hours, at a 3000¢ level, with the head coach's own 4000¢ rate.
+  function ownRate(overrides: { coaches?: number; volunteer?: boolean; block?: boolean } = {}) {
+    const p = product();
+    const level = staffLevel({
+      hourly_rate_cents: overrides.volunteer ? null : 3000,
+      pay_type: overrides.volunteer ? "volunteer" : "hourly",
+    });
+    const coach = position({ name: "Head coach", annual_salary_cents: 2_000_000, hourly_coaching_rate_cents: 4000 });
+    const o = offering(p.id, {
+      fixed_coaches: overrides.block ? null : (overrides.coaches ?? 1),
+      min_coaches: overrides.coaches ?? 1,
+      coach_level_key: level.key,
+      coach_position_key: coach.key,
+      coach_position_pay: "hourly",
+    });
+    const days = Array.from({ length: 10 }, (_, i) =>
+      activity(o.id, { date: `2027-06-${String(i + 1).padStart(2, "0")}`, start_time: "16:00", end_time: "19:00" }),
+    );
+    const out = computePlan(
+      emptyPlan({
+        products: [p],
+        plan_offerings: [o],
+        plan_activities: days,
+        plan_staff_levels: [level],
+        plan_salaried_positions: [coach],
+        plan_activity_block_rules: overrides.block ? [blockRule([o.key])] : [],
+      }),
+    );
+    return { out, o, coach };
+  }
+
+  it("pays the coach their own rate instead of the offering's", () => {
+    const { out, o, coach } = ownRate();
+    expect(total(out, { account_id: A.coachWages, cost_center_key: o.key })).toBe(120_000);
+    expect(out.positions.find((p) => p.position_key === coach.key)?.hourly_coaching_cents).toBe(120_000);
+  });
+
+  it("pays the offering's other coaches its rate", () => {
+    const { out, o } = ownRate({ coaches: 2 });
+    expect(total(out, { account_id: A.coachWages, cost_center_key: o.key })).toBe(210_000);
+  });
+
+  it("pays it in a block, too", () => {
+    const { out, o } = ownRate({ block: true });
+    expect(total(out, { account_id: A.coachWages, cost_center_key: o.key })).toBe(120_000);
+  });
+
+  it("pays it on a volunteer level", () => {
+    const { out, o } = ownRate({ volunteer: true });
+    expect(total(out, { account_id: A.coachWages, cost_center_key: o.key })).toBe(120_000);
+  });
+});
+
 describe("one salaried coach in two places", () => {
   function twoGroups(first: [string, string], second: [string, string]) {
     const director = position();
@@ -250,6 +304,66 @@ describe("one salaried coach in two places", () => {
     expect(twoGroups(["09:00", "12:00"], ["13:00", "16:00"]).warnings.map((w) => w.code)).not.toContain(
       "position_double_booked",
     );
+  });
+
+  it("counts the hours another coach would need, and the dates", () => {
+    const out = twoGroups(["09:00", "12:00"], ["10:00", "14:00"]);
+    expect(out.positions[0]).toMatchObject({ double_booked_hours: 2, double_booked_dates: 1 });
+    expect(out.warnings.find((w) => w.code === "position_double_booked")?.message).toContain("for 2 hours");
+  });
+
+  it("counts no hours for a morning and an afternoon", () => {
+    expect(twoGroups(["09:00", "12:00"], ["12:00", "15:00"]).positions[0]).toMatchObject({
+      double_booked_hours: 0,
+      double_booked_dates: 0,
+    });
+  });
+
+  it("counts an hour on three groups as two hours of another coach", () => {
+    const director = position();
+    const products = [product(), product(), product()];
+    const groups = products.map((p) => offering(p.id, { min_coaches: 1, coach_position_key: director.key }));
+    const out = computePlan(
+      emptyPlan({
+        products,
+        plan_offerings: groups,
+        plan_salaried_positions: [director],
+        plan_activities: groups.map((o) => activity(o.id, { start_time: "16:00", end_time: "19:00" })),
+      }),
+    );
+    expect(out.positions[0]).toMatchObject({ double_booked_hours: 6, double_booked_dates: 1 });
+  });
+
+  it("counts a block group staffed together as one", () => {
+    const director = position();
+    const products = [product(), product(), product()];
+    const groups = products.map((p) => offering(p.id, { min_coaches: 1, coach_position_key: director.key }));
+    const out = computePlan(
+      emptyPlan({
+        products,
+        plan_offerings: groups,
+        plan_salaried_positions: [director],
+        plan_activity_block_rules: [blockRule([groups[0]!.key, groups[1]!.key])],
+        plan_activities: groups.map((o) => activity(o.id, { start_time: "16:00", end_time: "19:00" })),
+      }),
+    );
+    expect(out.positions[0]).toMatchObject({ double_booked_hours: 3, double_booked_dates: 1 });
+  });
+
+  it("counts the date, but no hours, for an activity with no times", () => {
+    const director = position();
+    const [p, q] = [product(), product()];
+    const a = offering(p.id, { min_coaches: 1, coach_position_key: director.key });
+    const b = offering(q.id, { min_coaches: 1, coach_position_key: director.key });
+    const out = computePlan(
+      emptyPlan({
+        products: [p, q],
+        plan_offerings: [a, b],
+        plan_salaried_positions: [director],
+        plan_activities: [activity(a.id), activity(b.id, { start_time: null, end_time: null })],
+      }),
+    );
+    expect(out.positions[0]).toMatchObject({ double_booked_hours: 0, double_booked_dates: 1 });
   });
 });
 

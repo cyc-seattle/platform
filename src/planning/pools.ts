@@ -26,6 +26,7 @@ export function allocatePools(ctx: Context): void {
       account_id: e.account_id,
       function: e.function,
       line_key: `pool:${e.cost_center_key}:${e.line_key}`,
+      line_name: `${pool?.name ?? "Pool"} share: ${e.line_name}`,
       explanation: `${pool?.name ?? "Pool"}: ${e.explanation}`,
       stage: "pool" as const,
       mtdc_share: 0,

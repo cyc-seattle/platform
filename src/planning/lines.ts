@@ -88,6 +88,7 @@ export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
       function: ctx.functionFor(line.account_id, line.function, onOrg ? "org" : line.cost_center_type),
       amount: line.amount_cents,
       line_key: `budget:${line.key}`,
+      line_name: line.name,
       explanation: line.name,
       mtdc_share: line.excluded_from_mtdc ? 0 : 1,
     });
@@ -111,6 +112,7 @@ export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
       function: ctx.functionFor(line.account_id, line.function, line.cost_center_type),
       amount: level.pay_type === "volunteer" ? 0 : line.hours * (level.hourly_rate_cents ?? 0),
       line_key: `labor:${line.key}`,
+      line_name: line.name,
       explanation: `${line.name}: hours × ${level.name}'s rate`,
       wages: true,
     });

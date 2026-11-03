@@ -69,6 +69,8 @@ export interface Schema {
   resource_kinds: ResourceKinds[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
+  version_set_members: VersionSetMembers[];
+  version_sets: VersionSets[];
 }
 
 /** The chart of accounts that plans, results, and actuals book to. */
@@ -739,8 +741,8 @@ export interface PlanResources {
 /** Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed. */
 export interface PlanResultLines {
   id: string;
-  /** The saved version these results are for. */
-  version_id: string | PlanVersions;
+  /** The saved version these results are for, if they aren't a club plan's. */
+  version_id: string | PlanVersions | null;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
   cost_center_key: string | null;
   cost_center_name: string;
@@ -748,16 +750,22 @@ export interface PlanResultLines {
   function: "program" | "management" | "fundraising" | null;
   /** Always positive: the account says whether it's revenue or a cost. In cents: 12500 is $125.00. */
   amount_cents: number;
-  /** What the line is, as the P&L names it. */
+  /** The engine's key for the line. */
   line: string;
   explanation: string | null;
+  /** The club plan these results are for, if they aren't a version's. */
+  version_set_id: string | VersionSets | null;
+  /** In a club plan's results, the plan that holds what it's charged to. */
+  version_set_member_id: string | VersionSetMembers | null;
+  /** What the line is, in plain words, such as G&A share: Payroll tax. */
+  line_name: string | null;
 }
 
 /** A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed. */
 export interface PlanResultPnl {
   id: string;
-  /** The saved version these results are for. */
-  version_id: string | PlanVersions;
+  /** The saved version these results are for, if they aren't a club plan's. */
+  version_id: string | PlanVersions | null;
   level: "offering" | "product" | "program_area";
   subject_key: string;
   name: string;
@@ -772,13 +780,17 @@ export interface PlanResultPnl {
   enrollment: number;
   days: number;
   sailor_days: number;
+  /** The club plan these results are for, if they aren't a version's. */
+  version_set_id: string | VersionSets | null;
+  /** In a club plan's results, the plan that holds what it's charged to. */
+  version_set_member_id: string | VersionSetMembers | null;
 }
 
 /** Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed. */
 export interface PlanResultPositions {
   id: string;
-  /** The saved version these results are for. */
-  version_id: string | PlanVersions;
+  /** The saved version these results are for, if they aren't a club plan's. */
+  version_id: string | PlanVersions | null;
   position_key: string;
   name: string;
   /** In cents: 12500 is $125.00. */
@@ -798,6 +810,12 @@ export interface PlanResultPositions {
   total_pay_cents: number;
   /** The year's payroll tax on the total pay. In cents: 12500 is $125.00. */
   payroll_tax_cents: number;
+  /** The club plan these results are for, if they aren't a version's. */
+  version_set_id: string | VersionSets | null;
+  /** Hours another coach would cover while this position coaches two or more groups at once: for three groups at once, two coaches. */
+  double_booked_hours: string | null;
+  /** Dates this position coaches two or more groups at once. */
+  double_booked_dates: number | null;
 }
 
 /** The other saved versions a version's results were worked out with. Worked out when the version was saved, and never changed. */
@@ -812,19 +830,21 @@ export interface PlanResultVersions {
 /** What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed. */
 export interface PlanResultWarnings {
   id: string;
-  /** The saved version these results are for. */
-  version_id: string | PlanVersions;
+  /** The saved version these results are for, if they aren't a club plan's. */
+  version_id: string | PlanVersions | null;
   /** The kind of warning. */
   code: string;
   message: string;
   subject_key: string | null;
+  /** The club plan these results are for, if they aren't a version's. */
+  version_set_id: string | VersionSets | null;
 }
 
 /** A saved version's club-wide totals. Worked out when the version was saved, and never changed. */
 export interface PlanResults {
   id: string;
-  /** The saved version these results are for. */
-  version_id: string | PlanVersions;
+  /** The saved version these results are for, if they aren't a club plan's. */
+  version_id: string | PlanVersions | null;
   calculated_at: string;
   /** In cents: 12500 is $125.00. */
   operating_revenue_cents: number;
@@ -842,6 +862,8 @@ export interface PlanResults {
   capital_cents: number;
   /** Operating net, plus fundraising net, less capital. In cents: 12500 is $125.00. */
   total_cents: number;
+  /** The club plan these results are for, if they aren't a version's. */
+  version_set_id: string | VersionSets | null;
 }
 
 /** A charge set as a share of each offering's revenue, such as scholarships or card fees. Operations Plan only. */
@@ -897,6 +919,8 @@ export interface PlanSalariedPositions {
   /** The pool that takes the salary its hours don't charge to programs. */
   remainder_pool_id: string | PlanPools | null;
   form_990_line: string | null;
+  /** What this position is paid an hour to coach an offering that pays its salaried coach by the hour, instead of the offering's coach level. Leave empty to use the level. In cents: 12500 is $125.00. */
+  hourly_coaching_rate_cents: number | null;
 }
 
 /** A level hourly staff are paid at, such as head coach. */
@@ -1101,4 +1125,36 @@ export interface SyncTasks {
   finished_at: string | null;
   /** Set once the task has failed too many times. It keeps retrying; this flags it for staff. */
   needs_attention: boolean;
+}
+
+/** One plan's version in a club plan. Set when the club plan is saved, and never changed. */
+export interface VersionSetMembers {
+  id: string;
+  version_set_id: string | VersionSets;
+  plan_id: string | Plans;
+  /** The plan's active version when the club plan was saved. */
+  version_id: string | PlanVersions;
+}
+
+/** The club's plan for a year, saved: the active Operations Plan version and each program area's, with the P&L they make together. Saved when it's added, and never changed. */
+export interface VersionSets {
+  id: string;
+  /** The organization the club plan is for. */
+  organization_id: string | Organizations;
+  /** The year the club plan is for. */
+  fiscal_year: number;
+  /** Such as 2027 budget as adopted. */
+  name: string;
+  /** Why it was saved. */
+  message: string | null;
+  /** Set when the club plan is saved. */
+  saved_by: string | null;
+  /** Set when the club plan is saved. */
+  saved_at: string | null;
+  /** The version of the planning engine that calculated its numbers. */
+  platform_version: string | null;
+  /** The active version of each plan when the club plan was saved. */
+  members: (string | VersionSetMembers)[];
+  /** What the club's P&L showed when it was saved, worked out a moment after. A club plan with none means working them out failed, and an admin can fill them in. */
+  results: (string | PlanResults)[];
 }

@@ -7,7 +7,7 @@ import { bookPayrollTax } from "./payroll.ts";
 import { allocatePools } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
-import { enrollmentOf, Staffing, type SalariedCoaching } from "./staffing.ts";
+import { enrollmentOf, round2, Staffing, type DoubleBooked, type SalariedCoaching } from "./staffing.ts";
 import type {
   CostLine,
   EngineOutput,
@@ -28,7 +28,7 @@ export function computePlan(data: PlanData): EngineOutput {
   for (const o of data.plan_offerings) ctx.enrollment.set(o.id, enrollmentOf(o));
   checkAreas(ctx);
 
-  const { activities, coaching } = new Staffing(ctx).run(scheduleActivities(ctx));
+  const { activities, coaching, doubleBooked } = new Staffing(ctx).run(scheduleActivities(ctx));
   countDays(ctx, activities);
   bookRevenue(ctx);
 
@@ -49,7 +49,7 @@ export function computePlan(data: PlanData): EngineOutput {
     pnl: summarize(ctx, lines, mtdcByOffering),
     organization: organizationTotals(ctx, lines),
     activities,
-    positions: summarizePositions(ctx, coaching, charged, bonuses),
+    positions: summarizePositions(ctx, coaching, charged, bonuses, doubleBooked),
     warnings: ctx.warnings,
   };
 }
@@ -79,6 +79,19 @@ function checkAreas(ctx: Context): void {
       ctx.warn("offering_in_wrong_plan", `Offering ${offering.name} of ${product.name} is in ${where}`, offering.key);
     }
   }
+  const operations = new Set(
+    ctx.data.plan_versions.filter((v) => ctx.planOfVersion.get(v.id)?.kind === "operations").map((v) => v.id),
+  );
+  for (const version of ctx.data.plan_versions) {
+    const pinned = version.operations_version_id;
+    if (pinned == null || operations.size === 0 || operations.has(pinned)) continue;
+    const area = ctx.areas.get(ctx.planOfVersion.get(version.id)?.program_area_id ?? "");
+    ctx.warn(
+      "other_operations_version",
+      `${area?.name ?? "A program area"}'s plan was saved with another Operations Plan version than the one it's calculated with`,
+      version.id,
+    );
+  }
 }
 
 /** Each salaried position's year: its salary, where its hours went, and its hourly wages and bonus. */
@@ -87,6 +100,7 @@ function summarizePositions(
   coaching: SalariedCoaching[],
   charged: Map<Id, PositionCharges>,
   bonuses: Map<Id, number>,
+  doubleBooked: Map<Id, DoubleBooked>,
 ): PositionSummary[] {
   const taxRate = ctx.rates?.payroll_tax_rate ?? 0;
   const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.key));
@@ -118,6 +132,8 @@ function summarizePositions(
       bonus_cents: Math.round(bonus),
       total_pay_cents: Math.round(total),
       payroll_tax_cents: Math.round(total * taxRate),
+      double_booked_hours: round2(doubleBooked.get(position.key)?.hours ?? 0),
+      double_booked_dates: doubleBooked.get(position.key)?.dates ?? 0,
     };
   });
 }
@@ -161,6 +177,7 @@ function sumLines(ctx: Context): CostLine[] {
       function: e.function,
       amount_cents: 0,
       line_key: e.line_key,
+      line_name: e.line_name,
       explanation: e.explanation,
       exact: 0,
     };

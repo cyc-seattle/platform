@@ -608,7 +608,7 @@ collections:
       collapse: open
       collection: plan_results
       color: null
-      display_template: "{{version_id.plan_id.name}} ({{calculated_at}})"
+      display_template: "{{version_id.plan_id.name}}{{version_set_id.name}} ({{calculated_at}})"
       group: Planning
       hidden: false
       icon: summarize
@@ -660,7 +660,7 @@ collections:
       collapse: open
       collection: plan_result_lines
       color: null
-      display_template: "{{cost_center_name}}: {{account_id.number}} {{account_id.name}}"
+      display_template: "{{cost_center_name}}: {{line_name}}"
       group: Planning
       hidden: false
       icon: receipt_long
@@ -754,6 +754,60 @@ collections:
       versioning: false
     schema:
       name: plan_result_warnings
+  - collection: version_sets
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: version_sets
+      color: null
+      display_template: "{{name}} ({{saved_at}})"
+      group: Planning
+      hidden: false
+      icon: workspaces
+      item_duplication_fields: null
+      note: "The club's plan for a year, saved: the active Operations Plan version and each program area's, with the P&L they make together. Saved when it's added, and never changed."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations:
+        - language: en-US
+          translation: Club plans
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: version_sets
+  - collection: version_set_members
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: version_set_members
+      color: null
+      display_template: "{{plan_id.name}}"
+      group: Planning
+      hidden: false
+      icon: list
+      item_duplication_fields: null
+      note: One plan's version in a club plan. Set when the club plan is saved, and never changed.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: version_set_members
 fields:
   - collection: plans
     field: id
@@ -6846,6 +6900,48 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_salaried_positions
+    field: hourly_coaching_rate_cents
+    type: integer
+    meta:
+      collection: plan_salaried_positions
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: hourly_coaching_rate_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What this position is paid an hour to coach an offering that pays its salaried coach by the hour, instead of the offering's coach level. Leave empty to use the level. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations:
+        - language: en-US
+          translation: Own hourly coaching rate
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hourly_coaching_rate_cents
+      table: plan_salaried_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_salaried_bookings
     field: id
     type: uuid
@@ -9266,10 +9362,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for.
+      note: The saved version these results are for, if they aren't a club plan's.
       options: null
       readonly: true
-      required: true
+      required: false
       searchable: true
       sort: 2
       special:
@@ -9288,7 +9384,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: true
       is_indexed: false
       is_primary_key: false
@@ -9675,6 +9771,50 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_results
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: plan_results
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The club plan these results are for, if they aren't a version's.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 13
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Club plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: plan_results
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
   - collection: plan_result_versions
     field: id
     type: uuid
@@ -9858,10 +9998,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for.
+      note: The saved version these results are for, if they aren't a club plan's.
       options: null
       readonly: true
-      required: true
+      required: false
       searchable: true
       sort: 2
       special:
@@ -9880,7 +10020,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -10197,9 +10337,9 @@ fields:
       display_options: null
       field: line
       group: null
-      hidden: false
+      hidden: true
       interface: input
-      note: What the line is, as the P&L names it.
+      note: The engine's key for the line.
       options: null
       readonly: true
       required: true
@@ -10252,6 +10392,136 @@ fields:
       width: full
     schema:
       name: explanation
+      table: plan_result_lines
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_lines
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The club plan these results are for, if they aren't a version's.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 12
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Club plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: plan_result_lines
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: plan_result_lines
+    field: version_set_member_id
+    type: uuid
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}}"
+      field: version_set_member_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: In a club plan's results, the plan that holds what it's charged to.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 13
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_member_id
+      table: plan_result_lines
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_set_members
+      foreign_key_column: id
+  - collection: plan_result_lines
+    field: line_name
+    type: text
+    meta:
+      collection: plan_result_lines
+      conditions: null
+      display: null
+      display_options: null
+      field: line_name
+      group: null
+      hidden: false
+      interface: input
+      note: "What the line is, in plain words, such as G&A share: Payroll tax."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 14
+      special: null
+      translations:
+        - language: en-US
+          translation: Line
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: line_name
       table: plan_result_lines
       data_type: text
       default_value: null
@@ -10321,10 +10591,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for.
+      note: The saved version these results are for, if they aren't a club plan's.
       options: null
       readonly: true
-      required: true
+      required: false
       searchable: true
       sort: 2
       special:
@@ -10343,7 +10613,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -10781,6 +11051,94 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_result_pnl
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The club plan these results are for, if they aren't a version's.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 14
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Club plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: plan_result_pnl
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: plan_result_pnl
+    field: version_set_member_id
+    type: uuid
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}}"
+      field: version_set_member_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: In a club plan's results, the plan that holds what it's charged to.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 15
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_member_id
+      table: plan_result_pnl
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_set_members
+      foreign_key_column: id
   - collection: plan_result_positions
     field: id
     type: uuid
@@ -10835,10 +11193,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for.
+      note: The saved version these results are for, if they aren't a club plan's.
       options: null
       readonly: true
-      required: true
+      required: false
       searchable: true
       sort: 2
       special:
@@ -10857,7 +11215,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -11366,6 +11724,134 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_result_positions
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The club plan these results are for, if they aren't a version's.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 16
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Club plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: plan_result_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: plan_result_positions
+    field: double_booked_hours
+    type: decimal
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: double_booked_hours
+      group: null
+      hidden: false
+      interface: input
+      note: "Hours another coach would cover while this position coaches two or more groups at once: for three groups at once, two coaches."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 17
+      special: null
+      translations:
+        - language: en-US
+          translation: Hours of another coach needed
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: double_booked_hours
+      table: plan_result_positions
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_positions
+    field: double_booked_dates
+    type: integer
+    meta:
+      collection: plan_result_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: double_booked_dates
+      group: null
+      hidden: false
+      interface: input
+      note: Dates this position coaches two or more groups at once.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 18
+      special: null
+      translations:
+        - language: en-US
+          translation: Dates double-booked
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: double_booked_dates
+      table: plan_result_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_result_warnings
     field: id
     type: uuid
@@ -11420,10 +11906,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for.
+      note: The saved version these results are for, if they aren't a club plan's.
       options: null
       readonly: true
-      required: true
+      required: false
       searchable: true
       sort: 2
       special:
@@ -11442,7 +11928,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -11571,6 +12057,606 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_result_warnings
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The club plan these results are for, if they aren't a version's.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Club plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: plan_result_warnings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: version_sets
+    field: id
+    type: uuid
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: version_sets
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: organization_id
+    type: uuid
+    meta:
+      collection: version_sets
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: organization_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The organization the club plan is for.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Organization
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: organization_id
+      table: version_sets
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: organizations
+      foreign_key_column: id
+  - collection: version_sets
+    field: fiscal_year
+    type: integer
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: fiscal_year
+      group: null
+      hidden: false
+      interface: input
+      note: The year the club plan is for.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Plan year
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: fiscal_year
+      table: version_sets
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: name
+    type: string
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: Such as 2027 budget as adopted.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: version_sets
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: message
+    type: text
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: message
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: Why it was saved.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: message
+      table: version_sets
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: saved_by
+    type: uuid
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: saved_by
+      group: null
+      hidden: true
+      interface: input
+      note: Set when the club plan is saved.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: saved_by
+      table: version_sets
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: saved_at
+    type: timestamp
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: saved_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: Set when the club plan is saved.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Saved
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: saved_at
+      table: version_sets
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: platform_version
+    type: string
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: platform_version
+      group: null
+      hidden: false
+      interface: input
+      note: The version of the planning engine that calculated its numbers.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Engine version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: platform_version
+      table: version_sets
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: members
+    type: alias
+    meta:
+      collection: version_sets
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}}"
+      field: members
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: The active version of each plan when the club plan was saved.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 9
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Plans
+      validation: null
+      validation_message: null
+      width: full
+  - collection: version_sets
+    field: results
+    type: alias
+    meta:
+      collection: version_sets
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{calculated_at}}"
+      field: results
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: What the club's P&L showed when it was saved, worked out a moment after. A club plan with none means working them out failed, and an admin can fill them in.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 10
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: version_set_members
+    field: id
+    type: uuid
+    meta:
+      collection: version_set_members
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: version_set_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_set_members
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: version_set_members
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Club plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: version_set_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: version_set_members
+    field: plan_id
+    type: uuid
+    meta:
+      collection: version_set_members
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: plan_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: plan_id
+      table: version_set_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plans
+      foreign_key_column: id
+  - collection: version_set_members
+    field: version_id
+    type: uuid
+    meta:
+      collection: version_set_members
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The plan's active version when the club plan was saved.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: version_set_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
 relations:
   - collection: plans
     field: program_area_id
@@ -12746,5 +13832,236 @@ relations:
       foreign_key_table: plan_versions
       foreign_key_column: id
       constraint_name: plan_result_warnings_version_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: version_sets
+    field: organization_id
+    related_collection: organizations
+    meta:
+      junction_field: null
+      many_collection: version_sets
+      many_field: organization_id
+      one_allowed_collections: null
+      one_collection: organizations
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: version_sets
+      column: organization_id
+      foreign_key_table: organizations
+      foreign_key_column: id
+      constraint_name: version_sets_organization_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: version_set_members
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: version_set_members
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: members
+      sort_field: null
+    schema:
+      table: version_set_members
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: version_set_members_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: version_set_members
+    field: plan_id
+    related_collection: plans
+    meta:
+      junction_field: null
+      many_collection: version_set_members
+      many_field: plan_id
+      one_allowed_collections: null
+      one_collection: plans
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: version_set_members
+      column: plan_id
+      foreign_key_table: plans
+      foreign_key_column: id
+      constraint_name: version_set_members_plan_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: version_set_members
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: version_set_members
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: version_set_members
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: version_set_members_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_results
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: plan_results
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: results
+      sort_field: null
+    schema:
+      table: plan_results
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: plan_results_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_lines
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: plan_result_lines
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_lines
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: plan_result_lines_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_pnl
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: plan_result_pnl
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_pnl
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: plan_result_pnl_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_positions
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: plan_result_positions
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_positions
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: plan_result_positions_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_warnings
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: plan_result_warnings
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_warnings
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: plan_result_warnings_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_lines
+    field: version_set_member_id
+    related_collection: version_set_members
+    meta:
+      junction_field: null
+      many_collection: plan_result_lines
+      many_field: version_set_member_id
+      one_allowed_collections: null
+      one_collection: version_set_members
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_lines
+      column: version_set_member_id
+      foreign_key_table: version_set_members
+      foreign_key_column: id
+      constraint_name: plan_result_lines_version_set_member_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_pnl
+    field: version_set_member_id
+    related_collection: version_set_members
+    meta:
+      junction_field: null
+      many_collection: plan_result_pnl
+      many_field: version_set_member_id
+      one_allowed_collections: null
+      one_collection: version_set_members
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_pnl
+      column: version_set_member_id
+      foreign_key_table: version_set_members
+      foreign_key_column: id
+      constraint_name: plan_result_pnl_version_set_member_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
