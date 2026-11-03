@@ -529,6 +529,7 @@ Step("they ask for a list that would reveal hidden emails or phone numbers", asy
   expectRefusal(() => expect(statuses).toEqual(Object.fromEntries(revealing.map((query) => [query, 403]))));
 });
 
+// They see themselves, who aren't in the program.
 Step("they see no one in the program", async () => {
   const session = await theirSession();
   for (const collection of [
@@ -537,8 +538,13 @@ Step("they see no one in the program", async () => {
     "clubspot_registrations",
     "clubspot_registration_entries",
     "clubspot_participants",
+    "registrations",
   ]) {
-    expect(await read(session, collection), collection).toEqual([]);
+    const rows = await read(session, collection);
+    expect(
+      rows.filter((row) => row["id"] !== scene.me?.id),
+      collection,
+    ).toEqual([]);
   }
 });
 
