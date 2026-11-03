@@ -153,7 +153,8 @@ export async function deployDirectus(
     image,
     port: 8055,
     // Autopilot bills the requests. A sync or a reset bursts toward the CPU limit when the node has room.
-    requests: { cpu: config.get("directusCpu") ?? "250m", memory: config.get("directusMemory") ?? "768Mi" },
+    // 500m is Autopilot's least for a pod it won't evict (`safeToEvict: false`, below), as in prod.
+    requests: { cpu: config.get("directusCpu") ?? "500m", memory: config.get("directusMemory") ?? "768Mi" },
     limits: { cpu: "1" },
     // Directus 12 answers /server/health only to a signed-in caller, so probes would never pass.
     readinessProbe: { httpGet: { path: "/server/ping", port: 8055 } },

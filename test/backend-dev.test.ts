@@ -1,5 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
+import { requestsAutopilotRaises } from "./autopilot.ts";
 
 const platform = {
   project: "test-project",
@@ -165,5 +166,9 @@ describe("Directus's extensions", () => {
     expect(container("directus").volumeMounts).toEqual(
       expect.arrayContaining([expect.objectContaining({ mountPath: "/directus/extensions/cents-as-dollars" })]),
     );
+  });
+
+  it("ask for at least what Autopilot gives a pod it won't evict", () => {
+    expect(requestsAutopilotRaises(resources)).toEqual([]);
   });
 });

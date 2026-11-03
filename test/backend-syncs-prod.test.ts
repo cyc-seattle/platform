@@ -1,5 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
+import { requestsAutopilotRaises } from "./autopilot.ts";
 
 // The syncs in backend's prod stack. backend-syncs-dev.test.ts covers dev.
 
@@ -165,5 +166,9 @@ describe("gsuite-sync on prod's cluster", () => {
 
   it("takes its Directus token", () => {
     expect(stringData("gsuite-sync")).toEqual({ DIRECTUS_TOKEN: "gsuite-token" });
+  });
+
+  it("ask for at least what Autopilot gives a pod it won't evict", () => {
+    expect(requestsAutopilotRaises(resources)).toEqual([]);
   });
 });

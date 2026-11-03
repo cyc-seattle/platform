@@ -3,6 +3,7 @@ import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
+import { requestsAutopilotRaises } from "./autopilot.ts";
 
 // Prod's Directus on the cluster keeps what it had on the VM (cyc-seattle/isthmia#231).
 // backend-dev.test.ts covers dev.
@@ -176,9 +177,13 @@ describe("prod's Directus on the cluster", () => {
   it("runs on regular capacity, bursting to 1 vCPU", () => {
     expect(container().nodeSelector).toEqual({});
     expect(container().containers[0].resources).toEqual({
-      requests: { cpu: "250m", memory: "768Mi" },
+      requests: { cpu: "500m", memory: "768Mi" },
       limits: { cpu: "1", memory: "768Mi" },
     });
+  });
+
+  it("asks for at least what Autopilot gives a pod it won't evict", () => {
+    expect(requestsAutopilotRaises(resources)).toEqual([]);
   });
 
   it("keeps Directus's info logs", () => {
