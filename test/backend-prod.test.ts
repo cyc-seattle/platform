@@ -91,7 +91,13 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 
 const extensions = {
   queryGuard: { policies: { Crew: { people: [{ fields: "*" as const, filtered: false }] } } },
-  groupPolicies: { grantable: ["CRM Writer"], roles: ["Community", "Crew", "Admin"] },
+  groupPolicies: {
+    grantable: ["CRM Writer"],
+    roles: ["Community", "Team", "Crew", "Admin"],
+    community: "Community",
+    team: "Team",
+    teamMonths: 12,
+  },
   savedVersions: {
     versioned: ["plan_offerings"],
     results: [],

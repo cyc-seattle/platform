@@ -1850,6 +1850,33 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: people
+    field: registrations
+    type: alias
+    meta:
+      collection: people
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{offering_id.program_id.name}}"
+      field: registrations
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: What this person is signed up for.
+      options:
+        template: "{{offering_id.program_id.name}}"
+      readonly: true
+      required: false
+      searchable: true
+      sort: 19
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema: null
   - collection: program_role_assignments
     field: id
     type: uuid
@@ -3373,7 +3400,7 @@ relations:
       one_collection: people
       one_collection_field: null
       one_deselect_action: nullify
-      one_field: null
+      one_field: registrations
       sort_field: null
     schema:
       table: registrations
