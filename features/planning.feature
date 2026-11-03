@@ -14,13 +14,20 @@ Feature: Plans
   The club's P&L, its profit and loss for the year, is worked out from the plans. It shows each
   offering, each program area, and the whole club. A draft's P&L is worked out whenever someone
   asks for it. A saved version keeps the P&L it had when it was saved, and that never changes
-  either. Shared costs are the costs that several offerings share, such as the office. They're
+  either. Each line of a saved P&L says in plain words what it is. Shared costs are the costs that several offerings share, such as the office. They're
   divided among the offerings by their direct costs, counted the way federal grant rules count
   them. Some charges are set as a
   share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with its
   rate and the kinds of product it applies to. Revenue from programs and other sales pays for the
   club's running costs. Fundraising pays for capital, such as a new coach boat, so capital is never
   charged to a program area.
+
+  An area's share of the shared costs depends on every other area's plan. So a saved version's P&L
+  is as the club's plan stood when it was saved: if other areas weren't active yet, its share is
+  too big. When the club's plan is ready, for example for the board to adopt, a planner saves a
+  club plan for the year. It holds the Operations Plan's active version and each program area's,
+  with the P&L they make together, and it never changes. A later club plan can follow if the
+  plans change.
 
   Each version of a plan can also hold the planner's rules: what they want that the plan's numbers
   don't capture, in their own words, for their AI to follow when it fills in the plan. For example:
@@ -31,7 +38,7 @@ Feature: Plans
 
   Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
   each salaried position is paid per year. A salaried coach can also be paid by the hour for
-  coaching, on top of their salary. Bonus rates set the bonus a director earns on the products
+  coaching, on top of their salary, at the offering's rate or at their own. Bonus rates set the bonus a director earns on the products
   they run: a share of those products' net, the money they make after their costs. A bonus for one
   program area's products is in that area's plan. A bonus on products from more than one area is in
   the Operations Plan. Anyone who can see plans sees all of these. To change something means to
@@ -250,6 +257,21 @@ Feature: Plans
       Then the offering pays $900 of coaches' wages
       And the offering pays none of the director's salary
 
+  @pending
+  Rule: A salaried coach paid by the hour can have their own hourly rate
+
+    Example: A head coach is paid their own rate, not the offering's
+      Given a director on a $20,000 salary, who's paid $40 an hour to coach
+      And an offering they coach for $30 an hour, with 10 practices of 3 hours
+      When a planner calculates the P&L
+      Then the offering pays $1,200 of coaches' wages
+
+    Example: The offering's other coaches are paid the offering's rate
+      Given a director on a $20,000 salary, who's paid $40 an hour to coach
+      And an offering they coach with one more coach, for $30 an hour, with 10 practices of 3 hours
+      When a planner calculates the P&L
+      Then the offering pays $2,100 of coaches' wages
+
   Rule: A salaried person's pay for the year adds up their salary, their hourly coaching, and their bonus
 
     Example: A director's pay for the year
@@ -277,6 +299,21 @@ Feature: Plans
       And one group practices from 9am to noon and the other from 1pm to 4pm on the same day
       When a planner calculates the P&L
       Then the planner isn't warned about the director
+
+  @pending
+  Rule: A planner sees how many hours of another coach a double-booked salaried coach needs
+
+    Example: Two groups overlap for two hours
+      Given a salaried director who coaches two groups that don't share coaches
+      And one group practices from 9am to noon and the other from 10am to 2pm on the same day
+      When a planner calculates the P&L
+      Then the director's groups need 2 hours of another coach
+
+    Example: Three groups at once need two more coaches
+      Given a salaried director who coaches three groups that don't share coaches
+      And all three groups practice from 4pm to 7pm on the same day
+      When a planner calculates the P&L
+      Then the director's groups need 6 hours of another coach
 
   Rule: Offerings that share coaches on a day share them only when their practices overlap
 
@@ -320,6 +357,82 @@ Feature: Plans
       And another program area's active plan, with the same direct costs as this area's draft
       When they save the draft as a version
       Then the saved version's P&L shows that the offering pays $500 of the office costs
+
+  @pending
+  Rule: Each line of a saved P&L says in plain words what it is
+
+    Example: An offering's share of the office is named for its pool and its line
+      Given a user with the Plan Writer policy
+      And $1,000 of office costs in a pool named "G&A"
+      And a draft of a program area's plan whose offering takes in $10,000
+      When they save the draft as a version
+      Then the saved version's P&L names the offering's share of the office "G&A share: Office"
+
+  @pending
+  Rule: A club plan's P&L counts every program area's active plan
+
+    Example: A version saved before the other area was active
+      Given a user with the Plan Writer policy
+      And $1,000 of office costs shared by every offering
+      And a program area's active plan, saved before any other area's was active
+      And another program area's active plan, with the same direct costs as the first
+      When they save the club plan for the year
+      Then the club plan shows that the first area's offering pays $500 of the office costs
+      But the first area's saved version still shows that its offering pays $1,000 of the office costs
+
+  @pending
+  Rule: A club plan keeps the P&L it had when it was saved
+
+    Example: A later Operations Plan doesn't change a saved club plan
+      Given a saved club plan whose offering pays $1,000 of office costs
+      When a planner saves an Operations Plan with $2,000 of office costs, and makes it active
+      Then the club plan still shows that the offering pays $1,000 of office costs
+
+  @pending
+  Rule: A club plan can be saved only when the Operations Plan and every program area have an active plan
+
+    Example: A program area's plan has no active version
+      Given a user with the Plan Writer policy
+      And an active Operations Plan, and a program area's plan with no active version
+      When they try to save the club plan for the year
+      Then they're told that the program area has no active plan
+      And no club plan is saved
+
+    Example: The Operations Plan has no active version
+      Given a user with the Plan Writer policy
+      And a program area's active plan, but no active Operations Plan
+      When they try to save the club plan for the year
+      Then they're told that the Operations Plan has no active plan
+      And no club plan is saved
+
+    Example: An archived plan isn't missed
+      Given a user with the Plan Writer policy
+      And an active Operations Plan, and an archived program area's plan with no active version
+      When they save the club plan for the year
+      Then the club plan is saved without the archived plan
+
+  @pending
+  Rule: A planner is warned when a program area's plan was worked out with another Operations Plan
+
+    Example: An area's active plan was saved with last month's Operations Plan
+      Given a program area's active plan, saved with an Operations Plan that's no longer active
+      When a planner calculates the P&L
+      Then the planner is warned that the area's plan was worked out with another Operations Plan
+
+  @pending
+  Rule: A club plan never changes, even for an admin
+
+    Example: A Plan Writer can't change a club plan
+      Given a user with the Plan Writer policy
+      And a saved club plan
+      Then they can't change the club plan or its plans
+      And they can't delete the club plan
+
+    Example: An admin can't change a club plan either
+      Given a user with the Admin role
+      And a saved club plan
+      Then they can't change the club plan or its plans
+      And they can't delete the club plan
 
   Rule: No one can write a version's P&L by hand, even an admin
 
@@ -377,6 +490,21 @@ Feature: Plans
       And a plan with a draft
       Then they can save the draft as a version
       And they can make a saved version active
+
+  @pending
+  Rule: A Plan Writer can save a club plan, and a Plan Reader can only look at one
+
+    Example: A Plan Writer saves a club plan
+      Given a user with the Plan Writer policy
+      And an active Operations Plan, and a program area's active plan
+      When they save the club plan for the year
+      Then the club plan holds both active versions
+
+    Example: A Plan Reader looks at a club plan
+      Given a user with the Plan Reader policy
+      And a saved club plan
+      Then they can see the club plan and its P&L
+      But they can't save a club plan
 
   Rule: Only admins and planners can see plans
 
