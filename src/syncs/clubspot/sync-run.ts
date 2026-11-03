@@ -7,7 +7,7 @@ import {
   type Participant,
   type Registration,
 } from "@cyc-seattle/clubspot-sdk";
-import { type PersonRow } from "../../model/crm/index.ts";
+import { type ContactRow, type PersonRow } from "../../model/crm/index.ts";
 import {
   type ClassRow,
   type ContactPointWithParticipant,
@@ -43,6 +43,7 @@ import { campBackoff, nextSyncState } from "./backoff.ts";
 import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts";
 import { readByIds } from "./directus-batch.ts";
 import { syncOfferings } from "./offerings.ts";
+import { planSharingBackfill, sharingTargets } from "./sharing.ts";
 import { findDuplicatePeople, MERGE_PERSON_FIELDS, type MergePerson } from "./merge.ts";
 import { runApprovedPersonMerges } from "./merge-executor.ts";
 import { buildParticipantMirrorFields, mergeParticipantMirrorFields, type ParticipantMirrorFields } from "./people.ts";
@@ -936,6 +937,22 @@ async function syncRegistrations(
         tables.registrations = tables.registrations.map((row) =>
           row.id === registrationCrmId ? { ...row, ...registrationPromotedPlan.patch } : row,
         );
+        const answer = registrationPromotedPlan.patch.share_contact;
+        const mirror = participant ? existingParticipantById.get(participant.id) : undefined;
+        const registeredAt = currentRegistrationById.get(registrationCrmId)?.registered_at;
+        // A new or changed answer is the latest, so it replaces the person's own. Only the newest
+        // registration for the sailor speaks for them.
+        if (answer != null && mirror && registeredAt && (isNewestByRegistrationId.get(registration.id) ?? false)) {
+          const guardianLinks = mirror.person_id
+            ? await directus.readItems<ContactRow>("contacts", {
+                filter: { subject_id: { _eq: mirror.person_id }, relationship_type: { _eq: "guardian" } },
+              })
+            : [];
+          for (const personId of sharingTargets(mirror, registeredAt, guardianLinks)) {
+            await directus.updateItem<PersonRow>("people", personId, { share_contact: answer });
+            fieldsWritten++;
+          }
+        }
       }
       logReplacedFields("clubspot_registrations", registrationCrmId, registrationPromotedPlan.replacedFields);
       fieldsWritten += registrationPromotedPlan.written;
@@ -1023,9 +1040,12 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
       directus.readItems<CustomFieldDefinitionRow>("clubspot_custom_field_definitions", { limit: -1 }),
       directus.readItems<CustomFieldResponseRow>("clubspot_custom_field_responses", { limit: -1 }),
       directus.readItems<RegistrationRow>("clubspot_registrations", { limit: -1 }),
-      directus.readItems<ParticipantRow>("clubspot_participants", { limit: -1, fields: ["id", "person_id"] }),
+      directus.readItems<ParticipantRow>("clubspot_participants", {
+        limit: -1,
+        fields: ["id", "person_id", "date_of_birth", "guardian_1_name", "guardian_2_name"],
+      }),
       directus.readItems<PromotedFieldRow>("clubspot_promoted_fields", { limit: -1 }),
-      directus.readItems<PersonRow>("people", { limit: -1, fields: ["id", "school"] }),
+      directus.readItems<PersonRow>("people", { limit: -1, fields: ["id", "school", "share_contact"] }),
     ]);
 
   const { peoplePatches, registrationPatches } = planPromotedFields(
@@ -1044,7 +1064,22 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
     await directus.updateItem<RegistrationRow>("clubspot_registrations", id, patch);
   }
 
-  return peoplePatches.length;
+  // After the registration patches, so a registration's answer filled just now counts too.
+  const answered = registrations.map((row) => {
+    const patched = registrationPatches.find((each) => each.id === row.id)?.patch.share_contact;
+    return patched === undefined ? row : { ...row, share_contact: patched };
+  });
+  const guardianLinks = await directus.readItems<ContactRow>("contacts", {
+    limit: -1,
+    filter: { relationship_type: { _eq: "guardian" } },
+    fields: ["subject_id", "contact_id", "contact_order", "relationship_type"],
+  });
+  const sharing = planSharingBackfill(answered, participants, guardianLinks, people);
+  for (const { id, patch } of sharing) {
+    await directus.updateItem<PersonRow>("people", id, patch);
+  }
+
+  return peoplePatches.length + sharing.length;
 }
 
 interface AuditDetectionResult {
