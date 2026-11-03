@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
 import type { CostLine } from "../../src/planning/index.ts";
+import { notBuilt } from "./steps/logins.ts";
 import { cents, PnlPlan, savedResults, share } from "./pnl.ts";
 import {
   admin,
@@ -772,5 +773,43 @@ Step("they can't add a P&L to a draft", async () => {
   });
   expect(status).toBe(403);
 });
+
+// The club plan, readable result lines, a coach's own rate, and double-booked hours, which step 12d
+// builds.
+for (const text of [
+  "a director on a {money} salary, who's paid {money} an hour to coach",
+  "an offering they coach with one more coach, for {money} an hour, with {count} practices of {count} hours",
+  "a salaried director who coaches three groups that don't share coaches",
+  "all three groups practice from {times} on the same day",
+  "the director's groups need {count} hours of another coach",
+  "{money} of office costs in a pool named {string}",
+  "the saved version's P&L names the offering's share of the office {string}",
+  "a program area's active plan, saved before any other area's was active",
+  "another program area's active plan, with the same direct costs as the first",
+  "they save the club plan for the year",
+  "the club plan shows that the first area's offering pays {money} of the office costs",
+  "the first area's saved version still shows that its offering pays {money} of the office costs",
+  "a saved club plan whose offering pays {money} of office costs",
+  "the club plan still shows that the offering pays {money} of office costs",
+  "an active Operations Plan, and a program area's plan with no active version",
+  "they try to save the club plan for the year",
+  "they're told that the program area has no active plan",
+  "no club plan is saved",
+  "a program area's active plan, but no active Operations Plan",
+  "they're told that the Operations Plan has no active plan",
+  "an active Operations Plan, and an archived program area's plan with no active version",
+  "the club plan is saved without the archived plan",
+  "a program area's active plan, saved with an Operations Plan that's no longer active",
+  "the planner is warned that the area's plan was worked out with another Operations Plan",
+  "a saved club plan",
+  "they can't change the club plan or its plans",
+  "they can't delete the club plan",
+  "an active Operations Plan, and a program area's active plan",
+  "the club plan holds both active versions",
+  "they can see the club plan and its P&L",
+  "they can't save a club plan",
+]) {
+  Step(text, () => notBuilt("12d"));
+}
 
 describeAccessFeature("planning.feature");
