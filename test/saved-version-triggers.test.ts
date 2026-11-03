@@ -548,6 +548,30 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await membersOf(organization)).toEqual([operations]);
     });
 
+    it("take no version from an archived plan, even one made active more recently", async () => {
+      const { organization, area, operations, saved } = await plans(db, 2308);
+      const archived = await w.insert("plans", {
+        kind: "program_area",
+        program_area_id: area,
+        organization_id: organization,
+        fiscal_year: 2308,
+      });
+      const version = await w.insert("plan_versions", { plan_id: archived, status: "draft" });
+      expect(
+        await w.update("plan_versions", version, {
+          status: "saved",
+          platform_version: "1.4.0",
+          operations_version_id: operations,
+        }),
+      ).toBeUndefined();
+      await w.insert("plan_activations", { version_id: operations });
+      await w.insert("plan_activations", { version_id: saved });
+      await w.insert("plan_activations", { version_id: version });
+      expect(await w.update("plans", archived, { archived: true })).toBeUndefined();
+      expect(await clubPlan(organization, 2308)).toBeUndefined();
+      expect(await membersOf(organization)).toEqual([operations, saved].sort());
+    });
+
     it("refuse one without a platform version", async () => {
       const { organization, operations, saved } = await plans(db, 2305);
       await w.insert("plan_activations", { version_id: operations });

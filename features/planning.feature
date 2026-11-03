@@ -361,7 +361,7 @@ Feature: Plans
     Example: An offering's share of the office is named for its pool and its line
       Given a user with the Plan Writer policy
       And $1,000 of office costs in a pool named "G&A"
-      And a draft of a program area's plan with one offering
+      And a draft of a program area's plan with one offering that has direct costs
       When they save the draft as a version
       Then the saved version's P&L names the offering's share of the office "G&A share: Office"
 

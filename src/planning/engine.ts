@@ -88,7 +88,7 @@ function checkAreas(ctx: Context): void {
     const area = ctx.areas.get(ctx.planOfVersion.get(version.id)?.program_area_id ?? "");
     ctx.warn(
       "other_operations_version",
-      `${area?.name ?? "A program area"}'s plan was saved with another Operations Plan version than the one it's calculated with`,
+      `${area?.name ?? "A program area"}'s plan was saved with a different Operations Plan version from the one it's calculated with`,
       version.id,
     );
   }

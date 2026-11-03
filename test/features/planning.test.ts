@@ -824,7 +824,7 @@ Step("{money} of office costs in a pool named {string}", async (_, money: string
     { name: "Office" },
   );
 });
-Step("a draft of a program area's plan with one offering", async () => {
+Step("a draft of a program area's plan with one offering that has direct costs", async () => {
   const area = await p.area();
   await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 100_000);
 });

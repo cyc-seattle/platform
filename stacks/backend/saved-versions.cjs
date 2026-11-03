@@ -388,6 +388,7 @@ $fn$`;
     SELECT DISTINCT ON (p.kind, p.program_area_id) p.kind, p.program_area_id, a.plan_id, a.version_id
       FROM ${ACTIVATIONS} a JOIN ${PLANS} p ON p.id = a.plan_id
       WHERE p.organization_id = ${set}.organization_id AND p.fiscal_year = ${set}.fiscal_year
+        AND p.archived IS NOT TRUE
       ORDER BY p.kind, p.program_area_id, a.sequence DESC`;
   const clubPlan = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_set() RETURNS trigger LANGUAGE plpgsql AS $fn$
