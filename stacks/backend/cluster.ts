@@ -159,9 +159,10 @@ export async function deployDirectus(
     // Directus 12 answers /server/health only to a signed-in caller, so probes would never pass.
     readinessProbe: { httpGet: { path: "/server/ping", port: 8055 } },
     env: [
-      // dev's db-f1-micro allows about 25 connections across Authentik, Directus, and Parse. Prod's
-      // db-g1-small allows about 50, and 10 is Directus's default, as on the VM.
-      ...directusEnv({ domain, adminEmail, dbHost: db.host, communityRoleId, oidcClientId, poolMax: isDev ? 4 : 10 }),
+      // 10 is Directus's default. Dev's instance allows 50 connections, and Authentik holds up to about
+      // 12, so even a rollout's two pods fit. A smaller pool queued the tests' requests past the load
+      // balancer's 30 s timeout.
+      ...directusEnv({ domain, adminEmail, dbHost: db.host, communityRoleId, oidcClientId, poolMax: 10 }),
       secretEnv("DB_PASSWORD", db.secret, "password"),
       // Dev's tests log every request, more than any other pod; its warnings and errors stay.
       ...(isDev ? [{ name: "LOG_LEVEL", value: "warn" }] : []),
