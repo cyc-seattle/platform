@@ -124,6 +124,35 @@ function teamMoves({ users, userOf, onTeam, community, team }) {
   return moves;
 }
 
+/**
+ * Moves each user to their new role, but only if they're still on one of the `family` roles: an
+ * admin may have changed their role since the hook read it. The row lock makes an admin's change
+ * that lands meanwhile wait, then win. Through the service, so Directus clears its permission caches.
+ * Returns how many users moved to each role.
+ */
+async function applyMoves({ database, usersService, moves, roleIds, family }) {
+  const moved = {};
+  for (const role of new Set(moves.map((move) => move.role))) {
+    const ids = moves.filter((move) => move.role === role).map((move) => move.user);
+    await database.transaction(async (trx) => {
+      const still = (
+        await trx("directus_users")
+          .select("id")
+          .whereIn("id", ids)
+          .whereIn(
+            "role",
+            family.map((name) => roleIds[name]),
+          )
+          .forUpdate()
+      ).map((row) => row.id);
+      if (still.length === 0) return;
+      await usersService(trx).updateMany(still, { role: roleIds[role] }, { emitEvents: false });
+      moved[role] = still.length;
+    });
+  }
+  return moved;
+}
+
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
 function invalid(reason) {
   const error = new Error(reason);
@@ -139,6 +168,8 @@ function register({ filter, action, schedule }, { services, database, getSchema,
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
   const config = require("./config.json");
   const bootstrapAdmin = String(env["ADMIN_EMAIL"] ?? "").toLowerCase();
+  // The warnings the last pass logged.
+  let warned = new Set();
 
   const grantableIds = async (db) =>
     (await db("directus_policies").select("id").whereIn("name", config.grantable)).map((row) => row.id);
@@ -239,9 +270,12 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       linkedUsers,
       guardianLinks,
     });
-    for (const { person, reason } of unlinked) {
-      logger.warn(`group-policies: person ${person} ${reason}, so an admin must link their login by hand`);
+    // Logged once per person and reason, not on every 15-minute run.
+    const warnings = new Set(unlinked.map(({ person, reason }) => `group-policies: person ${person} ${reason}`));
+    for (const warning of warnings) {
+      if (!warned.has(warning)) logger.warn(`${warning}, so an admin must link their login by hand`);
     }
+    warned = warnings;
     const schema = await getSchema();
     if (link.length > 0) {
       const items = new services.ItemsService("people", { schema, knex: database });
@@ -273,14 +307,19 @@ function register({ filter, action, schedule }, { services, database, getSchema,
     const roles = await database("directus_roles")
       .select("id", "name")
       .whereIn("name", [config.community, config.team]);
-    const roleId = new Map(roles.map((role) => [role.name, role.id]));
-    const usersService = new services.UsersService({ schema, knex: database });
+    const roleIds = Object.fromEntries(roles.map((role) => [role.name, role.id]));
     for (const role of [config.community, config.team]) {
-      const moved = moves.filter((move) => move.role === role).map((move) => move.user);
-      if (moved.length === 0) continue;
-      if (!roleId.has(role)) throw new Error(`group-policies: Directus has no ${role} role`);
-      await usersService.updateMany(moved, { role: roleId.get(role) }, { emitEvents: false });
-      logger.info(`group-policies: moved ${moved.length} users to ${role}`);
+      if (!(role in roleIds)) throw new Error(`group-policies: Directus has no ${role} role`);
+    }
+    const moved = await applyMoves({
+      database,
+      usersService: (knex) => new services.UsersService({ schema, knex }),
+      moves,
+      roleIds,
+      family: [config.community, config.team],
+    });
+    for (const [role, count] of Object.entries(moved)) {
+      logger.info(`group-policies: moved ${count} users to ${role}`);
     }
   }
 
@@ -329,3 +368,4 @@ function register({ filter, action, schedule }, { services, database, getSchema,
 module.exports = register;
 module.exports.plan = plan;
 module.exports.teamMoves = teamMoves;
+module.exports.applyMoves = applyMoves;

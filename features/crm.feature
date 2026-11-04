@@ -284,7 +284,7 @@ Feature: The CRM
       Then they see their child's medical information
       But not the teammate's
 
-  Rule: A family on a team can't uncover a hidden email or phone by searching, filtering, or sorting
+  Rule: A family on a team can't uncover a hidden email or phone by searching, filtering, sorting, or looking through a related record
 
     Background:
       Given a parent whose child is on a team
@@ -309,6 +309,11 @@ Feature: The CRM
     Example: Sorting or grouping people by email or phone isn't allowed
       When they ask for a list that would reveal hidden emails or phone numbers
       Then the CRM doesn't allow it
+
+    Example: Looking people up through their sign-ups and parent links doesn't show a hidden email or phone
+      When they look the teammate and their parent up through their sign-ups and parent links
+      Then they see the teammate and their parent by name
+      But they don't see either one's email, phone, or medical information
 
   Rule: Each adult decides for themselves whether to share their email and phone
 
@@ -336,7 +341,6 @@ Feature: The CRM
       When they say yes to sharing when they sign their child up again in Clubspot
       Then they share their email and phone
 
-    @pending
     Example: A parent who said yes in Clubspot stops sharing
       Given a parent whose child is on a team, who said yes to sharing in Clubspot
       When they stop sharing

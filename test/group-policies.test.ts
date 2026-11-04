@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plan, teamMoves } from "../stacks/backend/group-policies.cjs";
+import { applyMoves, plan, teamMoves } from "../stacks/backend/group-policies.cjs";
 
 const users = [
   { id: "u-crew", email: "crew@example.com" },
@@ -196,5 +196,63 @@ describe("the Team role", () => {
   it("never moves Crew or Admin", () => {
     const moves = teamMoves({ users, userOf, onTeam: new Set(), ...roles });
     expect(moves.map(({ user }) => user).filter((user) => user === "u-crew" || user === "u-admin")).toEqual([]);
+  });
+});
+
+describe("moving users between Community and Team", () => {
+  const roleIds = { Community: "r-community", Team: "r-team", Crew: "r-crew" };
+
+  /** `directus_users` in memory, behind the slice of knex `applyMoves` uses. */
+  function fakeDatabase(roles: Record<string, string>) {
+    const locked: string[][] = [];
+    const trx = (table: string) => {
+      expect(table).toBe("directus_users");
+      const wheres: [string, string[]][] = [];
+      let forUpdate = false;
+      const query = {
+        select: () => query,
+        whereIn: (column: string, values: string[]) => (wheres.push([column, values]), query),
+        forUpdate: () => ((forUpdate = true), query),
+        then: (resolve: (rows: { id: string }[]) => void) => {
+          const rows = Object.entries(roles)
+            .filter(([id, role]) => wheres.every(([column, values]) => values.includes(column === "id" ? id : role)))
+            .map(([id]) => ({ id }));
+          if (forUpdate) locked.push(rows.map(({ id }) => id));
+          resolve(rows);
+        },
+      };
+      return query;
+    };
+    const database = { transaction: async <T>(run: (t: unknown) => Promise<T>) => run(trx) };
+    const usersService = (t: unknown) => {
+      expect(t).toBe(trx);
+      return {
+        updateMany: async (ids: string[], { role }: { role: string }) => {
+          for (const id of ids) roles[id] = role;
+        },
+      };
+    };
+    return { database, usersService, locked };
+  }
+
+  it("leaves a user an admin moved off Community or Team after the hook read their role", async () => {
+    // The plan was made when u-promoted was Community; an admin has since made them Crew.
+    const roles = { "u-joins": "r-community", "u-promoted": "r-crew", "u-leaves": "r-team" };
+    const { database, usersService, locked } = fakeDatabase(roles);
+    const moved = await applyMoves({
+      database,
+      usersService,
+      moves: [
+        { user: "u-joins", role: "Team" },
+        { user: "u-promoted", role: "Team" },
+        { user: "u-leaves", role: "Community" },
+      ],
+      roleIds,
+      family: ["Community", "Team"],
+    });
+    expect(roles).toEqual({ "u-joins": "r-team", "u-promoted": "r-crew", "u-leaves": "r-community" });
+    expect(moved).toEqual({ Team: 1, Community: 1 });
+    // It locks the rows it moves, so an admin's change that lands meanwhile waits, then wins.
+    expect(locked).toEqual([["u-joins"], ["u-leaves"]]);
   });
 });

@@ -350,9 +350,12 @@ Step("they see {someone}'s name", (_, label: string) => {
 
 // Directus returns `email` and `phone` on every row once any policy grants them, and null on a row
 // whose own filter doesn't match, so a hidden value and a missing row read the same.
+// So each check first finds the row, which their name puts on the roster.
 function noContactDetails(...labels: string[]): void {
   for (const label of labels) {
     const row = rowOf(the(label));
+    expect(row, label).toBeDefined();
+    expect(row?.["first_name"], label).toBeTruthy();
     expect(row?.["email"], label).toBeFalsy();
     expect(row?.["phone"], label).toBeFalsy();
   }
@@ -514,6 +517,58 @@ Step("they don't find the teammate", () => {
     for (const id of ids(real)) {
       expect(scene.baseline).toContain(id);
     }
+  }
+});
+
+// Reads that reach a person through another collection's relation, or a `deep` filter, where
+// Directus applies the related collection's own rules.
+const throughRelations = [
+  "registrations?fields=id,person_id.id,person_id.first_name,person_id.email,person_id.phone,person_id.date_of_birth",
+  "contacts?fields=subject_id.id,subject_id.email,subject_id.phone,contact_id.id,contact_id.first_name,contact_id.email,contact_id.phone",
+  `people?fields=id,my_contacts.contact_id.id,my_contacts.contact_id.email,my_contacts.contact_id.phone&deep=${encodeURIComponent(
+    JSON.stringify({ my_contacts: { _filter: { contact_id: { email: { _nnull: true } } } } }),
+  )}`,
+  "medical_profiles?fields=person_id,allergies",
+];
+
+/** Every object anywhere in `value` with an `id`. */
+function withIds(value: unknown): Row[] {
+  if (Array.isArray(value)) return value.flatMap(withIds);
+  if (value === null || typeof value !== "object") return [];
+  const row = value as Row;
+  return [...("id" in row ? [row] : []), ...Object.values(row).flatMap(withIds)];
+}
+
+Step("they look the teammate and their parent up through their sign-ups and parent links", async () => {
+  const session = await theirSession();
+  scene.rows = [];
+  scene.probes = [];
+  for (const query of throughRelations) {
+    const { status, body } = await session.request("GET", `/items/${query}&limit=-1`);
+    // The query guard refuses a `deep` filter on a hidden field, which leaks nothing either.
+    expect([200, 403], query).toContain(status);
+    const data: Row[] = status === 200 ? body.data : [];
+    if (query.startsWith("medical_profiles")) scene.probes.push(data);
+    else scene.rows.push(...withIds(data));
+  }
+});
+Step("they see the teammate and their parent by name", () => {
+  for (const label of ["the teammate", "the teammate's parent"]) {
+    expect(
+      scene.rows.some((row) => row["id"] === the(label).id && row["first_name"]),
+      label,
+    ).toBe(true);
+  }
+});
+Step("they don't see either one's email, phone, or medical information", () => {
+  const hidden = new Set([the("the teammate").id, the("the teammate's parent").id]);
+  for (const row of scene.rows.filter((row) => hidden.has(row["id"] as string))) {
+    expect(row["email"] ?? null, JSON.stringify(row)).toBeNull();
+    expect(row["phone"] ?? null, JSON.stringify(row)).toBeNull();
+    expect(row["date_of_birth"] ?? null, JSON.stringify(row)).toBeNull();
+  }
+  for (const medical of scene.probes.flat()) {
+    expect(hidden.has(medical["person_id"] as string), JSON.stringify(medical)).toBe(false);
   }
 });
 

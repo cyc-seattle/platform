@@ -37,3 +37,24 @@ export interface TeamMovesInput {
 
 /** The users to move between the Community and Team roles, and the role each moves to. */
 export function teamMoves(input: TeamMovesInput): { user: string; role: string }[];
+
+/** The slice of knex `applyMoves` uses. */
+export interface MovesDatabase {
+  transaction<T>(run: (trx: unknown) => Promise<T>): Promise<T>;
+}
+
+export interface ApplyMovesInput {
+  database: MovesDatabase;
+  /** Directus's UsersService on a transaction. */
+  usersService: (trx: unknown) => {
+    updateMany(ids: string[], data: { role: string }, options: { emitEvents: boolean }): Promise<unknown>;
+  };
+  moves: { user: string; role: string }[];
+  /** Each role's id, by name. */
+  roleIds: Record<string, string>;
+  /** The roles the hook may move a user off. */
+  family: string[];
+}
+
+/** Moves the users still on a `family` role, under a row lock. Returns how many moved to each role. */
+export function applyMoves(input: ApplyMovesInput): Promise<Record<string, number>>;
