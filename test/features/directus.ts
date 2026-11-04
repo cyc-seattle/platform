@@ -74,14 +74,29 @@ async function send(
       headers: { "content-type": "application/json", ...(token && { authorization: `Bearer ${token}` }) },
       ...(body !== undefined && { body: JSON.stringify(body) }),
     });
-  let response = await attempt();
-  // Dev's small Directus sheds load with a 503 ("Under pressure"), before any handler runs.
-  for (let retry = 1; response.status === 503 && retry < 10; retry++) {
-    await new Promise((resolve) => setTimeout(resolve, 3_000));
-    response = await attempt();
+  // Dev's small Directus sheds load with a 503 ("Under pressure"), and the Gateway answers a slow or
+  // restarting Directus with a 502 or 504, or a text body such as "upstream request timeout".
+  for (let retry = 0; ; retry++) {
+    const response = await attempt();
+    const text = await response.text();
+    const body = parseJson(text);
+    const gatewayError = [502, 503, 504].includes(response.status) || (text !== "" && body === undefined);
+    if (!gatewayError) {
+      return { status: response.status, body };
+    }
+    if (retry === 3) {
+      throw new Error(`${method} ${path}: ${response.status} ${text}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5_000 * 2 ** retry));
   }
-  const text = await response.text();
-  return { status: response.status, body: text ? JSON.parse(text) : undefined };
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return text ? JSON.parse(text) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import "./steps/community.ts";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
-import { asAdmin, runCronJob } from "./cluster.ts";
+import { asAdmin } from "./cluster.ts";
 import { clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
 import { notBuilt } from "./steps/logins.ts";
 import { admin, adminCreate, created, email, itemPath, newRow, runId } from "./steps/rows.ts";
+import { runClubspotSync } from "./syncs.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
 
@@ -157,7 +158,7 @@ describeAccessFeature("crm.feature", {
         target_field: "share_contact",
         labels: [run.sharingQuestion],
       });
-      await runCronJob("clubspot-sync", run.runId);
+      await runClubspotSync(run.id("cmp"));
       const team = await adminCreate("programs", await newRow("programs", { name: `Team ${run.runId}`, team: true }));
       await asAdmin("PATCH", `/items/clubspot_classes/${run.id("cls")}`, { program_id: team.id });
       const sailor = await asAdmin(
@@ -173,9 +174,10 @@ describeAccessFeature("crm.feature", {
 
     When("they say yes to sharing when they sign their child up again in Clubspot", async () => {
       await seedSailor(run, { share: true, signUp: 2 });
-      // A camp synced minutes ago isn't due for an hour, so clearing its watermark stands in for the wait.
+      // Clearing the camp's watermark makes the run read every sign-up, so the fake's clock can't hide
+      // the new one.
       await asAdmin("PATCH", `/items/clubspot_camps/${run.id("cmp")}`, { synced_through: null });
-      await runCronJob("clubspot-sync", `${run.runId}again`);
+      await runClubspotSync(run.id("cmp"));
     });
 
     Then("they share their email and phone", async () => {

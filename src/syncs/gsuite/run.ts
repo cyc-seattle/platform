@@ -120,6 +120,55 @@ export function sharedMembershipSnapshot(directus: DirectusClient): () => Promis
   };
 }
 
+/** Adds a program's members to its group, and records who it added and who left. */
+async function syncProgramMembers(
+  programId: string,
+  directus: DirectusClient,
+  directory: DirectoryReader,
+  adder: MemberAdder,
+  snapshot: () => Promise<MembershipSnapshot>,
+  now: Date,
+): Promise<void> {
+  const { programs, groups, ...tables } = await snapshot();
+
+  const program = programs.find((row) => row.id === programId);
+  if (!program?.google_group_id) {
+    throw new TaskOrphaned(`Program ${programId} has no google_group_id; this task should not have been enqueued`);
+  }
+  const group = groups.find((row) => row.id === program.google_group_id);
+  if (!group || group.archived) {
+    throw new TaskOrphaned(
+      `Program ${programId} references google_groups id ${program.google_group_id}, which is missing or archived`,
+    );
+  }
+
+  const planned = planProgramMemberPeople(programId, tables, now);
+  const [liveMembers, membershipRows] = await Promise.all([
+    directory.listMembers(group.email),
+    directus.readItems<GoogleGroupMembershipRow>("google_group_memberships", {
+      filter: { group_id: { _eq: program.google_group_id } },
+      limit: -1,
+    }),
+  ]);
+  const plan = planMembershipWrites(
+    program.google_group_id,
+    planned,
+    new Set(liveMembers.map((member) => member.email)),
+    membershipRows,
+    now,
+  );
+
+  for (const email of plan.add) {
+    await adder.addMember(group.email, email, "MEMBER");
+  }
+  if (plan.create.length > 0) {
+    await directus.createItems<GoogleGroupMembershipRow>("google_group_memberships", plan.create);
+  }
+  for (const { id, patch } of plan.update) {
+    await directus.updateItem<GoogleGroupMembershipRow>("google_group_memberships", id, patch);
+  }
+}
+
 /**
  * One program group's membership task queued per due program, per `enqueueDueProgramGroups`. A
  * worker only ever sees the claimed row, so the handler recovers the program id
@@ -132,47 +181,7 @@ function programMembersTaskHandler(
   snapshot: () => Promise<MembershipSnapshot>,
   now: Date,
 ): SyncTaskHandler {
-  return async (task: SyncTaskRow) => {
-    const programId = targetFromKey(task);
-    const { programs, groups, ...tables } = await snapshot();
-
-    const program = programs.find((row) => row.id === programId);
-    if (!program?.google_group_id) {
-      throw new TaskOrphaned(`Program ${programId} has no google_group_id; this task should not have been enqueued`);
-    }
-    const group = groups.find((row) => row.id === program.google_group_id);
-    if (!group || group.archived) {
-      throw new TaskOrphaned(
-        `Program ${programId} references google_groups id ${program.google_group_id}, which is missing or archived`,
-      );
-    }
-
-    const planned = planProgramMemberPeople(programId, tables, now);
-    const [liveMembers, membershipRows] = await Promise.all([
-      directory.listMembers(group.email),
-      directus.readItems<GoogleGroupMembershipRow>("google_group_memberships", {
-        filter: { group_id: { _eq: program.google_group_id } },
-        limit: -1,
-      }),
-    ]);
-    const plan = planMembershipWrites(
-      program.google_group_id,
-      planned,
-      new Set(liveMembers.map((member) => member.email)),
-      membershipRows,
-      now,
-    );
-
-    for (const email of plan.add) {
-      await adder.addMember(group.email, email, "MEMBER");
-    }
-    if (plan.create.length > 0) {
-      await directus.createItems<GoogleGroupMembershipRow>("google_group_memberships", plan.create);
-    }
-    for (const { id, patch } of plan.update) {
-      await directus.updateItem<GoogleGroupMembershipRow>("google_group_memberships", id, patch);
-    }
-  };
+  return (task: SyncTaskRow) => syncProgramMembers(targetFromKey(task), directus, directory, adder, snapshot, now);
 }
 
 /**
@@ -361,6 +370,11 @@ export interface RunGroupSyncOptions {
   groupOwners: readonly string[];
   /** The Workspace customer id the discovery pass lists groups for - see `DirectoryClient.listGroups`. */
   customer: string;
+  /**
+   * Syncs only this program's group membership, bypassing discovery, the queue, and the other
+   * passes, as clubspot-sync's `campId` does for one camp. The features run it in their own process.
+   */
+  programId?: string;
 }
 
 export interface RunGroupSyncResult {
@@ -379,7 +393,21 @@ export interface RunGroupSyncResult {
  * per-task retry.
  */
 export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGroupSyncResult> {
-  const { now, directus, queue, adder, settingsApplier, directory, settingsReader, groupOwners, customer } = options;
+  const { now, directus, queue, adder, settingsApplier, directory, settingsReader, groupOwners, customer, programId } =
+    options;
+
+  if (programId !== undefined) {
+    try {
+      await syncProgramMembers(programId, directus, directory, adder, sharedMembershipSnapshot(directus), now);
+      return { status: "ok", tasksChecked: 1, tasksFailed: 0 };
+    } catch (error) {
+      winston.error("Group sync of one program failed", {
+        programId,
+        error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+      });
+      return { status: "failed", tasksChecked: 1, tasksFailed: 1 };
+    }
+  }
 
   let tasksFailed = 0;
   let checkedTaskIds: string[] = [];

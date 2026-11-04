@@ -114,8 +114,10 @@ and its prod deploy is skipped (cyc-seattle/platform#72). Each CronJob reads its
 from its own Secret, which `backend` writes from the token it generates.
 
 In prod they run hourly, clubspot-sync on the hour and gsuite-sync at half past. In dev the
-CronJobs are suspended, and only Jobs made from them run: the integration features' and
+CronJobs are suspended, and only Jobs made from them run: one scenario's in each sync's feature, and
 `mise run reset`'s. So a scheduled run never collides with a test's, and a test never waits for one
-(cyc-seattle/isthmia#271). `kubectl create job --from=cronjob/<name>` runs one by hand.
+(cyc-seattle/isthmia#271). The features' other scenarios run the sync in the test's own process,
+with the CronJob's config, on just their own camp or program. `kubectl create job --from=cronjob/<name>`
+runs one by hand.
 
 Their config keeps the `clubspot-sync:` and `gsuite-sync:` keys it had in isthmia's projects.

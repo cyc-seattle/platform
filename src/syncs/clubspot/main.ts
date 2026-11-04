@@ -80,7 +80,8 @@ async function fetchCampData(camp: Camp, watermark: Date, until: Date): Promise<
   return { camp: hydratedCamp, classes, sessions, entryCaps, registrations };
 }
 
-const gateway: SyncGateway = {
+/** Clubspot as the sync reads it, through the Parse SDK `clubspot.initialize` points at. */
+export const gateway: SyncGateway = {
   discoverCamps,
   getCamp: (campId) => new LoggedQuery(Camp).get(campId),
   fetchCampData: fetchCampDataGateway(fetchCampData),

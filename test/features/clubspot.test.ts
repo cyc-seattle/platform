@@ -3,9 +3,11 @@ import { asAdmin, newRunId, runCronJob } from "./cluster.ts";
 import { clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
 import { canSet, describeAccessFeature, Step } from "./steps/index.ts";
 import { admin, adminCreate, itemPath, key, newRow, type Row } from "./steps/rows.ts";
+import { runClubspotSync } from "./syncs.ts";
 
-// The sync scenarios seed dev's CRM and its Clubspot fake, run the clubspot-sync CronJob once as a
-// Job, and read the result through Directus's REST API.
+// The sync scenarios seed dev's CRM and its Clubspot fake, run clubspot-sync on their own camp, and
+// read the result through Directus's REST API. The merge scenario, which has no camp, runs the
+// CronJob as a Job instead, which proves the deployed image and its config.
 
 Step("they can set which program a class belongs to", () => canSet("clubspot_classes", "program_id"));
 Step("they can match a registration's sailor to a person in the CRM", () =>
@@ -21,15 +23,13 @@ Step("it can move people's program roles and which Google groups they're in to a
 describeAccessFeature("clubspot.feature", {
   "A sailor's registration adds the sailor and their parent to the CRM": ({ Given, And, When, Then }) => {
     const run = clubspotRun();
-    const { runId, id, participant } = run;
+    const { id, participant } = run;
 
     Given("a class running today in Clubspot", () => seedClass(run));
 
     And("a sailor registered for it, with a parent", () => seedSailor(run));
 
-    When("the Clubspot sync runs", async () => {
-      await runCronJob("clubspot-sync", runId);
-    });
+    When("the Clubspot sync runs", () => runClubspotSync(id("cmp")));
 
     let person: any;
 
@@ -71,18 +71,14 @@ describeAccessFeature("clubspot.feature", {
       await seedSailor(run);
     });
 
-    And("the Clubspot sync has copied them into the CRM", async () => {
-      await runCronJob("clubspot-sync", runId);
-    });
+    And("the Clubspot sync has copied them into the CRM", () => runClubspotSync(id("cmp")));
 
     When("staff set which program the class belongs to", async () => {
       programId = (await adminCreate("programs", await newRow("programs", { name: `Program ${runId}` }))).id;
       await asAdmin("PATCH", `/items/clubspot_classes/${id("cls")}`, { program_id: programId });
     });
 
-    And("the Clubspot sync runs again", async () => {
-      await runCronJob("clubspot-sync", `${runId}again`);
-    });
+    And("the Clubspot sync runs again", () => runClubspotSync(id("cmp")));
 
     Then("the program has an offering for the class's session, with the session's dates", async () => {
       const offerings: Row[] = await asAdmin(
