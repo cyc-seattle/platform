@@ -15,13 +15,15 @@ export interface WebServiceArgs extends WorkloadArgs {
   paths?: string[];
   /** The port the container serves HTTP on. The Service exposes it as port 80, named `http`. */
   port: number;
-  /** An HTTP GET probe. The load balancer's health check uses the same path. */
+  /** An HTTP GET probe. The load balancer's health check uses the same path, unless `healthCheck.path` is set. */
   readinessProbe: Probe & { httpGet: pulumi.Input<k8s.types.input.core.v1.HTTPGetAction> };
   /**
-   * The load balancer's check timing. GKE's default is every 5s from each of several probers, which
-   * an app whose readiness check reaches its database may not afford.
+   * The load balancer's check. GKE's default timing is every 5s from each of several probers, which
+   * an app whose readiness check reaches its database may not afford. `path` lets the load balancer
+   * check a cheaper path than the readiness probe. The kubelet still runs the readiness probe, and a
+   * pod that fails it leaves the load balancer's endpoints either way.
    */
-  healthCheck?: { checkIntervalSec?: number; timeoutSec?: number };
+  healthCheck?: { path?: string; checkIntervalSec?: number; timeoutSec?: number };
 }
 
 /** Returns `hostname` if it is the environment's domain or a name under it, and throws otherwise. */
@@ -79,6 +81,7 @@ export class WebService extends pulumi.ComponentResource {
     const child = { parent: this, provider: args.provider };
 
     const paths = args.paths && checkPaths(name, args.paths);
+    const { path: healthCheckPath, ...healthCheckTiming } = args.healthCheck ?? {};
     const { serviceAccount, service } = deployment(this, name, args, args.port);
     const backendRefs = [{ name: service!.metadata.name, port: 80 }];
 
@@ -110,12 +113,13 @@ export class WebService extends pulumi.ComponentResource {
         metadata,
         spec: {
           default: {
-            ...args.healthCheck,
+            ...healthCheckTiming,
             config: {
               type: "HTTP",
               httpHealthCheck: {
                 portSpecification: "USE_SERVING_PORT",
-                requestPath: pulumi.output(args.readinessProbe.httpGet).apply((get) => get?.path ?? "/"),
+                requestPath:
+                  healthCheckPath ?? pulumi.output(args.readinessProbe.httpGet).apply((get) => get?.path ?? "/"),
               },
             },
           },

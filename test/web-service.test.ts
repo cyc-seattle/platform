@@ -55,6 +55,7 @@ beforeAll(async () => {
   new WebService("dev-web", args("dev"));
   new WebService("prod-web", args("prod"));
   new WebService("slow-web", { ...args("dev"), healthCheck: { checkIntervalSec: 30, timeoutSec: 10 } });
+  new WebService("cheap-check-web", { ...args("dev"), healthCheck: { path: "/static/icon.png", timeoutSec: 10 } });
   await new Promise((r) => setImmediate(r));
 });
 
@@ -184,6 +185,17 @@ describe("WebService routing", () => {
       checkIntervalSec: 30,
       timeoutSec: 10,
     });
+  });
+
+  it("health-checks its own path when given, and keeps the readiness probe's", () => {
+    expect(find("kubernetes:networking.gke.io/v1:HealthCheckPolicy", "cheap-check-web").spec.default).toEqual({
+      timeoutSec: 10,
+      config: {
+        type: "HTTP",
+        httpHealthCheck: { portSpecification: "USE_SERVING_PORT", requestPath: "/static/icon.png" },
+      },
+    });
+    expect(podSpec("cheap-check-web").containers[0].readinessProbe.httpGet.path).toBe("/ready");
   });
 });
 
