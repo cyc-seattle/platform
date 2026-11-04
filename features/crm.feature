@@ -334,6 +334,19 @@ Feature: The CRM
       Given a sailor with no date of birth on file, signed up for a program
       Then they can't change whether they share
 
+  Rule: An adult can find their own record by their login, but no one else's
+
+    Example: A parent finds their own record, to see whether they share
+      Given a parent whose child is on a team
+      When they look themselves up by their login
+      Then they see only themselves, with whether they share
+
+    Example: A parent can't look someone else up by their login
+      Given a parent whose child is on a team
+      And a teammate who hasn't answered the sharing question, and their parent, who has signed in
+      When they look the teammate's parent up by their login
+      Then the CRM doesn't allow it
+
   Rule: The latest answer to the sharing question counts, from Clubspot or from the family
 
     Example: A parent who stopped sharing says yes on a later sign-up

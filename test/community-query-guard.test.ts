@@ -207,4 +207,17 @@ describe("the query guard for Team", () => {
   it("passes a filter on a teammate's name", () => {
     expect(check("people", { filter: { last_name: { _eq: "Test" } } }, team)).toBeUndefined();
   });
+
+  it("passes a filter for the viewer's own login, and no other filter on logins", () => {
+    const login = (filter: Record<string, unknown>, user?: string) =>
+      violation(team, schema.relations, "people", { filter }, user);
+    expect(login({ directus_user_id: { _eq: "u-me" } }, "u-me")).toBeUndefined();
+    expect(login({ directus_user_id: { _eq: "u-other" } }, "u-me")).toBe("people.directus_user_id");
+    expect(login({ directus_user_id: { _eq: "$CURRENT_USER" } })).toBe("people.directus_user_id");
+    expect(login({ directus_user_id: { _neq: "u-me" } }, "u-me")).toBe("people.directus_user_id");
+    expect(login({ directus_user_id: { _eq: "u-me", _nnull: true } }, "u-me")).toBe("people.directus_user_id");
+    expect(login({ my_contacts: { contact_id: { directus_user_id: { _eq: "u-me" } } } }, "u-me")).toBe(
+      "the relation people.my_contacts",
+    );
+  });
 });
