@@ -9,6 +9,7 @@ import {
   deleteUsers,
   forget,
   hasPolicies,
+  hasRole,
   newGroup,
   newPerson,
   policiesOf,
@@ -107,6 +108,7 @@ function current(): They {
 
 const session = () => current().session();
 export const theirSession = session;
+export const them = current;
 
 const resets: (() => void)[] = [];
 
@@ -361,11 +363,14 @@ Step("they can open the Data Studio", async () => {
   expect(globals.app_access).toBe(true);
 });
 
-for (const text of ["they have the {role} role", "they still have the {role} role"]) {
-  Step(text, async (_, role: string) => {
-    expect(await roleOf(await current().userId())).toBe(role);
-  });
-}
+// The group-policies hook moves a family between Community and Team after the change that set it off.
+Step("they have the {role} role", async (_, role: string) => {
+  await hasRole(await current().userId(), role);
+});
+Step("they still have the {role} role", async (_, role: string) => {
+  await new Promise((resolve) => setTimeout(resolve, 5_000));
+  expect(await roleOf(await current().userId())).toBe(role);
+});
 
 let signedIn: { id: string; directus_user_id: { role: { name: string } | null } | null }[] = [];
 Step("the people in the CRM who have signed in", () => runRows());

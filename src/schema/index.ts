@@ -466,6 +466,8 @@ export interface People {
   school: string | null;
   /** Null means never answered - treated as not shared. */
   share_contact: boolean | null;
+  /** What this person is signed up for. */
+  registrations: (string | Registrations)[];
   /** The person's own Directus login, if they have one. Usually empty. */
   directus_user_id: string | null;
 }

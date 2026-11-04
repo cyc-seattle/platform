@@ -185,6 +185,40 @@ async function unlessVanished(write: () => Promise<unknown>): Promise<boolean> {
   }
 }
 
+/** The unique field and value a create collided on, when another writer made the same row first. */
+function duplicateOf(error: unknown): { field: string; value: string } | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const body = error.message.match(/-> \d+: (\{.*\})$/s)?.[1];
+  if (body === undefined) return undefined;
+  try {
+    const { errors } = JSON.parse(body) as { errors?: { extensions?: Record<string, unknown> }[] };
+    const found = errors?.find((e) => e.extensions?.["code"] === "RECORD_NOT_UNIQUE")?.extensions;
+    return found === undefined ? undefined : { field: String(found["field"]), value: String(found["value"]) };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Creates `row`, or, if another writer created it since this pass read, such as an overlapping run,
+ * updates theirs to match.
+ */
+async function createOrUpdate<Row extends { id: string }>(
+  directus: DirectusClient,
+  collection: string,
+  row: Row,
+): Promise<void> {
+  try {
+    await directus.createItems<Row>(collection, [row]);
+  } catch (error) {
+    const duplicate = duplicateOf(error);
+    if (duplicate === undefined) throw error;
+    const fields: Partial<Row> = { ...row };
+    delete fields.id;
+    await directus.updateItemsByQuery<Row>(collection, { [duplicate.field]: { _eq: duplicate.value } }, fields);
+  }
+}
+
 export async function apply<Row extends { id: string }>(
   directus: DirectusClient,
   collection: string,
@@ -196,11 +230,13 @@ export async function apply<Row extends { id: string }>(
   let skipped = 0;
   const count = (ok: boolean) => (ok ? written++ : skipped++);
   if (plan.toCreate.length > 0) {
-    // One vanished link fails the whole batch, so a failed batch is retried a row at a time.
-    if (await unlessVanished(() => directus.createItems<Row>(collection, plan.toCreate))) {
+    // One vanished link or duplicate fails the whole batch, so a failed batch is retried a row at a time.
+    try {
+      await directus.createItems<Row>(collection, plan.toCreate);
       written += plan.toCreate.length;
-    } else {
-      for (const row of plan.toCreate) count(await unlessVanished(() => directus.createItems<Row>(collection, [row])));
+    } catch (error) {
+      if (!isVanishedLink(error) && duplicateOf(error) === undefined) throw error;
+      for (const row of plan.toCreate) count(await unlessVanished(() => createOrUpdate(directus, collection, row)));
     }
   }
   for (const { id, patch } of plan.toUpdate) {

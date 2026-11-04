@@ -28,7 +28,6 @@ Feature: Roles and groups
       When an admin looks up their roles
       Then each of them has the Community, Team, Crew, or Admin role
 
-  @pending
   Rule: A family on a team has the Team role, and goes back to Community once they're no longer on one
 
     Example: A parent whose child signs up for a team becomes Team
@@ -51,7 +50,6 @@ Feature: Roles and groups
       When their child's last time on a team ended 13 months ago
       Then they have the Community role
 
-  @pending
   Rule: Joining or leaving a team never changes a Crew member's or an admin's role
 
     Scenario Outline: A Crew member or admin whose child signs up for a team keeps their role
@@ -85,7 +83,6 @@ Feature: Roles and groups
       Given a user with the Crew role and the CRM Writer policy
       Then they can't change anyone's role, even their own
 
-    @pending
     Example: A Team member can't change anyone's role
       Given a user with the Team role
       Then they can't change anyone's role, even their own
@@ -150,7 +147,6 @@ Feature: Roles and groups
       Given a user with the Crew role and the CRM Writer policy
       Then they can't change groups
 
-    @pending
     Example: A Team member can't change groups
       Given a user with the Team role
       Then they can't change groups

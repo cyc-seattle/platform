@@ -261,12 +261,32 @@ describe("a person's login", () => {
 });
 
 describe("Crew", () => {
-  it("reads every roster and the catalog's money, and changes nothing", () => {
+  it("reads every roster, everyone's details and medical information, and the catalog's money, and changes nothing", () => {
     expect(crewRules.every((rule) => rule.action === "read" && rule.permissions === undefined)).toBe(true);
     expect(crewRules.map((rule) => rule.collection)).toEqual(
-      expect.arrayContaining(["clubspot_registration_entries", "people", "products", "program_areas", "accounts"]),
+      expect.arrayContaining([
+        "clubspot_registration_entries",
+        "people",
+        "contacts",
+        "contact_points",
+        "medical_profiles",
+        "offerings",
+        "registrations",
+        "products",
+        "program_areas",
+        "accounts",
+      ]),
     );
-    expect(crewRules.map((rule) => rule.collection)).not.toContain("medical_profiles");
+  });
+
+  it("doesn't read Clubspot's sign-up answers or payments", () => {
+    for (const collection of [
+      "clubspot_custom_field_responses",
+      "clubspot_registration_billing",
+      "clubspot_participants",
+    ]) {
+      expect(crewRules.map((rule) => rule.collection)).not.toContain(collection);
+    }
   });
 });
 

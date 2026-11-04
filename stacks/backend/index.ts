@@ -18,7 +18,7 @@ import * as random from "@pulumi/random";
 import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/config.ts";
-import { communityPolicies } from "./community-rules.ts";
+import { communityPolicies, familyPolicies, teamPolicies } from "./community-rules.ts";
 import {
   crewRules,
   groupPolicies,
@@ -91,7 +91,13 @@ const app = deployDirectus(
   directusAdminEmail,
   licensed,
   {
-    queryGuard: queryGuardConfig([...communityPolicies, { name: "Crew", rules: crewRules }, ...grantable]),
+    queryGuard: queryGuardConfig([
+      ...communityPolicies,
+      ...familyPolicies,
+      ...teamPolicies,
+      { name: "Crew", rules: crewRules },
+      ...grantable,
+    ]),
     groupPolicies: groupPoliciesConfig(grantable),
     savedVersions,
     engine,
@@ -105,6 +111,7 @@ function roleIds(roles: CrmIdentities) {
     clubspotSyncPolicyId: roles.clubspotSyncRole.policyId,
     gsuiteSyncPolicyId: roles.gsuiteSyncRole.policyId,
     communityRoleId: roles.communityRole.roleId,
+    teamRoleId: roles.teamRole.roleId,
     crewRoleId: roles.crewRole.roleId,
   };
 }
@@ -147,7 +154,8 @@ function devIdentities(directus: typeof app) {
 }
 
 const identities = prod ? prodIdentities(prod) : devIdentities(app);
-const { auth, crewPolicyId, clubspotSyncPolicyId, gsuiteSyncPolicyId, communityRoleId, crewRoleId } = identities;
+const { auth, crewPolicyId, clubspotSyncPolicyId, gsuiteSyncPolicyId, communityRoleId, teamRoleId, crewRoleId } =
+  identities;
 
 // The syncs' CronJobs take their machine users' tokens straight into their Secrets.
 const { clubspotSyncToken, gsuiteSyncToken } = identities;
@@ -417,10 +425,19 @@ for (const collection of ["sync_tasks", "audit_findings", "google_groups", "goog
   }
 }
 
-// The Community role's policies (./community-rules.ts), which Crew has too, so a Crew member who is
-// a parent sees what any parent sees.
+// The Community role's policies (./community-rules.ts), which Team and Crew have too, so a Crew
+// member who is a parent sees what any parent sees. Step 19 of cyc-seattle/workplace#6 deletes the
+// old ones, which match by email.
 for (const policy of communityPolicies) {
-  declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, crewRoleId]);
+  declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, crewRoleId, teamRoleId]);
+}
+for (const policy of familyPolicies) {
+  declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, teamRoleId, crewRoleId]);
+}
+
+// Team's own policies. Crew reads every row these do.
+for (const policy of teamPolicies) {
+  declarePolicy(`crm-team-${policy.key}`, policy, [teamRoleId]);
 }
 
 // The policies a group can give, attached to no role. The group-policies hook gives them to users.
