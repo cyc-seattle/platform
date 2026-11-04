@@ -306,6 +306,40 @@ describe("apply", () => {
     expect(written).toBe(3);
   });
 
+  it("updates a registration another writer created since the read, and creates the rest", async () => {
+    const duplicate = (entry: string) =>
+      new Error(
+        `POST /items/registrations -> 400: {"errors":[{"message":"Value \\"${entry}\\" has to be unique.","extensions":{"collection":"registrations","field":"clubspot_entry_id","value":"${entry}","code":"RECORD_NOT_UNIQUE"}}]}`,
+      );
+    const created: string[] = [];
+    const updatedByQuery: unknown[] = [];
+    const directus = {
+      createItems: async (_: string, rows: CrmRegistrationRow[]) => {
+        if (rows.some((row) => row.clubspot_entry_id === "entry-2")) throw duplicate("entry-2");
+        created.push(...rows.map((row) => row.id));
+      },
+      updateItemsByQuery: async (_: string, filter: unknown, patch: unknown) => {
+        updatedByQuery.push({ filter, patch });
+        return [patch];
+      },
+    } as unknown as DirectusClient;
+
+    const written = await apply(directus, "registrations", {
+      toCreate: [registration("1"), registration("2"), registration("3")],
+      toUpdate: [],
+      toDelete: [],
+    });
+
+    expect(created).toEqual(["1", "3"]);
+    expect(updatedByQuery).toEqual([
+      {
+        filter: { clubspot_entry_id: { _eq: "entry-2" } },
+        patch: { person_id: "person-1", offering_id: "offering-1", status: "confirmed", clubspot_entry_id: "entry-2" },
+      },
+    ]);
+    expect(written).toBe(3);
+  });
+
   it("still fails on any other error", async () => {
     const directus = {
       createItems: async () => {
