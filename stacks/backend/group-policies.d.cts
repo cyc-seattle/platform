@@ -58,3 +58,6 @@ export interface ApplyMovesInput {
 
 /** Moves the users still on a `family` role, under a row lock. Returns how many moved to each role. */
 export function applyMoves(input: ApplyMovesInput): Promise<Record<string, number>>;
+
+/** Runs `pass` now, or once more after the one running, however many times it's asked meanwhile. */
+export function coalesce(pass: () => Promise<unknown>): () => Promise<unknown>;

@@ -20,12 +20,14 @@ async function aFamilyOfTheirOwn(family: (personId: string) => Promise<void>): P
   }
   const personId = await newPerson({ date_of_birth: "1980-01-01" });
   await family(personId);
+  // One batch, in one transaction: unlinked first, the hook would link the old person back by email.
   const session = await admin();
   const filter = encodeURIComponent(JSON.stringify({ directus_user_id: { _eq: userId } }));
-  for (const { id } of await session.ok("GET", `/items/people?filter=${filter}&fields=id`)) {
-    await session.ok("PATCH", `/items/people/${id}`, { directus_user_id: null });
-  }
-  await session.ok("PATCH", `/items/people/${personId}`, { directus_user_id: userId });
+  const old = await session.ok("GET", `/items/people?filter=${filter}&fields=id`);
+  await session.ok("PATCH", "/items/people", [
+    ...old.map(({ id }: { id: string }) => ({ id, directus_user_id: null })),
+    { id: personId, directus_user_id: userId },
+  ]);
 }
 
 const theirChildOnATeam = (season: Season) =>

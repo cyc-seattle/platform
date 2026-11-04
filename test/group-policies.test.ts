@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyMoves, plan, teamMoves } from "../stacks/backend/group-policies.cjs";
+import { applyMoves, coalesce, plan, teamMoves } from "../stacks/backend/group-policies.cjs";
 
 const users = [
   { id: "u-crew", email: "crew@example.com" },
@@ -254,5 +254,26 @@ describe("moving users between Community and Team", () => {
     expect(moved).toEqual({ Team: 1, Community: 1 });
     // It locks the rows it moves, so an admin's change that lands meanwhile waits, then wins.
     expect(locked).toEqual([["u-joins"], ["u-leaves"]]);
+  });
+});
+
+describe("the hook's passes", () => {
+  it("run once more after the running one, however often they're asked meanwhile", async () => {
+    let passes = 0;
+    let finish: () => void = () => {};
+    const run = coalesce(async () => {
+      passes++;
+      await new Promise<void>((resolve) => (finish = resolve));
+    });
+    void run();
+    for (let i = 0; i < 10; i++) void run();
+    await Promise.resolve();
+    expect(passes).toBe(1);
+    finish();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(passes).toBe(2);
+    finish();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(passes).toBe(2);
   });
 });

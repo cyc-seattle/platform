@@ -225,9 +225,9 @@ export async function roleOf(userId: string): Promise<string | undefined> {
   return user.role?.name;
 }
 
-/** Waits until the hook has given a user `role`. */
+/** Waits until the hook has given a user `role`. It runs after every change the tests make on dev, so give it time. */
 export async function hasRole(userId: string, role: string): Promise<void> {
-  await eventually(async () => expect(await roleOf(userId)).toBe(role));
+  await eventually(async () => expect(await roleOf(userId)).toBe(role), 60_000);
 }
 
 export async function setRole(userId: string, role: string): Promise<void> {

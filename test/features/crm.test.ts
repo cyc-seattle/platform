@@ -136,10 +136,12 @@ async function aParentWhoSaidYes(run: ClubspotRun): Promise<string> {
   ).contact_id;
 }
 
-/** Signs a person in, linked to their login as the group-policies hook links them. */
+/**
+ * Signs a person in, linked to their login as the group-policies hook links them. The rules match by
+ * login, so the login's email needn't be the one Clubspot gave them, which Directus may not accept.
+ */
 async function signedIn(personId: string): Promise<User> {
-  const { email: signIn } = await asAdmin("GET", `/items/people/${personId}?fields=email`);
-  const user = await createUser(signIn, "Community");
+  const user = await createUser(email("parent"), "Community");
   await asAdmin("PATCH", `/items/people/${personId}`, { directus_user_id: user.userId });
   return user;
 }

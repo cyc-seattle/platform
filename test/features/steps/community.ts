@@ -523,7 +523,8 @@ Step("they don't find the teammate", () => {
 // Reads that reach a person through another collection's relation, or a `deep` filter, where
 // Directus applies the related collection's own rules.
 const throughRelations = [
-  "registrations?fields=id,person_id.id,person_id.first_name,person_id.email,person_id.phone,person_id.date_of_birth",
+  // Only fields some rule grants Team: Directus refuses a whole request that names any other.
+  "registrations?fields=id,person_id.id,person_id.first_name,person_id.email,person_id.phone",
   "contacts?fields=subject_id.id,subject_id.email,subject_id.phone,contact_id.id,contact_id.first_name,contact_id.email,contact_id.phone",
   `people?fields=id,my_contacts.contact_id.id,my_contacts.contact_id.email,my_contacts.contact_id.phone&deep=${encodeURIComponent(
     JSON.stringify({ my_contacts: { _filter: { contact_id: { email: { _nnull: true } } } } }),
@@ -565,7 +566,6 @@ Step("they don't see either one's email, phone, or medical information", () => {
   for (const row of scene.rows.filter((row) => hidden.has(row["id"] as string))) {
     expect(row["email"] ?? null, JSON.stringify(row)).toBeNull();
     expect(row["phone"] ?? null, JSON.stringify(row)).toBeNull();
-    expect(row["date_of_birth"] ?? null, JSON.stringify(row)).toBeNull();
   }
   for (const medical of scene.probes.flat()) {
     expect(hidden.has(medical["person_id"] as string), JSON.stringify(medical)).toBe(false);

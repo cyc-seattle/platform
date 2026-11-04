@@ -153,6 +153,32 @@ async function applyMoves({ database, usersService, moves, roleIds, family }) {
   return moved;
 }
 
+/**
+ * Runs `pass` now, or once more after the one running, however many times it's asked meanwhile. A
+ * steady stream of changes, such as a sync's, would otherwise queue passes faster than they finish.
+ */
+function coalesce(pass) {
+  let running;
+  let again = false;
+  function run() {
+    if (running) {
+      again = true;
+      return running;
+    }
+    running = Promise.resolve()
+      .then(pass)
+      .finally(() => {
+        running = undefined;
+        if (again) {
+          again = false;
+          run();
+        }
+      });
+    return running;
+  }
+  return run;
+}
+
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
 function invalid(reason) {
   const error = new Error(reason);
@@ -323,13 +349,13 @@ function register({ filter, action, schedule }, { services, database, getSchema,
     }
   }
 
+  const run = coalesce(() => reconcile().catch((error) => logger.error(error, "group-policies: reconcile failed")));
   let timer;
-  let running = Promise.resolve();
   function request() {
     if (timer) return;
     timer = setTimeout(() => {
       timer = undefined;
-      running = running.then(reconcile).catch((error) => logger.error(error, "group-policies: reconcile failed"));
+      run();
     }, DEBOUNCE_MS);
   }
 
@@ -369,3 +395,4 @@ module.exports = register;
 module.exports.plan = plan;
 module.exports.teamMoves = teamMoves;
 module.exports.applyMoves = applyMoves;
+module.exports.coalesce = coalesce;
