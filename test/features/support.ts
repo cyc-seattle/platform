@@ -42,6 +42,15 @@ export interface KubeResponse {
   body: any;
 }
 
+const connectErrors = new Set([
+  "ETIMEDOUT",
+  "ECONNREFUSED",
+  "ENETUNREACH",
+  "EHOSTUNREACH",
+  "EAI_AGAIN",
+  "UND_ERR_CONNECT_TIMEOUT",
+]);
+
 /** Calls the cluster's API through its DNS-based endpoint, with the caller's Google token. */
 export async function kube(
   platform: PlatformOutputs,
@@ -50,11 +59,26 @@ export async function kube(
   body?: unknown,
   headers: Record<string, string> = {},
 ): Promise<KubeResponse> {
-  const response = await fetch(`https://${platform.clusterEndpoint}${path}`, {
-    method,
-    headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json", ...headers },
-    ...(body !== undefined && { body: JSON.stringify(body) }),
-  });
+  const attempt = async () =>
+    fetch(`https://${platform.clusterEndpoint}${path}`, {
+      method,
+      headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json", ...headers },
+      ...(body !== undefined && { body: JSON.stringify(body) }),
+    });
+  let response: Response;
+  for (let retry = 0; ; retry++) {
+    try {
+      response = await attempt();
+      break;
+    } catch (error) {
+      // Only a failed connect is safe to retry: the request never left, so a POST can't run twice.
+      const code = (error as { cause?: { code?: string } }).cause?.code;
+      if (retry === 3 || !code || !connectErrors.has(code)) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2_000 * 2 ** retry));
+    }
+  }
   const text = await response.text();
   // A proxied service may answer with anything.
   const json = response.headers.get("content-type")?.startsWith("application/json");

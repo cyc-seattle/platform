@@ -125,8 +125,8 @@ describe("Directus on the cluster", () => {
     expect(envNames("directus")).not.toHaveProperty("MAX_RELATIONAL_DEPTH");
   });
 
-  it("keeps its connection pool small", () => {
-    expect(envNames("directus")).toMatchObject({ DB_POOL__MAX: "4", PUBLIC_URL: "https://directus.dev.example.com" });
+  it("uses Directus's default connection pool", () => {
+    expect(envNames("directus")).toMatchObject({ DB_POOL__MAX: "10", PUBLIC_URL: "https://directus.dev.example.com" });
   });
 
   it("logs only warnings and errors", () => {
