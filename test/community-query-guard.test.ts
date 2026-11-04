@@ -4,7 +4,7 @@ import * as yaml from "js-yaml";
 import { describe, it, expect } from "vitest";
 import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.ts";
 import { effectiveAccess, violation } from "../stacks/backend/community-query-guard.cjs";
-import { communityPolicies } from "../stacks/backend/community-rules.ts";
+import { communityPolicies, familyPolicies, teamPolicies } from "../stacks/backend/community-rules.ts";
 import { crewRules, groupPolicies, queryGuardConfig } from "../stacks/backend/policies.ts";
 
 interface Snapshot {
@@ -25,9 +25,16 @@ const schema = mergeSchemas(schemas) as Snapshot;
 const fieldsOf = (collection: string) =>
   schema.fields.filter((field) => field.collection === collection && field.type !== "alias").map(({ field }) => field);
 
-const config = queryGuardConfig([...communityPolicies, { name: "Crew", rules: crewRules }, ...groupPolicies(schemas)]);
+const config = queryGuardConfig([
+  ...communityPolicies,
+  ...familyPolicies,
+  ...teamPolicies,
+  { name: "Crew", rules: crewRules },
+  ...groupPolicies(schemas),
+]);
 const COMMUNITY = ["Community", ...communityPolicies.map(({ name }) => name)];
-const CREW = ["Crew", ...communityPolicies.map(({ name }) => name)];
+const CREW = ["Crew", ...communityPolicies.map(({ name }) => name), ...familyPolicies.map(({ name }) => name)];
+const TEAM = [...COMMUNITY, ...[...familyPolicies, ...teamPolicies].map(({ name }) => name)];
 
 function accessOf(names: string[]) {
   const access = effectiveAccess(config, names, fieldsOf);
@@ -131,11 +138,14 @@ describe("the query guard for Crew", () => {
     expect(check("people", { filter: { email: { _starts_with: "b" } } }, crew)).toBeUndefined();
   });
 
-  it("rejects probing other sailors' medical answers through the rule that shows a Crew parent their own child's", () => {
+  it("rejects probing Clubspot's sign-up answers, which Crew doesn't read", () => {
     expect(check("people", { filter: allergies }, crew)).toBe("the relation people.participant_links");
+  });
+
+  it("passes a filter on medical information, which Crew reads whole", () => {
     expect(
       check("people", { filter: { "$FOLLOW(medical_profiles,person_id)": { allergies: { _nnull: true } } } }, crew),
-    ).toBe("the relation $FOLLOW(medical_profiles,person_id)");
+    ).toBeUndefined();
   });
 
   it("passes the same filter for a Crew member with CRM Writer and Medical Reader, who reads every participant", () => {
@@ -175,5 +185,26 @@ describe("the query guard for migrated staff", () => {
     expect(check("people", { filter: { directus_user_id: { email: { _starts_with: "a" } } } }, staff)).toBe(
       "the relation people.directus_user_id",
     );
+  });
+});
+
+describe("the query guard for Team", () => {
+  const team = accessOf(TEAM);
+
+  it("hides the email and phone the Team rules show only for adults who chose to share", () => {
+    expect(team.restricted["people"]).toEqual(expect.arrayContaining(["email", "phone", "share_contact"]));
+    expect(team.restricted["people"]).not.toContain("first_name");
+  });
+
+  it("rejects a filter, sort, or search on a teammate's hidden email or phone", () => {
+    expect(check("people", { filter: { email: { _starts_with: "b" } } }, team)).toBe("people.email");
+    expect(check("people", { sort: ["phone"] }, team)).toBe("people.phone");
+    expect(check("people", { filter: { my_contacts: { contact_id: { email: { _eq: "x" } } } } }, team)).toBe(
+      "the relation people.my_contacts",
+    );
+  });
+
+  it("passes a filter on a teammate's name", () => {
+    expect(check("people", { filter: { last_name: { _eq: "Test" } } }, team)).toBeUndefined();
   });
 });

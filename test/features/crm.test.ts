@@ -3,8 +3,8 @@ import { expect } from "vitest";
 import "./steps/community.ts";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
 import { asAdmin, runCronJob } from "./cluster.ts";
-import { clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
-import { notBuilt } from "./steps/logins.ts";
+import { clubspotRun, seedClass, seedSailor, type ClubspotRun } from "./steps/clubspot.ts";
+import { createUser, notBuilt, type User } from "./steps/logins.ts";
 import { admin, adminCreate, created, email, itemPath, newRow, runId } from "./steps/rows.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
@@ -98,37 +98,8 @@ Step("the parent is still in the CRM", async () => {
   await (await admin()).ok("GET", itemPath("people", theFamily().parentIds[0]));
 });
 
-// Teams, Crew's wider reads, and the per-person opt-in (cyc-seattle/workplace#6 decisions 26-29).
+// The roster page and the old rules' removal (cyc-seattle/workplace#6 steps 18 and 19).
 for (const [step, texts] of [
-  [
-    "16",
-    [
-      "they can stop sharing and share again",
-      "they can't change whether the teammate's parent shares",
-      "a parent whose child is on a team, who said yes to sharing in Clubspot",
-      "they stop sharing",
-      "they don't share their email and phone",
-    ],
-  ],
-  [
-    "17",
-    [
-      "a sailor in a program who hasn't answered the sharing question, and their parent",
-      "a parent whose child is on a team",
-      "a sailor who is only on another team",
-      "a sailor who is only in a program that isn't a team",
-      "a sailor whose last time on a team ended a month ago",
-      "a sailor whose last time on a team ended 13 months ago",
-      "a parent whose child's last time on a team ended 13 months ago",
-      "an adult teammate who chose to share",
-      "an adult teammate who chose not to share",
-      "a teammate who is a child, and their parent, who chose to share",
-      "a teammate who is a child, with an email and phone of their own, and their parent, who chose to share",
-      "a teammate with no date of birth on file, and an email and phone of their own",
-      "they see their own medical information",
-      "not the teammate's",
-    ],
-  ],
   ["18", ["the page loads without errors and shows the teams' rosters"]],
   [
     "19",
@@ -144,31 +115,50 @@ for (const [step, texts] of [
   }
 }
 
+/** A family signed up through Clubspot, who said yes to sharing, synced onto a team. Returns the parent's id. */
+async function aParentWhoSaidYes(run: ClubspotRun): Promise<string> {
+  await seedClass(run);
+  await seedSailor(run, { share: true });
+  await adminCreate("clubspot_promoted_fields", {
+    id: randomUUID(),
+    target_field: "share_contact",
+    labels: [run.sharingQuestion],
+  });
+  await runCronJob("clubspot-sync", run.runId);
+  const team = await adminCreate("programs", await newRow("programs", { name: `Team ${run.runId}`, team: true }));
+  await asAdmin("PATCH", `/items/clubspot_classes/${run.id("cls")}`, { program_id: team.id });
+  const sailor = await asAdmin(
+    "GET",
+    `/items/clubspot_participants/${run.id("par")}?fields=person_id.my_contacts.contact_id,person_id.my_contacts.relationship_type`,
+  );
+  return sailor.person_id.my_contacts.find(
+    (link: { relationship_type: string }) => link.relationship_type === "guardian",
+  ).contact_id;
+}
+
+/**
+ * Signs a person in, linked to their login as the group-policies hook links them. The rules match by
+ * login, so the login's email needn't be the one Clubspot gave them, which Directus may not accept.
+ */
+async function signedIn(personId: string): Promise<User> {
+  const user = await createUser(email("parent"), "Community");
+  await asAdmin("PATCH", `/items/people/${personId}`, { directus_user_id: user.userId });
+  return user;
+}
+
+const sharesContact = async (personId: string) =>
+  (await asAdmin("GET", `/items/people/${personId}?fields=share_contact`)).share_contact;
+
 describeAccessFeature("crm.feature", {
   "A parent who stopped sharing says yes on a later sign-up": ({ Given, When, Then }) => {
     const run = clubspotRun();
     let parentId: string;
 
     Given("a parent whose child is on a team, who stopped sharing", async () => {
-      await seedClass(run);
-      await seedSailor(run, { share: true });
-      await adminCreate("clubspot_promoted_fields", {
-        id: randomUUID(),
-        target_field: "share_contact",
-        labels: [run.sharingQuestion],
-      });
-      await runCronJob("clubspot-sync", run.runId);
-      const team = await adminCreate("programs", await newRow("programs", { name: `Team ${run.runId}`, team: true }));
-      await asAdmin("PATCH", `/items/clubspot_classes/${run.id("cls")}`, { program_id: team.id });
-      const sailor = await asAdmin(
-        "GET",
-        `/items/clubspot_participants/${run.id("par")}?fields=person_id.my_contacts.contact_id,person_id.my_contacts.relationship_type`,
-      );
-      parentId = sailor.person_id.my_contacts.find(
-        (link: { relationship_type: string }) => link.relationship_type === "guardian",
-      ).contact_id;
-      // The family's own edit, which an admin makes for them until step 17 lets families make it.
-      await asAdmin("PATCH", `/items/people/${parentId}`, { share_contact: false });
+      parentId = await aParentWhoSaidYes(run);
+      const user = await signedIn(parentId);
+      const { status } = await user.session.request("PATCH", `/items/people/${parentId}`, { share_contact: false });
+      expect(status).toBeLessThan(300);
     });
 
     When("they say yes to sharing when they sign their child up again in Clubspot", async () => {
@@ -179,7 +169,28 @@ describeAccessFeature("crm.feature", {
     });
 
     Then("they share their email and phone", async () => {
-      expect((await asAdmin("GET", `/items/people/${parentId}?fields=share_contact`)).share_contact).toBe(true);
+      expect(await sharesContact(parentId)).toBe(true);
+    });
+  },
+
+  "A parent who said yes in Clubspot stops sharing": ({ Given, When, Then }) => {
+    const run = clubspotRun();
+    let parentId: string;
+    let user: User;
+
+    Given("a parent whose child is on a team, who said yes to sharing in Clubspot", async () => {
+      parentId = await aParentWhoSaidYes(run);
+      expect(await sharesContact(parentId)).toBe(true);
+      user = await signedIn(parentId);
+    });
+
+    When("they stop sharing", async () => {
+      const { status } = await user.session.request("PATCH", `/items/people/${parentId}`, { share_contact: false });
+      expect(status).toBeLessThan(300);
+    });
+
+    Then("they don't share their email and phone", async () => {
+      expect(await sharesContact(parentId)).toBe(false);
     });
   },
 });

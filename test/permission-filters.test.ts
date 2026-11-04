@@ -3,7 +3,7 @@ import path from "node:path";
 import * as yaml from "js-yaml";
 import { describe, it, expect } from "vitest";
 import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.ts";
-import { communityPolicies } from "../stacks/backend/community-rules.ts";
+import { communityPolicies, familyPolicies, teamPolicies } from "../stacks/backend/community-rules.ts";
 
 interface Snapshot {
   fields: { collection: string; field: string }[];
@@ -51,7 +51,9 @@ function unknownFields(collection: string, filter: unknown, path = collection): 
 }
 
 const rules = [
-  ...communityPolicies.flatMap((policy) => policy.rules.map((rule) => ({ policy: policy.name, ...rule }))),
+  ...[...communityPolicies, ...familyPolicies, ...teamPolicies].flatMap((policy) =>
+    policy.rules.map((rule) => ({ policy: policy.name, ...rule })),
+  ),
 ];
 
 describe("permission filters", () => {

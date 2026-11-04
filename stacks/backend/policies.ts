@@ -1,5 +1,6 @@
 import type { PermissionRuleInput } from "../../src/directus/client.ts";
 import { collectionsInSchema } from "../../src/directus/client.ts";
+import { TEAM_MONTHS } from "./community-rules.ts";
 
 // Plain data (no `@pulumi/*` import): the policies `./index.ts` declares, and what the two hook
 // extensions need to know about them. docs/access.md describes the model.
@@ -15,7 +16,7 @@ export interface PolicyData {
 }
 
 /** The roles every person who signs in has one of. The hook manages only these roles' users. */
-export const ROLES = ["Community", "Crew", "Admin"] as const;
+export const ROLES = ["Community", "Team", "Crew", "Admin"] as const;
 
 /** The domains whose collections the CRM policies cover. Newer domains have policies of their own. */
 const CRM_DOMAINS = new Set(["clubspot", "crm", "gsuite", "sync"]);
@@ -213,12 +214,18 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   ];
 }
 
-/** Crew's own rules, beside the Community policies it also has: every roster, and the catalog's money. */
+/**
+ * Crew's own rules, beside the Community policies it also has: every roster, everyone's contact
+ * details and medical information, and the catalog's money. Not Clubspot's sign-up answers or payments.
+ */
 export const crewRules: PermissionRuleInput[] = [
   ...[
     "clubspot_sessions",
     "clubspot_registration_entries",
     "people",
+    "contacts",
+    "contact_points",
+    MEDICAL,
     "programs",
     "clubspot_camps",
     "clubspot_classes",
@@ -263,11 +270,22 @@ export interface GroupPoliciesConfig {
   grantable: string[];
   /** The roles whose users the hook manages, by name. */
   roles: string[];
+  /** The roles the hook moves a user between, as they join and leave a team. */
+  community: string;
+  team: string;
+  /** How many months after their last team offering ends someone stays on the team. */
+  teamMonths: number;
 }
 
 /** What ./group-policies.cjs needs. */
 export function groupPoliciesConfig(policies: PolicyData[]): GroupPoliciesConfig {
-  return { grantable: policies.map(({ name }) => name).sort(), roles: [...ROLES] };
+  return {
+    grantable: policies.map(({ name }) => name).sort(),
+    roles: [...ROLES],
+    community: "Community",
+    team: "Team",
+    teamMonths: TEAM_MONTHS,
+  };
 }
 
 export interface SavedVersionsConfig {

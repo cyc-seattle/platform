@@ -20,6 +20,7 @@ export interface CrmIdentityArgs {
 
 export interface CrmIdentities {
   communityRole: DirectusRole;
+  teamRole: DirectusRole;
   crewRole: DirectusRole;
   adminRole: DirectusRole;
   clubspotSyncRole: DirectusRole;
@@ -31,7 +32,7 @@ export interface CrmIdentities {
 export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
   const { auth, readyForApiCalls } = args;
 
-  // Everyone who signs in has Community, Crew, or Admin (docs/access.md). Groups give the rest.
+  // Everyone who signs in has Community, Team, Crew, or Admin (docs/access.md). Groups give the rest.
 
   // Everyone's role on their first sign-in, through Directus's AUTH_AUTHENTIK_DEFAULT_ROLE_ID. Its
   // permissions come from the Community policies in stacks/backend/community-rules.ts.
@@ -48,6 +49,21 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     { dependsOn: readyForApiCalls },
   );
 
+  // Families on a team. The group-policies hook moves users between Community and Team.
+  const teamRole = new DirectusRole(
+    "crm-team",
+    {
+      ...auth,
+      name: "Team",
+      icon: "rowing",
+      description:
+        "Families on a team: their own family, everyone on every team by name, and the email and phone of team " +
+        "adults who chose to share. Set by the group-policies hook. See docs/access.md.",
+      appAccess: true,
+    },
+    { dependsOn: readyForApiCalls },
+  );
+
   // Coach, renamed, so its users are Crew with no data step.
   const crewRole = new DirectusRole(
     "crm-crew",
@@ -56,7 +72,7 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
       name: "Crew",
       icon: "sports",
       description:
-        "People an admin trusts with every roster. Also has the Community policies, for their own children. " +
+        "People an admin vets: every roster, everyone's contact details, and everyone's medical information. " +
         "See docs/access.md.",
       appAccess: true,
     },
@@ -144,6 +160,7 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
 
   return {
     communityRole,
+    teamRole,
     crewRole,
     adminRole,
     clubspotSyncRole,
