@@ -430,7 +430,8 @@ export const familyPolicies: CommunityPolicyData[] = [
       {
         collection: "people",
         action: "read",
-        fields: ["id", "first_name", "last_name", "share_contact"],
+        // The login lets a page find the user's own row, with the one filter the query guard allows on it.
+        fields: ["id", "first_name", "last_name", "share_contact", "directus_user_id"],
         permissions: MY_FAMILY,
       },
       { collection: "people", action: "update", fields: ["share_contact"], permissions: ME_AS_ADULT },

@@ -26,4 +26,5 @@ export function violation(
   relations: Relation[],
   collection: string,
   query: Record<string, unknown>,
+  user?: string,
 ): string | undefined;

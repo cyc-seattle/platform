@@ -396,6 +396,28 @@ Step("they see who {someone}'s parent is", (_, label: string) => {
   expect(scene.rows).toContainEqual(link(subject, subject.guardian!));
 });
 
+Step("a teammate who hasn't answered the sharing question, and their parent, who has signed in", async () => {
+  const teammate = await aTeammate({ share: null });
+  const parent = call("the teammate's parent", await guardianOf(teammate));
+  parent.user = await createUser(parent.email, "Community");
+  await (await admin()).ok("PATCH", `/items/people/${parent.id}`, { directus_user_id: parent.user.userId });
+});
+
+const byLogin = (login: string) =>
+  `?fields=id,share_contact&filter=${encodeURIComponent(JSON.stringify({ directus_user_id: { _eq: login } }))}`;
+Step("they look themselves up by their login", async () => {
+  scene.rows = await read(await theirSession(), "people", byLogin("$CURRENT_USER"));
+});
+Step("they see only themselves, with whether they share", async () => {
+  expect(scene.rows).toEqual([{ id: scene.me!.id, share_contact: await shares(scene.me!) }]);
+});
+Step("they look the teammate's parent up by their login", async () => {
+  const { status } = await (
+    await theirSession()
+  ).request("GET", `/items/people${byLogin(the("the teammate's parent").user!.userId)}`);
+  expectRefusal(() => expect(status).toBe(403));
+});
+
 /** Changes whether `who` shares their email and phone, as the signed-in user. */
 const sharing = async (who: Person, value: boolean) =>
   (await (await theirSession()).request("PATCH", `/items/people/${who.id}`, { share_contact: value })).status;

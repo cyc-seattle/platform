@@ -45,8 +45,9 @@ permissions, plus any shared policies it's given:
   whole row would let a parent search their child's teammates by their hidden fields.
 - Community: own family matches the signed-in user by their login, `people.directus_user_id`, not
   their email. It gives them and their children's names, registrations, and medical information, and
-  lets an adult change their own `share_contact`. Step 19 deletes the older Community policies, which
-  match by email.
+  lets an adult change their own `share_contact`. It reads their own login too, so an app finds their
+  row with a filter on `directus_user_id` for `$CURRENT_USER`. Step 19 deletes the older Community
+  policies, which match by email.
 - Team has every Community policy, plus Team: names and Team: contacts. A team member's email and
   phone show only if they're an adult, or a guardian not known to be under 18, whose `share_contact`
   is yes.
@@ -139,6 +140,8 @@ into a collection they can't read every row of. Everything else passes:
   That holds for `$FOLLOW` too.
 - A `deep` query reads its related rows with permissions, as a top-level query does, so its own
   filter and sort get the same checks as one.
+- A filter of `people.directus_user_id` equal to the user's own login passes. It can match only their
+  own row, so it reveals nothing, and any other filter on a login is refused.
 - A filter into `directus_users` is refused unless the user is an admin. Directus lets everyone else
   read only their own account, so a filter could probe other people's.
 

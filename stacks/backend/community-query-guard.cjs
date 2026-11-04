@@ -12,6 +12,9 @@
 
 const OPERATOR_RELATIONS = ["_some", "_none"];
 
+/** Each collection's login field. A filter for the user's own login can match only their own row. */
+const LOGINS = { people: "directus_user_id" };
+
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
 function forbidden(reason) {
   const error = new Error(`Queries can't use ${reason}.`);
@@ -73,6 +76,12 @@ function effectiveAccess(config, names, fieldsOf) {
   return { restricted, open: open.sort() };
 }
 
+function isOwnLogin(value, user) {
+  if (value === null || typeof value !== "object") return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "_eq" && user !== undefined && [user, "$CURRENT_USER"].includes(value._eq);
+}
+
 /** `$FOLLOW(contacts,subject_id)` joins `contacts` rows whose `subject_id` is the current row. */
 function followed(key) {
   const match = /^\$FOLLOW\((\w+),\s*\w+\)$/.exec(key);
@@ -88,8 +97,9 @@ function followed(key) {
  *
  * @param config `restricted`: per collection, the fields some of the viewer's read rules withhold.
  *   `open`: the collections the viewer reads every row of.
+ * @param user The viewer's id, which Directus has put in place of `$CURRENT_USER`.
  */
-function violation(config, relations, collection, query) {
+function violation(config, relations, collection, query, user) {
   function checkField(current, key) {
     const field = fieldName(key);
     if ((config.restricted[current] ?? []).includes(field)) {
@@ -133,6 +143,7 @@ function violation(config, relations, collection, query) {
         typeof value === "object" &&
         Object.keys(value).some((inner) => !inner.startsWith("_") || OPERATOR_RELATIONS.includes(inner));
       if (!nested) {
+        if (LOGINS[current] === key && isOwnLogin(value, user)) continue;
         const reason = checkField(current, key);
         if (reason) return reason;
         continue;
@@ -238,7 +249,7 @@ function register({ filter }) {
     const names = await policyNames(database, accountability);
     const access = effectiveAccess(config, names, (name) => columns(schema, name));
     if (!access) return query;
-    const reason = violation(access, schema.relations, collection, query);
+    const reason = violation(access, schema.relations, collection, query, accountability.user ?? undefined);
     if (reason) throw forbidden(reason);
     return query;
   });
