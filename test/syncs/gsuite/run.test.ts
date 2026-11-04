@@ -589,6 +589,77 @@ describe("runGroupSync", () => {
     expect(adder.calls).toContainEqual(["shared@cyccommunitysailing.org", "manager2@example.com", "MEMBER"]);
   });
 
+  it("syncs only one program's members when given its id, without the queue or the other passes", async () => {
+    const roleHolder = (program: string) => ({
+      id: `pra-${program}`,
+      person_id: `coach-${program}`,
+      program_id: program,
+      program_role_id: "coach",
+      starts_on: null,
+      ends_on: null,
+    });
+    const { fetchMock, tables } = makeDirectusStore({
+      google_groups: [
+        { id: "group-1", email: "one@cyccommunitysailing.org", settings_template: "program" },
+        { id: "group-2", email: "two@cyccommunitysailing.org", settings_template: "program" },
+      ],
+      programs: [
+        { id: "program-1", name: "Double-handed", google_group_id: "group-1" },
+        { id: "program-2", name: "Single-handed", google_group_id: "group-2" },
+      ],
+      program_role_assignments: [roleHolder("program-1"), roleHolder("program-2")],
+      people: [
+        { id: "coach-program-1", email: "coach1@example.com" },
+        { id: "coach-program-2", email: "coach2@example.com" },
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const directus = new DirectusClient(baseUrl, token);
+    const adder = recordingAdder();
+    const settingsApplier = recordingSettingsApplier();
+    const listGroups = vi.fn(async () => liveGroupsFrom(tables));
+
+    const result = await runGroupSync({
+      now,
+      directus,
+      queue: new SyncQueue(directus),
+      adder,
+      settingsApplier,
+      directory: fakeDirectory({ listGroups }),
+      settingsReader: fakeSettingsReader(),
+      groupOwners: ["owner@example.com"],
+      customer,
+      programId: "program-1",
+    });
+
+    expect(result).toEqual({ status: "ok", tasksChecked: 1, tasksFailed: 0 });
+    expect(adder.calls).toEqual([["one@cyccommunitysailing.org", "coach1@example.com", "MEMBER"]]);
+    expect(settingsApplier.calls).toEqual([]);
+    expect(listGroups).not.toHaveBeenCalled();
+    expect(tables.get("sync_tasks") ?? []).toEqual([]);
+  });
+
+  it("fails a one-program run whose program has no group", async () => {
+    const { fetchMock } = makeDirectusStore({ programs: [{ id: "program-1", name: "Double-handed" }] });
+    vi.stubGlobal("fetch", fetchMock);
+    const directus = new DirectusClient(baseUrl, token);
+
+    const result = await runGroupSync({
+      now,
+      directus,
+      queue: new SyncQueue(directus),
+      adder: recordingAdder(),
+      settingsApplier: recordingSettingsApplier(),
+      directory: fakeDirectory(),
+      settingsReader: fakeSettingsReader(),
+      groupOwners: [],
+      customer,
+      programId: "program-1",
+    });
+
+    expect(result).toEqual({ status: "failed", tasksChecked: 1, tasksFailed: 1 });
+  });
+
   it("enqueues and adds a role holder for a program with no class at all (cyc-seattle/isthmia#149 step 14a)", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "offseason@cyccommunitysailing.org" }],

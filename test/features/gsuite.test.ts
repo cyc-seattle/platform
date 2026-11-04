@@ -1,10 +1,12 @@
 import { expect } from "vitest";
 import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
 import { describeAccessFeature, readOnly, Step } from "./steps/index.ts";
+import { runGoogleSync } from "./syncs.ts";
 
-// The sync scenarios set up a program and its role holders in dev's CRM, run the gsuite-sync
-// CronJob as a Job, and read the Workspace fake's Directory API through the Kubernetes API's service
-// proxy. Their groups and people carry a run ID, so runs never depend on each other.
+// The sync scenarios set up a program and its role holders in dev's CRM, run gsuite-sync on that
+// program, and read the Workspace fake's Directory API through the Kubernetes API's service proxy.
+// Their groups and people carry a run ID, so runs never depend on each other. The first scenario runs
+// the CronJob as a Job instead, which proves the deployed image and its config.
 
 interface MembershipRow {
   id: string;
@@ -25,7 +27,6 @@ function programWithGroup() {
   const groupEmail = `program.${runId}@example.test`;
   let groupId: string;
   let programId: string;
-  let jobs = 0;
 
   return {
     async create(): Promise<void> {
@@ -83,9 +84,12 @@ function programWithGroup() {
       });
     },
 
-    // Job names must be unique.
-    async sync(): Promise<void> {
-      await runCronJob("gsuite-sync", jobs++ === 0 ? runId : `${runId}-${jobs}`);
+    sync(): Promise<void> {
+      return runGoogleSync(programId);
+    },
+
+    syncAsJob(): Promise<void> {
+      return runCronJob("gsuite-sync", runId);
     },
   };
 }
@@ -99,7 +103,7 @@ describeAccessFeature("gsuite.feature", {
     And("a coach in the program", async () => {
       coach = await program.roleHolder("Coach");
     });
-    When("the Google sync runs", () => program.sync());
+    When("the Google sync runs", () => program.syncAsJob());
     Then("they're in the group", async () => {
       expect(await program.members()).toContain(coach.email);
     });

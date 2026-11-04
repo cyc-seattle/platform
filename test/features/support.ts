@@ -11,7 +11,8 @@ export function feature(name: string): ReturnType<typeof loadFeatureFromText> {
 // Whatever identity runs the tests: deploy-dev in CI.
 const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
 
-async function accessToken(): Promise<string> {
+/** A Google access token for whoever runs the tests, which the cluster's API also takes. */
+export async function accessToken(): Promise<string> {
   const token = await auth.getAccessToken();
   if (!token) {
     throw new Error("Application Default Credentials gave no access token.");
@@ -51,6 +52,12 @@ const connectErrors = new Set([
   "UND_ERR_CONNECT_TIMEOUT",
 ]);
 
+/** Whether `fetch` failed to connect, so the request never left and is safe to send again. */
+export function isConnectError(error: unknown): boolean {
+  const code = (error as { cause?: { code?: string } }).cause?.code;
+  return code !== undefined && connectErrors.has(code);
+}
+
 /** Calls the cluster's API through its DNS-based endpoint, with the caller's Google token. */
 export async function kube(
   platform: PlatformOutputs,
@@ -72,8 +79,7 @@ export async function kube(
       break;
     } catch (error) {
       // Only a failed connect is safe to retry: the request never left, so a POST can't run twice.
-      const code = (error as { cause?: { code?: string } }).cause?.code;
-      if (retry === 3 || !code || !connectErrors.has(code)) {
+      if (retry === 3 || !isConnectError(error)) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, 2_000 * 2 ** retry));
