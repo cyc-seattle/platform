@@ -8,6 +8,7 @@ import { googleClients } from "../../src/syncs/gsuite/main.ts";
 import { runGroupSync } from "../../src/syncs/gsuite/run.ts";
 import { DirectusClient, SyncQueue } from "../../src/syncs/runtime/index.ts";
 import { cronJobEnv, oneAtATime, serviceUrl } from "./cluster.ts";
+import { devPlatform } from "./support.ts";
 
 // The syncs, run in the test's own process with their CronJob's config, and scoped to one scenario's
 // camp or program. A Job takes minutes to get a pod and to sync every test's data, and only one may
@@ -19,7 +20,15 @@ winston.configure({
   transports: new winston.transports.Stream({ stream: process.stderr }),
 });
 
-/** A URL in dev's namespace, such as `http://directus`, as this process reaches it. */
+/**
+ * Dev's Directus, in place of the CronJob's in-namespace `http://directus`. The API's service proxy
+ * would take the sync's token for its own, so the sync reaches it through the Gateway, as the steps do.
+ */
+async function directus(token: string): Promise<DirectusClient> {
+  return new DirectusClient(`https://directus.${(await devPlatform()).domain}`, token);
+}
+
+/** A fake's URL in dev's namespace, such as `http://workspace-fake:8080`, as this process reaches it. */
 async function reachable(inCluster: string): Promise<string> {
   const url = new URL(inCluster);
   const base = await serviceUrl(url.hostname, Number(url.port || 80));
@@ -42,15 +51,15 @@ function clubspotSignIn(): Promise<Record<string, string>> {
 /** Runs clubspot-sync for one camp, as `--camp` does, and fails if the run does. */
 export async function runClubspotSync(campId: string): Promise<void> {
   const env = await clubspotSignIn();
-  const directus = new DirectusClient(await reachable(env["DIRECTUS_URL"]!), env["DIRECTUS_TOKEN"]!);
+  const client = await directus(env["DIRECTUS_TOKEN"]!);
   const result = await oneAtATime("clubspot-sync", () =>
     runSync({
       clubId: env["CLUBSPOT_CLUB_ID"]!,
       campId,
       now: new Date(),
-      directus,
-      queue: new SyncQueue(directus),
-      personSync: new PersonSync(directus),
+      directus: client,
+      queue: new SyncQueue(client),
+      personSync: new PersonSync(client),
       gateway,
     }),
   );
@@ -62,7 +71,7 @@ export async function runClubspotSync(campId: string): Promise<void> {
 /** Runs gsuite-sync for one program's group, and fails if the run does. */
 export async function runGoogleSync(programId: string): Promise<void> {
   const env = await cronJobEnv("gsuite-sync");
-  const directus = new DirectusClient(await reachable(env["DIRECTUS_URL"]!), env["DIRECTUS_TOKEN"]!);
+  const client = await directus(env["DIRECTUS_TOKEN"]!);
   // The Workspace fake ignores auth, and the forwarder sends the cluster's token in its place.
   const { directory, settingsReader } = googleClients(
     new google.auth.GoogleAuth({ apiKey: "unused" }),
@@ -71,8 +80,8 @@ export async function runGoogleSync(programId: string): Promise<void> {
   const result = await oneAtATime("gsuite-sync", () =>
     runGroupSync({
       now: new Date(),
-      directus,
-      queue: new SyncQueue(directus),
+      directus: client,
+      queue: new SyncQueue(client),
       adder: directory,
       settingsApplier: settingsReader,
       directory,

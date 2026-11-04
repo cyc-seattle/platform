@@ -52,7 +52,8 @@ const forwarders = new Map<string, Promise<string>>();
 
 /**
  * A local URL for a dev Service that forwards each request through the API's service proxy, for a
- * client that can't send the API's token itself, such as the Parse SDK.
+ * client that can't send the API's token itself, such as the Parse SDK. The API's token replaces the
+ * client's own `Authorization`, so a Service that needs one can't be reached this way.
  */
 export function serviceUrl(service: string, port: number): Promise<string> {
   const key = `${service}:${port}`;
