@@ -15,20 +15,21 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
   the camp schedule (camps/sessions/classes/capacity), registrations, and billing. No household
   grouping — Clubspot has no concept of a household, only per-registration guardians and emergency
   contacts, so that's what the schema keys off.
-- Terminology matches Clubspot and the website. **Camp** (`clubspot_camps`) is Clubspot's own `Camp` — one
-  row per season, e.g. "2026 Fall Double-handed Race Team". **Program** is the durable catalog
-  entry a class links to by hand, e.g. "Double-handed Race Team", the thing a Google Group or a
-  volunteer role attaches to; a camp's own programs are derived — the distinct programs of its
-  classes (cyc-seattle/isthmia#149). **Session** (`CampSession`), **class** (`CampClass`), and **registration**
-  (`Registration`/`RegistrationCampSession`) are unchanged — not "enrollment."
+- The CRM's terms are ours, and Clubspot's appear only in its mirrors and the sync
+  (cyc-seattle/isthmia#241). A **program** is a lasting thing CYC runs, such as Guppies or J-Pod, and
+  is what a Google Group or a program role attaches to. A program with `team` set is a **team**, such
+  as a race team. A Clubspot **camp** (`clubspot_camps`) is only how people sign up, copied each
+  season, and its **classes** map to programs by hand. An **offering** and a **registration** are
+  ours, made from Clubspot's sessions, classes, and entries ([Collections](#collections)). We say
+  registration, not "enrollment."
 - Registration status and person contact fields get **history, not just a current value** — see
   [Change tracking and provenance](#change-tracking-and-provenance).
 - Person identity is resolved once, at creation, and never re-resolved — see
   [Person identity and merging](#person-identity-and-merging).
 - Auth identity is deliberately separate from person data — see [Auth identity](#auth-identity)
   below.
-- Coach and guardian **portals** (thin clients calling this API) are out of scope; this doc defines
-  the roles/policies they'll eventually use, but nothing here provisions their logins. That's cyc-seattle/isthmia#65.
+- Apps, such as sail-team, call this API as the signed-in user, and Directus applies that user's
+  rules ([access.md](access.md)).
 
 ### Collections
 
@@ -62,8 +63,8 @@ Coordinator or Program Lead, hand-entered by staff. Anyone holding an assignment
 program's Google Group; a role's meaning carries no provider mapping.
 `program_area_role_assignments` links a person to a program area the same way, with a role from
 the same catalog, such as Director. An area can have any number of people in each role. It's a
-table of its own, so the roster rules and Google Group membership, which read
-`program_role_assignments`, don't change.
+table of its own, so Google Group membership, which reads `program_role_assignments`, doesn't
+change.
 
 A program's revenue account is its program area's, or its product's own for a product in no area. `gsuite-sync`'s audit
 reads it to flag a Clubspot Camp whose classes map to programs with more than one distinct account
@@ -225,18 +226,18 @@ Reusing it instead of a homegrown field means:
 - `people.directus_user_id` is a nullable, unique FK to `directus_users.id`, declared in
   `schemas/sync.yaml` — Directus is itself a provider, so its own identity column is an
   extension field on `people` like any other. Set only for people who have an actual login, and only
-  by an admin or the group hook, which links a group member on their first sign-in
-  ([access.md](access.md#groups)). No policy a person can hold writes it.
-- Directus's own OIDC config does the email-matching (`provider` + `external_identifier` on
-  `directus_users`). This schema has no identity/matching logic of its own — it only points `people`
-  at the resulting user once one exists.
+  by an admin or the group hook. No policy a person can hold writes it.
+- Directus's own OIDC config matches a sign-in to its `directus_users` row (`provider` +
+  `external_identifier`). The group hook then links that login to a person by email, once
+  ([access.md](access.md#groups)). Rules match the signed-in user by that link, not by email.
 
 ### Community
 
-`cycsail.team`'s rosters page shows a signed-in family their own family, and a family on a team
-every team's roster, through the Community and Team policies (`stacks/backend/community-rules.ts`,
-[access.md](access.md#policies)). A team member's email and phone show only for an adult who chose
-to share. A program role, such as Parent Coordinator, gives no access.
+sail-team's roster page, at `cycsail.team/roster`, shows a signed-in family their own family, and a
+family on a team every team's roster, through the Community and Team policies
+(`stacks/backend/community-rules.ts`, [access.md](access.md#policies)). A team member's email and
+phone show only for an adult who chose to share. Crew sees everyone's contact details and medical
+information, shared or not. A program role, such as Parent Coordinator, gives no access.
 
 Directus runs a filter or sort against the raw column once any rule grants the field, and joins a
 relational filter's rows with no rules at all. So `backend` mounts the query guard

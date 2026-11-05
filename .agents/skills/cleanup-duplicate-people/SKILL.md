@@ -26,8 +26,9 @@ first.
    - `participant_links` with each participant's registration and camp — is this row a participant?
    - `contact_for` — is it someone's guardian or emergency contact, and whose?
    - `my_contacts` — who are its guardians?
-3. Rank the groups so the ones that block the portal come first: groups with a member in a camp
-   that hasn't ended.
+3. Rank the groups so the ones that affect families now come first: groups with a member in an
+   offering that hasn't ended. Duplicates that share an email also keep that login from linking to
+   either of them ([access.md](../../../docs/access.md#groups)).
 
 Keep personal data in the terminal. Never put names, emails, or dates of birth into a commit, an
 issue, or a doc.

@@ -10,8 +10,8 @@ A draft holds only what planners enter. Apps and agents ask the [planning engine
 
 ### Terms
 
-- **Product:** a lasting thing CYC sells, such as J-Pod Race Team, boat charters or storage leasing. Products live in the new `core` domain.
-- **Program:** a product of kind `program`, such as J-Pod Race Team. Each application groups programs its own way: the website by category, Google Workspace by Group.
+- **Product:** a lasting thing CYC sells, such as J-Pod, boat charters or storage leasing. Products live in the new `core` domain.
+- **Program:** a product of kind `program`, such as J-Pod. A program with `team` set is a team, such as a race team. Each application groups programs its own way: the website by category, Google Workspace by Group.
 - **Program area:** one part of the club's programs, such as Summer or Singlehanded, with one revenue account. People hold roles in it, such as Director, the way they hold program roles, and its directors plan it. Every program belongs to one. Areas are the program services the club reports in Part III of Form 990. Merchandise, storage and charters belong to none.
 - **Offering:** a product sold for a period, such as J-Pod Fall 2027 or Guppies summer week 3. A program offering is one Clubspot session × class, the unit Clubspot caps enrollment on.
 - **Activity:** one dated, timed event that uses coaches, boats or other resources, such as a practice, a regatta day or a travel day. The planner, or a scheduling tool, enters each one.

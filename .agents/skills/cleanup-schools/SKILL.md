@@ -1,15 +1,14 @@
 ---
 name: cleanup-schools
-description: Clean up `people.school` in the CRM's Directus — find spelling variants of the same school, propose a fix at the source that stops new variants, and propose per-row corrections for the rest. Use when the user wants to clean up school data, fix the roster's school filter, or prepare roster data for families.
+description: Clean up `people.school` in the CRM's Directus — find spelling variants of the same school, propose a fix at the source that stops new variants, and propose per-row corrections for the rest. Use when the user wants to clean up school data, or group people by school.
 ---
 
 # Clean Up School Data
 
 `people.school` is free text. It's a promoted field: each family's answer to a Clubspot
-registration question is copied onto `people` (see "Promoted fields" in `docs/crm-schema.md`). The
-portal roster groups and filters by it, after `normalizeSchool`
-(cyc-seattle/isthmia's `packages/portal/src/roster/model.ts`). That function folds case, punctuation, and spacing, and
-nothing else. So "Roosevelt HS" and "Roosevelt High School" show up as two schools.
+registration question is copied onto `people` (see "Promoted fields" in `docs/crm-schema.md`). So
+anything that groups people by school, such as a report or an agent's answer, shows "Roosevelt HS"
+and "Roosevelt High School" as two schools.
 
 Look for the fix at the source first. Every free-text answer can create a new variant.
 
@@ -19,10 +18,10 @@ Use the Directus MCP tools (`mcp__directus__*`). If they need auth, run their `a
 first.
 
 1. Read every `people` row with a non-null `school`: `id`, `first_name`, `last_name`, `school`.
-   Also read whether each one has a registration in a camp that hasn't ended, since only those show
-   on the roster today.
+   Also read whether each one has a registration in an offering that hasn't ended, since those
+   families matter most.
 2. Read `promoted_fields` to see which Clubspot question labels feed `school`.
-3. Group the values by `normalizeSchool`, then cluster the groups by hand:
+3. Group the values after folding case, punctuation, and spacing, then cluster the groups by hand:
 
    - abbreviations (HS, MS, Elem, Acad);
    - dropped words ("Roosevelt" and "Roosevelt High");
@@ -44,7 +43,7 @@ New variants stop only when families can't type them. Check, in order:
 - **The question labels.** If `promoted_fields` lists several labels for the same question, check
   whether one camp's form asks it differently ("School" or "School attending in fall"). Answers to
   a vaguer wording are more often noise.
-- **Code.** A canonical-name map in the sync or the portal would be new machinery for staff to
+- **Code.** A canonical-name map in the sync or an app would be new machinery for staff to
   maintain. Suggest it only if a dropdown isn't possible, and ask before designing it.
 
 Report what you found, with each cluster's size, and what you propose. Ask before changing any
@@ -53,7 +52,7 @@ code or config.
 ## 3. Propose corrections for the rest
 
 For each cluster, propose one canonical name. Use the school's own official name, not the most
-common spelling. Then list every row whose value differs from it. Rank by roster impact: rows with
+common spelling. Then list every row whose value differs from it. Rank by current families: rows with
 an active registration come first. For a value that isn't a school, propose clearing it or ask
 the user.
 
@@ -69,5 +68,4 @@ dropdown matters.
 
 ## 4. Check the result
 
-Read `people.school` again and confirm each cluster now holds one value. On the roster page,
-choose a program and check that the school filter lists each school once.
+Read `people.school` again and confirm each cluster now holds one value.
