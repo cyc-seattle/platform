@@ -131,7 +131,16 @@ export function planOfferings(
     }
   }
 
-  return reconcile(existing, desired, (row) => offeringKey(row.clubspot_class_id, row.clubspot_session_id));
+  const classIds = new Set(mirrors.classes.map((cls) => cls.id));
+  const sessionIds = new Set(mirrors.sessions.map((session) => session.id));
+  // An offering whose class or session this pass didn't read was made after the read, by a test or
+  // an overlapping run, since the foreign keys cascade. It's left for the next run, not deleted.
+  const judged = existing.filter(
+    (row) =>
+      classIds.has(row.clubspot_class_id) &&
+      (row.clubspot_session_id === null || sessionIds.has(row.clubspot_session_id)),
+  );
+  return reconcile(judged, desired, (row) => offeringKey(row.clubspot_class_id, row.clubspot_session_id));
 }
 
 /**
@@ -162,7 +171,17 @@ export function planRegistrations(
     });
   }
 
-  const { toCreate, toUpdate, toDelete } = reconcile(existing, desired, (row) => row.clubspot_entry_id);
+  const classIds = new Set(mirrors.classes.map((cls) => cls.id));
+  const sessionIds = new Set(mirrors.sessions.map((session) => session.id));
+  const entryById = new Map(mirrors.entries.map((entry) => [entry.id, entry]));
+  // As in `planOfferings`, a registration made from Clubspot rows written after the read is left alone.
+  const judged = existing.filter((row) => {
+    const entry = entryById.get(row.clubspot_entry_id);
+    if (entry === undefined || !classIds.has(entry.class_id) || !sessionIds.has(entry.session_id)) return false;
+    const participantId = participantByRegistration.get(entry.registration_id);
+    return participantId !== undefined && personByParticipant.has(participantId);
+  });
+  const { toCreate, toUpdate, toDelete } = reconcile(judged, desired, (row) => row.clubspot_entry_id);
   return { toCreate, toUpdate, toDelete };
 }
 
