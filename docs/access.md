@@ -45,9 +45,10 @@ permissions, plus any shared policies it's given:
   program areas, and lets an adult change their own `share_contact`. It reads their own login too, so
   an app finds their row with a filter on `directus_user_id` for `$CURRENT_USER`.
 - A program role, such as Parent Coordinator, gives no access. It only sets Google Groups.
-- Team has the Community policy, plus Team: names and Team: contacts. A team member's email and
-  phone show only if they're an adult, or a guardian not known to be under 18, whose `share_contact`
-  is yes.
+- Team has the Community policy, plus Team: names and Team: contacts. Names cover every team's
+  sailors and their parents, and which parent belongs to which sailor, whether they shared or not. A
+  team member's email and phone show only if they're an adult, or a guardian not known to be under
+  18, whose `share_contact` is yes. A child's own never show.
 - Crew has its own rules, in `stacks/backend/policies.ts`, plus the Community policy, so a Crew
   member who is a parent sees what any parent sees. It reads every person, contact, contact point,
   medical profile, offering, and registration, but not Clubspot's sign-up answers or payments.

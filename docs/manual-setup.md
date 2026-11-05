@@ -78,7 +78,7 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | ----------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------ |
 | `clubspot-username`                 | clubspot-sync | TheClubSpot login email                                                                                |
 | `clubspot-password`                 | clubspot-sync | TheClubSpot login password                                                                             |
-| `directus-license-key`              | Directus      | The Open Innovation Grant's license key (§6). Required for the Community and Guardian roles' rules     |
+| `directus-license-key`              | Directus      | The Open Innovation Grant's license key (§6). Required for the Community and Team roles' rules         |
 | `directus-key`                      | Directus      | **Pulumi-generated.**                                                                                  |
 | `directus-secret`                   | Directus      | **Pulumi-generated.**                                                                                  |
 | `directus-db-password`              | Directus      | **Pulumi-generated**, and set on the `directus` Cloud SQL user too                                     |
