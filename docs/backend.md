@@ -9,8 +9,8 @@ projects with their resource names unchanged, and their states moved over with `
   extensions, and the `cents-as-dollars` display
 - the schema apply, from every `schemas/<domain>.yaml` merged into one snapshot
 - each collection's default view in the Data Studio
-- the roles, policies, and permission rules ([access.md](access.md)), including the Community
-  policies and the query guard, which cyc-seattle/workplace#6 steps 15 to 19 remove
+- the roles, policies, and permission rules ([access.md](access.md)), including the Community and
+  Team policies and the query guard
 - the `group-policies` hook, which gives each user the policies their groups give
 - the admins' accounts, and the clubspot-sync and gsuite-sync machine users with their tokens
 - Directus's OIDC client at Authentik
@@ -38,8 +38,10 @@ Directus through Authentik fails. The built-in admin still signs in.
 - Each collection's table opens with the sort and columns in `stacks/backend/default-views.ts`.
   `DirectusPreset` writes them as global presets: no user, no role, and no bookmark. A staffer who
   saved their own view keeps it until they reset it.
-- A default sort never crosses a link the Community query guard refuses, or the table fails to open
-  for Community and Crew. `test/default-views.test.ts` checks every view against the guard.
+- A default sort never crosses a link the query guard refuses, or the table fails to open for
+  Community, Team, or Crew. Where a staff view's sort would, Community and Team get a view of their
+  own (`familyViews`), a preset for their role. `test/default-views.test.ts` checks every view
+  against the guard.
 - Money is stored in cents. A field that holds cents uses the `cents-as-dollars` display
   (`stacks/backend/cents-display.mjs`), so a table shows 12500 as $125.00. Directus's own displays
   can't divide. A row's own page still edits the number in cents, and its note says so.
@@ -94,7 +96,6 @@ Directus 12 has **no per-policy or per-role switch for MCP.** Every signed-in us
 
 So MCP can't keep Community users out. It's on in prod for every signed-in user anyway
 (cyc-seattle/workplace#6 decision 16): it adds no access, and the query guard checks its reads.
-Steps 15 to 19 remove the Community item permissions it makes easier to probe.
 
 ### The query guard
 

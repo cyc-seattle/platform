@@ -9,12 +9,12 @@ Everyone who signs in has one of four roles. A role gives base access. The `grou
 moves families between Community and Team, and only an admin changes any other role, by hand in the
 Data Studio.
 
-| Role      | Who                                 | What it gives                                                                                                                  |
-| --------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Community | Everyone, on their first sign-in    | Their own family. Until step 19 of cyc-seattle/workplace#6, also their children's teammates and what a Parent Coordinator gets |
-| Team      | Families on a team, set by the hook | The Community policies, everyone on every team by name, and the email and phone of team adults who chose to share              |
-| Crew      | People an admin vets and trusts     | Every roster, everyone's contact details and medical information, the catalog's money to read, and the Community policies      |
-| Admin     | The people who run the system       | Everything                                                                                                                     |
+| Role      | Who                                 | What it gives                                                                                                           |
+| --------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Community | Everyone, on their first sign-in    | Their own family                                                                                                        |
+| Team      | Families on a team, set by the hook | The Community policy, everyone on every team by name, and the email and phone of team adults who chose to share         |
+| Crew      | People an admin vets and trusts     | Every roster, everyone's contact details and medical information, the catalog's money to read, and the Community policy |
+| Admin     | The people who run the system       | Everything                                                                                                              |
 
 A team is a program with `team` set. Someone is on a team while they have a confirmed registration in
 one of its offerings that hasn't ended, or ended less than 12 months ago, and a sailor's guardians are
@@ -39,19 +39,16 @@ has users.
 A policy is a named set of permissions. Each role has a policy of its own, which holds its base
 permissions, plus any shared policies it's given:
 
-- Community has the Community policies in `stacks/backend/community-rules.ts`: names, contacts,
-  family, own children, and the coordinator policies. Own children gives only a child's medical
-  information: Directus searches every field a rule grants on any row, so a rule giving a child's
-  whole row would let a parent search their child's teammates by their hidden fields.
-- Community: own family matches the signed-in user by their login, `people.directus_user_id`, not
-  their email. It gives them and their children's names, registrations, and medical information, and
-  lets an adult change their own `share_contact`. It reads their own login too, so an app finds their
-  row with a filter on `directus_user_id` for `$CURRENT_USER`. Step 19 deletes the older Community
-  policies, which match by email.
-- Team has every Community policy, plus Team: names and Team: contacts. A team member's email and
+- Community has one policy, Community: own family, in `stacks/backend/community-rules.ts`. It
+  matches the signed-in user by their login, `people.directus_user_id`, not their email. It gives
+  them and their children's names, registrations, and medical information, the names of programs and
+  program areas, and lets an adult change their own `share_contact`. It reads their own login too, so
+  an app finds their row with a filter on `directus_user_id` for `$CURRENT_USER`.
+- A program role, such as Parent Coordinator, gives no access. It only sets Google Groups.
+- Team has the Community policy, plus Team: names and Team: contacts. A team member's email and
   phone show only if they're an adult, or a guardian not known to be under 18, whose `share_contact`
   is yes.
-- Crew has its own rules, in `stacks/backend/policies.ts`, plus every Community policy, so a Crew
+- Crew has its own rules, in `stacks/backend/policies.ts`, plus the Community policy, so a Crew
   member who is a parent sees what any parent sees. It reads every person, contact, contact point,
   medical profile, offering, and registration, but not Clubspot's sign-up answers or payments.
 

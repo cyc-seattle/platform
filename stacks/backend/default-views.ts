@@ -286,3 +286,12 @@ export const defaultViews: DefaultView[] = [
     filter: { status: { _eq: "open" } },
   },
 ];
+
+/**
+ * The views Community and Team open with instead. They can't read every offering, so the query
+ * guard refuses a sort through one, and these sort on the row's own fields.
+ */
+export const familyViews: DefaultView[] = [
+  { collection: "offerings", sort: ["-starts_on"], fields: ["program_id", "starts_on", "ends_on"] },
+  { collection: "registrations", sort: ["status", "person_id"], fields: ["person_id", "offering_id", "status"] },
+];

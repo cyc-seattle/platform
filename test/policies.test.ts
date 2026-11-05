@@ -3,7 +3,7 @@ import path from "node:path";
 import * as yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
 import { discoverSchemaFiles } from "../src/directus/client.ts";
-import { communityPolicies } from "../stacks/backend/community-rules.ts";
+import { familyPolicies } from "../stacks/backend/community-rules.ts";
 import {
   crewRules,
   fieldsIn,
@@ -241,7 +241,7 @@ describe("a person's login", () => {
     const held = [
       ...policies.flatMap((policy) => policy.rules),
       ...crewRules,
-      ...communityPolicies.flatMap((policy) => policy.rules),
+      ...familyPolicies.flatMap((policy) => policy.rules),
     ];
     const writes = held.filter(
       (rule) => rule.collection === "people" && rule.action !== "read" && rule.action !== "delete",
@@ -292,9 +292,11 @@ describe("Crew", () => {
 
 describe("queryGuardConfig", () => {
   it("records each policy's read rules, their fields, and whether they limit rows", () => {
-    const config = queryGuardConfig([...communityPolicies, ...policies]);
+    const config = queryGuardConfig([...familyPolicies, ...policies]);
     expect(config.policies["CRM Reader"]?.["people"]).toEqual([{ fields: "*", filtered: false }]);
-    expect(config.policies["Community: own children"]?.["medical_profiles"]).toEqual([{ fields: "*", filtered: true }]);
-    expect(config.policies["Community: names"]?.["programs"]).toEqual([{ fields: ["id", "name"], filtered: false }]);
+    expect(config.policies["Community: own family"]?.["medical_profiles"]).toEqual([{ fields: "*", filtered: true }]);
+    expect(config.policies["Community: own family"]?.["programs"]).toEqual([
+      { fields: ["id", "name"], filtered: false },
+    ]);
   });
 });

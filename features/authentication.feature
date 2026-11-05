@@ -10,10 +10,10 @@ Feature: Signing in
 
   Rule: Signing in finds a person in the CRM by their email, even if they type it in capitals
 
-    Example: A parent who types their email in capitals still sees their child's roster
+    Example: A parent who types their email in capitals still sees their child
       Given a parent in the CRM whose child is signed up for a program
       When they sign in, typing their email in capitals
-      Then they see their child's roster
+      Then they see their child
 
     Example: Someone whose email isn't in the CRM sees no one
       Given a user with the Community role whose email isn't in the CRM

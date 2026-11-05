@@ -18,7 +18,7 @@ import * as random from "@pulumi/random";
 import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/config.ts";
-import { communityPolicies, familyPolicies, teamPolicies } from "./community-rules.ts";
+import { familyPolicies, teamPolicies } from "./community-rules.ts";
 import {
   crewRules,
   groupPolicies,
@@ -32,7 +32,7 @@ import { deployDirectus } from "./cluster.ts";
 import { deployClubspotSync } from "./clubspot-sync.ts";
 import { deployGsuiteSync } from "./gsuite-sync.ts";
 import { fingerprint } from "./saved-versions.cjs";
-import { defaultViews } from "./default-views.ts";
+import { defaultViews, familyViews } from "./default-views.ts";
 import { engineFiles, engineVersion } from "./engine-files.ts";
 
 // The CRM app's Directus schema and permission rules, matching docs/crm-schema.md, and the roles and
@@ -92,7 +92,6 @@ const app = deployDirectus(
   licensed,
   {
     queryGuard: queryGuardConfig([
-      ...communityPolicies,
       ...familyPolicies,
       ...teamPolicies,
       { name: "Crew", rules: crewRules },
@@ -193,6 +192,18 @@ const crmSchema = new DirectusSchema(
 
 for (const view of defaultViews) {
   new DirectusPreset(`default-view-${view.collection}`, { ...auth, ...view }, { dependsOn: crmSchema });
+}
+for (const [role, roleId] of [
+  ["community", communityRoleId],
+  ["team", teamRoleId],
+] as const) {
+  for (const view of familyViews) {
+    new DirectusPreset(
+      `default-view-${role}-${view.collection}`,
+      { ...auth, ...view, role: roleId },
+      { dependsOn: crmSchema },
+    );
+  }
 }
 
 // The hook installs the triggers that keep a saved plan version from changing; this fails the
@@ -426,11 +437,7 @@ for (const collection of ["sync_tasks", "audit_findings", "google_groups", "goog
 }
 
 // The Community role's policies (./community-rules.ts), which Team and Crew have too, so a Crew
-// member who is a parent sees what any parent sees. Step 19 of cyc-seattle/workplace#6 deletes the
-// old ones, which match by email.
-for (const policy of communityPolicies) {
-  declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, crewRoleId, teamRoleId]);
-}
+// member who is a parent sees what any parent sees.
 for (const policy of familyPolicies) {
   declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, teamRoleId, crewRoleId]);
 }

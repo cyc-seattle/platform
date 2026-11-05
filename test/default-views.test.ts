@@ -4,8 +4,8 @@ import * as yaml from "js-yaml";
 import { describe, it, expect } from "vitest";
 import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.ts";
 import { effectiveAccess, violation } from "../stacks/backend/community-query-guard.cjs";
-import { communityPolicies } from "../stacks/backend/community-rules.ts";
-import { defaultViews } from "../stacks/backend/default-views.ts";
+import { familyPolicies, teamPolicies } from "../stacks/backend/community-rules.ts";
+import { defaultViews, familyViews } from "../stacks/backend/default-views.ts";
 import { crewRules, groupPolicies, queryGuardConfig } from "../stacks/backend/policies.ts";
 
 interface Collection {
@@ -54,35 +54,37 @@ describe("the default views", () => {
     expect(defaultViews.map((view) => view.collection).sort()).toEqual([...visible].sort());
   });
 
-  it.each(defaultViews.map((view) => [view.collection, view]))("%s sorts and shows real fields", (_, view) => {
-    for (const sort of view.sort) {
-      expect(resolve(view.collection, sort.replace(/^-/, "")), sort).toBeDefined();
-    }
-    for (const column of view.fields) {
-      const field = resolve(view.collection, column);
-      expect(field, column).toBeDefined();
-      expect(field!.meta.hidden, `${column} is hidden`).toBe(false);
-      expect(field!.schema?.is_primary_key ?? false, `${column} is a row ID`).toBe(false);
-    }
-  });
+  it.each([...defaultViews, ...familyViews].map((view) => [view.collection, view]))(
+    "%s sorts and shows real fields",
+    (_, view) => {
+      for (const sort of view.sort) {
+        expect(resolve(view.collection, sort.replace(/^-/, "")), sort).toBeDefined();
+      }
+      for (const column of view.fields) {
+        const field = resolve(view.collection, column);
+        expect(field, column).toBeDefined();
+        expect(field!.meta.hidden, `${column} is hidden`).toBe(false);
+        expect(field!.schema?.is_primary_key ?? false, `${column} is a row ID`).toBe(false);
+      }
+    },
+  );
 
   it("never open sorted by a row ID", () => {
-    for (const view of defaultViews) {
+    for (const view of [...defaultViews, ...familyViews]) {
       expect(view.sort.map((sort) => sort.replace(/^-/, ""))).not.toContain("id");
     }
   });
 
   describe("open for someone whose reads the query guard limits", () => {
-    const config = queryGuardConfig([
-      ...communityPolicies,
-      { name: "Crew", rules: crewRules },
-      ...groupPolicies(schemas),
-    ]);
+    const config = queryGuardConfig([...familyPolicies, { name: "Crew", rules: crewRules }, ...groupPolicies(schemas)]);
     const fieldsOf = (collection: string) =>
       schema.fields.filter((f) => f.collection === collection && f.type !== "alias").map(({ field }) => field);
-    const community = communityPolicies.map(({ name }) => name);
+    const community = familyPolicies.map(({ name }) => name);
+    // Community and Team open their own views where they have one.
+    const families = defaultViews.map((view) => familyViews.find((own) => own.collection === view.collection) ?? view);
     const holders = [
       ["Community", ["Community", ...community]],
+      ["Team", ["Team", ...community, ...teamPolicies.map(({ name }) => name)]],
       ["Crew", ["Crew", ...community]],
       ["Community with Plan and Catalog Reader", ["Community", ...community, "Plan Reader", "Catalog Reader"]],
       ["Crew with Plan and Catalog Reader", ["Crew", ...community, "Plan Reader", "Catalog Reader"]],
@@ -91,7 +93,8 @@ describe("the default views", () => {
     it.each(holders)("%s", (_, names) => {
       const access = effectiveAccess(config, [...names], fieldsOf)!;
       const reads = new Set(names.flatMap((name) => Object.keys(config.policies[name] ?? {})));
-      const refused = defaultViews
+      const views = names[0] === "Crew" ? defaultViews : families;
+      const refused = views
         .filter((view) => reads.has(view.collection))
         .flatMap((view) => {
           const reason = violation(access, schema.relations, view.collection, { sort: view.sort, filter: view.filter });

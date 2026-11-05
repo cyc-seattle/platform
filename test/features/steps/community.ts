@@ -1,6 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { expect } from "vitest";
-import { ACTIVE_CAMP, PARENT_COORDINATOR } from "../../../stacks/backend/community-rules.ts";
 import type { DirectusSession } from "../directus.ts";
 import { expectRefusal, onEachScenario, parameter, setThey, Step, theirSession } from "./index.ts";
 import { createUser, hasRole, type User } from "./logins.ts";
@@ -9,8 +8,7 @@ import { newCamp, newProgram, signUp, type Camp, type Program, type Season } fro
 
 // The season a family's scenario stands in: camps, rosters, sailors, and the people who sign in. Each
 // scenario builds its own, so a Given says everything its Then depends on. A `Team` is a program's
-// class in a Clubspot camp, and its offering. Under the old rules, the roster is the program's
-// confirmed entries in camps running now. Under the new ones, a team is a program marked as one.
+// class in a Clubspot camp, and its offering, which is a team only if the program is marked as one.
 
 type Row = Record<string, unknown>;
 type Team = Program;
@@ -47,6 +45,8 @@ interface Scene {
   probes: Row[][];
   baseline: Set<unknown>;
   statuses: number[];
+  /** The programs and people the roster page read. */
+  roster: { programs: Row[]; people: Row[] };
   /** The person who signed in. */
   me?: Person;
 }
@@ -58,6 +58,7 @@ const newScene = (): Scene => ({
   probes: [],
   baseline: new Set(),
   statuses: [],
+  roster: { programs: [], people: [] },
 });
 let scene = newScene();
 onEachScenario(() => {
@@ -180,11 +181,15 @@ async function aTeammate(
 
 // Givens: who signs in, and who sails with them.
 
-Step("a parent whose child is signed up for a program", () => aGuardian("Community"));
+for (const text of [
+  "a parent whose child is signed up for a program",
+  "a parent whose child is signed up for a program that isn't a team",
+]) {
+  Step(text, () => aGuardian("Community"));
+}
 Step("a parent in the CRM whose child is signed up for a program", async () => {
   const child = call("the child", await sailor("child", await theTeam(), {}));
   call("the parent", await guardianOf(child));
-  await aTeammate({ share: true, dateOfBirth: ADULT });
 });
 Step("they sign in, typing their email in capitals", async () => {
   const guardian = the("the parent");
@@ -197,6 +202,10 @@ Step("they sign in, typing their email in capitals", async () => {
 
 // The teammate is an adult wherever their age doesn't matter, so their own email is shareable.
 Step("another sailor in the program", () => aTeammate({ share: true, dateOfBirth: ADULT }));
+Step("another sailor in the program who chose to share, and their parent", async () => {
+  const sailing = await aTeammate({ share: true }, "the sailor");
+  call("the sailor's parent", await guardianOf(sailing, { share: true }));
+});
 Step("a teammate who hasn't answered the sharing question, and their parent", async () => {
   const teammate = await aTeammate({ share: null, fields: { phone: phone() } });
   call("the teammate's parent", await guardianOf(teammate));
@@ -226,7 +235,9 @@ async function aVolunteer(role: string, endsOn: string | null): Promise<void> {
   await signIn(volunteer);
 }
 
-/** The Parent Coordinator role is matched by name, so every run shares one row of it. */
+const PARENT_COORDINATOR = "Parent Coordinator";
+
+/** Every run shares one Parent Coordinator role, as the club has one. */
 async function parentCoordinator(): Promise<string> {
   const filter = encodeURIComponent(JSON.stringify({ name: { _eq: PARENT_COORDINATOR } }));
   const [existing] = await (await admin()).ok("GET", `/items/program_roles?filter=${filter}&limit=1`);
@@ -313,8 +324,9 @@ Step("they look up who each sailor's parents are", async () => {
 });
 Step("they look up the teammate's registration", async () => {
   const session = await theirSession();
-  const { participantId } = the("the teammate");
+  const { id, participantId } = the("the teammate");
   scene.rows = [
+    ...(await read(session, "registrations", `?filter[person_id][_eq]=${id}`)),
     ...(await read(session, "clubspot_registrations", `?filter[participant_id][_eq]=${participantId}`)),
     ...(await read(session, "clubspot_participants", `?filter[id][_eq]=${participantId}`)),
   ];
@@ -335,11 +347,8 @@ Step("they see {someone}", (_, label: string) => {
 Step("they don't see {someone}", (_, label: string) => {
   expect(ids(scene.rows)).not.toContain(the(label).id);
 });
-Step("they see their child's roster", async () => {
-  const seen = ids(await read(await theirSession(), "people"));
-  for (const label of ["the child", "the teammate"]) {
-    expect(seen, label).toContain(the(label).id);
-  }
+Step("they see their child", async () => {
+  expect(ids(await read(await theirSession(), "people"))).toContain(the("the child").id);
 });
 Step("they see {someone}'s email", (_, label: string) => {
   expect(rowOf(the(label))?.["email"]).toBe(the(label).email);
@@ -394,6 +403,10 @@ Step("they see themselves listed as their child's parent", () => {
 Step("they see who {someone}'s parent is", (_, label: string) => {
   const subject = the(label);
   expect(scene.rows).toContainEqual(link(subject, subject.guardian!));
+});
+Step("they don't see who {someone}'s parent is", (_, label: string) => {
+  const subject = the(label);
+  expect(scene.rows).not.toContainEqual(link(subject, subject.guardian!));
 });
 
 Step("a teammate who hasn't answered the sharing question, and their parent, who has signed in", async () => {
@@ -456,19 +469,18 @@ Step("they can't move their child to another program", async () => {
   }
 });
 
-// A registration that matches only the names policy comes back with family's fields as null, since
-// the fields Directus returns span every read rule on the role.
+// They see the teammate's registration, but none of Clubspot's, which hold the answers. The person's
+// own answer comes back null, since the fields Directus returns span every read rule on the role.
 Step("they can't see the teammate's sharing answer", async () => {
-  const registration = scene.rows.find((row) => "share_contact" in row);
-  expect(registration).toBeDefined();
-  expect(registration?.["share_contact"]).toBeNull();
-  expect(registration?.["camp_id"]).toBeNull();
-  const person = await read(await theirSession(), "people", `?filter[id][_eq]=${the("the teammate").id}`);
+  const teammate = the("the teammate");
+  expect(scene.rows).toContainEqual(expect.objectContaining({ person_id: teammate.id }));
+  expect(scene.rows.some((row) => "share_contact" in row)).toBe(false);
+  const person = await read(await theirSession(), "people", `?filter[id][_eq]=${teammate.id}`);
+  expect(person).toHaveLength(1);
   expect(person[0]?.["share_contact"] ?? null).toBeNull();
 });
 Step("they can't see the teammate's sign-up answers", () => {
-  const participant = scene.rows.find((row) => row["id"] === the("the teammate").participantId);
-  expect(Object.keys(participant ?? {}).sort()).toEqual(["id", "person_id"]);
+  expect(scene.rows.find((row) => row["id"] === the("the teammate").participantId)).toBeUndefined();
 });
 
 Step("they can't see anyone's extra emails or phone numbers", async () => {
@@ -625,40 +637,90 @@ Step("they see no one in the program", async () => {
   }
 });
 
-/** The roster page's requests (isthmia's packages/portal/src/roster/browser.ts), copied by hand. */
-const rosterRequests: { collection: string; fields: string[]; filter?: Row }[] = [
-  {
-    collection: "clubspot_registration_entries",
-    fields: [
-      "id",
-      "class_id.id",
-      "class_id.name",
-      "class_id.program_id.id",
-      "class_id.program_id.name",
-      "registration_id.id",
-      "registration_id.participant_id.person_id",
-    ],
-    filter: { class_id: { camp_id: ACTIVE_CAMP } },
-  },
-  { collection: "people", fields: ["id", "first_name", "last_name", "school", "email", "phone"] },
-  { collection: "contacts", fields: ["subject_id", "contact_id", "relationship_type"] },
-  // Community sends no filter.
-  { collection: "clubspot_registrations", fields: ["id", "camp_id", "participant_id", "share_contact"] },
-  { collection: "clubspot_participants", fields: ["id", "person_id"] },
-];
+/** The rows `table` has for `ids`, as the roster page reads them. */
+async function readByIds(
+  session: DirectusSession,
+  table: string,
+  field: string,
+  values: unknown[],
+  fields: string[],
+  filter: Row = {},
+): Promise<Row[]> {
+  const params = new URLSearchParams({
+    limit: "-1",
+    fields: fields.join(","),
+    filter: JSON.stringify({ _and: [{ [field]: { _in: values } }, filter] }),
+  });
+  const { status, body } = await session.request("GET", `/items/${table}?${params.toString()}`);
+  scene.statuses.push(status);
+  return status === 200 ? body.data : [];
+}
 
+/** The fields of `wanted` some rule lets them read, which the page asks for so Directus doesn't refuse the request. */
+function readable(permissions: Record<string, { read?: { fields?: string[] } }>, table: string, wanted: string[]) {
+  const fields = permissions[table]?.read?.fields ?? [];
+  return fields.includes("*") ? wanted : wanted.filter((field) => fields.includes(field));
+}
+
+// The roster page's requests (sail-team's src/directus/roster.ts), copied by hand.
 Step("they open the roster page", async () => {
   const session = await theirSession();
   scene.statuses = [];
-  for (const request of rosterRequests) {
-    const params = new URLSearchParams({ limit: "-1", fields: request.fields.join(",") });
-    if (request.filter) {
-      params.set("filter", JSON.stringify(request.filter));
-    }
-    const { status, body } = await session.request("GET", `/items/${request.collection}?${params.toString()}`);
-    scene.statuses.push(status);
-    if (request.collection === "clubspot_registration_entries" && status === 200) {
-      scene.rows = body.data;
-    }
+  const me = await session.request("GET", "/permissions/me");
+  scene.statuses.push(me.status);
+  const permissions = me.body.data ?? {};
+  const since = new Date();
+  since.setUTCMonth(since.getUTCMonth() - 12);
+  const recent = new URLSearchParams({
+    limit: "-1",
+    fields: "id,program_id,starts_on,ends_on",
+    filter: JSON.stringify({
+      _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: since.toISOString().slice(0, 10) } }],
+    }),
+  });
+  const offerings = await session.request("GET", `/items/offerings?${recent.toString()}`);
+  scene.statuses.push(offerings.status);
+  const offeringRows: Row[] = offerings.status === 200 ? offerings.body.data : [];
+  const programs = await readByIds(
+    session,
+    "programs",
+    "id",
+    [...new Set(offeringRows.map((row) => row["program_id"]))],
+    readable(permissions, "programs", ["id", "name", "team"]),
+  );
+  const registrations = await readByIds(
+    session,
+    "registrations",
+    "offering_id",
+    offeringRows.map((row) => row["id"]),
+    ["person_id", "offering_id", "status"],
+    { status: { _eq: "confirmed" } },
+  );
+  const sailors = [...new Set(registrations.map((row) => row["person_id"]))];
+  const contacts = await readByIds(
+    session,
+    "contacts",
+    "subject_id",
+    sailors,
+    ["subject_id", "contact_id", "relationship_type"],
+    { relationship_type: { _eq: "guardian" } },
+  );
+  const people = await readByIds(
+    session,
+    "people",
+    "id",
+    [...new Set([...sailors, ...contacts.map((row) => row["contact_id"])])],
+    readable(permissions, "people", ["id", "first_name", "last_name", "email", "phone"]),
+  );
+  scene.roster = { programs, people };
+});
+Step("the page loads without errors and shows the teams' rosters", () => {
+  expect(
+    scene.statuses.every((status) => status === 200),
+    JSON.stringify(scene.statuses),
+  ).toBe(true);
+  expect(ids(scene.roster.programs)).toContain(scene.team!.programId);
+  for (const label of ["the child", "the parent"]) {
+    expect(ids(scene.roster.people), label).toContain(the(label).id);
   }
 });
