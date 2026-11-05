@@ -134,7 +134,6 @@ Feature: The CRM
       But they can't see a registration's payments
       And they can't see sign-up answers
 
-  @pending
   Rule: A family on no team sees only their own family
 
     Example: A parent sees their child, but not the others in the program
@@ -359,7 +358,6 @@ Feature: The CRM
       When they stop sharing
       Then they don't share their email and phone
 
-  @pending
   Rule: A program role doesn't change what someone sees
 
     Example: A Parent Coordinator who isn't Crew sees only their own family
@@ -376,7 +374,6 @@ Feature: The CRM
       When they look at the roster
       Then they see no one in the program
 
-  @pending
   Rule: A family on a team can use the roster page on cycsail.team
 
     Example: A parent opens the roster page

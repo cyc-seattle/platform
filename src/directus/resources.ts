@@ -821,8 +821,9 @@ export class DirectusSettings extends pulumi.dynamic.Resource {
   }
 }
 
-// --- DirectusPreset: a collection's global default view, the one a user sees until they save their
-// own. Directus marks it with no user, role, or bookmark. A user's own saved view still wins over it.
+// --- DirectusPreset: a collection's default view, the one a user sees until they save their own.
+// Directus marks a global one with no user, role, or bookmark, and a role's own with its role. A
+// role's view wins over the global one, and a user's own saved view wins over both.
 
 /** How a collection's table opens: its sort, its columns, and an optional filter. */
 export interface DefaultView {
@@ -835,17 +836,19 @@ export interface DefaultView {
   filter?: Record<string, unknown>;
 }
 
-interface DirectusPresetInputs extends DirectusAuthProps, DefaultView {}
+interface DirectusPresetInputs extends DirectusAuthProps, DefaultView {
+  role?: string;
+}
 
 interface DirectusPresetOutputs extends DirectusPresetInputs {
   presetId: number;
 }
 
-function presetBody(view: DefaultView): Record<string, unknown> {
+function presetBody(view: DefaultView & { role?: string }): Record<string, unknown> {
   return {
     collection: view.collection,
     user: null,
-    role: null,
+    role: view.role ?? null,
     bookmark: null,
     layout: "tabular",
     layout_query: { tabular: { sort: view.sort, fields: view.fields, page: 1 } },
@@ -853,7 +856,7 @@ function presetBody(view: DefaultView): Record<string, unknown> {
   };
 }
 
-/** Writes the collection's global preset, taking over one an admin already saved rather than adding a second. */
+/** Writes the collection's preset for its role, or every role, taking over one an admin already saved rather than adding a second. */
 async function writePreset(inputs: DirectusPresetInputs, token: string, presetId?: number): Promise<number> {
   const body = presetBody(inputs);
   if (presetId !== undefined) {
@@ -869,7 +872,10 @@ async function writePreset(inputs: DirectusPresetInputs, token: string, presetId
     token,
     "GET",
     `/presets?filter[collection][_eq]=${encodeURIComponent(inputs.collection)}` +
-      "&filter[user][_null]=true&filter[role][_null]=true&filter[bookmark][_null]=true&fields=id&limit=1",
+      "&filter[user][_null]=true&filter[bookmark][_null]=true&fields=id&limit=1" +
+      (inputs.role === undefined
+        ? "&filter[role][_null]=true"
+        : `&filter[role][_eq]=${encodeURIComponent(inputs.role)}`),
   );
   const found = existing.data[0];
   if (found !== undefined) {
@@ -910,12 +916,12 @@ export const directusPresetProvider: pulumi.dynamic.ResourceProvider = {
     }
   }),
 
-  // The collection is the preset's identity, so a change to it replaces the preset.
+  // The collection and role are the preset's identity, so a change to either replaces the preset.
   diff: reportErrors(
     "DirectusPreset",
     "diff",
     async (_id: string, olds: DirectusPresetOutputs, news: DirectusPresetInputs) => {
-      const replaces = olds.collection !== news.collection ? ["collection"] : [];
+      const replaces = (["collection", "role"] as const).filter((key) => olds[key] !== news[key]);
       const changes =
         replaces.length > 0 ||
         (["baseUrl", "adminEmail", "adminPassword"] as const).some((key) => olds[key] !== news[key]) ||
@@ -925,9 +931,12 @@ export const directusPresetProvider: pulumi.dynamic.ResourceProvider = {
   ),
 };
 
-export interface DirectusPresetArgs extends DirectusAuthArgs, DefaultView {}
+export interface DirectusPresetArgs extends DirectusAuthArgs, DefaultView {
+  /** The role whose default view this is. Omit for every role's. */
+  role?: pulumi.Input<string>;
+}
 
-/** A collection's global default view: its sort and columns for anyone who hasn't saved their own. */
+/** A collection's default view: its sort and columns for anyone who hasn't saved their own. */
 export class DirectusPreset extends pulumi.dynamic.Resource {
   declare public readonly presetId: pulumi.Output<number>;
 

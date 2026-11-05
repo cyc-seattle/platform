@@ -353,7 +353,18 @@ describe("DirectusPreset", () => {
     expect(init.method).toBe("PATCH");
   });
 
-  it("updates in place, and replaces only when the collection changes", async () => {
+  it("creates a role's own preset, taking over only that role's", async () => {
+    const fetchMock = stubCreate([]);
+
+    await directusPresetProvider.create({ ...auth, ...view, role: "r-team" });
+
+    const [lookup] = fetchMock.mock.calls.at(-2)!;
+    expect(lookup).toContain("filter[role][_eq]=r-team");
+    expect(lookup).not.toContain("filter[role][_null]");
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toMatchObject({ role: "r-team", user: null });
+  });
+
+  it("updates in place, and replaces only when the collection or role changes", async () => {
     const olds = { ...auth, ...view, presetId: 3 };
     expect(await directusPresetProvider.diff?.("3", olds, { ...auth, ...view })).toMatchObject({ changes: false });
     expect(await directusPresetProvider.diff?.("3", olds, { ...auth, ...view, sort: ["name"] })).toMatchObject({
@@ -365,6 +376,10 @@ describe("DirectusPreset", () => {
     ).toMatchObject({
       changes: true,
       replaces: ["collection"],
+    });
+    expect(await directusPresetProvider.diff?.("3", olds, { ...auth, ...view, role: "r-team" })).toMatchObject({
+      changes: true,
+      replaces: ["role"],
     });
   });
 

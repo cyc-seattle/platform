@@ -4,7 +4,7 @@ import * as yaml from "js-yaml";
 import { describe, it, expect } from "vitest";
 import { discoverSchemaFiles, mergeSchemas } from "../src/directus/client.ts";
 import { effectiveAccess, violation } from "../stacks/backend/community-query-guard.cjs";
-import { communityPolicies, familyPolicies, teamPolicies } from "../stacks/backend/community-rules.ts";
+import { familyPolicies, teamPolicies } from "../stacks/backend/community-rules.ts";
 import { crewRules, groupPolicies, queryGuardConfig } from "../stacks/backend/policies.ts";
 
 interface Snapshot {
@@ -26,15 +26,14 @@ const fieldsOf = (collection: string) =>
   schema.fields.filter((field) => field.collection === collection && field.type !== "alias").map(({ field }) => field);
 
 const config = queryGuardConfig([
-  ...communityPolicies,
   ...familyPolicies,
   ...teamPolicies,
   { name: "Crew", rules: crewRules },
   ...groupPolicies(schemas),
 ]);
-const COMMUNITY = ["Community", ...communityPolicies.map(({ name }) => name)];
-const CREW = ["Crew", ...communityPolicies.map(({ name }) => name), ...familyPolicies.map(({ name }) => name)];
-const TEAM = [...COMMUNITY, ...[...familyPolicies, ...teamPolicies].map(({ name }) => name)];
+const COMMUNITY = ["Community", ...familyPolicies.map(({ name }) => name)];
+const CREW = ["Crew", ...familyPolicies.map(({ name }) => name)];
+const TEAM = ["Team", ...[...familyPolicies, ...teamPolicies].map(({ name }) => name)];
 
 function accessOf(names: string[]) {
   const access = effectiveAccess(config, names, fieldsOf);
@@ -42,16 +41,21 @@ function accessOf(names: string[]) {
   return access;
 }
 
-const community = accessOf(COMMUNITY);
-const check = (collection: string, query: Record<string, unknown>, access = community) =>
+const team = accessOf(TEAM);
+const check = (collection: string, query: Record<string, unknown>, access = team) =>
   violation(access, schema.relations, collection, query);
 
 describe("effectiveAccess", () => {
-  it("restricts the fields some Community read rule withholds, and opens the unfiltered lookups", () => {
-    expect(community).toEqual({
-      restricted: { people: ["email", "phone", "school"], clubspot_registrations: ["camp_id", "share_contact"] },
-      open: ["clubspot_camps", "clubspot_classes", "program_areas", "programs"],
+  it("restricts nothing for Community, whose one rule per collection gives the same fields on every row", () => {
+    expect(accessOf(COMMUNITY)).toEqual({ restricted: {}, open: ["program_areas", "programs"] });
+  });
+
+  it("restricts the fields some Team read rule withholds", () => {
+    expect(team.restricted).toEqual({
+      people: ["directus_user_id", "email", "phone", "share_contact"],
+      programs: ["team"],
     });
+    expect(team.open).toEqual(["program_areas"]);
   });
 
   it("checks nothing for a user whose rules never limit rows", () => {
@@ -65,12 +69,21 @@ describe("effectiveAccess", () => {
   });
 });
 
-describe("the Community query guard", () => {
-  it("passes the portal's roster requests", () => {
-    const activeCamp = { start_date: { _lte: "$NOW" }, end_date: { _gte: "$NOW(-36 hours)" } };
-    expect(check("clubspot_registration_entries", { filter: { class_id: { camp_id: activeCamp } } })).toBeUndefined();
-    expect(check("people", {})).toBeUndefined();
-    expect(check("contacts", { filter: { subject_id: { _eq: "p1" } } })).toBeUndefined();
+describe("the query guard", () => {
+  // sail-team's roster page filters only on ids, statuses, and dates.
+  it("passes the roster page's requests", () => {
+    const ids = { _in: ["a", "b"] };
+    expect(
+      check("offerings", { filter: { _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: "2026-01-01" } }] } }),
+    ).toBeUndefined();
+    expect(check("programs", { filter: { _and: [{ id: ids }, {}] } })).toBeUndefined();
+    expect(
+      check("registrations", { filter: { _and: [{ offering_id: ids }, { status: { _eq: "confirmed" } }] } }),
+    ).toBeUndefined();
+    expect(
+      check("contacts", { filter: { _and: [{ subject_id: ids }, { relationship_type: { _eq: "guardian" } }] } }),
+    ).toBeUndefined();
+    expect(check("people", { filter: { _and: [{ id: ids }, {}] } })).toBeUndefined();
   });
 
   it("passes a search, which Directus checks against permissions itself", () => {
@@ -81,7 +94,7 @@ describe("the Community query guard", () => {
     [{ filter: { email: { _starts_with: "b" } } }, "people.email"],
     [{ filter: { _or: [{ first_name: { _eq: "x" } }, { phone: { _nnull: true } }] } }, "people.phone"],
     [{ sort: ["-email"] }, "people.email"],
-    [{ group: ["school"] }, "people.school"],
+    [{ group: ["email"] }, "people.email"],
     [{ aggregate: { countDistinct: ["phone"] } }, "people.phone"],
     [{ filter: { my_contacts: { contact_id: { first_name: { _eq: "Marge" } } } } }, "the relation people.my_contacts"],
     [
@@ -108,25 +121,32 @@ describe("the Community query guard", () => {
   });
 
   it("follows `_some` the way Directus does, wherever it sits among the keys", () => {
+    const access = { restricted: {}, open: ["programs", "clubspot_classes", "clubspot_camps"] };
     const probe = { participant_id: { person_id: { email: { _starts_with: "b" } } } };
     expect(
-      check("programs", {
-        filter: { classes: { name: { _eq: "x" }, _some: { registration_entries: { registration_id: probe } } } },
-      }),
+      check(
+        "programs",
+        { filter: { classes: { name: { _eq: "x" }, _some: { registration_entries: { registration_id: probe } } } } },
+        access,
+      ),
     ).toBe("the relation clubspot_classes.registration_entries");
-    expect(check("programs", { filter: { classes: { _none: { camp_id: { name: { _eq: "x" } } } } } })).toBeUndefined();
+    expect(
+      check("programs", { filter: { classes: { _none: { camp_id: { name: { _eq: "x" } } } } } }, access),
+    ).toBeUndefined();
   });
 
   it("rejects a filter through an open collection back into a partial one", () => {
-    expect(check("contacts", { filter: { subject_id: { email: { _eq: "x" } } } })).toBe(
+    const access = { restricted: { people: ["email"] }, open: ["contacts"] };
+    expect(check("contacts", { filter: { subject_id: { email: { _eq: "x" } } } }, access)).toBe(
       "the relation contacts.subject_id",
     );
   });
 
   it("rejects a relation through a field the viewer can't read on every row", () => {
-    expect(check("clubspot_registrations", { filter: { camp_id: { name: { _eq: "Summer Session 2" } } } })).toBe(
-      "clubspot_registrations.camp_id",
-    );
+    const access = { restricted: { clubspot_registrations: ["camp_id"] }, open: ["clubspot_camps"] };
+    expect(
+      check("clubspot_registrations", { filter: { camp_id: { name: { _eq: "Summer Session 2" } } } }, access),
+    ).toBe("clubspot_registrations.camp_id");
   });
 });
 

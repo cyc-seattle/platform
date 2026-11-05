@@ -233,18 +233,10 @@ Reusing it instead of a homegrown field means:
 
 ### Community
 
-`cycsail.team`'s roster (cyc-seattle/isthmia#166) lets a signed-in family see their teammates, through Directus
-policies (`stacks/backend/community-rules.ts`):
-
-- **Names.** Everyone sharing an active-camp program sees each teammate's name and school.
-- **Contacts.** A teammate's email and phone show program-wide once one of their registrations has
-  opted in. Opting in one registration shares every guardian linked to that child, not only the one
-  who answered.
-- **Family.** A guardian, or an adult participant for themselves, reads and toggles the opt-in on
-  their own writable registrations.
-- **Coordinators.** A person holding a current Parent Coordinator assignment (matched by role name)
-  on a program sees every confirmed, active-camp participant's name and school there, and every
-  guardian's email and phone with no opt-in. A minor's own email and phone stay hidden.
+`cycsail.team`'s rosters page shows a signed-in family their own family, and a family on a team
+every team's roster, through the Community and Team policies (`stacks/backend/community-rules.ts`,
+[access.md](access.md#policies)). A team member's email and phone show only for an adult who chose
+to share. A program role, such as Parent Coordinator, gives no access.
 
 Directus runs a filter or sort against the raw column once any rule grants the field, and joins a
 relational filter's rows with no rules at all. So `backend` mounts the query guard
@@ -252,10 +244,10 @@ relational filter's rows with no rules at all. So `backend` mounts the query gua
 aggregating on a field some of the user's rules withhold, or crossing a relation into a collection
 they read only in part.
 
-The opt-in is `clubspot_registrations.share_contact`, nullable, answered per registration rather than
-carried on the person — Clubspot asks the sharing question once per season's signup. It is set
-from Clubspot, as a promoted field, or from the portal's toggle, whichever edit is newer (the one
-CRM field rule, above).
+The opt-in is `people.share_contact`, nullable, one per adult. An adult changes their own. Clubspot
+asks the sharing question on each sign-up, and clubspot-sync keeps the answer on the sign-up,
+`clubspot_registrations.share_contact`, and copies it to the people it speaks for
+([syncs.md](syncs.md)). The latest answer wins.
 
 ### Permission model
 

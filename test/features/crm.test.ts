@@ -4,7 +4,7 @@ import "./steps/community.ts";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
 import { asAdmin } from "./cluster.ts";
 import { clubspotRun, seedClass, seedSailor, type ClubspotRun } from "./steps/clubspot.ts";
-import { createUser, notBuilt, type User } from "./steps/logins.ts";
+import { createUser, type User } from "./steps/logins.ts";
 import { admin, adminCreate, created, email, itemPath, newRow, runId } from "./steps/rows.ts";
 import { runClubspotSync } from "./syncs.ts";
 
@@ -98,23 +98,6 @@ Step("an admin deletes the sailor's parent", async () => {
 Step("the parent is still in the CRM", async () => {
   await (await admin()).ok("GET", itemPath("people", theFamily().parentIds[0]));
 });
-
-// The roster page and the old rules' removal (cyc-seattle/workplace#6 steps 18 and 19).
-for (const [step, texts] of [
-  ["18", ["the page loads without errors and shows the teams' rosters"]],
-  [
-    "19",
-    [
-      "a parent whose child is signed up for a program that isn't a team",
-      "another sailor in the program who chose to share, and their parent",
-      "they don't see who the sailor's parent is",
-    ],
-  ],
-] as const) {
-  for (const text of texts) {
-    Step(text, () => notBuilt(step));
-  }
-}
 
 /** A family signed up through Clubspot, who said yes to sharing, synced onto a team. Returns the parent's id. */
 async function aParentWhoSaidYes(run: ClubspotRun): Promise<string> {
