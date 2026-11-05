@@ -157,10 +157,45 @@ describe("planOfferings", () => {
     expect(plan.toDelete).toEqual(["o-3"]);
     expect([...plan.idByKey.values()]).toEqual(["o-1", "o-2"]);
   });
+
+  it("leaves an offering whose class or session was made after the mirrors were read", () => {
+    const existing: OfferingRow[] = [
+      {
+        id: "o-new-class",
+        program_id: "program-k-pod",
+        starts_on: "2026-06-01",
+        ends_on: "2026-08-31",
+        capacity: null,
+        clubspot_class_id: "k-pod",
+        clubspot_session_id: null,
+      },
+      {
+        id: "o-new-session",
+        program_id: "program-guppies",
+        starts_on: "2026-06-29",
+        ends_on: "2026-07-03",
+        capacity: null,
+        clubspot_class_id: "guppies",
+        clubspot_session_id: "week-3",
+      },
+    ];
+    const plan = planOfferings(
+      mirrors({ classes: [{ id: "guppies", camp_id: "camp-1", program_id: "program-guppies" }] }),
+      existing,
+    );
+
+    expect(plan.toDelete).toEqual([]);
+    expect(plan.toUpdate).toEqual([]);
+  });
 });
 
 describe("planRegistrations", () => {
   const linked: Partial<Mirrors> = {
+    classes: [
+      { id: "guppies", camp_id: "camp-1", program_id: "program-guppies" },
+      { id: "j-pod", camp_id: "camp-1", program_id: "program-j-pod" },
+      { id: "unmapped", camp_id: "camp-1", program_id: null },
+    ],
     registrations: [
       { id: "signup-1", participant_id: "participant-1" },
       { id: "signup-2", participant_id: "participant-2" },
@@ -228,7 +263,7 @@ describe("planRegistrations", () => {
         person_id: "person-1",
         offering_id: "offering-gone",
         status: "confirmed",
-        clubspot_entry_id: "entry-9",
+        clubspot_entry_id: "entry-4",
       },
     ];
     const plan = planRegistrations(
@@ -242,6 +277,13 @@ describe("planRegistrations", () => {
             class_id: "guppies",
             status: "cancelled",
           },
+          {
+            id: "entry-4",
+            registration_id: "signup-1",
+            session_id: "week-2",
+            class_id: "unmapped",
+            status: "confirmed",
+          },
         ],
       }),
       offerings,
@@ -253,6 +295,41 @@ describe("planRegistrations", () => {
       toUpdate: [{ id: "r-1", patch: { status: "cancelled" } }],
       toDelete: ["r-2"],
     });
+  });
+
+  it("leaves a registration whose Clubspot rows were made after the mirrors were read", () => {
+    const registration = (id: string, entry: string): CrmRegistrationRow => ({
+      id,
+      person_id: "person-1",
+      offering_id: "offering-new",
+      status: "confirmed",
+      clubspot_entry_id: entry,
+    });
+    const plan = planRegistrations(
+      mirrors({
+        ...linked,
+        entries: [
+          {
+            id: "new-class",
+            registration_id: "signup-1",
+            session_id: "week-1",
+            class_id: "k-pod",
+            status: "confirmed",
+          },
+          {
+            id: "new-signup",
+            registration_id: "signup-9",
+            session_id: "week-1",
+            class_id: "guppies",
+            status: "confirmed",
+          },
+        ],
+      }),
+      offerings,
+      [registration("r-1", "new-entry"), registration("r-2", "new-class"), registration("r-3", "new-signup")],
+    );
+
+    expect(plan).toEqual({ toCreate: [], toUpdate: [], toDelete: [] });
   });
 });
 
