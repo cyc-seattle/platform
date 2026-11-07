@@ -64,8 +64,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   shares dev with the queue, so use it only when a PR needs early feedback.
 - A queued PR that changes only docs, `.agents/` or `.github/` skips the dev deploy and the
   integration features (`scripts/changed-projects`), except a change to `pull-request.yml` itself.
-- The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, then
-  `backend`, and `prod` is `infra`, then `backend`. `DEPLOY_PROJECTS` narrows the list. Its preview
+- The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, `backend`,
+  then `authentik`, and `prod` is `infra`, `backend`, then `authentik`. `DEPLOY_PROJECTS` narrows the list. Its preview
   appends each project's `true` or `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip
   a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`, so keep
   those names.

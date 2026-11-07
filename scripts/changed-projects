@@ -4,7 +4,7 @@
 # the integration features, which load dev's shared database.
 set -euo pipefail
 
-all=(smoke backend)
+all=(smoke backend authentik)
 deploy=false
 
 while IFS= read -r path || [[ -n "$path" ]]; do

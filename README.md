@@ -118,8 +118,8 @@ changes, so a merge that changes nothing in prod asks for no approval. Dev build
 for every commit, and prod's CronJobs run the one built for theirs, so until cyc-seattle/isthmia#258
 every merge previews `backend`'s CronJobs as changed.
 
-`PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, then `backend`, and
-`prod` is `infra`, then `backend`. `integration` is dev only.
+`PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, `backend`, then
+`authentik`, and `prod` is `infra`, `backend`, then `authentik`. `integration` is dev only.
 
 `bootstrap` is never deployed from Actions (cyc-seattle/isthmia#118). It holds the identities that
 CI assumes, and a human with project Owner and `gh` `admin:org` applies it with the tasks below.
@@ -136,7 +136,7 @@ mise run deploy
 PULUMI_STACK=dev mise run deploy
 ```
 
-`mise run deploy` applies `infra`, then `backend`. isthmia's prod stacks read its outputs through a StackReference.
+`mise run deploy` applies `infra`, `backend`, then `authentik`. isthmia's prod stacks read its outputs through a StackReference.
 Dev stacks can't read prod state, so `infra` writes each environment's platform
 values to `platform/outputs.json` in that environment's state bucket.
 
