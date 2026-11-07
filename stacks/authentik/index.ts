@@ -3,7 +3,6 @@ import * as gcp from "@pulumi/gcp";
 import * as authentik from "@pulumi/authentik";
 import {
   GoogleSource,
-  ForwardAuthProvider,
   ConfidentialOidcProvider,
   UnverifiedEmailUserWriteStage,
   VerifiedEmailUserWriteStage,
@@ -341,28 +340,8 @@ new authentik.SystemSettings("system-settings", { defaultUserChangeEmail: false 
 // --- 5. The `staff` group. Membership is managed by hand, not synced from anywhere.
 new authentik.Group(STAFF_GROUP_NAME, { name: STAFF_GROUP_NAME }, opts);
 
-// --- 6. The portal's forward-auth proxy provider and application, on the embedded outpost.
-const portalProxyProvider = new ForwardAuthProvider(
-  "portal-proxy",
-  {
-    name: "Portal",
-    externalHost: internalDomain.apply((domain) => `https://${domain}`),
-    authorizationFlow: implicitConsentFlow.id,
-    invalidationFlow: providerInvalidationFlow.id,
-  },
-  opts,
-);
-
-const portalApplication = new authentik.Application(
-  "portal",
-  {
-    name: "Portal",
-    slug: "portal",
-    protocolProvider: numericId(portalProxyProvider.providerProxyId),
-  },
-  opts,
-);
-
+// --- 6. The embedded outpost. It gated isthmia's portal, which is retired (cyc-seattle/sail-team#1), so it
+// serves no provider now. Authentik owns it, so this project only ever updates it.
 // The embedded outpost's Authentik-assigned id (`GET /api/v3/outposts/instances/`), different on
 // each instance. The `import` option below adopts the live resource rather than creating a second.
 // Without it, EmbeddedOutpost finds the outpost at apply time.
@@ -380,22 +359,19 @@ if (embeddedOutpostId !== undefined) {
     "embedded-outpost",
     {
       name: "authentik Embedded Outpost",
-      protocolProviders: [numericId(portalProxyProvider.providerProxyId)],
+      protocolProviders: [],
       config: internalDomain.apply((domain) => embeddedOutpostConfig(domain)),
     },
-    { ...opts, import: embeddedOutpostId },
+    // Dropping this resource must never delete Authentik's own outpost.
+    { ...opts, import: embeddedOutpostId, retainOnDelete: true },
   );
 } else {
-  new EmbeddedOutpost(
-    "embedded-outpost",
-    {
-      url: authentikUrl,
-      token: authentikToken,
-      providers: [numericId(portalProxyProvider.providerProxyId)],
-      config: internalDomain.apply((domain) => embeddedOutpostConfig(domain)),
-    },
-    { dependsOn: portalProxyProvider },
-  );
+  new EmbeddedOutpost("embedded-outpost", {
+    url: authentikUrl,
+    token: authentikToken,
+    providers: [],
+    config: internalDomain.apply((domain) => embeddedOutpostConfig(domain)),
+  });
 }
 
 // --- 7. The Directus OIDC provider and application. The client comes from platform's `backend`
@@ -448,20 +424,14 @@ const directusApplication = new authentik.Application(
   opts,
 );
 
-// --- 8. Authentik 2026.8 denies access to an application with no policy bound at all - the portal
-// and Directus gates are meant to be "any signed-in user", so each needs this one bound explicitly.
+// --- 8. Authentik 2026.8 denies access to an application with no policy bound at all - the Directus
+// gate is meant to be "any signed-in user", so it needs this one bound explicitly.
 // `target` takes the application's `uuid`, not its Terraform `id` (which Application uses for its
 // slug) - the field the Application resource itself calls "Generated." rather than "ID of the
 // object" is the one that's actually the object's pk.
 const signedInPolicy = new authentik.PolicyExpression(
   "signed-in-users",
   { name: "Signed-in users", expression: signedInPolicyExpression() },
-  opts,
-);
-
-new authentik.PolicyBinding(
-  "portal-signed-in-binding",
-  { target: portalApplication.uuid, policy: signedInPolicy.id, order: 0 },
   opts,
 );
 

@@ -23,14 +23,6 @@ export class GoogleSource extends authentik.SourceOauth {
   }
 }
 
-/** A forward-auth proxy provider for exactly one external host - `forwardSingle` gates a single
- * site (the portal), as opposed to `forwardDomain`'s whole-domain SSO cookie. */
-export class ForwardAuthProvider extends authentik.ProviderProxy {
-  constructor(name: string, args: Omit<authentik.ProviderProxyArgs, "mode">, opts?: pulumi.CustomResourceOptions) {
-    super(name, { ...args, mode: "forward_single" }, opts);
-  }
-}
-
 /** A confidential OIDC client - one that can hold a secret and authenticates itself on every token
  * request, never `public` (which skips client authentication entirely). */
 export class ConfidentialOidcProvider extends authentik.ProviderOauth2 {
