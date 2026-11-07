@@ -18,9 +18,11 @@ Feature: Plans
 
   A planner marks one saved Financial Plan active for its year. That's the plan the organization is
   running, and what actually happens during the year is compared against it. Marking another one
-  active replaces it, and the earlier marks are kept. An offering and its activities, such as
-  practices and regattas, stay the same ones in a Financial Plan started from another. So a
-  Clubspot session linked to an offering stays linked.
+  active replaces it, and the earlier marks are kept. Each offering in a plan is of a catalog
+  offering: a named offering of a program, such as "J-Pod · fall practices", which Clubspot's
+  offerings are linked to as well. So Clubspot's sign-ups find their offering in whichever
+  Financial Plan is active. An offering's activities, such as practices and regattas, stay the
+  same ones in a Financial Plan started from another.
 
   The P&L, the profit and loss for the year, is worked out from a Financial Plan's plans together.
   It shows each offering, each program area, and the organization as a whole. A draft's P&L is
@@ -49,7 +51,6 @@ Feature: Plans
   bonus on products from more than one area is in the Operations Plan. Anyone who can see plans sees
   all of these. To change something means to add, edit, or delete it.
 
-  @pending
   Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
 
     Example: A Financial Plan can start with only an Operations Plan
@@ -64,7 +65,6 @@ Feature: Plans
       Then they're told that the Financial Plan needs an Operations Plan
       And the Financial Plan is still a draft
 
-  @pending
   Rule: A Financial Plan holds at most one Program Plan for each program area
 
     Example: A second Program Plan for the same program area
@@ -73,7 +73,6 @@ Feature: Plans
       When they try to add another Program Plan for Youth Racing to it
       Then they're told that the Financial Plan already has a Program Plan for Youth Racing
 
-  @pending
   Rule: Saving a Financial Plan saves all of its plans together
 
     Example: The Operations Plan and both Program Plans are saved with the Financial Plan
@@ -82,7 +81,6 @@ Feature: Plans
       When they save the Financial Plan
       Then the Financial Plan and all three of its plans are saved at the same moment
 
-  @pending
   Rule: A year can have several draft Financial Plans at once
 
     Example: Two options for the same year
@@ -91,7 +89,6 @@ Feature: Plans
       When they start another draft Financial Plan for next year named "Three coaches"
       Then next year has both drafts
 
-  @pending
   Rule: A new Financial Plan starts as a copy of the one it's started from
 
     Example: The new Financial Plan has the same offerings and prices
@@ -108,14 +105,13 @@ Feature: Plans
       When they change the offering's price to $1,200 a sailor in the new Financial Plan
       Then "Budget" still has the offering at $1,000 a sailor
 
-  @pending
   Rule: An offering and its activities stay the same ones in a Financial Plan started from it
 
-    Example: A Clubspot session linked to an offering stays linked
+    Example: An offering stays of the same catalog offering
       Given a user with the Plan Writer policy
-      And a saved Financial Plan named "Budget" with an offering linked to a Clubspot session
+      And a saved Financial Plan named "Budget" with an offering of "J-Pod · fall practices"
       When they start a new Financial Plan from "Budget"
-      Then the Clubspot session is linked to the offering in the new Financial Plan too
+      Then the new Financial Plan's offering is of "J-Pod · fall practices" too
 
     Example: A practice is the same practice in the new Financial Plan
       Given a user with the Plan Writer policy
@@ -123,7 +119,6 @@ Feature: Plans
       When they start a new Financial Plan from "Budget"
       Then its practice on June 6 is the same practice as the one in "Budget"
 
-  @pending
   Rule: A planner marks one saved Financial Plan active for its year
 
     Example: Marking another Financial Plan active replaces the active one
@@ -139,7 +134,6 @@ Feature: Plans
       When they try to mark it active
       Then they're told that only a saved Financial Plan can be active
 
-  @pending
   Rule: A saved Financial Plan never changes, even for an admin
 
     Example: A Plan Writer can't change a saved Financial Plan
@@ -156,7 +150,6 @@ Feature: Plans
       And they can't turn the Financial Plan back into a draft
       And they can't delete the Financial Plan
 
-  @pending
   Rule: A Plan Writer can change a saved Financial Plan's note
 
     Example: A plan is noted as reviewed with the board
@@ -417,7 +410,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice is on a closed day
 
-  @pending
   Rule: A Program Plan's P&L counts the other Program Plans in its Financial Plan
 
     Example: The office is split between two Program Plans
@@ -426,7 +418,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then each Program Plan's offering pays $500 of the office costs
 
-  @pending
   Rule: A saved Financial Plan keeps the P&L it had when it was saved
 
     Example: A saved Financial Plan shows the P&L it was saved with
@@ -440,7 +431,6 @@ Feature: Plans
       When a planner saves a Financial Plan started from "Budget" with $2,000 of office costs
       Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
-  @pending
   Rule: Each line of a saved P&L says in plain words what it is
 
     Example: An offering's share of the office is named for its pool and its line
@@ -450,7 +440,6 @@ Feature: Plans
       When they save the Financial Plan
       Then the Financial Plan's P&L names the offering's share of the office "G&A share: Office"
 
-  @pending
   Rule: No one can write a Financial Plan's P&L by hand, even an admin
 
     Example: A Plan Writer can't write a Financial Plan's P&L
@@ -463,7 +452,6 @@ Feature: Plans
       Then they can't change a saved Financial Plan's P&L
       And they can't add a P&L to a draft Financial Plan
 
-  @pending
   Rule: A Plan Writer can write a plan's rules in a draft Financial Plan, and they never change once it's saved
 
     Example: A Plan Writer writes a Program Plan's rules
@@ -494,7 +482,6 @@ Feature: Plans
       Given a user with the Plan Reader policy
       Then they can't change plans
 
-  @pending
   Rule: A Plan Writer can change any plan in a draft Financial Plan, even one someone else started
 
     Example: A Plan Writer changes another planner's Program Plan
@@ -502,7 +489,6 @@ Feature: Plans
       And a draft Financial Plan someone else started
       Then they can change any of its plans
 
-  @pending
   Rule: A Plan Writer can start, save, and mark a Financial Plan active, and a Plan Reader can only look at one
 
     Example: A Plan Writer starts, saves, and marks a Financial Plan active

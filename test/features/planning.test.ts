@@ -2,200 +2,22 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
 import type { CostLine } from "../../src/planning/index.ts";
-import { cents, clubPlanResults, PnlPlan, savedResults, share } from "./pnl.ts";
+import { cents, financialPlanResults, PnlPlan, share } from "./pnl.ts";
 import {
   admin,
   adminCreate,
-  adminSave,
+  copied,
   created,
   fixture,
   itemPath,
   type Item,
-  newRow,
   PLAN_ROWS,
   PLAN_YEAR,
   planRows,
   row,
-  saving,
   runId,
-  runRows,
   type Row,
 } from "./steps/rows.ts";
-
-// The active version for a program area and year, or for the Operations Plan, is the last
-// activation across those plans (docs/planning-schema.md).
-
-let planId: string | undefined;
-let versionIds: string[] = [];
-onEachScenario(() => {
-  planId = undefined;
-  versionIds = [];
-});
-
-/** A new plan for the run's product, made by the admin, with `saved` saved versions and then a draft. */
-async function aPlan(saved: number, draft: boolean): Promise<void> {
-  await runRows();
-  planId = (await adminCreate("plans", await newRow("plans"))).id;
-  for (let i = 0; i < saved; i++) {
-    const { id } = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: planId }));
-    await adminSave(id);
-    versionIds.push(id);
-  }
-  if (draft) {
-    const { id } = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: planId }));
-    versionIds.push(id);
-  }
-}
-
-async function versionsOf(plan: string, status: string): Promise<Row[]> {
-  const filter = encodeURIComponent(JSON.stringify({ plan_id: { _eq: plan }, status: { _eq: status } }));
-  return (await admin()).ok("GET", `/items/plan_versions?filter=${filter}&fields=id,status`);
-}
-
-async function activeVersion(plan: string): Promise<unknown> {
-  const filter = encodeURIComponent(JSON.stringify({ plan_id: { _eq: plan } }));
-  const [newest] = await (
-    await admin()
-  ).ok("GET", `/items/plan_activations?filter=${filter}&sort=-sequence&limit=1&fields=version_id`);
-  return newest?.version_id;
-}
-
-/** Makes a saved version active as "they", and checks it's now the plan's active one. */
-async function activate(versionId: string): Promise<void> {
-  const id = randomUUID();
-  const { status, body } = await (
-    await theirSession()
-  ).request("POST", "/items/plan_activations", { id, version_id: versionId });
-  if (status < 300) {
-    created.push({ collection: "plan_activations", id });
-  }
-  expect(status, JSON.stringify(body)).toBe(200);
-  expect(await activeVersion(body.data.plan_id)).toBe(versionId);
-}
-
-Step("they start a plan for a program area", async () => {
-  await runRows();
-  const plan = await newRow("plans");
-  const draft = { id: randomUUID(), status: "draft" };
-  const { status, body } = await (await theirSession()).request("POST", "/items/plans", { ...plan, versions: [draft] });
-  if (status < 300) {
-    // Cleanup deletes the newest first, so the draft goes after its plan.
-    created.push({ collection: "plans", id: plan["id"] }, { collection: "plan_versions", id: draft.id });
-  }
-  expect(status, JSON.stringify(body)).toBe(200);
-  planId = plan["id"] as string;
-});
-Step("the plan has a draft they can change", async () => {
-  const [draft, ...others] = await versionsOf(planId!, "draft");
-  expect(others).toEqual([]);
-  const { status, body } = await (
-    await theirSession()
-  ).request("PATCH", itemPath("plan_versions", draft!["id"]), { message: "A first draft." });
-  expect(status, JSON.stringify(body)).toBe(200);
-});
-Step("the plan has no saved versions yet", async () => {
-  expect(await versionsOf(planId!, "saved")).toEqual([]);
-});
-
-Step("a plan with two saved versions, the first of them active", async () => {
-  await aPlan(2, false);
-  await adminCreate("plan_activations", { id: randomUUID(), version_id: versionIds[0] });
-  expect(await activeVersion(planId!)).toBe(versionIds[0]);
-});
-Step("they make the second version active", () => activate(versionIds[1]!));
-Step("only the second version is active", async () => {
-  expect(await activeVersion(planId!)).toBe(versionIds[1]);
-});
-
-// The run's plan, which the admin started.
-Step("a plan someone else started", () => planRows());
-
-Step("a plan with a draft", () => aPlan(0, true));
-Step("they can save the draft as a version", async () => {
-  const draft = versionIds[0]!;
-  const { status, body } = await (
-    await theirSession()
-  ).request("PATCH", itemPath("plan_versions", draft), { ...(await saving()), message: "Ready for the board." });
-  expect(status, JSON.stringify(body)).toBe(200);
-  const saved = await (await admin()).ok("GET", `${itemPath("plan_versions", draft)}?fields=status,saved_by,saved_at`);
-  const me = await (await theirSession()).ok("GET", "/users/me?fields=id");
-  expect(saved).toMatchObject({ status: "saved", saved_by: me.id, saved_at: expect.any(String) });
-});
-Step("they can make a saved version active", () => activate(versionIds[0]!));
-
-Step("they can't copy a draft's changes into a saved version", async () => {
-  await planRows();
-  const user = await theirSession();
-  for (const collection of PLAN_ROWS) {
-    const draft = Object.fromEntries(
-      Object.entries(fixture[`${collection}@draft`]!).filter(([field]) => !["id", "version_id", "key"].includes(field)),
-    );
-    const { status, body } = await user.request("PATCH", itemPath(collection, row[`${collection}@saved`]), draft);
-    expect(status, `${collection}: ${JSON.stringify(body)}`).toBe(403);
-  }
-});
-Step("they can't turn a saved version back into a draft", async () => {
-  await planRows();
-  const saved = row["plan_versions@saved"];
-  const { status, body } = await (
-    await theirSession()
-  ).request("PATCH", itemPath("plan_versions", saved), { status: "draft" });
-  expect(status, JSON.stringify(body)).toBe(403);
-  expect(body.errors?.[0]?.message).toBe("A saved plan version can't be changed. Make a new draft from it.");
-  const { status: now } = await (await admin()).ok("GET", `${itemPath("plan_versions", saved)}?fields=status`);
-  expect(now).toBe("saved");
-});
-
-// A plan's rules: the planner's own words, which a saved version keeps.
-Step("they can write the draft's rules", async () => {
-  const { status, body } = await (
-    await theirSession()
-  ).request("PATCH", itemPath("plan_versions", versionIds[0]), { rules: "Practice on Mondays and Fridays." });
-  expect(status, JSON.stringify(body)).toBe(200);
-});
-Step("a plan with a saved version that has rules", async () => {
-  await aPlan(1, false);
-  const { rules } = await (await admin()).ok("GET", `${itemPath("plan_versions", versionIds[0])}?fields=rules`);
-  expect(rules).toBeTruthy();
-});
-Step("they can't change the saved version's rules", async () => {
-  const { status, body } = await (
-    await theirSession()
-  ).request("PATCH", itemPath("plan_versions", versionIds[0]), { rules: "Practice every day." });
-  expect(status, JSON.stringify(body)).toBe(403);
-});
-
-/** Two plans for one program area and year, each with a saved version, the first of them active. */
-let rivals: { plans: string[]; versions: string[] } = { plans: [], versions: [] };
-Step("two plans for a program area this year, the first of them active", async () => {
-  await runRows();
-  const area = await adminCreate("program_areas", await newRow("program_areas"));
-  rivals = { plans: [], versions: [] };
-  for (let i = 0; i < 2; i++) {
-    const plan = await adminCreate("plans", await newRow("plans", { program_area_id: area.id }));
-    const { id } = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
-    await adminSave(id);
-    rivals.plans.push(plan.id);
-    rivals.versions.push(id);
-  }
-  await adminCreate("plan_activations", { id: randomUUID(), version_id: rivals.versions[0] });
-});
-Step("they make a saved version of the second plan active", () => activate(rivals.versions[1]!));
-
-/** The newest activation across the program area's plans for the year. */
-async function areaActivation(): Promise<Row | undefined> {
-  const filter = encodeURIComponent(JSON.stringify({ plan_id: { _in: rivals.plans } }));
-  const [newest] = await (
-    await admin()
-  ).ok("GET", `/items/plan_activations?filter=${filter}&sort=-sequence&limit=1&fields=plan_id,version_id`);
-  return newest;
-}
-Step("the second plan is the program area's plan for the year", async () => {
-  expect(await areaActivation()).toEqual({ plan_id: rivals.plans[1], version_id: rivals.versions[1] });
-});
-Step("the first plan has no active version", async () => {
-  expect((await areaActivation())?.["plan_id"]).not.toBe(rivals.plans[0]);
-});
 
 // The P&L examples' plans, made fresh for each one.
 let p = new PnlPlan();
@@ -665,120 +487,6 @@ Step("the planner is warned that the practice is on a closed day", () => {
   expect(p.warned("closed_date")).toBe(true);
 });
 
-// A saved version's results, which the saved-versions hook writes once the save has gone through.
-let savedVersion: string | undefined;
-onEachScenario(() => {
-  savedVersion = undefined;
-});
-const resultLines = async (account: string) =>
-  (await savedResults(savedVersion!)).lines
-    .filter((l) => l["account_id"] === account && l["cost_center_type"] === "offering")
-    .reduce((t, l) => t + Number(l["amount_cents"]), 0);
-
-Step("a draft of a program area's plan whose offering takes in {money}", async (_, money: string) => {
-  const area = await p.area();
-  await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1);
-});
-Step("they save the draft as a version", async () => {
-  savedVersion = await p.saveArea(p.areas.at(-1)!, await theirSession());
-});
-Step("the saved version's P&L shows that the offering takes in {money}", async (_, money: string) => {
-  const { pnl } = await savedResults(savedVersion!);
-  expect(pnl.find((r) => r["level"] === "offering")?.["revenue_cents"]).toBe(cents(money));
-});
-Step(
-  "a saved version of a program area's plan whose offering pays {money} of office costs",
-  async (_, money: string) => {
-    await p.line(
-      await p.operationsVersion(),
-      "office",
-      { cost_center_type: "pool", cost_center_key: await p.pool() },
-      cents(money),
-    );
-    const area = await p.area();
-    await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 100_000);
-    savedVersion = await p.saveArea(area);
-    expect(await resultLines(await p.account("office"))).toBe(cents(money));
-  },
-);
-/** A new saved version of the Operations Plan, made active, with `build` adding its rows first. */
-async function newOperationsVersion(build: (version: string) => Promise<void> = async () => {}): Promise<string> {
-  const next = await adminCreate("plan_versions", {
-    id: randomUUID(),
-    plan_id: await p.operationsPlan(),
-    status: "draft",
-  });
-  await build(next.id);
-  await (
-    await admin()
-  ).ok("PATCH", itemPath("plan_versions", next.id), { status: "saved", message: "Saved by a test." });
-  await p.activate(next.id);
-  return next.id;
-}
-Step("a planner saves an Operations Plan with {money} of office costs, and makes it active", (_, money: string) =>
-  newOperationsVersion(async (version) => {
-    const next = { id: version };
-    const pool = await adminCreate("plan_pools", {
-      id: randomUUID(),
-      version_id: next.id,
-      key: await p.pool(),
-      name: "Office",
-    });
-    await adminCreate("plan_budget_lines", {
-      id: randomUUID(),
-      version_id: next.id,
-      key: randomUUID(),
-      name: "Office",
-      account_id: await p.account("office"),
-      amount_cents: cents(money),
-      fiscal_year: PLAN_YEAR,
-      excluded_from_mtdc: false,
-      cost_center_type: "pool",
-      cost_center_key: pool["key"],
-    });
-  }),
-);
-Step("the saved version's P&L still shows that the offering pays {money} of office costs", async (_, money: string) => {
-  expect(await resultLines(await p.account("office"))).toBe(cents(money));
-});
-Step("another program area's active plan, with the same direct costs as this area's draft", async () => {
-  const other = await p.area();
-  await p.offering(p.areaVersion(other), await p.product("program", other), 0, 1, 100_000);
-  await p.activate(await p.saveArea(other));
-  const mine = await p.area();
-  await p.offering(p.areaVersion(mine), await p.product("program", mine), 0, 1, 100_000);
-});
-Step("the saved version's P&L shows that the offering pays {money} of the office costs", async (_, money: string) => {
-  expect(await resultLines(await p.account("office"))).toBe(cents(money));
-});
-
-/** A saved Operations Plan version with its results, and a draft. */
-async function savedWithResults(): Promise<{ results: string; draft: string }> {
-  const version = await p.saveOperations();
-  const { totals } = await savedResults(version);
-  const area = await p.area();
-  return { results: totals["id"] as string, draft: p.areaVersion(area) };
-}
-Step("they can't change a saved version's P&L", async () => {
-  const { results } = await savedWithResults();
-  const { status } = await (
-    await theirSession()
-  ).request("PATCH", itemPath("plan_results", results), { total_cents: 1 });
-  expect(status).toBe(403);
-});
-Step("they can't add a P&L to a draft", async () => {
-  const draft = p.areaVersion(p.areas.at(-1) ?? (await p.area()));
-  const { status } = await (
-    await theirSession()
-  ).request("POST", "/items/plan_result_warnings", {
-    id: randomUUID(),
-    version_id: draft,
-    code: "made_up",
-    message: "Written by hand.",
-  });
-  expect(status).toBe(403);
-});
-
 // A salaried coach's own hourly rate.
 Step("a director on a {money} salary, who's paid {money} an hour to coach", async (_, salary: string, rate: string) => {
   position = await p.operationsRow("plan_salaried_positions", {
@@ -824,266 +532,514 @@ Step("{money} of office costs in a pool named {string}", async (_, money: string
     { name: "Office" },
   );
 });
-Step("a draft of a program area's plan with one offering that has direct costs", async () => {
-  const area = await p.area();
-  await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 100_000);
-});
-Step("the saved version's P&L names the offering's share of the office {string}", async (_, name: string) => {
-  const office = await p.account("office");
-  const lines = (await savedResults(savedVersion!)).lines.filter(
-    (l) => l["account_id"] === office && l["cost_center_type"] === "offering",
-  );
-  expect(lines.map((l) => l["line_name"])).toEqual([name]);
-});
+// Financial Plans: each holds an Operations Plan and Program Plans, saved together.
+const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's saved.";
+const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
+const ONLY_SAVED_ACTIVE = "Only a saved Financial Plan can be marked active.";
 
-// Club plans: the year's active versions, saved together with the P&L they make.
-let clubPlan: string | undefined;
+/** The Financial Plans a scenario made, by name, and the one it's about. */
+let named: Record<string, string> = {};
+let financialPlan: string | undefined;
+let started: string | undefined;
 let attempt: { status: number; body: { errors?: { message: string }[] } } | undefined;
-let firstVersion: string | undefined;
 onEachScenario(() => {
-  clubPlan = undefined;
+  named = {};
+  financialPlan = undefined;
+  started = undefined;
   attempt = undefined;
-  firstVersion = undefined;
 });
 
-/** Adds a club plan for the run's organization and year, as `session`. */
-async function saveClubPlan(session: Awaited<ReturnType<typeof theirSession>>) {
-  const id = randomUUID();
-  const { status, body } = await session.request("POST", "/items/version_sets", {
-    id,
-    organization_id: await p.organization(),
-    fiscal_year: PLAN_YEAR,
-    name: `Club plan ${runId}`,
-  });
-  if (status < 300) {
-    created.push({ collection: "version_sets", id });
-    clubPlan = id;
+/** Writes as "they", noting a row they made for cleanup, and keeps the answer in `attempt`. */
+async function theyWrite(method: "POST" | "PATCH", path: string, data: Row): Promise<typeof attempt> {
+  const { status, body } = await (await theirSession()).request(method, path, data);
+  if (method === "POST" && status < 300) {
+    created.push({ collection: path.split("/")[2]!, id: data["id"] });
   }
   attempt = { status, body };
+  return attempt;
 }
-/** A new program area whose saved plan has an offering with `costs` of direct costs, made active. */
-async function activeArea(costs = 100_000): Promise<{ area: string; version: string }> {
+const expectOk = (answer: typeof attempt) => expect(answer?.status, JSON.stringify(answer?.body)).toBe(200);
+const expectRefused = (answer: typeof attempt) => expect(answer?.status, JSON.stringify(answer?.body)).toBe(403);
+const expectTold = (message: string) => {
+  expect(attempt?.status, JSON.stringify(attempt?.body)).toBe(400);
+  expect(attempt?.body.errors?.[0]?.message).toContain(message);
+};
+
+async function read(collection: string, filter: object, fields = "*"): Promise<Row[]> {
+  const query = `filter=${encodeURIComponent(JSON.stringify(filter))}&fields=${fields}&limit=-1`;
+  return (await admin()).ok("GET", `/items/${collection}?${query}`);
+}
+const one = async (collection: string, id: unknown, fields = "*"): Promise<Row> =>
+  (await admin()).ok("GET", `${itemPath(collection, id)}?fields=${fields}`);
+
+/** A new Financial Plan for the scenario's organization and year, as "they". */
+async function theyStart(name: string, parent?: string): Promise<string> {
+  const id = randomUUID();
+  expectOk(
+    await theyWrite("POST", "/items/version_sets", {
+      id,
+      organization_id: await p.organization(),
+      fiscal_year: PLAN_YEAR,
+      name,
+      ...(parent && { parent_id: parent }),
+    }),
+  );
+  return id;
+}
+
+/** A new Financial Plan started from `parent`, as the admin, once its plans are copied in. */
+async function adminStart(name: string, parent: string): Promise<string> {
+  const set = await adminCreate("version_sets", {
+    id: randomUUID(),
+    organization_id: await p.organization(),
+    fiscal_year: PLAN_YEAR,
+    name,
+    status: "draft",
+    parent_id: parent,
+  });
+  await copied(set.id);
+  return set.id;
+}
+
+/** A Program Plan with one offering of `price` a sailor, and the offering. */
+async function programWithOffering(price = 100_000, extra: Row = {}): Promise<{ area: string; offering: Item }> {
   const area = await p.area();
-  await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, costs);
-  const version = await p.saveArea(area);
-  await p.activate(version);
-  return { area, version };
+  const offering = await p.offering(p.areaVersion(area), await p.product("program", area), price, 10, 100_000, extra);
+  return { area, offering };
 }
-const officeOn = (lines: Row[], offering: unknown, office: string) =>
-  lines
+
+/** The copy of `offering` in a Financial Plan started from the one that holds it. */
+async function copyOf(offering: Item, set: string): Promise<Row> {
+  const copies = (await copied(set)).map((m) => m["version_id"]);
+  const [copy] = await read("plan_offerings", { version_id: { _in: copies }, key: { _eq: offering["key"] } });
+  expect(copy, "the offering's copy").toBeDefined();
+  return copy!;
+}
+
+/** The office costs an offering pays in a saved Financial Plan's results. */
+async function officeIn(set: string, offering: unknown): Promise<number> {
+  const office = await p.account("office");
+  return (await financialPlanResults(set)).lines
     .filter((l) => l["account_id"] === office && l["cost_center_key"] === offering)
     .reduce((t, l) => t + Number(l["amount_cents"]), 0);
-async function membersOf(set: string): Promise<unknown[]> {
-  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set } }));
-  return (
-    (await (await admin()).ok("GET", `/items/version_set_members?filter=${filter}&fields=id,version_id`)) as Row[]
-  ).map((m) => m["version_id"]);
 }
 
-Step("a program area's active plan, saved before any other area's was active", async () => {
-  await p.activateOperations();
-  firstVersion = (await activeArea()).version;
-});
-Step("another program area's active plan, with the same direct costs as the first", () => activeArea());
-Step("they save the club plan for the year", async () => {
-  await saveClubPlan(await theirSession());
-  expect(attempt?.status, JSON.stringify(attempt?.body)).toBe(200);
-});
-Step("they try to save the club plan for the year", async () => saveClubPlan(await theirSession()));
-Step(
-  "the club plan shows that the first area's offering pays {money} of the office costs",
-  async (_, money: string) => {
-    const { lines } = await clubPlanResults(clubPlan!);
-    expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
-  },
-);
-Step(
-  "the first area's saved version still shows that its offering pays {money} of the office costs",
-  async (_, money: string) => {
-    const { lines } = await savedResults(firstVersion!);
-    expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
-  },
-);
-
-Step("a saved club plan whose offering pays {money} of office costs", async (_, money: string) => {
-  await p.line(
-    await p.operationsVersion(),
-    "office",
-    { cost_center_type: "pool", cost_center_key: await p.pool() },
-    cents(money),
+// What a Financial Plan holds.
+Step("they start a Financial Plan for next year with only an Operations Plan", async () => {
+  financialPlan = await theyStart(`Financial Plan ${runId}`);
+  const plan = randomUUID();
+  expectOk(
+    await theyWrite("POST", "/items/plans", {
+      id: plan,
+      kind: "operations",
+      organization_id: await p.organization(),
+      fiscal_year: PLAN_YEAR,
+      name: `Operations ${runId}`,
+    }),
   );
-  await p.activateOperations();
-  await activeArea();
-  await saveClubPlan(await admin());
-  const { lines } = await clubPlanResults(clubPlan!);
-  expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
+  const copy = randomUUID();
+  expectOk(await theyWrite("POST", "/items/plan_versions", { id: copy, plan_id: plan, status: "draft" }));
+  expectOk(
+    await theyWrite("POST", "/items/version_set_members", {
+      id: randomUUID(),
+      version_set_id: financialPlan,
+      version_id: copy,
+    }),
+  );
 });
-Step("the club plan still shows that the offering pays {money} of office costs", async (_, money: string) => {
-  const { lines } = await clubPlanResults(clubPlan!);
-  expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
+Step("the Financial Plan is a draft, with the Operations Plan in it", async () => {
+  expect(await one("version_sets", financialPlan, "status")).toMatchObject({ status: "draft" });
+  const members = await read("version_set_members", { version_set_id: { _eq: financialPlan } }, "plan_id.kind");
+  expect(members).toEqual([{ plan_id: { kind: "operations" } }]);
 });
-
-Step("an active Operations Plan, and a program area's plan with no active version", async () => {
-  await p.activateOperations();
+Step("a draft Financial Plan with a Program Plan but no Operations Plan", async () => {
   await p.area();
+  financialPlan = await p.draftSet(undefined, { operations: false });
 });
-Step("a program area's active plan, but no active Operations Plan", () => activeArea());
-Step("an active Operations Plan, and an archived program area's plan with no active version", async () => {
-  await p.activateOperations();
+Step("they try to save the Financial Plan", async () => {
+  await theyWrite("PATCH", itemPath("version_sets", financialPlan), { status: "saved" });
+});
+Step("they're told that the Financial Plan needs an Operations Plan", () => expectTold(NEEDS_OPERATIONS));
+Step("the Financial Plan is still a draft", async () => {
+  expect(await one("version_sets", financialPlan, "status")).toMatchObject({ status: "draft" });
+});
+
+Step("a draft Financial Plan with a Program Plan for Youth Racing", async () => {
   const area = await p.area();
-  await (await admin()).ok("PATCH", itemPath("plans", p.areaPlan(area)), { archived: true });
+  await (await admin()).ok("PATCH", itemPath("program_areas", area), { name: `Youth Racing ${runId}` });
+  financialPlan = await p.draftSet();
 });
-Step("an active Operations Plan, and a program area's active plan", async () => {
-  await p.activateOperations();
-  await activeArea();
+Step("they try to add another Program Plan for Youth Racing to it", async () => {
+  const copy = randomUUID();
+  expectOk(
+    await theyWrite("POST", "/items/plan_versions", { id: copy, plan_id: p.areaPlan(p.areas[0]!), status: "draft" }),
+  );
+  await theyWrite("POST", "/items/version_set_members", {
+    id: randomUUID(),
+    version_set_id: financialPlan,
+    version_id: copy,
+  });
 });
-Step("they're told that the program area has no active plan", async () => {
-  const [area] = (await (
+Step("they're told that the Financial Plan already has a Program Plan for Youth Racing", () => {
+  expectTold(ONE_PER_AREA);
+  expect(attempt?.body.errors?.[0]?.message).toContain("Youth Racing");
+});
+
+// Saving a Financial Plan.
+Step("a draft Financial Plan with an Operations Plan and two Program Plans", async () => {
+  await p.area();
+  await p.area();
+  financialPlan = await p.draftSet();
+});
+Step("they save the Financial Plan", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { status: "saved" }));
+});
+Step("the Financial Plan and all three of its plans are saved at the same moment", async () => {
+  const set = await one("version_sets", financialPlan, "status,saved_at");
+  const copies = await read(
+    "version_set_members",
+    { version_set_id: { _eq: financialPlan } },
+    "version_id.status,version_id.saved_at",
+  );
+  expect(copies).toHaveLength(3);
+  for (const { version_id: copy } of copies as { version_id: Row }[]) {
+    expect(copy).toEqual({ status: "saved", saved_at: set["saved_at"] });
+  }
+  expect(set["status"]).toBe("saved");
+});
+
+// Several drafts a year, and starting one from another.
+Step("a draft Financial Plan for next year named {string}", async (_, name: string) => {
+  named[name] = await p.draftSet(name);
+});
+Step("they start another draft Financial Plan for next year named {string}", async (_, name: string) => {
+  named[name] = await theyStart(name);
+});
+Step("next year has both drafts", async () => {
+  const drafts = await read(
+    "version_sets",
+    { organization_id: { _eq: await p.organization() }, fiscal_year: { _eq: PLAN_YEAR }, status: { _eq: "draft" } },
+    "id",
+  );
+  expect(drafts.map((d) => d["id"]).sort()).toEqual(Object.values(named).sort());
+});
+
+let offering: Item | undefined;
+onEachScenario(() => {
+  offering = undefined;
+});
+Step(
+  "a saved Financial Plan named {string} with an offering at {money} a sailor",
+  async (_, name: string, money: string) => {
+    offering = (await programWithOffering(cents(money))).offering;
+    named[name] = await p.savedSet(name);
+  },
+);
+for (const text of [
+  "they start a new Financial Plan from {string}",
+  "they started a new Financial Plan from {string}",
+]) {
+  Step(text, async (_, name: string) => {
+    started = await theyStart(`From ${name} ${runId}`, named[name]);
+    await copied(started);
+  });
+}
+Step("the new Financial Plan has the same offering at {money} a sailor", async (_, money: string) => {
+  const copy = await copyOf(offering!, started!);
+  expect(copy).toMatchObject({ key: offering!["key"], price_cents: cents(money) });
+  expect(copy["id"]).not.toBe(offering!["id"]);
+});
+Step("its parent is {string}", async (_, name: string) => {
+  expect(await one("version_sets", started, "parent_id")).toEqual({ parent_id: named[name] });
+});
+Step("they change the offering's price to {money} a sailor in the new Financial Plan", async (_, money: string) => {
+  const copy = await copyOf(offering!, started!);
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", copy["id"]), { price_cents: cents(money) }));
+});
+Step("{string} still has the offering at {money} a sailor", async (_, _name: string, money: string) => {
+  expect(await one("plan_offerings", offering!["id"], "price_cents")).toEqual({ price_cents: cents(money) });
+});
+
+// An offering's catalog offering, and its activities, in a Financial Plan started from it.
+Step(
+  "a saved Financial Plan named {string} with an offering of {string}",
+  async (_, name: string, catalogName: string) => {
+    const area = await p.area();
+    const product = await p.product("program", area);
+    const [program] = await read("programs", { product_id: { _eq: product } }, "id");
+    const catalog = await adminCreate("catalog_offerings", {
+      id: randomUUID(),
+      program_id: program!["id"],
+      name: `${catalogName} ${runId}`,
+    });
+    offering = await p.offering(p.areaVersion(area), product, 100_000, 10, 0, { catalog_offering_id: catalog.id });
+    named[name] = await p.savedSet(name);
+  },
+);
+Step("the new Financial Plan's offering is of {string} too", async (_, catalogName: string) => {
+  const copy = await copyOf(offering!, started!);
+  expect(copy["catalog_offering_id"]).toBe(offering!["catalog_offering_id"]);
+  expect(await one("catalog_offerings", copy["catalog_offering_id"], "name")).toEqual({
+    name: `${catalogName} ${runId}`,
+  });
+});
+let practice: Item | undefined;
+onEachScenario(() => {
+  practice = undefined;
+});
+Step("a saved Financial Plan named {string} with a practice on June 6", async (_, name: string) => {
+  ({ offering } = await programWithOffering());
+  practice = await adminCreate("plan_activities", {
+    id: randomUUID(),
+    version_id: offering["version_id"],
+    key: randomUUID(),
+    offering_id: offering["id"],
+    date: `${PLAN_YEAR}-06-06`,
+    start_time: "09:00",
+    end_time: "12:00",
+    kind: "practice",
+    uses_boats: true,
+  });
+  named[name] = await p.savedSet(name);
+});
+Step("its practice on June 6 is the same practice as the one in {string}", async () => {
+  const copy = await copyOf(offering!, started!);
+  const [activity] = await read("plan_activities", { offering_id: { _eq: copy["id"] } });
+  expect(activity).toMatchObject({ key: practice!["key"], date: `${PLAN_YEAR}-06-06`, version_id: copy["version_id"] });
+  expect(activity!["id"]).not.toBe(practice!["id"]);
+});
+
+// The active Financial Plan.
+Step(
+  "two saved Financial Plans for next year, {string} marked active and {string}",
+  async (_, first: string, second: string) => {
+    named[first] = await p.savedSet(first);
+    // A plan copy is in one Financial Plan, so the second starts from the first.
+    named[second] = await adminStart(second, named[first]!);
+    await p.save(named[second]!);
+    await adminCreate("version_set_activations", { id: randomUUID(), version_set_id: named[first] });
+  },
+);
+Step("they mark {string} active", async (_, name: string) => {
+  expectOk(
+    await theyWrite("POST", "/items/version_set_activations", { id: randomUUID(), version_set_id: named[name] }),
+  );
+});
+/** The year's marks, newest first. */
+async function marks(): Promise<unknown[]> {
+  const all = await read(
+    "version_set_activations",
+    { version_set_id: { organization_id: { _eq: await p.organization() }, fiscal_year: { _eq: PLAN_YEAR } } },
+    "version_set_id,sequence",
+  );
+  return all.sort((a, b) => Number(b["sequence"]) - Number(a["sequence"])).map((m) => m["version_set_id"]);
+}
+Step("{string} is the active Financial Plan for next year", async (_, name: string) => {
+  expect((await marks())[0]).toBe(named[name]);
+});
+Step("they can see that {string} was active before it", async (_, name: string) => {
+  const all = await marks();
+  expect(all).toHaveLength(2);
+  expect(all[1]).toBe(named[name]);
+});
+Step("a draft Financial Plan", async () => {
+  await p.area();
+  financialPlan = await p.draftSet();
+});
+Step("they try to mark it active", async () => {
+  await theyWrite("POST", "/items/version_set_activations", { id: randomUUID(), version_set_id: financialPlan });
+});
+Step("they're told that only a saved Financial Plan can be active", () => expectTold(ONLY_SAVED_ACTIVE));
+
+// A saved Financial Plan never changes, apart from its note.
+Step("a saved Financial Plan", async () => {
+  ({ offering } = await programWithOffering());
+  financialPlan = await p.savedSet();
+});
+Step("they can't change the Financial Plan or any of its plans", async () => {
+  expectRefused(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { name: "Changed" }));
+  expectRefused(await theyWrite("PATCH", itemPath("plan_versions", offering!["version_id"]), { message: "Changed" }));
+  expectRefused(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: 1 }));
+});
+Step("they can't turn the Financial Plan back into a draft", async () => {
+  expectRefused(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { status: "draft" }));
+  expect(await one("version_sets", financialPlan, "status")).toEqual({ status: "saved" });
+});
+Step("they can't delete the Financial Plan", async () => {
+  const { status } = await (await theirSession()).request("DELETE", itemPath("version_sets", financialPlan));
+  expect(status).not.toBe(204);
+  expect(await one("version_sets", financialPlan, "id")).toEqual({ id: financialPlan });
+});
+Step("they can change its note to {string}", async (_, note: string) => {
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { message: note }));
+  expect(await one("version_sets", financialPlan, "message")).toEqual({ message: note });
+});
+
+// A Financial Plan's P&L.
+Step("a draft Financial Plan with two Program Plans whose offerings have the same direct costs", async () => {
+  await programWithOffering(0);
+  await programWithOffering(0);
+  financialPlan = await p.draftSet();
+});
+Step("each Program Plan's offering pays {money} of the office costs", async (_, money: string) => {
+  const office = await p.account("office");
+  for (const each of p.offerings) {
+    expect(p.total(onOffering(each["key"], office))).toBe(cents(money));
+  }
+});
+Step("a draft Financial Plan whose offering takes in {money}", async (_, money: string) => {
+  const area = await p.area();
+  offering = await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1);
+  financialPlan = await p.draftSet();
+});
+Step("the Financial Plan's P&L shows that the offering takes in {money}", async (_, money: string) => {
+  const { pnl } = await financialPlanResults(financialPlan!);
+  const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
+  expect(Number(mine?.["revenue_cents"])).toBe(cents(money));
+});
+Step(
+  "a saved Financial Plan named {string} whose offering pays {money} of office costs",
+  async (_, name: string, money: string) => {
+    ({ offering } = await programWithOffering(0));
+    await p.line(
+      await p.operationsVersion(),
+      "office",
+      { cost_center_type: "pool", cost_center_key: await p.pool() },
+      cents(money),
+    );
+    named[name] = await p.savedSet(name);
+  },
+);
+Step(
+  "a planner saves a Financial Plan started from {string} with {money} of office costs",
+  async (_, name: string, money: string) => {
+    const child = await adminStart(`From ${name} ${runId}`, named[name]!);
+    const copies = (await copied(child)).map((m) => m["version_id"]);
+    const [office] = await read("plan_budget_lines", {
+      version_id: { _in: copies },
+      key: { _eq: p.lines["office"]!["key"] },
+    });
+    await (await admin()).ok("PATCH", itemPath("plan_budget_lines", office!["id"]), { amount_cents: cents(money) });
+    await p.save(child);
+    await financialPlanResults(child);
+  },
+);
+Step(
+  "the P&L of {string} still shows that the offering pays {money} of office costs",
+  async (_, name: string, money: string) => {
+    expect(await officeIn(named[name]!, offering!["key"])).toBe(cents(money));
+  },
+);
+Step("a draft Financial Plan with one offering that has direct costs", async () => {
+  ({ offering } = await programWithOffering(0));
+  financialPlan = await p.draftSet();
+});
+Step("the Financial Plan's P&L names the offering's share of the office {string}", async (_, lineName: string) => {
+  const { lines } = await financialPlanResults(financialPlan!);
+  const share = lines.find(
+    (l) => l["cost_center_key"] === offering!["key"] && l["account_id"] === p.lines["office"]!["account_id"],
+  );
+  expect(share?.["line_name"]).toBe(lineName);
+});
+Step("they can't change a saved Financial Plan's P&L", async () => {
+  await planRows();
+  const [results] = await read("plan_results", { version_set_id: { _eq: row["version_sets@saved"] } }, "id");
+  expectRefused(await theyWrite("PATCH", itemPath("plan_results", results!["id"]), { total_cents: 1 }));
+});
+Step("they can't add a P&L to a draft Financial Plan", async () => {
+  await planRows();
+  expectRefused(
+    await theyWrite("POST", "/items/plan_results", {
+      id: randomUUID(),
+      version_set_id: row["version_sets@draft"],
+      total_cents: 0,
+    }),
+  );
+});
+
+// A plan's rules: the planner's own words, which a saved Financial Plan keeps.
+Step("they can write a Program Plan's rules", async () => {
+  expectOk(
+    await theyWrite("PATCH", itemPath("plan_versions", p.areaVersion(p.areas[0]!)), {
+      rules: "Practice on Mondays and Fridays.",
+    }),
+  );
+});
+Step("a saved Financial Plan whose Program Plan has rules", async () => {
+  const area = await p.area();
+  await (
     await admin()
-  ).ok(
-    "GET",
-    `/items/program_areas?filter=${encodeURIComponent(JSON.stringify({ id: { _eq: p.areas[0] } }))}&fields=name`,
-  )) as Row[];
-  expect(attempt?.status).toBe(400);
-  const message = attempt?.body.errors?.[0]?.message ?? "";
-  expect(message).toContain("A club plan needs an active version for every program area");
-  expect(message).toContain(String(area?.["name"]));
+  ).ok("PATCH", itemPath("plan_versions", p.areaVersion(area)), { rules: "Practice on Wednesdays." });
+  financialPlan = await p.savedSet();
 });
-Step("they're told that the Operations Plan has no active plan", () => {
-  expect(attempt?.status).toBe(400);
-  expect(attempt?.body.errors?.[0]?.message).toContain("A club plan needs an active Operations Plan version");
-});
-Step("no club plan is saved", async () => {
-  const filter = encodeURIComponent(JSON.stringify({ organization_id: { _eq: await p.organization() } }));
-  expect(await (await admin()).ok("GET", `/items/version_sets?filter=${filter}&fields=id`)).toEqual([]);
-});
-Step("the club plan is saved without the archived plan", async () => {
-  expect(await membersOf(clubPlan!)).toEqual([await p.operationsVersion()]);
-});
-Step("the club plan holds both active versions", async () => {
-  expect((await membersOf(clubPlan!)).sort()).toEqual([await p.operationsVersion(), p.areaVersion(p.areas[0]!)].sort());
+Step("they can't change the Program Plan's rules", async () => {
+  expectRefused(
+    await theyWrite("PATCH", itemPath("plan_versions", p.areaVersion(p.areas[0]!)), { rules: "Practice every day." }),
+  );
 });
 
-Step("a program area's active plan, saved with an Operations Plan that's no longer active", async () => {
-  await p.activateOperations();
-  await activeArea(0);
-  p.useOperationsVersion(await newOperationsVersion());
+// Who can do what with a Financial Plan.
+Step("a draft Financial Plan someone else started", () => planRows());
+Step("they can change any of its plans", async () => {
+  await planRows();
+  for (const collection of PLAN_ROWS) {
+    expectOk(
+      await theyWrite("PATCH", itemPath(collection, row[`${collection}@draft`]), {
+        ...Object.fromEntries(
+          Object.entries(fixture[`${collection}@draft`]!).filter(
+            ([field]) => !["id", "version_id", "key"].includes(field),
+          ),
+        ),
+      }),
+    );
+  }
+  expectOk(await theyWrite("PATCH", itemPath("plan_versions", row["plan_versions@draft"]), { message: "Changed." }));
 });
-
-Step("the planner is warned that the area's plan was worked out with another Operations Plan", () => {
-  expect(p.warned("other_operations_version")).toBe(true);
+Step("they can start a Financial Plan", async () => {
+  await theyStart(`Started ${runId}`);
 });
-
-Step("a saved club plan", async () => {
-  await p.activateOperations();
-  await activeArea();
-  await saveClubPlan(await admin());
-  await clubPlanResults(clubPlan!);
+Step("they can save a draft Financial Plan", async () => {
+  await p.area();
+  const set = await p.draftSet();
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", set), { status: "saved" }));
+  const me = await (await theirSession()).ok("GET", "/users/me?fields=id");
+  expect(await one("version_sets", set, "status,saved_by")).toEqual({ status: "saved", saved_by: me.id });
 });
-Step("they can't change the club plan or its plans", async () => {
+Step("they can mark a saved Financial Plan active", async () => {
+  await planRows();
+  expectOk(
+    await theyWrite("POST", "/items/version_set_activations", {
+      id: randomUUID(),
+      version_set_id: row["version_sets@saved"],
+    }),
+  );
+});
+Step("they can see the Financial Plan and its P&L", async () => {
+  await planRows();
   const they = await theirSession();
-  const [member] = (await (
-    await admin()
-  ).ok(
-    "GET",
-    `/items/version_set_members?filter=${encodeURIComponent(JSON.stringify({ version_set_id: { _eq: clubPlan } }))}&fields=id`,
-  )) as Row[];
-  expect((await they.request("PATCH", itemPath("version_sets", clubPlan!), { name: "Changed" })).status).toBe(403);
-  expect(
-    (await they.request("PATCH", itemPath("version_set_members", String(member?.["id"])), { version_id: null })).status,
-  ).toBe(403);
-  expect(
-    (
-      await they.request("POST", "/items/version_set_members", {
-        id: randomUUID(),
-        version_set_id: clubPlan,
-        plan_id: await p.operationsPlan(),
-        version_id: await p.operationsVersion(),
-      })
-    ).status,
-  ).toBe(403);
-});
-Step("they can't delete the club plan", async () => {
-  expect((await (await theirSession()).request("DELETE", itemPath("version_sets", clubPlan!))).status).toBe(403);
-});
-Step("they can see the club plan and its P&L", async () => {
-  const they = await theirSession();
-  expect((await they.request("GET", itemPath("version_sets", clubPlan!))).status).toBe(200);
-  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: clubPlan } }));
+  expect((await they.request("GET", itemPath("version_sets", row["version_sets@saved"]))).status).toBe(200);
+  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: row["version_sets@saved"] } }));
   const { status, body } = await they.request("GET", `/items/plan_results?filter=${filter}`);
   expect(status).toBe(200);
   expect(body.data).toHaveLength(1);
 });
-Step("they can't save a club plan", async () => {
-  await saveClubPlan(await theirSession());
-  expect(attempt?.status).toBe(403);
+Step("they can't start, save, or mark a Financial Plan active", async () => {
+  await planRows();
+  expectRefused(
+    await theyWrite("POST", "/items/version_sets", {
+      id: randomUUID(),
+      organization_id: row["organizations"],
+      fiscal_year: PLAN_YEAR,
+      name: "Refused",
+    }),
+  );
+  expectRefused(await theyWrite("PATCH", itemPath("version_sets", row["version_sets@draft"]), { status: "saved" }));
+  expectRefused(
+    await theyWrite("POST", "/items/version_set_activations", {
+      id: randomUUID(),
+      version_set_id: row["version_sets@saved"],
+    }),
+  );
 });
-
-// Financial Plans, which the next platform PR builds: until then, each of these steps fails.
-for (const text of [
-  "they start a Financial Plan for next year with only an Operations Plan",
-  "the Financial Plan is a draft, with the Operations Plan in it",
-  "a draft Financial Plan with a Program Plan but no Operations Plan",
-  "they try to save the Financial Plan",
-  "they're told that the Financial Plan needs an Operations Plan",
-  "the Financial Plan is still a draft",
-  "a draft Financial Plan with a Program Plan for Youth Racing",
-  "they try to add another Program Plan for Youth Racing to it",
-  "they're told that the Financial Plan already has a Program Plan for Youth Racing",
-  "a draft Financial Plan with an Operations Plan and two Program Plans",
-  "they save the Financial Plan",
-  "the Financial Plan and all three of its plans are saved at the same moment",
-  "a draft Financial Plan for next year named {string}",
-  "they start another draft Financial Plan for next year named {string}",
-  "next year has both drafts",
-  "a saved Financial Plan named {string} with an offering at {money} a sailor",
-  "they start a new Financial Plan from {string}",
-  "the new Financial Plan has the same offering at {money} a sailor",
-  "its parent is {string}",
-  "they started a new Financial Plan from {string}",
-  "they change the offering's price to {money} a sailor in the new Financial Plan",
-  "{string} still has the offering at {money} a sailor",
-  "a saved Financial Plan named {string} with an offering linked to a Clubspot session",
-  "the Clubspot session is linked to the offering in the new Financial Plan too",
-  "a saved Financial Plan named {string} with a practice on June 6",
-  "its practice on June 6 is the same practice as the one in {string}",
-  "two saved Financial Plans for next year, {string} marked active and {string}",
-  "they mark {string} active",
-  "{string} is the active Financial Plan for next year",
-  "they can see that {string} was active before it",
-  "a draft Financial Plan",
-  "they try to mark it active",
-  "they're told that only a saved Financial Plan can be active",
-  "a saved Financial Plan",
-  "they can't change the Financial Plan or any of its plans",
-  "they can't turn the Financial Plan back into a draft",
-  "they can't delete the Financial Plan",
-  "they can change its note to {string}",
-  "a draft Financial Plan with two Program Plans whose offerings have the same direct costs",
-  "each Program Plan's offering pays {money} of the office costs",
-  "a draft Financial Plan whose offering takes in {money}",
-  "the Financial Plan's P&L shows that the offering takes in {money}",
-  "a saved Financial Plan named {string} whose offering pays {money} of office costs",
-  "a planner saves a Financial Plan started from {string} with {money} of office costs",
-  "the P&L of {string} still shows that the offering pays {money} of office costs",
-  "a draft Financial Plan with one offering that has direct costs",
-  "the Financial Plan's P&L names the offering's share of the office {string}",
-  "they can't change a saved Financial Plan's P&L",
-  "they can't add a P&L to a draft Financial Plan",
-  "they can write a Program Plan's rules",
-  "a saved Financial Plan whose Program Plan has rules",
-  "they can't change the Program Plan's rules",
-  "a draft Financial Plan someone else started",
-  "they can change any of its plans",
-  "they can start a Financial Plan",
-  "they can save a draft Financial Plan",
-  "they can mark a saved Financial Plan active",
-  "they can see the Financial Plan and its P&L",
-  "they can't start, save, or mark a Financial Plan active",
-]) {
-  Step(text, () => {
-    throw new Error("Not built yet: Financial Plans");
-  });
-}
 
 describeAccessFeature("planning.feature");

@@ -207,12 +207,6 @@ export class PnlPlan {
     return this.operations!.plan;
   }
 
-  /** Calculates with another version of the Operations Plan from now on, such as a newer one. */
-  useOperationsVersion(version: string): void {
-    this.operations = { plan: this.operations!.plan, version };
-    this.operationsSaved = true;
-  }
-
   areaVersion(area: string): string {
     const plan = this.areaPlans.get(area);
     if (plan === undefined) throw new Error(`No plan for program area ${area}.`);
@@ -359,34 +353,41 @@ export class PnlPlan {
     }
   }
 
-  /** Saves the Operations Plan's draft, as the admin, if it isn't saved yet. */
-  async saveOperations(): Promise<string> {
-    const version = await this.operationsVersion();
-    if (!this.operationsSaved) {
-      await saveVersion(version, {});
-      this.operationsSaved = true;
+  /**
+   * A draft Financial Plan for the organization's year, named `name`, holding the Operations Plan's
+   * copy and each program area's, made as the admin. `operations: false` leaves the Operations Plan out.
+   */
+  async draftSet(name = `Financial Plan ${key("set")}`, { operations = true } = {}): Promise<string> {
+    const set = await adminCreate("version_sets", {
+      id: randomUUID(),
+      organization_id: await this.organization(),
+      fiscal_year: PLAN_YEAR,
+      name,
+      status: "draft",
+    });
+    const copies = [
+      ...(operations ? [await this.operationsVersion()] : []),
+      ...[...this.areaPlans.values()].map((p) => p.version),
+    ];
+    for (const version of copies) {
+      await adminCreate("version_set_members", { id: randomUUID(), version_set_id: set.id, version_id: version });
     }
-    return version;
-  }
-  private operationsSaved = false;
-
-  /** Saves a program area's draft with the Operations Plan, as `session` or the admin. */
-  async saveArea(area: string, session?: DirectusSession): Promise<string> {
-    const version = this.areaVersion(area);
-    await saveVersion(version, { operations_version_id: await this.saveOperations() }, session);
-    return version;
+    return set.id;
   }
 
-  /** Makes a saved version active. */
-  async activate(version: string): Promise<void> {
-    await adminCreate("plan_activations", { id: randomUUID(), version_id: version });
+  /** Saves a draft Financial Plan, as `session` or the admin. */
+  async save(set: string, session?: DirectusSession): Promise<void> {
+    await (session ?? (await admin())).ok("PATCH", itemPath("version_sets", set), {
+      status: "saved",
+      message: "Saved by a test.",
+    });
   }
 
-  /** Saves the Operations Plan, if it isn't saved yet, and makes it active. */
-  async activateOperations(): Promise<string> {
-    const version = await this.saveOperations();
-    await this.activate(version);
-    return version;
+  /** A saved Financial Plan holding every plan made so far, named `name`. */
+  async savedSet(name?: string): Promise<string> {
+    const set = await this.draftSet(name);
+    await this.save(set);
+    return set;
   }
 
   /** Reads every row back as a Plan Reader, and calculates the P&L with the engine. */
@@ -440,15 +441,6 @@ export class PnlPlan {
   }
 }
 
-/** Saves a draft, as `session` or the admin. The saved-versions hook records the engine's version. */
-async function saveVersion(version: string, fields: Row, session?: DirectusSession): Promise<void> {
-  await (session ?? (await admin())).ok("PATCH", itemPath("plan_versions", version), {
-    status: "saved",
-    message: "Saved by a test.",
-    ...fields,
-  });
-}
-
 /** Results, read as a Plan Reader. The hook writes them just after the save answers, so this waits for them. */
 async function resultsWhere(filter: Row, what: string): Promise<{ lines: Row[]; pnl: Row[]; totals: Row }> {
   const planner = (await userFor({ policies: ["Plan Reader"] })).session;
@@ -466,9 +458,6 @@ async function resultsWhere(filter: Row, what: string): Promise<{ lines: Row[]; 
   throw new Error(`${what} has no results after a minute.`);
 }
 
-/** A saved version's results. */
-export const savedResults = (version: string) =>
-  resultsWhere({ version_id: { _eq: version } }, `Saved version ${version}`);
-
-/** A saved club plan's results. */
-export const clubPlanResults = (set: string) => resultsWhere({ version_set_id: { _eq: set } }, `Club plan ${set}`);
+/** A saved Financial Plan's results. */
+export const financialPlanResults = (set: string) =>
+  resultsWhere({ version_set_id: { _eq: set } }, `Financial Plan ${set}`);

@@ -76,6 +76,11 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, sailors_per_boat: 1 }),
   resource_kinds: async () => ({ id: randomUUID(), name: `Resource ${key("resource")}` }),
   // A program is the subtype of a product of kind `program`, and each has its own.
+  catalog_offerings: async () => ({
+    id: randomUUID(),
+    program_id: row["programs"],
+    name: `Offering ${key("offering")}`,
+  }),
   programs: async () => ({
     id: randomUUID(),
     name: `Program ${runId}`,
@@ -263,12 +268,8 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   // The child, who has no login, so the group gives no one in the run anything.
   group_members: async () => ({ id: randomUUID(), group_id: row["groups"], person_id: row["people"] }),
   group_policies: async () => ({ id: randomUUID(), group_id: row["groups"], policy_id: await crmReaderId() }),
-  // A program area has one plan for each organization and year, so each plan gets an area of its own.
+  // A Financial Plan holds one Program Plan for each area, so each plan gets an area of its own.
   plans: async (fixed) => {
-    // Made first, so cleanup deletes it after the area plans saved with it.
-    if (fixed["kind"] !== "operations") {
-      await operationsVersionId();
-    }
     return {
       id: randomUUID(),
       kind: "program_area",
@@ -285,7 +286,22 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     message: "A test version.",
     rules: "Practice on Wednesdays.",
   }),
-  plan_activations: async () => ({ id: randomUUID(), version_id: row["plan_versions@saved"] }),
+  version_sets: async () => ({
+    id: randomUUID(),
+    organization_id: row["organizations"],
+    fiscal_year: PLAN_YEAR,
+    name: `Financial Plan ${key("set")}`,
+    status: "draft",
+  }),
+  // A copy is in one Financial Plan, and each holds one Program Plan for an area, so a new member is
+  // a new plan's draft copy.
+  version_set_members: async (fixed) => {
+    if (fixed["version_id"] !== undefined) return { id: randomUUID(), version_set_id: row["version_sets@draft"] };
+    const plan = await adminCreate("plans", await newRow("plans"));
+    const copy = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
+    return { id: randomUUID(), version_set_id: row["version_sets@draft"], version_id: copy.id };
+  },
+  version_set_activations: async () => ({ id: randomUUID(), version_set_id: row["version_sets@saved"] }),
   plan_pools: async (fixed) => versioned(fixed, { name: `Pool ${key("pool")}` }),
   plan_staff_levels: async (fixed) =>
     versioned(fixed, { name: `Level ${key("level")}`, pay_type: "hourly", hourly_rate_cents: 2_500 }),
@@ -423,6 +439,7 @@ export const changes: Record<string, () => Row> = {
   boat_classes: () => ({ sailors_per_boat: 2 }),
   resource_kinds: () => ({ name: `Resource ${key("resource")}` }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
+  catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
   program_roles: () => ({ description: "Changed." }),
   clubspot_camps: () => ({ name: `Camp ${runId} (renamed)` }),
   clubspot_sessions: () => ({ name: `Session ${runId}` }),
@@ -454,7 +471,10 @@ export const changes: Record<string, () => Row> = {
   group_policies: () => ({ group_id: row["groups"] }),
   plans: () => ({ name: `Plan ${key("plan")}` }),
   plan_versions: () => ({ message: "A changed test version." }),
-  plan_activations: () => ({ version_id: row["plan_versions@saved"] }),
+  version_sets: () => ({ message: "A changed test note." }),
+  // The database fills it in again from the member's copy.
+  version_set_members: () => ({ plan_id: null }),
+  version_set_activations: () => ({ activated_at: new Date().toISOString() }),
   plan_pools: () => ({ name: `Pool ${key("pool")}` }),
   plan_staff_levels: () => ({ hourly_rate_cents: 2_600 }),
   plan_offerings: () => ({ price_cents: 52_000 }),
@@ -507,6 +527,7 @@ async function createRows(): Promise<void> {
     ["resource_kinds", () => ({})],
     ["organizations", () => ({})],
     ["programs", () => ({})],
+    ["catalog_offerings", () => ({})],
     ["program_roles", () => ({})],
     ["clubspot_camps", () => ({})],
     ["clubspot_sessions", () => ({})],
@@ -590,45 +611,13 @@ export const PLAN_ROWS = [
   "plan_bonus_owner_products",
 ];
 
-/** The platform version a test saves a version with. */
-export const PLATFORM_VERSION = "0.0.0-test";
 /** The year of every plan a test makes, for the run's own organization. */
 export const PLAN_YEAR = 2027;
 
-/** The run's Operations Plan's saved version, which a program area's plan is saved with. */
-async function createOperationsVersion(): Promise<string> {
-  await runRows();
-  const plan = await adminCreate("plans", await newRow("plans", { kind: "operations", program_area_id: null }));
-  const version = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
-  await (
-    await admin()
-  ).ok("PATCH", itemPath("plan_versions", version.id), {
-    status: "saved",
-    platform_version: PLATFORM_VERSION,
-    message: "Saved by a test.",
-  });
-  return version.id;
-}
-
-let operationsVersion: Promise<string> | undefined;
-export const operationsVersionId = () => (operationsVersion ??= createOperationsVersion());
-
-/** What saving a draft of a program area's plan sets. */
-export async function saving(): Promise<Row> {
-  return { status: "saved", platform_version: PLATFORM_VERSION, operations_version_id: await operationsVersionId() };
-}
-
-/** Saves a draft of a program area's plan as a version, as the admin. Returns the saved version. */
-export async function adminSave(versionId: string): Promise<Item> {
-  return (await admin()).ok("PATCH", itemPath("plan_versions", versionId), {
-    ...(await saving()),
-    message: "Saved by a test.",
-  });
-}
-
 /**
- * A plan for a program area, with a saved version, the active one, and a draft made from it.
- * Each version holds a row in every collection a version has. Only the planning steps need them.
+ * The run's year: a saved Financial Plan, the active one, holding an Operations Plan and a program
+ * area's plan, and a draft Financial Plan holding a draft copy of that plan. Each copy of the program
+ * area's plan holds a row in every collection a plan has. Only the planning steps need them.
  */
 async function createPlanRows(): Promise<void> {
   await runRows();
@@ -637,6 +626,8 @@ async function createPlanRows(): Promise<void> {
     row[name] = item.id;
     fixture[name] = item;
   };
+  const operations = await adminCreate("plans", await newRow("plans", { kind: "operations", program_area_id: null }));
+  const operationsCopy = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: operations.id }));
   await make("plans", "plans");
   await make("plan_versions@saved", "plan_versions");
   await make("plan_versions@draft", "plan_versions", { parent_version_id: row["plan_versions@saved"] });
@@ -645,24 +636,83 @@ async function createPlanRows(): Promise<void> {
       await make(`${collection}@${version}`, collection, { version_id: row[`plan_versions@${version}`] });
     }
   }
-  await adminSave(row["plan_versions@saved"]!);
-  // The saved-versions hook writes the version's results just after the save, and they're in its
-  // Results list, so read it back once they're in.
-  fixture["plan_versions@saved"] = await withResults(row["plan_versions@saved"]!);
-  await make("plan_activations", "plan_activations");
-  // Read again for its versions, which were made after it.
-  fixture["plans"] = await (await admin()).ok("GET", itemPath("plans", row["plans"]));
+  await make("version_sets@saved", "version_sets", { name: `Budget ${runId}` });
+  await adminCreate("version_set_members", {
+    id: randomUUID(),
+    version_set_id: row["version_sets@saved"],
+    version_id: operationsCopy.id,
+  });
+  await make("version_set_members", "version_set_members", {
+    version_set_id: row["version_sets@saved"],
+    version_id: row["plan_versions@saved"],
+  });
+  await (
+    await admin()
+  ).ok("PATCH", itemPath("version_sets", row["version_sets@saved"]), {
+    status: "saved",
+    message: "Saved by a test.",
+  });
+  await withResults(row["version_sets@saved"]!);
+  await make("version_sets@draft", "version_sets", { name: `Next ${runId}`, parent_id: row["version_sets@saved"] });
+  // The draft started from the saved one gets copies of its plans a moment after. The run's draft
+  // copy goes in too, in place of the copy of the program area's plan.
+  await copied(row["version_sets@draft"]!);
+  await replaceAreaCopy(row["version_sets@draft"]!, row["plans"]!, row["plan_versions@draft"]!);
+  await make("version_set_activations", "version_set_activations");
+  // Read again for what changed after they were made: saving, results, and copies.
+  for (const [name, collection] of [
+    ["plans", "plans"],
+    ["plan_versions@saved", "plan_versions"],
+    ["version_sets@saved", "version_sets"],
+    ["version_set_members", "version_set_members"],
+  ] as const) {
+    fixture[name] = await (await admin()).ok("GET", itemPath(collection, row[name]));
+  }
+  row["version_sets"] = row["version_sets@saved"]!;
+  fixture["version_sets"] = fixture["version_sets@saved"]!;
 }
 
-/** A saved version, read once the saved-versions hook has written its results. */
-async function withResults(versionId: string): Promise<Item> {
-  const filter = encodeURIComponent(JSON.stringify({ version_id: { _eq: versionId } }));
+/** A saved Financial Plan, once the saved-versions hook has written its results. */
+export async function withResults(set: string): Promise<void> {
+  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set } }));
   for (let tries = 0; tries < 60; tries++) {
     const [results] = await (await admin()).ok("GET", `/items/plan_results?filter=${filter}&fields=id`);
-    if (results !== undefined) return (await admin()).ok("GET", itemPath("plan_versions", versionId));
+    if (results !== undefined) return;
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
-  throw new Error(`Saved version ${versionId} has no results after a minute.`);
+  throw new Error(`Financial Plan ${set} has no results after a minute.`);
+}
+
+/** A Financial Plan's members, once the saved-versions hook has copied its parent's plans in. */
+export async function copied(set: string): Promise<Row[]> {
+  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set } }));
+  for (let tries = 0; tries < 60; tries++) {
+    const members: Row[] = await (
+      await admin()
+    ).ok("GET", `/items/version_set_members?filter=${filter}&fields=id,plan_id,version_id`);
+    if (members.length > 0) {
+      // The hook made the copies, so cleanup needs telling about them.
+      const copies = members.map((m) => m["version_id"]);
+      created.push(...copies.map((id) => ({ collection: "plan_versions", id })));
+      const inCopies = encodeURIComponent(JSON.stringify({ version_id: { _in: copies } }));
+      for (const collection of PLAN_ROWS) {
+        const rows: Row[] = await (
+          await admin()
+        ).ok("GET", `/items/${collection}?filter=${inCopies}&fields=id&limit=-1`);
+        created.push(...rows.map((item) => ({ collection, id: item["id"] })));
+      }
+      return members;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`Financial Plan ${set} has no plans after a minute.`);
+}
+
+/** Puts `copy` in the Financial Plan in place of its copy of `plan`. */
+async function replaceAreaCopy(set: string, plan: string, copy: string): Promise<void> {
+  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set }, plan_id: { _eq: plan } }));
+  const [member] = await (await admin()).ok("GET", `/items/version_set_members?filter=${filter}&fields=id`);
+  await (await admin()).ok("PATCH", itemPath("version_set_members", member.id), { version_id: copy });
 }
 
 let planRowsMade: Promise<void> | undefined;
