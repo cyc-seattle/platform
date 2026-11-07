@@ -303,6 +303,32 @@ Step("a teammate with no date of birth on file, and an email and phone of their 
   await aTeammate({ share: true, dateOfBirth: null, fields: { phone: phone(), share_contact: true } });
 });
 
+const SCHOOL = "Example Middle School";
+
+Step("a teammate with a school on file, and their parent, who has one on file too", async () => {
+  const teammate = await aTeammate({ fields: { school: SCHOOL } });
+  const parent = call("the teammate's parent", await guardianOf(teammate));
+  await (await admin()).ok("PATCH", `/items/people/${parent.id}`, { school: SCHOOL });
+});
+
+/** A Google Group for `programId`, archived so gsuite-sync's discovery and membership passes leave it alone. */
+async function groupFor(programId: string): Promise<string> {
+  const { id } = await adminCreate("google_groups", { id: randomUUID(), email: email("group"), archived: true });
+  await (await admin()).ok("PATCH", `/items/programs/${programId}`, { google_group_id: id });
+  return id;
+}
+
+let groupId: string;
+let programId: string;
+Step("the team has a Google Group", async () => {
+  programId = (await theTeam()).programId;
+  groupId = await groupFor(programId);
+});
+Step("a program that isn't a team, with a Google Group", async () => {
+  programId = (await team()).programId;
+  groupId = await groupFor(programId);
+});
+
 // Whens: what they look at, or change.
 
 // Every row, past Directus's default of 100: Crew and Team read rows other runs left on dev too.
@@ -332,6 +358,14 @@ Step("they look up the teammate's registration", async () => {
   ];
 });
 
+Step("they look up the teams", async () => {
+  const fields = "id,google_group_id.email,product_id.program_area_id.name";
+  scene.rows = await read(await theirSession(), "programs", `?fields=${fields}&filter[id][_eq]=${programId}`);
+});
+Step("they look up the Google Groups", async () => {
+  scene.rows = await read(await theirSession(), "google_groups");
+});
+
 const shareContact = async (session: DirectusSession, registrationId: string | undefined, value: boolean | null) =>
   (await session.request("PATCH", `/items/clubspot_registrations/${registrationId}`, { share_contact: value })).status;
 
@@ -355,6 +389,27 @@ Step("they see {someone}'s email", (_, label: string) => {
 });
 Step("they see {someone}'s name", (_, label: string) => {
   expect(rowOf(the(label))?.["first_name"]).toBeTruthy();
+});
+
+Step("they see {someone}'s school", (_, label: string) => {
+  expect(rowOf(the(label))?.["school"]).toBe(SCHOOL);
+});
+Step("they don't see {someone}'s school", (_, label: string) => {
+  const row = rowOf(the(label));
+  expect(row).toBeDefined();
+  expect(row?.["school"] ?? null).toBeNull();
+});
+Step("they see the team's program area and Google Group", () => {
+  expect(scene.rows).toEqual([
+    {
+      id: programId,
+      google_group_id: { email: expect.any(String) },
+      product_id: { program_area_id: { name: expect.any(String) } },
+    },
+  ]);
+});
+Step("they don't see that program's Google Group", () => {
+  expect(ids(scene.rows)).not.toContain(groupId);
 });
 
 // Directus returns `email` and `phone` on every row once any policy grants them, and null on a row

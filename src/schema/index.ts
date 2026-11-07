@@ -360,6 +360,8 @@ export interface GoogleGroups {
   description: string | null;
   /** Set when the group no longer exists in Google Workspace, and cleared if it comes back. */
   archived: boolean;
+  /** The programs that use this group. */
+  programs: (string | Programs)[];
 }
 
 export interface GroupMembers {
