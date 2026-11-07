@@ -10,3 +10,6 @@ CLAUDE.md
 .vscode/
 .idea/
 *.tsbuildinfo
+
+# The committed SDKs' build output (scripts/gen-sdks)
+generated/*/bin/

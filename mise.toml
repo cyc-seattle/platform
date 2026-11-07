@@ -24,8 +24,13 @@ PULUMI_STACK = "{{ get_env(name='PULUMI_STACK', default='prod') }}"
 PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-{{ env.PULUMI_STACK }}"
 
 [tasks.install]
-description = "Install dependencies, git hooks, and the GKE auth plugin Pulumi's Kubernetes provider runs"
-run = ["pnpm install", "lefthook install", "gcloud components install gke-gcloud-auth-plugin --quiet"]
+description = "Install dependencies, the Authentik SDK, git hooks, and the GKE auth plugin Pulumi's Kubernetes provider runs"
+run = [
+  "./scripts/gen-sdks",
+  "pnpm install",
+  "lefthook install",
+  "gcloud components install gke-gcloud-auth-plugin --quiet",
+]
 
 [tasks.format]
 description = "Format and fix all files"
@@ -52,7 +57,8 @@ run = "pulumi preview --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\"
 description = "Apply the bootstrap stack"
 run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
 
-# scripts/each-stack picks the projects from PULUMI_STACK: dev is smoke then backend, prod is infra.
+# scripts/each-stack picks the projects from PULUMI_STACK: dev is smoke, backend, then authentik, and prod is
+# infra, backend, then authentik.
 [tasks.preview]
 description = "Show the diff `mise run deploy` would apply to $PULUMI_STACK"
 run = "./scripts/each-stack preview"

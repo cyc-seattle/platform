@@ -7,6 +7,7 @@ export const syncImageInputs = [
   "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
+  "generated/authentik/package.json",
   "src/model",
   "src/syncs/runtime",
   "src/syncs/clubspot",

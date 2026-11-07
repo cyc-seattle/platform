@@ -11,6 +11,8 @@ RUN corepack enable && npm install -g corepack@latest
 WORKDIR /usr/src/app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# The Authentik SDK is a `file:` dependency the syncs never load, so its manifest is enough to install.
+COPY generated/authentik/package.json generated/authentik/
 # --ignore-scripts: esbuild's binary comes from its platform package, so no install script needs to
 # run, and this layer stays cached across source-only changes.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \

@@ -1,3 +1,4 @@
 import config from "@cyc-seattle/ts-config/eslint";
 
-export default config;
+// scripts/gen-sdks writes generated/.
+export default [{ ignores: ["generated/"] }, ...config];

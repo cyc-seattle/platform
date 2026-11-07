@@ -1,0 +1,182 @@
+import * as pulumi from "@pulumi/pulumi";
+import { beforeAll, describe, expect, it } from "vitest";
+
+const platform = {
+  project: "test-project",
+  projectNumber: "123",
+  region: "us-west1",
+  cluster: "cluster",
+  clusterEndpoint: "cluster.example.com",
+  namespace: "dev",
+  gateway: { name: "gateway", namespace: "infra" },
+  domain: "dev.example.com",
+  sqlConnectionName: "test-project:us-west1:cyc-dev",
+  sqlHost: "10.1.2.3",
+  gatewayAddress: "203.0.113.1",
+  registry: "us-west1-docker.pkg.dev/test-project/images",
+};
+
+interface Registered {
+  type: string;
+  name: string;
+  inputs: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
+const resources: Registered[] = [];
+const calls: { token: string; inputs: Record<string, unknown> }[] = [];
+
+pulumi.runtime.setMocks(
+  {
+    newResource: ({ type, name, inputs }) => {
+      resources.push({ type, name, inputs });
+      return { id: `${name}-id`, state: { ...inputs, result: `${name}-value`, ref: `${name}@sha256:abc` } };
+    },
+    call: ({ token, inputs }) => {
+      calls.push({ token, inputs });
+      if (token === "gcp:storage/getBucketObjectContent:getBucketObjectContent") {
+        return { ...inputs, content: JSON.stringify(platform) };
+      }
+      if (token === "gcp:secretmanager/getSecretVersionAccess:getSecretVersionAccess") {
+        return { ...inputs, secretData: "pa$$word" };
+      }
+      return inputs;
+    },
+  },
+  "authentik",
+  "dev",
+  false,
+);
+pulumi.runtime.setConfig("gcp:project", "test-project");
+
+function find(type: string, name: string): Registered {
+  const found = resources.find((r) => r.type === type && r.name === name);
+  if (!found) throw new Error(`No ${type} named ${name}. Registered: ${resources.map((r) => r.name).join(", ")}`);
+  return found;
+}
+
+function container(deployment: string) {
+  return find("kubernetes:apps/v1:Deployment", deployment).inputs["spec"].template.spec.containers[0];
+}
+
+function envNames(deployment: string): Record<string, unknown> {
+  return Object.fromEntries(
+    (container(deployment).env ?? []).map((e: { name: string; value?: unknown }) => [e.name, e.value]),
+  );
+}
+
+function secretReads(): unknown[] {
+  return calls
+    .filter((c) => c.token === "gcp:secretmanager/getSecretVersionAccess:getSecretVersionAccess")
+    .map((c) => c.inputs["secret"]);
+}
+
+// Lets the registrations an awaited deploy queued reach the mocks.
+const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+
+beforeAll(async () => {
+  // Imported after setMocks, since the modules read the stack name when they load.
+  const { deployAuthentik } = await import("../stacks/authentik/cluster.ts");
+  await deployAuthentik();
+  await settle();
+});
+
+describe("Authentik on the cluster", () => {
+  it("uses the database platform made in dev, creating none of its own", () => {
+    expect(resources.filter((r) => r.type.startsWith("gcp:sql/"))).toEqual([]);
+    expect(secretReads()).toContain("dev-db-authentik-password");
+    // The mock passes secret values through wrapped, as `{ <signature>, value }`.
+    expect(find("kubernetes:core/v1:Secret", "authentik-db").inputs["stringData"].value).toMatchObject({
+      host: "10.1.2.3",
+      database: "authentik",
+      username: "authentik",
+      uri: "postgres://authentik:pa%24%24word@10.1.2.3:5432/authentik",
+    });
+  });
+
+  it("runs the server and the worker, sending mail to Mailpit in dev", () => {
+    expect(container("authentik-server").args).toEqual(["server"]);
+    expect(container("authentik-worker").args).toEqual(["worker"]);
+    expect(envNames("authentik-worker")).toMatchObject({
+      AUTHENTIK_POSTGRESQL__HOST: "10.1.2.3",
+      AUTHENTIK_EMAIL__HOST: "mailpit",
+      AUTHENTIK_EMAIL__PORT: "1025",
+    });
+    expect(container("mailpit").image).toMatch(/^axllent\/mailpit:v/);
+  });
+
+  it("runs one server process, with threads enough that emails don't queue behind other tests", () => {
+    expect(envNames("authentik-server")).toMatchObject({ AUTHENTIK_WEB__WORKERS: "1", AUTHENTIK_WEB__THREADS: "4" });
+    expect(envNames("authentik-worker")).toMatchObject({ AUTHENTIK_WORKER__THREADS: "2" });
+  });
+
+  it("closes database connections after each request, since kept ones filled dev's database", () => {
+    for (const name of ["authentik-server", "authentik-worker"]) {
+      expect(envNames(name)).toMatchObject({ AUTHENTIK_POSTGRESQL__CONN_MAX_AGE: "0" });
+      expect(envNames(name)).not.toHaveProperty("AUTHENTIK_POSTGRESQL__CONN_HEALTH_CHECKS");
+    }
+  });
+
+  it("checks the server's readiness less often, with a longer timeout, for dev's shared-core database", () => {
+    expect(container("authentik-server").readinessProbe).toMatchObject({ periodSeconds: 30, timeoutSeconds: 10 });
+    expect(
+      find("kubernetes:networking.gke.io/v1:HealthCheckPolicy", "authentik-server").inputs["spec"].default,
+    ).toMatchObject({
+      checkIntervalSec: 30,
+      timeoutSec: 10,
+    });
+  });
+
+  it("has the load balancer check a static file, not the database, and waits for it to answer", () => {
+    const path = "/static/dist/assets/icons/icon.png";
+    expect(container("authentik-server").readinessProbe.httpGet.path).toBe("/-/health/ready/");
+    expect(
+      find("kubernetes:networking.gke.io/v1:HealthCheckPolicy", "authentik-server").inputs["spec"].default.config
+        .httpHealthCheck.requestPath,
+    ).toBe(path);
+    expect(find("command:local:Command", "authentik-api-ready").inputs["environment"].value).toMatchObject({
+      AUTHENTIK_HEALTH_PATH: path,
+    });
+  });
+
+  it("sizes the server and worker below their limits, so they burst", () => {
+    expect(container("authentik-server").resources).toEqual({
+      requests: { cpu: "250m", memory: "768Mi" },
+      limits: { cpu: "1", memory: "768Mi" },
+    });
+    expect(container("authentik-worker").resources).toEqual({
+      requests: { cpu: "100m", memory: "512Mi" },
+      limits: { cpu: "500m", memory: "512Mi" },
+    });
+  });
+
+  it("waits for the API again after any change that rolls the pods", () => {
+    const pods = JSON.parse(find("command:local:Command", "authentik-api-ready").inputs["triggers"][1]);
+    expect(pods.server.requests).toEqual(container("authentik-server").resources.requests);
+    // Each pod's own env counts, not just the env both share (cyc-seattle/isthmia#300 changed only the thread counts).
+    expect(pods.server.env).toContainEqual({
+      name: "AUTHENTIK_WEB__THREADS",
+      value: envNames("authentik-server")["AUTHENTIK_WEB__THREADS"],
+    });
+    expect(pods.worker.env).toContainEqual({
+      name: "AUTHENTIK_WORKER__THREADS",
+      value: envNames("authentik-worker")["AUTHENTIK_WORKER__THREADS"],
+    });
+  });
+
+  it("mounts the email templates where the email stage looks", () => {
+    const mounts = container("authentik-worker").volumeMounts.map((m: { mountPath: string }) => m.mountPath);
+    expect(mounts).toEqual(expect.arrayContaining(["/templates/email", "/dev/shm"]));
+  });
+
+  it("serves login.<domain> with the redirects beside it", () => {
+    const route = find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "authentik-server");
+    expect(route.inputs["spec"].hostnames).toEqual(["login.dev.example.com"]);
+    expect(find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "authentik-login-redirects")).toBeDefined();
+  });
+
+  it("leaves dev's Spot server movable", () => {
+    expect(
+      find("kubernetes:apps/v1:Deployment", "authentik-server").inputs["spec"].template.metadata.annotations,
+    ).toBeUndefined();
+  });
+});

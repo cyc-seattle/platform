@@ -72,7 +72,7 @@ printf %s 'THE_VALUE' | gcloud secrets versions add SECRET_ID --data-file=- --pr
 
 The rest, marked below, are internal keys with no meaningful human choice. Pulumi generates them as
 `random` resources. Prod's also keep the Secret Manager copies they had on the VM
-(`stacks/backend/prod-state.ts`), so they're listed for completeness.
+(`stacks/backend/prod-state.ts` and `stacks/authentik/prod-secrets.ts`), so they're listed for completeness.
 
 | Secret ID                           | Used by       | Source of the value                                                                                    |
 | ----------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------ |
@@ -87,10 +87,17 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | `directus-community-role-id`        | nothing       | **Pulumi-generated**, from the Community role's ID. The cluster passes the ID to Directus directly     |
 | `clubspot-sync-directus-token`      | clubspot-sync | **Pulumi-generated.** Its machine user's Directus token                                                |
 | `gsuite-sync-directus-token`        | gsuite-sync   | **Pulumi-generated.** Its machine user's Directus token                                                |
+| `google-oauth-client-id`            | Authentik     | The Google OAuth client's ID (§8)                                                                      |
+| `google-oauth-client-secret`        | Authentik     | The Google OAuth client's secret (§8)                                                                  |
+| `authentik-secret-key`              | Authentik     | **Pulumi-generated.**                                                                                  |
+| `authentik-db-password`             | Authentik     | **Pulumi-generated**, and set on the `authentik` Cloud SQL user too                                    |
+| `authentik-bootstrap-token`         | Authentik     | **Pulumi-generated.** akadmin's API token, used only to create the `pulumi` service account and token  |
+| `authentik-api-token`               | Authentik     | **Pulumi-generated.** The `pulumi` service account's token, which `authentik` signs in with            |
+| `authentik-bootstrap-password`      | Authentik     | **Pulumi-generated.** akadmin's break-glass login (§8)                                                 |
 
 Dev reads only `dev-directus-license-key`, set by hand to the same grant key, and the
 `dev-db-<name>-password` secrets that the `infra` stack creates. Its fakes take the place of the
-Clubspot and Google credentials.
+Clubspot and Google credentials, and it has no Google sign-in.
 
 ## 6. Directus (`directus.<domain>`)
 
@@ -125,6 +132,26 @@ role directly, rather than impersonating an admin through domain-wide delegation
       that the Groups Settings API also accepts this credential. Google's announcement of
       role-assignable service accounts covers the Directory API and says nothing about Groups
       Settings. If it 403s, drop the settings pass rather than adding delegation for it.
+
+## 8. Authentik (`login.<domain>`)
+
+The `authentik` stack deploys Authentik and configures its flows, sources, and applications. It
+sends sign-in mail through the relay in §4.
+
+- [x] In the Google Cloud console, an OAuth consent screen set to **External**, so families'
+      personal Google accounts can sign in.
+- [x] An OAuth 2.0 Client ID, type **Web application**, with the redirect URI
+      `https://login.cycsail.team/source/oauth/callback/google/`. Its ID and secret go in
+      `google-oauth-client-id` and `google-oauth-client-secret` (§5).
+- [ ] Remove the retired redirect URIs `https://cycsail.team/oauth2/callback` and
+      `https://directus.cycsail.team/auth/login/google/callback` from that client.
+
+If Authentik's own sign-in is ever unreachable, sign in as `akadmin` with the password in
+`authentik-bootstrap-password`:
+
+```sh
+gcloud secrets versions access latest --secret authentik-bootstrap-password --project cyc-admin-scripts
+```
 
 ## When you add a new manual step
 

@@ -21,11 +21,11 @@ describe("changed-projects", () => {
   });
 
   it("deploys everything for a change to how the deploy runs", () => {
-    expect(changedProjects("docs/backend.md", ".github/workflows/pull-request.yml")).toBe("smoke backend");
+    expect(changedProjects("docs/backend.md", ".github/workflows/pull-request.yml")).toBe("smoke backend authentik");
   });
 
   it("deploys everything for anything else", () => {
-    expect(changedProjects("docs/backend.md", "test/smoke.test.ts")).toBe("smoke backend");
-    expect(changedProjects("schemas/crm.yaml")).toBe("smoke backend");
+    expect(changedProjects("docs/backend.md", "test/smoke.test.ts")).toBe("smoke backend authentik");
+    expect(changedProjects("schemas/crm.yaml")).toBe("smoke backend authentik");
   });
 });
