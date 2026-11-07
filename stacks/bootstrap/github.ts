@@ -243,7 +243,8 @@ export const sailTeam = new StandardRepository("sail-team", {
   autoInit: true,
   licenseTemplate: "apache-2.0",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title"],
+  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
+  mergeQueue: true,
 });
 
 new StandardRepository("todo-manager", {
