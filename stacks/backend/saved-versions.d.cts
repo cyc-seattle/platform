@@ -23,10 +23,17 @@ export interface Plan {
   program_area_id: string | null;
 }
 
+export interface FinancialPlan {
+  id: string;
+  status: "draft" | "saved";
+}
+
 export interface Lookup {
   plans(ids: string[]): Promise<Plan[]>;
   versionIds(collection: string, keys: string[]): Promise<string[]>;
   versions(ids: string[]): Promise<Version[]>;
+  sets(ids: string[]): Promise<FinancialPlan[]>;
+  memberSets(keys: string[]): Promise<string[]>;
   deletesSaved(user: string | null | undefined): Promise<boolean>;
 }
 
@@ -36,7 +43,7 @@ export interface Database {
   exec(sql: string): Promise<unknown>;
 }
 
-/** Throws a 403 for a write that would change a saved version; otherwise the payload to write. */
+/** Throws a 403 for a write that would change a saved Financial Plan; otherwise the payload to write. */
 export function guard(write: Write, config: SavedVersionsConfig, lookup: Lookup): Promise<unknown>;
 
 /** Directus's error for a database error: a trigger's refusal as a 403 or 400, otherwise as it is. */
@@ -72,25 +79,28 @@ export interface Engine {
   computePlan(data: unknown): unknown;
 }
 
-/**
- * Works out a saved version's results with the engine and writes them, unless it already has them.
- * `db` is Directus's knex. Returns whether it wrote them.
- */
-export function writeResults(
-  config: SavedVersionsConfig,
-  db: unknown,
-  versionId: string,
-  engine: Engine,
-): Promise<boolean>;
-
 export const REFUSED: string;
 export const RESULTS_BY_SAVE: string;
 export const SET_STAYS: string;
-export const MEMBERS_BY_SAVE: string;
+export const MEMBERS_FIXED: string;
+export const SAVED_WITH_SET: string;
+export const NEEDS_OPERATIONS: string;
+export const ONE_PER_AREA: string;
+export const ONLY_SAVED_ACTIVE: string;
+export const ACTIVATION_STAYS: string;
 
 /**
- * Works out a club plan's results with the engine, from the versions it holds, and writes them,
- * unless it already has them. Returns whether it wrote them.
+ * Copies a new Financial Plan's parent into it: a draft copy of each plan, with every row and its
+ * key. `db` is Directus's knex. Returns whether it copied anything.
+ */
+export function copyParent(config: SavedVersionsConfig, db: unknown, setId: string): Promise<boolean>;
+
+/** The versioned tables, each after every table it links to. */
+export function copyOrder(config: SavedVersionsConfig): string[];
+
+/**
+ * Works out a saved Financial Plan's results with the engine, from the plans it holds, and writes
+ * them, unless it already has them. `db` is Directus's knex. Returns whether it wrote them.
  */
 export function writeSetResults(
   config: SavedVersionsConfig,

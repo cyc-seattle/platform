@@ -7,11 +7,18 @@ import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
 import { savedVersionsConfig, type SavedVersionsConfig } from "../stacks/backend/policies.ts";
 import {
+  ACTIVATION_STAYS,
+  copyOrder,
+  copyParent,
   fingerprint,
   installTriggers,
-  MEMBERS_BY_SAVE,
+  MEMBERS_FIXED,
+  NEEDS_OPERATIONS,
+  ONE_PER_AREA,
+  ONLY_SAVED_ACTIVE,
   REFUSED,
   RESULTS_BY_SAVE,
+  SAVED_WITH_SET,
   SET_STAYS,
   triggerStatements,
   triggerStatus,
@@ -29,6 +36,7 @@ interface Relation {
   collection: string;
   field: string;
   related_collection: string | null;
+  schema?: { on_delete?: string } | null;
 }
 
 const schemas = ["core", "planning"].map((name) => ({
@@ -53,8 +61,8 @@ function tables(): string[] {
     .flatMap(({ schema }) => schema.relations)
     .filter(({ related_collection: related }) => related !== null && names.includes(related))
     .map(
-      ({ collection, field, related_collection: related }) =>
-        `ALTER TABLE "${collection}" ADD FOREIGN KEY ("${field}") REFERENCES "${related}" (id) ON DELETE RESTRICT`,
+      ({ collection, field, related_collection: related, schema }) =>
+        `ALTER TABLE "${collection}" ADD FOREIGN KEY ("${field}") REFERENCES "${related}" (id) ON DELETE ${schema?.on_delete ?? "RESTRICT"}`,
     );
   return [...create, ...keys];
 }
@@ -122,14 +130,14 @@ function writer(db: PGlite) {
   };
 }
 
-const NEEDS_PLATFORM = "Saving a version needs the @cyc-seattle/platform version that calculated it.";
-const NEEDS_ACTIVE_OPERATIONS = "A club plan needs an active Operations Plan version for its organization and year.";
-const NEEDS_ACTIVE_AREAS =
-  "A club plan needs an active version for every program area with a plan for its organization and year.";
+const NEEDS_PLATFORM = "Saving a Financial Plan needs the @cyc-seattle/platform version that calculated it.";
 
 const refusal = (message: string) => expect.objectContaining({ code: "CY001", message });
 
-/** An organization's Operations Plan with a saved version, and a program area's plan with a saved version and a draft. */
+/**
+ * An organization's year: a saved Financial Plan holding the Operations Plan and a program area's
+ * plan, and a draft Financial Plan started from it, holding a draft copy of the program area's plan.
+ */
 async function plans(db: PGlite, year = 2027) {
   const w = writer(db);
   const organization = await w.insert("organizations", { name: "Test club", fiscal_year_start_month: 10 });
@@ -142,10 +150,6 @@ async function plans(db: PGlite, year = 2027) {
     fiscal_year: year,
     name: "Operations",
   });
-  const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
-  await w.insert("plan_rates", { version_id: operations, key: randomUUID(), rib_resource_kind_id: kind });
-  expect(await w.update("plan_versions", operations, { status: "saved", platform_version: "1.4.0" })).toBeUndefined();
-
   const plan = await w.insert("plans", {
     kind: "program_area",
     program_area_id: area,
@@ -153,20 +157,68 @@ async function plans(db: PGlite, year = 2027) {
     fiscal_year: year,
     name: "Program area",
   });
+  const set = await w.insert("version_sets", {
+    organization_id: organization,
+    fiscal_year: year,
+    name: "Budget",
+    status: "draft",
+  });
+  const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
+  await w.insert("plan_rates", { version_id: operations, key: randomUUID(), rib_resource_kind_id: kind });
   const saved = await w.insert("plan_versions", { plan_id: plan, status: "draft" });
-  const draft = await w.insert("plan_versions", { plan_id: plan, status: "draft", parent_version_id: saved });
   const offering = async (version: string) =>
     w.insert("plan_offerings", { version_id: version, key: randomUUID(), product_id: product, name: "Offering" });
   const savedOffering = await offering(saved);
+  const offeringKey = (await w.read("plan_offerings", savedOffering))!["key"];
+  await w.insert("plan_activities", {
+    version_id: saved,
+    key: randomUUID(),
+    offering_id: savedOffering,
+    date: `${year}-06-06`,
+  });
+  await w.insert("plan_activity_block_rules", {
+    version_id: operations,
+    key: randomUUID(),
+    name: "Shared Saturdays",
+    offering_keys: JSON.stringify([offeringKey]),
+    weekdays: JSON.stringify([1, 3]),
+  });
+  await w.insert("version_set_members", { version_set_id: set, version_id: operations });
+  await w.insert("version_set_members", { version_set_id: set, version_id: saved });
+  expect(await w.update("version_sets", set, { status: "saved", platform_version: "1.4.0" })).toBeUndefined();
+
+  const draftSet = await w.insert("version_sets", {
+    organization_id: organization,
+    fiscal_year: year,
+    name: "Next",
+    status: "draft",
+    parent_id: set,
+  });
+  const draft = await w.insert("plan_versions", { plan_id: plan, status: "draft", parent_version_id: saved });
   const draftOffering = await offering(draft);
-  expect(
-    await w.update("plan_versions", saved, {
-      status: "saved",
-      platform_version: "1.4.0",
-      operations_version_id: operations,
-    }),
-  ).toBeUndefined();
-  return { organization, area, product, operationsPlan, operations, plan, saved, draft, savedOffering, draftOffering };
+  await w.insert("version_set_members", { version_set_id: draftSet, version_id: draft });
+  return {
+    organization,
+    area,
+    product,
+    operationsPlan,
+    operations,
+    plan,
+    set,
+    saved,
+    draftSet,
+    draft,
+    savedOffering,
+    draftOffering,
+  };
+}
+
+/** The id of a Financial Plan's member that holds `version`. */
+async function memberOf(db: PGlite, version: string): Promise<string> {
+  const { rows } = await db.query<{ id: string }>(`SELECT id FROM version_set_members WHERE version_id = $1`, [
+    version,
+  ]);
+  return rows[0]!.id;
 }
 
 // Starting a PGlite can take longer than the 5s default on a CI runner.
@@ -178,19 +230,19 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     w = writer(db);
   }, 30_000);
 
-  describe("on a version's results", () => {
-    /** Writes a warning and then the totals for `version`, as the hook does; returns the error, if any. */
-    const hookWrites = async (version: string) => {
+  describe("on a Financial Plan's results", () => {
+    /** Writes a warning and then the totals for `set`, as the hook does; returns the error, if any. */
+    const hookWrites = async (set: string) => {
       try {
         await db.transaction(async (tx) => {
           await tx.exec("SET LOCAL cyc.writing_results = 'on'");
-          await tx.query(`INSERT INTO plan_result_warnings (id, version_id, code, message) VALUES ($1, $2, 'x', 'y')`, [
+          await tx.query(
+            `INSERT INTO plan_result_warnings (id, version_set_id, code, message) VALUES ($1, $2, 'x', 'y')`,
+            [randomUUID(), set],
+          );
+          await tx.query(`INSERT INTO plan_results (id, version_set_id, total_cents) VALUES ($1, $2, 0)`, [
             randomUUID(),
-            version,
-          ]);
-          await tx.query(`INSERT INTO plan_results (id, version_id, total_cents) VALUES ($1, $2, 0)`, [
-            randomUUID(),
-            version,
+            set,
           ]);
         });
         return undefined;
@@ -199,31 +251,31 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       }
     };
 
-    it("let only the hook write a saved version's results, once", async () => {
-      const { saved } = await plans(db, 2201);
-      expect(await w.refusedInsert("plan_result_warnings", { version_id: saved, code: "x", message: "y" })).toEqual(
+    it("let only the hook write a saved Financial Plan's results, once", async () => {
+      const { set } = await plans(db, 2201);
+      expect(await w.refusedInsert("plan_result_warnings", { version_set_id: set, code: "x", message: "y" })).toEqual(
         refusal(RESULTS_BY_SAVE),
       );
-      expect(await hookWrites(saved)).toBeUndefined();
-      expect(await hookWrites(saved)).toEqual(refusal(RESULTS_BY_SAVE));
+      expect(await hookWrites(set)).toBeUndefined();
+      expect(await hookWrites(set)).toEqual(refusal(RESULTS_BY_SAVE));
     });
 
     it("refuse results on a draft, even from the hook", async () => {
-      const { draft } = await plans(db, 2202);
-      expect(await hookWrites(draft)).toEqual(refusal(RESULTS_BY_SAVE));
+      const { draftSet } = await plans(db, 2202);
+      expect(await hookWrites(draftSet)).toEqual(refusal(RESULTS_BY_SAVE));
     });
 
     it("refuse to change or delete them", async () => {
-      const { saved } = await plans(db, 2203);
-      await hookWrites(saved);
-      const [{ id }] = (await db.query<{ id: string }>(`SELECT id FROM plan_results WHERE version_id = $1`, [saved]))
+      const { set } = await plans(db, 2203);
+      await hookWrites(set);
+      const [{ id }] = (await db.query<{ id: string }>(`SELECT id FROM plan_results WHERE version_set_id = $1`, [set]))
         .rows as [{ id: string }];
       expect(await w.update("plan_results", id, { total_cents: 1 })).toEqual(refusal(RESULTS_BY_SAVE));
       expect(await w.remove("plan_results", id)).toEqual(refusal(RESULTS_BY_SAVE));
     });
   });
 
-  describe("on a saved version's rows", () => {
+  describe("on a saved plan's rows", () => {
     it("refuse to add, change, or delete one", async () => {
       const { saved, savedOffering, product } = await plans(db, 2101);
       expect(
@@ -264,19 +316,15 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     });
 
     it("refuse to move a row to another version", async () => {
-      const { draftOffering, saved, draft, product } = await plans(db, 2103);
-      const otherDraft = await w.insert("plan_versions", {
-        plan_id: (await w.read("plan_versions", draft))!["plan_id"],
-        status: "draft",
-      });
+      const { draftOffering, saved, plan } = await plans(db, 2103);
+      const otherDraft = await w.insert("plan_versions", { plan_id: plan, status: "draft" });
       const message = "A plan row can't move to another version. Copy it into that version instead.";
       expect(await w.update("plan_offerings", draftOffering, { version_id: saved })).toEqual(refusal(message));
       expect(await w.update("plan_offerings", draftOffering, { version_id: otherDraft })).toEqual(refusal(message));
-      expect(product).toBeDefined();
     });
   });
 
-  describe("on a draft's rows", () => {
+  describe("on a draft plan's rows", () => {
     it("let them be added, changed, and deleted", async () => {
       const { draft, draftOffering, product } = await plans(db, 2104);
       const added = await w.insert("plan_offerings", { version_id: draft, key: randomUUID(), product_id: product });
@@ -287,7 +335,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     it("refuse a link to a row in another version, for every link", async () => {
       const { draft, saved } = await plans(db, 2105);
       const { links } = config(false);
-      // A row in the saved version for each table a link points at. Made before the save would
+      // A row in the saved version for each table a link points at. Made after the save would
       // need them in a draft, so they go straight into the table with the triggers off.
       for (const [table, fields] of Object.entries(links)) {
         for (const [field, target] of Object.entries(fields)) {
@@ -318,7 +366,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     });
   });
 
-  describe("on a version", () => {
+  describe("on a plan copy", () => {
     it("refuse to change a saved one, turn it back into a draft, or delete it", async () => {
       const { saved } = await plans(db, 2106);
       expect(await w.update("plan_versions", saved, { message: "Changed" })).toEqual(refusal(REFUSED));
@@ -326,63 +374,24 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await w.remove("plan_versions", saved)).toEqual(refusal(REFUSED));
     });
 
-    it("refuse a new version that isn't a draft", async () => {
+    it("refuse a new copy that isn't a draft", async () => {
       const { plan } = await plans(db, 2107);
       expect(
         await w.refusedInsert("plan_versions", { plan_id: plan, status: "saved", platform_version: "1.4.0" }),
-      ).toEqual(refusal("A new plan version starts as a draft."));
+      ).toEqual(refusal("A new plan copy starts as a draft."));
     });
 
-    it("refuse to save one without a platform version, or with it cleared", async () => {
-      const { draft, operations } = await plans(db, 2108);
-      for (const platform of [null, "", " "]) {
-        expect(
-          await w.update("plan_versions", draft, {
-            status: "saved",
-            platform_version: platform,
-            operations_version_id: operations,
-          }),
-        ).toEqual(refusal("Saving a version needs the @cyc-seattle/platform version that calculated it."));
-      }
+    it("refuse to save one on its own", async () => {
+      const { draft } = await plans(db, 2108);
+      expect(await w.update("plan_versions", draft, { status: "saved", platform_version: "1.4.0" })).toEqual(
+        refusal(SAVED_WITH_SET),
+      );
     });
 
-    it("save a program area's plan only with a saved Operations Plan version of the same organization and year", async () => {
-      const { draft, operations, organization, plan } = await plans(db, 2109);
-      const message =
-        "Saving a program area's plan needs the saved Operations Plan version it was calculated with, for the same organization and year.";
-      const save = (operations_version_id: string | null) =>
-        w.update("plan_versions", draft, { status: "saved", platform_version: "1.4.0", operations_version_id });
-      expect(await save(null)).toEqual(refusal(message));
-      // A draft of the Operations Plan, a saved version of another program area's plan, and another year's.
-      const operationsPlan = (await w.read("plan_versions", operations))!["plan_id"] as string;
-      const operationsDraft = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
-      expect(await save(operationsDraft)).toEqual(refusal(message));
-      const other = await plans(db, 2110);
-      expect(await save(other.saved)).toEqual(refusal(message));
-      expect(await save(other.operations)).toEqual(refusal(message));
-      expect(organization).not.toBe(other.organization);
-
-      expect(await save(operations)).toBeUndefined();
-      expect(await w.read("plan_versions", draft)).toMatchObject({ status: "saved", saved_at: expect.any(Date) });
-      expect(plan).toBeDefined();
-    });
-
-    it("save an Operations Plan's version without another Operations Plan version", async () => {
-      const { operationsPlan, operations } = await plans(db, 2111);
-      const draft = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
-      expect(
-        await w.update("plan_versions", draft, {
-          status: "saved",
-          platform_version: "1.4.0",
-          operations_version_id: operations,
-        }),
-      ).toEqual(refusal("An Operations Plan's version doesn't name an Operations Plan version."));
-    });
-
-    it("refuse to move a version to another plan", async () => {
+    it("refuse to move a copy to another plan", async () => {
       const { draft, operationsPlan } = await plans(db, 2112);
       expect(await w.update("plan_versions", draft, { plan_id: operationsPlan })).toEqual(
-        refusal("A plan version can't move to another plan."),
+        refusal("A plan copy can't move to another plan."),
       );
     });
   });
@@ -405,7 +414,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     });
 
     it("refuse a program area's plan without its program area, or an Operations Plan with one", async () => {
-      const { organization, area, plan, operationsPlan } = await plans(db, 2125);
+      const { organization, area } = await plans(db, 2125);
       const message = "A program area's plan names its program area, and an Operations Plan names none.";
       const plan2 = { organization_id: organization, fiscal_year: 2126 };
       expect(await w.refusedInsert("plans", { ...plan2, kind: "program_area" })).toEqual(refusal(message));
@@ -416,7 +425,6 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await w.update("plans", draftOnly, { program_area_id: null })).toEqual(refusal(message));
       expect(await w.update("plans", draftOnly, { kind: "operations" })).toEqual(refusal(message));
       expect(await w.update("plans", draftOnly, { kind: "operations", program_area_id: null })).toBeUndefined();
-      expect(plan && operationsPlan).toBeDefined();
     });
 
     it("let a plan with only drafts change", async () => {
@@ -430,210 +438,195 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       await w.insert("plan_versions", { plan_id: plan, status: "draft" });
       expect(await w.update("plans", plan, { fiscal_year: 2118 })).toBeUndefined();
     });
+  });
 
-    it("allow several plans for one program area, organization, and year, and several Operations Plans", async () => {
-      const { organization, area } = await plans(db, 2119);
-      const again = (values: Values) =>
-        w.insert("plans", { organization_id: organization, fiscal_year: 2119, ...values });
-      expect(await again({ kind: "program_area", program_area_id: area })).toEqual(expect.any(String));
-      expect(await again({ kind: "operations" })).toEqual(expect.any(String));
+  describe("on a Financial Plan", () => {
+    it("save every plan in it when it's saved, together", async () => {
+      const { set, operations, saved } = await plans(db, 2301);
+      for (const version of [operations, saved]) {
+        expect(await w.read("plan_versions", version)).toMatchObject({
+          status: "saved",
+          platform_version: "1.4.0",
+          saved_at: expect.any(Date),
+        });
+      }
+      expect(await w.read("version_sets", set)).toMatchObject({ status: "saved", saved_at: expect.any(Date) });
+    });
+
+    it("refuse to save one without an Operations Plan, and save none of its plans", async () => {
+      const { draftSet, draft } = await plans(db, 2302);
+      expect(await w.update("version_sets", draftSet, { status: "saved", platform_version: "1.4.0" })).toEqual(
+        refusal(NEEDS_OPERATIONS),
+      );
+      expect(await w.read("version_sets", draftSet)).toMatchObject({ status: "draft" });
+      expect(await w.read("plan_versions", draft)).toMatchObject({ status: "draft" });
+    });
+
+    it("refuse to save one without a platform version", async () => {
+      const { draftSet } = await plans(db, 2303);
+      for (const platform of [null, "", " "]) {
+        expect(await w.update("version_sets", draftSet, { status: "saved", platform_version: platform })).toEqual(
+          refusal(NEEDS_PLATFORM),
+        );
+      }
+    });
+
+    it("refuse a new one that isn't a draft", async () => {
+      const { organization } = await plans(db, 2304);
+      expect(
+        await w.refusedInsert("version_sets", { organization_id: organization, fiscal_year: 2304, status: "saved" }),
+      ).toEqual(refusal("A new Financial Plan starts as a draft."));
+    });
+
+    it("let a saved one's note change, and nothing else", async () => {
+      const { set } = await plans(db, 2305);
+      expect(await w.update("version_sets", set, { message: "Reviewed with the board" })).toBeUndefined();
+      for (const change of [{ name: "Changed" }, { status: "draft" }, { message: "Adopted", name: "Changed" }]) {
+        expect(await w.update("version_sets", set, change), JSON.stringify(change)).toEqual(refusal(SET_STAYS));
+      }
+      expect(await w.remove("version_sets", set)).toEqual(refusal(SET_STAYS));
+      expect(await w.read("version_sets", set)).toMatchObject({ message: "Reviewed with the board", name: "Budget" });
+    });
+
+    it("refuse to change a draft's organization, year, or parent", async () => {
+      const { draftSet, organization } = await plans(db, 2306);
+      const other = await plans(db, 2307);
+      for (const change of [{ organization_id: other.organization }, { fiscal_year: 2308 }, { parent_id: null }]) {
+        expect(await w.update("version_sets", draftSet, change), JSON.stringify(change)).toEqual(
+          refusal("A Financial Plan's organization, year, and parent can't change."),
+        );
+      }
+      expect(await w.update("version_sets", draftSet, { name: "Three coaches" })).toBeUndefined();
+      expect(organization).toBeDefined();
+    });
+
+    it("start only from one for the same organization and year", async () => {
+      const { organization, set } = await plans(db, 2309);
+      expect(
+        await w.refusedInsert("version_sets", {
+          organization_id: organization,
+          fiscal_year: 2310,
+          status: "draft",
+          parent_id: set,
+        }),
+      ).toEqual(refusal("A Financial Plan can only start from one for the same organization and year."));
+    });
+
+    it("allow several drafts for one year", async () => {
+      const { organization, set } = await plans(db, 2311);
+      const another = { organization_id: organization, fiscal_year: 2311, status: "draft", parent_id: set };
+      expect(await w.insert("version_sets", { ...another, name: "Two coaches" })).toEqual(expect.any(String));
+      expect(await w.insert("version_sets", { ...another, name: "Three coaches" })).toEqual(expect.any(String));
+    });
+
+    it("let a draft be deleted, with its plans taken out of it", async () => {
+      const { draftSet, draft } = await plans(db, 2312);
+      expect(await w.remove("version_sets", draftSet)).toBeUndefined();
+      expect(await w.read("plan_versions", draft)).toMatchObject({ status: "draft" });
     });
   });
 
-  describe("on making a version active", () => {
-    it("stamp when, and order a plan's activations so none tie", async () => {
-      const { plan, saved, operations, operationsPlan } = await plans(db, 2121);
-      const first = await w.insert("plan_activations", { version_id: saved, activated_at: "1999-01-01" });
-      const second = await w.insert("plan_activations", { version_id: saved });
-      const other = await w.insert("plan_activations", { version_id: operations });
-      expect(await w.read("plan_activations", first)).toMatchObject({ plan_id: plan, sequence: 1 });
-      expect(await w.read("plan_activations", second)).toMatchObject({ plan_id: plan, sequence: 2 });
-      expect(await w.read("plan_activations", other)).toMatchObject({ plan_id: operationsPlan, sequence: 1 });
-      expect(((await w.read("plan_activations", first))!["activated_at"] as Date).getFullYear()).toBeGreaterThan(1999);
+  describe("on a Financial Plan's plans", () => {
+    it("fill in each one's plan from its copy", async () => {
+      const { draft, plan } = await plans(db, 2401);
+      expect(await w.read("version_set_members", await memberOf(db, draft))).toMatchObject({ plan_id: plan });
     });
 
-    it("order activations across every plan for the same area and year, and every Operations Plan", async () => {
-      const { organization, area, plan, saved, operations } = await plans(db, 2128);
-      const rival = await w.insert("plans", {
-        kind: "program_area",
-        program_area_id: area,
+    it("hold one Operations Plan, and at most one Program Plan for each program area", async () => {
+      const { draftSet, plan, operationsPlan } = await plans(db, 2402);
+      const second = await w.insert("plan_versions", { plan_id: plan, status: "draft" });
+      const error = await w.refusedInsert("version_set_members", { version_set_id: draftSet, version_id: second });
+      expect(error).toEqual(refusal(ONE_PER_AREA));
+      expect(error).toMatchObject({ detail: "It already has Test area." });
+      const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
+      const another = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
+      expect(await w.insert("version_set_members", { version_set_id: draftSet, version_id: operations })).toEqual(
+        expect.any(String),
+      );
+      expect(await w.refusedInsert("version_set_members", { version_set_id: draftSet, version_id: another })).toEqual(
+        refusal(ONE_PER_AREA),
+      );
+    });
+
+    it("take only a draft copy, for the same organization and year, in no other Financial Plan", async () => {
+      const { organization, draftSet, saved, draft, plan } = await plans(db, 2403);
+      expect(await w.refusedInsert("version_set_members", { version_set_id: draftSet, version_id: saved })).toEqual(
+        refusal("Only a draft plan can be added to a Financial Plan."),
+      );
+      const other = await plans(db, 2404);
+      const elsewhere = await w.insert("plan_versions", { plan_id: other.operationsPlan, status: "draft" });
+      expect(await w.refusedInsert("version_set_members", { version_set_id: draftSet, version_id: elsewhere })).toEqual(
+        refusal("A plan in a Financial Plan must be for the same organization and year."),
+      );
+      const option = await w.insert("version_sets", {
         organization_id: organization,
-        fiscal_year: 2128,
+        fiscal_year: 2403,
+        status: "draft",
       });
-      const version = await w.insert("plan_versions", { plan_id: rival, status: "draft" });
-      expect(
-        await w.update("plan_versions", version, {
-          status: "saved",
-          platform_version: "1.4.0",
-          operations_version_id: operations,
-        }),
-      ).toBeUndefined();
-      const first = await w.insert("plan_activations", { version_id: saved });
-      const second = await w.insert("plan_activations", { version_id: version });
-      expect(await w.read("plan_activations", first)).toMatchObject({ plan_id: plan, sequence: 1 });
-      expect(await w.read("plan_activations", second)).toMatchObject({ plan_id: rival, sequence: 2 });
-
-      const otherYear = await plans(db, 2129);
-      const elsewhere = await w.insert("plan_activations", { version_id: otherYear.saved });
-      expect(await w.read("plan_activations", elsewhere)).toMatchObject({ sequence: 1 });
+      expect(await w.refusedInsert("version_set_members", { version_set_id: option, version_id: draft })).toEqual(
+        refusal("A plan copy is in only one Financial Plan."),
+      );
+      expect(plan).toBeDefined();
     });
 
-    it("refuse a draft, or another plan's version", async () => {
-      const { draft, saved, operationsPlan } = await plans(db, 2122);
-      expect(await w.refusedInsert("plan_activations", { version_id: draft })).toEqual(
-        refusal("Only a saved version can be made active."),
+    it("let a draft's plans be taken out, and refuse any change to a saved one's", async () => {
+      const { draft, saved, operations, set } = await plans(db, 2405);
+      const member = await memberOf(db, saved);
+      expect(await w.update("version_set_members", member, { version_id: operations })).toEqual(refusal(MEMBERS_FIXED));
+      expect(await w.remove("version_set_members", member)).toEqual(refusal(MEMBERS_FIXED));
+      const extra = await w.insert("plan_versions", {
+        plan_id: (await w.read("plan_versions", draft))!["plan_id"],
+        status: "draft",
+      });
+      expect(await w.refusedInsert("version_set_members", { version_set_id: set, version_id: extra })).toEqual(
+        refusal(MEMBERS_FIXED),
       );
-      expect(await w.refusedInsert("plan_activations", { version_id: saved, plan_id: operationsPlan })).toEqual(
-        refusal("A version can only be made active for its own plan."),
-      );
-    });
-
-    it("refuse to change or delete an activation", async () => {
-      const { saved, operations } = await plans(db, 2123);
-      const activation = await w.insert("plan_activations", { version_id: saved });
-      const message = "An activation stays in the plan's history. Make another saved version active instead.";
-      expect(await w.update("plan_activations", activation, { version_id: operations })).toEqual(refusal(message));
-      expect(await w.update("plan_activations", activation, { activated_at: "1999-01-01" })).toEqual(refusal(message));
-      expect(await w.remove("plan_activations", activation)).toEqual(refusal(message));
+      expect(await w.remove("version_set_members", await memberOf(db, draft))).toBeUndefined();
     });
   });
 
-  describe("on a club plan", () => {
-    const clubPlan = (organization: string, year: number) =>
-      w.refusedInsert("version_sets", {
+  describe("on marking a Financial Plan active", () => {
+    it("stamp when, and order the year's marks so none tie", async () => {
+      const { set, organization } = await plans(db, 2501);
+      const another = await w.insert("version_sets", {
         organization_id: organization,
-        fiscal_year: year,
-        name: "Budget",
-        platform_version: "1.4.0",
+        fiscal_year: 2501,
+        status: "draft",
       });
-    const membersOf = async (organization: string) =>
-      (
-        await db.query<{ version_id: string }>(
-          `SELECT m.version_id FROM version_set_members m JOIN version_sets s ON s.id = m.version_set_id
-            WHERE s.organization_id = $1 ORDER BY m.version_id`,
-          [organization],
-        )
-      ).rows.map((r) => r.version_id);
-
-    it("hold the year's active versions, filled in when it's saved", async () => {
-      const { organization, operations, saved } = await plans(db, 2301);
-      await w.insert("plan_activations", { version_id: operations });
-      await w.insert("plan_activations", { version_id: saved });
-      expect(await clubPlan(organization, 2301)).toBeUndefined();
-      expect(await membersOf(organization)).toEqual([operations, saved].sort());
-      const [set] = (await db.query<Values>(`SELECT * FROM version_sets WHERE organization_id = $1`, [organization]))
-        .rows;
-      expect(set?.["saved_at"]).not.toBeNull();
-    });
-
-    it("refuse one without an active Operations Plan version", async () => {
-      const { organization, saved } = await plans(db, 2302);
-      await w.insert("plan_activations", { version_id: saved });
-      expect(await clubPlan(organization, 2302)).toEqual(refusal(NEEDS_ACTIVE_OPERATIONS));
-    });
-
-    it("refuse one while a program area's plan has no active version, naming the area", async () => {
-      const { organization, operations } = await plans(db, 2303);
-      await w.insert("plan_activations", { version_id: operations });
-      const error = await clubPlan(organization, 2303);
-      expect(error).toEqual(refusal(NEEDS_ACTIVE_AREAS));
-      expect(error).toMatchObject({ detail: "These have none: Test area." });
-    });
-
-    it("don't miss an archived plan", async () => {
-      const { organization, operations, plan } = await plans(db, 2304);
-      await w.insert("plan_activations", { version_id: operations });
-      expect(await w.update("plans", plan, { archived: true })).toBeUndefined();
-      expect(await clubPlan(organization, 2304)).toBeUndefined();
-      expect(await membersOf(organization)).toEqual([operations]);
-    });
-
-    it("take no version from an archived plan, even one made active more recently", async () => {
-      const { organization, area, operations, saved } = await plans(db, 2308);
-      const archived = await w.insert("plans", {
-        kind: "program_area",
-        program_area_id: area,
+      const operationsPlan = await w.insert("plans", {
+        kind: "operations",
         organization_id: organization,
-        fiscal_year: 2308,
+        fiscal_year: 2501,
       });
-      const version = await w.insert("plan_versions", { plan_id: archived, status: "draft" });
-      expect(
-        await w.update("plan_versions", version, {
-          status: "saved",
-          platform_version: "1.4.0",
-          operations_version_id: operations,
-        }),
-      ).toBeUndefined();
-      await w.insert("plan_activations", { version_id: operations });
-      await w.insert("plan_activations", { version_id: saved });
-      await w.insert("plan_activations", { version_id: version });
-      expect(await w.update("plans", archived, { archived: true })).toBeUndefined();
-      expect(await clubPlan(organization, 2308)).toBeUndefined();
-      expect(await membersOf(organization)).toEqual([operations, saved].sort());
-    });
-
-    it("refuse one without a platform version", async () => {
-      const { organization, operations, saved } = await plans(db, 2305);
-      await w.insert("plan_activations", { version_id: operations });
-      await w.insert("plan_activations", { version_id: saved });
-      expect(
-        await w.refusedInsert("version_sets", { organization_id: organization, fiscal_year: 2305, name: "Budget" }),
-      ).toEqual(refusal(NEEDS_PLATFORM));
-    });
-
-    it("refuse to change or delete it or its versions, or add one by hand", async () => {
-      const { organization, operations, saved, plan } = await plans(db, 2306);
-      await w.insert("plan_activations", { version_id: operations });
-      await w.insert("plan_activations", { version_id: saved });
-      await clubPlan(organization, 2306);
-      const [set] = (
-        await db.query<{ id: string }>(`SELECT id FROM version_sets WHERE organization_id = $1`, [organization])
-      ).rows as [{ id: string }];
-      const [member] = (
-        await db.query<{ id: string }>(`SELECT id FROM version_set_members WHERE version_set_id = $1`, [set.id])
-      ).rows as [{ id: string }];
-      expect(await w.update("version_sets", set.id, { name: "Changed" })).toEqual(refusal(SET_STAYS));
-      expect(await w.remove("version_sets", set.id)).toEqual(refusal(SET_STAYS));
-      expect(await w.update("version_set_members", member.id, { version_id: operations })).toEqual(
-        refusal(MEMBERS_BY_SAVE),
+      const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
+      await w.insert("version_set_members", { version_set_id: another, version_id: operations });
+      expect(await w.update("version_sets", another, { status: "saved", platform_version: "1.4.0" })).toBeUndefined();
+      const first = await w.insert("version_set_activations", { version_set_id: set, activated_at: "1999-01-01" });
+      const second = await w.insert("version_set_activations", { version_set_id: another });
+      expect(await w.read("version_set_activations", first)).toMatchObject({ sequence: 1 });
+      expect(await w.read("version_set_activations", second)).toMatchObject({ sequence: 2 });
+      expect(((await w.read("version_set_activations", first))!["activated_at"] as Date).getFullYear()).toBeGreaterThan(
+        1999,
       );
-      expect(await w.remove("version_set_members", member.id)).toEqual(refusal(MEMBERS_BY_SAVE));
-      expect(
-        await w.refusedInsert("version_set_members", { version_set_id: set.id, plan_id: plan, version_id: saved }),
-      ).toEqual(refusal(MEMBERS_BY_SAVE));
+      const otherYear = await plans(db, 2502);
+      const elsewhere = await w.insert("version_set_activations", { version_set_id: otherYear.set });
+      expect(await w.read("version_set_activations", elsewhere)).toMatchObject({ sequence: 1 });
     });
 
-    it("let only the hook write its results, once, and never with a version's", async () => {
-      const { organization, operations, saved } = await plans(db, 2307);
-      await w.insert("plan_activations", { version_id: operations });
-      await w.insert("plan_activations", { version_id: saved });
-      await clubPlan(organization, 2307);
-      const [set] = (
-        await db.query<{ id: string }>(`SELECT id FROM version_sets WHERE organization_id = $1`, [organization])
-      ).rows as [{ id: string }];
-      const hookWrites = async (values: Values) => {
-        try {
-          await db.transaction(async (tx) => {
-            await tx.exec("SET LOCAL cyc.writing_results = 'on'");
-            const row = { id: randomUUID(), total_cents: 0, ...values };
-            await tx.query(
-              `INSERT INTO plan_results (${Object.keys(row).join(", ")}) VALUES (${Object.keys(row)
-                .map((_, i) => `$${i + 1}`)
-                .join(", ")})`,
-              Object.values(row),
-            );
-          });
-          return undefined;
-        } catch (error) {
-          return error as { code?: string; message: string };
-        }
-      };
-      expect(await w.refusedInsert("plan_results", { version_set_id: set.id, total_cents: 0 })).toEqual(
-        refusal(RESULTS_BY_SAVE),
+    it("refuse a draft", async () => {
+      const { draftSet } = await plans(db, 2503);
+      expect(await w.refusedInsert("version_set_activations", { version_set_id: draftSet })).toEqual(
+        refusal(ONLY_SAVED_ACTIVE),
       );
-      expect(await hookWrites({ version_set_id: set.id, version_id: saved })).toEqual(refusal(RESULTS_BY_SAVE));
-      expect(await hookWrites({ version_set_id: set.id })).toBeUndefined();
-      expect(await hookWrites({ version_set_id: set.id })).toEqual(refusal(RESULTS_BY_SAVE));
+    });
+
+    it("refuse to change or delete a mark", async () => {
+      const { set } = await plans(db, 2504);
+      const mark = await w.insert("version_set_activations", { version_set_id: set });
+      expect(await w.update("version_set_activations", mark, { activated_at: "1999-01-01" })).toEqual(
+        refusal(ACTIVATION_STAYS),
+      );
+      expect(await w.remove("version_set_activations", mark)).toEqual(refusal(ACTIVATION_STAYS));
     });
   });
 
@@ -716,28 +709,149 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
 });
 
 describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () => {
-  it("let a saved version, its rows, its activations, and a club plan be deleted, but not changed", async () => {
+  it("let a saved Financial Plan, its plans, their rows, and its marks be deleted, but not changed", async () => {
     const db = await database(config(true));
     const w = writer(db);
-    const { organization, operations, saved, draft, savedOffering, draftOffering } = await plans(db);
-    const activation = await w.insert("plan_activations", { version_id: saved });
-    await w.insert("plan_activations", { version_id: operations });
-    const set = await w.insert("version_sets", {
-      organization_id: organization,
-      fiscal_year: 2027,
-      name: "Budget",
-      platform_version: "1.4.0",
-    });
+    const { set, operations, saved, draftSet, draft, savedOffering, draftOffering } = await plans(db);
+    const mark = await w.insert("version_set_activations", { version_set_id: set });
     expect(await w.update("version_sets", set, { name: "Changed" })).toEqual(refusal(SET_STAYS));
-    expect(await db.query(`DELETE FROM version_set_members WHERE version_set_id = $1`, [set])).toBeDefined();
-    expect(await w.remove("version_sets", set)).toBeUndefined();
     expect(await w.update("plan_offerings", savedOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
     expect(await w.update("plan_versions", saved, { message: "Changed" })).toEqual(refusal(REFUSED));
-    expect(await w.remove("plan_activations", activation)).toBeUndefined();
-    expect(await w.remove("plan_offerings", savedOffering)).toBeUndefined();
-    // The draft made from it goes first, since it points at it.
+    expect(await w.remove("version_set_activations", mark)).toBeUndefined();
+    // The draft started from it goes first, since it points at it.
+    expect(await w.remove("version_sets", draftSet)).toBeUndefined();
     expect(await w.remove("plan_offerings", draftOffering)).toBeUndefined();
     expect(await w.remove("plan_versions", draft)).toBeUndefined();
+    expect(await w.remove("version_sets", set)).toBeUndefined();
+    await db.query(`DELETE FROM plan_activities WHERE version_id = $1`, [saved]);
+    await db.query(`DELETE FROM plan_activity_block_rules WHERE version_id = $1`, [operations]);
+    expect(await w.remove("plan_offerings", savedOffering)).toBeUndefined();
     expect(await w.remove("plan_versions", saved)).toBeUndefined();
+    expect(
+      await w.remove(
+        "plan_rates",
+        (await db.query<{ id: string }>(`SELECT id FROM plan_rates WHERE version_id = $1`, [operations])).rows[0]!.id,
+      ),
+    ).toBeUndefined();
+    expect(await w.remove("plan_versions", operations)).toBeUndefined();
+  });
+});
+
+/**
+ * Just enough of knex, over PGlite, for `copyParent`: `where`, `whereIn`, `first`, `select`,
+ * `insert`, `update`, and `transaction`.
+ */
+function knexOver(db: PGlite | Transaction): unknown {
+  const builder = (table: string) => {
+    const where: [string, unknown[]][] = [];
+    const clause = (offset = 0) => {
+      const params: unknown[] = [];
+      const parts = where.map(([column, values]) => {
+        const marks = values.map((value) => {
+          params.push(value);
+          return `$${offset + params.length}`;
+        });
+        return `"${column}" IN (${marks.join(", ") || "NULL"})`;
+      });
+      return { sql: parts.length > 0 ? ` WHERE ${parts.join(" AND ")}` : "", params };
+    };
+    const select = async (...columns: string[]) => {
+      const { sql, params } = clause();
+      const list = columns.length === 0 || columns.includes("*") ? "*" : columns.map((c) => `"${c}"`).join(", ");
+      return (await db.query<Values>(`SELECT ${list} FROM "${table}"${sql}`, params)).rows;
+    };
+    const self = {
+      where: (column: string, value: unknown) => (where.push([column, [value]]), self),
+      whereIn: (column: string, values: unknown[]) => (where.push([column, values]), self),
+      select,
+      first: async () => (await select())[0],
+      insert: async (rows: Values | Values[]) => {
+        for (const row of Array.isArray(rows) ? rows : [rows]) {
+          const columns = Object.keys(row);
+          await db.query(
+            `INSERT INTO "${table}" (${columns.map((c) => `"${c}"`).join(", ")}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(", ")})`,
+            Object.values(row),
+          );
+        }
+      },
+      update: async (values: Values) => {
+        const columns = Object.keys(values);
+        const { sql, params } = clause(columns.length);
+        await db.query(`UPDATE "${table}" SET ${columns.map((c, i) => `"${c}" = $${i + 1}`).join(", ")}${sql}`, [
+          ...Object.values(values),
+          ...params,
+        ]);
+      },
+    };
+    return self;
+  };
+  return Object.assign(builder, {
+    transaction: <T>(fn: (trx: unknown) => Promise<T>) =>
+      "transaction" in db ? db.transaction((tx) => fn(knexOver(tx))) : fn(knexOver(db)),
+  });
+}
+
+describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
+  it("copies each plan in the parent into a draft, with every row, its key, and its links", async () => {
+    const db = await database(config(false));
+    const w = writer(db);
+    const { organization, set, saved, operations, savedOffering } = await plans(db, 2601);
+    const original = (await w.read("plan_offerings", savedOffering))!;
+    const child = await w.insert("version_sets", {
+      organization_id: organization,
+      fiscal_year: 2601,
+      name: "Three coaches",
+      status: "draft",
+      parent_id: set,
+    });
+    expect(await copyParent(config(false), knexOver(db), child)).toBe(true);
+    const members = (
+      await db.query<{ version_id: string }>(`SELECT version_id FROM version_set_members WHERE version_set_id = $1`, [
+        child,
+      ])
+    ).rows;
+    expect(members).toHaveLength(2);
+    const copies = (
+      await db.query<Values>(`SELECT * FROM plan_versions WHERE id = ANY($1::uuid[])`, [
+        members.map((m) => m.version_id),
+      ])
+    ).rows;
+    expect(copies.map((v) => v["parent_version_id"]).sort()).toEqual([operations, saved].sort());
+    expect(copies.every((v) => v["status"] === "draft")).toBe(true);
+    const copy = copies.find((v) => v["parent_version_id"] === saved)!;
+    const [offering] = (await db.query<Values>(`SELECT * FROM plan_offerings WHERE version_id = $1`, [copy["id"]]))
+      .rows;
+    expect(offering).toMatchObject({ key: original["key"], name: "Offering" });
+    expect(offering!["id"]).not.toBe(savedOffering);
+    const [activity] = (await db.query<Values>(`SELECT * FROM plan_activities WHERE version_id = $1`, [copy["id"]]))
+      .rows;
+    expect(activity).toMatchObject({ offering_id: offering!["id"] });
+    const operationsCopy = copies.find((v) => v["parent_version_id"] === operations)!;
+    const [rule] = (
+      await db.query<Values>(`SELECT * FROM plan_activity_block_rules WHERE version_id = $1`, [operationsCopy["id"]])
+    ).rows;
+    expect(rule).toMatchObject({ offering_keys: [original["key"]], weekdays: [1, 3] });
+    // The copy is a draft, so it can change, and the parent stays as it was.
+    expect(await w.update("plan_offerings", offering!["id"] as string, { name: "Changed" })).toBeUndefined();
+    expect((await w.read("plan_offerings", savedOffering))!["name"]).toBe("Offering");
+    // A second try copies nothing more.
+    expect(await copyParent(config(false), knexOver(db), child)).toBe(false);
+  });
+
+  it("does nothing for a Financial Plan with no parent", async () => {
+    const db = await database(config(false));
+    const { organization } = await plans(db, 2602);
+    const w = writer(db);
+    const fresh = await w.insert("version_sets", { organization_id: organization, fiscal_year: 2602, status: "draft" });
+    expect(await copyParent(config(false), knexOver(db), fresh)).toBe(false);
+  });
+
+  it("copies a table only after every table it links to", () => {
+    const order = copyOrder(config(false));
+    for (const [table, links] of Object.entries(config(false).links)) {
+      for (const linked of Object.values(links)) {
+        if (linked !== table) expect(order.indexOf(linked), `${table} → ${linked}`).toBeLessThan(order.indexOf(table));
+      }
+    }
   });
 });

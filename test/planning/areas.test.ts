@@ -161,31 +161,6 @@ describe("the plans an offering belongs in", () => {
   });
 });
 
-describe("an area's pinned Operations Plan version", () => {
-  function pinned(operationsVersion: string) {
-    const data = emptyPlan({ program_areas: [area({ id: "summer", name: "Summer" })] });
-    data.plans = [
-      { id: "ops", kind: "operations", program_area_id: null },
-      { id: "plan", kind: "program_area", program_area_id: "summer" },
-    ];
-    data.plan_versions = [
-      { id: "ops-v2", plan_id: "ops" },
-      { id: "v1", plan_id: "plan", operations_version_id: operationsVersion },
-    ];
-    return computePlan(data).warnings;
-  }
-
-  it("warns when it isn't the one the area is calculated with", () => {
-    const [warning] = pinned("ops-v1");
-    expect(warning).toMatchObject({ code: "other_operations_version", key: "v1" });
-    expect(warning?.message).toContain("Summer");
-  });
-
-  it("doesn't warn when it is", () => {
-    expect(pinned("ops-v2")).toEqual([]);
-  });
-});
-
 describe("the organization's totals", () => {
   it("show operating net, then fundraising and capital, then the total", () => {
     const p = product();

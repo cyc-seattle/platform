@@ -106,8 +106,6 @@ export interface Plan {
 export interface PlanVersion {
   id: Id;
   plan_id: Id;
-  /** A saved area plan's: the Operations Plan version it was saved with. */
-  operations_version_id?: Id | null;
 }
 
 // Program area plan

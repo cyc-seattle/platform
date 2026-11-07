@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACTIVATION_STAYS,
   databaseError,
   guard,
-  MEMBERS_BY_SAVE,
+  MEMBERS_FIXED,
+  ONE_PER_AREA,
+  ONLY_SAVED_ACTIVE,
   REFUSED,
   RESULTS_BY_SAVE,
+  SAVED_WITH_SET,
   SET_STAYS,
+  type FinancialPlan,
   type Lookup,
   type Plan,
   type Version,
@@ -14,15 +19,17 @@ import {
 
 const versions: Record<string, Version> = {
   draft: { id: "draft", plan_id: "plan", status: "draft", platform_version: null },
-  calculated: { id: "calculated", plan_id: "plan", status: "draft", platform_version: "1.4.0" },
   saved: { id: "saved", plan_id: "plan", status: "saved", platform_version: "1.4.0" },
-  other: { id: "other", plan_id: "other-plan", status: "saved", platform_version: "1.4.0" },
+};
+// Each Financial Plan, and each of its members, is named for its status.
+const sets: Record<string, FinancialPlan> = {
+  draft: { id: "draft", status: "draft" },
+  saved: { id: "saved", status: "saved" },
 };
 // Each offering is named for the version it belongs to.
 const config = {
-  versioned: ["plan_offerings", "plan_result_lines"],
+  versioned: ["plan_offerings"],
   results: ["plan_result_lines"],
-  setResults: ["plan_result_lines"],
   links: {},
   deletable: false,
   platformVersion: "1.5.0+engine.abc",
@@ -40,6 +47,8 @@ function lookup(deletesSaved = false): Lookup {
     versionIds: async (_, keys) => keys,
     plans: async (ids) => ids.map((id) => plans[id]!).filter(Boolean),
     versions: async (ids) => ids.map((id) => versions[id]!).filter(Boolean),
+    sets: async (ids) => ids.map((id) => sets[id]!).filter(Boolean),
+    memberSets: async (keys) => keys,
     deletesSaved: async () => deletesSaved,
   };
 }
@@ -49,11 +58,11 @@ const check = (write: Omit<Write, "now">, deletesSaved = false) =>
   guard({ user: "planner", ...write, now }, config, lookup(deletesSaved));
 
 describe("the saved-versions hook", () => {
-  describe("a version's results", () => {
-    it("can't be written through the API, even to a draft", async () => {
+  describe("a Financial Plan's results", () => {
+    it("can't be written through the API", async () => {
       for (const event of ["create", "update", "delete"] as const) {
         await expect(
-          check({ collection: "plan_result_lines", event, payload: { version_id: "saved" }, keys: ["saved"] }),
+          check({ collection: "plan_result_lines", event, payload: { version_set_id: "saved" }, keys: ["saved"] }),
         ).rejects.toThrow(RESULTS_BY_SAVE);
       }
     });
@@ -65,40 +74,133 @@ describe("the saved-versions hook", () => {
     });
   });
 
-  describe("a club plan", () => {
-    it("is stamped with who saved it, when, and the hook's engine", async () => {
+  describe("a new Financial Plan", () => {
+    it("starts as a draft, and can't be stamped by hand", async () => {
       await expect(
         check({ collection: "version_sets", event: "create", payload: { name: "Budget", saved_by: "someone" } }),
-      ).resolves.toEqual({
-        name: "Budget",
-        saved_by: "planner",
-        saved_at: now,
-        platform_version: "1.5.0+engine.abc",
-      });
-    });
-
-    it("can't be changed, or deleted but where dev's tests clean up", async () => {
+      ).resolves.toEqual({ name: "Budget" });
       await expect(
-        check({ collection: "version_sets", event: "update", payload: { name: "Changed" }, keys: ["set"] }),
-      ).rejects.toThrow(SET_STAYS);
-      await expect(
-        check({ collection: "version_sets", event: "delete", payload: ["set"], keys: ["set"] }),
-      ).rejects.toThrow(SET_STAYS);
-      await expect(
-        check({ collection: "version_sets", event: "delete", payload: ["set"], keys: ["set"] }, true),
-      ).resolves.toEqual(["set"]);
-    });
-
-    it("holds versions no one writes by hand", async () => {
-      for (const event of ["create", "update", "delete"] as const) {
-        await expect(
-          check({ collection: "version_set_members", event, payload: { version_id: "saved" }, keys: ["member"] }),
-        ).rejects.toThrow(MEMBERS_BY_SAVE);
-      }
+        check({ collection: "version_sets", event: "create", payload: { name: "Budget", status: "saved" } }),
+      ).rejects.toThrow(/starts as a draft/);
     });
   });
 
-  describe("a saved version", () => {
+  describe("a draft Financial Plan", () => {
+    it("is saved with the hook's engine version, stamped with who saved it and when", async () => {
+      const payload = { status: "saved", platform_version: "1.4.0", saved_by: "someone-else" };
+      await expect(check({ collection: "version_sets", event: "update", payload, keys: ["draft"] })).resolves.toEqual({
+        status: "saved",
+        platform_version: "1.5.0+engine.abc",
+        saved_by: "planner",
+        saved_at: now,
+      });
+    });
+
+    it("can have its plans added, changed, and taken out", async () => {
+      await expect(
+        check({
+          collection: "version_set_members",
+          event: "create",
+          payload: { version_set_id: "draft", version_id: "x" },
+        }),
+      ).resolves.toBeDefined();
+      for (const event of ["update", "delete"] as const) {
+        await expect(
+          check({ collection: "version_set_members", event, payload: { version_id: "y" }, keys: ["draft"] }),
+        ).resolves.toBeDefined();
+      }
+    });
+
+    it("can be deleted", async () => {
+      await expect(
+        check({ collection: "version_sets", event: "delete", payload: ["draft"], keys: ["draft"] }),
+      ).resolves.toEqual(["draft"]);
+    });
+  });
+
+  describe("a saved Financial Plan", () => {
+    it("can't be changed, apart from its note", async () => {
+      for (const payload of [{ name: "Changed" }, { status: "draft" }, { message: "Adopted", name: "Changed" }]) {
+        await expect(check({ collection: "version_sets", event: "update", payload, keys: ["saved"] })).rejects.toThrow(
+          SET_STAYS,
+        );
+      }
+      await expect(
+        check({
+          collection: "version_sets",
+          event: "update",
+          payload: { message: "Reviewed with the board" },
+          keys: ["saved"],
+        }),
+      ).resolves.toEqual({ message: "Reviewed with the board" });
+    });
+
+    it("can't be deleted, but where dev's tests clean up", async () => {
+      await expect(
+        check({ collection: "version_sets", event: "delete", payload: ["saved"], keys: ["saved"] }),
+      ).rejects.toThrow(SET_STAYS);
+      await expect(
+        check({ collection: "version_sets", event: "delete", payload: ["saved"], keys: ["saved"] }, true),
+      ).resolves.toEqual(["saved"]);
+    });
+
+    it("can't have its plans changed", async () => {
+      await expect(
+        check({
+          collection: "version_set_members",
+          event: "create",
+          payload: { version_set_id: "saved", version_id: "x" },
+        }),
+      ).rejects.toThrow(MEMBERS_FIXED);
+      for (const event of ["update", "delete"] as const) {
+        await expect(
+          check({ collection: "version_set_members", event, payload: { version_id: "y" }, keys: ["saved"] }),
+        ).rejects.toThrow(MEMBERS_FIXED);
+      }
+      await expect(
+        check({
+          collection: "version_set_members",
+          event: "update",
+          payload: { version_set_id: "saved" },
+          keys: ["draft"],
+        }),
+      ).rejects.toThrow(MEMBERS_FIXED);
+    });
+  });
+
+  describe("marking a Financial Plan active", () => {
+    it("takes a saved one, and records who marked it and when", async () => {
+      await expect(
+        check({
+          collection: "version_set_activations",
+          event: "create",
+          payload: { version_set_id: "saved", activated_by: "x" },
+        }),
+      ).resolves.toEqual({ version_set_id: "saved", activated_by: "planner", activated_at: now });
+    });
+
+    it("refuses a draft", async () => {
+      await expect(
+        check({ collection: "version_set_activations", event: "create", payload: { version_set_id: "draft" } }),
+      ).rejects.toThrow(ONLY_SAVED_ACTIVE);
+    });
+
+    it("adds to the year's history, which no one changes", async () => {
+      await expect(
+        check({ collection: "version_set_activations", event: "update", payload: {}, keys: ["a"] }),
+      ).rejects.toThrow(ACTIVATION_STAYS);
+      const write: Omit<Write, "now"> = {
+        collection: "version_set_activations",
+        event: "delete",
+        payload: ["a"],
+        keys: ["a"],
+      };
+      await expect(check(write)).rejects.toThrow(ACTIVATION_STAYS);
+      await expect(check(write, true)).resolves.toEqual(["a"]);
+    });
+  });
+
+  describe("a saved plan copy", () => {
     it("can't be changed, or turned back into a draft", async () => {
       for (const payload of [{ message: "Changed." }, { status: "draft" }]) {
         await expect(check({ collection: "plan_versions", event: "update", payload, keys: ["saved"] })).rejects.toThrow(
@@ -131,7 +233,7 @@ describe("the saved-versions hook", () => {
     });
   });
 
-  describe("a saved version's rows", () => {
+  describe("a saved plan copy's rows", () => {
     it("can't be added, changed, or deleted", async () => {
       const writes: Omit<Write, "now">[] = [
         { collection: "plan_offerings", event: "create", payload: { version_id: "saved", name: "Copied" } },
@@ -151,7 +253,7 @@ describe("the saved-versions hook", () => {
     });
   });
 
-  describe("a draft", () => {
+  describe("a draft plan copy", () => {
     it("can be changed, and its rows added, changed, and deleted", async () => {
       await expect(
         check({ collection: "plan_versions", event: "update", payload: { message: "Changed." }, keys: ["draft"] }),
@@ -166,14 +268,10 @@ describe("the saved-versions hook", () => {
       ).resolves.toEqual({ version_id: "draft" });
     });
 
-    it("is saved with the hook's engine version, stamped with who saved it and when", async () => {
-      const payload = { status: "saved", platform_version: "1.4.0", saved_by: "someone-else", saved_at: "1999-01-01" };
-      await expect(check({ collection: "plan_versions", event: "update", payload, keys: ["draft"] })).resolves.toEqual({
-        status: "saved",
-        platform_version: "1.5.0+engine.abc",
-        saved_by: "planner",
-        saved_at: now,
-      });
+    it("is saved only with its Financial Plan", async () => {
+      await expect(
+        check({ collection: "plan_versions", event: "update", payload: { status: "saved" }, keys: ["draft"] }),
+      ).rejects.toThrow(SAVED_WITH_SET);
     });
 
     it("can't have its save stamps set by hand", async () => {
@@ -183,7 +281,7 @@ describe("the saved-versions hook", () => {
     });
   });
 
-  describe("a new version", () => {
+  describe("a new plan copy", () => {
     it("starts as a draft", async () => {
       await expect(
         check({ collection: "plan_versions", event: "create", payload: { plan_id: "plan" } }),
@@ -193,40 +291,6 @@ describe("the saved-versions hook", () => {
       await expect(
         check({ collection: "plan_versions", event: "create", payload: { plan_id: "plan", status: "saved" } }),
       ).rejects.toThrow(/starts as a draft/);
-    });
-  });
-
-  describe("making a version active", () => {
-    it("takes a saved version of the plan, and records who made it active and when", async () => {
-      await expect(
-        check({ collection: "plan_activations", event: "create", payload: { version_id: "saved", activated_by: "x" } }),
-      ).resolves.toEqual({ version_id: "saved", plan_id: "plan", activated_by: "planner", activated_at: now });
-    });
-
-    it("adds to the plan's history, which no one changes", async () => {
-      await expect(
-        check({ collection: "plan_activations", event: "update", payload: { version_id: "saved" }, keys: ["a"] }),
-      ).rejects.toThrow(/stays in the plan's history/);
-    });
-
-    it("can be undone only by the user dev lets clean up", async () => {
-      const write: Omit<Write, "now"> = {
-        collection: "plan_activations",
-        event: "delete",
-        payload: ["a"],
-        keys: ["a"],
-      };
-      await expect(check(write)).rejects.toThrow(/stays in the plan's history/);
-      await expect(check(write, true)).resolves.toEqual(["a"]);
-    });
-
-    it("refuses a draft, or another plan's version", async () => {
-      await expect(
-        check({ collection: "plan_activations", event: "create", payload: { version_id: "draft" } }),
-      ).rejects.toThrow(/Only a saved version/);
-      await expect(
-        check({ collection: "plan_activations", event: "create", payload: { plan_id: "plan", version_id: "other" } }),
-      ).rejects.toThrow(/its own plan/);
     });
   });
 
@@ -276,11 +340,9 @@ describe("a database error", () => {
     });
   });
 
-  it("adds what the trigger found, such as which program areas", () => {
-    const reason =
-      "A club plan needs an active version for every program area with a plan for its organization and year.";
-    const error = Object.assign(raised(reason), { detail: "These have none: Summer." });
-    expect(databaseError(error)).toMatchObject({ status: 400, message: `${reason} These have none: Summer.` });
+  it("adds what the trigger found, such as which program area", () => {
+    const error = Object.assign(raised(ONE_PER_AREA), { detail: "It already has Summer." });
+    expect(databaseError(error)).toMatchObject({ status: 400, message: `${ONE_PER_AREA} It already has Summer.` });
   });
 
   it("from a unique column of plans, stays as it is", () => {

@@ -66,6 +66,7 @@ export const defaultViews: DefaultView[] = [
   { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
   { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },
   { collection: "programs", sort: ["name"], fields: ["name", "product_id"] },
+  { collection: "catalog_offerings", sort: ["program_id.name", "name"], fields: ["program_id", "name"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
   { collection: "resource_kinds", sort: ["name"], fields: ["name"] },
   { collection: "organizations", sort: ["name"], fields: ["name", "fiscal_year_start_month"] },
@@ -127,11 +128,19 @@ export const defaultViews: DefaultView[] = [
     sort: ["plan_id.name", "-saved_at"],
     fields: ["plan_id", "status", "saved_at", "message"],
   },
-  { collection: "plan_activations", sort: ["-activated_at"], fields: ["plan_id", "version_id", "activated_at"] },
   {
     collection: "plan_offerings",
     sort: ["version_id.plan_id.name", "starts_on", "name"],
-    fields: ["name", "version_id", "product_id", "starts_on", "ends_on", "capacity", "price_cents"],
+    fields: [
+      "name",
+      "version_id",
+      "product_id",
+      "catalog_offering_id",
+      "starts_on",
+      "ends_on",
+      "capacity",
+      "price_cents",
+    ],
   },
   {
     collection: "plan_offering_boat_classes",
@@ -219,30 +228,25 @@ export const defaultViews: DefaultView[] = [
     sort: ["version_id.plan_id.name", "date"],
     fields: ["date", "name", "version_id"],
   },
-  // A saved version's results, newest first.
+  // A saved Financial Plan's results, newest first.
   {
     collection: "plan_results",
     sort: ["-calculated_at"],
-    fields: ["version_id", "version_set_id", "calculated_at", "operating_net_cents", "total_cents"],
-  },
-  {
-    collection: "plan_result_versions",
-    sort: ["version_id.plan_id.name", "calculated_with_id.plan_id.name"],
-    fields: ["version_id", "calculated_with_id"],
+    fields: ["version_set_id", "calculated_at", "operating_net_cents", "total_cents"],
   },
   {
     collection: "plan_result_lines",
-    sort: ["version_id.plan_id.name", "cost_center_name", "account_id.number"],
-    fields: ["cost_center_name", "line_name", "account_id", "amount_cents", "version_id", "version_set_id"],
+    sort: ["version_set_id.name", "cost_center_name", "account_id.number"],
+    fields: ["cost_center_name", "line_name", "account_id", "amount_cents", "version_set_id"],
   },
   {
     collection: "plan_result_pnl",
-    sort: ["version_id.plan_id.name", "level", "name"],
-    fields: ["name", "level", "revenue_cents", "expense_cents", "net_cents", "version_id", "version_set_id"],
+    sort: ["version_set_id.name", "level", "name"],
+    fields: ["name", "level", "revenue_cents", "expense_cents", "net_cents", "version_set_id"],
   },
   {
     collection: "plan_result_positions",
-    sort: ["version_id.plan_id.name", "name"],
+    sort: ["version_set_id.name", "name"],
     fields: [
       "name",
       "salary_cents",
@@ -250,20 +254,24 @@ export const defaultViews: DefaultView[] = [
       "bonus_cents",
       "total_pay_cents",
       "double_booked_hours",
-      "version_id",
       "version_set_id",
     ],
   },
   {
     collection: "plan_result_warnings",
-    sort: ["version_id.plan_id.name", "code"],
-    fields: ["message", "code", "version_id", "version_set_id"],
+    sort: ["version_set_id.name", "code"],
+    fields: ["message", "code", "version_set_id"],
   },
-  // Club plans, newest first.
+  // Financial Plans, by year, drafts first, then the newest saved.
   {
     collection: "version_sets",
-    sort: ["-saved_at"],
-    fields: ["name", "organization_id", "fiscal_year", "saved_at", "message"],
+    sort: ["-fiscal_year", "status", "-saved_at"],
+    fields: ["name", "fiscal_year", "status", "parent_id", "saved_at", "message"],
+  },
+  {
+    collection: "version_set_activations",
+    sort: ["-activated_at"],
+    fields: ["version_set_id", "activated_at"],
   },
   {
     collection: "version_set_members",
