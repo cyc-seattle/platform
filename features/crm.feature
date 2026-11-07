@@ -212,7 +212,7 @@ Feature: The CRM
       When they look at the roster
       Then they don't see the sailor
 
-  Rule: A family on a team sees each sailor's school, and each team's program area and Google Group
+  Rule: A household on a team sees each sailor's school, and each team's program area and Google Group
 
     Background:
       Given a parent whose child is on a team

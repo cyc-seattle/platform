@@ -9,12 +9,12 @@ Everyone who signs in has one of four roles. A role gives base access. The `grou
 moves families between Community and Team, and only an admin changes any other role, by hand in the
 Data Studio.
 
-| Role      | Who                                 | What it gives                                                                                                                                 |
-| --------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Community | Everyone, on their first sign-in    | Their own family                                                                                                                              |
-| Team      | Families on a team, set by the hook | The Community policy, everyone on every team by name and sailors by school, and the email and phone of team adults who chose to share         |
-| Crew      | People an admin vets and trusts     | Every roster, everyone's contact details and medical information, the catalog's money and the Google Groups to read, and the Community policy |
-| Admin     | The people who run the system       | Everything                                                                                                                                    |
+| Role      | Who                                   | What it gives                                                                                                                                 |
+| --------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Community | Everyone, on their first sign-in      | Their own household                                                                                                                           |
+| Team      | Households on a team, set by the hook | The Community policy, everyone on every team by name and sailors by school, and the email and phone of team adults who chose to share         |
+| Crew      | People an admin vets and trusts       | Every roster, everyone's contact details and medical information, the catalog's money and the Google Groups to read, and the Community policy |
+| Admin     | The people who run the system         | Everything                                                                                                                                    |
 
 A team is a program with `team` set. Someone is on a team while they have a confirmed registration in
 one of its offerings that hasn't ended, or ended less than 12 months ago, and a sailor's guardians are
