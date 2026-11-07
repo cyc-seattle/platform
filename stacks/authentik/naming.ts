@@ -1,8 +1,7 @@
 // Pure helpers factored out of index.ts so the hostnames and the OIDC scope mapping's expression
 // are each testable without standing up Pulumi or a live Authentik instance.
 
-/** The Authentik group the portal's staff sections gate on, read from the `X-Authentik-Groups`
- * header the embedded outpost sets on a forward-authed request. Membership is managed by hand. */
+/** Authentik's `staff` group. Membership is managed by hand. */
 export const STAFF_GROUP_NAME = "staff";
 
 /** Authentik's built-in objects this project looks up rather than manages. */
@@ -84,10 +83,9 @@ export function lowercaseEmailScopeExpression(): string {
 }
 
 /**
- * The Python expression body for the "any signed-in user" policy gating the portal's and Directus's
- * applications. Authentik 2026.8 denies access to an application with no policy bound at all, so
+ * The Python expression body for the "any signed-in user" policy gating Directus's application. Authentik 2026.8 denies access to an application with no policy bound at all, so
  * this is the whole access decision at the gate - each application's own data layer (Directus's
- * permission rules, the portal's Authentik-group-gated sections) decides what a signed-in user can
+ * permission rules) decides what a signed-in user can
  * see from there. `ak_message` is Authentik's own mechanism for a failing policy to set the text
  * shown on the resulting "Permission denied" page.
  */

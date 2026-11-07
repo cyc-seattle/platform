@@ -50,7 +50,7 @@ describe("authentikEnv", () => {
 });
 
 describe("loginRedirectRoute", () => {
-  it("sends / and /if/user/ to the portal's welcome page", () => {
+  it("sends / and /if/user/ to sail-team's home page", () => {
     const route = loginRedirectRoute({ name: "gateway", namespace: "infra" }, "dev.example.com");
 
     expect(route.hostnames).toEqual(["login.dev.example.com"]);
@@ -62,7 +62,7 @@ describe("loginRedirectRoute", () => {
       expect(rule.filters[0]?.requestRedirect).toEqual({
         scheme: "https",
         hostname: "dev.example.com",
-        path: { type: "ReplaceFullPath", replaceFullPath: "/welcome" },
+        path: { type: "ReplaceFullPath", replaceFullPath: "/" },
         statusCode: 302,
       });
     }

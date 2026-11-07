@@ -34,14 +34,14 @@ Data model and table-level design are deliberately out of scope here — those b
                                           │
                           ┌───────────────▼────────────────┐
    staff (Workspace)  ───►│  Google OIDC  +  Authentik      │   login for everyone;
-   families, coaches  ───►│  (gate for apps w/o native SSO) │   external users on any Google account
+   families, coaches  ───►│                                 │   external users on any Google account
    (any Google acct)      └───────────────┬────────────────┘
                                           │
-                   ┌──────────────────────┼───────────────────────┐
-                   ▼                       ▼                       ▼
-               Directus                sail-team                portal
-          (permission engine,     (plans and roster,         (links, gated
-          REST/GraphQL, MCP)    as the signed-in user)       by Authentik)
+                   ┌──────────────────────┴──────┐
+                   ▼                             ▼
+               Directus                      sail-team
+          (permission engine,        (cycsail.team: plans, roster,
+          REST/GraphQL, MCP)         as the signed-in user)
                    │
               Cloud SQL (Postgres, managed backups + PITR)
                    ▲
@@ -59,8 +59,8 @@ Data model and table-level design are deliberately out of scope here — those b
 - **Identity: Authentik**, at `login.cycsail.team`. Everyone signs in with a Google account or an emailed link; no one
   is forced onto a `@cyccommunitysailing.org` address.
 - **Compute: GKE Autopilot**, from the `infra` stack ([cyc-seattle/isthmia#231](https://github.com/cyc-seattle/isthmia/issues/231)).
-  Every surface runs as a container in its environment's namespace, behind the shared Gateway. The portal sits
-  behind Authentik's forward-auth outpost. The syncs are CronJobs.
+  Every surface runs as a container in its environment's namespace, behind the shared Gateway. The syncs are
+  CronJobs.
 
 ## Infrastructure
 
@@ -76,8 +76,7 @@ data, so managed durability earns its cost here.
 Two separate concerns. Keep them separate.
 
 **Authentication — Authentik.** Every app that speaks OIDC (Directus included) points at Authentik, which signs a
-user in through Google or an emailed link. Authentik's forward-auth outpost gates anything without native SSO, such
-as the portal.
+user in through Google or an emailed link. sail-team signs in through Directus.
 
 - **Staff** sign in with Workspace accounts. You control MFA and offboarding (disable the account, access is gone).
   Sensitive access — medical and emergency data — is reserved for these accounts.
@@ -142,14 +141,14 @@ Light; you're already in GCP.
 
 - **Shared cloud resources** (the VPC, Cloud SQL, DNS zones, the cluster, IAM) live in this repo's `bootstrap`
   and `infra` stacks.
-- **Apps** are Pulumi projects, each deploying its workloads to the cluster. `authentik` and `portal` are in
-  isthmia's `packages/infrastructure`. Directus, its schema and roles, and the syncs are this repo's `backend` stack
+- **Apps** are Pulumi projects, each deploying its workloads to the cluster. `authentik` is this repo's `stacks/authentik`, and
+  sail-team's app is its own repo's `stacks/app`. Directus, its schema and roles, and the syncs are this repo's `backend` stack
   ([cyc-seattle/workplace#6](https://github.com/cyc-seattle/workplace/issues/6)). Actions deploys dev on every pull request, and prod from `main` after a maintainer
   approves. Prod runs the image digest dev built for the same commit.
 - **Scheduled jobs** (the syncs) are Kubernetes CronJobs, hourly.
 - **Environments.** `prod` and `dev` are namespaces in the one cluster. Prod runs on regular capacity, dev on Spot
   pods, with synthetic data, Mailpit, and the Clubspot and Workspace fakes.
-- **Availability.** The portal runs one replica in prod. Directus and Authentik's server run one each, which
+- **Availability.** sail-team runs two replicas in prod. Directus and Authentik's server run one each, which
   Autopilot won't move to consolidate nodes. A second Directus needs Redis, to share its caches ([cyc-seattle/isthmia#253](https://github.com/cyc-seattle/isthmia/issues/253)).
 
 ## Layer 1: Clubspot integration
