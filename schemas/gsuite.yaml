@@ -390,6 +390,33 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: google_groups
+    field: programs
+    type: alias
+    meta:
+      collection: google_groups
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: programs
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: The programs that use this group.
+      options:
+        template: "{{name}}"
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema: null
   - collection: google_group_memberships
     field: id
     type: uuid
@@ -762,7 +789,7 @@ relations:
       one_collection: google_groups
       one_collection_field: null
       one_deselect_action: nullify
-      one_field: null
+      one_field: programs
       sort_field: null
     schema:
       table: programs

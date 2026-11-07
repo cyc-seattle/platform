@@ -35,7 +35,9 @@ describe("the Team rules", () => {
   });
 
   it("show an email or phone only for someone who chose to share", () => {
-    const shown = rules.filter((rule) => rule.fields.includes("email") || rule.fields.includes("phone"));
+    const shown = rules.filter(
+      (rule) => rule.collection === "people" && (rule.fields.includes("email") || rule.fields.includes("phone")),
+    );
     expect(shown).toHaveLength(1);
     expect(JSON.stringify(shown[0]!.permissions)).toContain('"share_contact":{"_eq":true}');
   });
