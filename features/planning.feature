@@ -9,9 +9,11 @@ Feature: Plans
   A Financial Plan is worked on as a whole. It starts as a draft, and planners can change any of
   its plans while it's a draft. When it's ready, a planner saves it, and all of its plans are saved
   together, with their P&L. A saved Financial Plan never changes, so the organization can always
-  look back at what it agreed to. To change the plan after that, a planner starts the next version,
-  which begins as a copy of the last saved one. The versions are numbered for each year: 2027 v1,
-  then 2027 v2. Each one has a note that says what it was for, such as "Reviewed with the board".
+  look back at what it agreed to. To change the plan after that, a planner starts a new Financial
+  Plan from an earlier one, its parent, and the new one begins as a copy of it. A year can have
+  several drafts at once, so planners can weigh options side by side, such as two drafts started
+  from the same Financial Plan, one with two coaches and one with three. Each Financial Plan has a
+  name, and a note that says what it was for, such as "Reviewed with the board".
   Planners are the people with the Plan Reader or Plan Writer policy, which they get from their
   groups.
 
@@ -76,29 +78,30 @@ Feature: Plans
       Then the Financial Plan and all three of its plans are saved at the same moment
 
   @pending
-  Rule: A Financial Plan's versions are numbered for each year
+  Rule: A year can have several draft Financial Plans at once
 
-    Example: The second version of a year's plan
+    Example: Two options for the same year
       Given a user with the Plan Writer policy
-      And a saved Financial Plan, 2027 v1
-      When they start the next version
-      Then the new draft is 2027 v2
+      And a draft Financial Plan for next year named "Two coaches"
+      When they start another draft Financial Plan for next year named "Three coaches"
+      Then next year has both drafts
 
   @pending
-  Rule: The next version starts as a copy of the last saved one
+  Rule: A new Financial Plan starts as a copy of the one it's started from
 
-    Example: The next version has the same offerings and prices
+    Example: The new Financial Plan has the same offerings and prices
       Given a user with the Plan Writer policy
-      And a saved Financial Plan, 2027 v1, with an offering at $1,000 a sailor
-      When they start the next version
-      Then 2027 v2 has the same offering at $1,000 a sailor
+      And a saved Financial Plan named "Budget" with an offering at $1,000 a sailor
+      When they start a new Financial Plan from "Budget"
+      Then the new Financial Plan has the same offering at $1,000 a sailor
+      And its parent is "Budget"
 
-    Example: Changing the next version doesn't change the saved one
+    Example: Changing the new Financial Plan doesn't change its parent
       Given a user with the Plan Writer policy
-      And a saved Financial Plan, 2027 v1, with an offering at $1,000 a sailor
-      And they started 2027 v2 from it
-      When they change the offering's price to $1,200 a sailor in 2027 v2
-      Then 2027 v1 still has the offering at $1,000 a sailor
+      And a saved Financial Plan named "Budget" with an offering at $1,000 a sailor
+      And they started a new Financial Plan from "Budget"
+      When they change the offering's price to $1,200 a sailor in the new Financial Plan
+      Then "Budget" still has the offering at $1,000 a sailor
 
   @pending
   Rule: A saved Financial Plan never changes, even for an admin
@@ -396,10 +399,10 @@ Feature: Plans
       When they save the Financial Plan
       Then the Financial Plan's P&L shows that the offering takes in $10,000
 
-    Example: The next version doesn't change the last one's P&L
-      Given a saved Financial Plan, 2027 v1, whose offering pays $1,000 of office costs
-      When a planner saves 2027 v2 with $2,000 of office costs
-      Then 2027 v1's P&L still shows that the offering pays $1,000 of office costs
+    Example: A Financial Plan started from it doesn't change its P&L
+      Given a saved Financial Plan named "Budget" whose offering pays $1,000 of office costs
+      When a planner saves a Financial Plan started from "Budget" with $2,000 of office costs
+      Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
   @pending
   Rule: Each line of a saved P&L says in plain words what it is
