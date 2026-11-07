@@ -1,90 +1,134 @@
 Feature: Plans
-  Each plan covers one program area for one year: what the club offers and when, the prices, the
-  schedule, who works it, and the budget. The area's directors plan it, and can draw up more than
-  one plan for a year to weigh the choices. The Operations Plan is the
-  one plan for the whole club. It covers what the program areas share, such as the office, the
-  boats, and the year's rates. It also plans the products that belong to no program area:
-  merchandise, storage, and charters. Planners are the people with the Plan Reader or Plan Writer
-  policy, which they get from their groups. They work on a plan's draft, and save it as a version
-  when it's ready. A saved version never changes, so the club can always look back at what it
-  agreed to. When a program opens for sign-ups, a planner makes one saved version active. For each
-  program area and year, and for the Operations Plan, only one version is active, and the active
-  versions together are the club's plan for the year.
+  A Financial Plan is the organization's plan for one year. It holds one Operations Plan and a
+  Program Plan for any of the organization's program areas, and the P&L they make together. A
+  Program Plan covers one program area: what it offers and when, the prices, the schedule, who works
+  it, and the budget. The area's directors plan it. The Operations Plan covers what the program
+  areas share, such as the office, the boats, and the year's rates. It also plans the products that
+  belong to no program area: merchandise, storage, and charters.
 
-  The club's P&L, its profit and loss for the year, is worked out from the plans. It shows each
-  offering, each program area, and the whole club. A draft's P&L is worked out whenever someone
-  asks for it. A saved version keeps the P&L it had when it was saved, and that never changes
-  either. Each line of a saved P&L says in plain words what it is. Shared costs are the costs that several offerings share, such as the office. They're
-  divided among the offerings by their direct costs, counted the way federal grant rules count
-  them. Some charges are set as a
-  share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with its
-  rate and the kinds of product it applies to. Revenue from programs and other sales pays for the
-  club's running costs. Fundraising pays for capital, such as a new coach boat, so capital is never
-  charged to a program area.
+  A Financial Plan is worked on as a whole. It starts as a draft, and planners can change any of
+  its plans while it's a draft. When it's ready, a planner saves it, and all of its plans are saved
+  together, with their P&L. A saved Financial Plan never changes, so the organization can always
+  look back at what it agreed to. To change the plan after that, a planner starts the next version,
+  which begins as a copy of the last saved one. The versions are numbered for each year: 2027 v1,
+  then 2027 v2. Each one has a note that says what it was for, such as "Reviewed with the board".
+  Planners are the people with the Plan Reader or Plan Writer policy, which they get from their
+  groups.
 
-  An area's share of the shared costs depends on every other area's plan. So a saved version's P&L
-  is as the club's plan stood when it was saved: if other areas weren't active yet, its share is
-  too big. When the club's plan is ready, for example for the board to adopt, a planner saves a
-  club plan for the year. It holds the Operations Plan's active version and each program area's,
-  with the P&L they make together, and it never changes. A later club plan can follow if the
-  plans change.
+  The P&L, the profit and loss for the year, is worked out from a Financial Plan's plans together.
+  It shows each offering, each program area, and the organization as a whole. A draft's P&L is
+  worked out whenever someone asks for it. A saved Financial Plan keeps the P&L it had when it was
+  saved, and that never changes either. Each line of a saved P&L says in plain words what it is.
+  Shared costs are the costs that several offerings share, such as the office. They're divided
+  among all of a Financial Plan's offerings by their direct costs, counted the way federal grant
+  rules count them, so each Program Plan's P&L includes its share of them. Some charges are set as
+  a share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with
+  its rate and the kinds of product it applies to. Revenue from programs and other sales pays for
+  the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
+  capital is never charged to a program area.
 
-  Each version of a plan can also hold the planner's rules: what they want that the plan's numbers
-  don't capture, in their own words, for their AI to follow when it fills in the plan. For example:
-  every Monday, Wednesday, and Friday, except on school holidays, from 4pm until dusk.
+  Each plan can also hold the planner's rules: what they want that the plan's numbers don't
+  capture, in their own words, for their AI to follow when it fills in the plan. For example: every
+  Monday, Wednesday, and Friday, except on school holidays, from 4pm until dusk.
 
-  The Operations Plan also lists the days the club is closed, such as Labor Day, so that no one
-  plans a practice on one by mistake.
+  The Operations Plan also lists closed days, such as Labor Day, so that no one plans a practice on
+  one by mistake.
 
   Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
   each salaried position is paid per year. A salaried coach can also be paid by the hour for
-  coaching, on top of their salary, at the offering's rate or at their own. Bonus rates set the bonus a director earns on the products
-  they run: a share of those products' net, the money they make after their costs. A bonus for one
-  program area's products is in that area's plan. A bonus on products from more than one area is in
-  the Operations Plan. Anyone who can see plans sees all of these. To change something means to
-  add, edit, or delete it.
+  coaching, on top of their salary, at the offering's rate or at their own. Bonus rates set the
+  bonus a director earns on the products they run: a share of those products' net, the money they
+  make after their costs. A bonus for one program area's products is in that area's Program Plan. A
+  bonus on products from more than one area is in the Operations Plan. Anyone who can see plans sees
+  all of these. To change something means to add, edit, or delete it.
 
-  Rule: A new plan starts with a draft
+  @pending
+  Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
 
-    Example: A Plan Writer starts a plan for a program area
+    Example: A Financial Plan can start with only an Operations Plan
       Given a user with the Plan Writer policy
-      When they start a plan for a program area
-      Then the plan has a draft they can change
-      And the plan has no saved versions yet
+      When they start a Financial Plan for next year with only an Operations Plan
+      Then the Financial Plan is a draft, with the Operations Plan in it
 
-  Rule: For each program area and year, only one saved version is active at a time
-
-    Example: Making a version active replaces the one that was active
+    Example: A Financial Plan can't be saved without an Operations Plan
       Given a user with the Plan Writer policy
-      And a plan with two saved versions, the first of them active
-      When they make the second version active
-      Then only the second version is active
+      And a draft Financial Plan with a Program Plan but no Operations Plan
+      When they try to save the Financial Plan
+      Then they're told that the Financial Plan needs an Operations Plan
+      And the Financial Plan is still a draft
 
-    Example: Making another plan active replaces the program area's plan for the year
+  @pending
+  Rule: A Financial Plan holds at most one Program Plan for each program area
+
+    Example: A second Program Plan for the same program area
       Given a user with the Plan Writer policy
-      And two plans for a program area this year, the first of them active
-      When they make a saved version of the second plan active
-      Then the second plan is the program area's plan for the year
-      And the first plan has no active version
+      And a draft Financial Plan with a Program Plan for Youth Racing
+      When they try to add another Program Plan for Youth Racing to it
+      Then they're told that the Financial Plan already has a Program Plan for Youth Racing
 
-  Rule: A saved version never changes, even for an admin
+  @pending
+  Rule: Saving a Financial Plan saves all of its plans together
 
-    Example: A Plan Writer can't change a saved version
+    Example: The Operations Plan and both Program Plans are saved with the Financial Plan
       Given a user with the Plan Writer policy
-      Then they can see a saved version
-      But they can't change a saved version
-      And they can't copy a draft's changes into a saved version
-      And they can't turn a saved version back into a draft
+      And a draft Financial Plan with an Operations Plan and two Program Plans
+      When they save the Financial Plan
+      Then the Financial Plan and all three of its plans are saved at the same moment
 
-    Example: An admin can't change a saved version either
+  @pending
+  Rule: A Financial Plan's versions are numbered for each year
+
+    Example: The second version of a year's plan
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan, 2027 v1
+      When they start the next version
+      Then the new draft is 2027 v2
+
+  @pending
+  Rule: The next version starts as a copy of the last saved one
+
+    Example: The next version has the same offerings and prices
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan, 2027 v1, with an offering at $1,000 a sailor
+      When they start the next version
+      Then 2027 v2 has the same offering at $1,000 a sailor
+
+    Example: Changing the next version doesn't change the saved one
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan, 2027 v1, with an offering at $1,000 a sailor
+      And they started 2027 v2 from it
+      When they change the offering's price to $1,200 a sailor in 2027 v2
+      Then 2027 v1 still has the offering at $1,000 a sailor
+
+  @pending
+  Rule: A saved Financial Plan never changes, even for an admin
+
+    Example: A Plan Writer can't change a saved Financial Plan
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan
+      Then they can't change the Financial Plan or any of its plans
+      And they can't turn the Financial Plan back into a draft
+      And they can't delete the Financial Plan
+
+    Example: An admin can't change a saved Financial Plan either
       Given a user with the Admin role
-      Then they can't change a saved version
-      And they can't turn a saved version back into a draft
+      And a saved Financial Plan
+      Then they can't change the Financial Plan or any of its plans
+      And they can't turn the Financial Plan back into a draft
+      And they can't delete the Financial Plan
 
-  Rule: A program area's plan holds only that area's programs
+  @pending
+  Rule: A Plan Writer can change a saved Financial Plan's note
+
+    Example: A plan is noted as reviewed with the board
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan
+      Then they can change its note to "Reviewed with the board"
+
+  Rule: A Program Plan holds only its own program area's programs
 
     Example: A plan with another program area's program gets a warning
-      Given a plan for a program area
+      Given a Program Plan
       And an offering in it of a program from another program area
       When a planner calculates the P&L
       Then the planner is warned that the offering is in the wrong plan
@@ -94,7 +138,7 @@ Feature: Plans
     Example: The Operations Plan sells merchandise
       Given the Operations Plan sells $1,000 of merchandise
       When a planner calculates the P&L
-      Then the club-wide totals include $1,000 of merchandise sales
+      Then the organization's totals include $1,000 of merchandise sales
 
   Rule: Every program belongs to a program area
 
@@ -169,43 +213,43 @@ Feature: Plans
 
   Rule: Capital is never charged to a program area or an offering
 
-    Example: Buying a coach boat shows only in the club-wide totals
+    Example: Buying a coach boat shows only in the organization's totals
       Given the Operations Plan buys a $20,000 coach boat
       When a planner calculates the P&L
       Then no offering or program area pays for the coach boat
-      And the club-wide totals show $20,000 of capital
+      And the organization's totals show $20,000 of capital
 
-    Example: A coach boat charged to a program area goes to the club-wide totals instead
+    Example: A coach boat charged to a program area goes to the organization's totals instead
       Given a $20,000 coach boat charged to a program area
       When a planner calculates the P&L
       Then the program area doesn't pay for the coach boat
-      And the club-wide totals show $20,000 of capital
+      And the organization's totals show $20,000 of capital
       And the planner is warned that capital can't be charged to a program area
 
-  Rule: The club-wide totals show the operating net, then fundraising and capital, then the total
+  Rule: The organization's totals show the operating net, then fundraising and capital, then the total
 
     Example: Fundraising pays for capital below the operating net
       Given programs that take in $100,000 and cost $90,000
       And donations of $30,000, which cost $5,000 to raise
       And the Operations Plan buys a $20,000 coach boat
       When a planner calculates the P&L
-      Then the club-wide totals are:
+      Then the organization's totals are:
         | line            | amount   |
         | operating net   | $10,000  |
         | fundraising net | $25,000  |
         | capital         | -$20,000 |
         | total           | $15,000  |
 
-  Rule: A program area's plan can pay a director a bonus on that area's programs
+  Rule: A Program Plan can pay a director a bonus on that area's programs
 
-    Example: A director's bonus in a program area's plan
-      Given a program area's plan that pays its director 50% of its programs' net
+    Example: A director's bonus in a Program Plan
+      Given a Program Plan that pays its director 50% of its programs' net
       And its programs make $10,000 after their costs and shared costs
       When a planner calculates the P&L
       Then the director's bonus is $5,000
 
-    Example: A program area's plan can't pay a bonus on another area's program
-      Given a program area's plan that pays its director a bonus on a program from another program area
+    Example: A Program Plan can't pay a bonus on another area's program
+      Given a Program Plan that pays its director a bonus on a program from another program area
       When a planner calculates the P&L
       Then the planner is warned that the bonus is on another program area's program
       And the other area's program doesn't count toward the bonus
@@ -223,13 +267,13 @@ Feature: Plans
         | after shared costs  | $2,000 |
         | before shared costs | $5,000 |
 
-  Rule: The club pays payroll tax on a bonus, as on any wage
+  Rule: The organization pays payroll tax on a bonus, as on any wage
 
     Example: A bonus costs payroll tax
       Given payroll tax at 10% of wages
       And a director whose bonus is $5,000
       When a planner calculates the P&L
-      Then the club pays $500 of payroll tax on the bonus
+      Then the organization pays $500 of payroll tax on the bonus
 
   Rule: A bonus and its payroll tax don't count toward the split of shared costs
 
@@ -326,129 +370,72 @@ Feature: Plans
         | 9am to noon | 9am to noon | half a coach  |
         | 9am to noon | 1pm to 4pm  | a whole coach |
 
-  Rule: A planner is warned about an activity on a day the club is closed
+  Rule: A planner is warned about an activity on a closed day
 
     Example: A practice on Labor Day gets a warning
-      Given the Operations Plan closes the club on Labor Day
+      Given the Operations Plan lists Labor Day as a closed day
       And an offering with a practice on Labor Day
       When a planner calculates the P&L
-      Then the planner is warned that the practice is on a day the club is closed
+      Then the planner is warned that the practice is on a closed day
 
-  Rule: A saved version keeps the P&L it had when it was saved
+  @pending
+  Rule: A Program Plan's P&L counts the other Program Plans in its Financial Plan
 
-    Example: A saved version shows the P&L it was saved with
+    Example: The office is split between two Program Plans
+      Given $1,000 of office costs shared by every offering
+      And a draft Financial Plan with two Program Plans whose offerings have the same direct costs
+      When a planner calculates the P&L
+      Then each Program Plan's offering pays $500 of the office costs
+
+  @pending
+  Rule: A saved Financial Plan keeps the P&L it had when it was saved
+
+    Example: A saved Financial Plan shows the P&L it was saved with
       Given a user with the Plan Writer policy
-      And a draft of a program area's plan whose offering takes in $10,000
-      When they save the draft as a version
-      Then the saved version's P&L shows that the offering takes in $10,000
+      And a draft Financial Plan whose offering takes in $10,000
+      When they save the Financial Plan
+      Then the Financial Plan's P&L shows that the offering takes in $10,000
 
-    Example: A later Operations Plan doesn't change a saved version's P&L
-      Given a saved version of a program area's plan whose offering pays $1,000 of office costs
-      When a planner saves an Operations Plan with $2,000 of office costs, and makes it active
-      Then the saved version's P&L still shows that the offering pays $1,000 of office costs
+    Example: The next version doesn't change the last one's P&L
+      Given a saved Financial Plan, 2027 v1, whose offering pays $1,000 of office costs
+      When a planner saves 2027 v2 with $2,000 of office costs
+      Then 2027 v1's P&L still shows that the offering pays $1,000 of office costs
 
-  Rule: A saved version's P&L counts the other program areas' active plans
-
-    Example: The office is split with another program area's active plan
-      Given a user with the Plan Writer policy
-      And $1,000 of office costs shared by every offering
-      And another program area's active plan, with the same direct costs as this area's draft
-      When they save the draft as a version
-      Then the saved version's P&L shows that the offering pays $500 of the office costs
-
+  @pending
   Rule: Each line of a saved P&L says in plain words what it is
 
     Example: An offering's share of the office is named for its pool and its line
       Given a user with the Plan Writer policy
       And $1,000 of office costs in a pool named "G&A"
-      And a draft of a program area's plan with one offering that has direct costs
-      When they save the draft as a version
-      Then the saved version's P&L names the offering's share of the office "G&A share: Office"
+      And a draft Financial Plan with one offering that has direct costs
+      When they save the Financial Plan
+      Then the Financial Plan's P&L names the offering's share of the office "G&A share: Office"
 
-  Rule: A club plan's P&L counts every program area's active plan
+  @pending
+  Rule: No one can write a Financial Plan's P&L by hand, even an admin
 
-    Example: A version saved before the other area was active
+    Example: A Plan Writer can't write a Financial Plan's P&L
       Given a user with the Plan Writer policy
-      And $1,000 of office costs shared by every offering
-      And a program area's active plan, saved before any other area's was active
-      And another program area's active plan, with the same direct costs as the first
-      When they save the club plan for the year
-      Then the club plan shows that the first area's offering pays $500 of the office costs
-      But the first area's saved version still shows that its offering pays $1,000 of the office costs
+      Then they can't change a saved Financial Plan's P&L
+      And they can't add a P&L to a draft Financial Plan
 
-  Rule: A club plan keeps the P&L it had when it was saved
-
-    Example: A later Operations Plan doesn't change a saved club plan
-      Given a saved club plan whose offering pays $1,000 of office costs
-      When a planner saves an Operations Plan with $2,000 of office costs, and makes it active
-      Then the club plan still shows that the offering pays $1,000 of office costs
-
-  Rule: A club plan can be saved only when the Operations Plan and every program area have an active plan
-
-    Example: A program area's plan has no active version
-      Given a user with the Plan Writer policy
-      And an active Operations Plan, and a program area's plan with no active version
-      When they try to save the club plan for the year
-      Then they're told that the program area has no active plan
-      And no club plan is saved
-
-    Example: The Operations Plan has no active version
-      Given a user with the Plan Writer policy
-      And a program area's active plan, but no active Operations Plan
-      When they try to save the club plan for the year
-      Then they're told that the Operations Plan has no active plan
-      And no club plan is saved
-
-    Example: An archived plan isn't missed
-      Given a user with the Plan Writer policy
-      And an active Operations Plan, and an archived program area's plan with no active version
-      When they save the club plan for the year
-      Then the club plan is saved without the archived plan
-
-  Rule: A planner is warned when a program area's plan was worked out with another Operations Plan
-
-    Example: An area's active plan was saved with last month's Operations Plan
-      Given a program area's active plan, saved with an Operations Plan that's no longer active
-      When a planner calculates the P&L
-      Then the planner is warned that the area's plan was worked out with another Operations Plan
-
-  Rule: A club plan never changes, even for an admin
-
-    Example: A Plan Writer can't change a club plan
-      Given a user with the Plan Writer policy
-      And a saved club plan
-      Then they can't change the club plan or its plans
-      And they can't delete the club plan
-
-    Example: An admin can't change a club plan either
+    Example: An admin can't write a Financial Plan's P&L either
       Given a user with the Admin role
-      And a saved club plan
-      Then they can't change the club plan or its plans
-      And they can't delete the club plan
+      Then they can't change a saved Financial Plan's P&L
+      And they can't add a P&L to a draft Financial Plan
 
-  Rule: No one can write a version's P&L by hand, even an admin
+  @pending
+  Rule: A Plan Writer can write a plan's rules in a draft Financial Plan, and they never change once it's saved
 
-    Example: A Plan Writer can't write a version's P&L
+    Example: A Plan Writer writes a Program Plan's rules
       Given a user with the Plan Writer policy
-      Then they can't change a saved version's P&L
-      And they can't add a P&L to a draft
+      And a draft Financial Plan
+      Then they can write a Program Plan's rules
 
-    Example: An admin can't write a version's P&L either
-      Given a user with the Admin role
-      Then they can't change a saved version's P&L
-      And they can't add a P&L to a draft
-
-  Rule: A Plan Writer can write the rules on a draft, and a saved version's rules never change
-
-    Example: A Plan Writer writes a draft's rules
+    Example: A Plan Writer can't change the rules in a saved Financial Plan
       Given a user with the Plan Writer policy
-      And a plan with a draft
-      Then they can write the draft's rules
-
-    Example: A Plan Writer can't change a saved version's rules
-      Given a user with the Plan Writer policy
-      And a plan with a saved version that has rules
-      Then they can't change the saved version's rules
+      And a saved Financial Plan whose Program Plan has rules
+      Then they can't change the Program Plan's rules
 
   Rule: Planners can see every plan, including wages and bonus rates
 
@@ -468,34 +455,27 @@ Feature: Plans
       Given a user with the Plan Reader policy
       Then they can't change plans
 
-  Rule: A Plan Writer can change any plan's draft, even one someone else started
+  @pending
+  Rule: A Plan Writer can change any plan in a draft Financial Plan, even one someone else started
 
-    Example: A Plan Writer changes another planner's draft
+    Example: A Plan Writer changes another planner's Program Plan
       Given a user with the Plan Writer policy
-      And a plan someone else started
-      Then they can change a draft
+      And a draft Financial Plan someone else started
+      Then they can change any of its plans
 
-  Rule: A Plan Writer can save a draft as a version, and make a saved version active
+  @pending
+  Rule: A Plan Writer can start and save a Financial Plan, and a Plan Reader can only look at one
 
-    Example: A Plan Writer saves a version and makes it active
+    Example: A Plan Writer starts and saves a Financial Plan
       Given a user with the Plan Writer policy
-      And a plan with a draft
-      Then they can save the draft as a version
-      And they can make a saved version active
+      Then they can start a Financial Plan
+      And they can save a draft Financial Plan
 
-  Rule: A Plan Writer can save a club plan, and a Plan Reader can only look at one
-
-    Example: A Plan Writer saves a club plan
-      Given a user with the Plan Writer policy
-      And an active Operations Plan, and a program area's active plan
-      When they save the club plan for the year
-      Then the club plan holds both active versions
-
-    Example: A Plan Reader looks at a club plan
+    Example: A Plan Reader looks at a Financial Plan
       Given a user with the Plan Reader policy
-      And a saved club plan
-      Then they can see the club plan and its P&L
-      But they can't save a club plan
+      And a saved Financial Plan
+      Then they can see the Financial Plan and its P&L
+      But they can't start or save a Financial Plan
 
   Rule: Only admins and planners can see plans
 
