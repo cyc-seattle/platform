@@ -25,8 +25,8 @@ Feature: Plans
   An area's share of the shared costs depends on every other area's plan. So a saved version's P&L
   is as the club's plan stood when it was saved: if other areas weren't active yet, its share is
   too big. When the club's plan is ready, for example for the board to adopt, a planner saves a
-  club plan for the year. It holds the Operations Plan's active version and each program area's,
-  with the P&L they make together, and it never changes. A later club plan can follow if the
+  financial model for the year. It holds the Operations Plan's active version and each program area's,
+  with the P&L they make together, and it never changes. A later financial model can follow if the
   plans change.
 
   Each version of a plan can also hold the planner's rules: what they want that the plan's numbers
@@ -365,45 +365,45 @@ Feature: Plans
       When they save the draft as a version
       Then the saved version's P&L names the offering's share of the office "G&A share: Office"
 
-  Rule: A club plan's P&L counts every program area's active plan
+  Rule: A financial model's P&L counts every program area's active plan
 
     Example: A version saved before the other area was active
       Given a user with the Plan Writer policy
       And $1,000 of office costs shared by every offering
       And a program area's active plan, saved before any other area's was active
       And another program area's active plan, with the same direct costs as the first
-      When they save the club plan for the year
-      Then the club plan shows that the first area's offering pays $500 of the office costs
+      When they save the financial model for the year
+      Then the financial model shows that the first area's offering pays $500 of the office costs
       But the first area's saved version still shows that its offering pays $1,000 of the office costs
 
-  Rule: A club plan keeps the P&L it had when it was saved
+  Rule: A financial model keeps the P&L it had when it was saved
 
-    Example: A later Operations Plan doesn't change a saved club plan
-      Given a saved club plan whose offering pays $1,000 of office costs
+    Example: A later Operations Plan doesn't change a saved financial model
+      Given a saved financial model whose offering pays $1,000 of office costs
       When a planner saves an Operations Plan with $2,000 of office costs, and makes it active
-      Then the club plan still shows that the offering pays $1,000 of office costs
+      Then the financial model still shows that the offering pays $1,000 of office costs
 
-  Rule: A club plan can be saved only when the Operations Plan and every program area have an active plan
+  Rule: A financial model can be saved only when the Operations Plan and every program area have an active plan
 
     Example: A program area's plan has no active version
       Given a user with the Plan Writer policy
       And an active Operations Plan, and a program area's plan with no active version
-      When they try to save the club plan for the year
+      When they try to save the financial model for the year
       Then they're told that the program area has no active plan
-      And no club plan is saved
+      And no financial model is saved
 
     Example: The Operations Plan has no active version
       Given a user with the Plan Writer policy
       And a program area's active plan, but no active Operations Plan
-      When they try to save the club plan for the year
+      When they try to save the financial model for the year
       Then they're told that the Operations Plan has no active plan
-      And no club plan is saved
+      And no financial model is saved
 
     Example: An archived plan isn't missed
       Given a user with the Plan Writer policy
       And an active Operations Plan, and an archived program area's plan with no active version
-      When they save the club plan for the year
-      Then the club plan is saved without the archived plan
+      When they save the financial model for the year
+      Then the financial model is saved without the archived plan
 
   Rule: A planner is warned when a program area's plan was worked out with another Operations Plan
 
@@ -412,19 +412,19 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the area's plan was worked out with another Operations Plan
 
-  Rule: A club plan never changes, even for an admin
+  Rule: A financial model never changes, even for an admin
 
-    Example: A Plan Writer can't change a club plan
+    Example: A Plan Writer can't change a financial model
       Given a user with the Plan Writer policy
-      And a saved club plan
-      Then they can't change the club plan or its plans
-      And they can't delete the club plan
+      And a saved financial model
+      Then they can't change the financial model or its plans
+      And they can't delete the financial model
 
-    Example: An admin can't change a club plan either
+    Example: An admin can't change a financial model either
       Given a user with the Admin role
-      And a saved club plan
-      Then they can't change the club plan or its plans
-      And they can't delete the club plan
+      And a saved financial model
+      Then they can't change the financial model or its plans
+      And they can't delete the financial model
 
   Rule: No one can write a version's P&L by hand, even an admin
 
@@ -483,19 +483,19 @@ Feature: Plans
       Then they can save the draft as a version
       And they can make a saved version active
 
-  Rule: A Plan Writer can save a club plan, and a Plan Reader can only look at one
+  Rule: A Plan Writer can save a financial model, and a Plan Reader can only look at one
 
-    Example: A Plan Writer saves a club plan
+    Example: A Plan Writer saves a financial model
       Given a user with the Plan Writer policy
       And an active Operations Plan, and a program area's active plan
-      When they save the club plan for the year
-      Then the club plan holds both active versions
+      When they save the financial model for the year
+      Then the financial model holds both active versions
 
-    Example: A Plan Reader looks at a club plan
+    Example: A Plan Reader looks at a financial model
       Given a user with the Plan Reader policy
-      And a saved club plan
-      Then they can see the club plan and its P&L
-      But they can't save a club plan
+      And a saved financial model
+      Then they can see the financial model and its P&L
+      But they can't save a financial model
 
   Rule: Only admins and planners can see plans
 

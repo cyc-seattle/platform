@@ -7,7 +7,7 @@ tags: [architecture, planning]
 The planning engine calculates a plan's P&L for one year from the plan's rows in
 [the planning schema](planning-schema.md). It's part of `@cyc-seattle/platform`, imported as
 `@cyc-seattle/platform/planning`. It doesn't read from or save to the database: an app or an agent
-loads the rows, calls `computePlan`, and shows the answer. When a version or a club plan is
+loads the rows, calls `computePlan`, and shows the answer. When a version or a financial model is
 saved, the `saved-versions` hook runs the engine deployed with `backend` and records its results with
 it ([docs/planning-schema.md](planning-schema.md#a-saved-versions-results)), with which version of
 the engine calculated them.
@@ -34,7 +34,7 @@ Planners enter each of these in the plans ([docs/planning-schema.md](planning-sc
 - `fiscal_year` and the organization are the plan's own `fiscal_year` and `organization_id`.
 - The plan versions are the saved Operations Plan version and each program area plan's version
   that names it in `operations_version_id`. For the club's plan, they're the active Operations Plan
-  version and each area's active version, or a club plan's members. An area plan's row that names an Operations Plan row by
+  version and each area's active version, or a financial model's members. An area plan's row that names an Operations Plan row by
   key means the row with that key in that version.
 - Every pool is divided among all of the year's offerings, so an area's share of the pools, and the
   organization's totals, are right only when every area's plan is calculated together. One area's

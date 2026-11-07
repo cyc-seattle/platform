@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
 import type { CostLine } from "../../src/planning/index.ts";
-import { cents, clubPlanResults, PnlPlan, savedResults, share } from "./pnl.ts";
+import { cents, financialModelResults, PnlPlan, savedResults, share } from "./pnl.ts";
 import {
   admin,
   adminCreate,
@@ -836,28 +836,28 @@ Step("the saved version's P&L names the offering's share of the office {string}"
   expect(lines.map((l) => l["line_name"])).toEqual([name]);
 });
 
-// Club plans: the year's active versions, saved together with the P&L they make.
-let clubPlan: string | undefined;
+// Financial models: the year's active versions, saved together with the P&L they make.
+let financialModel: string | undefined;
 let attempt: { status: number; body: { errors?: { message: string }[] } } | undefined;
 let firstVersion: string | undefined;
 onEachScenario(() => {
-  clubPlan = undefined;
+  financialModel = undefined;
   attempt = undefined;
   firstVersion = undefined;
 });
 
-/** Adds a club plan for the run's organization and year, as `session`. */
-async function saveClubPlan(session: Awaited<ReturnType<typeof theirSession>>) {
+/** Adds a financial model for the run's organization and year, as `session`. */
+async function saveFinancialModel(session: Awaited<ReturnType<typeof theirSession>>) {
   const id = randomUUID();
   const { status, body } = await session.request("POST", "/items/version_sets", {
     id,
     organization_id: await p.organization(),
     fiscal_year: PLAN_YEAR,
-    name: `Club plan ${runId}`,
+    name: `Financial model ${runId}`,
   });
   if (status < 300) {
     created.push({ collection: "version_sets", id });
-    clubPlan = id;
+    financialModel = id;
   }
   attempt = { status, body };
 }
@@ -885,15 +885,15 @@ Step("a program area's active plan, saved before any other area's was active", a
   firstVersion = (await activeArea()).version;
 });
 Step("another program area's active plan, with the same direct costs as the first", () => activeArea());
-Step("they save the club plan for the year", async () => {
-  await saveClubPlan(await theirSession());
+Step("they save the financial model for the year", async () => {
+  await saveFinancialModel(await theirSession());
   expect(attempt?.status, JSON.stringify(attempt?.body)).toBe(200);
 });
-Step("they try to save the club plan for the year", async () => saveClubPlan(await theirSession()));
+Step("they try to save the financial model for the year", async () => saveFinancialModel(await theirSession()));
 Step(
-  "the club plan shows that the first area's offering pays {money} of the office costs",
+  "the financial model shows that the first area's offering pays {money} of the office costs",
   async (_, money: string) => {
-    const { lines } = await clubPlanResults(clubPlan!);
+    const { lines } = await financialModelResults(financialModel!);
     expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
   },
 );
@@ -905,7 +905,7 @@ Step(
   },
 );
 
-Step("a saved club plan whose offering pays {money} of office costs", async (_, money: string) => {
+Step("a saved financial model whose offering pays {money} of office costs", async (_, money: string) => {
   await p.line(
     await p.operationsVersion(),
     "office",
@@ -914,12 +914,12 @@ Step("a saved club plan whose offering pays {money} of office costs", async (_, 
   );
   await p.activateOperations();
   await activeArea();
-  await saveClubPlan(await admin());
-  const { lines } = await clubPlanResults(clubPlan!);
+  await saveFinancialModel(await admin());
+  const { lines } = await financialModelResults(financialModel!);
   expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
 });
-Step("the club plan still shows that the offering pays {money} of office costs", async (_, money: string) => {
-  const { lines } = await clubPlanResults(clubPlan!);
+Step("the financial model still shows that the offering pays {money} of office costs", async (_, money: string) => {
+  const { lines } = await financialModelResults(financialModel!);
   expect(officeOn(lines, first(), await p.account("office"))).toBe(cents(money));
 });
 
@@ -946,22 +946,24 @@ Step("they're told that the program area has no active plan", async () => {
   )) as Row[];
   expect(attempt?.status).toBe(400);
   const message = attempt?.body.errors?.[0]?.message ?? "";
-  expect(message).toContain("A club plan needs an active version for every program area");
+  expect(message).toContain("A financial model needs an active version for every program area");
   expect(message).toContain(String(area?.["name"]));
 });
 Step("they're told that the Operations Plan has no active plan", () => {
   expect(attempt?.status).toBe(400);
-  expect(attempt?.body.errors?.[0]?.message).toContain("A club plan needs an active Operations Plan version");
+  expect(attempt?.body.errors?.[0]?.message).toContain("A financial model needs an active Operations Plan version");
 });
-Step("no club plan is saved", async () => {
+Step("no financial model is saved", async () => {
   const filter = encodeURIComponent(JSON.stringify({ organization_id: { _eq: await p.organization() } }));
   expect(await (await admin()).ok("GET", `/items/version_sets?filter=${filter}&fields=id`)).toEqual([]);
 });
-Step("the club plan is saved without the archived plan", async () => {
-  expect(await membersOf(clubPlan!)).toEqual([await p.operationsVersion()]);
+Step("the financial model is saved without the archived plan", async () => {
+  expect(await membersOf(financialModel!)).toEqual([await p.operationsVersion()]);
 });
-Step("the club plan holds both active versions", async () => {
-  expect((await membersOf(clubPlan!)).sort()).toEqual([await p.operationsVersion(), p.areaVersion(p.areas[0]!)].sort());
+Step("the financial model holds both active versions", async () => {
+  expect((await membersOf(financialModel!)).sort()).toEqual(
+    [await p.operationsVersion(), p.areaVersion(p.areas[0]!)].sort(),
+  );
 });
 
 Step("a program area's active plan, saved with an Operations Plan that's no longer active", async () => {
@@ -974,21 +976,23 @@ Step("the planner is warned that the area's plan was worked out with another Ope
   expect(p.warned("other_operations_version")).toBe(true);
 });
 
-Step("a saved club plan", async () => {
+Step("a saved financial model", async () => {
   await p.activateOperations();
   await activeArea();
-  await saveClubPlan(await admin());
-  await clubPlanResults(clubPlan!);
+  await saveFinancialModel(await admin());
+  await financialModelResults(financialModel!);
 });
-Step("they can't change the club plan or its plans", async () => {
+Step("they can't change the financial model or its plans", async () => {
   const they = await theirSession();
   const [member] = (await (
     await admin()
   ).ok(
     "GET",
-    `/items/version_set_members?filter=${encodeURIComponent(JSON.stringify({ version_set_id: { _eq: clubPlan } }))}&fields=id`,
+    `/items/version_set_members?filter=${encodeURIComponent(JSON.stringify({ version_set_id: { _eq: financialModel } }))}&fields=id`,
   )) as Row[];
-  expect((await they.request("PATCH", itemPath("version_sets", clubPlan!), { name: "Changed" })).status).toBe(403);
+  expect((await they.request("PATCH", itemPath("version_sets", financialModel!), { name: "Changed" })).status).toBe(
+    403,
+  );
   expect(
     (await they.request("PATCH", itemPath("version_set_members", String(member?.["id"])), { version_id: null })).status,
   ).toBe(403);
@@ -996,26 +1000,26 @@ Step("they can't change the club plan or its plans", async () => {
     (
       await they.request("POST", "/items/version_set_members", {
         id: randomUUID(),
-        version_set_id: clubPlan,
+        version_set_id: financialModel,
         plan_id: await p.operationsPlan(),
         version_id: await p.operationsVersion(),
       })
     ).status,
   ).toBe(403);
 });
-Step("they can't delete the club plan", async () => {
-  expect((await (await theirSession()).request("DELETE", itemPath("version_sets", clubPlan!))).status).toBe(403);
+Step("they can't delete the financial model", async () => {
+  expect((await (await theirSession()).request("DELETE", itemPath("version_sets", financialModel!))).status).toBe(403);
 });
-Step("they can see the club plan and its P&L", async () => {
+Step("they can see the financial model and its P&L", async () => {
   const they = await theirSession();
-  expect((await they.request("GET", itemPath("version_sets", clubPlan!))).status).toBe(200);
-  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: clubPlan } }));
+  expect((await they.request("GET", itemPath("version_sets", financialModel!))).status).toBe(200);
+  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: financialModel } }));
   const { status, body } = await they.request("GET", `/items/plan_results?filter=${filter}`);
   expect(status).toBe(200);
   expect(body.data).toHaveLength(1);
 });
-Step("they can't save a club plan", async () => {
-  await saveClubPlan(await theirSession());
+Step("they can't save a financial model", async () => {
+  await saveFinancialModel(await theirSession());
   expect(attempt?.status).toBe(403);
 });
 

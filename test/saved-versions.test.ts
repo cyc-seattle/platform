@@ -65,7 +65,7 @@ describe("the saved-versions hook", () => {
     });
   });
 
-  describe("a club plan", () => {
+  describe("a financial model", () => {
     it("is stamped with who saved it, when, and the hook's engine", async () => {
       await expect(
         check({ collection: "version_sets", event: "create", payload: { name: "Budget", saved_by: "someone" } }),
@@ -278,7 +278,7 @@ describe("a database error", () => {
 
   it("adds what the trigger found, such as which program areas", () => {
     const reason =
-      "A club plan needs an active version for every program area with a plan for its organization and year.";
+      "A financial model needs an active version for every program area with a plan for its organization and year.";
     const error = Object.assign(raised(reason), { detail: "These have none: Summer." });
     expect(databaseError(error)).toMatchObject({ status: 400, message: `${reason} These have none: Summer.` });
   });

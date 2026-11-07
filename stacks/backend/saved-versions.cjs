@@ -18,7 +18,7 @@ const VERSIONS = "plan_versions";
 const ACTIVATIONS = "plan_activations";
 // Written last when a version's results go in, so a version that has one has them all.
 const RESULTS = "plan_results";
-// Club plans, saved when they're added, and the versions the database fills each one with.
+// Financial models, saved when they're added, and the versions the database fills each one with.
 const SETS = "version_sets";
 const MEMBERS = "version_set_members";
 
@@ -37,11 +37,13 @@ const ONLY_SAVED_ACTIVE = "Only a saved version can be made active.";
 const OWN_PLAN = "A version can only be made active for its own plan.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
 const RESULTS_BY_SAVE = "A version's results are worked out when it's saved, and can't be written by hand.";
-const SET_STAYS = "A club plan can't be changed or deleted. Save another one instead.";
-const MEMBERS_BY_SAVE = "A club plan holds the versions active when it's saved, and they can't be written by hand.";
-const NEEDS_ACTIVE_OPERATIONS = "A club plan needs an active Operations Plan version for its organization and year.";
+const SET_STAYS = "A financial model can't be changed or deleted. Save another one instead.";
+const MEMBERS_BY_SAVE =
+  "A financial model holds the versions active when it's saved, and they can't be written by hand.";
+const NEEDS_ACTIVE_OPERATIONS =
+  "A financial model needs an active Operations Plan version for its organization and year.";
 const NEEDS_ACTIVE_AREAS =
-  "A club plan needs an active version for every program area with a plan for its organization and year.";
+  "A financial model needs an active version for every program area with a plan for its organization and year.";
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
@@ -143,7 +145,7 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
 
   if (collection === SETS) {
     if (event === "create") {
-      // The hook works out a club plan's results, so it records its own engine's version.
+      // The hook works out a financial model's results, so it records its own engine's version.
       return { ...payload, platform_version: config.platformVersion, saved_by: user ?? null, saved_at: now };
     }
     if (event === "delete" && (await lookup.deletesSaved(user))) return payload;
@@ -261,7 +263,7 @@ BEGIN
   IF TG_OP = 'UPDATE' OR current_setting('cyc.writing_results', true) IS DISTINCT FROM 'on' THEN
     ${raise(RESULTS_BY_SAVE)};
   END IF;
-  -- A club plan's results have its version_set_id and no version_id; a version's, the reverse.
+  -- A financial model's results have its version_set_id and no version_id; a version's, the reverse.
   set_id := (to_jsonb(NEW) ->> 'version_set_id')::uuid;
   IF set_id IS NOT NULL THEN
     PERFORM 1 FROM ${SETS} s WHERE s.id = set_id FOR SHARE;
@@ -382,7 +384,7 @@ BEGIN
 END
 $fn$`;
 
-  // A club plan is saved when it's added: it takes the year's active versions, and needs one for the
+  // A financial model is saved when it's added: it takes the year's active versions, and needs one for the
   // Operations Plan and for every program area with a plan that isn't archived.
   const activeVersions = (set) => `
     SELECT DISTINCT ON (p.kind, p.program_area_id) p.kind, p.program_area_id, a.plan_id, a.version_id
@@ -390,7 +392,7 @@ $fn$`;
       WHERE p.organization_id = ${set}.organization_id AND p.fiscal_year = ${set}.fiscal_year
         AND p.archived IS NOT TRUE
       ORDER BY p.kind, p.program_area_id, a.sequence DESC`;
-  const clubPlan = `
+  const financialModel = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_set() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
   missing text;
@@ -420,7 +422,7 @@ BEGIN
   RETURN NEW;
 END
 $fn$`;
-  const clubPlanMembers = `
+  const financialModelMembers = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_set_members() RETURNS trigger LANGUAGE plpgsql AS $fn$
 BEGIN
   PERFORM set_config('cyc.writing_members', 'on', true);
@@ -460,8 +462,8 @@ $fn$`;
     version,
     plan,
     activation,
-    clubPlan,
-    clubPlanMembers,
+    financialModel,
+    financialModelMembers,
     member,
     ...trigger(PLANS, "cyc_saved_versions_plan", "INSERT OR UPDATE"),
     ...trigger(VERSIONS, "cyc_saved_versions_version", all),
@@ -592,7 +594,7 @@ async function versionSet(db, version) {
 }
 
 /**
- * Everything `computePlan` reads, for the versions in `ids`. `plan` is a plan or a club plan: its
+ * Everything `computePlan` reads, for the versions in `ids`. `plan` is a plan or a financial model: its
  * organization and year are the calculation's.
  */
 async function loadPlan(config, db, plan, operations, ids) {
@@ -747,7 +749,7 @@ async function writeResults(config, db, versionId, engine) {
 }
 
 /**
- * Works out a club plan's results with the engine, from the versions it holds, and writes them,
+ * Works out a financial model's results with the engine, from the versions it holds, and writes them,
  * once. Each line and P&L row names the member that holds what it's charged to.
  */
 async function writeSetResults(config, db, setId, engine) {
@@ -825,7 +827,7 @@ function register({ filter, action, init }, { env, database, logger }) {
   let engine;
   const loadEngine = async () =>
     (engine ??= await import(url.pathToFileURL(path.join(__dirname, "planning-index.mjs")).href));
-  // `id` is a saved version's or a club plan's.
+  // `id` is a saved version's or a financial model's.
   const results = async (id) => {
     try {
       const engine = await loadEngine();
@@ -848,7 +850,7 @@ function register({ filter, action, init }, { env, database, logger }) {
   // The deploy asks this whether every trigger is in place (`SavedVersionsCheck`). It answers with
   // names and yes or no, never data.
   init("routes.custom.before", ({ app }) => {
-    // Fills in a saved version's or club plan's results, if writing them failed when it was saved.
+    // Fills in a saved version's or financial model's results, if writing them failed when it was saved.
     app.post("/saved-versions/results/:id", async (req, res) => {
       if (req.accountability?.admin !== true) {
         res.status(403).json({ errors: [{ message: "Only an admin can fill in saved results." }] });

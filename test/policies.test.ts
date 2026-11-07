@@ -182,7 +182,7 @@ describe("the Plan policies", () => {
     expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Plan Writer change plans, add to the activation log and the club plans, and change none of the catalog or the results", () => {
+  it("let a Plan Writer change plans, add to the activation log and the financial models, and change none of the catalog or the results", () => {
     const added = ["plan_activations", "version_sets"];
     for (const action of ["update", "delete"]) {
       expect([...collections("Plan Writer", action)].sort()).toEqual(

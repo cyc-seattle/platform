@@ -82,9 +82,9 @@ export function planCollections(schemas: LoadedSchema[]): string[] {
 
 /** The log of which saved version is active. A writer adds to it, and never rewrites it. */
 const ACTIVATIONS = "plan_activations";
-/** Club plans. Adding one saves it, and it never changes. */
+/** Financial models. Adding one saves it, and it never changes. */
 const SETS = "version_sets";
-/** A club plan's versions, which the database sets when it's saved. */
+/** A financial model's versions, which the database sets when it's saved. */
 const MEMBERS = "version_set_members";
 
 /** A saved version's results, which only the saved-versions hook writes, once, when it's saved. */
@@ -198,7 +198,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Plan Writer",
       icon: "edit_calendar",
       description:
-        "Changes any plan's draft, saves it as a version, makes a saved version active, and saves a club plan. Sees the catalog.",
+        "Changes any plan's draft, saves it as a version, makes a saved version active, and saves a financial model. Sees the catalog.",
       rules: [
         ...readCatalog,
         ...plans.flatMap((collection) =>
@@ -293,7 +293,7 @@ export interface SavedVersionsConfig {
   versioned: string[];
   /** Those that hold a saved version's results, which only the hook writes. */
   results: string[];
-  /** Those of them that hold a club plan's results too. */
+  /** Those of them that hold a financial model's results too. */
   setResults: string[];
   /** The engine version the hook calculates results with, which it records on each saved version. */
   platformVersion: string;

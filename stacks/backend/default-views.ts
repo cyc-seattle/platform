@@ -259,7 +259,7 @@ export const defaultViews: DefaultView[] = [
     sort: ["version_id.plan_id.name", "code"],
     fields: ["message", "code", "version_id", "version_set_id"],
   },
-  // Club plans, newest first.
+  // Financial models, newest first.
   {
     collection: "version_sets",
     sort: ["-saved_at"],

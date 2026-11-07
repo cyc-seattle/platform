@@ -777,7 +777,7 @@ collections:
       status: active
       translations:
         - language: en-US
-          translation: Club plans
+          translation: Financial models
       unarchive_value: null
       versioning: false
     schema:
@@ -797,7 +797,7 @@ collections:
       hidden: false
       icon: list
       item_duplication_fields: null
-      note: One plan's version in a club plan. Set when the club plan is saved, and never changed.
+      note: One plan's version in a financial model. Set when the financial model is saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -9362,7 +9362,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
+      note: The saved version these results are for, if they aren't a financial model's.
       options: null
       readonly: true
       required: false
@@ -9784,7 +9784,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The financial model these results are for, if they aren't a version's.
       options: null
       readonly: true
       required: false
@@ -9794,7 +9794,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial model
       validation: null
       validation_message: null
       width: full
@@ -9998,7 +9998,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
+      note: The saved version these results are for, if they aren't a financial model's.
       options: null
       readonly: true
       required: false
@@ -10420,7 +10420,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The financial model these results are for, if they aren't a version's.
       options: null
       readonly: true
       required: false
@@ -10430,7 +10430,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial model
       validation: null
       validation_message: null
       width: full
@@ -10464,7 +10464,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: In a club plan's results, the plan that holds what it's charged to.
+      note: In a financial model's results, the plan that holds what it's charged to.
       options: null
       readonly: true
       required: false
@@ -10591,7 +10591,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
+      note: The saved version these results are for, if they aren't a financial model's.
       options: null
       readonly: true
       required: false
@@ -11064,7 +11064,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The financial model these results are for, if they aren't a version's.
       options: null
       readonly: true
       required: false
@@ -11074,7 +11074,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial model
       validation: null
       validation_message: null
       width: full
@@ -11108,7 +11108,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: In a club plan's results, the plan that holds what it's charged to.
+      note: In a financial model's results, the plan that holds what it's charged to.
       options: null
       readonly: true
       required: false
@@ -11193,7 +11193,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
+      note: The saved version these results are for, if they aren't a financial model's.
       options: null
       readonly: true
       required: false
@@ -11737,7 +11737,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The financial model these results are for, if they aren't a version's.
       options: null
       readonly: true
       required: false
@@ -11747,7 +11747,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial model
       validation: null
       validation_message: null
       width: full
@@ -11906,7 +11906,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
+      note: The saved version these results are for, if they aren't a financial model's.
       options: null
       readonly: true
       required: false
@@ -12070,7 +12070,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The financial model these results are for, if they aren't a version's.
       options: null
       readonly: true
       required: false
@@ -12080,7 +12080,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial model
       validation: null
       validation_message: null
       width: full
@@ -12155,7 +12155,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The organization the club plan is for.
+      note: The organization the financial model is for.
       options: null
       readonly: false
       required: true
@@ -12198,7 +12198,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The year the club plan is for.
+      note: The year the financial model is for.
       options: null
       readonly: false
       required: true
@@ -12320,7 +12320,7 @@ fields:
       group: null
       hidden: true
       interface: input
-      note: Set when the club plan is saved.
+      note: Set when the financial model is saved.
       options: null
       readonly: true
       required: false
@@ -12360,7 +12360,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: Set when the club plan is saved.
+      note: Set when the financial model is saved.
       options: null
       readonly: true
       required: false
@@ -12445,7 +12445,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: The active version of each plan when the club plan was saved.
+      note: The active version of each plan when the financial model was saved.
       options: null
       readonly: true
       required: false
@@ -12472,7 +12472,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: What the club's P&L showed when it was saved, worked out a moment after. A club plan with none means working them out failed, and an admin can fill them in.
+      note: What the club's P&L showed when it was saved, worked out a moment after. A financial model with none means working them out failed, and an admin can fill them in.
       options: null
       readonly: true
       required: false
@@ -12548,7 +12548,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial model
       validation: null
       validation_message: null
       width: full
@@ -12626,7 +12626,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The plan's active version when the club plan was saved.
+      note: The plan's active version when the financial model was saved.
       options: null
       readonly: true
       required: true

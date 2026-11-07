@@ -4,9 +4,9 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs`. `schemas/planning.yaml` declares plans, their versions, which version is active, every row a version holds, and club plans. Scenarios, baselines and actuals are designed here, but not built yet.
+Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs`. `schemas/planning.yaml` declares plans, their versions, which version is active, every row a version holds, and financial models. Scenarios, baselines and actuals are designed here, but not built yet.
 
-A draft holds only what planners enter. Apps and agents ask the [planning engine](planning-engine.md) to calculate its P&L when they need one. A saved version, and a saved club plan, also hold the results the engine calculated when they were saved, which never change ([A saved version's results](#a-saved-versions-results)).
+A draft holds only what planners enter. Apps and agents ask the [planning engine](planning-engine.md) to calculate its P&L when they need one. A saved version, and a saved financial model, also hold the results the engine calculated when they were saved, which never change ([A saved version's results](#a-saved-versions-results)).
 
 ### Terms
 
@@ -21,9 +21,9 @@ A draft holds only what planners enter. Apps and agents ask the [planning engine
 - **Plan:** one part of the club's overall plan, saved and versioned on its own. A **program area's plan** holds one area's offerings for one year. The **Operations Plan** holds what the areas share, the charges set as a share of revenue, and the products in no area: merchandise, storage and charters.
 - **Version:** either a draft or an immutable saved snapshot of one plan.
 - **Version set:** one version per plan.
-  - A **club plan** is a saved version set: the year's active Operations Plan version and each program area's, with the P&L they make together.
+  - A **financial model** is a saved version set: the year's active Operations Plan version and each program area's, with the P&L they make together.
   - A **scenario**, not built yet, is a version set with some versions swapped, added or dropped.
-  - A **baseline**, not built yet, is a club plan that variance is measured against.
+  - A **baseline**, not built yet, is a financial model that variance is measured against.
 
 ### Diagram conventions
 
@@ -139,7 +139,7 @@ erDiagram
     plans ||--o{ plan_versions : versions
     plan_versions |o--o{ plan_versions : parent
     plan_versions |o--o{ plan_versions : "calculated with"
-    organizations ||--o{ version_sets : "club plans"
+    organizations ||--o{ version_sets : "financial models"
     version_sets ||--o{ version_set_members : holds
     plans ||--o{ version_set_members : "held in"
     plan_versions ||--o{ version_set_members : "held version"
@@ -204,11 +204,11 @@ Making a version active, when its program opens in Clubspot, makes it the year's
 
 The club's plan for a year is the active Operations Plan version and each area's active version. Each saved area version pins the Operations Plan version it was calculated with, and a later activation can pick a different Operations Plan. The engine warns when an area version pinned an Operations Plan version other than the one it's calculated with. No one changes or deletes a row in `plan_activations`.
 
-#### Club plans
+#### Financial models
 
-A saved version's share of the pools depends on which other areas were active when it was saved. A club plan freezes the club's plan as a whole. A Plan Writer saves one by adding a `version_sets` row, which the Data Studio calls Club plans, with an organization, a year and a name. When the row goes in, the database fills in `version_set_members`: the year's active Operations Plan version and each program area's active version. It refuses the club plan unless the Operations Plan, and every program area with a plan for the year that isn't archived, has an active version, and names the areas that have none. The `saved-versions` hook stamps `saved_by`, `saved_at` and `platform_version`, as it does for a version, then works out its results ([A saved version's results](#a-saved-versions-results)).
+A saved version's share of the pools depends on which other areas were active when it was saved. A financial model freezes the club's plan as a whole. A Plan Writer saves one by adding a `version_sets` row, which the Data Studio calls Financial models, with an organization, a year and a name. When the row goes in, the database fills in `version_set_members`: the year's active Operations Plan version and each program area's active version. It refuses the financial model unless the Operations Plan, and every program area with a plan for the year that isn't archived, has an active version, and names the areas that have none. The `saved-versions` hook stamps `saved_by`, `saved_at` and `platform_version`, as it does for a version, then works out its results ([A saved version's results](#a-saved-versions-results)).
 
-A club plan isn't made active. The newest one for an organization and year is the club's plan as last frozen. If an activation changes the club's plan later, a planner saves another. A club plan and its members never change, and only the database writes members.
+A financial model isn't made active. The newest one for an organization and year is the club's plan as last frozen. If an activation changes the club's plan later, a planner saves another. A financial model and its members never change, and only the database writes members.
 
 #### A saved version never changes
 
@@ -229,12 +229,12 @@ Together they refuse:
 - writing a version's results, except by the hook, once, for a saved version
 - changing or deleting a `plan_activations` row
 - changing a plan's kind, program area, organization, or year once it has a saved version
-- changing or deleting a club plan, or writing its members
-- saving a club plan without an active version of the Operations Plan and of every program area with a plan for its year
+- changing or deleting a financial model, or writing its members
+- saving a financial model without an active version of the Operations Plan and of every program area with a plan for its year
 
 Every foreign key from a plan row restricts delete, so deleting a catalog row a version uses, or a plan with versions, fails instead of cascading into a saved version. Archive a plan instead of deleting it.
 
-An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved version and its rows and activations, and a club plan, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
+An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved version and its rows and activations, and a financial model, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
 
 ### Program area plan (one version)
 
@@ -506,7 +506,7 @@ erDiagram
     plan_result_lines {
         uuid version_id FK "or"
         uuid version_set_id FK
-        uuid version_set_member_id FK "a club plan's: the plan it's charged in"
+        uuid version_set_member_id FK "a financial model's: the plan it's charged in"
         string cost_center_type
         uuid cost_center_key
         string cost_center_name
@@ -559,11 +559,11 @@ erDiagram
     }
 ```
 
-When a version is saved, the `saved-versions` hook runs the engine and writes its results with the version. Directus runs the hook's action only after it has checked access and committed the save, so the results go in a moment after the save answers. The hook calculates with the club's plan as it stands then: the version's Operations Plan version (itself, for an Operations Plan), and each other program area's active version. That way each offering's share of the pools is right. `plan_result_versions` lists those other versions. Activating a version later recalculates nothing, and the club's plan is still calculated whenever someone asks. The results say what each version showed when it was saved, as the club's plan stood then: a version saved before the other areas were active takes too big a share of the pools. A club plan's results are the club-wide ones.
+When a version is saved, the `saved-versions` hook runs the engine and writes its results with the version. Directus runs the hook's action only after it has checked access and committed the save, so the results go in a moment after the save answers. The hook calculates with the club's plan as it stands then: the version's Operations Plan version (itself, for an Operations Plan), and each other program area's active version. That way each offering's share of the pools is right. `plan_result_versions` lists those other versions. Activating a version later recalculates nothing, and the club's plan is still calculated whenever someone asks. The results say what each version showed when it was saved, as the club's plan stood then: a version saved before the other areas were active takes too big a share of the pools. A financial model's results are the club-wide ones.
 
 Each line and P&L row goes with the version that holds what it's charged to: an offering goes with its own version, and a product or program area with that area's plan. Everything else, including pools and the organization, goes with the Operations Plan. `plan_results` holds the club-wide totals of the whole calculation. Positions and warnings are the whole calculation's, too. The hook writes `plan_results` last, so a version that has it has all its results. If the engine fails, the version stays saved with no results, and the hook logs why. A version's Results list in the Data Studio is then empty, as is its `plan_results` row for an agent, so a saved version with neither has no results yet. An admin can fill them in with `POST /saved-versions/results/<version id>`.
 
-A club plan's results are worked out the same way, a moment after it's saved, from the versions it holds. Its rows have its `version_set_id` and no `version_id`, so a query for a version's own results never returns them. Each of its lines and P&L rows names, in `version_set_member_id`, the member that holds what it's charged to, by the rule above, so one area's P&L in a club plan is one filter. `plan_result_versions` isn't used, since the members list the versions. `POST /saved-versions/results/<club plan id>` fills in a club plan's results too. It works them out with the club's plan as it stands then, and does nothing for a version that already has results.
+A financial model's results are worked out the same way, a moment after it's saved, from the versions it holds. Its rows have its `version_set_id` and no `version_id`, so a query for a version's own results never returns them. Each of its lines and P&L rows names, in `version_set_member_id`, the member that holds what it's charged to, by the rule above, so one area's P&L in a financial model is one filter. `plan_result_versions` isn't used, since the members list the versions. `POST /saved-versions/results/<financial model id>` fills in a financial model's results too. It works them out with the club's plan as it stands then, and does nothing for a version that already has results.
 
 Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, the version is saved, and it has no results yet. Results never change. A Plan Reader or Plan Writer can see them. A draft never has results.
 

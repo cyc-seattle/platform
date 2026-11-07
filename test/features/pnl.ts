@@ -470,5 +470,6 @@ async function resultsWhere(filter: Row, what: string): Promise<{ lines: Row[]; 
 export const savedResults = (version: string) =>
   resultsWhere({ version_id: { _eq: version } }, `Saved version ${version}`);
 
-/** A saved club plan's results. */
-export const clubPlanResults = (set: string) => resultsWhere({ version_set_id: { _eq: set } }, `Club plan ${set}`);
+/** A saved financial model's results. */
+export const financialModelResults = (set: string) =>
+  resultsWhere({ version_set_id: { _eq: set } }, `Financial model ${set}`);

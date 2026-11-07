@@ -743,7 +743,7 @@ export interface PlanResources {
 /** Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed. */
 export interface PlanResultLines {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
+  /** The saved version these results are for, if they aren't a financial model's. */
   version_id: string | PlanVersions | null;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
   cost_center_key: string | null;
@@ -755,9 +755,9 @@ export interface PlanResultLines {
   /** The engine's key for the line. */
   line: string;
   explanation: string | null;
-  /** The club plan these results are for, if they aren't a version's. */
+  /** The financial model these results are for, if they aren't a version's. */
   version_set_id: string | VersionSets | null;
-  /** In a club plan's results, the plan that holds what it's charged to. */
+  /** In a financial model's results, the plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
   /** What the line is, in plain words, such as G&A share: Payroll tax. */
   line_name: string | null;
@@ -766,7 +766,7 @@ export interface PlanResultLines {
 /** A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed. */
 export interface PlanResultPnl {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
+  /** The saved version these results are for, if they aren't a financial model's. */
   version_id: string | PlanVersions | null;
   level: "offering" | "product" | "program_area";
   subject_key: string;
@@ -782,16 +782,16 @@ export interface PlanResultPnl {
   enrollment: number;
   days: number;
   sailor_days: number;
-  /** The club plan these results are for, if they aren't a version's. */
+  /** The financial model these results are for, if they aren't a version's. */
   version_set_id: string | VersionSets | null;
-  /** In a club plan's results, the plan that holds what it's charged to. */
+  /** In a financial model's results, the plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
 }
 
 /** Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed. */
 export interface PlanResultPositions {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
+  /** The saved version these results are for, if they aren't a financial model's. */
   version_id: string | PlanVersions | null;
   position_key: string;
   name: string;
@@ -812,7 +812,7 @@ export interface PlanResultPositions {
   total_pay_cents: number;
   /** The year's payroll tax on the total pay. In cents: 12500 is $125.00. */
   payroll_tax_cents: number;
-  /** The club plan these results are for, if they aren't a version's. */
+  /** The financial model these results are for, if they aren't a version's. */
   version_set_id: string | VersionSets | null;
   /** Hours another coach would cover while this position coaches two or more groups at once: for three groups at once, two coaches. */
   double_booked_hours: string | null;
@@ -832,20 +832,20 @@ export interface PlanResultVersions {
 /** What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed. */
 export interface PlanResultWarnings {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
+  /** The saved version these results are for, if they aren't a financial model's. */
   version_id: string | PlanVersions | null;
   /** The kind of warning. */
   code: string;
   message: string;
   subject_key: string | null;
-  /** The club plan these results are for, if they aren't a version's. */
+  /** The financial model these results are for, if they aren't a version's. */
   version_set_id: string | VersionSets | null;
 }
 
 /** A saved version's club-wide totals. Worked out when the version was saved, and never changed. */
 export interface PlanResults {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
+  /** The saved version these results are for, if they aren't a financial model's. */
   version_id: string | PlanVersions | null;
   calculated_at: string;
   /** In cents: 12500 is $125.00. */
@@ -864,7 +864,7 @@ export interface PlanResults {
   capital_cents: number;
   /** Operating net, plus fundraising net, less capital. In cents: 12500 is $125.00. */
   total_cents: number;
-  /** The club plan these results are for, if they aren't a version's. */
+  /** The financial model these results are for, if they aren't a version's. */
   version_set_id: string | VersionSets | null;
 }
 
@@ -1131,34 +1131,34 @@ export interface SyncTasks {
   needs_attention: boolean;
 }
 
-/** One plan's version in a club plan. Set when the club plan is saved, and never changed. */
+/** One plan's version in a financial model. Set when the financial model is saved, and never changed. */
 export interface VersionSetMembers {
   id: string;
   version_set_id: string | VersionSets;
   plan_id: string | Plans;
-  /** The plan's active version when the club plan was saved. */
+  /** The plan's active version when the financial model was saved. */
   version_id: string | PlanVersions;
 }
 
 /** The club's plan for a year, saved: the active Operations Plan version and each program area's, with the P&L they make together. Saved when it's added, and never changed. */
 export interface VersionSets {
   id: string;
-  /** The organization the club plan is for. */
+  /** The organization the financial model is for. */
   organization_id: string | Organizations;
-  /** The year the club plan is for. */
+  /** The year the financial model is for. */
   fiscal_year: number;
   /** Such as 2027 budget as adopted. */
   name: string;
   /** Why it was saved. */
   message: string | null;
-  /** Set when the club plan is saved. */
+  /** Set when the financial model is saved. */
   saved_by: string | null;
-  /** Set when the club plan is saved. */
+  /** Set when the financial model is saved. */
   saved_at: string | null;
   /** The version of the planning engine that calculated its numbers. */
   platform_version: string | null;
-  /** The active version of each plan when the club plan was saved. */
+  /** The active version of each plan when the financial model was saved. */
   members: (string | VersionSetMembers)[];
-  /** What the club's P&L showed when it was saved, worked out a moment after. A club plan with none means working them out failed, and an admin can fill them in. */
+  /** What the club's P&L showed when it was saved, worked out a moment after. A financial model with none means working them out failed, and an admin can fill them in. */
   results: (string | PlanResults)[];
 }

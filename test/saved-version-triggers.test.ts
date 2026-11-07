@@ -123,9 +123,10 @@ function writer(db: PGlite) {
 }
 
 const NEEDS_PLATFORM = "Saving a version needs the @cyc-seattle/platform version that calculated it.";
-const NEEDS_ACTIVE_OPERATIONS = "A club plan needs an active Operations Plan version for its organization and year.";
+const NEEDS_ACTIVE_OPERATIONS =
+  "A financial model needs an active Operations Plan version for its organization and year.";
 const NEEDS_ACTIVE_AREAS =
-  "A club plan needs an active version for every program area with a plan for its organization and year.";
+  "A financial model needs an active version for every program area with a plan for its organization and year.";
 
 const refusal = (message: string) => expect.objectContaining({ code: "CY001", message });
 
@@ -498,8 +499,8 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     });
   });
 
-  describe("on a club plan", () => {
-    const clubPlan = (organization: string, year: number) =>
+  describe("on a financial model", () => {
+    const financialModel = (organization: string, year: number) =>
       w.refusedInsert("version_sets", {
         organization_id: organization,
         fiscal_year: year,
@@ -519,7 +520,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       const { organization, operations, saved } = await plans(db, 2301);
       await w.insert("plan_activations", { version_id: operations });
       await w.insert("plan_activations", { version_id: saved });
-      expect(await clubPlan(organization, 2301)).toBeUndefined();
+      expect(await financialModel(organization, 2301)).toBeUndefined();
       expect(await membersOf(organization)).toEqual([operations, saved].sort());
       const [set] = (await db.query<Values>(`SELECT * FROM version_sets WHERE organization_id = $1`, [organization]))
         .rows;
@@ -529,13 +530,13 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     it("refuse one without an active Operations Plan version", async () => {
       const { organization, saved } = await plans(db, 2302);
       await w.insert("plan_activations", { version_id: saved });
-      expect(await clubPlan(organization, 2302)).toEqual(refusal(NEEDS_ACTIVE_OPERATIONS));
+      expect(await financialModel(organization, 2302)).toEqual(refusal(NEEDS_ACTIVE_OPERATIONS));
     });
 
     it("refuse one while a program area's plan has no active version, naming the area", async () => {
       const { organization, operations } = await plans(db, 2303);
       await w.insert("plan_activations", { version_id: operations });
-      const error = await clubPlan(organization, 2303);
+      const error = await financialModel(organization, 2303);
       expect(error).toEqual(refusal(NEEDS_ACTIVE_AREAS));
       expect(error).toMatchObject({ detail: "These have none: Test area." });
     });
@@ -544,7 +545,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       const { organization, operations, plan } = await plans(db, 2304);
       await w.insert("plan_activations", { version_id: operations });
       expect(await w.update("plans", plan, { archived: true })).toBeUndefined();
-      expect(await clubPlan(organization, 2304)).toBeUndefined();
+      expect(await financialModel(organization, 2304)).toBeUndefined();
       expect(await membersOf(organization)).toEqual([operations]);
     });
 
@@ -568,7 +569,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       await w.insert("plan_activations", { version_id: saved });
       await w.insert("plan_activations", { version_id: version });
       expect(await w.update("plans", archived, { archived: true })).toBeUndefined();
-      expect(await clubPlan(organization, 2308)).toBeUndefined();
+      expect(await financialModel(organization, 2308)).toBeUndefined();
       expect(await membersOf(organization)).toEqual([operations, saved].sort());
     });
 
@@ -585,7 +586,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       const { organization, operations, saved, plan } = await plans(db, 2306);
       await w.insert("plan_activations", { version_id: operations });
       await w.insert("plan_activations", { version_id: saved });
-      await clubPlan(organization, 2306);
+      await financialModel(organization, 2306);
       const [set] = (
         await db.query<{ id: string }>(`SELECT id FROM version_sets WHERE organization_id = $1`, [organization])
       ).rows as [{ id: string }];
@@ -607,7 +608,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       const { organization, operations, saved } = await plans(db, 2307);
       await w.insert("plan_activations", { version_id: operations });
       await w.insert("plan_activations", { version_id: saved });
-      await clubPlan(organization, 2307);
+      await financialModel(organization, 2307);
       const [set] = (
         await db.query<{ id: string }>(`SELECT id FROM version_sets WHERE organization_id = $1`, [organization])
       ).rows as [{ id: string }];
@@ -716,7 +717,7 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
 });
 
 describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () => {
-  it("let a saved version, its rows, its activations, and a club plan be deleted, but not changed", async () => {
+  it("let a saved version, its rows, its activations, and a financial model be deleted, but not changed", async () => {
     const db = await database(config(true));
     const w = writer(db);
     const { organization, operations, saved, draft, savedOffering, draftOffering } = await plans(db);
