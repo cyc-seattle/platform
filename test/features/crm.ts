@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import "./steps/community.ts";
-import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
+import {
+  describeAccessFeature,
+  expectRefusal,
+  onEachScenario,
+  Step,
+  type ScenarioSteps,
+  type Shard,
+} from "./steps/index.ts";
 import { asAdmin } from "./cluster.ts";
 import { clubspotRun, seedClass, seedSailor, type ClubspotRun } from "./steps/clubspot.ts";
 import { createUser, type User } from "./steps/logins.ts";
@@ -133,7 +140,7 @@ async function signedIn(personId: string): Promise<User> {
 const sharesContact = async (personId: string) =>
   (await asAdmin("GET", `/items/people/${personId}?fields=share_contact`)).share_contact;
 
-describeAccessFeature("crm.feature", {
+const ownSteps: Record<string, ScenarioSteps> = {
   "A parent who stopped sharing says yes on a later sign-up": ({ Given, When, Then }) => {
     const run = clubspotRun();
     let parentId: string;
@@ -178,4 +185,9 @@ describeAccessFeature("crm.feature", {
       expect(await sharesContact(parentId)).toBe(false);
     });
   },
-});
+};
+
+/** crm.feature, the longest feature, which crm-1 and crm-2 split between them. */
+export function describeCrm(shard: Shard): void {
+  describeAccessFeature("crm.feature", ownSteps, shard);
+}

@@ -544,13 +544,27 @@ interface Declarable {
   examples?: unknown;
 }
 
+/** One of `count` test files that each run every `count`th Rule of a feature, starting at `index`. */
+export interface Shard {
+  index: number;
+  count: number;
+}
+
 /**
  * Describes a feature on the shared steps, plus any scenario's own, declaring every scenario,
  * pending ones included, so a typo in a pending scenario's step fails the run too. Deletes the run's
- * rows and users after.
+ * rows and users after. Given a shard, it runs only that shard's Rules.
  */
-export function describeAccessFeature(name: string, ownSteps: Record<string, ScenarioSteps> = {}): void {
+export function describeAccessFeature(name: string, ownSteps: Record<string, ScenarioSteps> = {}, shard?: Shard): void {
   const parsed = feature(name);
+  // vitest runs files in parallel but a file's scenarios in turn, so a long feature splits by Rule.
+  if (shard) {
+    parsed.rules.forEach((rule, i) => {
+      if (i % shard.count !== shard.index) {
+        rule.tags.add("other-shard");
+      }
+    });
+  }
   if (parsed.tags.has("licensed") && !devDirectusLicensed()) {
     describe.skip(`Feature: ${parsed.name}`, () => {
       it("is skipped: dev's Directus is unlicensed (backend:licensed is false in stacks/backend/Pulumi.dev.yaml)", () => {});
@@ -601,6 +615,6 @@ export function describeAccessFeature(name: string, ownSteps: Record<string, Sce
         });
       }
     },
-    { excludeTags: ["pending"] },
+    { excludeTags: ["pending", "other-shard"] },
   );
 }
