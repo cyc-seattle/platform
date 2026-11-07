@@ -33,7 +33,7 @@ export interface Product {
   program_area_id: Id | null;
 }
 
-/** A part of the club's programs, such as Summer, with its revenue account. */
+/** A part of the organization's programs, such as Summer, with its revenue account. */
 export interface ProgramArea {
   id: Id;
   name: string;
@@ -310,7 +310,7 @@ export interface PlanRevenueCharge extends Versioned {
   note: string | null;
 }
 
-/** A day the club is closed, such as Labor Day. */
+/** A day the organization is closed, such as Labor Day. */
 export interface PlanClosedDate extends Versioned {
   date: DateString;
   name: string;
