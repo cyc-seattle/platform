@@ -1,0 +1,8 @@
+name: authentik
+description: Authentik on the cluster - its database, secrets, and record, and its own configuration (sources, flows, groups, and applications).
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+    # Node 22 strips the types itself, so Pulumi's vendored ts-node stays out of the way.
+    typescript: false

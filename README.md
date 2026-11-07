@@ -12,6 +12,7 @@ app owns. The apps that run on it live in their own repos, such as
 | [`infra`](stacks/infra)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, Artifact Registry and its cleanup policy, the GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, the log exclusions, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.                   |
 | [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                                                                                                                                                                                                                                              | `deploy-dev`, from Actions for each queued PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
 | [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync machine users, its OIDC client, and MCP, and the clubspot-sync and gsuite-sync CronJobs, with dev's Clubspot and Workspace fakes                                                                                                                                                                                                                                        | `deploy-dev`, from Actions for each queued PR, and `deploy-runner` on a push to `main`, after `infra`.                   |
+| [`authentik`](stacks/authentik) | Authentik, the sign-in at `login.<domain>`: its server and worker, database, secrets, and A record, dev's Mailpit, and its own configuration: flows, stages, policies, the Google source, the `staff` group, and the Directus OIDC and portal proxy applications                                                                                                                                                                                                             | `deploy-dev`, from Actions for each queued PR, and `deploy-runner` on a push to `main`, after `backend`.                 |
 
 ## @cyc-seattle/platform
 
@@ -49,8 +50,8 @@ releases each merge to `main` with semantic-release, versioned by the convention
 ## Environments
 
 Every app runs on the one GKE Autopilot cluster, in its environment's namespace. Prod runs on
-regular capacity, and dev on Spot pods. isthmia's apps (Authentik and the portal) and platform's
-`backend` (Directus and the two syncs as CronJobs) run in both, and dev adds Mailpit and the Clubspot
+regular capacity, and dev on Spot pods. isthmia's portal and platform's `authentik` and `backend`
+(Directus and the two syncs as CronJobs) run in both, and dev adds Mailpit and the Clubspot
 and Workspace fakes. Dev's sync CronJobs are suspended: one scenario in each sync's feature and
 `mise run reset` run them as Jobs (cyc-seattle/isthmia#271).
 

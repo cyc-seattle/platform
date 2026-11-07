@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Formatting, linting, and type checks of src, stacks, scripts, and tests.
+# Formatting, linting, and type checks of src, stacks, scripts, and tests, and the committed Authentik SDK.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -7,3 +7,8 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 pnpm exec prettier --check .
 pnpm exec eslint .
 pnpm exec tsc -p tsconfig.json
+./scripts/gen-sdks
+if [ -n "$(git status --porcelain -- generated)" ]; then
+  echo "scripts/gen-sdks changed generated/. Commit the result." >&2
+  exit 1
+fi
