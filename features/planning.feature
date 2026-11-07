@@ -13,9 +13,14 @@ Feature: Plans
   Plan from an earlier one, its parent, and the new one begins as a copy of it. A year can have
   several drafts at once, so planners can weigh options side by side, such as two drafts started
   from the same Financial Plan, one with two coaches and one with three. Each Financial Plan has a
-  name, and a note that says what it was for, such as "Reviewed with the board".
-  Planners are the people with the Plan Reader or Plan Writer policy, which they get from their
-  groups.
+  name, and a note that says what it was for, such as "Reviewed with the board". Planners are the
+  people with the Plan Reader or Plan Writer policy, which they get from their groups.
+
+  A planner marks one saved Financial Plan active for its year. That's the plan the organization is
+  running, and what actually happens during the year is compared against it. Marking another one
+  active replaces it, and the earlier marks are kept. An offering and its activities, such as
+  practices and regattas, stay the same ones in a Financial Plan started from another. So a
+  Clubspot session linked to an offering stays linked.
 
   The P&L, the profit and loss for the year, is worked out from a Financial Plan's plans together.
   It shows each offering, each program area, and the organization as a whole. A draft's P&L is
@@ -102,6 +107,37 @@ Feature: Plans
       And they started a new Financial Plan from "Budget"
       When they change the offering's price to $1,200 a sailor in the new Financial Plan
       Then "Budget" still has the offering at $1,000 a sailor
+
+  @pending
+  Rule: An offering and its activities stay the same ones in a Financial Plan started from it
+
+    Example: A Clubspot session linked to an offering stays linked
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan named "Budget" with an offering linked to a Clubspot session
+      When they start a new Financial Plan from "Budget"
+      Then the Clubspot session is linked to the offering in the new Financial Plan too
+
+    Example: A practice is the same practice in the new Financial Plan
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan named "Budget" with a practice on June 6
+      When they start a new Financial Plan from "Budget"
+      Then its practice on June 6 is the same practice as the one in "Budget"
+
+  @pending
+  Rule: A planner marks one saved Financial Plan active for its year
+
+    Example: Marking another Financial Plan active replaces the active one
+      Given a user with the Plan Writer policy
+      And two saved Financial Plans for next year, "Budget" marked active and "Adopted budget"
+      When they mark "Adopted budget" active
+      Then "Adopted budget" is the active Financial Plan for next year
+      And they can see that "Budget" was active before it
+
+    Example: A draft can't be marked active
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan
+      When they try to mark it active
+      Then they're told that only a saved Financial Plan can be active
 
   @pending
   Rule: A saved Financial Plan never changes, even for an admin
@@ -467,18 +503,19 @@ Feature: Plans
       Then they can change any of its plans
 
   @pending
-  Rule: A Plan Writer can start and save a Financial Plan, and a Plan Reader can only look at one
+  Rule: A Plan Writer can start, save, and mark a Financial Plan active, and a Plan Reader can only look at one
 
-    Example: A Plan Writer starts and saves a Financial Plan
+    Example: A Plan Writer starts, saves, and marks a Financial Plan active
       Given a user with the Plan Writer policy
       Then they can start a Financial Plan
       And they can save a draft Financial Plan
+      And they can mark a saved Financial Plan active
 
     Example: A Plan Reader looks at a Financial Plan
       Given a user with the Plan Reader policy
       And a saved Financial Plan
       Then they can see the Financial Plan and its P&L
-      But they can't start or save a Financial Plan
+      But they can't start, save, or mark a Financial Plan active
 
   Rule: Only admins and planners can see plans
 
