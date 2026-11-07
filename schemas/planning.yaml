@@ -303,7 +303,7 @@ collections:
       hidden: false
       icon: percent
       item_duplication_fields: null
-      note: The year's rates. One row at most in each version.
+      note: The year's rates. One row at most in each copy.
       preview_url: null
       singleton: false
       sort: null
@@ -563,7 +563,7 @@ collections:
       hidden: false
       icon: event_busy
       item_duplication_fields: null
-      note: A day the club is closed, such as Labor Day. The P&L warns about an activity on one.
+      note: A day the organization is closed, such as Labor Day. The P&L warns about an activity on one.
       preview_url: null
       singleton: false
       sort: null
@@ -589,7 +589,7 @@ collections:
       hidden: false
       icon: summarize
       item_duplication_fields: null
-      note: A saved version's club-wide totals. Worked out when the version was saved, and never changed.
+      note: A saved Financial Plan's totals for the organization. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -615,7 +615,7 @@ collections:
       hidden: false
       icon: receipt_long
       item_duplication_fields: null
-      note: Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed.
+      note: Each cost and revenue line in a saved Financial Plan's P&L. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -641,7 +641,7 @@ collections:
       hidden: false
       icon: query_stats
       item_duplication_fields: null
-      note: A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed.
+      note: A saved Financial Plan's P&L for each offering, product, and program area. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -667,7 +667,7 @@ collections:
       hidden: false
       icon: badge
       item_duplication_fields: null
-      note: Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed.
+      note: Each salaried position's pay for the year, in a saved Financial Plan. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -693,7 +693,7 @@ collections:
       hidden: false
       icon: warning
       item_duplication_fields: null
-      note: What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed.
+      note: What the P&L warned about when a Financial Plan was saved. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -941,7 +941,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The organization the plan is for. Can't change once the plan has a saved version.
+      note: The organization the plan is for. Can't change once the plan has a saved copy.
       options: null
       readonly: false
       required: true
@@ -984,7 +984,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved version.
+      note: The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved copy.
       options: null
       readonly: false
       required: true
@@ -1064,7 +1064,7 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: A plan with a saved version can't be deleted, so archive it instead.
+      note: A plan with a saved copy can't be deleted, so archive it instead.
       options: null
       readonly: false
       required: false
@@ -1105,7 +1105,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: The plan's draft and saved versions.
+      note: The plan's copy in each Financial Plan.
       options: null
       readonly: false
       required: false
@@ -1352,7 +1352,7 @@ fields:
       group: null
       hidden: true
       interface: input
-      note: Set when the version is saved.
+      note: Set when its Financial Plan is saved.
       options: null
       readonly: true
       required: false
@@ -1392,7 +1392,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: Set when the version is saved.
+      note: Set when its Financial Plan is saved.
       options: null
       readonly: true
       required: false
@@ -1566,7 +1566,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -2648,7 +2648,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -2902,7 +2902,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -3234,7 +3234,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -3912,7 +3912,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -4202,7 +4202,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -4387,7 +4387,7 @@ fields:
       interface: input
       note: >-
         Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
-        page's web address. Leave empty for the whole club.
+        page's web address. Leave empty for the whole organization.
       options: null
       readonly: false
       required: false
@@ -4702,7 +4702,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -4990,7 +4990,7 @@ fields:
       interface: input
       note: >-
         Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
-        page's web address. Leave empty for the whole club.
+        page's web address. Leave empty for the whole organization.
       options: null
       readonly: false
       required: false
@@ -5246,7 +5246,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -5645,7 +5645,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -5939,7 +5939,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -6242,7 +6242,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -6701,7 +6701,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -7048,7 +7048,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -7508,7 +7508,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -7720,7 +7720,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8133,7 +8133,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8299,7 +8299,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8647,7 +8647,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8861,7 +8861,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full

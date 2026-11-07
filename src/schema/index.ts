@@ -591,7 +591,7 @@ export interface PlanBudgetLines {
   account_id: string | Accounts;
   function: "program" | "management" | "fundraising" | null;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
-  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole club. */
+  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization. */
   cost_center_key: string | null;
   /** In cents: 12500 is $125.00. */
   amount_cents: number;
@@ -601,7 +601,7 @@ export interface PlanBudgetLines {
   note: string | null;
 }
 
-/** A day the club is closed, such as Labor Day. The P&L warns about an activity on one. */
+/** A day the organization is closed, such as Labor Day. The P&L warns about an activity on one. */
 export interface PlanClosedDates {
   id: string;
   /** The version this row belongs to. */
@@ -622,7 +622,7 @@ export interface PlanLaborLines {
   key: string;
   name: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
-  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole club. */
+  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization. */
   cost_center_key: string | null;
   /** Who does the work: copy the Key from a staff level in the Operations Plan. */
   staff_level_key: string;
@@ -699,7 +699,7 @@ export interface PlanPools {
   name: string;
 }
 
-/** The year's rates. One row at most in each version. */
+/** The year's rates. One row at most in each copy. */
 export interface PlanRates {
   id: string;
   /** The version this row belongs to. */
@@ -738,7 +738,7 @@ export interface PlanResources {
   excluded_from_mtdc: boolean;
 }
 
-/** Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed. */
+/** Each cost and revenue line in a saved Financial Plan's P&L. Worked out when it was saved, and never changed. */
 export interface PlanResultLines {
   id: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
@@ -759,7 +759,7 @@ export interface PlanResultLines {
   line_name: string | null;
 }
 
-/** A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed. */
+/** A saved Financial Plan's P&L for each offering, product, and program area. Worked out when it was saved, and never changed. */
 export interface PlanResultPnl {
   id: string;
   level: "offering" | "product" | "program_area";
@@ -782,7 +782,7 @@ export interface PlanResultPnl {
   version_set_member_id: string | VersionSetMembers | null;
 }
 
-/** Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed. */
+/** Each salaried position's pay for the year, in a saved Financial Plan. Worked out when it was saved, and never changed. */
 export interface PlanResultPositions {
   id: string;
   position_key: string;
@@ -812,7 +812,7 @@ export interface PlanResultPositions {
   double_booked_dates: number | null;
 }
 
-/** What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed. */
+/** What the P&L warned about when a Financial Plan was saved. Worked out when it was saved, and never changed. */
 export interface PlanResultWarnings {
   id: string;
   /** The kind of warning. */
@@ -823,7 +823,7 @@ export interface PlanResultWarnings {
   version_set_id: string | VersionSets;
 }
 
-/** A saved version's club-wide totals. Worked out when the version was saved, and never changed. */
+/** A saved Financial Plan's totals for the organization. Worked out when it was saved, and never changed. */
 export interface PlanResults {
   id: string;
   calculated_at: string;
@@ -944,9 +944,9 @@ export interface PlanVersions {
   status: "draft" | "saved";
   /** What changed in this version. */
   message: string | null;
-  /** Set when the version is saved. */
+  /** Set when its Financial Plan is saved. */
   saved_by: string | null;
-  /** Set when the version is saved. */
+  /** Set when its Financial Plan is saved. */
   saved_at: string | null;
   /** The version of the planning engine that calculated its numbers. Required to save. */
   platform_version: string | null;
@@ -960,14 +960,14 @@ export interface Plans {
   kind: "program_area" | "operations";
   /** The program area the plan is for. Empty for the Operations Plan. */
   program_area_id: string | ProgramAreas | null;
-  /** The organization the plan is for. Can't change once the plan has a saved version. */
+  /** The organization the plan is for. Can't change once the plan has a saved copy. */
   organization_id: string | Organizations;
-  /** The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved version. */
+  /** The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved copy. */
   fiscal_year: number;
   name: string;
-  /** A plan with a saved version can't be deleted, so archive it instead. */
+  /** A plan with a saved copy can't be deleted, so archive it instead. */
   archived: boolean;
-  /** The plan's draft and saved versions. */
+  /** The plan's copy in each Financial Plan. */
   versions: (string | PlanVersions)[];
 }
 
