@@ -4,7 +4,7 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, except `offering_external_refs`. `schemas/planning.yaml` declares plans, their versions, which version is active, every row a version holds, and club plans. Scenarios, baselines and actuals are designed here, but not built yet.
+Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog. `schemas/planning.yaml` declares plans, their versions, which version is active, every row a version holds, and club plans. Scenarios, baselines and actuals are designed here, but not built yet.
 
 A draft holds only what planners enter. Apps and agents ask the [planning engine](planning-engine.md) to calculate its P&L when they need one. A saved version, and a saved club plan, also hold the results the engine calculated when they were saved, which never change ([A saved version's results](#a-saved-versions-results)).
 
@@ -37,7 +37,6 @@ Dashed lines are references by stable `key` across plans. The engine looks them 
 
 ```mermaid
 erDiagram
-    products ||--o{ offering_external_refs : "via offering key"
     accounts |o--o{ products : "revenue account, outside an area"
     program_areas |o--o{ products : "area of"
     accounts ||--o{ program_areas : "revenue account"
@@ -116,13 +115,6 @@ erDiagram
         uuid organization_id FK
         string cost_type "coach_wages|salaries|payroll_tax|ribs|boat_maintenance|resources|travel|cogs"
         uuid account_id FK
-    }
-    offering_external_refs {
-        uuid offering_key
-        string clubspot_camp_id
-        string clubspot_session_id
-        string clubspot_class_id
-        string disposition "mapped|ignored"
     }
 ```
 

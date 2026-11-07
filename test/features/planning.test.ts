@@ -207,7 +207,7 @@ const second = () => p.offerings[1]!["key"];
 const onOffering = (key: unknown, account: string) => (l: CostLine) =>
   l.cost_center_type === "offering" && l.cost_center_key === key && l.account_id === account;
 
-Step("a plan for a program area", () => p.area());
+Step("a Program Plan", () => p.area());
 Step("an offering in it of a program from another program area", async () => {
   const [mine] = p.areas;
   const other = await p.area();
@@ -221,7 +221,7 @@ Step("the planner is warned that the offering is in the wrong plan", () => {
 Step("the Operations Plan sells {money} of merchandise", async (_, money: string) => {
   await p.offering(await p.operationsVersion(), await p.product("merchandise", null), cents(money), 1);
 });
-Step("the club-wide totals include {money} of merchandise sales", async (_, money: string) => {
+Step("the organization's totals include {money} of merchandise sales", async (_, money: string) => {
   const merchandise = await p.account("merchandise");
   expect(p.total((l) => l.account_id === merchandise)).toBe(cents(money));
   expect(p.out.organization.operating.revenue_cents).toBeGreaterThanOrEqual(cents(money));
@@ -373,7 +373,7 @@ Step("no offering or program area pays for the coach boat", async () => {
   const boats = await p.account("coachBoats");
   expect(p.total((l) => l.account_id === boats && l.cost_center_type !== "org")).toBe(0);
 });
-Step("the club-wide totals show {money} of capital", (_, money: string) => {
+Step("the organization's totals show {money} of capital", (_, money: string) => {
   expect(p.out.organization.capital_cents).toBe(cents(money));
 });
 Step("a {money} coach boat charged to a program area", async (_, money: string) => {
@@ -404,7 +404,7 @@ Step("donations of {money}, which cost {money} to raise", async (_, raised: stri
   await p.line(version, "donations", { cost_center_type: "org" }, cents(raised));
   await p.line(version, "costs", { cost_center_type: "org" }, cents(cost), { function: "fundraising" });
 });
-Step("the club-wide totals are:", (_, table: { line: string; amount: string }[]) => {
+Step("the organization's totals are:", (_, table: { line: string; amount: string }[]) => {
   const { operating, fundraising, capital_cents, total_cents } = p.out.organization;
   const shown: Record<string, number> = {
     "operating net": operating.net_cents,
@@ -459,7 +459,7 @@ async function bonusProgram(price: number, costs: number, extra: Row = {}): Prom
   return p.offering(earner!.version, product, price, 1, costs, extra);
 }
 
-Step("a program area's plan that pays its director {percent} of its programs' net", (_, percent: string) =>
+Step("a Program Plan that pays its director {percent} of its programs' net", (_, percent: string) =>
   directorWithBonus(share(percent)),
 );
 Step("its programs make {money} after their costs and shared costs", (_, money: string) =>
@@ -468,7 +468,7 @@ Step("its programs make {money} after their costs and shared costs", (_, money: 
 Step("the director's bonus is {money}", (_, money: string) => {
   expect(bonusTotal()).toBe(cents(money));
 });
-Step("a program area's plan that pays its director a bonus on a program from another program area", async () => {
+Step("a Program Plan that pays its director a bonus on a program from another program area", async () => {
   await directorWithBonus(0.5);
   const other = await p.area();
   const product = await p.product("program", other);
@@ -508,7 +508,7 @@ Step("a director whose bonus is {money}", async (_, money: string) => {
   await directorWithBonus(0.5);
   await bonusProgram(cents(money) * 2, 0);
 });
-Step("the club pays {money} of payroll tax on the bonus", (_, money: string) => {
+Step("the organization pays {money} of payroll tax on the bonus", (_, money: string) => {
   expect(bonusTotal("bonus_payroll_tax:")).toBe(cents(money));
 });
 Step("a director's bonus, with its payroll tax, on the first offering only", async () => {
@@ -653,7 +653,7 @@ Step("each offering pays for {coaches}", (_, coaches: string) => {
 });
 
 const laborDay = () => next(1, `${PLAN_YEAR}-09-01`);
-Step("the Operations Plan closes the club on Labor Day", () =>
+Step("the Operations Plan lists Labor Day as a closed day", () =>
   p.operationsRow("plan_closed_dates", { date: laborDay(), name: "Labor Day" }),
 );
 Step("an offering with a practice on Labor Day", async () => {
@@ -661,7 +661,7 @@ Step("an offering with a practice on Labor Day", async () => {
   const offering = await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1);
   await p.activities(offering, [laborDay()], "09:00", "12:00");
 });
-Step("the planner is warned that the practice is on a day the club is closed", () => {
+Step("the planner is warned that the practice is on a closed day", () => {
   expect(p.warned("closed_date")).toBe(true);
 });
 
@@ -1018,5 +1018,72 @@ Step("they can't save a club plan", async () => {
   await saveClubPlan(await theirSession());
   expect(attempt?.status).toBe(403);
 });
+
+// Financial Plans, which the next platform PR builds: until then, each of these steps fails.
+for (const text of [
+  "they start a Financial Plan for next year with only an Operations Plan",
+  "the Financial Plan is a draft, with the Operations Plan in it",
+  "a draft Financial Plan with a Program Plan but no Operations Plan",
+  "they try to save the Financial Plan",
+  "they're told that the Financial Plan needs an Operations Plan",
+  "the Financial Plan is still a draft",
+  "a draft Financial Plan with a Program Plan for Youth Racing",
+  "they try to add another Program Plan for Youth Racing to it",
+  "they're told that the Financial Plan already has a Program Plan for Youth Racing",
+  "a draft Financial Plan with an Operations Plan and two Program Plans",
+  "they save the Financial Plan",
+  "the Financial Plan and all three of its plans are saved at the same moment",
+  "a draft Financial Plan for next year named {string}",
+  "they start another draft Financial Plan for next year named {string}",
+  "next year has both drafts",
+  "a saved Financial Plan named {string} with an offering at {money} a sailor",
+  "they start a new Financial Plan from {string}",
+  "the new Financial Plan has the same offering at {money} a sailor",
+  "its parent is {string}",
+  "they started a new Financial Plan from {string}",
+  "they change the offering's price to {money} a sailor in the new Financial Plan",
+  "{string} still has the offering at {money} a sailor",
+  "a saved Financial Plan named {string} with an offering linked to a Clubspot session",
+  "the Clubspot session is linked to the offering in the new Financial Plan too",
+  "a saved Financial Plan named {string} with a practice on June 6",
+  "its practice on June 6 is the same practice as the one in {string}",
+  "two saved Financial Plans for next year, {string} marked active and {string}",
+  "they mark {string} active",
+  "{string} is the active Financial Plan for next year",
+  "they can see that {string} was active before it",
+  "a draft Financial Plan",
+  "they try to mark it active",
+  "they're told that only a saved Financial Plan can be active",
+  "a saved Financial Plan",
+  "they can't change the Financial Plan or any of its plans",
+  "they can't turn the Financial Plan back into a draft",
+  "they can't delete the Financial Plan",
+  "they can change its note to {string}",
+  "a draft Financial Plan with two Program Plans whose offerings have the same direct costs",
+  "each Program Plan's offering pays {money} of the office costs",
+  "a draft Financial Plan whose offering takes in {money}",
+  "the Financial Plan's P&L shows that the offering takes in {money}",
+  "a saved Financial Plan named {string} whose offering pays {money} of office costs",
+  "a planner saves a Financial Plan started from {string} with {money} of office costs",
+  "the P&L of {string} still shows that the offering pays {money} of office costs",
+  "a draft Financial Plan with one offering that has direct costs",
+  "the Financial Plan's P&L names the offering's share of the office {string}",
+  "they can't change a saved Financial Plan's P&L",
+  "they can't add a P&L to a draft Financial Plan",
+  "they can write a Program Plan's rules",
+  "a saved Financial Plan whose Program Plan has rules",
+  "they can't change the Program Plan's rules",
+  "a draft Financial Plan someone else started",
+  "they can change any of its plans",
+  "they can start a Financial Plan",
+  "they can save a draft Financial Plan",
+  "they can mark a saved Financial Plan active",
+  "they can see the Financial Plan and its P&L",
+  "they can't start, save, or mark a Financial Plan active",
+]) {
+  Step(text, () => {
+    throw new Error("Not built yet: Financial Plans");
+  });
+}
 
 describeAccessFeature("planning.feature");
