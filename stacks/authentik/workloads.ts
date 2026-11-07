@@ -47,7 +47,7 @@ export function authentikEnv({ dbHost, dbPassword, smtp, connMaxAge }: Authentik
 
 /**
  * The `login.` host's redirects, as the VM's Caddyfile has them: Authentik's "Go home" lands on `/`,
- * which it sends on to an empty `/if/user/` dashboard, so both go to the portal's public page. Exact
+ * which it sends on to an empty `/if/user/` dashboard, so both go to sail-team's home page. Exact
  * matches outrank the server's own route for the rest of the host.
  */
 export function loginRedirectRoute(gateway: { name: string; namespace: string }, domain: string) {
@@ -56,7 +56,7 @@ export function loginRedirectRoute(gateway: { name: string; namespace: string },
     requestRedirect: {
       scheme: "https",
       hostname: domain,
-      path: { type: "ReplaceFullPath", replaceFullPath: "/welcome" },
+      path: { type: "ReplaceFullPath", replaceFullPath: "/" },
       statusCode: 302,
     },
   };
