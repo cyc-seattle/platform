@@ -10,6 +10,15 @@
 // The saved-versions hook's triggers refuse these changes, so this drops them first. The hook
 // installs the new ones once Directus starts.
 //
+// A plan copy is now in one Financial Plan. Older club plans could share a version, as dev's test
+// runs left them, so where they do, this keeps the newest and deletes the older ones, with their
+// members and results. Prod's single club plan shares nothing.
+//
+// Plans were made active one by one, and Financial Plans are marked active as a whole. Where an
+// organization's year has one saved Financial Plan, it was the one in use, so this lists it in
+// cyc_seed_active_sets for the hook to mark active once the schema apply has made the table for
+// marks. A year with more than one is left unmarked, and logged.
+//
 // It's one statement, so Postgres runs it in one transaction. It skips what's already done or
 // doesn't exist, so it's safe to run again and does nothing on a new database.
 
@@ -50,6 +59,42 @@ BEGIN
     ALTER TABLE version_sets ADD COLUMN status varchar(255) NOT NULL DEFAULT 'draft';
     UPDATE version_sets SET status = 'saved';
     RAISE NOTICE 'Marked % club plans saved', (SELECT count(*) FROM version_sets);
+  END IF;
+
+  IF to_regclass('version_set_members') IS NOT NULL THEN
+    FOR item IN
+      SELECT DISTINCT older.id FROM version_set_members m
+        JOIN version_set_members other ON other.version_id = m.version_id AND other.id <> m.id
+        JOIN version_sets older ON older.id = m.version_set_id
+        JOIN version_sets newer ON newer.id = other.version_set_id
+        WHERE (coalesce(older.saved_at, '-infinity'), older.id::text) < (coalesce(newer.saved_at, '-infinity'), newer.id::text)
+    LOOP
+      DELETE FROM version_set_members WHERE version_set_id = item.id;
+      FOREACH t IN ARRAY ${array(RESULTS)} LOOP
+        IF to_regclass(quote_ident(t)) IS NOT NULL THEN
+          EXECUTE format('DELETE FROM %I WHERE version_set_id = $1', t) USING item.id;
+        END IF;
+      END LOOP;
+      DELETE FROM version_sets WHERE id = item.id;
+      RAISE NOTICE 'Deleted club plan %, which shared a version with a newer one', item.id;
+    END LOOP;
+  END IF;
+
+  IF to_regclass('version_sets') IS NOT NULL AND to_regclass('version_set_activations') IS NULL THEN
+    CREATE TABLE IF NOT EXISTS cyc_seed_active_sets (version_set_id uuid PRIMARY KEY);
+    INSERT INTO cyc_seed_active_sets
+      SELECT s.id FROM version_sets s
+        WHERE s.status = 'saved' AND (
+          SELECT count(*) FROM version_sets o
+            WHERE o.organization_id = s.organization_id AND o.fiscal_year = s.fiscal_year AND o.status = 'saved'
+        ) = 1
+      ON CONFLICT DO NOTHING;
+    FOR item IN
+      SELECT organization_id, fiscal_year FROM version_sets WHERE status = 'saved'
+        GROUP BY organization_id, fiscal_year HAVING count(*) > 1
+    LOOP
+      RAISE NOTICE 'Marked no Financial Plan active for % %: it has more than one saved', item.organization_id, item.fiscal_year;
+    END LOOP;
   END IF;
 
   FOREACH t IN ARRAY ${array(RESULTS)} LOOP

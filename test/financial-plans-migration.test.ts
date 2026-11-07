@@ -10,7 +10,10 @@ const BEFORE = [
   "CREATE TABLE plans (id uuid PRIMARY KEY)",
   `CREATE TABLE plan_versions (id uuid PRIMARY KEY, plan_id uuid REFERENCES plans (id), status varchar(255),
     operations_version_id uuid REFERENCES plan_versions (id))`,
-  "CREATE TABLE version_sets (id uuid PRIMARY KEY, name varchar(255), saved_at timestamptz)",
+  `CREATE TABLE version_sets (id uuid PRIMARY KEY, name varchar(255), saved_at timestamptz, organization_id uuid,
+    fiscal_year integer)`,
+  `CREATE TABLE version_set_members (id uuid PRIMARY KEY, version_set_id uuid REFERENCES version_sets (id),
+    plan_id uuid REFERENCES plans (id), version_id uuid REFERENCES plan_versions (id))`,
   "CREATE TABLE plan_activations (id uuid PRIMARY KEY, plan_id uuid REFERENCES plans (id), version_id uuid REFERENCES plan_versions (id))",
   `CREATE TABLE plan_result_versions (id uuid PRIMARY KEY, version_id uuid REFERENCES plan_versions (id),
     calculated_with_id uuid REFERENCES plan_versions (id))`,
@@ -37,7 +40,7 @@ const DIRECTUS = [
 ];
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [PLAN, OPERATIONS, AREA, SET] = [id(1), id(2), id(3), id(4)];
+const [PLAN, OPERATIONS, AREA, SET, ORG] = [id(1), id(2), id(3), id(4), id(99)];
 
 async function database(): Promise<PGlite> {
   const db = await PGlite.create();
@@ -46,7 +49,9 @@ async function database(): Promise<PGlite> {
     INSERT INTO plans VALUES ('${PLAN}');
     INSERT INTO plan_versions VALUES ('${OPERATIONS}', '${PLAN}', 'saved', NULL);
     INSERT INTO plan_versions VALUES ('${AREA}', '${PLAN}', 'saved', '${OPERATIONS}');
-    INSERT INTO version_sets VALUES ('${SET}', '2026 financial model', now());
+    INSERT INTO version_sets VALUES ('${SET}', '2026 financial model', now(), '${ORG}', 2026);
+    INSERT INTO version_set_members VALUES ('${id(20)}', '${SET}', '${PLAN}', '${OPERATIONS}');
+    INSERT INTO version_set_members VALUES ('${id(21)}', '${SET}', '${PLAN}', '${AREA}');
     INSERT INTO plan_activations VALUES ('${id(5)}', '${PLAN}', '${AREA}');
     INSERT INTO plan_result_versions VALUES ('${id(6)}', '${AREA}', '${OPERATIONS}');
     INSERT INTO plan_results VALUES ('${id(7)}', '${AREA}', NULL), ('${id(8)}', NULL, '${SET}');
@@ -136,6 +141,38 @@ describe("the Financial Plans migration", { timeout: 30_000 }, () => {
     ]);
   });
 
+  it("lists a year's only saved Financial Plan, for the hook to mark active", async () => {
+    const db = await database();
+    await migrate(db);
+    expect((await db.query("SELECT version_set_id FROM cyc_seed_active_sets")).rows).toEqual([{ version_set_id: SET }]);
+  });
+
+  it("marks none active for a year with more than one saved", async () => {
+    const db = await database();
+    await db.exec("DROP TRIGGER cyc_saved_versions_members ON version_sets");
+    await db.exec(`INSERT INTO version_sets VALUES ('${id(30)}', 'Another', now(), '${ORG}', 2026)`);
+    await migrate(db);
+    expect((await db.query("SELECT version_set_id FROM cyc_seed_active_sets")).rows).toEqual([]);
+  });
+
+  it("keeps the newest of club plans that share a version, and deletes the older ones with their results", async () => {
+    const db = await database();
+    const older = id(40);
+    await db.exec("DROP TRIGGER cyc_saved_versions_members ON version_sets");
+    await db.exec(`
+      INSERT INTO version_sets VALUES ('${older}', 'Older', now() - interval '1 day', '${ORG}', 2025);
+      INSERT INTO version_set_members VALUES ('${id(41)}', '${older}', '${PLAN}', '${AREA}');
+      INSERT INTO plan_result_lines VALUES ('${id(42)}', NULL, '${older}');
+    `);
+    await migrate(db);
+    expect((await db.query("SELECT id FROM version_sets ORDER BY id")).rows).toEqual([{ id: SET }]);
+    expect((await db.query("SELECT version_id FROM version_set_members ORDER BY version_id")).rows).toEqual([
+      { version_id: OPERATIONS },
+      { version_id: AREA },
+    ]);
+    expect((await db.query(`SELECT id FROM plan_result_lines WHERE id = '${id(42)}'`)).rows).toEqual([]);
+  });
+
   it("takes the old triggers off, for the hook to put its own on", async () => {
     const db = await database();
     await migrate(db);
@@ -146,7 +183,7 @@ describe("the Financial Plans migration", { timeout: 30_000 }, () => {
   it("does nothing more when run again", async () => {
     const db = await database();
     await migrate(db);
-    await db.exec("INSERT INTO version_sets (id, name, status) VALUES ('" + id(11) + "', 'Two coaches', 'draft')");
+    await db.exec(`INSERT INTO version_sets (id, name, status) VALUES ('${id(11)}', 'Two coaches', 'draft')`);
     await migrate(db);
     expect((await db.query("SELECT name, status FROM version_sets ORDER BY name")).rows).toEqual([
       { name: "2026 financial model", status: "saved" },

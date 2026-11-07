@@ -188,7 +188,7 @@ erDiagram
     }
 ```
 
-A plan is for one organization and one plan year (`fiscal_year`). A Program Plan names its program area, and an Operations Plan names none. A plan's kind, program area, organization, and year can't change once it has a saved copy.
+A plan is for one organization and one plan year (`fiscal_year`). A Program Plan names its program area, and an Operations Plan names none. A plan's kind, program area, organization, and year can't change once it's in a Financial Plan or has a saved copy, since its Financial Plan checked them when it joined.
 
 A plan copy's `rules` hold what the planner wants that the plan's numbers don't capture, in their own words, such as "every Monday, Wednesday and Friday, except on school holidays, from 4pm until dusk". Their AI reads them when it fills in the plan. The engine never does. Like every input, they're saved with the Financial Plan and never change after.
 
@@ -222,7 +222,7 @@ Together they refuse:
 - a Program Plan without its program area, or an Operations Plan with one
 - writing a Financial Plan's results, except by the hook, once, for a saved one
 - marking a draft active, or changing or deleting a mark
-- changing a plan's kind, program area, organization, or year once it has a saved copy
+- changing a plan's kind, program area, organization, or year once it's in a Financial Plan or has a saved copy
 
 Every foreign key from a plan row restricts delete, so deleting a catalog row a plan uses, or a plan with copies, fails instead of cascading into a saved one. Archive a plan instead of deleting it. Deleting a draft Financial Plan takes its plans out of it, and leaves the copies.
 

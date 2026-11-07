@@ -388,6 +388,23 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       );
     });
 
+    it("refuse a save from a session that sets the Financial Plan's flag itself", async () => {
+      const { draft } = await plans(db, 2132);
+      const error = await db
+        .transaction(async (tx) => {
+          await tx.exec("SET LOCAL cyc.saving_set = 'on'");
+          await tx.query(`UPDATE plan_versions SET status = 'saved', platform_version = '1.4.0' WHERE id = $1`, [
+            draft,
+          ]);
+        })
+        .then(
+          () => undefined,
+          (e: unknown) => e,
+        );
+      expect(error).toEqual(refusal(SAVED_WITH_SET));
+      expect(await w.read("plan_versions", draft)).toMatchObject({ status: "draft" });
+    });
+
     it("refuse to move a copy to another plan", async () => {
       const { draft, operationsPlan } = await plans(db, 2112);
       expect(await w.update("plan_versions", draft, { plan_id: operationsPlan })).toEqual(
@@ -400,7 +417,8 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
     it("refuse to change its kind, program area, organization, or year once it has a saved version", async () => {
       const { plan, operationsPlan } = await plans(db, 2113);
       const other = await plans(db, 2114);
-      const message = "A plan's kind, program area, organization, and year can't change once it has a saved version.";
+      const message =
+        "A plan's kind, program area, organization, and year can't change once it's in a Financial Plan or has a saved copy.";
       for (const change of [
         { kind: "operations", program_area_id: null },
         { program_area_id: other.area },
@@ -425,6 +443,29 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await w.update("plans", draftOnly, { program_area_id: null })).toEqual(refusal(message));
       expect(await w.update("plans", draftOnly, { kind: "operations" })).toEqual(refusal(message));
       expect(await w.update("plans", draftOnly, { kind: "operations", program_area_id: null })).toBeUndefined();
+    });
+
+    it("refuse to change a plan whose draft copy is in a draft Financial Plan", async () => {
+      const { organization, area, draftSet } = await plans(db, 2130);
+      const plan = await w.insert("plans", {
+        kind: "program_area",
+        program_area_id: (await w.insert("program_areas", { name: "Another area" })) as string,
+        organization_id: organization,
+        fiscal_year: 2130,
+      });
+      const copy = await w.insert("plan_versions", { plan_id: plan, status: "draft" });
+      await w.insert("version_set_members", { version_set_id: draftSet, version_id: copy });
+      const message =
+        "A plan's kind, program area, organization, and year can't change once it's in a Financial Plan or has a saved copy.";
+      // Moving it into the area another plan in the Financial Plan already has, or out of its year.
+      for (const change of [
+        { program_area_id: area },
+        { fiscal_year: 2131 },
+        { kind: "operations", program_area_id: null },
+      ]) {
+        expect(await w.update("plans", plan, change), JSON.stringify(change)).toEqual(refusal(message));
+      }
+      expect(await w.update("plans", plan, { name: "Renamed" })).toBeUndefined();
     });
 
     it("let a plan with only drafts change", async () => {
@@ -681,6 +722,20 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
     });
     expect(timeout).toBe("5s");
     expect((await db.query<{ lock_timeout: string }>(`SHOW lock_timeout`)).rows[0]!.lock_timeout).toBe("0");
+  });
+
+  it("marks active each Financial Plan the migration listed, once, and drops the list", async () => {
+    const db = await database(config(false));
+    const { set } = await plans(db, 2701);
+    await db.exec("CREATE TABLE cyc_seed_active_sets (version_set_id uuid PRIMARY KEY)");
+    await db.query("INSERT INTO cyc_seed_active_sets VALUES ($1)", [set]);
+    await db.transaction((tx) => installTriggers(config(false), connect(tx)));
+    const { rows } = await db.query<{ sequence: number }>(
+      "SELECT sequence FROM version_set_activations WHERE version_set_id = $1",
+      [set],
+    );
+    expect(rows).toEqual([{ sequence: 1 }]);
+    expect((await db.query("SELECT to_regclass('cyc_seed_active_sets') AS seed")).rows).toEqual([{ seed: null }]);
   });
 
   it("drops the unique indexes plans once had", async () => {

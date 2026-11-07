@@ -30,7 +30,8 @@ const NEEDS_PLATFORM = "Saving a Financial Plan needs the @cyc-seattle/platform 
 const VERSION_STAYS = "A plan copy can't move to another plan.";
 const ROW_STAYS = "A plan row can't move to another version. Copy it into that version instead.";
 const SAME_VERSION = "A plan row can only link to rows in its own version.";
-const PLAN_FIXED = "A plan's kind, program area, organization, and year can't change once it has a saved version.";
+const PLAN_FIXED =
+  "A plan's kind, program area, organization, and year can't change once it's in a Financial Plan or has a saved copy.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
 const RESULTS_BY_SAVE = "A Financial Plan's results are worked out when it's saved, and can't be written by hand.";
 const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
@@ -311,8 +312,9 @@ BEGIN
     ${raise(VERSION_STAYS)};
   END IF;
   IF NEW.status = 'saved' THEN
-    -- Only saving its Financial Plan saves a plan copy (cyc_saved_versions_set).
-    IF current_setting('cyc.saving_set', true) IS DISTINCT FROM 'on' THEN
+    -- Only saving its Financial Plan saves a plan copy: the set's trigger sets the flag, and updates the copy from
+    -- inside itself, so a session that sets the flag and updates a copy directly is still refused.
+    IF current_setting('cyc.saving_set', true) IS DISTINCT FROM 'on' OR pg_trigger_depth() < 2 THEN
       ${raise(SAVED_WITH_SET)};
     END IF;
     NEW.saved_at := now();
@@ -332,7 +334,11 @@ BEGIN
   END IF;
   IF (NEW.kind, NEW.program_area_id, NEW.organization_id, NEW.fiscal_year)
       IS DISTINCT FROM (OLD.kind, OLD.program_area_id, OLD.organization_id, OLD.fiscal_year)
-    AND EXISTS (SELECT 1 FROM ${VERSIONS} v WHERE v.plan_id = OLD.id AND v.status = 'saved') THEN
+    AND (
+      EXISTS (SELECT 1 FROM ${VERSIONS} v WHERE v.plan_id = OLD.id AND v.status = 'saved')
+      -- A member was checked against its Financial Plan's year and areas when it joined.
+      OR EXISTS (SELECT 1 FROM ${MEMBERS} m WHERE m.plan_id = OLD.id)
+    ) THEN
     ${raise(PLAN_FIXED)};
   END IF;
   RETURN NEW;
@@ -556,11 +562,31 @@ async function installTriggers(config, db) {
   const status = await triggerStatus(config, db);
   const hash = fingerprint(config);
   if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
+    await seedActiveMarks(db);
     return { missing: [], installed: false };
   }
   for (const statement of triggerStatements(config)) await db.exec(statement);
   await db.exec(`COMMENT ON FUNCTION cyc_saved_versions_row() IS ${literal(hash)}`);
+  await seedActiveMarks(db);
   return { missing: [], installed: true };
+}
+
+/** Where the Financial Plans migration (cyc0002) lists the saved Financial Plans to mark active. */
+const SEED = "cyc_seed_active_sets";
+
+/**
+ * Marks active each Financial Plan the Financial Plans migration listed, once `version_set_activations` exists, then
+ * drops the list. The migration runs before the schema apply makes that table, so it can't mark them itself.
+ */
+async function seedActiveMarks(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${SEED}') IS NOT NULL AS seed`);
+  if (!seed) return;
+  await db.exec(
+    `INSERT INTO ${SET_ACTIVATIONS} (id, version_set_id)
+      SELECT gen_random_uuid(), s.version_set_id FROM ${SEED} s
+      WHERE NOT EXISTS (SELECT 1 FROM ${SET_ACTIVATIONS} a WHERE a.version_set_id = s.version_set_id)`,
+  );
+  await db.exec(`DROP TABLE ${SEED}`);
 }
 
 // The catalog the engine reads as it is now.
