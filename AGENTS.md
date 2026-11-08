@@ -56,8 +56,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 - `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
   the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR's push runs
-  only CI. The merge queue deploys each PR to dev, one at a time, and runs the integration tests; the
-  PR merges only if they pass (`dev-passed`, #80). A push to `main` skips dev, which the queue already
+  only CI. The merge queue deploys the PRs queued together to dev as one batch, and runs the
+  integration tests; the batch merges only if they pass (`dev-passed`, #80). A push to `main` skips dev, which the queue already
   ran on that commit, previews prod, and applies it once a maintainer approves. `prod` is skipped
   when the preview shows no changes.
 - `gh workflow run pull-request.yml --ref <branch>` deploys a branch to dev before it's queued. It
