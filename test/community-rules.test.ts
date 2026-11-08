@@ -4,11 +4,23 @@ import { familyPolicies, TEAM_REGISTRATION, teamPolicies } from "../stacks/backe
 describe("the Community rules by login", () => {
   const rules = familyPolicies.flatMap((policy) => policy.rules);
 
-  it("let a family change only whether they share, and nothing else", () => {
+  it("let a household change whether it shares, display names, schools, and phones, and nothing else", () => {
     const writes = rules.filter((rule) => rule.action !== "read");
-    expect(writes).toEqual([
-      expect.objectContaining({ collection: "people", action: "update", fields: ["share_contact"] }),
+    expect(writes.map(({ collection, action, fields }) => ({ collection, action, fields }))).toEqual([
+      { collection: "people", action: "update", fields: ["display_name", "school"] },
+      { collection: "people", action: "update", fields: ["phone"] },
+      { collection: "households", action: "update", fields: ["share_contact"] },
     ]);
+  });
+
+  it("never let a family change an email, which links a login to a person", () => {
+    const writes = rules.filter((rule) => rule.action !== "read");
+    expect(writes.flatMap((rule) => rule.fields)).not.toContain("email");
+  });
+
+  it("give Community one read rule per collection, so the query guard hides nothing from it", () => {
+    const reads = rules.filter((rule) => rule.action === "read").map((rule) => rule.collection);
+    expect(new Set(reads).size).toBe(reads.length);
   });
 
   it("match the signed-in user by their login, never by email", () => {
@@ -39,6 +51,6 @@ describe("the Team rules", () => {
       (rule) => rule.collection === "people" && (rule.fields.includes("email") || rule.fields.includes("phone")),
     );
     expect(shown).toHaveLength(1);
-    expect(JSON.stringify(shown[0]!.permissions)).toContain('"share_contact":{"_eq":true}');
+    expect(JSON.stringify(shown[0]!.permissions)).toContain('"household_id":{"share_contact":{"_eq":true}}');
   });
 });

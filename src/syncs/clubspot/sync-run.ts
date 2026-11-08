@@ -7,7 +7,8 @@ import {
   type Participant,
   type Registration,
 } from "@cyc-seattle/clubspot-sdk";
-import { type ContactRow, type PersonRow } from "../../model/crm/index.ts";
+import { randomUUID } from "node:crypto";
+import { type ContactRow, type HouseholdRow, type PersonRow } from "../../model/crm/index.ts";
 import {
   type ClassRow,
   type ContactPointWithParticipant,
@@ -43,7 +44,8 @@ import { campBackoff, nextSyncState } from "./backoff.ts";
 import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts";
 import { readByIds } from "./directus-batch.ts";
 import { syncOfferings } from "./offerings.ts";
-import { planSharingBackfill, sharingTargets } from "./sharing.ts";
+import { type HouseholdPerson, planHouseholds } from "./households.ts";
+import { planSharingBackfill } from "./sharing.ts";
 import { findDuplicatePeople, MERGE_PERSON_FIELDS, type MergePerson } from "./merge.ts";
 import { runApprovedPersonMerges } from "./merge-executor.ts";
 import { buildParticipantMirrorFields, mergeParticipantMirrorFields, type ParticipantMirrorFields } from "./people.ts";
@@ -939,17 +941,19 @@ async function syncRegistrations(
         );
         const answer = registrationPromotedPlan.patch.share_contact;
         const mirror = participant ? existingParticipantById.get(participant.id) : undefined;
-        const registeredAt = currentRegistrationById.get(registrationCrmId)?.registered_at;
-        // A new or changed answer is the latest, so it replaces the person's own. Only the newest
-        // registration for the sailor speaks for them.
-        if (answer != null && mirror && registeredAt && (isNewestByRegistrationId.get(registration.id) ?? false)) {
-          const guardianLinks = mirror.person_id
-            ? await directus.readItems<ContactRow>("contacts", {
-                filter: { subject_id: { _eq: mirror.person_id }, relationship_type: { _eq: "guardian" } },
-              })
-            : [];
-          for (const personId of sharingTargets(mirror, registeredAt, guardianLinks)) {
-            await directus.updateItem<PersonRow>("people", personId, { share_contact: answer });
+        // A new or changed answer is the latest, so it replaces the household's. Only the newest
+        // registration for the sailor speaks for them. A household made later this run gets the
+        // answer from the backfill instead.
+        if (answer != null && mirror?.person_id && (isNewestByRegistrationId.get(registration.id) ?? false)) {
+          const [sailor] = await readByIds<Pick<PersonRow, "household_id">>(
+            directus,
+            "people",
+            "id",
+            [mirror.person_id],
+            ["household_id"],
+          );
+          if (sailor?.household_id) {
+            await directus.updateItem<HouseholdRow>("households", sailor.household_id, { share_contact: answer });
             fieldsWritten++;
           }
         }
@@ -1064,22 +1068,59 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
     await directus.updateItem<RegistrationRow>("clubspot_registrations", id, patch);
   }
 
-  // After the registration patches, so a registration's answer filled just now counts too.
-  const answered = registrations.map((row) => {
-    const patched = registrationPatches.find((each) => each.id === row.id)?.patch.share_contact;
-    return patched === undefined ? row : { ...row, share_contact: patched };
-  });
-  const guardianLinks = await directus.readItems<ContactRow>("contacts", {
+  return peoplePatches.length;
+}
+
+/**
+ * Makes the households from every guardian link and sailor (`planHouseholds`), then fills each
+ * blank household's answer to the sharing question from its newest registration that gave one.
+ * After the promoted-fields pass, so a registration's answer filled this run counts. Returns the
+ * rows it wrote.
+ */
+async function syncHouseholds(directus: DirectusClient): Promise<number> {
+  const [people, links, participants, households] = await Promise.all([
+    directus.readItems<HouseholdPerson>("people", { limit: -1, fields: ["id", "household_id", "share_contact"] }),
+    directus.readItems<ContactRow>("contacts", {
+      limit: -1,
+      filter: { relationship_type: { _eq: "guardian" } },
+      fields: ["subject_id", "contact_id", "relationship_type"],
+    }),
+    directus.readItems<Pick<ParticipantRow, "id" | "person_id">>("clubspot_participants", {
+      limit: -1,
+      fields: ["id", "person_id"],
+    }),
+    directus.readItems<HouseholdRow>("households", { limit: -1, fields: ["id", "share_contact"] }),
+  ]);
+  const sailors = participants.flatMap(({ person_id }) => (person_id ? [person_id] : []));
+  const plan = planHouseholds(people, links, sailors, households, randomUUID);
+  if (plan.create.length > 0) await directus.createItems<HouseholdRow>("households", plan.create);
+  if (plan.update.length > 0) await directus.updateItems<HouseholdRow>("households", plan.update);
+  if (plan.people.length > 0) await directus.updateItems<PersonRow>("people", plan.people);
+  for (const id of plan.delete) await directus.deleteItem("households", id);
+
+  const householdOf = new Map(plan.people.map((move) => [move.id, move.household_id]));
+  const current = people.map((person) =>
+    householdOf.has(person.id) ? { ...person, household_id: householdOf.get(person.id)! } : person,
+  );
+  const answers = new Map([...households, ...plan.create, ...plan.update].map((row) => [row.id, row]));
+  for (const id of plan.delete) answers.delete(id);
+  const registrations = await directus.readItems<RegistrationRow>("clubspot_registrations", {
     limit: -1,
-    filter: { relationship_type: { _eq: "guardian" } },
-    fields: ["subject_id", "contact_id", "contact_order", "relationship_type"],
+    fields: ["participant_id", "registered_at", "share_contact"],
   });
-  const sharing = planSharingBackfill(answered, participants, guardianLinks, people);
+  const sharing = planSharingBackfill(registrations, participants, current, [...answers.values()]);
   for (const { id, patch } of sharing) {
-    await directus.updateItem<PersonRow>("people", id, patch);
+    await directus.updateItem<HouseholdRow>("households", id, patch);
   }
 
-  return peoplePatches.length + sharing.length;
+  winston.info("Households", {
+    created: plan.create.length,
+    updated: plan.update.length,
+    deleted: plan.delete.length,
+    peopleMoved: plan.people.length,
+    answersFilled: sharing.length,
+  });
+  return plan.create.length + plan.update.length + plan.delete.length + plan.people.length + sharing.length;
 }
 
 interface AuditDetectionResult {
@@ -1223,6 +1264,8 @@ export interface RunSyncResult {
   /** `offerings` and `registrations` rows this run created, changed, or deleted. */
   offeringsWritten: number;
   registrationsWritten: number;
+  /** `households` rows, and people's `household_id`, this run wrote. */
+  householdsWritten: number;
   /** The one CRM field rule's own tally (cyc-seattle/isthmia#137) - see `synced-fields.ts`. */
   fieldsWritten: number;
   fieldsReplacedStaffEdits: number;
@@ -1257,6 +1300,7 @@ function toSyncRunOutcome(result: RunSyncResult, runError: string | undefined): 
       peoplePromoted: result.peoplePromoted,
       offeringsWritten: result.offeringsWritten,
       registrationsWritten: result.registrationsWritten,
+      householdsWritten: result.householdsWritten,
       fieldsWritten: result.fieldsWritten,
       fieldsReplacedStaffEdits: result.fieldsReplacedStaffEdits,
       fieldsBlankSkipped: result.fieldsBlankSkipped,
@@ -1527,6 +1571,17 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
     runError = runError ?? (error instanceof Error ? error.message : String(error));
   }
 
+  // After the merges and the promoted-fields pass, so it sees this run's people and answers.
+  let householdsWritten = 0;
+  try {
+    householdsWritten = await syncHouseholds(directus);
+  } catch (error) {
+    winston.error("Making households from the guardian links failed", {
+      error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+    });
+    runError = runError ?? (error instanceof Error ? error.message : String(error));
+  }
+
   let auditFindingsRaised = 0;
   let auditFindingsResolved = 0;
   try {
@@ -1554,6 +1609,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
     peoplePromoted,
     offeringsWritten,
     registrationsWritten,
+    householdsWritten,
     fieldsWritten,
     fieldsReplacedStaffEdits,
     fieldsBlankSkipped,

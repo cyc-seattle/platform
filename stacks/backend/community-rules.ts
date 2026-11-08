@@ -42,6 +42,9 @@ const MY_CHILD_LINK: Filter = { _and: [{ relationship_type: { _eq: "guardian" } 
 /** The signed-in user and their children. */
 const MY_FAMILY: Filter = { _or: [MY_LOGIN, { my_contacts: MY_CHILD_LINK }] };
 
+/** Everyone in the signed-in user's household. */
+const MY_HOUSEHOLD: Filter = { household_id: { members: MY_LOGIN } };
+
 /** The signed-in user, if they're an adult. Parents' dates of birth are seldom on file, so a parent
  * with none counts too; a sailor with none counts as a child. */
 const ME_AS_ADULT: Filter = {
@@ -55,6 +58,18 @@ const ME_AS_ADULT: Filter = {
     },
   ],
 };
+
+/** Someone with a guardian on file who isn't known to be an adult. A parent has no guardian, so a
+ * co-parent with no date of birth isn't one. */
+const CHILD: Filter = {
+  _and: [
+    { my_contacts: { relationship_type: { _eq: "guardian" } } },
+    { _or: [{ date_of_birth: { _null: true } }, { date_of_birth: { _gt: "$NOW(-18 years)" } }] },
+  ],
+};
+
+/** A row in a household where the signed-in user is an adult. */
+const MY_HOUSEHOLD_AS_ADULT: Filter = { household_id: { members: ME_AS_ADULT } };
 
 /** How long after their last team offering ends someone stays on the team. The group-policies hook
  * uses the same window, so the Team role and the rosters agree. */
@@ -83,10 +98,10 @@ const TEAM_GUARDIAN_LINK: Filter = { _and: [{ relationship_type: { _eq: "guardia
 /** Everyone on a team: the sailors, and their parents with them. */
 const ON_A_TEAM: Filter = { _or: [TEAM_SAILOR, { contact_for: TEAM_GUARDIAN_LINK }] };
 
-/** An adult on a team who chose to share. A minor never shares their own email or phone. */
+/** An adult on a team whose household chose to share. A minor never shares their own email or phone. */
 const SHARES_WITH_TEAMS: Filter = {
   _and: [
-    { share_contact: { _eq: true } },
+    { household_id: { share_contact: { _eq: true } } },
     { _or: [{ _and: [TEAM_SAILOR, ADULT] }, { _and: [{ contact_for: TEAM_GUARDIAN_LINK }, NOT_KNOWN_MINOR] }] },
   ],
 };
@@ -108,22 +123,57 @@ export const familyPolicies: CommunityPolicyData[] = [
     name: "Community: own family",
     icon: "family_restroom",
     description:
-      "Their own family: themselves and their children, what they're signed up for, and their medical information. " +
-      "An adult changes whether they share their own email and phone. See docs/access.md.",
+      "Their own household and family: the people in their household and their details, their children's sign-ups " +
+      "and medical information. An adult in a household changes whether it shares its email and phones, and each " +
+      "person's display name and school, and their own phone and their children's. See docs/access.md.",
     rules: [
       {
         collection: "people",
         action: "read",
-        // The login lets a page find the user's own row, with the one filter the query guard allows on it.
-        fields: ["id", "first_name", "last_name", "share_contact", "directus_user_id"],
-        permissions: MY_FAMILY,
+        // The login lets a page find the user's own row, with the one filter the query guard allows on it. One
+        // rule, so every field reads the same on every row and the guard has nothing to hide from Community.
+        fields: [
+          "id",
+          "first_name",
+          "last_name",
+          "display_name",
+          "email",
+          "phone",
+          "school",
+          "date_of_birth",
+          "household_id",
+          "share_contact",
+          "directus_user_id",
+        ],
+        permissions: { _or: [MY_FAMILY, MY_HOUSEHOLD] },
       },
-      { collection: "people", action: "update", fields: ["share_contact"], permissions: ME_AS_ADULT },
+      // Not email: it links a login to a person (docs/access.md), so changing it could hand one to someone else.
+      {
+        collection: "people",
+        action: "update",
+        fields: ["display_name", "school"],
+        permissions: MY_HOUSEHOLD_AS_ADULT,
+      },
+      {
+        collection: "people",
+        action: "update",
+        fields: ["phone"],
+        permissions: { _or: [ME_AS_ADULT, { _and: [MY_HOUSEHOLD_AS_ADULT, CHILD] }] },
+      },
+      {
+        collection: "households",
+        action: "read",
+        fields: ["id", "share_contact", "members"],
+        permissions: { members: MY_LOGIN },
+      },
+      { collection: "households", action: "update", fields: ["share_contact"], permissions: { members: ME_AS_ADULT } },
       {
         collection: "contacts",
         action: "read",
         fields: ["subject_id", "contact_id", "relationship_type"],
-        permissions: MY_CHILD_LINK,
+        permissions: {
+          _or: [MY_CHILD_LINK, { _and: [{ relationship_type: { _eq: "guardian" } }, { subject_id: MY_HOUSEHOLD }] }],
+        },
       },
       {
         collection: "registrations",

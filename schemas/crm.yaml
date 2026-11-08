@@ -56,6 +56,34 @@ collections:
       versioning: false
     schema:
       name: contacts
+  - collection: households
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: households
+      color: null
+      display_template: "{{members.first_name}} {{members.last_name}}"
+      group: CRM
+      hidden: false
+      icon: home
+      item_duplication_fields: null
+      note: >-
+        A sailor and everyone listed as their parent, together with the parents' other children. Made from the
+        Clubspot sign-ups, so change who's in one by fixing the people and their parents.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: households
   - collection: medical_profiles
     meta:
       accountability: all
@@ -822,6 +850,161 @@ fields:
       data_type: character varying
       default_value: null
       max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: households
+    field: id
+    type: uuid
+    meta:
+      collection: households
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: households
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: households
+    field: members
+    type: alias
+    meta:
+      collection: households
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
+      field: members
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: Everyone in the household.
+      options:
+        template: "{{first_name}} {{last_name}}"
+      readonly: true
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: households
+    field: share_contact
+    type: boolean
+    meta:
+      collection: households
+      conditions: null
+      display: null
+      display_options: null
+      field: share_contact
+      group: null
+      hidden: false
+      interface: boolean
+      note: >-
+        Whether the household's adults share their email and phone with the teams they're on. Blank means never
+        answered, which counts as not shared. A child's own email and phone are never shared.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Shares contact details
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: share_contact
+      table: households
+      data_type: boolean
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: households
+    field: date_created
+    type: timestamp
+    meta:
+      collection: households
+      conditions: null
+      display: datetime
+      display_options:
+        relative: true
+      field: date_created
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - date-created
+      translations:
+        - language: en-US
+          translation: Created
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: date_created
+      table: households
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -1822,9 +2005,11 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: Null means never answered - treated as not shared.
+      note: >-
+        What this adult last answered before households held the answer. Kept for reference only: the
+        household's answer counts now.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 13
@@ -1877,6 +2062,91 @@ fields:
       validation_message: null
       width: full
     schema: null
+  - collection: people
+    field: display_name
+    type: string
+    meta:
+      collection: people
+      conditions: null
+      display: null
+      display_options: null
+      field: display_name
+      group: null
+      hidden: false
+      interface: input
+      note: The name the club's apps show, if the person or their family gave one. Blank shows the first and last name.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 20
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: display_name
+      table: people
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: people
+    field: household_id
+    type: uuid
+    meta:
+      collection: people
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{members.first_name}} {{members.last_name}}"
+      field: household_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Set by the Clubspot sync from the person's parents and children, so change those instead.
+      options:
+        template: "{{members.first_name}} {{members.last_name}}"
+      readonly: true
+      required: false
+      searchable: true
+      sort: 21
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Household
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: household_id
+      table: people
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: true
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: households
+      foreign_key_column: id
   - collection: program_role_assignments
     field: id
     type: uuid
@@ -3242,6 +3512,27 @@ relations:
       constraint_name: program_role_assignments_program_role_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: people
+    field: household_id
+    related_collection: households
+    meta:
+      junction_field: null
+      many_collection: people
+      many_field: household_id
+      one_allowed_collections: null
+      one_collection: households
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: members
+      sort_field: null
+    schema:
+      table: people
+      column: household_id
+      foreign_key_table: households
+      foreign_key_column: id
+      constraint_name: people_household_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
   - collection: contact_points
     field: person_id
     related_collection: people

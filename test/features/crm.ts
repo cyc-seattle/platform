@@ -137,19 +137,50 @@ async function signedIn(personId: string): Promise<User> {
   return user;
 }
 
+const householdOf = async (personId: string) =>
+  (await asAdmin("GET", `/items/people/${personId}?fields=household_id`)).household_id;
 const sharesContact = async (personId: string) =>
-  (await asAdmin("GET", `/items/people/${personId}?fields=share_contact`)).share_contact;
+  (await asAdmin("GET", `/items/people/${personId}?fields=household_id.share_contact`)).household_id?.share_contact;
+const stopSharing = async (user: User, personId: string) => {
+  const { status } = await user.session.request("PATCH", `/items/households/${await householdOf(personId)}`, {
+    share_contact: false,
+  });
+  expect(status).toBeLessThan(300);
+};
 
 const ownSteps: Record<string, ScenarioSteps> = {
+  "A sailor and their parent are in one household": ({ Given, When, Then }) => {
+    const run = clubspotRun();
+
+    Given("a sailor signed up through Clubspot, with a parent", async () => {
+      await seedClass(run);
+      await seedSailor(run);
+    });
+
+    When("the Clubspot sync runs", () => runClubspotSync(run.id("cmp")));
+
+    Then("the sailor and their parent are in the same household", async () => {
+      const sailor = await asAdmin(
+        "GET",
+        `/items/clubspot_participants/${run.id("par")}?fields=person_id.household_id,person_id.my_contacts.contact_id.household_id`,
+      );
+      const household = sailor.person_id.household_id;
+      expect(household).toBeTruthy();
+      expect(
+        sailor.person_id.my_contacts.map(
+          (link: { contact_id: { household_id: string } }) => link.contact_id.household_id,
+        ),
+      ).toEqual([household]);
+    });
+  },
+
   "A parent who stopped sharing says yes on a later sign-up": ({ Given, When, Then }) => {
     const run = clubspotRun();
     let parentId: string;
 
     Given("a parent whose child is on a team, who stopped sharing", async () => {
       parentId = await aParentWhoSaidYes(run);
-      const user = await signedIn(parentId);
-      const { status } = await user.session.request("PATCH", `/items/people/${parentId}`, { share_contact: false });
-      expect(status).toBeLessThan(300);
+      await stopSharing(await signedIn(parentId), parentId);
     });
 
     When("they say yes to sharing when they sign their child up again in Clubspot", async () => {
@@ -176,10 +207,7 @@ const ownSteps: Record<string, ScenarioSteps> = {
       user = await signedIn(parentId);
     });
 
-    When("they stop sharing", async () => {
-      const { status } = await user.session.request("PATCH", `/items/people/${parentId}`, { share_contact: false });
-      expect(status).toBeLessThan(300);
-    });
+    When("they stop sharing", () => stopSharing(user, parentId));
 
     Then("they don't share their email and phone", async () => {
       expect(await sharesContact(parentId)).toBe(false);

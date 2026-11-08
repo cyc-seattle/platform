@@ -25,6 +25,8 @@ interface Person {
   id: string;
   email: string;
   phone?: string;
+  /** Their household, which the Clubspot sync would make from the same parent links. */
+  householdId?: string;
   /** Their registration on the scenario's team, if they sail on it. */
   registrationId?: string;
   entryId?: string;
@@ -104,12 +106,26 @@ async function person(name: string, dateOfBirth: string | null, fields: Row = {}
   return { id, email: address, ...(typeof fields["phone"] === "string" && { phone: fields["phone"] }) };
 }
 
+/**
+ * Puts `who` in a household, as the Clubspot sync would from the same sign-ups and parent links: an
+ * existing one by its id, or a new one with its answer to the sharing question. Only once they're
+ * signed up or linked, and a new household in the same request, since a sync run in between would
+ * take out someone who's neither, and delete a household no one is in. That sync deletes a household
+ * once the run's people are gone, so it isn't cleaned up here.
+ */
+async function joinHousehold(who: Person, home: string | { share_contact: boolean | null }): Promise<void> {
+  const householdId = typeof home === "string" ? home : randomUUID();
+  const household_id = typeof home === "string" ? home : { id: householdId, ...home };
+  await (await admin()).ok("PATCH", `/items/people/${who.id}`, { household_id });
+  who.householdId = householdId;
+}
+
 /** Registers `sailor` for `on`, with their answer to the sharing question. */
 async function register(sailor: Person, on: Team, share: boolean | null): Promise<Person> {
   return { ...sailor, ...(await signUp(sailor.id, on, share)) };
 }
 
-/** A sailor's answer counts for them if they're an adult, and for their parents if not. */
+/** A sailor in a household of their own, whose answer counts for the household. */
 async function sailor(
   name: string,
   on: Team,
@@ -119,8 +135,8 @@ async function sailor(
     fields = {},
   }: { share?: boolean | null; dateOfBirth?: string | null; fields?: Row },
 ): Promise<Person> {
-  const own = dateOfBirth === ADULT ? { share_contact: share } : {};
-  const sailing = await register(await person(name, dateOfBirth, { ...own, ...fields }), on, share);
+  const sailing = await register(await person(name, dateOfBirth, fields), on, share);
+  await joinHousehold(sailing, { share_contact: share });
   const medical = await adminCreate("medical_profiles", { id: randomUUID(), person_id: sailing.id, allergies: "none" });
   return { ...sailing, medicalProfileId: medical.id };
 }
@@ -129,8 +145,12 @@ async function guardianOf(
   child: Person,
   { dateOfBirth = ADULT, share = null }: { dateOfBirth?: string | null; share?: boolean | null } = {},
 ): Promise<Person> {
-  const guardian = await person("guardian", dateOfBirth, { share_contact: share });
+  const guardian = await person("guardian", dateOfBirth);
   await adminCreate("contacts", { subject_id: child.id, contact_id: guardian.id, relationship_type: "guardian" });
+  await joinHousehold(guardian, child.householdId!);
+  if (share !== null) {
+    await (await admin()).ok("PATCH", `/items/households/${child.householdId}`, { share_contact: share });
+  }
   child.guardian = guardian;
   return guardian;
 }
@@ -294,13 +314,13 @@ Step("a teammate who is a child, and their parent, who chose to share", async ()
 Step(
   "a teammate who is a child, with an email and phone of their own, and their parent, who chose to share",
   async () => {
-    // Their own answer is yes too, so only their age hides their email and phone.
-    const teammate = await aTeammate({ share: true, fields: { phone: phone(), share_contact: true } });
+    // Their household's answer is yes, so only their age hides their email and phone.
+    const teammate = await aTeammate({ share: true, fields: { phone: phone() } });
     call("the teammate's parent", await guardianOf(teammate, { share: true }));
   },
 );
 Step("a teammate with no date of birth on file, and an email and phone of their own", async () => {
-  await aTeammate({ share: true, dateOfBirth: null, fields: { phone: phone(), share_contact: true } });
+  await aTeammate({ share: true, dateOfBirth: null, fields: { phone: phone() } });
 });
 
 const SCHOOL = "Example Middle School";
@@ -472,12 +492,12 @@ Step("a teammate who hasn't answered the sharing question, and their parent, who
 });
 
 const byLogin = (login: string) =>
-  `?fields=id,share_contact&filter=${encodeURIComponent(JSON.stringify({ directus_user_id: { _eq: login } }))}`;
+  `?fields=id,household_id.share_contact&filter=${encodeURIComponent(JSON.stringify({ directus_user_id: { _eq: login } }))}`;
 Step("they look themselves up by their login", async () => {
   scene.rows = await read(await theirSession(), "people", byLogin("$CURRENT_USER"));
 });
-Step("they see only themselves, with whether they share", async () => {
-  expect(scene.rows).toEqual([{ id: scene.me!.id, share_contact: await shares(scene.me!) }]);
+Step("they see only themselves, with whether their household shares", async () => {
+  expect(scene.rows).toEqual([{ id: scene.me!.id, household_id: { share_contact: await shares(scene.me!) } }]);
 });
 Step("they look the teammate's parent up by their login", async () => {
   const { status } = await (
@@ -486,13 +506,14 @@ Step("they look the teammate's parent up by their login", async () => {
   expectRefusal(() => expect(status).toBe(403));
 });
 
-/** Changes whether `who` shares their email and phone, as the signed-in user. */
+/** Changes whether `who`'s household shares its email and phone, as the signed-in user. */
 const sharing = async (who: Person, value: boolean) =>
-  (await (await theirSession()).request("PATCH", `/items/people/${who.id}`, { share_contact: value })).status;
+  (await (await theirSession()).request("PATCH", `/items/households/${who.householdId}`, { share_contact: value }))
+    .status;
 const shares = async (who: Person) =>
-  (await (await admin()).ok("GET", `/items/people/${who.id}?fields=share_contact`)).share_contact;
+  (await (await admin()).ok("GET", `/items/households/${who.householdId}?fields=share_contact`)).share_contact;
 
-Step("they can't change whether they share", async () => {
+Step("they can't change whether their household shares", async () => {
   const sailing = the("the sailor");
   expect(await sharing(sailing, true)).toBe(403);
   expect(await shareContact(await asThe("the sailor"), sailing.registrationId, true)).toBeGreaterThanOrEqual(400);
@@ -503,11 +524,65 @@ Step("they can stop sharing and share again", async () => {
     expect(await shares(scene.me!)).toBe(value);
   }
 });
-Step("they can't change whether the teammate's parent shares", async () => {
+Step("they can't change whether the teammate's household shares", async () => {
   const parent = the("the teammate's parent");
   expect(await sharing(parent, true)).toBe(403);
   expect(await shares(parent)).toBeNull();
 });
+// A household's details.
+
+Step("a parent whose child is signed up for a program, and the child's other parent", async () => {
+  await aGuardian("Community");
+  const other = call("the other parent", await guardianOf(the("the child")));
+  other.phone = phone();
+  await (await admin()).ok("PATCH", `/items/people/${other.id}`, { phone: other.phone });
+});
+Step("they look at their household", async () => {
+  const fields = "members.id,members.first_name,members.email,members.phone";
+  const [home] = await read(await theirSession(), "households", `?fields=${fields}`);
+  scene.rows = (home?.["members"] as Row[] | undefined) ?? [];
+});
+Step("they see the other parent's email and phone", () => {
+  const other = the("the other parent");
+  expect(rowOf(other)).toMatchObject({ email: other.email, phone: other.phone });
+});
+
+/** Changes `who`'s details as the signed-in user, and returns the status. */
+const edit = async (who: Person, details: Row) =>
+  (await (await theirSession()).request("PATCH", `/items/people/${who.id}`, details)).status;
+const detailsOf = async (who: Person, fields: string[]) =>
+  (await (await admin()).ok("GET", `/items/people/${who.id}?fields=${fields.join(",")}`)) as Row;
+
+Step("they can change their child's display name and school", async () => {
+  const child = the("the child");
+  const details = { display_name: `Skipper ${runId}`, school: SCHOOL };
+  expect(await edit(child, details)).toBeLessThan(300);
+  expect(await detailsOf(child, Object.keys(details))).toEqual(details);
+});
+Step("they can't change their own email or their child's", async () => {
+  for (const who of [scene.me!, the("the child")]) {
+    expect(await edit(who, { email: email("changed") })).toBe(403);
+    expect((await detailsOf(who, ["email"]))["email"]).toBe(who.email);
+  }
+});
+Step("they can change their own phone and their child's", async () => {
+  for (const who of [scene.me!, the("the child")]) {
+    const number = phone();
+    expect(await edit(who, { phone: number })).toBeLessThan(300);
+    expect((await detailsOf(who, ["phone"]))["phone"]).toBe(number);
+  }
+});
+Step("they can't change the other parent's phone", async () => {
+  const other = the("the other parent");
+  expect(await edit(other, { phone: phone() })).toBe(403);
+  expect((await detailsOf(other, ["phone"]))["phone"]).toBe(other.phone);
+});
+Step("they can't change the teammate's display name", async () => {
+  const teammate = the("the teammate");
+  expect(await edit(teammate, { display_name: "Changed" })).toBe(403);
+  expect((await detailsOf(teammate, ["display_name"]))["display_name"]).toBeNull();
+});
+
 // A sailor's program is their entry's class, and Clubspot's camp holds the class.
 Step("they can't move their child to another program", async () => {
   const other = await team();

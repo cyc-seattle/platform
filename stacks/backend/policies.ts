@@ -223,6 +223,7 @@ export const crewRules: PermissionRuleInput[] = [
     "people",
     "contacts",
     "contact_points",
+    "households",
     MEDICAL,
     "programs",
     "clubspot_camps",

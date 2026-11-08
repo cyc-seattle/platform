@@ -70,6 +70,16 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
       table(collection!).push(...created);
       return jsonResponse(200, { data: created });
     }
+    if (method === "PATCH" && id === undefined && (init!.body as string).startsWith("[")) {
+      // A batch update, each item by its id.
+      const items = JSON.parse(init!.body as string) as Record<string, unknown>[];
+      const rows = table(collection!);
+      const updated = items.map((item) => {
+        const index = rows.findIndex((row) => row["id"] === item["id"]);
+        return index === -1 ? item : (rows[index] = { ...rows[index], ...item });
+      });
+      return jsonResponse(200, { data: updated });
+    }
     if (method === "PATCH" && id === undefined) {
       // An update by query, as the queue claims a task.
       const { query, data } = JSON.parse(init!.body as string) as {
@@ -749,6 +759,49 @@ describe("runSync", () => {
 
     expect(result).toMatchObject({ status: "ok", peoplePromoted: 1 });
     expect(tables.get("people")![0]).toMatchObject({ school: "Roosevelt High" });
+  });
+
+  it("makes a household of a sailor and their parents, after the camp loop, with the parents' answers", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      clubspot_participants: [{ id: "participant-1", person_id: "kid" }],
+      people: [
+        { id: "kid", household_id: null, share_contact: null },
+        { id: "mom", household_id: null, share_contact: true },
+        { id: "dad", household_id: null, share_contact: null },
+        { id: "aunt", household_id: null, share_contact: false },
+      ],
+      contacts: [
+        { id: "c-1", subject_id: "kid", contact_id: "mom", relationship_type: "guardian" },
+        { id: "c-2", subject_id: "kid", contact_id: "dad", relationship_type: "guardian" },
+        { id: "c-3", subject_id: "kid", contact_id: "aunt", relationship_type: "emergency_contact" },
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runSync(runOptions(new DirectusClient(baseUrl, token), new Date(), makeGateway()));
+
+    expect(result).toMatchObject({ status: "ok", householdsWritten: 4 });
+    const [household] = tables.get("households")!;
+    expect(household).toMatchObject({ share_contact: true });
+    const householdOf = Object.fromEntries(tables.get("people")!.map((row) => [row["id"], row["household_id"]]));
+    expect(householdOf).toEqual({ kid: household!["id"], mom: household!["id"], dad: household!["id"], aunt: null });
+  });
+
+  it("fills a blank household's answer from the newest registration of a sailor in it", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      clubspot_participants: [{ id: "participant-1", person_id: "kid" }],
+      clubspot_registrations: [
+        { id: "reg-1", participant_id: "participant-1", registered_at: "2025-01-01T00:00:00Z", share_contact: true },
+        { id: "reg-2", participant_id: "participant-1", registered_at: "2026-01-01T00:00:00Z", share_contact: false },
+      ],
+      people: [{ id: "kid", household_id: "home", share_contact: null }],
+      households: [{ id: "home", share_contact: null }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await runSync(runOptions(new DirectusClient(baseUrl, token), new Date(), makeGateway()));
+
+    expect(tables.get("households")).toEqual([{ id: "home", share_contact: false }]);
   });
 
   // The one CRM field rule (cyc-seattle/isthmia#137) applies to promoted fields too, per-registration, inside the

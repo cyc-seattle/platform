@@ -303,8 +303,9 @@ for (const action of ["create", "read", "update", "delete"] as const) {
   );
 }
 
-// The sync derives offerings and registrations from the mirrors, and deletes one whose source is gone.
-for (const collection of ["offerings", "registrations"]) {
+// The sync derives offerings, registrations, and households from the mirrors and guardian links, and
+// deletes one whose source is gone.
+for (const collection of ["offerings", "registrations", "households"]) {
   for (const action of ["create", "read", "update", "delete"] as const) {
     permissionRule(
       `crm-clubspot-sync-${collection}-${action}`,

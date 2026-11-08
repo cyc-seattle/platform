@@ -25,6 +25,7 @@ function mergePerson(overrides: Partial<MergePerson> & { id: string }): MergePer
     postal_code: null,
     school: null,
     share_contact: null,
+    display_name: null,
     directus_user_id: null,
     ...overrides,
   };
