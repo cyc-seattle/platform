@@ -8,7 +8,7 @@ describe("the Community rules by login", () => {
     const writes = rules.filter((rule) => rule.action !== "read");
     expect(writes.map(({ collection, action, fields }) => ({ collection, action, fields }))).toEqual([
       { collection: "people", action: "update", fields: ["phone"] },
-      { collection: "people", action: "update", fields: ["display_name", "school"] },
+      { collection: "people", action: "update", fields: ["school", "display_name"] },
       { collection: "households", action: "update", fields: ["share_contact"] },
     ]);
   });

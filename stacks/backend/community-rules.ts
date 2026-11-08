@@ -164,7 +164,7 @@ export const familyPolicies: CommunityPolicyData[] = [
       {
         collection: "people",
         action: "update",
-        fields: ["display_name", "school"],
+        fields: ["school", "display_name"],
         permissions: MY_HOUSEHOLD_AS_ADULT,
       },
       {
