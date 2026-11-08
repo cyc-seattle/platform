@@ -201,12 +201,18 @@ async function cronJobRunning(jobs: string, cronUid: string): Promise<boolean> {
  * Runs a CronJob once, as `kubectl create job --from=cronjob/<name>` does, and waits for it. Dev's
  * sync CronJobs are suspended, so no scheduled run competes with it (cyc-seattle/isthmia#271). Each
  * sync's feature runs it once, to prove its image and config; the rest run the sync in-process.
+ * `env` adds to the container's, such as to scope the run to the test's own rows.
  */
-export function runCronJob(cronJob: string, runId: string, timeoutMs = 20 * 60_000): Promise<void> {
-  return oneAtATime(cronJob, () => runJob(cronJob, runId, timeoutMs));
+export function runCronJob(
+  cronJob: string,
+  runId: string,
+  env: Record<string, string> = {},
+  timeoutMs = 20 * 60_000,
+): Promise<void> {
+  return oneAtATime(cronJob, () => runJob(cronJob, runId, env, timeoutMs));
 }
 
-async function runJob(cronJob: string, runId: string, timeoutMs: number): Promise<void> {
+async function runJob(cronJob: string, runId: string, env: Record<string, string>, timeoutMs: number): Promise<void> {
   const cron = await devKube("GET", `${await namespaced("batch/v1", "cronjobs")}/${cronJob}`);
   if (cron.status !== 200) {
     throw new Error(`Can't read the CronJob ${cronJob}: ${cron.status} ${JSON.stringify(cron.body)}`);
@@ -223,6 +229,9 @@ async function runJob(cronJob: string, runId: string, timeoutMs: number): Promis
     await new Promise((resolve) => setTimeout(resolve, 10_000));
   }
 
+  const spec = structuredClone(cron.body.spec.jobTemplate.spec);
+  const container = spec.template.spec.containers[0];
+  container.env = [...(container.env ?? []), ...Object.entries(env).map(([name, value]) => ({ name, value }))];
   const created = await devKube("POST", jobs, {
     apiVersion: "batch/v1",
     kind: "Job",
@@ -235,7 +244,7 @@ async function runJob(cronJob: string, runId: string, timeoutMs: number): Promis
         { apiVersion: "batch/v1", kind: "CronJob", name: cronJob, uid: cron.body.metadata.uid, controller: true },
       ],
     },
-    spec: { ...cron.body.spec.jobTemplate.spec, ttlSecondsAfterFinished: 3600 },
+    spec: { ...spec, ttlSecondsAfterFinished: 3600 },
   });
   if (created.status !== 201) {
     throw new Error(`Can't create the Job ${name}: ${created.status} ${JSON.stringify(created.body)}`);
