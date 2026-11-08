@@ -108,7 +108,9 @@ const program = new Command("clubspot-sync")
       .makeOptionMandatory(),
   )
   .option("--dry-run", "Log the writes the sync would make, without making them")
-  .option("--camp <id>", "Sync only this camp, bypassing discovery and the backoff check")
+  .addOption(
+    new Option("--camp <id>", "Sync only this camp, bypassing discovery and the backoff check").env("CLUBSPOT_CAMP_ID"),
+  )
   .option(
     "--seed-contact-points",
     "One-time migration: backfill contact_points from the participants mirror, then add a staff row for any people.email/phone with no contact point yet (migration step 4). Bypasses the camp sync entirely.",
