@@ -1,6 +1,6 @@
 name: pull-request
 
-# Dev is one shared environment, so only the merge queue deploys to it, one PR at a time, and a PR's
+# Dev is one shared environment, so only the merge queue deploys to it, a batch at a time, and a PR's
 # push runs only CI (#69, #80). The queue tests the commit that lands on main, so main's push goes
 # straight to prod.
 on:
@@ -19,7 +19,7 @@ permissions:
 jobs:
   ci:
     if: github.ref != 'refs/heads/main'
-    uses: cyc-seattle/.github/.github/workflows/ci.yml@v3.0.0
+    uses: cyc-seattle/.github/.github/workflows/ci.yml@v3.2.0
   # A queued PR that changes only docs or CI deploys nothing. A manual deploy leaves projects empty,
   # so it deploys them all.
   changes:
@@ -46,7 +46,7 @@ jobs:
         (github.event_name == 'merge_group' && needs.changes.outputs.projects != '') ||
         (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
       )
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.2.0
     permissions:
       id-token: write
       contents: read
@@ -82,7 +82,7 @@ jobs:
   # main requires a reviewed PR (cyc-seattle/isthmia#215).
   prod-preview:
     if: github.ref == 'refs/heads/main'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.2.0
     permissions:
       id-token: write
       contents: read
@@ -93,7 +93,7 @@ jobs:
   prod:
     needs: prod-preview
     if: needs.prod-preview.outputs.changes == 'true'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.2.0
     permissions:
       id-token: write
       contents: read

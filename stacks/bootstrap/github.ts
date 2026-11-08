@@ -11,8 +11,8 @@ export type StandardRepositoryArgs = github.RepositoryArgs & {
   /** Approving reviews `main` needs. Org admins bypass it. Defaults to 0. */
   requiredApprovingReviewCount?: number;
   /**
-   * Merges PRs through a merge queue, one at a time, so a repo that deploys each queued PR to a
-   * shared dev uses it in turn (#80). Every required check must also report on `merge_group`, or the
+   * Merges PRs through a merge queue in batches, so a repo that deploys queued PRs to a shared dev
+   * deploys and tests each batch once (#80). The repo's `deploy.yml` must be v3.2.0 or later. Every required check must also report on `merge_group`, or the
    * queue waits for it until it times out. Defaults to false.
    */
   mergeQueue?: boolean;
@@ -124,17 +124,19 @@ export class StandardRepository extends github.Repository {
           ? { requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) } }
           : {}),
         // The queue squashes. An org admin bypasses it to keep a branch's history with a merge commit.
-        // A dev deploy and its integration tests take about 20 minutes.
+        // Every entry builds, but deploy.yml deploys only the newest, and HEADGREEN merges the batch
+        // when it passes. A dev deploy and its integration tests take about 20 minutes, and a failed
+        // batch retries the PRs ahead of the one that failed, one run at a time.
         ...(mergeQueue
           ? {
               mergeQueue: {
                 mergeMethod: "SQUASH",
-                groupingStrategy: "ALLGREEN",
-                maxEntriesToBuild: 1,
+                groupingStrategy: "HEADGREEN",
+                maxEntriesToBuild: 100,
                 minEntriesToMerge: 1,
-                maxEntriesToMerge: 1,
+                maxEntriesToMerge: 100,
                 minEntriesToMergeWaitMinutes: 0,
-                checkResponseTimeoutMinutes: 60,
+                checkResponseTimeoutMinutes: 120,
               },
             }
           : {}),

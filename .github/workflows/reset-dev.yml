@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   reset:
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.2.0
     permissions:
       id-token: write
       contents: read

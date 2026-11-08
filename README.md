@@ -107,9 +107,11 @@ GitHub environment that holds its identity and state bucket:
 | Run by hand, from a branch | `ci`, then `dev`                                                                               |
 | Run by hand, from `main`   | `prod-preview`, then `prod`                                                                    |
 
-Dev is shared, so only the merge queue deploys to it, one PR at a time (#69, #80). The queue
-requires `dev-passed`, so a PR merges only once its dev deploy and the integration tests pass, and
-`main` gets the exact commit the queue tested. A queued PR of only docs or CI skips `dev`. To try a
+Dev is shared, so only the merge queue deploys to it (#69, #80). PRs queued together deploy and
+test as one batch: each queued PR's run skips dev when a newer PR is queued behind it, and the newest
+tests them all. The queue requires `dev-passed`, so a batch merges only once its dev deploy and the
+integration tests pass, and `main` gets the exact commit the queue tested, in one push. If the
+newest PR fails, the queue drops it and the rest of the batch deploys without it. A queued PR of only docs or CI skips `dev`. To try a
 branch on dev before queueing it, run `gh workflow run pull-request.yml --ref <branch>`.
 
 `prod-preview` runs `mise run preview` as `deploy-runner` and writes the diff to the job summary.
