@@ -301,7 +301,6 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     const copy = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
     return { id: randomUUID(), version_set_id: row["version_sets@draft"], version_id: copy.id };
   },
-  version_set_activations: async () => ({ id: randomUUID(), version_set_id: row["version_sets@saved"] }),
   plan_pools: async (fixed) => versioned(fixed, { name: `Pool ${key("pool")}` }),
   plan_staff_levels: async (fixed) =>
     versioned(fixed, { name: `Level ${key("level")}`, pay_type: "hourly", hourly_rate_cents: 2_500 }),
@@ -474,7 +473,6 @@ export const changes: Record<string, () => Row> = {
   version_sets: () => ({ message: "A changed test note." }),
   // The database fills it in again from the member's copy.
   version_set_members: () => ({ plan_id: null }),
-  version_set_activations: () => ({ activated_at: new Date().toISOString() }),
   plan_pools: () => ({ name: `Pool ${key("pool")}` }),
   plan_staff_levels: () => ({ hourly_rate_cents: 2_600 }),
   plan_offerings: () => ({ price_cents: 52_000 }),
@@ -658,7 +656,6 @@ async function createPlanRows(): Promise<void> {
   // copy goes in too, in place of the copy of the program area's plan.
   await copied(row["version_sets@draft"]!);
   await replaceAreaCopy(row["version_sets@draft"]!, row["plans"]!, row["plan_versions@draft"]!);
-  await make("version_set_activations", "version_set_activations");
   // Read again for what changed after they were made: saving, results, and copies.
   for (const [name, collection] of [
     ["plans", "plans"],

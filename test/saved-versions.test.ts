@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  ACTIVATION_STAYS,
   databaseError,
   guard,
   MEMBERS_FIXED,
@@ -10,6 +9,7 @@ import {
   RESULTS_BY_SAVE,
   SAVED_WITH_SET,
   SET_STAYS,
+  STAYS_ACTIVE,
   type FinancialPlan,
   type Lookup,
   type Plan,
@@ -25,6 +25,7 @@ const versions: Record<string, Version> = {
 const sets: Record<string, FinancialPlan> = {
   draft: { id: "draft", status: "draft" },
   saved: { id: "saved", status: "saved" },
+  active: { id: "active", status: "active" },
 };
 // Each offering is named for the version it belongs to.
 const config = {
@@ -179,34 +180,30 @@ describe("the saved-versions hook", () => {
   });
 
   describe("marking a Financial Plan active", () => {
-    it("takes a saved one, and records who marked it and when", async () => {
-      await expect(
-        check({
-          collection: "version_set_activations",
-          event: "create",
-          payload: { version_set_id: "saved", activated_by: "x" },
-        }),
-      ).resolves.toEqual({ version_set_id: "saved", activated_by: "planner", activated_at: now });
+    it("takes a saved one, with or without its note", async () => {
+      for (const payload of [{ status: "active" }, { status: "active", message: "Adopted" }]) {
+        await expect(check({ collection: "version_sets", event: "update", payload, keys: ["saved"] })).resolves.toEqual(
+          payload,
+        );
+      }
     });
 
     it("refuses a draft", async () => {
       await expect(
-        check({ collection: "version_set_activations", event: "create", payload: { version_set_id: "draft" } }),
+        check({ collection: "version_sets", event: "update", payload: { status: "active" }, keys: ["draft"] }),
       ).rejects.toThrow(ONLY_SAVED_ACTIVE);
     });
 
-    it("adds to the year's history, which no one changes", async () => {
+    it("keeps an active one as it is, apart from its note, until another is marked active", async () => {
+      const update = (payload: Record<string, unknown>) =>
+        check({ collection: "version_sets", event: "update", payload, keys: ["active"] });
+      await expect(update({ message: "Adopted" })).resolves.toEqual({ message: "Adopted" });
+      await expect(update({ status: "active" })).resolves.toEqual({ status: "active" });
+      for (const status of ["saved", "draft"]) await expect(update({ status })).rejects.toThrow(STAYS_ACTIVE);
+      await expect(update({ name: "Changed" })).rejects.toThrow(SET_STAYS);
       await expect(
-        check({ collection: "version_set_activations", event: "update", payload: {}, keys: ["a"] }),
-      ).rejects.toThrow(ACTIVATION_STAYS);
-      const write: Omit<Write, "now"> = {
-        collection: "version_set_activations",
-        event: "delete",
-        payload: ["a"],
-        keys: ["a"],
-      };
-      await expect(check(write)).rejects.toThrow(ACTIVATION_STAYS);
-      await expect(check(write, true)).resolves.toEqual(["a"]);
+        check({ collection: "version_sets", event: "delete", payload: ["active"], keys: ["active"] }),
+      ).rejects.toThrow(SET_STAYS);
     });
   });
 

@@ -140,7 +140,6 @@ erDiagram
     version_sets ||--o{ version_set_members : holds
     plans ||--o{ version_set_members : "held in"
     plan_versions ||--o| version_set_members : "held copy"
-    version_sets ||--o{ version_set_activations : "marked active"
 
     plans {
         uuid id PK
@@ -168,7 +167,7 @@ erDiagram
         int fiscal_year "the plan year"
         string name
         text message "its note, which can change after it's saved"
-        string status "draft|saved"
+        string status "draft|saved|active, one active for its organization and year"
         uuid parent_id FK "the Financial Plan it started from"
         uuid saved_by
         timestamp saved_at
@@ -179,12 +178,6 @@ erDiagram
         uuid version_set_id FK
         uuid plan_id FK "filled in from the copy"
         uuid version_id FK "unique: a copy is in one Financial Plan"
-    }
-    version_set_activations {
-        uuid version_set_id FK "a saved Financial Plan"
-        timestamp activated_at
-        uuid activated_by
-        int sequence "the highest for the organization and year is active"
     }
 ```
 
@@ -198,18 +191,18 @@ A Plan Writer saves a Financial Plan by setting its `status` to `saved`. Saving 
 
 A saved Financial Plan doesn't copy the catalog. Recalculating an old one uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
 
-A planner marks a saved Financial Plan active by adding a `version_set_activations` row. The active one for an organization and year is the one in the row with the highest `sequence`, which the database sets, with `activated_at`, under a lock on the organization and year, so no two marks tie. Marking another one active replaces it, and no one changes or deletes a mark, so the history stays.
+A Plan Writer marks a saved Financial Plan active by setting its `status` to `active`. An active Financial Plan is a saved one: it's frozen the same way, and has the same results. An organization's year has at most one, which a partial unique index on `version_sets` keeps. Marking one active sets the one active before it back to `saved`, in the same statement. No one sets an active one back by hand. Directus's revisions record who marked one active, and when (cyc-seattle/sail-team#50).
 
 #### A saved Financial Plan never changes
 
 A saved Financial Plan, every plan copy in it, and every row in those, never change, even for an admin. Directus skips permissions for an admin, so two things enforce it:
 
-- The `saved-versions` hook (`stacks/backend/saved-versions.cjs`) refuses such a request with a 403 and a clear reason. Directus runs its filters for every user. The hook also stamps who saved a Financial Plan and who marked one active. A write that skips the hook, such as a flow's data step, leaves `saved_by` and `activated_by` empty.
+- The `saved-versions` hook (`stacks/backend/saved-versions.cjs`) refuses such a request with a 403 and a clear reason. Directus runs its filters for every user. The hook also stamps who saved a Financial Plan. A write that skips the hook, such as a flow's data step, leaves `saved_by` empty.
 - Database triggers refuse the same writes on every path, including the ones that skip Directus's filters, such as a flow's data steps. The hook installs them when Directus starts, and again after each schema change if they've changed or a table lost its trigger. An install gives up after 5 seconds waiting for a lock, and logs the failure. The install also drops the unique indexes `plans` once had, which allowed one plan per product or year. The `saved-versions-check` step of the `backend` deploy, which runs whenever the schema or the triggers change, fails the deploy if a planning table lacks its trigger. Each one locks the copy it checks until the write commits, so a Financial Plan can't be saved while a write to one of its rows is still open. Directus shows a trigger's refusal with its reason when it creates or updates a row. When it deletes one, it answers with a 500, which shows the reason only to an admin.
 
 Together they refuse:
 
-- changing a saved Financial Plan, apart from its note, turning it back into a draft, or deleting it
+- changing a saved Financial Plan, apart from its note and marking it active, turning it back into a draft, or deleting it
 - saving a Financial Plan without an Operations Plan, or without a `platform_version`
 - a new Financial Plan that isn't a draft, or one that starts from another organization's or year's
 - changing a Financial Plan's organization, year, or parent
@@ -221,12 +214,12 @@ Together they refuse:
 - a row that links to a row in another copy, such as an activity whose `offering_id` is another copy's offering
 - a Program Plan without its program area, or an Operations Plan with one
 - writing a Financial Plan's results, except by the hook, once, for a saved one
-- marking a draft active, or changing or deleting a mark
+- marking a draft active, or setting an active one back to saved, except by marking another one active
 - changing a plan's kind, program area, organization, or year once it's in a Financial Plan or has a saved copy
 
 Every foreign key from a plan row restricts delete, so deleting a catalog row a plan uses, or a plan with copies, fails instead of cascading into a saved one. Archive a plan instead of deleting it. Deleting a draft Financial Plan takes its plans out of it, and leaves the copies.
 
-An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved Financial Plan, its plans and their rows, its marks and its results, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
+An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved Financial Plan, its plans and their rows, and its results, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
 
 ### Program Plan (one copy)
 

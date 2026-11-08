@@ -262,16 +262,11 @@ export const defaultViews: DefaultView[] = [
     sort: ["version_set_id.name", "code"],
     fields: ["message", "code", "version_set_id"],
   },
-  // Financial Plans, by year, drafts first, then the newest saved.
+  // Financial Plans, by year: the active one, then drafts, then the newest saved.
   {
     collection: "version_sets",
     sort: ["-fiscal_year", "status", "-saved_at"],
     fields: ["name", "fiscal_year", "status", "parent_id", "saved_at", "message"],
-  },
-  {
-    collection: "version_set_activations",
-    sort: ["-activated_at"],
-    fields: ["version_set_id", "activated_at"],
   },
   {
     collection: "version_set_members",

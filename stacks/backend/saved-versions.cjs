@@ -2,9 +2,10 @@
 // extension's folder has no node_modules of its own.
 //
 // Keeps a saved Financial Plan, and every plan in it, from changing, for every user, admins
-// included (docs/planning-schema.md). Its filters refuse such a request with a clear 403, and stamp
-// who saved a Financial Plan and who marked one active. Directus skips filters on some paths, such
-// as a flow's data steps, so the database triggers it installs refuse the same writes on every path.
+// included (docs/planning-schema.md), apart from marking one active. Its filters refuse such a
+// request with a clear 403, and stamp who saved a Financial Plan. Directus skips filters on some
+// paths, such as a flow's data steps, so the database triggers it installs refuse the same writes on
+// every path.
 // It also copies a new Financial Plan's parent into it, and works out a saved one's results.
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
@@ -18,10 +19,9 @@ const PLANS = "plans";
 const VERSIONS = "plan_versions";
 // Written last when a Financial Plan's results go in, so one that has it has them all.
 const RESULTS = "plan_results";
-// Financial Plans, their plans, and the log of which one is active.
+// Financial Plans, and their plans.
 const SETS = "version_sets";
 const MEMBERS = "version_set_members";
-const SET_ACTIVATIONS = "version_set_activations";
 
 const REFUSED = "A saved plan can't be changed. Start a new Financial Plan from the one it's in.";
 const NEW_DRAFT = "A new plan copy starts as a draft.";
@@ -35,7 +35,8 @@ const PLAN_FIXED =
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
 const RESULTS_BY_SAVE = "A Financial Plan's results are worked out when it's saved, and can't be written by hand.";
 const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
-const SET_STAYS = "A saved Financial Plan can't be changed, apart from its note. Start a new one from it.";
+const SET_STAYS =
+  "A saved Financial Plan can't be changed, apart from its note and marking it active. Start a new one from it.";
 const SET_FIXED = "A Financial Plan's organization, year, and parent can't change.";
 const PARENT_SAME_YEAR = "A Financial Plan can only start from one for the same organization and year.";
 const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's saved.";
@@ -44,7 +45,7 @@ const MEMBER_DRAFT = "Only a draft plan can be added to a Financial Plan.";
 const MEMBER_YEAR = "A plan in a Financial Plan must be for the same organization and year.";
 const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
 const IN_ANOTHER = "A plan copy is in only one Financial Plan.";
-const ACTIVATION_STAYS = "A mark stays in the year's history. Mark another Financial Plan active instead.";
+const STAYS_ACTIVE = "An active Financial Plan stays active until another one for its year is marked active.";
 const ONLY_SAVED_ACTIVE = "Only a saved Financial Plan can be marked active.";
 
 /** Each reason a trigger gives, which the hook answers with its status. */
@@ -53,7 +54,7 @@ const REASONS = {
   [PLAN_FIXED]: 403,
   [SET_STAYS]: 403,
   [MEMBERS_FIXED]: 403,
-  [ACTIVATION_STAYS]: 403,
+  [STAYS_ACTIVE]: 403,
   [RESULTS_BY_SAVE]: 403,
   [NEW_DRAFT]: 400,
   [SAVED_WITH_SET]: 400,
@@ -74,6 +75,11 @@ const REASONS = {
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
+
+/** Whether a Financial Plan's status is saved, or active, which is a saved one marked active. */
+function isSaved(status) {
+  return status === "saved" || status === "active";
+}
 
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
 function refuse(reason, status = 403) {
@@ -110,7 +116,7 @@ function unstamped(payload, fields) {
 async function guard({ collection, event, payload, keys = [], user, now }, config, lookup) {
   const saved = async (ids) =>
     ids.length > 0 && (await lookup.versions(ids)).some((version) => version.status === "saved");
-  const savedSet = async (ids) => ids.length > 0 && (await lookup.sets(ids)).some((set) => set.status === "saved");
+  const savedSet = async (ids) => ids.length > 0 && (await lookup.sets(ids)).some((set) => isSaved(set.status));
 
   if (collection === PLANS) {
     if (event === "delete" || (event === "update" && !("kind" in payload) && !("program_area_id" in payload))) {
@@ -140,18 +146,6 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     return unstamped(payload, ["saved_by", "saved_at", "platform_version"]);
   }
 
-  if (collection === SET_ACTIVATIONS) {
-    if (event === "update") throw refuse(ACTIVATION_STAYS);
-    if (event === "delete") {
-      if (!(await lookup.deletesSaved(user))) throw refuse(ACTIVATION_STAYS);
-      return payload;
-    }
-    const [set] = await lookup.sets([keyOf(payload.version_set_id)].filter(Boolean));
-    if (set?.status !== "saved") throw refuse(ONLY_SAVED_ACTIVE, 400);
-    // The trigger sets `activated_at` again, and `sequence`.
-    return { ...payload, activated_by: user ?? null, activated_at: now };
-  }
-
   if (collection === SETS) {
     const stamps = ["saved_by", "saved_at", "platform_version"];
     if (event === "create") {
@@ -162,11 +156,20 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
       if ((await savedSet(keys)) && !(await lookup.deletesSaved(user))) throw refuse(SET_STAYS);
       return payload;
     }
-    if (await savedSet(keys)) {
-      // Only its note changes, such as "Reviewed with the board".
-      if (Object.keys(payload).some((field) => field !== "message")) throw refuse(SET_STAYS);
+    const sets = await lookup.sets(keys);
+    if (sets.some((set) => isSaved(set.status))) {
+      // Only its note changes, such as "Reviewed with the board", and a saved one can be marked active.
+      if (Object.keys(payload).some((field) => field !== "message" && field !== "status")) throw refuse(SET_STAYS);
+      if ("status" in payload) {
+        for (const set of sets) {
+          if (payload.status === set.status || (payload.status === "active" && set.status === "saved")) continue;
+          // A draft changed with a saved one is refused too, rather than saved without its stamps.
+          throw refuse(set.status === "active" ? STAYS_ACTIVE : SET_STAYS);
+        }
+      }
       return payload;
     }
+    if (payload.status === "active") throw refuse(ONLY_SAVED_ACTIVE, 400);
     const rest = unstamped(payload, stamps);
     if (rest.status !== "saved") return rest;
     // The hook works out a saved Financial Plan's results, so it records its own engine's version.
@@ -220,7 +223,6 @@ function columnsNeeded(config) {
     [VERSIONS]: ["id", "plan_id", "status", "platform_version", "saved_by", "saved_at"],
     [SETS]: ["id", "organization_id", "fiscal_year", "status", "parent_id", "platform_version", "saved_by", "saved_at"],
     [MEMBERS]: ["id", "version_set_id", "plan_id", "version_id"],
-    [SET_ACTIVATIONS]: ["id", "version_set_id", "sequence", "activated_at"],
     ...Object.fromEntries(config.results.map((table) => [table, ["id", "version_set_id"]])),
     ...Object.fromEntries(
       config.versioned.map((table) => [table, ["id", "version_id", ...Object.keys(config.links[table] ?? {})]]),
@@ -285,7 +287,7 @@ BEGIN
     ${raise(RESULTS_BY_SAVE)};
   END IF;
   SELECT s.status INTO set_status FROM ${SETS} s WHERE s.id = NEW.version_set_id FOR SHARE;
-  IF set_status IS DISTINCT FROM 'saved'
+  IF set_status IS NULL OR set_status NOT IN ('saved', 'active')
     OR EXISTS (SELECT 1 FROM ${RESULTS} r WHERE r.version_set_id = NEW.version_set_id) THEN
     ${raise(RESULTS_BY_SAVE)};
   END IF;
@@ -349,13 +351,15 @@ END
 $fn$`;
 
   // Saving a Financial Plan saves every plan copy in it, in the same statement, so they're saved together.
+  // Marking one active sets the one active before it back to saved, in the same statement, so a year
+  // has one at a time. An active one is a saved one: nothing else about it changes.
   const set = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_set() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
   parent record;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    IF OLD.status = 'saved' AND NOT ${deletable} THEN
+    IF OLD.status IN ('saved', 'active') AND NOT ${deletable} THEN
       ${raise(SET_STAYS)};
     END IF;
     RETURN OLD;
@@ -372,14 +376,37 @@ BEGIN
     END IF;
     RETURN NEW;
   END IF;
-  IF OLD.status = 'saved' THEN
-    IF (to_jsonb(NEW) - 'message') IS DISTINCT FROM (to_jsonb(OLD) - 'message') THEN
+  IF OLD.status IN ('saved', 'active') THEN
+    IF (to_jsonb(NEW) - 'message' - 'status') IS DISTINCT FROM (to_jsonb(OLD) - 'message' - 'status') THEN
       ${raise(SET_STAYS)};
     END IF;
-    RETURN NEW;
+    IF NEW.status = OLD.status THEN
+      RETURN NEW;
+    END IF;
+    IF OLD.status = 'saved' AND NEW.status = 'active' THEN
+      PERFORM pg_advisory_xact_lock(hashtextextended(
+        concat_ws('|', 'cyc_set_activation', NEW.organization_id, NEW.fiscal_year), 0));
+      PERFORM set_config('cyc.activating_set', 'on', true);
+      UPDATE ${SETS} SET status = 'saved'
+        WHERE organization_id = NEW.organization_id AND fiscal_year = NEW.fiscal_year
+          AND status = 'active' AND id <> NEW.id;
+      PERFORM set_config('cyc.activating_set', 'off', true);
+      RETURN NEW;
+    END IF;
+    IF OLD.status = 'active' THEN
+      -- Only from inside the trigger above, as with saving a plan copy.
+      IF NEW.status = 'saved' AND current_setting('cyc.activating_set', true) = 'on' AND pg_trigger_depth() >= 2 THEN
+        RETURN NEW;
+      END IF;
+      ${raise(STAYS_ACTIVE)};
+    END IF;
+    ${raise(SET_STAYS)};
   END IF;
   IF (NEW.organization_id, NEW.fiscal_year, NEW.parent_id) IS DISTINCT FROM (OLD.organization_id, OLD.fiscal_year, OLD.parent_id) THEN
     ${raise(SET_FIXED)};
+  END IF;
+  IF NEW.status = 'active' THEN
+    ${raise(ONLY_SAVED_ACTIVE)};
   END IF;
   IF NEW.status = 'saved' THEN
     IF coalesce(btrim(NEW.platform_version), '') = '' THEN
@@ -414,7 +441,7 @@ DECLARE
 BEGIN
   IF TG_OP <> 'INSERT' THEN
     SELECT s.status INTO set_row FROM ${SETS} s WHERE s.id = OLD.version_set_id FOR SHARE;
-    IF set_row.status = 'saved' AND NOT (TG_OP = 'DELETE' AND ${deletable}) THEN
+    IF set_row.status IN ('saved', 'active') AND NOT (TG_OP = 'DELETE' AND ${deletable}) THEN
       ${raise(MEMBERS_FIXED)};
     END IF;
     IF TG_OP = 'DELETE' THEN
@@ -422,7 +449,7 @@ BEGIN
     END IF;
   END IF;
   SELECT s.status, s.organization_id, s.fiscal_year INTO set_row FROM ${SETS} s WHERE s.id = NEW.version_set_id FOR SHARE;
-  IF set_row.status = 'saved' THEN
+  IF set_row.status IN ('saved', 'active') THEN
     ${raise(MEMBERS_FIXED)};
   END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended('cyc_set|' || NEW.version_set_id, 0));
@@ -451,33 +478,6 @@ BEGIN
 END
 $fn$`;
 
-  const activation = `
-CREATE OR REPLACE FUNCTION cyc_saved_versions_set_activation() RETURNS trigger LANGUAGE plpgsql AS $fn$
-DECLARE
-  set_row record;
-BEGIN
-  IF TG_OP = 'UPDATE' OR (TG_OP = 'DELETE' AND NOT ${deletable}) THEN
-    ${raise(ACTIVATION_STAYS)};
-  END IF;
-  IF TG_OP = 'DELETE' THEN
-    RETURN OLD;
-  END IF;
-  SELECT s.status, s.organization_id, s.fiscal_year INTO set_row FROM ${SETS} s WHERE s.id = NEW.version_set_id;
-  IF NOT FOUND OR set_row.status <> 'saved' THEN
-    ${raise(ONLY_SAVED_ACTIVE)};
-  END IF;
-  -- Marks are ordered across the organization's Financial Plans for the year, so the newest is
-  -- the active one. One at a time, so no two take the same place.
-  PERFORM pg_advisory_xact_lock(hashtextextended(
-    concat_ws('|', 'cyc_set_activation', set_row.organization_id, set_row.fiscal_year), 0));
-  SELECT coalesce(max(a.sequence), 0) + 1 INTO NEW.sequence
-    FROM ${SET_ACTIVATIONS} a JOIN ${SETS} s ON s.id = a.version_set_id
-    WHERE s.organization_id = set_row.organization_id AND s.fiscal_year = set_row.fiscal_year;
-  NEW.activated_at := now();
-  RETURN NEW;
-END
-$fn$`;
-
   const trigger = (table, fn, events, args = []) => [
     `DROP TRIGGER IF EXISTS cyc_saved_versions ON ${table}`,
     `CREATE TRIGGER cyc_saved_versions BEFORE ${events} ON ${table} FOR EACH ROW EXECUTE FUNCTION ${fn}(${args
@@ -494,18 +494,20 @@ $fn$`;
     `DROP TRIGGER IF EXISTS cyc_saved_versions_members ON ${SETS}`,
     "DROP FUNCTION IF EXISTS cyc_saved_versions_set_members()",
     "DROP FUNCTION IF EXISTS cyc_saved_versions_activation()",
+    // Financial Plans were marked active in a log, which a status replaced (cyc0004).
+    "DROP FUNCTION IF EXISTS cyc_saved_versions_set_activation()",
     row,
     result,
     version,
     plan,
     set,
     member,
-    activation,
     ...trigger(PLANS, "cyc_saved_versions_plan", "INSERT OR UPDATE"),
     ...trigger(VERSIONS, "cyc_saved_versions_version", all),
     ...trigger(SETS, "cyc_saved_versions_set", all),
     ...trigger(MEMBERS, "cyc_saved_versions_member", all),
-    ...trigger(SET_ACTIVATIONS, "cyc_saved_versions_set_activation", all),
+    // One active Financial Plan for an organization's year.
+    `CREATE UNIQUE INDEX IF NOT EXISTS cyc_one_active_set ON ${SETS} (organization_id, fiscal_year) WHERE status = 'active'`,
     ...config.results.flatMap((table) => trigger(table, "cyc_saved_versions_result", all)),
     ...config.versioned.flatMap((table) =>
       trigger(table, "cyc_saved_versions_row", all, Object.entries(config.links[table] ?? {}).flat()),
@@ -514,7 +516,7 @@ $fn$`;
 }
 
 /** The tables that get a trigger. */
-const triggered = (config) => [PLANS, VERSIONS, SETS, MEMBERS, SET_ACTIVATIONS, ...config.results, ...config.versioned];
+const triggered = (config) => [PLANS, VERSIONS, SETS, MEMBERS, ...config.results, ...config.versioned];
 
 /** A hash of the triggers `config` installs, which the install records on a function it makes. */
 function fingerprint(config) {
@@ -598,17 +600,22 @@ async function seedSaved(db) {
 const SEED = "cyc_seed_active_sets";
 
 /**
- * Marks active each Financial Plan the Financial Plans migration listed, once `version_set_activations` exists, then
- * drops the list. The migration runs before the schema apply makes that table, so it can't mark them itself.
+ * Marks active each saved Financial Plan the Financial Plans migration listed, in a year with none active yet, then
+ * drops the list. The migration runs before the schema apply adds `version_sets.status`, so it can't mark them itself.
  */
 async function seedActiveMarks(db) {
   const [{ seed }] = await db.query(`SELECT to_regclass('${SEED}') IS NOT NULL AS seed`);
   if (!seed) return;
+  await db.exec(`ALTER TABLE ${SETS} DISABLE TRIGGER USER`);
   await db.exec(
-    `INSERT INTO ${SET_ACTIVATIONS} (id, version_set_id)
-      SELECT gen_random_uuid(), s.version_set_id FROM ${SEED} s
-      WHERE NOT EXISTS (SELECT 1 FROM ${SET_ACTIVATIONS} a WHERE a.version_set_id = s.version_set_id)`,
+    `UPDATE ${SETS} s SET status = 'active' FROM ${SEED} seed
+      WHERE s.id = seed.version_set_id AND s.status = 'saved'
+        AND NOT EXISTS (
+          SELECT 1 FROM ${SETS} o
+            WHERE o.organization_id = s.organization_id AND o.fiscal_year = s.fiscal_year AND o.status = 'active'
+        )`,
   );
+  await db.exec(`ALTER TABLE ${SETS} ENABLE TRIGGER USER`);
   await db.exec(`DROP TABLE ${SEED}`);
 }
 
@@ -783,7 +790,7 @@ function withoutOwner(fields) {
  */
 async function writeSetResults(config, db, setId, engine) {
   const set = await db(SETS).where("id", setId).first();
-  if (set?.status !== "saved") return false;
+  if (!isSaved(set?.status)) return false;
   if (await db(RESULTS).where("version_set_id", setId).first()) return false;
   const members = await db(MEMBERS)
     .join(`${PLANS} as p`, "p.id", `${MEMBERS}.plan_id`)
@@ -914,7 +921,7 @@ function register({ filter, action, init }, { env, database, logger }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
   const config = require("./config.json");
   const bootstrapAdmin = String(env["ADMIN_EMAIL"] ?? "").toLowerCase();
-  const watched = new Set([PLANS, VERSIONS, SETS, MEMBERS, SET_ACTIVATIONS, ...config.results, ...config.versioned]);
+  const watched = new Set([PLANS, VERSIONS, SETS, MEMBERS, ...config.results, ...config.versioned]);
 
   const connect = (trx) => ({
     query: async (sql) => (await trx.raw(sql)).rows,
@@ -1079,4 +1086,4 @@ module.exports.SAVED_WITH_SET = SAVED_WITH_SET;
 module.exports.NEEDS_OPERATIONS = NEEDS_OPERATIONS;
 module.exports.ONE_PER_AREA = ONE_PER_AREA;
 module.exports.ONLY_SAVED_ACTIVE = ONLY_SAVED_ACTIVE;
-module.exports.ACTIVATION_STAYS = ACTIVATION_STAYS;
+module.exports.STAYS_ACTIVE = STAYS_ACTIVE;

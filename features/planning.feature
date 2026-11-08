@@ -18,11 +18,12 @@ Feature: Plans
 
   A planner marks one saved Financial Plan active for its year. That's the plan the organization is
   running, and what actually happens during the year is compared against it. Marking another one
-  active replaces it, and the earlier marks are kept. Each offering in a plan is of a catalog
-  offering: a named offering of a program, such as "J-Pod · fall practices", which Clubspot's
-  offerings are linked to as well. So Clubspot's sign-ups find their offering in whichever
-  Financial Plan is active. An offering's activities, such as practices and regattas, stay the
-  same ones in a Financial Plan started from another.
+  active replaces it, and sets the one before it back to saved. Each Financial Plan's history shows
+  who marked it active, and when. Each offering in a plan is of a catalog offering: a named offering
+  of a program, such as "J-Pod · fall practices", which Clubspot's offerings are linked to as well.
+  So Clubspot's sign-ups find their offering in whichever Financial Plan is active. An offering's
+  activities, such as practices and regattas, stay the same ones in a Financial Plan started from
+  another.
 
   The P&L, the profit and loss for the year, is worked out from a Financial Plan's plans together.
   It shows each offering, each program area, and the organization as a whole. A draft's P&L is
@@ -126,7 +127,7 @@ Feature: Plans
       And two saved Financial Plans for next year, "Budget" marked active and "Adopted budget"
       When they mark "Adopted budget" active
       Then "Adopted budget" is the active Financial Plan for next year
-      And they can see that "Budget" was active before it
+      And "Budget" is saved, and no longer active
 
     Example: A draft can't be marked active
       Given a user with the Plan Writer policy

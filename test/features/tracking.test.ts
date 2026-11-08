@@ -6,7 +6,7 @@ for (const text of [
   "{string} is active",
   "they mark {string} active",
   "{string} is next year's active Financial Plan",
-  "they can see that {string} was active before it",
+  "{string} is saved, and no longer active",
   "a draft Financial Plan for next year",
   "they try to mark it active",
   "they're told that only a saved Financial Plan can be active",

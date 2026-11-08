@@ -68,7 +68,6 @@ export interface Schema {
   resource_kinds: ResourceKinds[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
-  version_set_activations: VersionSetActivations[];
   version_set_members: VersionSetMembers[];
   version_sets: VersionSets[];
 }
@@ -1108,18 +1107,6 @@ export interface SyncTasks {
   needs_attention: boolean;
 }
 
-/** Each time a saved Financial Plan was marked active. The newest one for an organization and year is the active one. */
-export interface VersionSetActivations {
-  id: string;
-  /** A saved Financial Plan. */
-  version_set_id: string | VersionSets;
-  /** Set when it's marked active. */
-  activated_at: string | null;
-  activated_by: string | null;
-  /** Set when it's marked active. The active Financial Plan for a year is the one with the highest. */
-  sequence: number;
-}
-
 /** One plan in a Financial Plan: the copy of the plan it holds. Add or remove one only while the Financial Plan is a draft. */
 export interface VersionSetMembers {
   id: string;
@@ -1141,8 +1128,8 @@ export interface VersionSets {
   name: string;
   /** What it was for, such as "Reviewed with the board". You can change it after it's saved. */
   message: string | null;
-  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note. */
-  status: "draft" | "saved";
+  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved. */
+  status: "draft" | "saved" | "active";
   /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
   parent_id: string | VersionSets | null;
   /** Set when the Financial Plan is saved. */
