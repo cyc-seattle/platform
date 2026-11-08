@@ -79,19 +79,6 @@ function checkAreas(ctx: Context): void {
       ctx.warn("offering_in_wrong_plan", `Offering ${offering.name} of ${product.name} is in ${where}`, offering.key);
     }
   }
-  const operations = new Set(
-    ctx.data.plan_versions.filter((v) => ctx.planOfVersion.get(v.id)?.kind === "operations").map((v) => v.id),
-  );
-  for (const version of ctx.data.plan_versions) {
-    const pinned = version.operations_version_id;
-    if (pinned == null || operations.size === 0 || operations.has(pinned)) continue;
-    const area = ctx.areas.get(ctx.planOfVersion.get(version.id)?.program_area_id ?? "");
-    ctx.warn(
-      "other_operations_version",
-      `${area?.name ?? "A program area"}'s plan was saved with a different Operations Plan version from the one it's calculated with`,
-      version.id,
-    );
-  }
 }
 
 /** Each salaried position's year: its salary, where its hours went, and its hourly wages and bonus. */

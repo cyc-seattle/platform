@@ -1,10 +1,11 @@
 // A Directus hook extension, mounted into Directus as-is: CommonJS, with no imports, since an
 // extension's folder has no node_modules of its own.
 //
-// Keeps a saved plan version from changing, for every user, admins included (docs/planning-schema.md).
-// Its filters refuse such a request with a clear 403, and stamp who saved a version and who made one
-// active. Directus skips filters on some paths, such as a flow's data steps, so the database
-// triggers it installs refuse the same writes on every path.
+// Keeps a saved Financial Plan, and every plan in it, from changing, for every user, admins
+// included (docs/planning-schema.md). Its filters refuse such a request with a clear 403, and stamp
+// who saved a Financial Plan and who marked one active. Directus skips filters on some paths, such
+// as a flow's data steps, so the database triggers it installs refuse the same writes on every path.
+// It also copies a new Financial Plan's parent into it, and works out a saved one's results.
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
 const crypto = require("node:crypto");
@@ -15,54 +16,61 @@ const url = require("node:url");
 
 const PLANS = "plans";
 const VERSIONS = "plan_versions";
-const ACTIVATIONS = "plan_activations";
-// Written last when a version's results go in, so a version that has one has them all.
+// Written last when a Financial Plan's results go in, so one that has it has them all.
 const RESULTS = "plan_results";
-// Club plans, saved when they're added, and the versions the database fills each one with.
+// Financial Plans, their plans, and the log of which one is active.
 const SETS = "version_sets";
 const MEMBERS = "version_set_members";
+const SET_ACTIVATIONS = "version_set_activations";
 
-const REFUSED = "A saved plan version can't be changed. Make a new draft from it.";
-const NEW_DRAFT = "A new plan version starts as a draft.";
-const NEEDS_PLATFORM = "Saving a version needs the @cyc-seattle/platform version that calculated it.";
-const NEEDS_OPERATIONS =
-  "Saving a program area's plan needs the saved Operations Plan version it was calculated with, for the same organization and year.";
-const OPERATIONS_NAMES_NONE = "An Operations Plan's version doesn't name an Operations Plan version.";
-const VERSION_STAYS = "A plan version can't move to another plan.";
+const REFUSED = "A saved plan can't be changed. Start a new Financial Plan from the one it's in.";
+const NEW_DRAFT = "A new plan copy starts as a draft.";
+const SAVED_WITH_SET = "A plan is saved with its Financial Plan. Save the Financial Plan instead.";
+const NEEDS_PLATFORM = "Saving a Financial Plan needs the @cyc-seattle/platform version that calculated it.";
+const VERSION_STAYS = "A plan copy can't move to another plan.";
 const ROW_STAYS = "A plan row can't move to another version. Copy it into that version instead.";
 const SAME_VERSION = "A plan row can only link to rows in its own version.";
-const PLAN_FIXED = "A plan's kind, program area, organization, and year can't change once it has a saved version.";
-const ACTIVATION_STAYS = "An activation stays in the plan's history. Make another saved version active instead.";
-const ONLY_SAVED_ACTIVE = "Only a saved version can be made active.";
-const OWN_PLAN = "A version can only be made active for its own plan.";
+const PLAN_FIXED =
+  "A plan's kind, program area, organization, and year can't change once it's in a Financial Plan or has a saved copy.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
-const RESULTS_BY_SAVE = "A version's results are worked out when it's saved, and can't be written by hand.";
-const SET_STAYS = "A club plan can't be changed or deleted. Save another one instead.";
-const MEMBERS_BY_SAVE = "A club plan holds the versions active when it's saved, and they can't be written by hand.";
-const NEEDS_ACTIVE_OPERATIONS = "A club plan needs an active Operations Plan version for its organization and year.";
-const NEEDS_ACTIVE_AREAS =
-  "A club plan needs an active version for every program area with a plan for its organization and year.";
+const RESULTS_BY_SAVE = "A Financial Plan's results are worked out when it's saved, and can't be written by hand.";
+const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
+const SET_STAYS = "A saved Financial Plan can't be changed, apart from its note. Start a new one from it.";
+const SET_FIXED = "A Financial Plan's organization, year, and parent can't change.";
+const PARENT_SAME_YEAR = "A Financial Plan can only start from one for the same organization and year.";
+const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's saved.";
+const MEMBERS_FIXED = "A saved Financial Plan's plans can't change. Start a new Financial Plan from it.";
+const MEMBER_DRAFT = "Only a draft plan can be added to a Financial Plan.";
+const MEMBER_YEAR = "A plan in a Financial Plan must be for the same organization and year.";
+const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
+const IN_ANOTHER = "A plan copy is in only one Financial Plan.";
+const ACTIVATION_STAYS = "A mark stays in the year's history. Mark another Financial Plan active instead.";
+const ONLY_SAVED_ACTIVE = "Only a saved Financial Plan can be marked active.";
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
   [REFUSED]: 403,
   [PLAN_FIXED]: 403,
+  [SET_STAYS]: 403,
+  [MEMBERS_FIXED]: 403,
   [ACTIVATION_STAYS]: 403,
+  [RESULTS_BY_SAVE]: 403,
   [NEW_DRAFT]: 400,
+  [SAVED_WITH_SET]: 400,
   [NEEDS_PLATFORM]: 400,
-  [NEEDS_OPERATIONS]: 400,
-  [OPERATIONS_NAMES_NONE]: 400,
   [VERSION_STAYS]: 400,
   [ROW_STAYS]: 400,
   [SAME_VERSION]: 400,
-  [ONLY_SAVED_ACTIVE]: 400,
-  [OWN_PLAN]: 400,
   [AREA_NAMED]: 400,
-  [RESULTS_BY_SAVE]: 403,
-  [SET_STAYS]: 403,
-  [MEMBERS_BY_SAVE]: 403,
-  [NEEDS_ACTIVE_OPERATIONS]: 400,
-  [NEEDS_ACTIVE_AREAS]: 400,
+  [NEW_SET_DRAFT]: 400,
+  [SET_FIXED]: 400,
+  [PARENT_SAME_YEAR]: 400,
+  [NEEDS_OPERATIONS]: 400,
+  [MEMBER_DRAFT]: 400,
+  [MEMBER_YEAR]: 400,
+  [ONE_PER_AREA]: 400,
+  [IN_ANOTHER]: 400,
+  [ONLY_SAVED_ACTIVE]: 400,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
@@ -82,17 +90,27 @@ function keyOf(value) {
   return value !== null && typeof value === "object" ? value.id : value;
 }
 
+/** A payload without the fields only the hook stamps. */
+function unstamped(payload, fields) {
+  const rest = { ...payload };
+  for (const field of fields) delete rest[field];
+  return rest;
+}
+
 /**
  * Checks one write, and returns the payload to write. `event` is `create`, `update`, or `delete`;
  * `keys` are the rows an update or delete touches. `lookup` reads the database:
  * - `versionIds(collection, keys)`: the `version_id` of each row
  * - `plans(ids)`: each plan's `id`, `kind`, and `program_area_id`
  * - `versions(ids)`: each version's `id`, `plan_id`, `status`, and `platform_version`
- * - `deletesSaved(user)`: whether this user may delete a saved version, which only dev allows
+ * - `sets(ids)`: each Financial Plan's `id` and `status`
+ * - `memberSets(keys)`: the Financial Plan each of these members is in
+ * - `deletesSaved(user)`: whether this user may delete a saved Financial Plan, which only dev allows
  */
 async function guard({ collection, event, payload, keys = [], user, now }, config, lookup) {
   const saved = async (ids) =>
     ids.length > 0 && (await lookup.versions(ids)).some((version) => version.status === "saved");
+  const savedSet = async (ids) => ids.length > 0 && (await lookup.sets(ids)).some((set) => set.status === "saved");
 
   if (collection === PLANS) {
     if (event === "delete" || (event === "update" && !("kind" in payload) && !("program_area_id" in payload))) {
@@ -109,56 +127,69 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
 
   if (collection === VERSIONS) {
     if (event === "create") {
-      if ((payload.status ?? "draft") !== "draft") throw refuse(NEW_DRAFT);
-      return payload;
+      if ((payload.status ?? "draft") !== "draft") throw refuse(NEW_DRAFT, 400);
+      return unstamped(payload, ["saved_by", "saved_at", "platform_version"]);
     }
     if (event === "delete") {
       if ((await saved(keys)) && !(await lookup.deletesSaved(user))) throw refuse(REFUSED);
       return payload;
     }
     if (await saved(keys)) throw refuse(REFUSED);
-    // Only the hook stamps who saved a version, and when.
-    const rest = { ...payload };
-    delete rest.saved_by;
-    delete rest.saved_at;
-    if (rest.status !== "saved") return rest;
-    // The hook works out a saved version's results, so it records its own engine's version.
-    return { ...rest, platform_version: config.platformVersion, saved_by: user ?? null, saved_at: now };
+    if (payload.status === "saved") throw refuse(SAVED_WITH_SET, 400);
+    // Only saving its Financial Plan stamps a plan copy as saved.
+    return unstamped(payload, ["saved_by", "saved_at", "platform_version"]);
   }
 
-  if (collection === ACTIVATIONS) {
+  if (collection === SET_ACTIVATIONS) {
     if (event === "update") throw refuse(ACTIVATION_STAYS);
     if (event === "delete") {
       if (!(await lookup.deletesSaved(user))) throw refuse(ACTIVATION_STAYS);
       return payload;
     }
-    const [version] = await lookup.versions([keyOf(payload.version_id)].filter(Boolean));
-    if (version?.status !== "saved") throw refuse(ONLY_SAVED_ACTIVE, 400);
-    if (payload.plan_id !== undefined && keyOf(payload.plan_id) !== version.plan_id) {
-      throw refuse(OWN_PLAN, 400);
-    }
+    const [set] = await lookup.sets([keyOf(payload.version_set_id)].filter(Boolean));
+    if (set?.status !== "saved") throw refuse(ONLY_SAVED_ACTIVE, 400);
     // The trigger sets `activated_at` again, and `sequence`.
-    return { ...payload, plan_id: version.plan_id, activated_by: user ?? null, activated_at: now };
+    return { ...payload, activated_by: user ?? null, activated_at: now };
   }
 
   if (collection === SETS) {
+    const stamps = ["saved_by", "saved_at", "platform_version"];
     if (event === "create") {
-      // The hook works out a club plan's results, so it records its own engine's version.
-      return { ...payload, platform_version: config.platformVersion, saved_by: user ?? null, saved_at: now };
+      if ((payload.status ?? "draft") !== "draft") throw refuse(NEW_SET_DRAFT, 400);
+      return unstamped(payload, stamps);
     }
-    if (event === "delete" && (await lookup.deletesSaved(user))) return payload;
-    throw refuse(SET_STAYS);
-  }
-  if (collection === MEMBERS) {
-    if (event === "delete" && (await lookup.deletesSaved(user))) return payload;
-    throw refuse(MEMBERS_BY_SAVE);
+    if (event === "delete") {
+      if ((await savedSet(keys)) && !(await lookup.deletesSaved(user))) throw refuse(SET_STAYS);
+      return payload;
+    }
+    if (await savedSet(keys)) {
+      // Only its note changes, such as "Reviewed with the board".
+      if (Object.keys(payload).some((field) => field !== "message")) throw refuse(SET_STAYS);
+      return payload;
+    }
+    const rest = unstamped(payload, stamps);
+    if (rest.status !== "saved") return rest;
+    // The hook works out a saved Financial Plan's results, so it records its own engine's version.
+    return { ...rest, platform_version: config.platformVersion, saved_by: user ?? null, saved_at: now };
   }
 
-  if (!config.versioned.includes(collection)) return payload;
+  if (collection === MEMBERS) {
+    const sets = event === "create" ? [] : await lookup.memberSets(keys);
+    if (event !== "delete" && payload.version_set_id !== undefined) sets.push(keyOf(payload.version_set_id));
+    if (await savedSet([...new Set(sets.filter(Boolean))])) {
+      if (event !== "delete" || !(await lookup.deletesSaved(user))) throw refuse(MEMBERS_FIXED);
+    }
+    if (event === "delete" || payload.version_id === undefined) return payload;
+    // The trigger sets the plan from the copy too; this fills it in for Directus's own checks first.
+    const [version] = await lookup.versions([keyOf(payload.version_id)].filter(Boolean));
+    return version ? { ...payload, plan_id: version.plan_id } : payload;
+  }
+
   if (config.results.includes(collection)) {
     if (event === "delete" && (await lookup.deletesSaved(user))) return payload;
     throw refuse(RESULTS_BY_SAVE);
   }
+  if (!config.versioned.includes(collection)) return payload;
   const ids = event === "create" ? [] : await lookup.versionIds(collection, keys);
   if (event !== "delete" && payload.version_id !== undefined) ids.push(keyOf(payload.version_id));
   const touched = [...new Set(ids.filter(Boolean))];
@@ -185,29 +216,22 @@ const raise = (reason) => `RAISE EXCEPTION USING ERRCODE = '${SQLSTATE}', MESSAG
 /** The columns each trigger reads, by table. The triggers wait until every one exists. */
 function columnsNeeded(config) {
   return {
-    [PLANS]: ["id", "kind", "program_area_id", "organization_id", "fiscal_year", "archived"],
-    [VERSIONS]: ["id", "plan_id", "status", "platform_version", "operations_version_id", "saved_at"],
-    [ACTIVATIONS]: ["id", "plan_id", "version_id", "sequence", "activated_at"],
-    [SETS]: ["id", "organization_id", "fiscal_year", "platform_version", "saved_at"],
+    [PLANS]: ["id", "kind", "program_area_id", "organization_id", "fiscal_year"],
+    [VERSIONS]: ["id", "plan_id", "status", "platform_version", "saved_by", "saved_at"],
+    [SETS]: ["id", "organization_id", "fiscal_year", "status", "parent_id", "platform_version", "saved_by", "saved_at"],
     [MEMBERS]: ["id", "version_set_id", "plan_id", "version_id"],
+    [SET_ACTIVATIONS]: ["id", "version_set_id", "sequence", "activated_at"],
+    ...Object.fromEntries(config.results.map((table) => [table, ["id", "version_set_id"]])),
     ...Object.fromEntries(
-      config.versioned.map((table) => [
-        table,
-        [
-          "id",
-          "version_id",
-          ...(config.setResults.includes(table) ? ["version_set_id"] : []),
-          ...Object.keys(config.links[table] ?? {}),
-        ],
-      ]),
+      config.versioned.map((table) => [table, ["id", "version_id", ...Object.keys(config.links[table] ?? {})]]),
     ),
   };
 }
 
 /**
- * own functions and triggers, on the planning tables, and drops the unique indexes plans once had. Each trigger locks the row it
- * own functions, triggers, and indexes, on the planning tables. Each trigger locks the row it
- * checks, so a version can't be saved, or a plan changed, while a write that read it is still open.
+ * The statements that install the triggers' own functions and triggers on the planning tables, and
+ * drop what earlier installs made that's no longer used. Each trigger locks the row it checks, so a
+ * Financial Plan can't be saved, or a plan changed, while a write that read it is still open.
  */
 function triggerStatements(config) {
   const deletable = config.deletable ? "true" : "false";
@@ -245,12 +269,11 @@ BEGIN
 END
 $fn$`;
 
-  // A saved version's results go in once, from the hook (writeResults), and never change.
+  // A saved Financial Plan's results go in once, from the hook (writeSetResults), and never change.
   const result = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_result() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
-  version_status text;
-  set_id uuid;
+  set_status text;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     IF NOT ${deletable} THEN
@@ -261,19 +284,9 @@ BEGIN
   IF TG_OP = 'UPDATE' OR current_setting('cyc.writing_results', true) IS DISTINCT FROM 'on' THEN
     ${raise(RESULTS_BY_SAVE)};
   END IF;
-  -- A club plan's results have its version_set_id and no version_id; a version's, the reverse.
-  set_id := (to_jsonb(NEW) ->> 'version_set_id')::uuid;
-  IF set_id IS NOT NULL THEN
-    PERFORM 1 FROM ${SETS} s WHERE s.id = set_id FOR SHARE;
-    IF NOT FOUND OR NEW.version_id IS NOT NULL
-      OR EXISTS (SELECT 1 FROM ${RESULTS} r WHERE r.version_set_id = set_id) THEN
-      ${raise(RESULTS_BY_SAVE)};
-    END IF;
-    RETURN NEW;
-  END IF;
-  SELECT v.status INTO version_status FROM ${VERSIONS} v WHERE v.id = NEW.version_id FOR SHARE;
-  IF version_status IS DISTINCT FROM 'saved'
-    OR EXISTS (SELECT 1 FROM ${RESULTS} r WHERE r.version_id = NEW.version_id) THEN
+  SELECT s.status INTO set_status FROM ${SETS} s WHERE s.id = NEW.version_set_id FOR SHARE;
+  IF set_status IS DISTINCT FROM 'saved'
+    OR EXISTS (SELECT 1 FROM ${RESULTS} r WHERE r.version_set_id = NEW.version_set_id) THEN
     ${raise(RESULTS_BY_SAVE)};
   END IF;
   RETURN NEW;
@@ -282,9 +295,6 @@ $fn$`;
 
   const version = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_version() RETURNS trigger LANGUAGE plpgsql AS $fn$
-DECLARE
-  plan record;
-  operations record;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     IF OLD.status = 'saved' AND NOT ${deletable} THEN
@@ -305,23 +315,10 @@ BEGIN
     ${raise(VERSION_STAYS)};
   END IF;
   IF NEW.status = 'saved' THEN
-    IF coalesce(btrim(NEW.platform_version), '') = '' THEN
-      ${raise(NEEDS_PLATFORM)};
-    END IF;
-    SELECT p.kind, p.organization_id, p.fiscal_year INTO plan FROM ${PLANS} p WHERE p.id = NEW.plan_id FOR SHARE;
-    IF plan.kind = 'operations' THEN
-      IF NEW.operations_version_id IS NOT NULL THEN
-        ${raise(OPERATIONS_NAMES_NONE)};
-      END IF;
-    ELSE
-      SELECT v.status, p.kind, p.organization_id, p.fiscal_year INTO operations
-        FROM ${VERSIONS} v JOIN ${PLANS} p ON p.id = v.plan_id
-        WHERE v.id = NEW.operations_version_id;
-      IF NOT FOUND OR operations.status <> 'saved' OR operations.kind <> 'operations'
-        OR operations.organization_id IS DISTINCT FROM plan.organization_id
-        OR operations.fiscal_year IS DISTINCT FROM plan.fiscal_year THEN
-        ${raise(NEEDS_OPERATIONS)};
-      END IF;
+    -- Only saving its Financial Plan saves a plan copy: the set's trigger sets the flag, and updates the copy from
+    -- inside itself, so a session that sets the flag and updates a copy directly is still refused.
+    IF current_setting('cyc.saving_set', true) IS DISTINCT FROM 'on' OR pg_trigger_depth() < 2 THEN
+      ${raise(SAVED_WITH_SET)};
     END IF;
     NEW.saved_at := now();
   END IF;
@@ -340,18 +337,124 @@ BEGIN
   END IF;
   IF (NEW.kind, NEW.program_area_id, NEW.organization_id, NEW.fiscal_year)
       IS DISTINCT FROM (OLD.kind, OLD.program_area_id, OLD.organization_id, OLD.fiscal_year)
-    AND EXISTS (SELECT 1 FROM ${VERSIONS} v WHERE v.plan_id = OLD.id AND v.status = 'saved') THEN
+    AND (
+      EXISTS (SELECT 1 FROM ${VERSIONS} v WHERE v.plan_id = OLD.id AND v.status = 'saved')
+      -- A member was checked against its Financial Plan's year and areas when it joined.
+      OR EXISTS (SELECT 1 FROM ${MEMBERS} m WHERE m.plan_id = OLD.id)
+    ) THEN
     ${raise(PLAN_FIXED)};
   END IF;
   RETURN NEW;
 END
 $fn$`;
 
-  const activation = `
-CREATE OR REPLACE FUNCTION cyc_saved_versions_activation() RETURNS trigger LANGUAGE plpgsql AS $fn$
+  // Saving a Financial Plan saves every plan copy in it, in the same statement, so they're saved together.
+  const set = `
+CREATE OR REPLACE FUNCTION cyc_saved_versions_set() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
+  parent record;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.status = 'saved' AND NOT ${deletable} THEN
+      ${raise(SET_STAYS)};
+    END IF;
+    RETURN OLD;
+  END IF;
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status IS DISTINCT FROM 'draft' THEN
+      ${raise(NEW_SET_DRAFT)};
+    END IF;
+    IF NEW.parent_id IS NOT NULL THEN
+      SELECT s.organization_id, s.fiscal_year INTO parent FROM ${SETS} s WHERE s.id = NEW.parent_id;
+      IF (parent.organization_id, parent.fiscal_year) IS DISTINCT FROM (NEW.organization_id, NEW.fiscal_year) THEN
+        ${raise(PARENT_SAME_YEAR)};
+      END IF;
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF OLD.status = 'saved' THEN
+    IF (to_jsonb(NEW) - 'message') IS DISTINCT FROM (to_jsonb(OLD) - 'message') THEN
+      ${raise(SET_STAYS)};
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF (NEW.organization_id, NEW.fiscal_year, NEW.parent_id) IS DISTINCT FROM (OLD.organization_id, OLD.fiscal_year, OLD.parent_id) THEN
+    ${raise(SET_FIXED)};
+  END IF;
+  IF NEW.status = 'saved' THEN
+    IF coalesce(btrim(NEW.platform_version), '') = '' THEN
+      ${raise(NEEDS_PLATFORM)};
+    END IF;
+    PERFORM pg_advisory_xact_lock(hashtextextended('cyc_set|' || NEW.id, 0));
+    IF NOT EXISTS (
+      SELECT 1 FROM ${MEMBERS} m JOIN ${PLANS} p ON p.id = m.plan_id
+        WHERE m.version_set_id = NEW.id AND p.kind = 'operations'
+    ) THEN
+      ${raise(NEEDS_OPERATIONS)};
+    END IF;
+    PERFORM set_config('cyc.saving_set', 'on', true);
+    UPDATE ${VERSIONS} SET status = 'saved', platform_version = NEW.platform_version, saved_by = NEW.saved_by
+      WHERE id IN (SELECT m.version_id FROM ${MEMBERS} m WHERE m.version_set_id = NEW.id);
+    PERFORM set_config('cyc.saving_set', 'off', true);
+    NEW.saved_at := now();
+  END IF;
+  RETURN NEW;
+END
+$fn$`;
+
+  // A Financial Plan's plans change only while it's a draft: one Operations Plan, at most one
+  // Program Plan for each program area, each a draft copy in no other Financial Plan.
+  const member = `
+CREATE OR REPLACE FUNCTION cyc_saved_versions_member() RETURNS trigger LANGUAGE plpgsql AS $fn$
+DECLARE
+  set_row record;
   version record;
   plan record;
+  clash text;
+BEGIN
+  IF TG_OP <> 'INSERT' THEN
+    SELECT s.status INTO set_row FROM ${SETS} s WHERE s.id = OLD.version_set_id FOR SHARE;
+    IF set_row.status = 'saved' AND NOT (TG_OP = 'DELETE' AND ${deletable}) THEN
+      ${raise(MEMBERS_FIXED)};
+    END IF;
+    IF TG_OP = 'DELETE' THEN
+      RETURN OLD;
+    END IF;
+  END IF;
+  SELECT s.status, s.organization_id, s.fiscal_year INTO set_row FROM ${SETS} s WHERE s.id = NEW.version_set_id FOR SHARE;
+  IF set_row.status = 'saved' THEN
+    ${raise(MEMBERS_FIXED)};
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('cyc_set|' || NEW.version_set_id, 0));
+  SELECT v.plan_id, v.status INTO version FROM ${VERSIONS} v WHERE v.id = NEW.version_id FOR SHARE;
+  IF version.status IS DISTINCT FROM 'draft' THEN
+    ${raise(MEMBER_DRAFT)};
+  END IF;
+  NEW.plan_id := version.plan_id;
+  SELECT p.kind, p.program_area_id, p.organization_id, p.fiscal_year INTO plan FROM ${PLANS} p WHERE p.id = NEW.plan_id;
+  IF (plan.organization_id, plan.fiscal_year) IS DISTINCT FROM (set_row.organization_id, set_row.fiscal_year) THEN
+    ${raise(MEMBER_YEAR)};
+  END IF;
+  IF EXISTS (SELECT 1 FROM ${MEMBERS} m WHERE m.version_id = NEW.version_id AND m.id <> NEW.id) THEN
+    ${raise(IN_ANOTHER)};
+  END IF;
+  SELECT coalesce(area.name, 'the Operations Plan') INTO clash
+    FROM ${MEMBERS} m JOIN ${PLANS} p ON p.id = m.plan_id LEFT JOIN program_areas area ON area.id = p.program_area_id
+    WHERE m.version_set_id = NEW.version_set_id AND m.id <> NEW.id
+      AND p.kind = plan.kind AND p.program_area_id IS NOT DISTINCT FROM plan.program_area_id
+    LIMIT 1;
+  IF clash IS NOT NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '${SQLSTATE}', MESSAGE = ${literal(ONE_PER_AREA)},
+      DETAIL = format('It already has %s.', clash);
+  END IF;
+  RETURN NEW;
+END
+$fn$`;
+
+  const activation = `
+CREATE OR REPLACE FUNCTION cyc_saved_versions_set_activation() RETURNS trigger LANGUAGE plpgsql AS $fn$
+DECLARE
+  set_row record;
 BEGIN
   IF TG_OP = 'UPDATE' OR (TG_OP = 'DELETE' AND NOT ${deletable}) THEN
     ${raise(ACTIVATION_STAYS)};
@@ -359,86 +462,18 @@ BEGIN
   IF TG_OP = 'DELETE' THEN
     RETURN OLD;
   END IF;
-  SELECT v.plan_id, v.status INTO version FROM ${VERSIONS} v WHERE v.id = NEW.version_id;
-  IF NOT FOUND OR version.status <> 'saved' THEN
+  SELECT s.status, s.organization_id, s.fiscal_year INTO set_row FROM ${SETS} s WHERE s.id = NEW.version_set_id;
+  IF NOT FOUND OR set_row.status <> 'saved' THEN
     ${raise(ONLY_SAVED_ACTIVE)};
   END IF;
-  IF NEW.plan_id IS NOT NULL AND NEW.plan_id <> version.plan_id THEN
-    ${raise(OWN_PLAN)};
-  END IF;
-  NEW.plan_id := version.plan_id;
-  -- Activations are ordered across every plan for the same area, organization, and year, or the
-  -- organization's Operations Plans for the year, so the newest is the one active. One at a time,
-  -- so no two take the same place.
-  SELECT p.kind, p.organization_id, p.fiscal_year, p.program_area_id INTO plan FROM ${PLANS} p WHERE p.id = NEW.plan_id;
+  -- Marks are ordered across the organization's Financial Plans for the year, so the newest is
+  -- the active one. One at a time, so no two take the same place.
   PERFORM pg_advisory_xact_lock(hashtextextended(
-    concat_ws('|', 'cyc_activation', plan.kind, plan.organization_id, plan.fiscal_year, plan.program_area_id), 0));
+    concat_ws('|', 'cyc_set_activation', set_row.organization_id, set_row.fiscal_year), 0));
   SELECT coalesce(max(a.sequence), 0) + 1 INTO NEW.sequence
-    FROM ${ACTIVATIONS} a JOIN ${PLANS} p ON p.id = a.plan_id
-    WHERE p.kind = plan.kind AND p.organization_id = plan.organization_id AND p.fiscal_year = plan.fiscal_year
-      AND p.program_area_id IS NOT DISTINCT FROM plan.program_area_id;
+    FROM ${SET_ACTIVATIONS} a JOIN ${SETS} s ON s.id = a.version_set_id
+    WHERE s.organization_id = set_row.organization_id AND s.fiscal_year = set_row.fiscal_year;
   NEW.activated_at := now();
-  RETURN NEW;
-END
-$fn$`;
-
-  // A club plan is saved when it's added: it takes the year's active versions, and needs one for the
-  // Operations Plan and for every program area with a plan that isn't archived.
-  const activeVersions = (set) => `
-    SELECT DISTINCT ON (p.kind, p.program_area_id) p.kind, p.program_area_id, a.plan_id, a.version_id
-      FROM ${ACTIVATIONS} a JOIN ${PLANS} p ON p.id = a.plan_id
-      WHERE p.organization_id = ${set}.organization_id AND p.fiscal_year = ${set}.fiscal_year
-        AND p.archived IS NOT TRUE
-      ORDER BY p.kind, p.program_area_id, a.sequence DESC`;
-  const clubPlan = `
-CREATE OR REPLACE FUNCTION cyc_saved_versions_set() RETURNS trigger LANGUAGE plpgsql AS $fn$
-DECLARE
-  missing text;
-BEGIN
-  IF TG_OP = 'UPDATE' OR (TG_OP = 'DELETE' AND NOT ${deletable}) THEN
-    ${raise(SET_STAYS)};
-  END IF;
-  IF TG_OP = 'DELETE' THEN
-    RETURN OLD;
-  END IF;
-  IF coalesce(btrim(NEW.platform_version), '') = '' THEN
-    ${raise(NEEDS_PLATFORM)};
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM (${activeVersions("NEW")}) active WHERE active.kind = 'operations') THEN
-    ${raise(NEEDS_ACTIVE_OPERATIONS)};
-  END IF;
-  SELECT string_agg(DISTINCT area.name, ', ' ORDER BY area.name) INTO missing
-    FROM ${PLANS} p JOIN program_areas area ON area.id = p.program_area_id
-    WHERE p.kind = 'program_area' AND p.organization_id = NEW.organization_id AND p.fiscal_year = NEW.fiscal_year
-      AND p.archived IS NOT TRUE
-      AND NOT EXISTS (SELECT 1 FROM (${activeVersions("NEW")}) active WHERE active.program_area_id = p.program_area_id);
-  IF missing IS NOT NULL THEN
-    RAISE EXCEPTION USING ERRCODE = '${SQLSTATE}', MESSAGE = ${literal(NEEDS_ACTIVE_AREAS)},
-      DETAIL = format('These have none: %s.', missing);
-  END IF;
-  NEW.saved_at := now();
-  RETURN NEW;
-END
-$fn$`;
-  const clubPlanMembers = `
-CREATE OR REPLACE FUNCTION cyc_saved_versions_set_members() RETURNS trigger LANGUAGE plpgsql AS $fn$
-BEGIN
-  PERFORM set_config('cyc.writing_members', 'on', true);
-  INSERT INTO ${MEMBERS} (id, version_set_id, plan_id, version_id)
-    SELECT gen_random_uuid(), NEW.id, active.plan_id, active.version_id FROM (${activeVersions("NEW")}) active;
-  PERFORM set_config('cyc.writing_members', 'off', true);
-  RETURN NULL;
-END
-$fn$`;
-  const member = `
-CREATE OR REPLACE FUNCTION cyc_saved_versions_member() RETURNS trigger LANGUAGE plpgsql AS $fn$
-BEGIN
-  IF TG_OP = 'DELETE' AND ${deletable} THEN
-    RETURN OLD;
-  END IF;
-  IF TG_OP <> 'INSERT' OR current_setting('cyc.writing_members', true) IS DISTINCT FROM 'on' THEN
-    ${raise(MEMBERS_BY_SAVE)};
-  END IF;
   RETURN NEW;
 END
 $fn$`;
@@ -455,31 +490,31 @@ $fn$`;
     "DROP INDEX IF EXISTS cyc_one_product_plan",
     "DROP INDEX IF EXISTS cyc_one_program_area_plan",
     "DROP INDEX IF EXISTS cyc_one_operations_plan",
+    // Club plans filled their members from plan activations, which Financial Plans replaced.
+    `DROP TRIGGER IF EXISTS cyc_saved_versions_members ON ${SETS}`,
+    "DROP FUNCTION IF EXISTS cyc_saved_versions_set_members()",
+    "DROP FUNCTION IF EXISTS cyc_saved_versions_activation()",
     row,
     result,
     version,
     plan,
-    activation,
-    clubPlan,
-    clubPlanMembers,
+    set,
     member,
+    activation,
     ...trigger(PLANS, "cyc_saved_versions_plan", "INSERT OR UPDATE"),
     ...trigger(VERSIONS, "cyc_saved_versions_version", all),
-    ...trigger(ACTIVATIONS, "cyc_saved_versions_activation", all),
     ...trigger(SETS, "cyc_saved_versions_set", all),
-    `DROP TRIGGER IF EXISTS cyc_saved_versions_members ON ${SETS}`,
-    `CREATE TRIGGER cyc_saved_versions_members AFTER INSERT ON ${SETS} FOR EACH ROW EXECUTE FUNCTION cyc_saved_versions_set_members()`,
     ...trigger(MEMBERS, "cyc_saved_versions_member", all),
+    ...trigger(SET_ACTIVATIONS, "cyc_saved_versions_set_activation", all),
+    ...config.results.flatMap((table) => trigger(table, "cyc_saved_versions_result", all)),
     ...config.versioned.flatMap((table) =>
-      config.results.includes(table)
-        ? trigger(table, "cyc_saved_versions_result", all)
-        : trigger(table, "cyc_saved_versions_row", all, Object.entries(config.links[table] ?? {}).flat()),
+      trigger(table, "cyc_saved_versions_row", all, Object.entries(config.links[table] ?? {}).flat()),
     ),
   ];
 }
 
 /** The tables that get a trigger. */
-const triggered = (config) => [PLANS, VERSIONS, ACTIVATIONS, SETS, MEMBERS, ...config.versioned];
+const triggered = (config) => [PLANS, VERSIONS, SETS, MEMBERS, SET_ACTIVATIONS, ...config.results, ...config.versioned];
 
 /** A hash of the triggers `config` installs, which the install records on a function it makes. */
 function fingerprint(config) {
@@ -527,14 +562,54 @@ async function installTriggers(config, db) {
     .filter(([table, columns]) => columns.some((column) => !present.has(`${table}.${column}`)))
     .map(([table]) => table);
   if (missing.length > 0) return { missing, installed: false };
+  await seedSaved(db);
   const status = await triggerStatus(config, db);
   const hash = fingerprint(config);
   if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
+    await seedActiveMarks(db);
     return { missing: [], installed: false };
   }
   for (const statement of triggerStatements(config)) await db.exec(statement);
   await db.exec(`COMMENT ON FUNCTION cyc_saved_versions_row() IS ${literal(hash)}`);
+  await seedActiveMarks(db);
   return { missing: [], installed: true };
+}
+
+/** Where the Financial Plans migration (cyc0002) lists the club plans, each saved when it was added. */
+const SAVED_SEED = "cyc_seed_saved_sets";
+
+/**
+ * Marks saved each club plan the Financial Plans migration listed, once the schema apply has added
+ * `version_sets.status`, as a draft, then drops the list. Its plans were saved already, so this sets
+ * only the status, with the trigger that would save them again off for the one statement.
+ */
+async function seedSaved(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${SAVED_SEED}') IS NOT NULL AS seed`);
+  if (!seed) return;
+  await db.exec(`ALTER TABLE ${SETS} DISABLE TRIGGER USER`);
+  await db.exec(
+    `UPDATE ${SETS} SET status = 'saved' WHERE id IN (SELECT version_set_id FROM ${SAVED_SEED}) AND status = 'draft'`,
+  );
+  await db.exec(`ALTER TABLE ${SETS} ENABLE TRIGGER USER`);
+  await db.exec(`DROP TABLE ${SAVED_SEED}`);
+}
+
+/** Where the Financial Plans migration (cyc0002) lists the saved Financial Plans to mark active. */
+const SEED = "cyc_seed_active_sets";
+
+/**
+ * Marks active each Financial Plan the Financial Plans migration listed, once `version_set_activations` exists, then
+ * drops the list. The migration runs before the schema apply makes that table, so it can't mark them itself.
+ */
+async function seedActiveMarks(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${SEED}') IS NOT NULL AS seed`);
+  if (!seed) return;
+  await db.exec(
+    `INSERT INTO ${SET_ACTIVATIONS} (id, version_set_id)
+      SELECT gen_random_uuid(), s.version_set_id FROM ${SEED} s
+      WHERE NOT EXISTS (SELECT 1 FROM ${SET_ACTIVATIONS} a WHERE a.version_set_id = s.version_set_id)`,
+  );
+  await db.exec(`DROP TABLE ${SEED}`);
 }
 
 // The catalog the engine reads as it is now.
@@ -572,49 +647,28 @@ function engineRows(config, table, rows) {
 }
 
 /**
- * The saved versions the engine calculates `version` with: the club's plan as it stands. That's its
- * Operations Plan version, or itself, and each program area's active version, with its own in place
- * of its area's.
+ * Everything `computePlan` reads, for the plan copies in `ids`. `set` is the Financial Plan: its
+ * organization and year are the calculation's. `operations` is its Operations Plan copy.
  */
-async function versionSet(db, version) {
-  const plan = await db(PLANS).where("id", version.plan_id).first();
-  const operations = plan.kind === "operations" ? version.id : version.operations_version_id;
-  const active = await db(ACTIVATIONS)
-    .join(`${PLANS} as p`, "p.id", `${ACTIVATIONS}.plan_id`)
-    .where({ "p.organization_id": plan.organization_id, "p.fiscal_year": plan.fiscal_year, "p.kind": "program_area" })
-    .distinctOn("p.program_area_id")
-    .orderBy([{ column: "p.program_area_id" }, { column: `${ACTIVATIONS}.sequence`, order: "desc" }])
-    .select("p.program_area_id", `${ACTIVATIONS}.version_id`);
-  const areas = active.filter((a) => plan.kind === "operations" || a.program_area_id !== plan.program_area_id);
-  const ids = [operations, ...areas.map((a) => a.version_id)];
-  if (plan.kind === "program_area") ids.push(version.id);
-  return { plan, operations, ids: [...new Set(ids)] };
-}
-
-/**
- * Everything `computePlan` reads, for the versions in `ids`. `plan` is a plan or a club plan: its
- * organization and year are the calculation's.
- */
-async function loadPlan(config, db, plan, operations, ids) {
+async function loadPlan(config, db, set, operations, ids) {
   const read = async (table, query = (q) => q) => engineRows(config, table, await query(db(table).select("*")));
   const data = Object.fromEntries(await Promise.all(CATALOG.map(async (table) => [table, await read(table)])));
-  const inputs = config.versioned.filter((table) => !config.results.includes(table));
-  for (const table of inputs) data[table] = await read(table, (q) => q.whereIn("version_id", ids));
-  const versions = await db(VERSIONS).whereIn("id", ids).select("id", "plan_id", "operations_version_id");
+  for (const table of config.versioned) data[table] = await read(table, (q) => q.whereIn("version_id", ids));
+  const versions = await db(VERSIONS).whereIn("id", ids).select("id", "plan_id");
   const plans = await db(PLANS)
     .whereIn(
       "id",
       versions.map((v) => v.plan_id),
     )
     .select("id", "kind", "program_area_id");
-  const [organization] = await read("organizations", (q) => q.where("id", plan.organization_id));
+  const [organization] = await read("organizations", (q) => q.where("id", set.organization_id));
   const rates = data.plan_rates.find((r) => r.version_id === operations);
   return {
     ...data,
-    fiscal_year: plan.fiscal_year,
+    fiscal_year: set.fiscal_year,
     organization,
     organization_cost_accounts: await read("organization_cost_accounts", (q) =>
-      q.where("organization_id", plan.organization_id),
+      q.where("organization_id", set.organization_id),
     ),
     rib_resource_kind_id: rates?.rib_resource_kind_id ?? null,
     plans,
@@ -724,35 +778,12 @@ function withoutOwner(fields) {
 }
 
 /**
- * Works out a saved version's results with the engine, and writes them, once. Its lines and P&L
- * are those it holds; the totals, positions and warnings are the whole calculation's.
- */
-async function writeResults(config, db, versionId, engine) {
-  const version = await db(VERSIONS).where("id", versionId).first();
-  if (version?.status !== "saved") return false;
-  if (await db(RESULTS).where("version_id", versionId).first()) return false;
-  const { plan, operations, ids } = await versionSet(db, version);
-  const data = await loadPlan(config, db, plan, operations, ids);
-  const { totals, ...all } = resultRows(data, engine.computePlan(data), operations);
-  const row = (fields) => ({ id: crypto.randomUUID(), version_id: versionId, ...withoutOwner(fields) });
-  const rows = {
-    plan_result_versions: ids.filter((id) => id !== versionId).map((id) => row({ calculated_with_id: id })),
-    plan_result_lines: all.plan_result_lines.filter((l) => l.owner === versionId).map(row),
-    plan_result_pnl: all.plan_result_pnl.filter((p) => p.owner === versionId).map(row),
-    plan_result_positions: all.plan_result_positions.map(row),
-    plan_result_warnings: all.plan_result_warnings.map(row),
-  };
-  await insertResults(db, rows, row(totals));
-  return true;
-}
-
-/**
- * Works out a club plan's results with the engine, from the versions it holds, and writes them,
- * once. Each line and P&L row names the member that holds what it's charged to.
+ * Works out a saved Financial Plan's results with the engine, from the plans it holds, and writes
+ * them, once. Each line and P&L row names the member that holds what it's charged to.
  */
 async function writeSetResults(config, db, setId, engine) {
   const set = await db(SETS).where("id", setId).first();
-  if (set === undefined) return false;
+  if (set?.status !== "saved") return false;
   if (await db(RESULTS).where("version_set_id", setId).first()) return false;
   const members = await db(MEMBERS)
     .join(`${PLANS} as p`, "p.id", `${MEMBERS}.plan_id`)
@@ -780,6 +811,97 @@ async function writeSetResults(config, db, setId, engine) {
   return true;
 }
 
+/**
+ * The versioned tables in an order that copies a row only after every row it links to, such as an
+ * offering before its activities.
+ */
+function copyOrder(config) {
+  const order = [];
+  const visit = (table, path) => {
+    if (order.includes(table)) return;
+    if (path.includes(table))
+      throw new Error(`saved-versions: plan rows link in a loop: ${[...path, table].join(" → ")}`);
+    for (const linked of Object.values(config.links[table] ?? {}))
+      if (linked !== table) visit(linked, [...path, table]);
+    order.push(table);
+  };
+  for (const table of config.versioned) visit(table, []);
+  return order;
+}
+
+/**
+ * A row as it reads, ready to write back: JSON as text, since the driver would send an array as a
+ * Postgres array, which a `json` column refuses.
+ */
+function asWritten(row) {
+  return Object.fromEntries(
+    Object.entries(row).map(([field, value]) => [
+      field,
+      value !== null && typeof value === "object" && !(value instanceof Date) && !Buffer.isBuffer(value)
+        ? JSON.stringify(value)
+        : value,
+    ]),
+  );
+}
+
+/**
+ * Copies a new Financial Plan's parent into it: a draft copy of each of the parent's plans, with
+ * every row, each keeping its `key`, and each link pointing at the copy of the row it linked to.
+ * Does nothing if the Financial Plan has no parent, or already has plans.
+ */
+async function copyParent(config, db, setId) {
+  return db.transaction(async (trx) => {
+    const set = await trx(SETS).where("id", setId).first();
+    if (!set?.parent_id) return false;
+    if (await trx(MEMBERS).where("version_set_id", setId).first()) return false;
+    const members = await trx(MEMBERS).where("version_set_id", set.parent_id).select("version_id");
+    const copyOf = new Map();
+    for (const { version_id: from } of members) {
+      const source = await trx(VERSIONS).where("id", from).first();
+      const id = crypto.randomUUID();
+      await trx(VERSIONS).insert({
+        id,
+        plan_id: source.plan_id,
+        parent_version_id: from,
+        status: "draft",
+        message: source.message,
+        rules: source.rules,
+      });
+      copyOf.set(from, id);
+    }
+    const ids = [...copyOf.keys()];
+    for (const table of copyOrder(config)) {
+      const links = Object.entries(config.links[table] ?? {});
+      const rows = ids.length === 0 ? [] : await trx(table).whereIn("version_id", ids).select("*");
+      const self = links.filter(([, linked]) => linked === table);
+      const copies = rows.map((row) => {
+        const copy = { ...asWritten(row), id: crypto.randomUUID(), version_id: copyOf.get(row.version_id) };
+        copyOf.set(row.id, copy.id);
+        return copy;
+      });
+      for (const copy of copies) {
+        for (const [field, linked] of links) {
+          if (copy[field] == null) continue;
+          // A link to a row in the same table is set once every copy has its id.
+          copy[field] = linked === table ? null : copyOf.get(copy[field]);
+        }
+      }
+      for (let i = 0; i < copies.length; i += 500) await trx(table).insert(copies.slice(i, i + 500));
+      for (const [field] of self) {
+        for (const row of rows.filter((r) => r[field] != null)) {
+          await trx(table)
+            .where("id", copyOf.get(row.id))
+            .update({ [field]: copyOf.get(row[field]) });
+        }
+      }
+    }
+    for (const { version_id: from } of members) {
+      await trx(MEMBERS).insert({ id: crypto.randomUUID(), version_set_id: setId, version_id: copyOf.get(from) });
+    }
+    return true;
+  });
+}
+
 // Applying a schema emits these once it commits. A changed table may need its trigger again.
 const SCHEMA_EVENTS = ["collections", "fields", "relations"].flatMap((scope) =>
   ["create", "update", "delete"].map((event) => `${scope}.${event}`),
@@ -792,7 +914,7 @@ function register({ filter, action, init }, { env, database, logger }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
   const config = require("./config.json");
   const bootstrapAdmin = String(env["ADMIN_EMAIL"] ?? "").toLowerCase();
-  const watched = new Set([PLANS, VERSIONS, ACTIVATIONS, SETS, MEMBERS, ...config.versioned]);
+  const watched = new Set([PLANS, VERSIONS, SETS, MEMBERS, SET_ACTIVATIONS, ...config.results, ...config.versioned]);
 
   const connect = (trx) => ({
     query: async (sql) => (await trx.raw(sql)).rows,
@@ -825,53 +947,74 @@ function register({ filter, action, init }, { env, database, logger }) {
   let engine;
   const loadEngine = async () =>
     (engine ??= await import(url.pathToFileURL(path.join(__dirname, "planning-index.mjs")).href));
-  // `id` is a saved version's or a club plan's.
   const results = async (id) => {
     try {
-      const engine = await loadEngine();
-      if (await database(SETS).where("id", id).first()) return await writeSetResults(config, database, id, engine);
-      return await writeResults(config, database, id, engine);
+      return await writeSetResults(config, database, id, await loadEngine());
     } catch (error) {
       logger.error(error, `saved-versions: couldn't write the results of ${id}`);
       throw error;
     }
   };
-  // Directus checks access, and commits the save, before its actions run.
+  const copy = async (id) => {
+    try {
+      return await copyParent(config, database, id);
+    } catch (error) {
+      logger.error(error, `saved-versions: couldn't copy the parent of ${id}`);
+      throw error;
+    }
+  };
+  // Directus checks access, and commits the write, before its actions run.
   action("items.update", async ({ collection, keys, payload }) => {
-    if (collection !== VERSIONS || payload?.status !== "saved") return;
+    if (collection !== SETS || payload?.status !== "saved") return;
     for (const key of keys ?? []) await results(key).catch(() => {});
   });
   action("items.create", async ({ collection, key }) => {
-    if (collection === SETS) await results(key).catch(() => {});
+    if (collection === SETS) await copy(key).catch(() => {});
   });
 
   // The deploy asks this whether every trigger is in place (`SavedVersionsCheck`). It answers with
   // names and yes or no, never data.
   init("routes.custom.before", ({ app }) => {
-    // Fills in a saved version's or club plan's results, if writing them failed when it was saved.
-    app.post("/saved-versions/results/:id", async (req, res) => {
+    const adminOnly = (handler) => async (req, res) => {
       if (req.accountability?.admin !== true) {
-        res.status(403).json({ errors: [{ message: "Only an admin can fill in saved results." }] });
+        res.status(403).json({ errors: [{ message: "Only an admin can do this." }] });
         return;
       }
-      try {
-        res.json({ written: await results(req.params.id) });
-      } catch {
-        res.status(500).json({ errors: [{ message: "Couldn't work out the saved results." }] });
-      }
-    });
-    app.get("/saved-versions/status", async (req, res) => {
-      if (req.accountability?.admin !== true) {
-        res.status(403).json({ errors: [{ message: "Only an admin can see the saved-versions triggers." }] });
-        return;
-      }
-      try {
-        res.json(await database.transaction((trx) => triggerStatus(config, connect(trx))));
-      } catch (error) {
-        logger.error(error, "saved-versions: couldn't read the triggers");
-        res.status(500).json({ errors: [{ message: "Couldn't read the saved-versions triggers." }] });
-      }
-    });
+      await handler(req, res);
+    };
+    // Fills in a saved Financial Plan's results, if writing them failed when it was saved.
+    app.post(
+      "/saved-versions/results/:id",
+      adminOnly(async (req, res) => {
+        try {
+          res.json({ written: await results(req.params.id) });
+        } catch {
+          res.status(500).json({ errors: [{ message: "Couldn't work out the saved results." }] });
+        }
+      }),
+    );
+    // Copies a new Financial Plan's parent into it, if that failed when it was added.
+    app.post(
+      "/saved-versions/copy/:id",
+      adminOnly(async (req, res) => {
+        try {
+          res.json({ copied: await copy(req.params.id) });
+        } catch {
+          res.status(500).json({ errors: [{ message: "Couldn't copy the Financial Plan's parent." }] });
+        }
+      }),
+    );
+    app.get(
+      "/saved-versions/status",
+      adminOnly(async (_req, res) => {
+        try {
+          res.json(await database.transaction((trx) => triggerStatus(config, connect(trx))));
+        } catch (error) {
+          logger.error(error, "saved-versions: couldn't read the triggers");
+          res.status(500).json({ errors: [{ message: "Couldn't read the saved-versions triggers." }] });
+        }
+      }),
+    );
   });
 
   const lookupIn = (database) => ({
@@ -885,6 +1028,11 @@ function register({ filter, action, init }, { env, database, logger }) {
       ids.length === 0
         ? []
         : database(VERSIONS).select("id", "plan_id", "status", "platform_version").whereIn("id", ids),
+    sets: async (ids) => (ids.length === 0 ? [] : database(SETS).select("id", "status").whereIn("id", ids)),
+    memberSets: async (keys) =>
+      keys.length === 0
+        ? []
+        : (await database(MEMBERS).select("version_set_id").whereIn("id", keys)).map((row) => row.version_set_id),
     // Only so the tests can clean up after themselves (`backend:savedVersionsDeletable`).
     deletesSaved: async (user) => {
       if (!config.deletable || !user || !bootstrapAdmin) return false;
@@ -897,7 +1045,7 @@ function register({ filter, action, init }, { env, database, logger }) {
     filter(`items.${event}`, async (payload, meta, { database, accountability }) => {
       if (!watched.has(meta.collection)) return payload;
       const keys = event === "delete" ? payload : (meta.keys ?? []);
-      const checked = await guard(
+      return guard(
         {
           collection: meta.collection,
           event,
@@ -909,7 +1057,6 @@ function register({ filter, action, init }, { env, database, logger }) {
         config,
         lookupIn(database),
       );
-      return checked;
     });
   }
 }
@@ -921,9 +1068,15 @@ module.exports.installTriggers = installTriggers;
 module.exports.triggerStatus = triggerStatus;
 module.exports.fingerprint = fingerprint;
 module.exports.triggerStatements = triggerStatements;
-module.exports.writeResults = writeResults;
 module.exports.writeSetResults = writeSetResults;
+module.exports.copyParent = copyParent;
+module.exports.copyOrder = copyOrder;
 module.exports.REFUSED = REFUSED;
 module.exports.RESULTS_BY_SAVE = RESULTS_BY_SAVE;
 module.exports.SET_STAYS = SET_STAYS;
-module.exports.MEMBERS_BY_SAVE = MEMBERS_BY_SAVE;
+module.exports.MEMBERS_FIXED = MEMBERS_FIXED;
+module.exports.SAVED_WITH_SET = SAVED_WITH_SET;
+module.exports.NEEDS_OPERATIONS = NEEDS_OPERATIONS;
+module.exports.ONE_PER_AREA = ONE_PER_AREA;
+module.exports.ONLY_SAVED_ACTIVE = ONLY_SAVED_ACTIVE;
+module.exports.ACTIVATION_STAYS = ACTIVATION_STAYS;

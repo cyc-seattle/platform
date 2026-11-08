@@ -1,4 +1,4 @@
-import { PLAN_ROWS, PLATFORM_VERSION, row, type Row } from "./rows.ts";
+import { PLAN_ROWS, type Row } from "./rows.ts";
 
 // The records a step names, in the features' own words, and the collections each covers. They're
 // the tests' own lists, not the stack's, so a mistake in a policy isn't copied into the test that
@@ -15,21 +15,11 @@ export interface Target {
 const plain = (...collections: string[]): Target[] =>
   collections.map((collection) => ({ collection, rows: [collection] }));
 
-// A plan version, and docs/planning-schema.md's collections that hold rows in one.
+// A plan copy, and docs/planning-schema.md's collections that hold rows in one.
 const VERSIONED = ["plan_versions", ...PLAN_ROWS];
 
 const versions = (...names: string[]): Target[] =>
   VERSIONED.map((collection) => ({ collection, rows: names.map((name) => `${collection}@${name}`) }));
-
-/** A saved version's rows. A new one goes in the saved version, and a new version is made saved. */
-const savedVersion = (): Target[] =>
-  versions("saved").map((target) => ({
-    ...target,
-    fixed: () =>
-      target.collection === "plan_versions"
-        ? { status: "saved", platform_version: PLATFORM_VERSION }
-        : { version_id: row["plan_versions@saved"] },
-  }));
 
 // Clubspot's events and registrations, as clubspot.feature defines them. Camps are Clubspot's
 // container for a program's sessions.
@@ -116,13 +106,15 @@ const sets: Record<string, Target[]> = {
     "boat_classes",
     "resource_kinds",
     "programs",
+    "catalog_offerings",
   ),
   products: plain("products"),
   "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),
-  plans: [...plain("plans", "plan_activations"), ...versions("draft", "saved")],
-  "a draft": versions("draft"),
-  "a saved version": savedVersion(),
+  plans: [
+    ...plain("plans", "version_sets", "version_set_members", "version_set_activations"),
+    ...versions("draft", "saved"),
+  ],
   groups: plain("groups", "group_members", "group_policies"),
 };
 

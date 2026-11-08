@@ -6,7 +6,7 @@ import { admin, deleteRows, itemPath, planRows, row } from "./steps/rows.ts";
 // The database's triggers refuse the write anyway (docs/planning-schema.md). The deploy applies the
 // schema just before this runs, so it also checks that applying a schema leaves them in place.
 
-const REFUSED = "A saved plan version can't be changed. Make a new draft from it.";
+const REFUSED = "A saved plan can't be changed. Start a new Financial Plan from the one it's in.";
 
 let flowId: string | undefined;
 

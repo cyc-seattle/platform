@@ -3,7 +3,9 @@ Feature: The catalog
   the club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Each
   product is one of these kinds: a program, a charter, a storage lease, merchandise, event hosting,
   or other. Some products are programs, which sailors sign up for, such as Summer Camp or the race
-  team. A program has details of its own, such as its Google group. The catalog also lists the revenue accounts
+  team. A program has details of its own, such as its Google group, and its catalog offerings: the
+  offerings it runs, by name, such as "J-Pod · fall practices", which plans and Clubspot's sign-ups
+  both point to. The catalog also lists the revenue accounts
   the club's money is booked to, the qualifications a coach can hold, the boat classes the club
   sails, such as Opti or 420, and the kinds of equipment programs share, such as coach boats and
   trailers.

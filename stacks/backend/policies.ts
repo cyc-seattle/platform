@@ -80,14 +80,12 @@ export function planCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(planning);
 }
 
-/** The log of which saved version is active. A writer adds to it, and never rewrites it. */
-const ACTIVATIONS = "plan_activations";
-/** Club plans. Adding one saves it, and it never changes. */
-const SETS = "version_sets";
-/** A club plan's versions, which the database sets when it's saved. */
+/** The log of which saved Financial Plan is active. A writer adds to it, and never rewrites it. */
+const SET_ACTIVATIONS = "version_set_activations";
+/** A Financial Plan's plans, which change only while it's a draft. */
 const MEMBERS = "version_set_members";
 
-/** A saved version's results, which only the saved-versions hook writes, once, when it's saved. */
+/** A saved Financial Plan's results, which only the saved-versions hook writes, once, when it's saved. */
 export function isResultCollection(collection: string): boolean {
   return collection === "plan_results" || collection.startsWith("plan_result_");
 }
@@ -198,13 +196,13 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Plan Writer",
       icon: "edit_calendar",
       description:
-        "Changes any plan's draft, saves it as a version, makes a saved version active, and saves a club plan. Sees the catalog.",
+        "Changes any plan in a draft Financial Plan, saves a Financial Plan, and marks a saved one active. Sees the catalog.",
       rules: [
         ...readCatalog,
         ...plans.flatMap((collection) =>
-          (isResultCollection(collection) || collection === MEMBERS
+          (isResultCollection(collection)
             ? (["read"] as const)
-            : collection === ACTIVATIONS || collection === SETS
+            : collection === SET_ACTIVATIONS
               ? (["create", "read"] as const)
               : (["create", "read", "update", "delete"] as const)
           ).map((action) => ({ collection, action })),
@@ -292,11 +290,9 @@ export function groupPoliciesConfig(policies: PolicyData[]): GroupPoliciesConfig
 export interface SavedVersionsConfig {
   /** The collections whose rows belong to one plan version. */
   versioned: string[];
-  /** Those that hold a saved version's results, which only the hook writes. */
+  /** The collections that hold a saved Financial Plan's results, which only the hook writes. */
   results: string[];
-  /** Those of them that hold a club plan's results too. */
-  setResults: string[];
-  /** The engine version the hook calculates results with, which it records on each saved version. */
+  /** The engine version the hook calculates results with, which it records on each saved Financial Plan. */
   platformVersion: string;
   /** Each table's decimal fields, which the database returns as strings and the engine needs as numbers. */
   decimals: Record<string, string[]>;
@@ -313,8 +309,7 @@ export function savedVersionsConfig(
   platformVersion: string,
 ): SavedVersionsConfig {
   const versioned = planCollections(schemas).filter(
-    (collection) =>
-      collection !== ACTIVATIONS && collection !== MEMBERS && fieldsIn(schemas, collection).includes("version_id"),
+    (collection) => collection !== MEMBERS && fieldsIn(schemas, collection).includes("version_id"),
   );
   const relations = schemas.flatMap(
     ({ schema }) =>
@@ -337,10 +332,7 @@ export function savedVersionsConfig(
   }
   return {
     versioned,
-    results: versioned.filter(isResultCollection),
-    setResults: versioned.filter(
-      (collection) => isResultCollection(collection) && fieldsIn(schemas, collection).includes("version_set_id"),
-    ),
+    results: planCollections(schemas).filter(isResultCollection),
     links,
     deletable,
     platformVersion,

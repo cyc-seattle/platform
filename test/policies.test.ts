@@ -110,6 +110,7 @@ describe("the Catalog policies", () => {
     "boat_classes",
     "resource_kinds",
     "programs",
+    "catalog_offerings",
     "organizations",
     "organization_cost_accounts",
   ];
@@ -137,7 +138,6 @@ describe("the Catalog policies", () => {
 const plans = [
   "plans",
   "plan_versions",
-  "plan_activations",
   "plan_offerings",
   "plan_offering_boat_classes",
   "plan_trips",
@@ -158,13 +158,13 @@ const plans = [
   "plan_bonus_owner_products",
   "plan_closed_dates",
   "plan_results",
-  "plan_result_versions",
   "plan_result_lines",
   "plan_result_pnl",
   "plan_result_positions",
   "plan_result_warnings",
   "version_sets",
   "version_set_members",
+  "version_set_activations",
 ];
 const results = plans.filter((collection) => collection.startsWith("plan_result"));
 
@@ -182,19 +182,14 @@ describe("the Plan policies", () => {
     expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Plan Writer change plans, add to the activation log and the club plans, and change none of the catalog or the results", () => {
-    const added = ["plan_activations", "version_sets"];
+  it("let a Plan Writer change plans and Financial Plans, add to the active marks, and change none of the catalog or the results", () => {
     for (const action of ["update", "delete"]) {
       expect([...collections("Plan Writer", action)].sort()).toEqual(
-        plans
-          .filter(
-            (collection) => ![...added, "version_set_members"].includes(collection) && !results.includes(collection),
-          )
-          .sort(),
+        plans.filter((collection) => collection !== "version_set_activations" && !results.includes(collection)).sort(),
       );
     }
     expect([...collections("Plan Writer", "create")].sort()).toEqual(
-      plans.filter((collection) => collection !== "version_set_members" && !results.includes(collection)).sort(),
+      plans.filter((collection) => !results.includes(collection)).sort(),
     );
   });
 
@@ -207,13 +202,20 @@ describe("the Plan policies", () => {
 });
 
 describe("savedVersionsConfig", () => {
-  it("guards every collection whose rows belong to a version, but the activation log", () => {
+  it("guards every collection whose rows belong to a plan copy", () => {
     const { versioned, results: written, deletable } = savedVersionsConfig(schemas, false, "1.0.0");
     expect(versioned.sort()).toEqual(
       plans
         .filter(
           (collection) =>
-            !["plans", "plan_versions", "plan_activations", "version_sets", "version_set_members"].includes(collection),
+            ![
+              "plans",
+              "plan_versions",
+              "version_sets",
+              "version_set_members",
+              "version_set_activations",
+              ...results,
+            ].includes(collection),
         )
         .sort(),
     );

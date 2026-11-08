@@ -41,7 +41,7 @@ collections:
       hidden: false
       icon: event_note
       item_duplication_fields: null
-      note: "One part of the club's plan: a program area's plan, or the Operations Plan."
+      note: "One part of a Financial Plan: a program area's Program Plan, or the Operations Plan."
       preview_url: null
       singleton: false
       sort: null
@@ -67,43 +67,19 @@ collections:
       hidden: false
       icon: history
       item_duplication_fields: null
-      note: A plan's draft, or a version saved from it, which never changes.
+      note: "One plan's copy in one Financial Plan, with every row it holds. It's saved with its Financial Plan, and then never changes."
       preview_url: null
       singleton: false
       sort: null
       sort_field: null
       status: active
-      translations: null
+      translations:
+        - language: en-US
+          translation: Plan copies
       unarchive_value: null
       versioning: false
     schema:
       name: plan_versions
-  - collection: plan_activations
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_activations
-      color: null
-      display_template: "{{plan_id.name}}: {{version_id.saved_at}}"
-      group: Planning
-      hidden: false
-      icon: check_circle
-      item_duplication_fields: null
-      note: Each time a saved version was made active. A plan's newest activation is its active version.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_activations
   - collection: plan_offerings
     meta:
       accountability: all
@@ -327,7 +303,7 @@ collections:
       hidden: false
       icon: percent
       item_duplication_fields: null
-      note: The year's rates. One row at most in each version.
+      note: The year's rates. One row at most in each copy.
       preview_url: null
       singleton: false
       sort: null
@@ -587,7 +563,7 @@ collections:
       hidden: false
       icon: event_busy
       item_duplication_fields: null
-      note: A day the club is closed, such as Labor Day. The P&L warns about an activity on one.
+      note: A day the organization is closed, such as Labor Day. The P&L warns about an activity on one.
       preview_url: null
       singleton: false
       sort: null
@@ -613,7 +589,7 @@ collections:
       hidden: false
       icon: summarize
       item_duplication_fields: null
-      note: A saved version's club-wide totals. Worked out when the version was saved, and never changed.
+      note: A saved Financial Plan's totals for the organization. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -624,32 +600,6 @@ collections:
       versioning: false
     schema:
       name: plan_results
-  - collection: plan_result_versions
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_result_versions
-      color: null
-      display_template: "{{version_id.plan_id.name}}: {{calculated_with_id.plan_id.name}}"
-      group: Planning
-      hidden: false
-      icon: account_tree
-      item_duplication_fields: null
-      note: The other saved versions a version's results were worked out with. Worked out when the version was saved, and never changed.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_result_versions
   - collection: plan_result_lines
     meta:
       accountability: all
@@ -665,7 +615,7 @@ collections:
       hidden: false
       icon: receipt_long
       item_duplication_fields: null
-      note: Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed.
+      note: Each cost and revenue line in a saved Financial Plan's P&L. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -691,7 +641,7 @@ collections:
       hidden: false
       icon: query_stats
       item_duplication_fields: null
-      note: A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed.
+      note: A saved Financial Plan's P&L for each offering, product, and program area. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -717,7 +667,7 @@ collections:
       hidden: false
       icon: badge
       item_duplication_fields: null
-      note: Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed.
+      note: Each salaried position's pay for the year, in a saved Financial Plan. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -743,7 +693,7 @@ collections:
       hidden: false
       icon: warning
       item_duplication_fields: null
-      note: What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed.
+      note: What the P&L warned about when a Financial Plan was saved. Worked out when it was saved, and never changed.
       preview_url: null
       singleton: false
       sort: null
@@ -764,12 +714,12 @@ collections:
       collapse: open
       collection: version_sets
       color: null
-      display_template: "{{name}} ({{saved_at}})"
+      display_template: "{{name}} ({{fiscal_year}}, {{status}})"
       group: Planning
       hidden: false
       icon: workspaces
       item_duplication_fields: null
-      note: "The club's plan for a year, saved: the active Operations Plan version and each program area's, with the P&L they make together. Saved when it's added, and never changed."
+      note: "The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Saving it saves them all, and then it never changes, apart from its note. Pick a parent when you add one, and its plans are copied in."
       preview_url: null
       singleton: false
       sort: null
@@ -777,7 +727,7 @@ collections:
       status: active
       translations:
         - language: en-US
-          translation: Club plans
+          translation: Financial Plans
       unarchive_value: null
       versioning: false
     schema:
@@ -792,22 +742,52 @@ collections:
       collapse: open
       collection: version_set_members
       color: null
-      display_template: "{{plan_id.name}}"
+      display_template: "{{version_set_id.name}}: {{plan_id.name}}"
       group: Planning
       hidden: false
       icon: list
       item_duplication_fields: null
-      note: One plan's version in a club plan. Set when the club plan is saved, and never changed.
+      note: "One plan in a Financial Plan: the copy of the plan it holds. Add or remove one only while the Financial Plan is a draft."
       preview_url: null
       singleton: false
       sort: null
       sort_field: null
       status: active
-      translations: null
+      translations:
+        - language: en-US
+          translation: Financial Plan plans
       unarchive_value: null
       versioning: false
     schema:
       name: version_set_members
+  - collection: version_set_activations
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: version_set_activations
+      color: null
+      display_template: "{{version_set_id.name}}: {{activated_at}}"
+      group: Planning
+      hidden: false
+      icon: check_circle
+      item_duplication_fields: null
+      note: Each time a saved Financial Plan was marked active. The newest one for an organization and year is the active one.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations:
+        - language: en-US
+          translation: Active Financial Plans
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: version_set_activations
 fields:
   - collection: plans
     field: id
@@ -961,7 +941,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The organization the plan is for. Can't change once the plan has a saved version.
+      note: The organization the plan is for. Can't change once the plan has a saved copy.
       options: null
       readonly: false
       required: true
@@ -1004,7 +984,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved version.
+      note: The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved copy.
       options: null
       readonly: false
       required: true
@@ -1084,7 +1064,7 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: A plan with a saved version can't be deleted, so archive it instead.
+      note: A plan with a saved copy can't be deleted, so archive it instead.
       options: null
       readonly: false
       required: false
@@ -1125,7 +1105,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: The plan's draft and saved versions.
+      note: The plan's copy in each Financial Plan.
       options: null
       readonly: false
       required: false
@@ -1235,9 +1215,9 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The saved version this draft started from.
+      note: The copy this one was made from, in the Financial Plan this one's started from.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 3
@@ -1245,7 +1225,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Started from
+          translation: Copied from
       validation: null
       validation_message: null
       width: full
@@ -1283,14 +1263,14 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown
-      note: Saving a draft sets this to saved. A saved version never changes, even for an admin.
+      note: Saved with its Financial Plan. A saved copy never changes, even for an admin.
       options:
         choices:
           - text: Draft
             value: draft
           - text: Saved
             value: saved
-      readonly: false
+      readonly: true
       required: true
       searchable: true
       sort: 4
@@ -1372,7 +1352,7 @@ fields:
       group: null
       hidden: true
       interface: input
-      note: Set when the version is saved.
+      note: Set when its Financial Plan is saved.
       options: null
       readonly: true
       required: false
@@ -1412,7 +1392,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: Set when the version is saved.
+      note: Set when its Financial Plan is saved.
       options: null
       readonly: true
       required: false
@@ -1483,59 +1463,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_versions
-    field: operations_version_id
-    type: uuid
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: operations_version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: >-
-        For a program area's plan: the saved Operations Plan version its numbers were calculated with, for the same
-        organization and year. Required to save. Empty for the Operations Plan.
-      options:
-        filter:
-          _and:
-            - status:
-                _eq: saved
-            - plan_id:
-                kind:
-                  _eq: operations
-      readonly: false
-      required: false
-      searchable: true
-      sort: 9
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Operations Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: operations_version_id
-      table: plan_versions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_versions
     field: rules
     type: text
     meta:
@@ -1567,282 +1494,6 @@ fields:
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_versions
-    field: results
-    type: alias
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{calculated_at}}"
-      field: results
-      group: null
-      hidden: false
-      interface: list-o2m
-      note: >-
-        What the P&L showed when this version was saved, worked out a moment after it's saved. A saved
-        version with none means working them out failed, and an admin can fill them in.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 11
-      special:
-        - o2m
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-  - collection: plan_activations
-    field: id
-    type: uuid
-    meta:
-      collection: plan_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_activations
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activations
-    field: plan_id
-    type: uuid
-    meta:
-      collection: plan_activations
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: plan_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: plan_id
-      table: plan_activations
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plans
-      foreign_key_column: id
-  - collection: plan_activations
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_activations
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: A saved version of the plan.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 3
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_activations
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_activations
-    field: activated_at
-    type: timestamp
-    meta:
-      collection: plan_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: activated_at
-      group: null
-      hidden: false
-      interface: datetime
-      note: Set when the version is made active.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 4
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: activated_at
-      table: plan_activations
-      data_type: timestamp with time zone
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activations
-    field: activated_by
-    type: uuid
-    meta:
-      collection: plan_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: activated_by
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: activated_by
-      table: plan_activations
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activations
-    field: sequence
-    type: integer
-    meta:
-      collection: plan_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: sequence
-      group: null
-      hidden: false
-      interface: input
-      note: Set when the version is made active. The plan's active version is the one with the highest.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: sequence
-      table: plan_activations
-      data_type: integer
-      default_value: 0
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -1915,7 +1566,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -2020,6 +1671,50 @@ fields:
       generation_expression: null
       has_auto_increment: false
       foreign_key_table: products
+      foreign_key_column: id
+  - collection: plan_offerings
+    field: catalog_offering_id
+    type: uuid
+    meta:
+      collection: plan_offerings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{program_id.name}} · {{name}}"
+      field: catalog_offering_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Which of the program's catalog offerings this is, such as "J-Pod · fall practices". It's how Clubspot's sign-ups find it, in every Financial Plan.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Catalog offering
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: catalog_offering_id
+      table: plan_offerings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: catalog_offerings
       foreign_key_column: id
   - collection: plan_offerings
     field: name
@@ -2953,7 +2648,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -3207,7 +2902,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -3539,7 +3234,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -4217,7 +3912,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -4507,7 +4202,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -4692,7 +4387,7 @@ fields:
       interface: input
       note: >-
         Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
-        page's web address. Leave empty for the whole club.
+        page's web address. Leave empty for the whole organization.
       options: null
       readonly: false
       required: false
@@ -5007,7 +4702,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -5295,7 +4990,7 @@ fields:
       interface: input
       note: >-
         Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
-        page's web address. Leave empty for the whole club.
+        page's web address. Leave empty for the whole organization.
       options: null
       readonly: false
       required: false
@@ -5551,7 +5246,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -5950,7 +5645,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -6244,7 +5939,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -6547,7 +6242,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -7006,7 +6701,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -7353,7 +7048,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -7813,7 +7508,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8025,7 +7720,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8438,7 +8133,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8604,7 +8299,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -8952,7 +8647,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -9166,7 +8861,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -9349,50 +9044,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_results
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_results
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_results
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: true
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
   - collection: plan_results
     field: calculated_at
     type: timestamp
@@ -9784,17 +9435,17 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The Financial Plan these results are for.
       options: null
       readonly: true
-      required: false
+      required: true
       searchable: true
       sort: 13
       special:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial Plan
       validation: null
       validation_message: null
       width: full
@@ -9806,7 +9457,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: true
       is_indexed: false
       is_primary_key: false
@@ -9815,135 +9466,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: version_sets
       foreign_key_column: id
-  - collection: plan_result_versions
-    field: id
-    type: uuid
-    meta:
-      collection: plan_result_versions
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_result_versions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_result_versions
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_result_versions
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The saved version these results are for.
-      options: null
-      readonly: true
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_result_versions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_result_versions
-    field: calculated_with_id
-    type: uuid
-    meta:
-      collection: plan_result_versions
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: calculated_with_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: Another saved version in the club's plan when this one was saved.
-      options: null
-      readonly: true
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Calculated with
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: calculated_with_id
-      table: plan_result_versions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
   - collection: plan_result_lines
     field: id
     type: uuid
@@ -9985,50 +9507,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_result_lines
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_result_lines
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_result_lines
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
   - collection: plan_result_lines
     field: cost_center_type
     type: string
@@ -10420,17 +9898,17 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The Financial Plan these results are for.
       options: null
       readonly: true
-      required: false
+      required: true
       searchable: true
       sort: 12
       special:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial Plan
       validation: null
       validation_message: null
       width: full
@@ -10442,7 +9920,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -10464,7 +9942,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: In a club plan's results, the plan that holds what it's charged to.
+      note: The plan in the Financial Plan that holds what it's charged to.
       options: null
       readonly: true
       required: false
@@ -10578,50 +10056,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_result_pnl
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_result_pnl
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_result_pnl
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
   - collection: plan_result_pnl
     field: level
     type: string
@@ -11064,17 +10498,17 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The Financial Plan these results are for.
       options: null
       readonly: true
-      required: false
+      required: true
       searchable: true
       sort: 14
       special:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial Plan
       validation: null
       validation_message: null
       width: full
@@ -11086,7 +10520,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -11108,7 +10542,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: In a club plan's results, the plan that holds what it's charged to.
+      note: The plan in the Financial Plan that holds what it's charged to.
       options: null
       readonly: true
       required: false
@@ -11180,50 +10614,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_result_positions
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_result_positions
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_result_positions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
   - collection: plan_result_positions
     field: position_key
     type: uuid
@@ -11737,17 +11127,17 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The Financial Plan these results are for.
       options: null
       readonly: true
-      required: false
+      required: true
       searchable: true
       sort: 16
       special:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial Plan
       validation: null
       validation_message: null
       width: full
@@ -11759,7 +11149,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -11894,50 +11284,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_warnings
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_result_warnings
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The saved version these results are for, if they aren't a club plan's.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_result_warnings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_result_warnings
     field: code
     type: string
     meta:
@@ -12070,17 +11416,17 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The club plan these results are for, if they aren't a version's.
+      note: The Financial Plan these results are for.
       options: null
       readonly: true
-      required: false
+      required: true
       searchable: true
       sort: 7
       special:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial Plan
       validation: null
       validation_message: null
       width: full
@@ -12092,7 +11438,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -12155,7 +11501,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The organization the club plan is for.
+      note: The organization the Financial Plan is for.
       options: null
       readonly: false
       required: true
@@ -12198,7 +11544,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The year the club plan is for.
+      note: The year the Financial Plan is for.
       options: null
       readonly: false
       required: true
@@ -12280,14 +11626,16 @@ fields:
       group: null
       hidden: false
       interface: input-multiline
-      note: Why it was saved.
+      note: 'What it was for, such as "Reviewed with the board". You can change it after it''s saved.'
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 5
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Note
       validation: null
       validation_message: null
       width: full
@@ -12309,6 +11657,104 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: version_sets
+    field: status
+    type: string
+    meta:
+      collection: version_sets
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Draft
+            value: draft
+          - text: Saved
+            value: saved
+      field: status
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note.
+      options:
+        choices:
+          - text: Draft
+            value: draft
+          - text: Saved
+            value: saved
+      readonly: false
+      required: true
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation:
+        status:
+          _in:
+            - draft
+            - saved
+      validation_message: "Must be one of: draft, saved."
+      width: full
+    schema:
+      name: status
+      table: version_sets
+      data_type: character varying
+      default_value: draft
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
+    field: parent_id
+    type: uuid
+    meta:
+      collection: version_sets
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}} ({{fiscal_year}})"
+      field: parent_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Started from
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: parent_id
+      table: version_sets
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: version_sets
     field: saved_by
     type: uuid
     meta:
@@ -12320,7 +11766,7 @@ fields:
       group: null
       hidden: true
       interface: input
-      note: Set when the club plan is saved.
+      note: Set when the Financial Plan is saved.
       options: null
       readonly: true
       required: false
@@ -12360,7 +11806,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: Set when the club plan is saved.
+      note: Set when the Financial Plan is saved.
       options: null
       readonly: true
       required: false
@@ -12445,9 +11891,9 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: The active version of each plan when the club plan was saved.
+      note: Each plan in the Financial Plan. Add or remove one only while it's a draft.
       options: null
-      readonly: true
+      readonly: false
       required: false
       searchable: true
       sort: 9
@@ -12472,7 +11918,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: What the club's P&L showed when it was saved, worked out a moment after. A club plan with none means working them out failed, and an admin can fill them in.
+      note: What the organization's P&L showed when it was saved, worked out a moment after. A Financial Plan with none means working them out failed, and an admin can fill them in.
       options: null
       readonly: true
       required: false
@@ -12540,7 +11986,7 @@ fields:
       interface: select-dropdown-m2o
       note: null
       options: null
-      readonly: true
+      readonly: false
       required: true
       searchable: true
       sort: 2
@@ -12548,7 +11994,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Club plan
+          translation: Financial Plan
       validation: null
       validation_message: null
       width: full
@@ -12582,10 +12028,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: Filled in from the plan copy.
       options: null
       readonly: true
-      required: true
+      required: false
       searchable: true
       sort: 3
       special:
@@ -12604,7 +12050,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -12626,9 +12072,9 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The plan's active version when the club plan was saved.
+      note: The plan's copy in this Financial Plan. It's in no other Financial Plan.
       options: null
-      readonly: true
+      readonly: false
       required: true
       searchable: true
       sort: 4
@@ -12636,7 +12082,7 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan version
+          translation: Plan copy
       validation: null
       validation_message: null
       width: full
@@ -12649,7 +12095,7 @@ fields:
       numeric_precision: null
       numeric_scale: null
       is_nullable: false
-      is_unique: false
+      is_unique: true
       is_indexed: false
       is_primary_key: false
       is_generated: false
@@ -12657,6 +12103,213 @@ fields:
       has_auto_increment: false
       foreign_key_table: plan_versions
       foreign_key_column: id
+  - collection: version_set_activations
+    field: id
+    type: uuid
+    meta:
+      collection: version_set_activations
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: version_set_activations
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_set_activations
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: version_set_activations
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}} ({{fiscal_year}})"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: A saved Financial Plan.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Financial Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: version_set_activations
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: version_set_activations
+    field: activated_at
+    type: timestamp
+    meta:
+      collection: version_set_activations
+      conditions: null
+      display: null
+      display_options: null
+      field: activated_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: Set when it's marked active.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Marked active
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: activated_at
+      table: version_set_activations
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_set_activations
+    field: activated_by
+    type: uuid
+    meta:
+      collection: version_set_activations
+      conditions: null
+      display: null
+      display_options: null
+      field: activated_by
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: activated_by
+      table: version_set_activations
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_set_activations
+    field: sequence
+    type: integer
+    meta:
+      collection: version_set_activations
+      conditions: null
+      display: null
+      display_options: null
+      field: sequence
+      group: null
+      hidden: false
+      interface: input
+      note: Set when it's marked active. The active Financial Plan for a year is the one with the highest.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sequence
+      table: version_set_activations
+      data_type: integer
+      default_value: 0
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
 relations:
   - collection: plans
     field: program_area_id
@@ -12740,69 +12393,6 @@ relations:
       foreign_key_table: plan_versions
       foreign_key_column: id
       constraint_name: plan_versions_parent_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_versions
-    field: operations_version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_versions
-      many_field: operations_version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_versions
-      column: operations_version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_versions_operations_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_activations
-    field: plan_id
-    related_collection: plans
-    meta:
-      junction_field: null
-      many_collection: plan_activations
-      many_field: plan_id
-      one_allowed_collections: null
-      one_collection: plans
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_activations
-      column: plan_id
-      foreign_key_table: plans
-      foreign_key_column: id
-      constraint_name: plan_activations_plan_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_activations
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_activations
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_activations
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_activations_version_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_offerings
@@ -13666,90 +13256,6 @@ relations:
       constraint_name: plan_closed_dates_version_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: plan_results
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_results
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: results
-      sort_field: null
-    schema:
-      table: plan_results
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_results_version_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: plan_result_versions
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_result_versions
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_versions
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_result_versions_version_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: plan_result_versions
-    field: calculated_with_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_result_versions
-      many_field: calculated_with_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_versions
-      column: calculated_with_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_result_versions_calculated_with_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: plan_result_lines
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_result_lines
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_lines
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_result_lines_version_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
   - collection: plan_result_lines
     field: account_id
     related_collection: accounts
@@ -13771,69 +13277,6 @@ relations:
       constraint_name: plan_result_lines_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: plan_result_pnl
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_result_pnl
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_pnl
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_result_pnl_version_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: plan_result_positions
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_result_positions
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_positions
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_result_positions_version_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: plan_result_warnings
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_result_warnings
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_warnings
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_result_warnings_version_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
   - collection: version_sets
     field: organization_id
     related_collection: organizations
@@ -14065,3 +13508,66 @@ relations:
       constraint_name: plan_result_pnl_version_set_member_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: version_sets
+    field: parent_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: version_sets
+      many_field: parent_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: version_sets
+      column: parent_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: version_sets_parent_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: version_set_activations
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: version_set_activations
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: version_set_activations
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: version_set_activations_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_offerings
+    field: catalog_offering_id
+    related_collection: catalog_offerings
+    meta:
+      junction_field: null
+      many_collection: plan_offerings
+      many_field: catalog_offering_id
+      one_allowed_collections: null
+      one_collection: catalog_offerings
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_offerings
+      column: catalog_offering_id
+      foreign_key_table: catalog_offerings
+      foreign_key_column: id
+      constraint_name: plan_offerings_catalog_offering_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT

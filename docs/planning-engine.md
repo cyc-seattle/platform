@@ -7,10 +7,10 @@ tags: [architecture, planning]
 The planning engine calculates a plan's P&L for one year from the plan's rows in
 [the planning schema](planning-schema.md). It's part of `@cyc-seattle/platform`, imported as
 `@cyc-seattle/platform/planning`. It doesn't read from or save to the database: an app or an agent
-loads the rows, calls `computePlan`, and shows the answer. When a version or a club plan is
-saved, the `saved-versions` hook runs the engine deployed with `backend` and records its results with
-it ([docs/planning-schema.md](planning-schema.md#a-saved-versions-results)), with which version of
-the engine calculated them.
+loads the rows, calls `computePlan`, and shows the answer. When a Financial Plan is saved, the
+`saved-versions` hook runs the engine deployed with `backend` and records its results with it
+([docs/planning-schema.md](planning-schema.md#a-saved-financial-plans-results)), with which version
+of the engine calculated them.
 
 ```ts
 import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/planning";
@@ -18,30 +18,28 @@ import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/plannin
 const { lines, pnl, organization, activities, positions, warnings } = computePlan(data);
 ```
 
-`data` holds the catalog, the organization, and every row of the plan versions being calculated,
+`data` holds the catalog, the organization, and every row of the plan copies being calculated,
 named as the schema names them, plus:
 
 - `fiscal_year`, the plan year. Fiscal year 2027 ends in calendar year 2027 and starts in the
   organization's `fiscal_year_start_month`.
 - `rib_resource_kind_id`: which resource kind is RIBs. The engine uses those resources' rates to cost
   each RIB hour.
-- `plans` and `plan_versions`: the plans being calculated and their versions, so the engine can tell
-  which plan each offering is in. An area version's `operations_version_id` lets the engine warn when
-  it was saved with another Operations Plan version.
+- `plans` and `plan_versions`: the plans being calculated and their copies, so the engine can tell
+  which plan each offering is in.
 
 Planners enter each of these in the plans ([docs/planning-schema.md](planning-schema.md)):
 
-- `fiscal_year` and the organization are the plan's own `fiscal_year` and `organization_id`.
-- The plan versions are the saved Operations Plan version and each program area plan's version
-  that names it in `operations_version_id`. For the club's plan, they're the active Operations Plan
-  version and each area's active version, or a club plan's members. An area plan's row that names an Operations Plan row by
-  key means the row with that key in that version.
-- Every pool is divided among all of the year's offerings, so an area's share of the pools, and the
-  organization's totals, are right only when every area's plan is calculated together. One area's
-  plan alone gives its own costs, but shares the pools as if it were the only area.
-- `rib_resource_kind_id` is in that Operations Plan version's `plan_rates`.
-- The catalog is read as it is now. A saved version doesn't copy it, so recalculating an old version
-  uses today's catalog.
+- `fiscal_year` and the organization are the Financial Plan's own `fiscal_year` and
+  `organization_id`.
+- The plan copies are the ones a Financial Plan holds: its Operations Plan and each of its Program
+  Plans. A Program Plan's row that names an Operations Plan row by key means the row with that key
+  in that Operations Plan copy.
+- Every pool is divided among all of the Financial Plan's offerings, so each Program Plan's share of
+  the pools, and the organization's totals, count every plan in it.
+- `rib_resource_kind_id` is in that Operations Plan copy's `plan_rates`.
+- The catalog is read as it is now. A saved Financial Plan doesn't copy it, so recalculating an old
+  one uses today's catalog.
 
 It returns:
 
@@ -174,8 +172,6 @@ The engine warns about:
 - a program with no program area, or another kind of product with one
 - an offering in an area plan whose product is in another area, and an offering in the Operations
   Plan whose product is in an area
-- an area version whose `operations_version_id` isn't the Operations Plan version it's calculated
-  with
 
 ### Salaried positions
 

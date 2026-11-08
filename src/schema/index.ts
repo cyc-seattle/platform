@@ -5,6 +5,7 @@ export interface Schema {
   accounts: Accounts[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
+  catalog_offerings: CatalogOfferings[];
   clubspot_camps: ClubspotCamps[];
   clubspot_classes: ClubspotClasses[];
   clubspot_custom_field_definitions: ClubspotCustomFieldDefinitions[];
@@ -29,7 +30,6 @@ export interface Schema {
   organization_cost_accounts: OrganizationCostAccounts[];
   organizations: Organizations[];
   people: People[];
-  plan_activations: PlanActivations[];
   plan_activities: PlanActivities[];
   plan_activity_block_rules: PlanActivityBlockRules[];
   plan_activity_resources: PlanActivityResources[];
@@ -47,7 +47,6 @@ export interface Schema {
   plan_result_lines: PlanResultLines[];
   plan_result_pnl: PlanResultPnl[];
   plan_result_positions: PlanResultPositions[];
-  plan_result_versions: PlanResultVersions[];
   plan_result_warnings: PlanResultWarnings[];
   plan_results: PlanResults[];
   plan_revenue_charges: PlanRevenueCharges[];
@@ -69,6 +68,7 @@ export interface Schema {
   resource_kinds: ResourceKinds[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
+  version_set_activations: VersionSetActivations[];
   version_set_members: VersionSetMembers[];
   version_sets: VersionSets[];
 }
@@ -113,6 +113,15 @@ export interface BoatClasses {
   sailors_per_boat: number;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
+}
+
+/** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */
+export interface CatalogOfferings {
+  id: string;
+  /** The program it's an offering of. */
+  program_id: string | Programs;
+  /** Which offering of the program, such as "fall practices" or "week 3". */
+  name: string;
 }
 
 /** A dated event, such as a season's race team. Copied from Clubspot, so edit it there. */
@@ -474,19 +483,6 @@ export interface People {
   directus_user_id: string | null;
 }
 
-/** Each time a saved version was made active. A plan's newest activation is its active version. */
-export interface PlanActivations {
-  id: string;
-  plan_id: string | Plans;
-  /** A saved version of the plan. */
-  version_id: string | PlanVersions;
-  /** Set when the version is made active. */
-  activated_at: string;
-  activated_by: string | null;
-  /** Set when the version is made active. The plan's active version is the one with the highest. */
-  sequence: number;
-}
-
 /** One dated activity, such as a practice, a regatta day, or a travel day. */
 export interface PlanActivities {
   id: string;
@@ -597,7 +593,7 @@ export interface PlanBudgetLines {
   account_id: string | Accounts;
   function: "program" | "management" | "fundraising" | null;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
-  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole club. */
+  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization. */
   cost_center_key: string | null;
   /** In cents: 12500 is $125.00. */
   amount_cents: number;
@@ -607,7 +603,7 @@ export interface PlanBudgetLines {
   note: string | null;
 }
 
-/** A day the club is closed, such as Labor Day. The P&L warns about an activity on one. */
+/** A day the organization is closed, such as Labor Day. The P&L warns about an activity on one. */
 export interface PlanClosedDates {
   id: string;
   /** The version this row belongs to. */
@@ -628,7 +624,7 @@ export interface PlanLaborLines {
   key: string;
   name: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
-  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole club. */
+  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization. */
   cost_center_key: string | null;
   /** Who does the work: copy the Key from a staff level in the Operations Plan. */
   staff_level_key: string;
@@ -659,6 +655,8 @@ export interface PlanOfferings {
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
   product_id: string | Products;
+  /** Which of the program's catalog offerings this is, such as "J-Pod · fall practices". It's how Clubspot's sign-ups find it, in every Financial Plan. */
+  catalog_offering_id: string | CatalogOfferings | null;
   name: string;
   season_term: string | null;
   starts_on: string;
@@ -703,7 +701,7 @@ export interface PlanPools {
   name: string;
 }
 
-/** The year's rates. One row at most in each version. */
+/** The year's rates. One row at most in each copy. */
 export interface PlanRates {
   id: string;
   /** The version this row belongs to. */
@@ -742,11 +740,9 @@ export interface PlanResources {
   excluded_from_mtdc: boolean;
 }
 
-/** Each cost and revenue line in a saved version's P&L. Worked out when the version was saved, and never changed. */
+/** Each cost and revenue line in a saved Financial Plan's P&L. Worked out when it was saved, and never changed. */
 export interface PlanResultLines {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
-  version_id: string | PlanVersions | null;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
   cost_center_key: string | null;
   cost_center_name: string;
@@ -757,19 +753,17 @@ export interface PlanResultLines {
   /** The engine's key for the line. */
   line: string;
   explanation: string | null;
-  /** The club plan these results are for, if they aren't a version's. */
-  version_set_id: string | VersionSets | null;
-  /** In a club plan's results, the plan that holds what it's charged to. */
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
+  /** The plan in the Financial Plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
   /** What the line is, in plain words, such as G&A share: Payroll tax. */
   line_name: string | null;
 }
 
-/** A saved version's P&L for each offering, product, and program area. Worked out when the version was saved, and never changed. */
+/** A saved Financial Plan's P&L for each offering, product, and program area. Worked out when it was saved, and never changed. */
 export interface PlanResultPnl {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
-  version_id: string | PlanVersions | null;
   level: "offering" | "product" | "program_area";
   subject_key: string;
   name: string;
@@ -784,17 +778,15 @@ export interface PlanResultPnl {
   enrollment: number;
   days: number;
   sailor_days: number;
-  /** The club plan these results are for, if they aren't a version's. */
-  version_set_id: string | VersionSets | null;
-  /** In a club plan's results, the plan that holds what it's charged to. */
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
+  /** The plan in the Financial Plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
 }
 
-/** Each salaried position's pay for the year, in a saved version. Worked out when the version was saved, and never changed. */
+/** Each salaried position's pay for the year, in a saved Financial Plan. Worked out when it was saved, and never changed. */
 export interface PlanResultPositions {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
-  version_id: string | PlanVersions | null;
   position_key: string;
   name: string;
   /** In cents: 12500 is $125.00. */
@@ -814,41 +806,28 @@ export interface PlanResultPositions {
   total_pay_cents: number;
   /** The year's payroll tax on the total pay. In cents: 12500 is $125.00. */
   payroll_tax_cents: number;
-  /** The club plan these results are for, if they aren't a version's. */
-  version_set_id: string | VersionSets | null;
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
   /** Hours another coach would cover while this position coaches two or more groups at once: for three groups at once, two coaches. */
   double_booked_hours: string | null;
   /** Dates this position coaches two or more groups at once. */
   double_booked_dates: number | null;
 }
 
-/** The other saved versions a version's results were worked out with. Worked out when the version was saved, and never changed. */
-export interface PlanResultVersions {
-  id: string;
-  /** The saved version these results are for. */
-  version_id: string | PlanVersions;
-  /** Another saved version in the club's plan when this one was saved. */
-  calculated_with_id: string | PlanVersions;
-}
-
-/** What the P&L warned about when a version was saved. Worked out when the version was saved, and never changed. */
+/** What the P&L warned about when a Financial Plan was saved. Worked out when it was saved, and never changed. */
 export interface PlanResultWarnings {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
-  version_id: string | PlanVersions | null;
   /** The kind of warning. */
   code: string;
   message: string;
   subject_key: string | null;
-  /** The club plan these results are for, if they aren't a version's. */
-  version_set_id: string | VersionSets | null;
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
 }
 
-/** A saved version's club-wide totals. Worked out when the version was saved, and never changed. */
+/** A saved Financial Plan's totals for the organization. Worked out when it was saved, and never changed. */
 export interface PlanResults {
   id: string;
-  /** The saved version these results are for, if they aren't a club plan's. */
-  version_id: string | PlanVersions | null;
   calculated_at: string;
   /** In cents: 12500 is $125.00. */
   operating_revenue_cents: number;
@@ -866,8 +845,8 @@ export interface PlanResults {
   capital_cents: number;
   /** Operating net, plus fundraising net, less capital. In cents: 12500 is $125.00. */
   total_cents: number;
-  /** The club plan these results are for, if they aren't a version's. */
-  version_set_id: string | VersionSets | null;
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
 }
 
 /** A charge set as a share of each offering's revenue, such as scholarships or card fees. Operations Plan only. */
@@ -957,44 +936,40 @@ export interface PlanTrips {
   miles: number | null;
 }
 
-/** A plan's draft, or a version saved from it, which never changes. */
+/** One plan's copy in one Financial Plan, with every row it holds. It's saved with its Financial Plan, and then never changes. */
 export interface PlanVersions {
   id: string;
   plan_id: string | Plans;
-  /** The saved version this draft started from. */
+  /** The copy this one was made from, in the Financial Plan this one's started from. */
   parent_version_id: string | PlanVersions | null;
-  /** Saving a draft sets this to saved. A saved version never changes, even for an admin. */
+  /** Saved with its Financial Plan. A saved copy never changes, even for an admin. */
   status: "draft" | "saved";
   /** What changed in this version. */
   message: string | null;
-  /** Set when the version is saved. */
+  /** Set when its Financial Plan is saved. */
   saved_by: string | null;
-  /** Set when the version is saved. */
+  /** Set when its Financial Plan is saved. */
   saved_at: string | null;
   /** The version of the planning engine that calculated its numbers. Required to save. */
   platform_version: string | null;
-  /** For a program area's plan: the saved Operations Plan version its numbers were calculated with, for the same organization and year. Required to save. Empty for the Operations Plan. */
-  operations_version_id: string | PlanVersions | null;
   /** What you want that the plan's numbers don't capture, for your AI to fill in. For example: every Monday, Wednesday and Friday, except on SPS school holidays, from 4pm until dusk. */
   rules: string | null;
-  /** What the P&L showed when this version was saved, worked out a moment after it's saved. A saved version with none means working them out failed, and an admin can fill them in. */
-  results: (string | PlanResults)[];
 }
 
-/** One part of the club's plan: a program area's plan, or the Operations Plan. */
+/** One part of a Financial Plan: a program area's Program Plan, or the Operations Plan. */
 export interface Plans {
   id: string;
   kind: "program_area" | "operations";
   /** The program area the plan is for. Empty for the Operations Plan. */
   program_area_id: string | ProgramAreas | null;
-  /** The organization the plan is for. Can't change once the plan has a saved version. */
+  /** The organization the plan is for. Can't change once the plan has a saved copy. */
   organization_id: string | Organizations;
-  /** The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved version. */
+  /** The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved copy. */
   fiscal_year: number;
   name: string;
-  /** A plan with a saved version can't be deleted, so archive it instead. */
+  /** A plan with a saved copy can't be deleted, so archive it instead. */
   archived: boolean;
-  /** The plan's draft and saved versions. */
+  /** The plan's copy in each Financial Plan. */
   versions: (string | PlanVersions)[];
 }
 
@@ -1133,34 +1108,51 @@ export interface SyncTasks {
   needs_attention: boolean;
 }
 
-/** One plan's version in a club plan. Set when the club plan is saved, and never changed. */
+/** Each time a saved Financial Plan was marked active. The newest one for an organization and year is the active one. */
+export interface VersionSetActivations {
+  id: string;
+  /** A saved Financial Plan. */
+  version_set_id: string | VersionSets;
+  /** Set when it's marked active. */
+  activated_at: string | null;
+  activated_by: string | null;
+  /** Set when it's marked active. The active Financial Plan for a year is the one with the highest. */
+  sequence: number;
+}
+
+/** One plan in a Financial Plan: the copy of the plan it holds. Add or remove one only while the Financial Plan is a draft. */
 export interface VersionSetMembers {
   id: string;
   version_set_id: string | VersionSets;
-  plan_id: string | Plans;
-  /** The plan's active version when the club plan was saved. */
+  /** Filled in from the plan copy. */
+  plan_id: string | Plans | null;
+  /** The plan's copy in this Financial Plan. It's in no other Financial Plan. */
   version_id: string | PlanVersions;
 }
 
-/** The club's plan for a year, saved: the active Operations Plan version and each program area's, with the P&L they make together. Saved when it's added, and never changed. */
+/** The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Saving it saves them all, and then it never changes, apart from its note. Pick a parent when you add one, and its plans are copied in. */
 export interface VersionSets {
   id: string;
-  /** The organization the club plan is for. */
+  /** The organization the Financial Plan is for. */
   organization_id: string | Organizations;
-  /** The year the club plan is for. */
+  /** The year the Financial Plan is for. */
   fiscal_year: number;
   /** Such as 2027 budget as adopted. */
   name: string;
-  /** Why it was saved. */
+  /** What it was for, such as "Reviewed with the board". You can change it after it's saved. */
   message: string | null;
-  /** Set when the club plan is saved. */
+  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note. */
+  status: "draft" | "saved";
+  /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
+  parent_id: string | VersionSets | null;
+  /** Set when the Financial Plan is saved. */
   saved_by: string | null;
-  /** Set when the club plan is saved. */
+  /** Set when the Financial Plan is saved. */
   saved_at: string | null;
   /** The version of the planning engine that calculated its numbers. */
   platform_version: string | null;
-  /** The active version of each plan when the club plan was saved. */
+  /** Each plan in the Financial Plan. Add or remove one only while it's a draft. */
   members: (string | VersionSetMembers)[];
-  /** What the club's P&L showed when it was saved, worked out a moment after. A club plan with none means working them out failed, and an admin can fill them in. */
+  /** What the organization's P&L showed when it was saved, worked out a moment after. A Financial Plan with none means working them out failed, and an admin can fill them in. */
   results: (string | PlanResults)[];
 }
