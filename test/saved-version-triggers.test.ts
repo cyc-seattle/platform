@@ -724,6 +724,25 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
     expect((await db.query<{ lock_timeout: string }>(`SHOW lock_timeout`)).rows[0]!.lock_timeout).toBe("0");
   });
 
+  it("marks saved each club plan the migration listed, without saving its plans again, and drops the list", async () => {
+    const db = await database(config(false));
+    const { organization, set } = await plans(db, 2702);
+    // A club plan the schema apply has just given a status column, as a draft.
+    await db.exec("ALTER TABLE version_sets DISABLE TRIGGER USER");
+    await db.query("UPDATE version_sets SET status = 'draft' WHERE id = $1", [set]);
+    await db.exec("ALTER TABLE version_sets ENABLE TRIGGER USER");
+    await db.exec("CREATE TABLE cyc_seed_saved_sets (version_set_id uuid PRIMARY KEY)");
+    await db.query("INSERT INTO cyc_seed_saved_sets VALUES ($1)", [set]);
+    await db.transaction((tx) => installTriggers(config(false), connect(tx)));
+    expect((await db.query("SELECT status FROM version_sets WHERE id = $1", [set])).rows).toEqual([
+      { status: "saved" },
+    ]);
+    expect((await db.query("SELECT to_regclass('cyc_seed_saved_sets') AS seed")).rows).toEqual([{ seed: null }]);
+    // Its triggers are back on.
+    expect(await writer(db).update("version_sets", set, { name: "Changed" })).toEqual(refusal(SET_STAYS));
+    expect(organization).toBeDefined();
+  });
+
   it("marks active each Financial Plan the migration listed, once, and drops the list", async () => {
     const db = await database(config(false));
     const { set } = await plans(db, 2701);

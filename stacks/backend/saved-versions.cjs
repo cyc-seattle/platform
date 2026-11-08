@@ -559,6 +559,7 @@ async function installTriggers(config, db) {
     .filter(([table, columns]) => columns.some((column) => !present.has(`${table}.${column}`)))
     .map(([table]) => table);
   if (missing.length > 0) return { missing, installed: false };
+  await seedSaved(db);
   const status = await triggerStatus(config, db);
   const hash = fingerprint(config);
   if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
@@ -569,6 +570,25 @@ async function installTriggers(config, db) {
   await db.exec(`COMMENT ON FUNCTION cyc_saved_versions_row() IS ${literal(hash)}`);
   await seedActiveMarks(db);
   return { missing: [], installed: true };
+}
+
+/** Where the Financial Plans migration (cyc0002) lists the club plans, each saved when it was added. */
+const SAVED_SEED = "cyc_seed_saved_sets";
+
+/**
+ * Marks saved each club plan the Financial Plans migration listed, once the schema apply has added
+ * `version_sets.status`, as a draft, then drops the list. Its plans were saved already, so this sets
+ * only the status, with the trigger that would save them again off for the one statement.
+ */
+async function seedSaved(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${SAVED_SEED}') IS NOT NULL AS seed`);
+  if (!seed) return;
+  await db.exec(`ALTER TABLE ${SETS} DISABLE TRIGGER USER`);
+  await db.exec(
+    `UPDATE ${SETS} SET status = 'saved' WHERE id IN (SELECT version_set_id FROM ${SAVED_SEED}) AND status = 'draft'`,
+  );
+  await db.exec(`ALTER TABLE ${SETS} ENABLE TRIGGER USER`);
+  await db.exec(`DROP TABLE ${SAVED_SEED}`);
 }
 
 /** Where the Financial Plans migration (cyc0002) lists the saved Financial Plans to mark active. */

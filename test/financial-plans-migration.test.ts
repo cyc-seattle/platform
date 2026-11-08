@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { up } from "../stacks/backend/migrations/cyc0002-financial-plans.cjs";
+import { up as repair } from "../stacks/backend/migrations/cyc0003-financial-plans-repair.cjs";
 
 // The Financial Plans migration, in a real Postgres (PGlite), on the planning tables as they were
 // with club plans: a saved club plan, a saved version's own results, a version that names its
@@ -101,10 +102,10 @@ async function columns(db: PGlite, table: string): Promise<string[]> {
 
 // Starting a PGlite can take longer than the 5s default on a CI runner.
 describe("the Financial Plans migration", { timeout: 30_000 }, () => {
-  it("marks each club plan a saved Financial Plan, keeping its results", async () => {
+  it("lists each club plan for the hook to mark saved, keeping its results", async () => {
     const db = await database();
     await migrate(db);
-    expect((await db.query("SELECT id, status FROM version_sets")).rows).toEqual([{ id: SET, status: "saved" }]);
+    expect((await db.query("SELECT version_set_id FROM cyc_seed_saved_sets")).rows).toEqual([{ version_set_id: SET }]);
     expect((await db.query("SELECT id FROM plan_results ORDER BY id")).rows).toEqual([{ id: id(8) }]);
     expect((await db.query("SELECT id FROM plan_result_lines ORDER BY id")).rows).toEqual([{ id: id(10) }]);
   });
@@ -180,15 +181,56 @@ describe("the Financial Plans migration", { timeout: 30_000 }, () => {
     expect(rows).toEqual([]);
   });
 
-  it("does nothing more when run again", async () => {
+  it("adds no column, since the schema apply adds every one and refuses one it didn't make", async () => {
+    const db = await database();
+    const all = async () =>
+      (
+        await db.query<{ c: string }>(
+          "SELECT table_name || '.' || column_name AS c FROM information_schema.columns WHERE table_schema = current_schema()",
+        )
+      ).rows.map((r) => r.c);
+    const before = new Set(await all());
+    await migrate(db);
+    await repair({ raw: (sql: string) => db.exec(sql) });
+    expect((await all()).filter((c) => !before.has(c) && !c.startsWith("cyc_seed_"))).toEqual([]);
+  });
+
+  it("does nothing more when run again, as the repair runs it", async () => {
     const db = await database();
     await migrate(db);
-    await db.exec(`INSERT INTO version_sets (id, name, status) VALUES ('${id(11)}', 'Two coaches', 'draft')`);
+    const seeded = (await db.query("SELECT version_set_id FROM cyc_seed_saved_sets")).rows;
+    await repair({ raw: (sql: string) => db.exec(sql) });
+    expect((await db.query("SELECT version_set_id FROM cyc_seed_saved_sets")).rows).toEqual(seeded);
+    expect((await db.query("SELECT id FROM version_sets")).rows).toEqual([{ id: SET }]);
+  });
+
+  it("repairs a database where an earlier version added version_sets.status itself", async () => {
+    const db = await database();
+    // As dev was left: status added with no record of it in directus_fields, and plan_activations put back by a deploy
+    // of the code before Financial Plans.
+    await db.exec("DROP TRIGGER cyc_saved_versions_members ON version_sets");
+    await db.exec("DROP TRIGGER cyc_saved_versions ON version_sets");
+    await db.exec("ALTER TABLE version_sets ADD COLUMN status varchar(255) NOT NULL DEFAULT 'draft'");
+    await db.exec(`UPDATE version_sets SET status = 'saved'`);
+    await db.exec(`INSERT INTO version_sets VALUES ('${id(50)}', 'A draft', now(), '${ORG}', 2027, 'draft')`);
+    await repair({ raw: (sql: string) => db.exec(sql) });
+    expect(await columns(db, "version_sets")).not.toContain("status");
+    expect((await db.query("SELECT version_set_id FROM cyc_seed_saved_sets ORDER BY 1")).rows).toEqual(
+      [{ version_set_id: SET }, { version_set_id: id(50) }].sort((a, b) =>
+        a.version_set_id.localeCompare(b.version_set_id),
+      ),
+    );
+    const { rows } = await db.query("SELECT tablename FROM pg_tables WHERE tablename = 'plan_activations'");
+    expect(rows).toEqual([]);
+  });
+
+  it("leaves a status column the schema apply made alone", async () => {
+    const db = await database();
     await migrate(db);
-    expect((await db.query("SELECT name, status FROM version_sets ORDER BY name")).rows).toEqual([
-      { name: "2026 financial model", status: "saved" },
-      { name: "Two coaches", status: "draft" },
-    ]);
+    await db.exec("ALTER TABLE version_sets ADD COLUMN status varchar(255) NOT NULL DEFAULT 'draft'");
+    await db.query("INSERT INTO directus_fields (collection, field) VALUES ('version_sets', 'status')");
+    await repair({ raw: (sql: string) => db.exec(sql) });
+    expect(await columns(db, "version_sets")).toContain("status");
   });
 
   it("does nothing on a new database", async () => {

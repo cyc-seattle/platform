@@ -19,6 +19,9 @@
 // cyc_seed_active_sets for the hook to mark active once the schema apply has made the table for
 // marks. A year with more than one is left unmarked, and logged.
 //
+// It adds no column: the schema apply adds every one schemas/planning.yaml declares, and refuses
+// one that's already there without Directus's record of it.
+//
 // It's one statement, so Postgres runs it in one transaction. It skips what's already done or
 // doesn't exist, so it's safe to run again and does nothing on a new database.
 
@@ -51,14 +54,15 @@ BEGIN
     EXECUTE format('DROP TRIGGER %I ON %I', item.tgname, item.relname);
   END LOOP;
 
+  -- Every club plan was saved when it was added. The schema apply adds version_sets.status, as a
+  -- draft, after this runs, and refuses a column it didn't make, so the hook marks these saved then.
   IF to_regclass('version_sets') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = current_schema() AND table_name = 'version_sets' AND column_name = 'status'
   ) THEN
-    -- As schemas/planning.yaml declares it, so the schema apply only adds Directus's record of it.
-    ALTER TABLE version_sets ADD COLUMN status varchar(255) NOT NULL DEFAULT 'draft';
-    UPDATE version_sets SET status = 'saved';
-    RAISE NOTICE 'Marked % club plans saved', (SELECT count(*) FROM version_sets);
+    CREATE TABLE IF NOT EXISTS cyc_seed_saved_sets (version_set_id uuid PRIMARY KEY);
+    INSERT INTO cyc_seed_saved_sets SELECT id FROM version_sets ON CONFLICT DO NOTHING;
+    RAISE NOTICE 'Listed % club plans to mark saved', (SELECT count(*) FROM cyc_seed_saved_sets);
   END IF;
 
   IF to_regclass('version_set_members') IS NOT NULL THEN
@@ -84,13 +88,13 @@ BEGIN
     CREATE TABLE IF NOT EXISTS cyc_seed_active_sets (version_set_id uuid PRIMARY KEY);
     INSERT INTO cyc_seed_active_sets
       SELECT s.id FROM version_sets s
-        WHERE s.status = 'saved' AND (
+        WHERE (
           SELECT count(*) FROM version_sets o
-            WHERE o.organization_id = s.organization_id AND o.fiscal_year = s.fiscal_year AND o.status = 'saved'
+            WHERE o.organization_id = s.organization_id AND o.fiscal_year = s.fiscal_year
         ) = 1
       ON CONFLICT DO NOTHING;
     FOR item IN
-      SELECT organization_id, fiscal_year FROM version_sets WHERE status = 'saved'
+      SELECT organization_id, fiscal_year FROM version_sets
         GROUP BY organization_id, fiscal_year HAVING count(*) > 1
     LOOP
       RAISE NOTICE 'Marked no Financial Plan active for % %: it has more than one saved', item.organization_id, item.fiscal_year;
