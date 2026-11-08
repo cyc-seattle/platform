@@ -154,11 +154,13 @@ describe.each(repos)("%s's environments", (repo) => {
         .map((v) => [v.inputs.variableName, v.inputs.value]),
     );
 
-  it("has exactly dev, prod-preview, and prod", () => {
+  // sail-team also publishes its Storybook to Pages.
+  it("has exactly dev, prod-preview, and prod, and github-pages for sail-team", () => {
     const names = ofType("github:index/repositoryEnvironment:RepositoryEnvironment")
       .filter((e) => e.inputs.repository === repo)
       .map((e) => e.inputs.environment);
-    expect(names.sort()).toEqual(["dev", "prod", "prod-preview"]);
+    const pages = repo === "sail-team" ? ["github-pages"] : [];
+    expect(names.sort()).toEqual(["dev", ...pages, "prod", "prod-preview"]);
   });
 
   it("lets dev deploy from any branch with no reviewer", () => {
@@ -202,5 +204,17 @@ describe.each(repos)("%s's environments", (repo) => {
       GCP_SERVICE_ACCOUNT: email("deploy-runner"),
       PULUMI_BACKEND_URL: "gs://example-project-pulumi-prod",
     });
+  });
+});
+
+describe("sail-team's github-pages environment", () => {
+  it("publishes only from main", () => {
+    expect(byName("sail-team-github-pages").inputs.deploymentBranchPolicy).toEqual({
+      protectedBranches: false,
+      customBranchPolicies: true,
+    });
+    expect(byName("sail-team-github-pages-main").inputs).toEqual(
+      expect.objectContaining({ environment: "github-pages", branchPattern: "main" }),
+    );
   });
 });
