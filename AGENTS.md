@@ -2,6 +2,8 @@
 
 Guidance for coding agents working in this repository.
 
+Follow `cyc:conventions` (the rules shared by every cyc-seattle repo).
+
 ## Overview
 
 Pulumi stacks, in TypeScript, for CYC's shared Google Cloud platform. A stack lives here only when no
@@ -52,6 +54,17 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   after deploying the branch to dev by hand. Either way, the PR title is the commit's title.
 - Never push to `main`.
 
+## Merge queue
+
+- PRs merge through a batched merge queue. A PR's push runs only CI. The dev deploy and the
+  integration tests run in the queue, one batch at a time, on the one shared dev.
+- Never force-push. To bring a branch up to date, merge `origin/main` into it.
+- A queued branch can't be pushed until it's dequeued. Take the PR out of the queue first.
+- To try a branch on dev before it's queued, run `gh workflow run pull-request.yml --ref <branch>`.
+  Run it only when no other dev run is going (`gh run list --workflow pull-request.yml`).
+- When a queue run fails, reproduce the failure locally against dev before you push a fix:
+  `PULUMI_STACK=dev mise run integration`, or `PULUMI_STACK=dev mise run preview` for a deploy.
+
 ## Deploys
 
 - `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
@@ -60,8 +73,6 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   integration tests; the batch merges only if they pass (`dev-passed`, #80). A push to `main` skips dev, which the queue already
   ran on that commit, previews prod, and applies it once a maintainer approves. `prod` is skipped
   when the preview shows no changes.
-- `gh workflow run pull-request.yml --ref <branch>` deploys a branch to dev before it's queued. It
-  shares dev with the queue, so use it only when a PR needs early feedback.
 - A queued PR that changes only docs, `.agents/` or `.github/` skips the dev deploy and the
   integration features (`scripts/changed-projects`), except a change to `pull-request.yml` itself.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, `backend`,
@@ -82,9 +93,20 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Adding an app's dev database means adding its name to `infra:devDatabases` in a platform PR. Cloud SQL
   ignores IAM conditions on its user and database calls, so `deploy-dev` can't create them itself.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
-- Never `pulumi destroy` `backend`. Its state holds Directus's database, and Directus's license
-  activation is bound to that database and its `PUBLIC_URL` (cyc-seattle/isthmia#172). Ask the
-  maintainer before any change that could activate a new Directus. `docs/backend.md` has the rest.
+
+## Shared stacks, the cluster, and Directus
+
+- Never `pulumi destroy` a shared stack.
+- Prod's Pulumi state is read-only: preview and read it, never write it. Before you change dev's
+  state, back it up with `pulumi stack export --file <path outside the repo>`.
+- Run `kubectl` only under the workplace's mise env, from the workplace or a checkout in it. Its
+  `KUBECONFIG` holds only CYC's cluster. Never change the machine's current kube context.
+- Read dev's Directus logs with `mise exec -- kubectl -n dev logs deploy/directus`, from the
+  workplace. Use `kubectl` on dev only to read.
+- Directus's license allows 5 activations, and each one is bound to the database and `PUBLIC_URL`
+  (cyc-seattle/isthmia#172). Never drop, recreate, or rename Directus's database, in dev or prod,
+  and never change its `PUBLIC_URL`. Ask the maintainer before any change that could activate a
+  new Directus. `docs/backend.md` has the rest.
 
 ## Schemas
 
