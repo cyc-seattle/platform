@@ -153,7 +153,9 @@ staff edit to `household_id` lasts only until the next run.
 
 **A sharing answer counts for the sailor's household.** When a registration's `share_contact` gets
 a new or changed Clubspot answer, and the registration is the newest for its sailor, the sync writes
-the answer to the sailor's household's `share_contact`. So the latest answer wins over a family's or
+the answer to the sailor's household's `share_contact`, in the households pass, so a sailor who joins
+a household this run counts. Where two sailors in one household answer in one run, the later
+registration wins. So the latest answer wins over a family's or
 staff's edit, and an edit stands until the family answers again. At the end of each run, after the
 households pass, a household whose `share_contact` is still blank gets the newest answer any of its
 sailors' registrations gave. It never replaces a value (`src/syncs/clubspot/sharing.ts`).

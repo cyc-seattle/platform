@@ -45,7 +45,7 @@ import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts"
 import { readByIds } from "./directus-batch.ts";
 import { syncOfferings } from "./offerings.ts";
 import { type HouseholdPerson, planHouseholds } from "./households.ts";
-import { planSharingBackfill } from "./sharing.ts";
+import { type NewAnswers, planNewAnswers, planSharingBackfill, recordAnswer } from "./sharing.ts";
 import { findDuplicatePeople, MERGE_PERSON_FIELDS, type MergePerson } from "./merge.ts";
 import { runApprovedPersonMerges } from "./merge-executor.ts";
 import { buildParticipantMirrorFields, mergeParticipantMirrorFields, type ParticipantMirrorFields } from "./people.ts";
@@ -486,6 +486,7 @@ async function syncRegistrations(
   directus: DirectusClient,
   personSync: PersonSync,
   runId: string | undefined,
+  answers: NewAnswers | undefined,
 ): Promise<CampSyncCounts> {
   let created = 0;
   let updated = 0;
@@ -941,21 +942,17 @@ async function syncRegistrations(
         );
         const answer = registrationPromotedPlan.patch.share_contact;
         const mirror = participant ? existingParticipantById.get(participant.id) : undefined;
-        // A new or changed answer is the latest, so it replaces the household's. Only the newest
-        // registration for the sailor speaks for them. A household made later this run gets the
-        // answer from the backfill instead.
-        if (answer != null && mirror?.person_id && (isNewestByRegistrationId.get(registration.id) ?? false)) {
-          const [sailor] = await readByIds<Pick<PersonRow, "household_id">>(
-            directus,
-            "people",
-            "id",
-            [mirror.person_id],
-            ["household_id"],
-          );
-          if (sailor?.household_id) {
-            await directus.updateItem<HouseholdRow>("households", sailor.household_id, { share_contact: answer });
-            fieldsWritten++;
-          }
+        const registeredAt = currentRegistrationById.get(registrationCrmId)?.registered_at;
+        // A new or changed answer is the latest, so it replaces the household's, once the households
+        // pass has put the sailor in one. Only the newest registration for the sailor speaks for them.
+        if (
+          answer != null &&
+          mirror?.person_id &&
+          registeredAt &&
+          answers &&
+          (isNewestByRegistrationId.get(registration.id) ?? false)
+        ) {
+          recordAnswer(answers, mirror.person_id, registeredAt, answer);
         }
       }
       logReplacedFields("clubspot_registrations", registrationCrmId, registrationPromotedPlan.replacedFields);
@@ -1006,9 +1003,10 @@ async function runCampPasses(
   directus: DirectusClient,
   personSync: PersonSync,
   runId: string | undefined,
+  answers: NewAnswers | undefined,
 ): Promise<{ counts: CampSyncCounts }> {
   const schedule = await syncSchedule(data, tables, directus);
-  const registrations = await syncRegistrations(data, tables, directus, personSync, runId);
+  const registrations = await syncRegistrations(data, tables, directus, personSync, runId, answers);
 
   return {
     counts: {
@@ -1077,7 +1075,7 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
  * After the promoted-fields pass, so a registration's answer filled this run counts. Returns the
  * rows it wrote.
  */
-async function syncHouseholds(directus: DirectusClient): Promise<number> {
+async function syncHouseholds(directus: DirectusClient, answers: NewAnswers): Promise<number> {
   const [people, links, participants, households] = await Promise.all([
     directus.readItems<HouseholdPerson>("people", { limit: -1, fields: ["id", "household_id", "share_contact"] }),
     directus.readItems<ContactRow>("contacts", {
@@ -1099,16 +1097,21 @@ async function syncHouseholds(directus: DirectusClient): Promise<number> {
   for (const id of plan.delete) await directus.deleteItem("households", id);
 
   const householdOf = new Map(plan.people.map((move) => [move.id, move.household_id]));
-  const current = people.map((person) =>
+  const moved = people.map((person) =>
     householdOf.has(person.id) ? { ...person, household_id: householdOf.get(person.id)! } : person,
   );
-  const answers = new Map([...households, ...plan.create, ...plan.update].map((row) => [row.id, row]));
-  for (const id of plan.delete) answers.delete(id);
+  const current = new Map([...households, ...plan.create, ...plan.update].map((row) => [row.id, row]));
+  for (const id of plan.delete) current.delete(id);
+  const newAnswers = planNewAnswers(answers, moved, [...current.values()]);
+  for (const { id, patch } of newAnswers) {
+    await directus.updateItem<HouseholdRow>("households", id, patch);
+    current.set(id, { id, ...patch });
+  }
   const registrations = await directus.readItems<RegistrationRow>("clubspot_registrations", {
     limit: -1,
     fields: ["participant_id", "registered_at", "share_contact"],
   });
-  const sharing = planSharingBackfill(registrations, participants, current, [...answers.values()]);
+  const sharing = planSharingBackfill(registrations, participants, moved, [...current.values()]);
   for (const { id, patch } of sharing) {
     await directus.updateItem<HouseholdRow>("households", id, patch);
   }
@@ -1118,9 +1121,17 @@ async function syncHouseholds(directus: DirectusClient): Promise<number> {
     updated: plan.update.length,
     deleted: plan.delete.length,
     peopleMoved: plan.people.length,
+    answersApplied: newAnswers.length,
     answersFilled: sharing.length,
   });
-  return plan.create.length + plan.update.length + plan.delete.length + plan.people.length + sharing.length;
+  return (
+    plan.create.length +
+    plan.update.length +
+    plan.delete.length +
+    plan.people.length +
+    newAnswers.length +
+    sharing.length
+  );
 }
 
 interface AuditDetectionResult {
@@ -1196,6 +1207,8 @@ export interface SyncCampOptions {
   gateway: Pick<SyncGateway, "fetchCampData">;
   /** This execution's `sync_runs` id, if any - threaded down to `participants.last_sync_run_id`. */
   runId?: string;
+  /** Collects the run's new sharing answers, which the households pass applies. */
+  answers?: NewAnswers;
 }
 
 export type SyncCampOutcome = { status: "skipped" } | { status: "synced"; campCrmId: string; counts: CampSyncCounts };
@@ -1207,7 +1220,7 @@ export type SyncCampOutcome = { status: "skipped" } | { status: "synced"; campCr
  * to this camp, so the read no longer grows with every other camp the club has (cyc-seattle/isthmia#135).
  */
 export async function syncCamp(options: SyncCampOptions): Promise<SyncCampOutcome> {
-  const { camp, since, bypassBackoff, directus, personSync, gateway, runId } = options;
+  const { camp, since, bypassBackoff, directus, personSync, gateway, runId, answers } = options;
 
   // `startedAt`, not the run's own trigger time, bounds the query below: it's the same value this
   // call records as the camp's `synced_through`, so the next sync's watermark picks up exactly
@@ -1227,7 +1240,7 @@ export async function syncCamp(options: SyncCampOptions): Promise<SyncCampOutcom
 
   const watermark = since ?? (existing?.synced_through ? new Date(existing.synced_through) : EPOCH);
   const data = await gateway.fetchCampData(camp, watermark, startedAt);
-  const { counts } = await runCampPasses(data, tables, directus, personSync, runId);
+  const { counts } = await runCampPasses(data, tables, directus, personSync, runId, answers);
 
   const wroteSomething = counts.created > 0 || counts.updated > 0;
   await directus.updateItem<CampWithClubspot>(
@@ -1331,6 +1344,7 @@ function campTaskHandler(
   runId: string | undefined,
   /** Mutated in place: the queue drives each task independently, so this is the only way a task's own counts reach the run-level total. */
   counts: RegistrationSyncCounts,
+  answers: NewAnswers,
 ): SyncTaskHandler {
   return async (task: SyncTaskRow) => {
     const campId = targetFromKey(task);
@@ -1345,6 +1359,7 @@ function campTaskHandler(
       directus,
       personSync,
       gateway,
+      answers,
       ...(runId ? { runId } : {}),
     });
     if (outcome.status === "synced") {
@@ -1423,6 +1438,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
   const { clubId, campId, since, now, directus, queue, personSync, gateway } = options;
 
   const syncRun = await startSyncRun(directus, "clubspot-sync", now);
+  const answers: NewAnswers = new Map();
 
   let runError: string | undefined;
 
@@ -1468,6 +1484,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
             directus,
             personSync,
             gateway,
+            answers,
             ...(syncRun?.id ? { runId: syncRun.id } : {}),
             ...(since ? { since } : {}),
           });
@@ -1504,7 +1521,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
         participantsUnlinkedSkipped: 0,
       };
       const { taskIds: claimedTaskIds } = await runQueue(directus, "clubspot-sync", {
-        sync_camp: campTaskHandler(directus, personSync, gateway, syncRun?.id, queueCounts),
+        sync_camp: campTaskHandler(directus, personSync, gateway, syncRun?.id, queueCounts, answers),
       });
       participantsCreated += queueCounts.participantsCreated;
       participantsMirrored += queueCounts.participantsMirrored;
@@ -1574,7 +1591,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
   // After the merges and the promoted-fields pass, so it sees this run's people and answers.
   let householdsWritten = 0;
   try {
-    householdsWritten = await syncHouseholds(directus);
+    householdsWritten = await syncHouseholds(directus, answers);
   } catch (error) {
     winston.error("Making households from the guardian links failed", {
       error: error instanceof Error ? { message: error.message, stack: error.stack } : error,

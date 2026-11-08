@@ -47,7 +47,10 @@ permissions, plus any shared policies it's given:
   changes:
   - whether it shares, `households.share_contact`;
   - anyone in it's `display_name` and `school`;
-  - their own `phone`, and their children's.
+  - their own `phone`, and that of anyone in it known to be under 18.
+
+  An adult is someone 18 or over, or with no date of birth who is someone's guardian and has no
+  guardian of their own.
 
   No one in a household changes an email. The group-policies hook links a login to a person by email,
   so changing one could hand someone else's person to a stranger. Who's in a household is Clubspot's,

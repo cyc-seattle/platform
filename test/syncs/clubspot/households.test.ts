@@ -91,6 +91,21 @@ describe("planHouseholds", () => {
     expect(result).toEqual({ create: [], update: [], people: [{ id: "dad", household_id: "home" }], delete: [] });
   });
 
+  it("takes a no from someone who joins a household from none, as when two households join", () => {
+    const people = [
+      person("kid", { household_id: "home" }),
+      person("mom", { household_id: "home" }),
+      person("dad", { share_contact: false }),
+    ];
+    const result = plan(
+      people,
+      [guardian("kid", "mom"), guardian("kid", "dad")],
+      [],
+      [{ id: "home", share_contact: true }],
+    );
+    expect(result.update).toEqual([{ id: "home", share_contact: false }]);
+  });
+
   describe("on the first run, takes each household's answer from its people's own", () => {
     it.each<[[boolean | null, boolean | null], boolean | null]>([
       [[true, null], true],

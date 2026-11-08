@@ -18,6 +18,18 @@ describe("the Community rules by login", () => {
     expect(writes.flatMap((rule) => rule.fields)).not.toContain("email");
   });
 
+  it("let an adult change another person's phone only when that person is known to be under 18", () => {
+    const [phone] = rules.filter((rule) => rule.action === "update" && rule.fields.includes("phone"));
+    expect(JSON.stringify(phone!.permissions)).toContain('{"date_of_birth":{"_gt":"$NOW(-18 years)"}}');
+  });
+
+  it("never count someone with a guardian of their own and no date of birth as an adult", () => {
+    const [sharing] = rules.filter((rule) => rule.collection === "households" && rule.action === "update");
+    expect(JSON.stringify(sharing!.permissions)).toContain(
+      '{"my_contacts":{"_none":{"relationship_type":{"_eq":"guardian"}}}}',
+    );
+  });
+
   it("give Community one read rule per collection, so the query guard hides nothing from it", () => {
     const reads = rules.filter((rule) => rule.action === "read").map((rule) => rule.collection);
     expect(new Set(reads).size).toBe(reads.length);

@@ -46,27 +46,29 @@ const MY_FAMILY: Filter = { _or: [MY_LOGIN, { my_contacts: MY_CHILD_LINK }] };
 const MY_HOUSEHOLD: Filter = { household_id: { members: MY_LOGIN } };
 
 /** The signed-in user, if they're an adult. Parents' dates of birth are seldom on file, so a parent
- * with none counts too; a sailor with none counts as a child. */
+ * with none counts too, unless they have a guardian of their own, as a teen listed as a sibling's
+ * guardian would. A sailor with none counts as a child. */
 const ME_AS_ADULT: Filter = {
   _and: [
     MY_LOGIN,
     {
       _or: [
         ADULT,
-        { _and: [{ date_of_birth: { _null: true } }, { contact_for: { relationship_type: { _eq: "guardian" } } }] },
+        {
+          _and: [
+            { date_of_birth: { _null: true } },
+            { contact_for: { relationship_type: { _eq: "guardian" } } },
+            { my_contacts: { _none: { relationship_type: { _eq: "guardian" } } } },
+          ],
+        },
       ],
     },
   ],
 };
 
-/** Someone with a guardian on file who isn't known to be an adult. A parent has no guardian, so a
- * co-parent with no date of birth isn't one. */
-const CHILD: Filter = {
-  _and: [
-    { my_contacts: { relationship_type: { _eq: "guardian" } } },
-    { _or: [{ date_of_birth: { _null: true } }, { date_of_birth: { _gt: "$NOW(-18 years)" } }] },
-  ],
-};
+/** Someone known to be under 18. With no date of birth on file, a co-parent and a child look alike,
+ * so neither counts. */
+const CHILD: Filter = { date_of_birth: { _gt: "$NOW(-18 years)" } };
 
 /** A row in a household where the signed-in user is an adult. */
 const MY_HOUSEHOLD_AS_ADULT: Filter = { household_id: { members: ME_AS_ADULT } };

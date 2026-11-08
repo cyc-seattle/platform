@@ -57,7 +57,8 @@ function components(ids: Iterable<string>, links: readonly [string, string][]): 
  * are, so an id, and the answer it holds, stays put as families change. A household split in two
  * gives the new one a copy of its answer. Two that join keep the answer `combineSharing` makes. A
  * household made where none was takes its people's own answers from before households held them,
- * which is how the first run moves `people.share_contact` onto households.
+ * which is how the first run moves `people.share_contact` onto households, and so does someone who
+ * joins a household from none.
  */
 export function planHouseholds(
   people: readonly HouseholdPerson[],
@@ -96,13 +97,13 @@ export function planHouseholds(
   const kept = new Set<string>();
   groups.forEach((group, index) => {
     const keeper = (claims.get(index) ?? []).sort((a, b) => b.count - a.count || (a.id < b.id ? -1 : 1))[0]?.id;
-    const sources = new Set(
-      group.map((id) => personById.get(id)!.household_id).filter((id): id is string => !!id && householdById.has(id)),
-    );
-    const share_contact =
-      sources.size > 0
-        ? combineSharing([...sources].map((id) => householdById.get(id)!.share_contact))
-        : combineSharing(group.map((id) => personById.get(id)!.share_contact));
+    const inHousehold = (id: string) => householdById.has(personById.get(id)!.household_id ?? "");
+    const sources = new Set(group.filter(inHousehold).map((id) => personById.get(id)!.household_id!));
+    // Someone joining from no household brings their answer from before households held it.
+    const share_contact = combineSharing([
+      ...[...sources].map((id) => householdById.get(id)!.share_contact),
+      ...group.filter((id) => !inHousehold(id)).map((id) => personById.get(id)!.share_contact),
+    ]);
     let householdId: string;
     if (keeper) {
       householdId = keeper;

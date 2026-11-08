@@ -38,3 +38,35 @@ export function planSharingBackfill(
   }
   return [...newest].map(([id, { value }]) => ({ id, patch: { share_contact: value } }));
 }
+
+/** This run's new or changed Clubspot answers, by the sailor's person, each the newest they gave. */
+export type NewAnswers = Map<string, { at: string; value: boolean }>;
+
+/** Keeps `value` for `personId` unless the run already has a newer answer for them. */
+export function recordAnswer(answers: NewAnswers, personId: string, at: string, value: boolean): void {
+  const known = answers.get(personId);
+  if (!known || at > known.at) answers.set(personId, { at, value });
+}
+
+/**
+ * Applies this run's new answers after the households pass, so a sailor who had no household when
+ * their registration synced still counts. A household takes its sailors' newest answer, by when
+ * they registered, replacing whatever it held.
+ */
+export function planNewAnswers(
+  answers: NewAnswers,
+  people: readonly (Pick<PersonRow, "household_id"> & { id: string })[],
+  households: readonly HouseholdRow[],
+): SharingPatch[] {
+  const current = new Map(households.map((household) => [household.id, household.share_contact]));
+  const newest = new Map<string, { at: string; value: boolean }>();
+  for (const person of people) {
+    const answer = answers.get(person.id);
+    if (!answer || !person.household_id || !current.has(person.household_id)) continue;
+    const known = newest.get(person.household_id);
+    if (!known || answer.at > known.at) newest.set(person.household_id, answer);
+  }
+  return [...newest]
+    .filter(([id, { value }]) => current.get(id) !== value)
+    .map(([id, { value }]) => ({ id, patch: { share_contact: value } }));
+}

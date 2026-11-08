@@ -181,10 +181,13 @@ stay together:
 - A household split in two keeps its id in the larger part, and the smaller part gets a new one.
 - A household with no one left in it is deleted.
 
+One wrong guardian link joins two unrelated families into one household. That's a known trade-off:
+the sync guards against nothing here, and a bad link is fixed in Clubspot.
+
 `households.share_contact` is the opt-in for its adults' email and phone ([Community](#community)).
 When two households join, any no wins, then any yes, and otherwise it stays blank. A split copies it
 to both. A household made where none was takes its people's old `people.share_contact` by the same
-rule. That's how the first run moved the per-adult answers onto households.
+rule, and so does someone who joins a household from none. That's how the first run moved the per-adult answers onto households.
 `people.share_contact` is read-only, and goes in a later release.
 
 `people.display_name` is the name apps show, set by the person or their household (cyc-seattle/sail-team#31). No
