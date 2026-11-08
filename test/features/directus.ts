@@ -68,6 +68,7 @@ async function send(
   path: string,
   body?: unknown,
 ): Promise<DirectusResponse> {
+  const sent = typeof body === "object" && body !== null && "id" in body ? (body as { id: unknown }) : undefined;
   const attempt = () =>
     fetch(`${baseUrl}${path}`, {
       method,
@@ -82,6 +83,10 @@ async function send(
     const body = parseJson(text);
     const gatewayError = [502, 503, 504].includes(response.status) || (text !== "" && body === undefined);
     if (!gatewayError) {
+      if (retry > 0 && method === "POST" && duplicateOfSentId(body, sent)) {
+        // The Gateway timed out on a create that Directus still made, so this retry found the row.
+        return send(baseUrl, token, "GET", `${path}/${encodeURIComponent(String(sent!.id))}`);
+      }
       return { status: response.status, body };
     }
     if (retry === 3) {
@@ -89,6 +94,17 @@ async function send(
     }
     await new Promise((resolve) => setTimeout(resolve, 5_000 * 2 ** retry));
   }
+}
+
+/** Whether Directus refused a create because a row already has the id the create sent. */
+function duplicateOfSentId(body: any, sent: { id: unknown } | undefined): boolean {
+  const extensions = body?.errors?.[0]?.extensions;
+  return (
+    sent !== undefined &&
+    extensions?.code === "RECORD_NOT_UNIQUE" &&
+    extensions.field === "id" &&
+    extensions.value === String(sent.id)
+  );
 }
 
 function parseJson(text: string): unknown {
