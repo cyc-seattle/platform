@@ -39,7 +39,9 @@ has users.
 A policy is a named set of permissions. Each role has a policy of its own, which holds its base
 permissions, plus any shared policies it's given:
 
-- Community has one policy, Community: own family, in `stacks/backend/community-rules.ts`. It
+- Community has two policies, Community: own family and Community: phones, in
+  `stacks/backend/community-rules.ts`. Directus keeps one rule per collection and action in a
+  policy, so the phone rule, which changes other rows, has a policy of its own. It
   matches the signed-in user by their login, `people.directus_user_id`, not their email. It gives
   everyone in their household with their details, their children's registrations and medical
   information, and the names of programs and program areas. It reads their own login too, so an app
@@ -49,8 +51,9 @@ permissions, plus any shared policies it's given:
   - anyone in it's `display_name` and `school`;
   - their own `phone`, and that of anyone in it known to be under 18.
 
-  An adult is someone 18 or over, or with no date of birth who is someone's guardian and has no
-  guardian of their own.
+  An adult is someone 18 or over, or with no date of birth who is someone's guardian. A teen with no
+  date of birth listed as a sibling's guardian counts as one too: Directus refuses `_none`, which
+  ruling them out needs, in a permission rule.
 
   No one in a household changes an email. The group-policies hook links a login to a person by email,
   so changing one could hand someone else's person to a stranger. Who's in a household is Clubspot's,

@@ -7,8 +7,8 @@ describe("the Community rules by login", () => {
   it("let a household change whether it shares, display names, schools, and phones, and nothing else", () => {
     const writes = rules.filter((rule) => rule.action !== "read");
     expect(writes.map(({ collection, action, fields }) => ({ collection, action, fields }))).toEqual([
-      { collection: "people", action: "update", fields: ["display_name", "school"] },
       { collection: "people", action: "update", fields: ["phone"] },
+      { collection: "people", action: "update", fields: ["display_name", "school"] },
       { collection: "households", action: "update", fields: ["share_contact"] },
     ]);
   });
@@ -23,14 +23,18 @@ describe("the Community rules by login", () => {
     expect(JSON.stringify(phone!.permissions)).toContain('{"date_of_birth":{"_gt":"$NOW(-18 years)"}}');
   });
 
-  it("never count someone with a guardian of their own and no date of birth as an adult", () => {
-    const [sharing] = rules.filter((rule) => rule.collection === "households" && rule.action === "update");
-    expect(JSON.stringify(sharing!.permissions)).toContain(
-      '{"my_contacts":{"_none":{"relationship_type":{"_eq":"guardian"}}}}',
-    );
+  it("never use _none, which Directus refuses in a permission rule", () => {
+    expect(JSON.stringify([...familyPolicies, ...teamPolicies])).not.toContain("_none");
   });
 
-  it("give Community one read rule per collection, so the query guard hides nothing from it", () => {
+  it("give each policy at most one rule per collection and action, since Directus keeps only one", () => {
+    for (const policy of [...familyPolicies, ...teamPolicies]) {
+      const pairs = policy.rules.map((rule) => `${rule.collection}.${rule.action}`);
+      expect(new Set(pairs).size, policy.name).toBe(pairs.length);
+    }
+  });
+
+  it("give Community one read rule per collection, across its policies, so the query guard hides nothing from it", () => {
     const reads = rules.filter((rule) => rule.action === "read").map((rule) => rule.collection);
     expect(new Set(reads).size).toBe(reads.length);
   });

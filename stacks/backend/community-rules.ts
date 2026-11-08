@@ -46,21 +46,16 @@ const MY_FAMILY: Filter = { _or: [MY_LOGIN, { my_contacts: MY_CHILD_LINK }] };
 const MY_HOUSEHOLD: Filter = { household_id: { members: MY_LOGIN } };
 
 /** The signed-in user, if they're an adult. Parents' dates of birth are seldom on file, so a parent
- * with none counts too, unless they have a guardian of their own, as a teen listed as a sibling's
- * guardian would. A sailor with none counts as a child. */
+ * with none counts too; a sailor with none counts as a child. A teen with none who's listed as a
+ * sibling's guardian counts as an adult: ruling them out needs `_none`, which Directus refuses in a
+ * permission rule. */
 const ME_AS_ADULT: Filter = {
   _and: [
     MY_LOGIN,
     {
       _or: [
         ADULT,
-        {
-          _and: [
-            { date_of_birth: { _null: true } },
-            { contact_for: { relationship_type: { _eq: "guardian" } } },
-            { my_contacts: { _none: { relationship_type: { _eq: "guardian" } } } },
-          ],
-        },
+        { _and: [{ date_of_birth: { _null: true } }, { contact_for: { relationship_type: { _eq: "guardian" } } }] },
       ],
     },
   ],
@@ -120,6 +115,22 @@ const TEAM_OFFERING: Filter = {
 
 /** Community's rules. Team and Crew have them too. */
 export const familyPolicies: CommunityPolicyData[] = [
+  // A policy of its own: Directus keeps one rule per collection and action in a policy, and this
+  // changes other rows than the display name and school do.
+  {
+    key: "own-phones",
+    name: "Community: phones",
+    icon: "phone",
+    description: "An adult changes their own phone, and that of anyone in their household known to be under 18.",
+    rules: [
+      {
+        collection: "people",
+        action: "update",
+        fields: ["phone"],
+        permissions: { _or: [ME_AS_ADULT, { _and: [MY_HOUSEHOLD_AS_ADULT, CHILD] }] },
+      },
+    ],
+  },
   {
     key: "own-family",
     name: "Community: own family",
@@ -155,12 +166,6 @@ export const familyPolicies: CommunityPolicyData[] = [
         action: "update",
         fields: ["display_name", "school"],
         permissions: MY_HOUSEHOLD_AS_ADULT,
-      },
-      {
-        collection: "people",
-        action: "update",
-        fields: ["phone"],
-        permissions: { _or: [ME_AS_ADULT, { _and: [MY_HOUSEHOLD_AS_ADULT, CHILD] }] },
       },
       {
         collection: "households",
