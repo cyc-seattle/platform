@@ -111,6 +111,16 @@ describe("the saved-versions hook", () => {
       }
     });
 
+    it("fills in each added plan's plan from its copy", async () => {
+      await expect(
+        check({
+          collection: "version_set_members",
+          event: "create",
+          payload: { version_set_id: "draft", version_id: "draft" },
+        }),
+      ).resolves.toEqual({ version_set_id: "draft", version_id: "draft", plan_id: "plan" });
+    });
+
     it("can be deleted", async () => {
       await expect(
         check({ collection: "version_sets", event: "delete", payload: ["draft"], keys: ["draft"] }),

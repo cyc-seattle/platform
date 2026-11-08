@@ -179,7 +179,10 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     if (await savedSet([...new Set(sets.filter(Boolean))])) {
       if (event !== "delete" || !(await lookup.deletesSaved(user))) throw refuse(MEMBERS_FIXED);
     }
-    return payload;
+    if (event === "delete" || payload.version_id === undefined) return payload;
+    // The trigger sets the plan from the copy too; this fills it in for Directus's own checks first.
+    const [version] = await lookup.versions([keyOf(payload.version_id)].filter(Boolean));
+    return version ? { ...payload, plan_id: version.plan_id } : payload;
   }
 
   if (config.results.includes(collection)) {

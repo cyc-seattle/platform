@@ -1125,7 +1125,7 @@ export interface VersionSetMembers {
   id: string;
   version_set_id: string | VersionSets;
   /** Filled in from the plan copy. */
-  plan_id: string | Plans;
+  plan_id: string | Plans | null;
   /** The plan's copy in this Financial Plan. It's in no other Financial Plan. */
   version_id: string | PlanVersions;
 }
