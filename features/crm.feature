@@ -212,6 +212,27 @@ Feature: The CRM
       When they look at the roster
       Then they don't see the sailor
 
+  Rule: A household on a team sees each sailor's school, and each team's program area and Google Group
+
+    Background:
+      Given a parent whose child is on a team
+
+    Example: The parent sees a teammate's school, but not the school on file for the teammate's parent
+      Given a teammate with a school on file, and their parent, who has one on file too
+      When they look at the roster
+      Then they see the teammate's school
+      And they don't see the teammate's parent's school
+
+    Example: The parent sees which program area the team is in, and its Google Group
+      Given the team has a Google Group
+      When they look up the teams
+      Then they see the team's program area and Google Group
+
+    Example: The parent doesn't see the Google Group of a program that isn't a team
+      Given a program that isn't a team, with a Google Group
+      When they look up the Google Groups
+      Then they don't see that program's Google Group
+
   Rule: A family on a team sees an adult's email and phone only if that adult chose to share
 
     Background:

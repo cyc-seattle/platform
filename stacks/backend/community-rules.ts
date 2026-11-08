@@ -91,6 +91,8 @@ const SHARES_WITH_TEAMS: Filter = {
   ],
 };
 
+const TEAM_PROGRAM: Filter = { team: { _eq: true } };
+
 /** A team's offering, inside the window. */
 const TEAM_OFFERING: Filter = {
   _and: [
@@ -163,8 +165,21 @@ export const teamPolicies: CommunityPolicyData[] = [
       {
         collection: "programs",
         action: "read",
-        fields: ["id", "name", "team"],
-        permissions: { team: { _eq: true } },
+        fields: ["id", "name", "team", "product_id", "google_group_id"],
+        permissions: TEAM_PROGRAM,
+      },
+      // A team's program area is its product's, and the rosters group teams by it.
+      {
+        collection: "products",
+        action: "read",
+        fields: ["id", "program_area_id"],
+        permissions: { programs: TEAM_PROGRAM },
+      },
+      {
+        collection: "google_groups",
+        action: "read",
+        fields: ["id", "name", "email"],
+        permissions: { programs: TEAM_PROGRAM },
       },
       {
         collection: "offerings",
@@ -191,6 +206,21 @@ export const teamPolicies: CommunityPolicyData[] = [
         action: "read",
         fields: ["id", "first_name", "last_name", "email", "phone"],
         permissions: SHARES_WITH_TEAMS,
+      },
+    ],
+  },
+  {
+    key: "schools",
+    name: "Team: schools",
+    icon: "school",
+    description: "The school of each sailor on a team, but not their parents'. See docs/access.md.",
+    rules: [
+      // Names too, which the names rule already shows them, so the query guard still lets a filter on a name through.
+      {
+        collection: "people",
+        action: "read",
+        fields: ["id", "first_name", "last_name", "school"],
+        permissions: TEAM_SAILOR,
       },
     ],
   },

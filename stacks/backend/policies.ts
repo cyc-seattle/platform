@@ -235,6 +235,7 @@ export const crewRules: PermissionRuleInput[] = [
   { collection: "products", action: "read" },
   { collection: "program_areas", action: "read" },
   { collection: "accounts", action: "read" },
+  { collection: "google_groups", action: "read" },
 ];
 
 /** One read rule as the query guard sees it: which fields, and whether it limits rows. */

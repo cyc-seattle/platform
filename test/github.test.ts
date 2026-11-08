@@ -99,11 +99,13 @@ describe("StandardRepository", () => {
     expect(byName("example-main").inputs.rules.mergeQueue).toBeUndefined();
   });
 
-  it("squashes queued PRs one at a time", () => {
+  it("squashes queued PRs in batches that merge when the newest passes", () => {
     expect(byName("queued-example-main").inputs.rules.mergeQueue).toMatchObject({
       mergeMethod: "SQUASH",
-      maxEntriesToBuild: 1,
-      maxEntriesToMerge: 1,
+      groupingStrategy: "HEADGREEN",
+      maxEntriesToBuild: 100,
+      maxEntriesToMerge: 100,
+      minEntriesToMergeWaitMinutes: 0,
     });
   });
 
