@@ -245,7 +245,22 @@ export const sailTeam = new StandardRepository("sail-team", {
   hasProjects: false,
   requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
   mergeQueue: true,
+  // Its Storybook, which its storybook.yml publishes from main.
+  pages: { buildType: "workflow" },
 });
+
+// GitHub makes this environment when Pages is turned on. Declared so only main can publish.
+const sailTeamPages = new github.RepositoryEnvironment("sail-team-github-pages", {
+  repository: sailTeam.name,
+  environment: "github-pages",
+  deploymentBranchPolicy: { protectedBranches: false, customBranchPolicies: true },
+  canAdminsBypass: false,
+});
+new github.RepositoryEnvironmentDeploymentPolicy(
+  "sail-team-github-pages-main",
+  { repository: sailTeam.name, environment: sailTeamPages.environment, branchPattern: "main" },
+  { parent: sailTeamPages },
+);
 
 new StandardRepository("todo-manager", {
   description: "Syncs camp schedules from TheClubSpot to Todoist. Archived.",
