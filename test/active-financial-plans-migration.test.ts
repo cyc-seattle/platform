@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { up } from "../stacks/backend/migrations/cyc0004-active-financial-plans.cjs";
 
 // The migration from the log of active marks to an active status, in a real Postgres (PGlite): two
-// organizations' years, one marked twice, and a year with no mark, each guarded by a trigger that
-// refuses changes, like the saved-versions hook's.
+// organizations' years, one marked twice, and a year with no mark, with tables guarded by a trigger
+// that refuses changes, like the saved-versions hook's.
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const [ORG, OTHER] = [id(90), id(91)];
@@ -12,10 +12,11 @@ const [FIRST, SECOND, ELSEWHERE, UNMARKED, DRAFT] = [id(1), id(2), id(3), id(4),
 
 const BEFORE = [
   `CREATE TABLE version_sets (id uuid PRIMARY KEY, organization_id uuid, fiscal_year integer, status varchar(255))`,
+  "CREATE TABLE version_set_members (id uuid PRIMARY KEY, version_set_id uuid REFERENCES version_sets (id))",
   `CREATE TABLE version_set_activations (id uuid PRIMARY KEY, version_set_id uuid REFERENCES version_sets (id),
     activated_at timestamptz, activated_by uuid, sequence integer)`,
   `CREATE FUNCTION refuse() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'refused'; END $$`,
-  ...["version_sets", "version_set_activations"].map(
+  ...["version_sets", "version_set_members", "version_set_activations"].map(
     (table) =>
       `CREATE TRIGGER cyc_saved_versions BEFORE UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION refuse()`,
   ),
@@ -66,6 +67,12 @@ describe("the active Financial Plans migration", { timeout: 30_000 }, () => {
       [UNMARKED]: "saved",
       [DRAFT]: "draft",
     });
+  });
+
+  it("drops every saved-versions trigger, so none is left that doesn't know an active one", async () => {
+    const db = await database();
+    await up(knex(db));
+    expect((await db.query("SELECT 1 FROM pg_trigger WHERE tgname = 'cyc_saved_versions'")).rows).toEqual([]);
   });
 
   it("drops the log, with Directus's records of it, and nothing else", async () => {

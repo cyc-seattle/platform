@@ -6,8 +6,9 @@
 // active, and when. For each organization's year, this marks active the Financial Plan in its newest
 // mark, then drops the log, with Directus's records of it, which the schema apply never does.
 //
-// The saved-versions hook's trigger refuses a saved Financial Plan's change, so this drops it, and
-// the log's own. The hook installs the new ones once Directus starts.
+// The saved-versions hook's triggers refuse a saved Financial Plan's change, and the old ones don't
+// know an active one, so this drops every one of them rather than leave some stale. The hook installs
+// the new ones once Directus starts, and the deploy's saved-versions-check fails if it couldn't.
 //
 // It's one statement, so Postgres runs it in one transaction. It skips what's already done or
 // doesn't exist, so it's safe to run again and does nothing on a new database.
@@ -22,8 +23,7 @@ BEGIN
   END IF;
   FOR item IN
     SELECT c.relname FROM pg_trigger tg JOIN pg_class c ON c.oid = tg.tgrelid
-    WHERE tg.tgname = 'cyc_saved_versions' AND c.relname IN ('version_sets', 'version_set_activations')
-      AND c.relnamespace = current_schema()::regnamespace
+    WHERE tg.tgname = 'cyc_saved_versions' AND c.relnamespace = current_schema()::regnamespace
   LOOP
     EXECUTE format('DROP TRIGGER cyc_saved_versions ON %I', item.relname);
   END LOOP;
@@ -32,7 +32,7 @@ BEGIN
     SELECT DISTINCT ON (s.organization_id, s.fiscal_year) s.id
       FROM version_set_activations a JOIN version_sets s ON s.id = a.version_set_id
       WHERE s.status = 'saved'
-      ORDER BY s.organization_id, s.fiscal_year, a.sequence DESC
+      ORDER BY s.organization_id, s.fiscal_year, a.sequence DESC, s.id
   LOOP
     UPDATE version_sets SET status = 'active' WHERE id = item.id;
     RAISE NOTICE 'Marked Financial Plan % active', item.id;

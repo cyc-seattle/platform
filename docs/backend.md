@@ -64,6 +64,15 @@ instead. Ask the maintainer before any change that could activate a new Directus
   count, keeps the stored license for its 30-day grace period. To bind again, clear `license_key`
   (not the token) and restart, which spends one activation.
 
+## Migrations are one way
+
+Directus runs `stacks/backend/migrations/` once each, at start, and none of them undo themselves. A
+rollback to an image from before a migration runs the old code on the migrated database:
+
+- Before `cyc0004`, a Financial Plan was marked active in `version_set_activations`, which it drops.
+  The old hook's triggers don't know the `active` status, so an active Financial Plan, and its plans,
+  could be changed until the newer image is back. Roll forward instead.
+
 ## MCP
 
 Directus 12.3.1 serves MCP at `/mcp`. It needs both:
