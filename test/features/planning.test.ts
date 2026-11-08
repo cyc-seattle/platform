@@ -8,7 +8,7 @@ import {
   adminCreate,
   copied,
   created,
-  fixture,
+  change,
   itemPath,
   type Item,
   PLAN_ROWS,
@@ -983,15 +983,7 @@ Step("a draft Financial Plan someone else started", () => planRows());
 Step("they can change any of its plans", async () => {
   await planRows();
   for (const collection of PLAN_ROWS) {
-    expectOk(
-      await theyWrite("PATCH", itemPath(collection, row[`${collection}@draft`]), {
-        ...Object.fromEntries(
-          Object.entries(fixture[`${collection}@draft`]!).filter(
-            ([field]) => !["id", "version_id", "key"].includes(field),
-          ),
-        ),
-      }),
-    );
+    expectOk(await theyWrite("PATCH", itemPath(collection, row[`${collection}@draft`]), change(collection)));
   }
   expectOk(await theyWrite("PATCH", itemPath("plan_versions", row["plan_versions@draft"]), { message: "Changed." }));
 });
