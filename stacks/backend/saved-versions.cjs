@@ -2,11 +2,12 @@
 // extension's folder has no node_modules of its own.
 //
 // Keeps a saved Financial Plan, and every plan in it, from changing, for every user, admins
-// included (docs/planning-schema.md), apart from marking one active. Its filters refuse such a
+// included (docs/planning-schema.md), apart from its name and note, and marking one active. Its filters refuse such a
 // request with a clear 403, and stamp who saved a Financial Plan. Directus skips filters on some
 // paths, such as a flow's data steps, so the database triggers it installs refuse the same writes on
 // every path.
-// It also copies a new Financial Plan's parent into it, and works out a saved one's results.
+// It also copies a new Financial Plan's parent into it, and works out its results: a draft's again
+// after each change to what they're worked out from, and a saved one's once, when it's saved.
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
 const crypto = require("node:crypto");
@@ -33,10 +34,10 @@ const SAME_VERSION = "A plan row can only link to rows in its own version.";
 const PLAN_FIXED =
   "A plan's kind, program area, organization, and year can't change once it's in a Financial Plan or has a saved copy.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
-const RESULTS_BY_SAVE = "A Financial Plan's results are worked out when it's saved, and can't be written by hand.";
+const RESULTS_BY_SAVE = "A Financial Plan's results are worked out from its plans, and can't be written by hand.";
 const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
 const SET_STAYS =
-  "A saved Financial Plan can't be changed, apart from its note and marking it active. Start a new one from it.";
+  "A saved Financial Plan can't be changed, apart from its name, its note, and marking it active. Start a new one from it.";
 const SET_FIXED = "A Financial Plan's organization, year, and parent can't change.";
 const PARENT_SAME_YEAR = "A Financial Plan can only start from one for the same organization and year.";
 const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's saved.";
@@ -47,6 +48,9 @@ const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most on
 const IN_ANOTHER = "A plan copy is in only one Financial Plan.";
 const STAYS_ACTIVE = "An active Financial Plan stays active until another one for its year is marked active.";
 const ONLY_SAVED_ACTIVE = "Only a saved Financial Plan can be marked active.";
+
+/** What a saved Financial Plan lets change: its name, its note, and its status, to mark it active. */
+const SET_EDITABLE = ["name", "message", "status"];
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
@@ -158,8 +162,8 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     }
     const sets = await lookup.sets(keys);
     if (sets.some((set) => isSaved(set.status))) {
-      // Only its note changes, such as "Reviewed with the board", and a saved one can be marked active.
-      if (Object.keys(payload).some((field) => field !== "message" && field !== "status")) throw refuse(SET_STAYS);
+      // Only its name and note change, such as "Reviewed with the board", and a saved one can be marked active.
+      if (Object.keys(payload).some((field) => !SET_EDITABLE.includes(field))) throw refuse(SET_STAYS);
       if ("status" in payload) {
         for (const set of sets) {
           if (payload.status === set.status || (payload.status === "active" && set.status === "saved")) continue;
@@ -237,6 +241,7 @@ function columnsNeeded(config) {
  */
 function triggerStatements(config) {
   const deletable = config.deletable ? "true" : "false";
+  const editable = `ARRAY[${SET_EDITABLE.map(literal).join(", ")}]`;
   const row = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_row() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
@@ -271,14 +276,17 @@ BEGIN
 END
 $fn$`;
 
-  // A saved Financial Plan's results go in once, from the hook (writeSetResults), and never change.
+  // Only the hook writes results, a set at a time, with no results there yet. A draft's are replaced
+  // as its plans change, and cleared when it's saved; a saved one's go in once and never change.
   const result = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_result() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
   set_status text;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    IF NOT ${deletable} THEN
+    SELECT s.status INTO set_status FROM ${SETS} s WHERE s.id = OLD.version_set_id;
+    -- A Financial Plan that's gone is a draft whose delete cascades to its results.
+    IF NOT ${deletable} AND set_status IS NOT NULL AND set_status <> 'draft' THEN
       ${raise(RESULTS_BY_SAVE)};
     END IF;
     RETURN OLD;
@@ -287,7 +295,7 @@ BEGIN
     ${raise(RESULTS_BY_SAVE)};
   END IF;
   SELECT s.status INTO set_status FROM ${SETS} s WHERE s.id = NEW.version_set_id FOR SHARE;
-  IF set_status IS NULL OR set_status NOT IN ('saved', 'active')
+  IF set_status IS NULL
     OR EXISTS (SELECT 1 FROM ${RESULTS} r WHERE r.version_set_id = NEW.version_set_id) THEN
     ${raise(RESULTS_BY_SAVE)};
   END IF;
@@ -377,7 +385,7 @@ BEGIN
     RETURN NEW;
   END IF;
   IF OLD.status IN ('saved', 'active') THEN
-    IF (to_jsonb(NEW) - 'message' - 'status') IS DISTINCT FROM (to_jsonb(OLD) - 'message' - 'status') THEN
+    IF (to_jsonb(NEW) - ${editable}) IS DISTINCT FROM (to_jsonb(OLD) - ${editable}) THEN
       ${raise(SET_STAYS)};
     END IF;
     IF NEW.status = OLD.status THEN
@@ -419,6 +427,8 @@ BEGIN
     ) THEN
       ${raise(NEEDS_OPERATIONS)};
     END IF;
+    -- A draft's results are cleared, for the hook to work out again with the engine it records.
+    ${config.results.map((table) => `DELETE FROM ${table} WHERE version_set_id = NEW.id;`).join("\n    ")}
     PERFORM set_config('cyc.saving_set', 'on', true);
     UPDATE ${VERSIONS} SET status = 'saved', platform_version = NEW.platform_version, saved_by = NEW.saved_by
       WHERE id IN (SELECT m.version_id FROM ${MEMBERS} m WHERE m.version_set_id = NEW.id);
@@ -767,15 +777,13 @@ function resultRows(data, out, operations) {
   };
 }
 
-/** Writes one set of results, all or nothing, with `plan_results` last. */
-async function insertResults(db, rows, totals) {
-  await db.transaction(async (trx) => {
-    await trx.raw("SET LOCAL cyc.writing_results = 'on'");
-    for (const [table, list] of Object.entries(rows)) {
-      for (let i = 0; i < list.length; i += 500) await trx(table).insert(list.slice(i, i + 500));
-    }
-    await trx(RESULTS).insert(totals);
-  });
+/** Writes one set of results, inside the caller's transaction, with `plan_results` last. */
+async function insertResults(trx, { rows, totals }) {
+  await trx.raw("SET LOCAL cyc.writing_results = 'on'");
+  for (const [table, list] of Object.entries(rows)) {
+    for (let i = 0; i < list.length; i += 500) await trx(table).insert(list.slice(i, i + 500));
+  }
+  await trx(RESULTS).insert(totals);
 }
 
 function withoutOwner(fields) {
@@ -785,18 +793,19 @@ function withoutOwner(fields) {
 }
 
 /**
- * Works out a saved Financial Plan's results with the engine, from the plans it holds, and writes
- * them, once. Each line and P&L row names the member that holds what it's charged to.
+ * A Financial Plan's results, worked out with the engine from the plans it holds. Each line and P&L
+ * row names the member that holds what it's charged to.
  */
-async function writeSetResults(config, db, setId, engine) {
-  const set = await db(SETS).where("id", setId).first();
-  if (!isSaved(set?.status)) return false;
-  if (await db(RESULTS).where("version_set_id", setId).first()) return false;
-  const members = await db(MEMBERS)
-    .join(`${PLANS} as p`, "p.id", `${MEMBERS}.plan_id`)
-    .where(`${MEMBERS}.version_set_id`, setId)
-    .select(`${MEMBERS}.id`, `${MEMBERS}.version_id`, "p.kind");
-  const operations = members.find((m) => m.kind === "operations")?.version_id;
+async function calculate(config, db, set, engine) {
+  const setId = set.id;
+  const members = await db(MEMBERS).where("version_set_id", setId).select("id", "version_id", "plan_id");
+  const kinds = await db(PLANS)
+    .whereIn(
+      "id",
+      members.map((m) => m.plan_id),
+    )
+    .select("id", "kind");
+  const operations = members.find((m) => kinds.find((p) => p.id === m.plan_id)?.kind === "operations")?.version_id;
   const data = await loadPlan(
     config,
     db,
@@ -814,8 +823,96 @@ async function writeSetResults(config, db, setId, engine) {
     plan_result_positions: all.plan_result_positions.map(row),
     plan_result_warnings: all.plan_result_warnings.map(row),
   };
-  await insertResults(db, rows, row(totals));
+  return { rows, totals: row(totals) };
+}
+
+/** Works out a saved Financial Plan's results and writes them, once. */
+async function writeSetResults(config, db, setId, engine) {
+  const set = await db(SETS).where("id", setId).first();
+  if (!isSaved(set?.status)) return false;
+  if (await db(RESULTS).where("version_set_id", setId).first()) return false;
+  const results = await calculate(config, db, set, engine);
+  await db.transaction((trx) => insertResults(trx, results));
   return true;
+}
+
+/**
+ * Works out a draft Financial Plan's results again, in place of the ones it has. If the engine
+ * fails, it clears them, so no stale numbers look current, and throws.
+ */
+async function writeDraftResults(config, db, setId, engine) {
+  let failure;
+  const written = await db.transaction(async (trx) => {
+    // The lock the save takes, so a draft's results and its save never overlap.
+    await trx.raw("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", [`cyc_set|${setId}`]);
+    const set = await trx(SETS).where("id", setId).forShare().first();
+    if (set?.status !== "draft") return false;
+    await trx.raw("SET LOCAL cyc.writing_results = 'on'");
+    for (const table of config.results) await trx(table).where("version_set_id", setId).delete();
+    let results;
+    try {
+      results = await calculate(config, trx, set, engine);
+    } catch (error) {
+      failure = error;
+      return false;
+    }
+    await insertResults(trx, results);
+    return true;
+  });
+  if (failure) throw failure;
+  return written;
+}
+
+/** What a draft's results are worked out from apart from its plans' rows, so a change to it changes every draft's. */
+const INPUTS = [...CATALOG, "organizations", "organization_cost_accounts"];
+
+/** The draft Financial Plans whose results a write to these rows of `collection` changes. */
+async function draftsChangedBy(config, db, collection, keys) {
+  const drafts = () => db(SETS).where("status", "draft");
+  const ids = (rows, field) => [...new Set(rows.map((row) => row[field]).filter(Boolean))];
+  if (INPUTS.includes(collection)) return ids(await drafts().select("id"), "id");
+  if (keys.length === 0) return [];
+  let members;
+  if (collection === MEMBERS) members = await db(MEMBERS).whereIn("id", keys).select("version_set_id");
+  else if (collection === PLANS) members = await db(MEMBERS).whereIn("plan_id", keys).select("version_set_id");
+  else if (config.versioned.includes(collection)) {
+    const versions = ids(await db(collection).whereIn("id", keys).select("version_id"), "version_id");
+    members = versions.length === 0 ? [] : await db(MEMBERS).whereIn("version_id", versions).select("version_set_id");
+  } else return [];
+  const sets = ids(members, "version_set_id");
+  return sets.length === 0 ? [] : ids(await drafts().whereIn("id", sets).select("id"), "id");
+}
+
+/**
+ * Runs `run` for each Financial Plan marked, once writes to it have stopped for `delayMs`, one at a
+ * time, so many rows changed at once cost one run. One marked again while it runs runs once more.
+ */
+function draftQueue(run, delayMs) {
+  const pending = new Set();
+  let timer;
+  let draining;
+  const drain = async () => {
+    while (pending.size > 0) {
+      const [id] = pending;
+      pending.delete(id);
+      await run(id).catch(() => {});
+    }
+    draining = undefined;
+  };
+  return {
+    mark(ids) {
+      if (ids.length === 0) return;
+      for (const id of ids) pending.add(id);
+      clearTimeout(timer);
+      timer = setTimeout(() => (draining ??= drain()), delayMs);
+    },
+    /** Resolves once every marked Financial Plan has run. */
+    async idle() {
+      while (pending.size > 0 || draining) {
+        await (draining ?? new Promise((resolve) => setTimeout(resolve, delayMs)));
+      }
+    },
+  };
 }
 
 /**
@@ -915,6 +1012,8 @@ const SCHEMA_EVENTS = ["collections", "fields", "relations"].flatMap((scope) =>
 );
 // Coalesces the burst of events one schema apply emits into one install.
 const DEBOUNCE_MS = 1000;
+// Coalesces a burst of writes to a draft, such as an agent's over MCP, into one run of the engine.
+const DRAFT_DELAY_MS = 1000;
 
 function register({ filter, action, init }, { env, database, logger }) {
   // Written beside this file by `backend`, from ./policies.ts.
@@ -945,7 +1044,6 @@ function register({ filter, action, init }, { env, database, logger }) {
     clearTimeout(pending);
     pending = setTimeout(install, DEBOUNCE_MS);
   };
-  init("app.after", install);
   for (const event of SCHEMA_EVENTS) action(event, reinstall);
 
   filter("database.error", (error) => databaseError(error));
@@ -962,6 +1060,30 @@ function register({ filter, action, init }, { env, database, logger }) {
       throw error;
     }
   };
+  const drafts = draftQueue(async (id) => {
+    try {
+      await writeDraftResults(config, database, id, await loadEngine());
+    } catch (error) {
+      logger.error(error, `saved-versions: couldn't work out the draft results of ${id}`);
+    }
+  }, DRAFT_DELAY_MS);
+  init("app.after", async () => {
+    await install();
+    // Works out every draft's results again, which also fills them in for drafts from before there were
+    // any, with the engine this deploy brought.
+    try {
+      drafts.mark((await database(SETS).where("status", "draft").select("id")).map((set) => set.id));
+    } catch (error) {
+      logger.error(error, "saved-versions: couldn't list the drafts to work out their results");
+    }
+  });
+  const changed = async (collection, keys) => {
+    try {
+      drafts.mark(await draftsChangedBy(config, database, collection, keys));
+    } catch (error) {
+      logger.error(error, `saved-versions: couldn't tell which drafts a change to ${collection} changes`);
+    }
+  };
   const copy = async (id) => {
     try {
       return await copyParent(config, database, id);
@@ -976,7 +1098,23 @@ function register({ filter, action, init }, { env, database, logger }) {
     for (const key of keys ?? []) await results(key).catch(() => {});
   });
   action("items.create", async ({ collection, key }) => {
-    if (collection === SETS) await copy(key).catch(() => {});
+    if (collection === SETS) {
+      await copy(key).catch(() => {});
+      drafts.mark([key]);
+    } else await changed(collection, [key]);
+  });
+  action("items.update", ({ collection, keys }) => changed(collection, keys ?? []));
+  // A deleted row can't be traced to its drafts once it's gone, so its filter finds them first.
+  const deleting = new Map();
+  filter("items.delete", async (keys, { collection }, { database }) => {
+    const found = await draftsChangedBy(config, database, collection, keys).catch(() => []);
+    if (found.length > 0) deleting.set(`${collection}|${JSON.stringify(keys)}`, found);
+    return keys;
+  });
+  action("items.delete", ({ collection, keys }) => {
+    const id = `${collection}|${JSON.stringify(keys)}`;
+    drafts.mark(deleting.get(id) ?? []);
+    deleting.delete(id);
   });
 
   // The deploy asks this whether every trigger is in place (`SavedVersionsCheck`). It answers with
@@ -1076,6 +1214,9 @@ module.exports.triggerStatus = triggerStatus;
 module.exports.fingerprint = fingerprint;
 module.exports.triggerStatements = triggerStatements;
 module.exports.writeSetResults = writeSetResults;
+module.exports.writeDraftResults = writeDraftResults;
+module.exports.draftsChangedBy = draftsChangedBy;
+module.exports.draftQueue = draftQueue;
 module.exports.copyParent = copyParent;
 module.exports.copyOrder = copyOrder;
 module.exports.REFUSED = REFUSED;

@@ -8,8 +8,8 @@ Feature: Plans
 
   A Financial Plan is worked on as a whole. It starts as a draft, and planners can change any of
   its plans while it's a draft. When it's ready, a planner saves it, and all of its plans are saved
-  together, with their P&L. A saved Financial Plan never changes, so the organization can always
-  look back at what it agreed to. To change the plan after that, a planner starts a new Financial
+  together, with their P&L. A saved Financial Plan never changes, apart from its name and note, so
+  the organization can always look back at what it agreed to. To change the plan after that, a planner starts a new Financial
   Plan from an earlier one, its parent, and the new one begins as a copy of it. A year can have
   several drafts at once, so planners can weigh options side by side, such as two drafts started
   from the same Financial Plan, one with two coaches and one with three. Each Financial Plan has a
@@ -27,8 +27,9 @@ Feature: Plans
 
   The P&L, the profit and loss for the year, is worked out from a Financial Plan's plans together.
   It shows each offering, each program area, and the organization as a whole. A draft's P&L is
-  worked out whenever someone asks for it. A saved Financial Plan keeps the P&L it had when it was
-  saved, and that never changes either. Each line of a saved P&L says in plain words what it is.
+  worked out again a moment after every change to it, whether the change was made in the app, in
+  the Data Studio, or by an AI. A saved Financial Plan keeps the P&L it had when it was saved, and
+  that never changes either. Each line of a saved P&L says in plain words what it is.
   Shared costs are the costs that several offerings share, such as the office. They're divided
   among all of a Financial Plan's offerings by their direct costs, counted the way federal grant
   rules count them, so each Program Plan's P&L includes its share of them. Some charges are set as
@@ -151,12 +152,18 @@ Feature: Plans
       And they can't turn the Financial Plan back into a draft
       And they can't delete the Financial Plan
 
-  Rule: A Plan Writer can change a saved Financial Plan's note
+  Rule: A Plan Writer can change a saved Financial Plan's name and note
 
     Example: A plan is noted as reviewed with the board
       Given a user with the Plan Writer policy
       And a saved Financial Plan
       Then they can change its note to "Reviewed with the board"
+
+    Example: A saved plan is renamed after the board adopts it
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan
+      Then they can change its name to "2027 budget as adopted"
+      And its P&L stays the same
 
   Rule: A Program Plan holds only its own program area's programs
 
@@ -418,6 +425,14 @@ Feature: Plans
       And a draft Financial Plan with two Program Plans whose offerings have the same direct costs
       When a planner calculates the P&L
       Then each Program Plan's offering pays $500 of the office costs
+
+  Rule: A draft's P&L is up to date after every change to it
+
+    Example: A draft's P&L follows a new price
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan whose offering takes in $10,000
+      When they change the offering to take in $12,000
+      Then the Financial Plan's P&L shows that the offering takes in $12,000
 
   Rule: A saved Financial Plan keeps the P&L it had when it was saved
 

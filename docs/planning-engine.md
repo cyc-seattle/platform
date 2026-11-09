@@ -7,10 +7,11 @@ tags: [architecture, planning]
 The planning engine calculates a plan's P&L for one year from the plan's rows in
 [the planning schema](planning-schema.md). It's part of `@cyc-seattle/platform`, imported as
 `@cyc-seattle/platform/planning`. It doesn't read from or save to the database: an app or an agent
-loads the rows, calls `computePlan`, and shows the answer. When a Financial Plan is saved, the
-`saved-versions` hook runs the engine deployed with `backend` and records its results with it
-([docs/planning-schema.md](planning-schema.md#a-saved-financial-plans-results)), with which version
-of the engine calculated them.
+loads the rows, calls `computePlan`, and shows the answer. The `saved-versions` hook runs the engine
+deployed with `backend` and stores each Financial Plan's results
+([docs/planning-schema.md](planning-schema.md#a-financial-plans-results)): a draft's again after
+each change to it, and a saved one's when it's saved, with which version of the engine calculated
+them. So an app reads a Financial Plan's P&L from its results, and needn't run the engine itself.
 
 ```ts
 import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/planning";

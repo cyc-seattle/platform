@@ -589,7 +589,7 @@ collections:
       hidden: false
       icon: summarize
       item_duplication_fields: null
-      note: A saved Financial Plan's totals for the organization. Worked out when it was saved, and never changed.
+      note: A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -615,7 +615,7 @@ collections:
       hidden: false
       icon: receipt_long
       item_duplication_fields: null
-      note: Each cost and revenue line in a saved Financial Plan's P&L. Worked out when it was saved, and never changed.
+      note: Each cost and revenue line in a Financial Plan's P&L. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -641,7 +641,7 @@ collections:
       hidden: false
       icon: query_stats
       item_duplication_fields: null
-      note: A saved Financial Plan's P&L for each offering, product, and program area. Worked out when it was saved, and never changed.
+      note: A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -667,7 +667,7 @@ collections:
       hidden: false
       icon: badge
       item_duplication_fields: null
-      note: Each salaried position's pay for the year, in a saved Financial Plan. Worked out when it was saved, and never changed.
+      note: Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -693,7 +693,7 @@ collections:
       hidden: false
       icon: warning
       item_duplication_fields: null
-      note: What the P&L warned about when a Financial Plan was saved. Worked out when it was saved, and never changed.
+      note: What a Financial Plan's P&L warns about. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -719,7 +719,7 @@ collections:
       hidden: false
       icon: workspaces
       item_duplication_fields: null
-      note: "The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Saving it saves them all, and then it never changes, apart from its note. Pick a parent when you add one, and its plans are copied in."
+      note: "The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Its P&L is worked out again a moment after each change. Saving it saves them all, and then it never changes, apart from its name and note. Pick a parent when you add one, and its plans are copied in."
       preview_url: null
       singleton: false
       sort: null
@@ -11558,7 +11558,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Such as 2027 budget as adopted.
+      note: Such as 2027 budget as adopted. You can change it after it's saved.
       options: null
       readonly: false
       required: true
@@ -11647,7 +11647,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown
-      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved.
+      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name and note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved.
       options:
         choices:
           - text: Draft
@@ -11895,7 +11895,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: What the organization's P&L showed when it was saved, worked out a moment after. A Financial Plan with none means working them out failed, and an admin can fill them in.
+      note: The organization's P&L. A draft's is worked out again a moment after each change to it. A saved one's is what it showed when it was saved, worked out a moment after. One with none means working it out failed, and the logs say why. An admin can fill in a saved one's.
       options: null
       readonly: true
       required: false
