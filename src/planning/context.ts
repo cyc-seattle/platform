@@ -105,7 +105,10 @@ export class Context {
     this.entries.push({ stage: "direct", mtdc_share: 1, wages: false, ...entry });
   }
 
-  /** An entry's function: the line's if set, otherwise its account's default, otherwise by cost center. */
+  /**
+   * An entry's function: the line's if set. Otherwise a cost charged to a program is `program`
+   * (cyc-seattle/platform#144), and anything else takes its account's default.
+   */
   functionFor(
     accountId: Id,
     explicit: AccountFunction | null | undefined,
@@ -113,11 +116,9 @@ export class Context {
   ): AccountFunction | null {
     if (explicit != null) return explicit;
     const account = this.accounts.get(accountId);
-    if (account?.default_function != null) return account.default_function;
-    if (account?.type === "revenue") return null;
-    return costCenter === "offering" || costCenter === "product" || costCenter === "program_area"
-      ? "program"
-      : "management";
+    if (account?.type === "revenue") return account.default_function ?? null;
+    if (costCenter === "offering" || costCenter === "product" || costCenter === "program_area") return "program";
+    return account?.default_function ?? "management";
   }
 
   accountType(accountId: Id): Account["type"] | undefined {
