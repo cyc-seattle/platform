@@ -4,13 +4,22 @@ import { familyPolicies, TEAM_REGISTRATION, teamPolicies } from "../stacks/backe
 describe("the Community rules by login", () => {
   const rules = familyPolicies.flatMap((policy) => policy.rules);
 
-  it("let a household change whether it shares, display names, schools, and phones, and nothing else", () => {
+  it("let a household change whether it shares, display names, phones, and schools, and nothing else", () => {
     const writes = rules.filter((rule) => rule.action !== "read");
     expect(writes.map(({ collection, action, fields }) => ({ collection, action, fields }))).toEqual([
-      { collection: "people", action: "update", fields: ["phone"] },
-      { collection: "people", action: "update", fields: ["school", "display_name"] },
+      { collection: "people", action: "update", fields: ["display_name", "phone", "school_id", "school"] },
       { collection: "households", action: "update", fields: ["share_contact"] },
     ]);
+  });
+
+  it("let anyone in a household, a child too, change the people in it", () => {
+    const [people] = rules.filter((rule) => rule.collection === "people" && rule.action === "update");
+    expect(people!.permissions).toEqual({ household_id: { members: { directus_user_id: { _eq: "$CURRENT_USER" } } } });
+  });
+
+  it("let only an adult change whether the household shares", () => {
+    const [households] = rules.filter((rule) => rule.collection === "households" && rule.action === "update");
+    expect(JSON.stringify(households!.permissions)).toContain('{"date_of_birth":{"_lte":"$NOW(-18 years)"}}');
   });
 
   it("never let a family change an email, which links a login to a person", () => {
@@ -18,9 +27,10 @@ describe("the Community rules by login", () => {
     expect(writes.flatMap((rule) => rule.fields)).not.toContain("email");
   });
 
-  it("let an adult change another person's phone only when that person is known to be under 18", () => {
-    const [phone] = rules.filter((rule) => rule.action === "update" && rule.fields.includes("phone"));
-    expect(JSON.stringify(phone!.permissions)).toContain('{"date_of_birth":{"_gt":"$NOW(-18 years)"}}');
+  it("never let a family change a date of birth or who's in a household", () => {
+    const written = rules.filter((rule) => rule.action !== "read").flatMap((rule) => rule.fields);
+    expect(written).not.toContain("date_of_birth");
+    expect(written).not.toContain("household_id");
   });
 
   it("never use _none, which Directus refuses in a permission rule", () => {

@@ -39,23 +39,19 @@ has users.
 A policy is a named set of permissions. Each role has a policy of its own, which holds its base
 permissions, plus any shared policies it's given:
 
-- Community has two policies, Community: own family and Community: phones, in
-  `stacks/backend/community-rules.ts`. Directus keeps one rule per collection and action in a
-  policy, so the phone rule, which changes other rows, has a policy of its own. It
+- Community has one policy, Community: own family, in `stacks/backend/community-rules.ts`. It
   matches the signed-in user by their login, `people.directus_user_id`, not their email. It gives
   everyone in their household with their details, their children's registrations and medical
-  information, and the names of programs and program areas. It reads their own login too, so an app
-  finds their row with a filter on `directus_user_id` for `$CURRENT_USER`. An adult in a household
-  changes:
-  - whether it shares, `households.share_contact`;
-  - anyone in it's `display_name` and `school`;
-  - their own `phone`, and that of anyone in it known to be under 18.
+  information, the names of programs and program areas, and the list of schools. It reads their own
+  login too, so an app finds their row with a filter on `directus_user_id` for `$CURRENT_USER`.
+  Anyone in a household, a child who signs in too, changes anyone in it's `display_name`, `phone`,
+  `school_id`, and `school`. Only an adult changes whether it shares, `households.share_contact`.
 
   An adult is someone 18 or over, or with no date of birth who is someone's guardian. A teen with no
   date of birth listed as a sibling's guardian counts as one too: Directus refuses `_none`, which
   ruling them out needs, in a permission rule.
 
-  No one in a household changes an email. The group-policies hook links a login to a person by email,
+  No one in a household changes an email, a date of birth, or who's in it. The group-policies hook links a login to a person by email,
   so changing one could hand someone else's person to a stranger. Who's in a household is Clubspot's,
   through the sync. Medical information follows guardian links, never the household.
 

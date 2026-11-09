@@ -89,6 +89,7 @@ export const defaultViews: DefaultView[] = [
     fields: ["person_id", "kind", "value", "source"],
   },
   { collection: "households", sort: ["-date_created"], fields: ["members", "share_contact"] },
+  { collection: "schools", sort: ["name"], fields: ["name", "aliases"] },
   // Medical details stay on the profile's own page.
   { collection: "medical_profiles", sort: ["-date_updated"], fields: ["person_id", "date_updated"] },
   { collection: "program_roles", sort: ["name"], fields: ["name", "description"] },

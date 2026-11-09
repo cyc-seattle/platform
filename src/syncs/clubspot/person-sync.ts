@@ -29,6 +29,7 @@ import {
   personFieldsFromEmergencyContact,
   personFieldsFromGuardian,
   personFieldValuesFromMirror,
+  toE164,
   type PersonMatchCandidate,
   slotNameMatchesContact,
   splitContactName,
@@ -136,16 +137,17 @@ export interface SyncParticipantOptions {
 /**
  * `email` is compared case-insensitively against `base`/`v` (both normalized in `people.ts`), so a
  * currently-stored value that differs from `base` only by case - left over from before email
- * normalization - is never mistaken for a staff edit. `writePersonPatch`'s own comparison, which
- * decides whether to preserve a replaced value as a `contact_points` row, still uses the row as
+ * normalization - is never mistaken for a staff edit. `phone` is compared in E.164 the same way, for
+ * a number stored as bare digits before `--normalize-phones`. `writePersonPatch`'s own comparison,
+ * which decides whether to preserve a replaced value as a `contact_points` row, still uses the row as
  * stored.
  */
-function withComparableEmail(row: PersonRow): PersonRow {
-  return { ...row, email: normalizeEmail(row.email) };
+function withComparableContact(row: PersonRow): PersonRow {
+  return { ...row, email: normalizeEmail(row.email), phone: toE164(row.phone) };
 }
 
 /**
- * `withComparableEmail` also hides a legacy row's casing from ever getting fixed: once normalized
+ * `withComparableContact` also hides a legacy row's casing from ever getting fixed: once normalized
  * for comparison, a stored `Foo@Bar.com` reads as unchanged (or already-set) against `v`, and
  * `planSyncedFields` never patches it. When the raw stored value matches `v` case-insensitively but
  * not exactly, this forces the lowercase write through and never counts it as a replaced staff edit
@@ -452,7 +454,7 @@ export class PersonSync {
     const plan = reconcileEmailCasing(
       planSyncedFields<PersonRow>(
         PERSON_SYNCED_FIELDS,
-        withComparableEmail(current),
+        withComparableContact(current),
         resolveFieldBase<PersonRow>(base, fallbackBase),
         v,
       ),
@@ -982,7 +984,7 @@ export class PersonSync {
     return reconcileEmailCasing(
       planSyncedFields<PersonRow>(
         CONTACT_SYNCED_FIELDS,
-        withComparableEmail(current),
+        withComparableContact(current),
         resolveFieldBase<PersonRow>(base, fallbackBase),
         v,
       ),

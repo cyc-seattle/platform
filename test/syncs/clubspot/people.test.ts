@@ -26,6 +26,7 @@ import {
   personFieldValuesFromMirror,
   slotNameMatchesContact,
   splitContactName,
+  toE164,
 } from "../../../src/syncs/clubspot/people.ts";
 
 // Minimal Parse.Object stand-in: just an id and a `.get(key)` accessor, per roster.test.ts.
@@ -81,6 +82,33 @@ describe("normalization", () => {
 
   it("normalizePhone leaves an international number of another length unchanged", () => {
     expect(normalizePhone("+44 20 7946 0958")).toBe("442079460958");
+  });
+
+  it("toE164 takes a number without a country code as US", () => {
+    expect(toE164("2065550113")).toBe("+12065550113");
+    expect(toE164(" (206) 555-0113 ")).toBe("+12065550113");
+    expect(toE164("1-206-555-0113")).toBe("+12065550113");
+  });
+
+  it("toE164 keeps another country's code", () => {
+    expect(toE164("+44 20 7946 0958")).toBe("+442079460958");
+  });
+
+  it("toE164 keeps a number with an extension or a note as typed, rather than drop them", () => {
+    expect(toE164("206-555-1234 x12")).toBe("206-555-1234 x12");
+    expect(toE164("(206) 555-1234 ext. 5")).toBe("(206) 555-1234 ext. 5");
+    expect(toE164("206 555 1234 cell")).toBe("206 555 1234 cell");
+  });
+
+  it("toE164 keeps a number that isn't valid as typed", () => {
+    expect(toE164("000-000-0000")).toBe("000-000-0000");
+    expect(toE164("555-1234")).toBe("555-1234");
+  });
+
+  it("toE164 keeps a number it can't parse as typed, and treats a blank as no value", () => {
+    expect(toE164(" ask Dad ")).toBe("ask Dad");
+    expect(toE164("  ")).toBeNull();
+    expect(toE164(null)).toBeNull();
   });
 });
 
@@ -379,7 +407,7 @@ describe("contactFieldValuesFromMirror", () => {
       first_name: "Robert",
       last_name: "Smith",
       email: "robert@example.com",
-      phone: "2065550100",
+      phone: "+12065550100",
     });
   });
 
@@ -490,7 +518,7 @@ describe("buildPersonFieldsFromParticipant", () => {
       first_name: "Alex",
       last_name: "Rivera",
       email: "alex@example.com",
-      phone: "2065550100",
+      phone: "+12065550100",
       date_of_birth: "2015-04-01",
       gender: "F",
       street: "123 Main St",
@@ -576,7 +604,7 @@ describe("personFieldsFromGuardian and personFieldsFromEmergencyContact", () => 
       relationshipDetail: "Aunt",
       contactOrder: 1,
     });
-    expect(fields).toMatchObject({ first_name: "Pat", last_name: "Nguyen", phone: "2065550100" });
+    expect(fields).toMatchObject({ first_name: "Pat", last_name: "Nguyen", phone: "+12065550100" });
   });
 
   it("normalizes a mixed-case email on both a guardian and an emergency contact", () => {

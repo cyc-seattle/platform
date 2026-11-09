@@ -97,6 +97,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     fiscal_year_start_month: 10,
   }),
   program_roles: async () => ({ id: randomUUID(), name: `Role ${key("role")}` }),
+  schools: async () => ({ id: randomUUID(), name: `School ${key("school")}`, aliases: [`school ${runId}`] }),
   clubspot_camps: async () => ({
     id: key("camp"),
     name: `Camp ${runId}`,
@@ -440,6 +441,7 @@ export const changes: Record<string, () => Row> = {
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
   program_roles: () => ({ description: "Changed." }),
+  schools: () => ({ aliases: [`changed ${runId}`] }),
   clubspot_camps: () => ({ name: `Camp ${runId} (renamed)` }),
   clubspot_sessions: () => ({ name: `Session ${runId}` }),
   clubspot_classes: () => ({ name: `Class ${runId} (renamed)` }),

@@ -394,7 +394,7 @@ describe("PersonSync.syncParticipant - creating and matching", () => {
     expect(resolved).toMatchObject({ id: "person-1", created: false });
     // Phone was the only gap on the matched row; the new email is left alone rather than
     // overwriting the family's stored contact.
-    expect(tables.get("people")![0]).toMatchObject({ phone: "2065559999", email: "parent-a@example.com" });
+    expect(tables.get("people")![0]).toMatchObject({ phone: "+12065559999", email: "parent-a@example.com" });
   });
 
   // The regression test for the merge-durability rule: a contacts row already exists for this
@@ -995,6 +995,57 @@ describe("PersonSync.syncParticipant - the one CRM field rule (cyc-seattle/isthm
     expect(tables.get("people")![0]).toMatchObject({ email: "form-changed@example.com" });
   });
 
+  it("keeps a household's phone in E.164 when Clubspot sends the same number as bare digits", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ phone: "+12065559999" })],
+      clubspot_participants: [{ id: "participant-1", person_id: "person-1" }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const sync = new PersonSync(new DirectusClient(baseUrl, token));
+
+    const priorMirror = participantRow({
+      id: "participant-1",
+      person_id: "person-1",
+      first_name: "Alex",
+      last_name: "Rivera",
+      phone: "2065550100",
+    });
+    const data = { firstName: "Alex", lastName: "Rivera", mobile: "(206) 555-0100" };
+    const resolved = await sync.syncParticipant(
+      participant(data, "participant-1"),
+      options({ existingPersonId: "person-1", priorMirror, mirrorFields: mirrorFieldsFor(data, "participant-1") }),
+    );
+
+    expect(resolved.fieldsWritten).toBe(0);
+    expect(tables.get("people")![0]).toMatchObject({ phone: "+12065559999" });
+  });
+
+  it("counts no staff edit replaced when a phone on file as bare digits matches Clubspot's last answer", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ phone: "2065550100" })],
+      clubspot_participants: [{ id: "participant-1", person_id: "person-1" }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const sync = new PersonSync(new DirectusClient(baseUrl, token));
+
+    const priorMirror = participantRow({
+      id: "participant-1",
+      person_id: "person-1",
+      first_name: "Alex",
+      last_name: "Rivera",
+      phone: "2065550100",
+    });
+    const data = { firstName: "Alex", lastName: "Rivera", mobile: "2065559999" };
+    const resolved = await sync.syncParticipant(
+      participant(data, "participant-1"),
+      options({ existingPersonId: "person-1", priorMirror, mirrorFields: mirrorFieldsFor(data, "participant-1") }),
+    );
+
+    expect(resolved.fieldsWritten).toBe(1);
+    expect(resolved.fieldsReplacedStaffEdits).toBe(0);
+    expect(tables.get("people")![0]).toMatchObject({ phone: "+12065559999" });
+  });
+
   // The regression test for finding 4: a new season's registration is a brand-new participant, so
   // it has no prior mirror of its own - `base` used to be `undefined` for every field, so this
   // fell to fill-null-only and a changed phone never reached the CRM. `base` should instead fall
@@ -1032,7 +1083,7 @@ describe("PersonSync.syncParticipant - the one CRM field rule (cyc-seattle/isthm
     );
 
     expect(resolved.fieldsWritten).toBe(1);
-    expect(tables.get("people")![0]).toMatchObject({ phone: "2065559999" });
+    expect(tables.get("people")![0]).toMatchObject({ phone: "+12065559999" });
   });
 
   // The mirror keeps Clubspot's last non-blank answer for every field (`sync-run.ts`'s

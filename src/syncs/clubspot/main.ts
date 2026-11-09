@@ -15,8 +15,10 @@ import {
 } from "@cyc-seattle/clubspot-sdk";
 import { LoggingOption, VerboseOption } from "@cyc-seattle/commodore";
 import { DirectusClient, SyncQueue } from "../runtime/index.ts";
+import { applySchools } from "./apply-schools.ts";
 import { approveMatchingDuplicates } from "./approve-matching-duplicates.ts";
 import { discoverCamps } from "./camps.ts";
+import { normalizePhones } from "./normalize-phones.ts";
 import { findAll } from "./parse-paging.ts";
 import { PersonSync } from "./person-sync.ts";
 import { seedContactPoints } from "./seed-contact-points.ts";
@@ -119,6 +121,14 @@ const program = new Command("clubspot-sync")
     "--approve-matching-duplicates",
     "One-time migration: approve every open duplicate_person finding whose group shares one non-null date_of_birth (migration step 5). Bypasses the camp sync entirely. Supports --dry-run.",
   )
+  .option(
+    "--apply-schools <file>",
+    "One-time cleanup: add the schools and aliases in a reviewed YAML file, then match everyone's school against the list (docs/syncs.md). Bypasses the camp sync entirely. Supports --dry-run.",
+  )
+  .option(
+    "--normalize-phones",
+    "One-time cleanup: rewrite every phone that parses into E.164. Bypasses the camp sync entirely. Supports --dry-run.",
+  )
   .addOption(
     new Option(
       "--since <iso-date>",
@@ -152,6 +162,18 @@ const program = new Command("clubspot-sync")
     if (options.seedContactPoints) {
       const result = await seedContactPoints(directus, new Date());
       winston.info("Contact point seeding finished", result);
+      return;
+    }
+
+    if (options.applySchools) {
+      const result = await applySchools(directus, options.applySchools);
+      winston.info(options.dryRun ? "Schools dry run finished" : "Schools applied", result);
+      return;
+    }
+
+    if (options.normalizePhones) {
+      const result = await normalizePhones(directus);
+      winston.info(options.dryRun ? "Phone normalization dry run finished" : "Phones normalized", result);
       return;
     }
 
