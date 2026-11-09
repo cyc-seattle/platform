@@ -240,6 +240,20 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 - A bonus owner in a program area's plan counts only that area's products. The engine warns about
   any other, and leaves it out.
 
+### Function
+
+Each line's `function` is `program`, `management` or `fundraising`:
+
+- a line's own `function` wins
+- a cost charged to an offering, a product or a program area is `program`, whatever its account's
+  `default_function`, so coach wages and their payroll tax on an offering count in its program costs
+- any other cost, on a pool or the organization, takes its account's `default_function`, or
+  `management` without one
+- revenue takes its account's `default_function`, or none
+- a share of a pool keeps the function it had in the pool, so a G&A share stays `management`
+
+A saved plan version keeps the functions it was calculated with.
+
 ### Line names
 
 Each line's `line_name` says what it is:
@@ -259,8 +273,8 @@ Operating revenue pays for operating costs, and fundraising pays for capital. `o
 every line:
 
 - **Capital** is every line on an asset account, such as buying a coach boat.
-- **Fundraising** is revenue and expense whose function is `fundraising`, from the line or its
-  account's `default_function`. Give donation and grant accounts the `fundraising` default.
+- **Fundraising** is revenue and expense whose function is `fundraising` (see [Function](#function)).
+  Give donation and grant accounts the `fundraising` default.
 - **Operating** is every other revenue and expense.
 
 It gives operating revenue, expenses and net, then fundraising's, then capital, then the total:
