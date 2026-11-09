@@ -441,6 +441,7 @@ export const changes: Record<string, () => Row> = {
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
   program_roles: () => ({ description: "Changed." }),
+  schools: () => ({ aliases: [`changed ${runId}`] }),
   clubspot_camps: () => ({ name: `Camp ${runId} (renamed)` }),
   clubspot_sessions: () => ({ name: `Session ${runId}` }),
   clubspot_classes: () => ({ name: `Class ${runId} (renamed)` }),
