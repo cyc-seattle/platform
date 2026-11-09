@@ -80,8 +80,6 @@ export function planCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(planning);
 }
 
-/** The log of which saved Financial Plan is active. A writer adds to it, and never rewrites it. */
-const SET_ACTIVATIONS = "version_set_activations";
 /** A Financial Plan's plans, which change only while it's a draft. */
 const MEMBERS = "version_set_members";
 
@@ -202,9 +200,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         ...plans.flatMap((collection) =>
           (isResultCollection(collection)
             ? (["read"] as const)
-            : collection === SET_ACTIVATIONS
-              ? (["create", "read"] as const)
-              : (["create", "read", "update", "delete"] as const)
+            : (["create", "read", "update", "delete"] as const)
           ).map((action) => ({ collection, action })),
         ),
       ],

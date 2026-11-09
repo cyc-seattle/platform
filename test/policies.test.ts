@@ -164,7 +164,6 @@ const plans = [
   "plan_result_warnings",
   "version_sets",
   "version_set_members",
-  "version_set_activations",
 ];
 const results = plans.filter((collection) => collection.startsWith("plan_result"));
 
@@ -182,15 +181,12 @@ describe("the Plan policies", () => {
     expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Plan Writer change plans and Financial Plans, add to the active marks, and change none of the catalog or the results", () => {
-    for (const action of ["update", "delete"]) {
+  it("let a Plan Writer change plans and Financial Plans, and none of the catalog or the results", () => {
+    for (const action of ["create", "update", "delete"]) {
       expect([...collections("Plan Writer", action)].sort()).toEqual(
-        plans.filter((collection) => collection !== "version_set_activations" && !results.includes(collection)).sort(),
+        plans.filter((collection) => !results.includes(collection)).sort(),
       );
     }
-    expect([...collections("Plan Writer", "create")].sort()).toEqual(
-      plans.filter((collection) => !results.includes(collection)).sort(),
-    );
   });
 
   it("are the only policies that see plans", () => {
@@ -208,14 +204,7 @@ describe("savedVersionsConfig", () => {
       plans
         .filter(
           (collection) =>
-            ![
-              "plans",
-              "plan_versions",
-              "version_sets",
-              "version_set_members",
-              "version_set_activations",
-              ...results,
-            ].includes(collection),
+            !["plans", "plan_versions", "version_sets", "version_set_members", ...results].includes(collection),
         )
         .sort(),
     );

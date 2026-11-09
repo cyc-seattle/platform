@@ -6,8 +6,8 @@ Feature: Tracking the year
   Tracking compares against the active Financial Plan. A planner marks one saved Financial Plan
   active for its year, once it's the one the organization is running. There can be several saved
   Financial Plans for a year, and a new one can start from any of them, so the newest isn't always
-  the one being run. Marking another one active replaces it, and the earlier marks are kept, so
-  anyone can see which Financial Plan was active when.
+  the one being run. Marking another one active replaces it, and sets the one before it back to
+  saved. Each Financial Plan's history shows who marked it active, and when.
 
   A catalog offering is a named offering of a program, such as Guppies Summer or J-Pod fall
   practices. It belongs to the catalog, not to any one Financial Plan, and staff keep the list in
@@ -37,7 +37,7 @@ Feature: Tracking the year
       And "Board budget" is active
       When they mark "Smaller fleet" active
       Then "Smaller fleet" is next year's active Financial Plan
-      And they can see that "Board budget" was active before it
+      And "Board budget" is saved, and no longer active
 
     Example: A draft Financial Plan can't be active
       Given a user with the Plan Writer policy

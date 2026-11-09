@@ -7,7 +7,6 @@ import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
 import { savedVersionsConfig, type SavedVersionsConfig } from "../stacks/backend/policies.ts";
 import {
-  ACTIVATION_STAYS,
   copyOrder,
   copyParent,
   fingerprint,
@@ -20,6 +19,7 @@ import {
   RESULTS_BY_SAVE,
   SAVED_WITH_SET,
   SET_STAYS,
+  STAYS_ACTIVE,
   triggerStatements,
   triggerStatus,
 } from "../stacks/backend/saved-versions.cjs";
@@ -627,47 +627,65 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
   });
 
   describe("on marking a Financial Plan active", () => {
-    it("stamp when, and order the year's marks so none tie", async () => {
-      const { set, organization } = await plans(db, 2501);
+    /** A second saved Financial Plan for the year, with an Operations Plan of its own. */
+    async function anotherSaved(organization: string, year: number) {
       const another = await w.insert("version_sets", {
         organization_id: organization,
-        fiscal_year: 2501,
+        fiscal_year: year,
         status: "draft",
       });
       const operationsPlan = await w.insert("plans", {
         kind: "operations",
         organization_id: organization,
-        fiscal_year: 2501,
+        fiscal_year: year,
       });
       const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
       await w.insert("version_set_members", { version_set_id: another, version_id: operations });
       expect(await w.update("version_sets", another, { status: "saved", platform_version: "1.4.0" })).toBeUndefined();
-      const first = await w.insert("version_set_activations", { version_set_id: set, activated_at: "1999-01-01" });
-      const second = await w.insert("version_set_activations", { version_set_id: another });
-      expect(await w.read("version_set_activations", first)).toMatchObject({ sequence: 1 });
-      expect(await w.read("version_set_activations", second)).toMatchObject({ sequence: 2 });
-      expect(((await w.read("version_set_activations", first))!["activated_at"] as Date).getFullYear()).toBeGreaterThan(
-        1999,
-      );
+      return another;
+    }
+
+    it("set the one active before it back to saved, in that year only", async () => {
+      const { set, organization } = await plans(db, 2501);
+      const another = await anotherSaved(organization, 2501);
       const otherYear = await plans(db, 2502);
-      const elsewhere = await w.insert("version_set_activations", { version_set_id: otherYear.set });
-      expect(await w.read("version_set_activations", elsewhere)).toMatchObject({ sequence: 1 });
+      expect(await w.update("version_sets", otherYear.set, { status: "active" })).toBeUndefined();
+      expect(await w.update("version_sets", set, { status: "active", message: "Adopted" })).toBeUndefined();
+      expect(await w.update("version_sets", another, { status: "active" })).toBeUndefined();
+      expect(await w.read("version_sets", set)).toMatchObject({ status: "saved", message: "Adopted" });
+      expect(await w.read("version_sets", another)).toMatchObject({ status: "active" });
+      expect(await w.read("version_sets", otherYear.set)).toMatchObject({ status: "active" });
     });
 
     it("refuse a draft", async () => {
       const { draftSet } = await plans(db, 2503);
-      expect(await w.refusedInsert("version_set_activations", { version_set_id: draftSet })).toEqual(
-        refusal(ONLY_SAVED_ACTIVE),
-      );
+      expect(await w.update("version_sets", draftSet, { status: "active" })).toEqual(refusal(ONLY_SAVED_ACTIVE));
     });
 
-    it("refuse to change or delete a mark", async () => {
+    it("refuse to set an active one back by hand, even from inside a session that claims the flag", async () => {
       const { set } = await plans(db, 2504);
-      const mark = await w.insert("version_set_activations", { version_set_id: set });
-      expect(await w.update("version_set_activations", mark, { activated_at: "1999-01-01" })).toEqual(
-        refusal(ACTIVATION_STAYS),
-      );
-      expect(await w.remove("version_set_activations", mark)).toEqual(refusal(ACTIVATION_STAYS));
+      expect(await w.update("version_sets", set, { status: "active" })).toBeUndefined();
+      expect(await w.update("version_sets", set, { status: "saved" })).toEqual(refusal(STAYS_ACTIVE));
+      expect(await w.update("version_sets", set, { status: "draft" })).toEqual(refusal(STAYS_ACTIVE));
+      expect(await w.update("version_sets", set, { name: "Changed" })).toEqual(refusal(SET_STAYS));
+      expect(await w.remove("version_sets", set)).toEqual(refusal(SET_STAYS));
+      const spoofed = await db
+        .transaction(async (tx) => {
+          await tx.exec("SELECT set_config('cyc.activating_set', 'on', true)");
+          await tx.query("UPDATE version_sets SET status = 'saved' WHERE id = $1", [set]);
+        })
+        .catch((error: unknown) => error);
+      expect(spoofed).toEqual(refusal(STAYS_ACTIVE));
+    });
+
+    it("keep one active for a year, even past the trigger", async () => {
+      const { set, organization } = await plans(db, 2505);
+      const another = await anotherSaved(organization, 2505);
+      expect(await w.update("version_sets", set, { status: "active" })).toBeUndefined();
+      await db.exec("ALTER TABLE version_sets DISABLE TRIGGER USER");
+      const error = await w.update("version_sets", another, { status: "active" });
+      await db.exec("ALTER TABLE version_sets ENABLE TRIGGER USER");
+      expect(error).toMatchObject({ code: "23505" });
     });
   });
 
@@ -743,17 +761,20 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
     expect(organization).toBeDefined();
   });
 
-  it("marks active each Financial Plan the migration listed, once, and drops the list", async () => {
+  it("marks active each Financial Plan the migration listed, in a year with none active, and drops the list", async () => {
     const db = await database(config(false));
     const { set } = await plans(db, 2701);
+    const taken = await plans(db, 2703);
+    // A year whose other Financial Plan is already active.
+    await db.exec("ALTER TABLE version_sets DISABLE TRIGGER USER");
+    await db.query("UPDATE version_sets SET status = 'active' WHERE id = $1", [taken.draftSet]);
+    await db.exec("ALTER TABLE version_sets ENABLE TRIGGER USER");
     await db.exec("CREATE TABLE cyc_seed_active_sets (version_set_id uuid PRIMARY KEY)");
-    await db.query("INSERT INTO cyc_seed_active_sets VALUES ($1)", [set]);
+    await db.query("INSERT INTO cyc_seed_active_sets VALUES ($1), ($2)", [set, taken.set]);
     await db.transaction((tx) => installTriggers(config(false), connect(tx)));
-    const { rows } = await db.query<{ sequence: number }>(
-      "SELECT sequence FROM version_set_activations WHERE version_set_id = $1",
-      [set],
-    );
-    expect(rows).toEqual([{ sequence: 1 }]);
+    const status = async (id: string) => (await db.query("SELECT status FROM version_sets WHERE id = $1", [id])).rows;
+    expect(await status(set)).toEqual([{ status: "active" }]);
+    expect(await status(taken.set)).toEqual([{ status: "saved" }]);
     expect((await db.query("SELECT to_regclass('cyc_seed_active_sets') AS seed")).rows).toEqual([{ seed: null }]);
   });
 
@@ -783,15 +804,14 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
 });
 
 describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () => {
-  it("let a saved Financial Plan, its plans, their rows, and its marks be deleted, but not changed", async () => {
+  it("let an active Financial Plan, its plans, and their rows be deleted, but not changed", async () => {
     const db = await database(config(true));
     const w = writer(db);
     const { set, operations, saved, draftSet, draft, savedOffering, draftOffering } = await plans(db);
-    const mark = await w.insert("version_set_activations", { version_set_id: set });
+    expect(await w.update("version_sets", set, { status: "active" })).toBeUndefined();
     expect(await w.update("version_sets", set, { name: "Changed" })).toEqual(refusal(SET_STAYS));
     expect(await w.update("plan_offerings", savedOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
     expect(await w.update("plan_versions", saved, { message: "Changed" })).toEqual(refusal(REFUSED));
-    expect(await w.remove("version_set_activations", mark)).toBeUndefined();
     // The draft started from it goes first, since it points at it.
     expect(await w.remove("version_sets", draftSet)).toBeUndefined();
     expect(await w.remove("plan_offerings", draftOffering)).toBeUndefined();

@@ -760,34 +760,6 @@ collections:
       versioning: false
     schema:
       name: version_set_members
-  - collection: version_set_activations
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: version_set_activations
-      color: null
-      display_template: "{{version_set_id.name}}: {{activated_at}}"
-      group: Planning
-      hidden: false
-      icon: check_circle
-      item_duplication_fields: null
-      note: Each time a saved Financial Plan was marked active. The newest one for an organization and year is the active one.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations:
-        - language: en-US
-          translation: Active Financial Plans
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: version_set_activations
 fields:
   - collection: plans
     field: id
@@ -11669,17 +11641,21 @@ fields:
             value: draft
           - text: Saved
             value: saved
+          - text: Active
+            value: active
       field: status
       group: null
       hidden: false
       interface: select-dropdown
-      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note.
+      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved.
       options:
         choices:
           - text: Draft
             value: draft
           - text: Saved
             value: saved
+          - text: Active
+            value: active
       readonly: false
       required: true
       searchable: true
@@ -11691,7 +11667,8 @@ fields:
           _in:
             - draft
             - saved
-      validation_message: "Must be one of: draft, saved."
+            - active
+      validation_message: "Must be one of: draft, saved, active."
       width: full
     schema:
       name: status
@@ -12103,213 +12080,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plan_versions
       foreign_key_column: id
-  - collection: version_set_activations
-    field: id
-    type: uuid
-    meta:
-      collection: version_set_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: version_set_activations
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: version_set_activations
-    field: version_set_id
-    type: uuid
-    meta:
-      collection: version_set_activations
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}} ({{fiscal_year}})"
-      field: version_set_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: A saved Financial Plan.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Financial Plan
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_set_id
-      table: version_set_activations
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: version_sets
-      foreign_key_column: id
-  - collection: version_set_activations
-    field: activated_at
-    type: timestamp
-    meta:
-      collection: version_set_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: activated_at
-      group: null
-      hidden: false
-      interface: datetime
-      note: Set when it's marked active.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special: null
-      translations:
-        - language: en-US
-          translation: Marked active
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: activated_at
-      table: version_set_activations
-      data_type: timestamp with time zone
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: version_set_activations
-    field: activated_by
-    type: uuid
-    meta:
-      collection: version_set_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: activated_by
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 4
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: activated_by
-      table: version_set_activations
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: version_set_activations
-    field: sequence
-    type: integer
-    meta:
-      collection: version_set_activations
-      conditions: null
-      display: null
-      display_options: null
-      field: sequence
-      group: null
-      hidden: false
-      interface: input
-      note: Set when it's marked active. The active Financial Plan for a year is the one with the highest.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: sequence
-      table: version_set_activations
-      data_type: integer
-      default_value: 0
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
 relations:
   - collection: plans
     field: program_area_id
@@ -13527,27 +13297,6 @@ relations:
       foreign_key_table: version_sets
       foreign_key_column: id
       constraint_name: version_sets_parent_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: version_set_activations
-    field: version_set_id
-    related_collection: version_sets
-    meta:
-      junction_field: null
-      many_collection: version_set_activations
-      many_field: version_set_id
-      one_allowed_collections: null
-      one_collection: version_sets
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: version_set_activations
-      column: version_set_id
-      foreign_key_table: version_sets
-      foreign_key_column: id
-      constraint_name: version_set_activations_version_set_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_offerings

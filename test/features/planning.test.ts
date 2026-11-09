@@ -817,37 +817,29 @@ Step(
     // A plan copy is in one Financial Plan, so the second starts from the first.
     named[second] = await adminStart(second, named[first]!);
     await p.save(named[second]!);
-    await adminCreate("version_set_activations", { id: randomUUID(), version_set_id: named[first] });
+    await (await admin()).ok("PATCH", itemPath("version_sets", named[first]), { status: "active" });
   },
 );
 Step("they mark {string} active", async (_, name: string) => {
-  expectOk(
-    await theyWrite("POST", "/items/version_set_activations", { id: randomUUID(), version_set_id: named[name] }),
-  );
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", named[name]), { status: "active" }));
 });
-/** The year's marks, newest first. */
-async function marks(): Promise<unknown[]> {
-  const all = await read(
-    "version_set_activations",
-    { version_set_id: { organization_id: { _eq: await p.organization() }, fiscal_year: { _eq: PLAN_YEAR } } },
-    "version_set_id,sequence",
-  );
-  return all.sort((a, b) => Number(b["sequence"]) - Number(a["sequence"])).map((m) => m["version_set_id"]);
-}
 Step("{string} is the active Financial Plan for next year", async (_, name: string) => {
-  expect((await marks())[0]).toBe(named[name]);
+  const active = await read(
+    "version_sets",
+    { organization_id: { _eq: await p.organization() }, fiscal_year: { _eq: PLAN_YEAR }, status: { _eq: "active" } },
+    "id",
+  );
+  expect(active.map((set) => set["id"])).toEqual([named[name]]);
 });
-Step("they can see that {string} was active before it", async (_, name: string) => {
-  const all = await marks();
-  expect(all).toHaveLength(2);
-  expect(all[1]).toBe(named[name]);
+Step("{string} is saved, and no longer active", async (_, name: string) => {
+  expect(await one("version_sets", named[name]!, "status")).toEqual({ status: "saved" });
 });
 Step("a draft Financial Plan", async () => {
   await p.area();
   financialPlan = await p.draftSet();
 });
 Step("they try to mark it active", async () => {
-  await theyWrite("POST", "/items/version_set_activations", { id: randomUUID(), version_set_id: financialPlan });
+  await theyWrite("PATCH", itemPath("version_sets", financialPlan), { status: "active" });
 });
 Step("they're told that only a saved Financial Plan can be active", () => expectTold(ONLY_SAVED_ACTIVE));
 
@@ -999,12 +991,7 @@ Step("they can save a draft Financial Plan", async () => {
 });
 Step("they can mark a saved Financial Plan active", async () => {
   await planRows();
-  expectOk(
-    await theyWrite("POST", "/items/version_set_activations", {
-      id: randomUUID(),
-      version_set_id: row["version_sets@saved"],
-    }),
-  );
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", row["version_sets@saved"]), { status: "active" }));
 });
 Step("they can see the Financial Plan and its P&L", async () => {
   await planRows();
@@ -1026,12 +1013,7 @@ Step("they can't start, save, or mark a Financial Plan active", async () => {
     }),
   );
   expectRefused(await theyWrite("PATCH", itemPath("version_sets", row["version_sets@draft"]), { status: "saved" }));
-  expectRefused(
-    await theyWrite("POST", "/items/version_set_activations", {
-      id: randomUUID(),
-      version_set_id: row["version_sets@saved"],
-    }),
-  );
+  expectRefused(await theyWrite("PATCH", itemPath("version_sets", row["version_sets@saved"]), { status: "active" }));
 });
 
 describeAccessFeature("planning.feature");
