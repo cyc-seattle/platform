@@ -22,6 +22,7 @@ function person(overrides: Partial<MergePerson> & { id: string }): MergePerson {
     city: null,
     state: null,
     postal_code: null,
+    school_id: null,
     school: null,
     share_contact: null,
     display_name: null,
@@ -372,6 +373,25 @@ describe("planPersonMerge", () => {
       id: "keep",
       patch: { email: "keep@example.com" },
     });
+  });
+
+  it("fills the keeper's missing school with a duplicate's, the school and its own words together", () => {
+    const keeper = person({ id: "keep" });
+    const duplicates = [person({ id: "dup1", school: "Lakeside" }), person({ id: "dup2", school_id: "school-1" })];
+    const steps = planPersonMerge(keeper, duplicates, related());
+    expect(steps).toContainEqual({
+      type: "update",
+      collection: "people",
+      id: "keep",
+      patch: { school_id: null, school: "Lakeside" },
+    });
+  });
+
+  it("keeps the keeper's school on the list over a duplicate's own words", () => {
+    const keeper = person({ id: "keep", school_id: "school-1" });
+    const duplicates = [person({ id: "dup", school: "Lakeside" })];
+    const steps = planPersonMerge(keeper, duplicates, related());
+    expect(steps.some((step) => step.collection === "people" && step.type === "update")).toBe(false);
   });
 
   it("deletes every duplicate person last", () => {

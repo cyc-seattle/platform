@@ -12,6 +12,8 @@ export interface PersonRow {
   state: string | null;
   postal_code: string | null;
   /** Optional, unlike every other column here: only the promoted-fields pass writes it, never person-sync. */
+  school_id?: string | null;
+  /** The school in their own words, when `school_id` is null because it isn't on the list ("Other"). */
   school?: string | null;
   /** What this adult last answered before households held the answer. Only read, to seed a new household. */
   share_contact?: boolean | null;
@@ -26,6 +28,14 @@ export interface HouseholdRow {
   id: string;
   /** Whether the household's adults share their email and phone with teams. Null means never answered. */
   share_contact: boolean | null;
+}
+
+/** A school a sailor can sail for (`schemas/crm.yaml`). */
+export interface SchoolRow {
+  id: string;
+  name: string;
+  /** Other ways families write it, matched like the name. Null means none. */
+  aliases: string[] | null;
 }
 
 export type ContactRelationshipType = "guardian" | "emergency_contact";

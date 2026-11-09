@@ -1,4 +1,5 @@
 import { type Participant } from "@cyc-seattle/clubspot-sdk";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { type ContactRow, type MedicalProfileRow, type PersonRow } from "../../model/crm/index.ts";
 import { type ParticipantRow } from "../../model/clubspot/index.ts";
 
@@ -39,6 +40,20 @@ export function normalizePhone(value: string | null | undefined): string | null 
     return null;
   }
   return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+}
+
+/**
+ * A phone in E.164 (`+12065551234`), the form the club's apps save, so a family's edit and Clubspot's
+ * bare digits for the same number compare equal. A number without a country code is taken as US. One
+ * that doesn't parse is kept as typed, trimmed, rather than lost.
+ */
+export function toE164(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = parsePhoneNumberFromString(trimmed, "US");
+  return parsed?.isPossible() ? parsed.number : trimmed;
 }
 
 /** `undefined`/empty-string Clubspot fields both mean "no value" - collapse them to `null`. */
@@ -278,7 +293,7 @@ export function buildPersonFieldsFromParticipant(participant: Participant): Omit
     first_name: firstName,
     last_name: toNullableText(participant.get("lastName")),
     email: normalizeEmail(participant.get("email")),
-    phone: toNullableText(participant.get("mobile")),
+    phone: toE164(participant.get("mobile")),
     date_of_birth: dob ? toDateString(dob) : null,
     gender: toNullableText(participant.get("gender")),
     street: toNullableText(participant.get("street")),
@@ -366,7 +381,7 @@ export function personFieldsFromGuardian(input: GuardianInput): Omit<PersonRow, 
     first_name: firstName,
     last_name: lastName,
     email: normalizeEmail(input.email),
-    phone: input.mobile,
+    phone: toE164(input.mobile),
     date_of_birth: null,
     gender: null,
     street: null,
@@ -382,7 +397,7 @@ export function personFieldsFromEmergencyContact(input: EmergencyContactInput): 
     first_name: firstName,
     last_name: lastName,
     email: normalizeEmail(input.email),
-    phone: input.phone,
+    phone: toE164(input.phone),
     date_of_birth: null,
     gender: null,
     street: null,
@@ -515,11 +530,11 @@ export function mergeParticipantMirrorFields(
  * `clubspot_participants` row instead of a live `Participant` - unlike `PersonRow`, `first_name` is
  * nullable here, since the one CRM field rule (cyc-seattle/isthmia#137) has to weigh a blank mirror value against
  * whatever base it held, even where `people.first_name` itself is NOT NULL. Built with the same
- * primitives (`toNullableText`, `normalizeEmail`) `buildPersonFieldsFromParticipant` uses, so a
+ * primitives (`toNullableText`, `normalizeEmail`, `toE164`) `buildPersonFieldsFromParticipant` uses, so a
  * mirror row's prior and current values compare on equal footing.
  */
 export type PersonFieldValues = {
-  [K in keyof Omit<PersonRow, "id" | "school" | "share_contact" | "display_name" | "household_id">]:
+  [K in keyof Omit<PersonRow, "id" | "school_id" | "school" | "share_contact" | "display_name" | "household_id">]:
     PersonRow[K] | null;
 };
 
@@ -542,7 +557,7 @@ export function personFieldValuesFromMirror(
     first_name: toNullableText(mirror.first_name),
     last_name: toNullableText(mirror.last_name),
     email: normalizeEmail(mirror.email),
-    phone: toNullableText(mirror.phone),
+    phone: toE164(mirror.phone),
     date_of_birth: mirror.date_of_birth,
     gender: toNullableText(mirror.gender),
     street: toNullableText(mirror.street),
@@ -574,7 +589,7 @@ export function contactFieldValuesFromMirror(slot: ContactMirrorSlot): ContactMi
     first_name: split?.firstName ?? null,
     last_name: split?.lastName ?? null,
     email: normalizeEmail(slot.email),
-    phone: toNullableText(slot.phone),
+    phone: toE164(slot.phone),
   };
 }
 

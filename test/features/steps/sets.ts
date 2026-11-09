@@ -47,6 +47,7 @@ const sets: Record<string, Target[]> = {
   // A person's details, as crm.feature defines them. Medical information is granted apart.
   "people and their details": plain("people", "contacts", "contact_points"),
   "medical information": plain("medical_profiles"),
+  "the list of schools": plain("schools"),
   "the rosters": plain(
     "programs",
     "clubspot_camps",

@@ -61,13 +61,6 @@ const ME_AS_ADULT: Filter = {
   ],
 };
 
-/** Someone known to be under 18. With no date of birth on file, a co-parent and a child look alike,
- * so neither counts. */
-const CHILD: Filter = { date_of_birth: { _gt: "$NOW(-18 years)" } };
-
-/** A row in a household where the signed-in user is an adult. */
-const MY_HOUSEHOLD_AS_ADULT: Filter = { household_id: { members: ME_AS_ADULT } };
-
 /** How long after their last team offering ends someone stays on the team. The group-policies hook
  * uses the same window, so the Team role and the rosters agree. */
 export const TEAM_MONTHS = 12;
@@ -115,30 +108,14 @@ const TEAM_OFFERING: Filter = {
 
 /** Community's rules. Team and Crew have them too. */
 export const familyPolicies: CommunityPolicyData[] = [
-  // A policy of its own: Directus keeps one rule per collection and action in a policy, and this
-  // changes other rows than the display name and school do.
-  {
-    key: "own-phones",
-    name: "Community: phones",
-    icon: "phone",
-    description: "An adult changes their own phone, and that of anyone in their household known to be under 18.",
-    rules: [
-      {
-        collection: "people",
-        action: "update",
-        fields: ["phone"],
-        permissions: { _or: [ME_AS_ADULT, { _and: [MY_HOUSEHOLD_AS_ADULT, CHILD] }] },
-      },
-    ],
-  },
   {
     key: "own-family",
     name: "Community: own family",
     icon: "family_restroom",
     description:
       "Their own household and family: the people in their household and their details, their children's sign-ups " +
-      "and medical information. An adult in a household changes whether it shares its email and phones, and each " +
-      "person's display name and school, and their own phone and their children's. See docs/access.md.",
+      "and medical information. Anyone in a household changes each person's display name, phone, and school, and " +
+      "an adult changes whether it shares its email and phones. See docs/access.md.",
     rules: [
       {
         collection: "people",
@@ -152,6 +129,7 @@ export const familyPolicies: CommunityPolicyData[] = [
           "display_name",
           "email",
           "phone",
+          "school_id",
           "school",
           "date_of_birth",
           "household_id",
@@ -164,8 +142,8 @@ export const familyPolicies: CommunityPolicyData[] = [
       {
         collection: "people",
         action: "update",
-        fields: ["school", "display_name"],
-        permissions: MY_HOUSEHOLD_AS_ADULT,
+        fields: ["display_name", "phone", "school_id", "school"],
+        permissions: MY_HOUSEHOLD,
       },
       {
         collection: "households",
@@ -198,6 +176,8 @@ export const familyPolicies: CommunityPolicyData[] = [
       { collection: "programs", action: "read", fields: ["id", "name"] },
       // Anyone who signs in can see the program areas, but not the revenue accounts they book to.
       { collection: "program_areas", action: "read", fields: ["id", "name"] },
+      // The list a family picks a school from.
+      { collection: "schools", action: "read", fields: ["id", "name"] },
       { collection: "medical_profiles", action: "read", fields: ["*"], permissions: { person_id: MY_FAMILY } },
     ],
   },
@@ -276,7 +256,7 @@ export const teamPolicies: CommunityPolicyData[] = [
       {
         collection: "people",
         action: "read",
-        fields: ["id", "first_name", "last_name", "school"],
+        fields: ["id", "first_name", "last_name", "school_id", "school"],
         permissions: TEAM_SAILOR,
       },
     ],

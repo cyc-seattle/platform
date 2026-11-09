@@ -13,6 +13,7 @@ import {
 } from "../../model/clubspot/index.ts";
 import { normalizeName } from "./people.ts";
 import { type CustomFieldResponseInput } from "./registrations.ts";
+import { keyOf, type SchoolFields, type SchoolMatcher } from "./schools.ts";
 import { emptyFieldTally, type FieldTally, parseYesNo, planSyncedField, resolveBase } from "./synced-fields.ts";
 
 /**
@@ -173,7 +174,7 @@ export function compareByRegistrationRecency(
 }
 
 export interface PromotedFieldSyncPlan extends FieldTally {
-  patch: Partial<Record<PromotablePersonField, string>>;
+  patch: Partial<SchoolFields>;
 }
 
 /**
@@ -209,6 +210,10 @@ export function needsFallbackTargetValues(
  * without it a changed answer would only ever fill a null column (cyc-seattle/isthmia#137). `currentPerson` is the
  * resolved person's current value for every promotable column.
  *
+ * `school` is the one promotable field, and it's written as `school_id` and `school` (`schools.ts`).
+ * The rule compares `base`, `v` and the person's current pick through {@link SchoolMatcher.keyFor}, so
+ * a household's pick stands until Clubspot sends an answer naming a different school.
+ *
  * The caller gates this on the newest-linked-participant check - an older registration's answer
  * must never overwrite a newer one's, same as any other curated field.
  */
@@ -216,12 +221,13 @@ export function planPromotedFieldSync(
   targetByDefinitionId: ReadonlyMap<string, PromotablePersonField>,
   responses: readonly CustomFieldResponseInput[],
   existingResponses: readonly CustomFieldResponseRow[],
-  currentPerson: Partial<Record<PromotablePersonField, string | null>>,
+  currentPerson: Partial<SchoolFields>,
+  schools: SchoolMatcher,
   fallbackByTargetField: ReadonlyMap<PromotablePersonField, string> = new Map(),
 ): PromotedFieldSyncPlan {
   const existingByDefinitionId = new Map(existingResponses.map((row) => [row.definition_id, row] as const));
 
-  const patch: Partial<Record<PromotablePersonField, string>> = {};
+  let patch: Partial<SchoolFields> = {};
   const tally = emptyFieldTally();
 
   for (const response of responses) {
@@ -234,11 +240,14 @@ export function planPromotedFieldSync(
     const fallbackBase = fallbackByTargetField.get(targetField);
     const base = resolveBase(ownBase, fallbackBase);
     const v = trimmedValue(response.response ?? null);
-    const current = currentPerson[targetField] ?? null;
 
-    const outcome = planSyncedField(current, base, v);
+    const outcome = planSyncedField(
+      keyOf(currentPerson),
+      base === undefined ? undefined : schools.keyFor(base),
+      schools.keyFor(v),
+    );
     if (outcome.action === "write") {
-      patch[targetField] = outcome.value;
+      patch = schools.fieldsFor(v) ?? {};
       tally.written++;
       if (outcome.replacedStaffEdit) {
         tally.replacedStaffEdits++;
@@ -360,6 +369,7 @@ export function planPromotedFields(
   registrations: readonly RegistrationRow[],
   participants: readonly Pick<ParticipantRow, "id" | "person_id">[],
   people: readonly PersonRow[],
+  schools: SchoolMatcher,
 ): PromotedFieldsPlan {
   if (promotedFields.length === 0) {
     winston.info("No promoted_fields configured; skipping the promotion pass");
@@ -433,13 +443,12 @@ export function planPromotedFields(
   const peoplePatches: PersonPatch[] = [];
   for (const [personId, winners] of winnersByPerson) {
     const person = peopleById.get(personId);
-    const patch: Partial<PersonRow> = {};
-    for (const [targetField, winner] of winners) {
-      const currentValue = person?.[targetField];
-      // Gap-fill only: a column already holding a value, staff-entered or from an earlier run, is
-      // never replaced.
-      if (currentValue == null || currentValue === "") {
-        patch[targetField] = winner.value;
+    let patch: Partial<PersonRow> = {};
+    for (const winner of winners.values()) {
+      // Gap-fill only: a school already on file, picked by staff or a household or from an earlier
+      // run, is never replaced.
+      if (keyOf(person ?? {}) === null) {
+        patch = { ...patch, ...schools.fieldsFor(winner.value) };
       }
     }
     if (Object.keys(patch).length > 0) {

@@ -132,6 +132,10 @@ neither `base` nor null; a null `v` is never written, for any field — a remove
 phone number stays on the CRM record until staff clear it. Only the newest linked participant may
 write at all — an older registration's form never overwrites a newer one's.
 
+A `people.phone` is compared and written in E.164 (`+12065550100`), the form the club's apps save,
+taking a number with no country code as US. Clubspot's bare digits for the number a family entered
+then compare equal, and don't overwrite it. A number that doesn't parse is kept as typed.
+
 Only a participant mirrored for the first time ever — `base` entirely unknown, not merely a known
 blank — falls back to the person's previous newest _other_ linked participant's own value, so a new
 season's changed answer still has something to compare against instead of only ever filling a null
@@ -228,11 +232,23 @@ recently supplied this email" is a join against that plus the revision timestamp
 on `people`. That join is untested against real staff workflows; revisit if it turns out too awkward
 to actually use.
 
+### Schools
+
+`people.school_id` is the school someone sails for, which may not be the one they attend, picked from
+`schools`. A school not on the list is `people.school`, in the family's own words, with `school_id`
+blank: a person has one or the other, never both. Staff keep the list, and each school's `aliases`
+hold the other ways families write it. Families pick from it in the club's apps.
+
+The sync files a Clubspot answer under the school whose name or alias matches it, ignoring case,
+spaces, and punctuation, and otherwise keeps it as their own words. There's no fuzzy match: staff add
+an alias, and the next answer matches. It compares answers by the school they name, so a family's
+pick stands until Clubspot names a different school.
+
 ### Promoted fields
 
 `clubspot_promoted_fields` maps a Clubspot custom-field question — asked per camp, so
 `clubspot_custom_field_definitions` has no single row for it — onto a `people` column. `school` is the only
-target today; adding another means adding it to `PROMOTABLE_PERSON_FIELDS`
+target today, written as `school_id` and `school` ([Schools](#schools)); adding another means adding it to `PROMOTABLE_PERSON_FIELDS`
 (`src/model/clubspot/promoted-fields.ts`) and deploying, not editing config. It follows the same
 one CRM field rule as every other curated field (cyc-seattle/isthmia#137): per registration, `clubspot_custom_field_responses`
 is itself the mirror, keeping its own last non-blank answer the same way `clubspot_participants` does, so

@@ -331,6 +331,13 @@ permissionRule(
   { dependsOn: crmSchema },
 );
 
+// The list of schools is staff's. The sync only matches a form's answer against it.
+permissionRule(
+  "crm-clubspot-sync-schools-read",
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "schools", action: "read" },
+  { dependsOn: crmSchema },
+);
+
 // Program and program area role assignments and google_group_memberships are owned elsewhere - the
 // merge executor only repoints person_id off a duplicate onto its keeper (cyc-seattle/isthmia#133).
 for (const collection of ["program_role_assignments", "program_area_role_assignments", "google_group_memberships"]) {

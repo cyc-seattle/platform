@@ -67,6 +67,7 @@ export interface Schema {
   qualifications: Qualifications[];
   registrations: Registrations[];
   resource_kinds: ResourceKinds[];
+  schools: Schools[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
   version_set_members: VersionSetMembers[];
@@ -484,6 +485,7 @@ export interface People {
   contact_for: (string | Contacts)[];
   /** Every email and phone known for this person. */
   contact_point_links: (string | ContactPoints)[];
+  /** The school they sail for, in their own words, when it isn't on the list. Blank when a school is picked above. */
   school: string | null;
   /** What this adult last answered before households held the answer. Kept for reference only: the household's answer counts now. */
   share_contact: boolean | null;
@@ -493,6 +495,8 @@ export interface People {
   display_name: string | null;
   /** Set by the Clubspot sync from the person's parents and children, so change those instead. */
   household_id: string | Households | null;
+  /** The school they sail for, which may not be the one they attend. Blank, with a school in their own words below, means a school not on the list. */
+  school_id: string | Schools | null;
   /** The person's own Directus login, if they have one. Usually empty. */
   directus_user_id: string | null;
 }
@@ -1085,6 +1089,15 @@ export interface Registrations {
 export interface ResourceKinds {
   id: string;
   name: string;
+}
+
+/** The schools a sailor can sail for, which families pick from. A school's other names match what families typed on their Clubspot forms. */
+export interface Schools {
+  id: string;
+  /** The school's name, as families see it in the list. */
+  name: string;
+  /** Other ways families write this school on their Clubspot forms. An answer matching the name or one of these, ignoring capitals, spaces, and punctuation, is this school. Anything else is kept as their own words. */
+  aliases: string[] | null;
 }
 
 /** One row each time a sync runs. */

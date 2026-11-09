@@ -36,7 +36,9 @@ Feature: The CRM
   A household is a sailor, everyone listed as their parent, and those parents' other children. The
   Clubspot sync puts people in households from the parents Clubspot lists, so a family changes who's
   in theirs by changing their sign-ups in Clubspot. A household's details are each person's display
-  name, school, email, and phone: the display name is the name the club's apps show.
+  name, school, email, and phone: the display name is the name the club's apps show. The school is the
+  one they sail for, which may not be the one they attend. It's picked from the club's list of
+  schools, or given in their own words when it isn't on the list.
 
   Each household decides whether its adults share their email and phone with the teams. Clubspot
   asks when a family signs a sailor up, and the answer counts for the sailor's whole household. An
@@ -78,6 +80,12 @@ Feature: The CRM
     Example: A CRM Writer adds, edits, and deletes people and their details
       Given a user with the CRM Writer policy
       Then they can change people and their details
+
+  Rule: A CRM Writer keeps the list of schools
+
+    Example: A CRM Writer adds, edits, and deletes a school
+      Given a user with the CRM Writer policy
+      Then they can change the list of schools
 
   Rule: A CRM Reader or CRM Writer can't see medical information without a Medical policy
 
@@ -252,25 +260,27 @@ Feature: The CRM
       When they look at their household
       Then they see the other parent's email and phone
 
-  Rule: An adult in a household can change each person's display name and school, but no one's email
+  Rule: Anyone in a household can change each person's display name, phone, and school, but no one's email
 
-    Example: A parent changes their child's display name and school
+    Example: A parent changes their child's display name, phone, and school
       Given a parent whose child is signed up for a program
-      Then they can change their child's display name and school
+      Then they can change their child's display name, phone, and school from the list
+
+    Example: A parent gives a school that isn't on the list
+      Given a parent whose child is signed up for a program
+      Then they can give their child's school in their own words
+
+    Example: A parent changes the other parent's phone
+      Given a parent whose child is signed up for a program, and the child's other parent
+      Then they can change the other parent's phone
+
+    Example: A child changes their parent's display name, phone, and school
+      Given a child who has signed in, and their parent
+      Then they can change their parent's display name, phone, and school from the list
 
     Example: A parent can't change anyone's email
       Given a parent whose child is signed up for a program
       Then they can't change their own email or their child's
-
-  Rule: An adult can change their own phone and their children's, but not another adult's
-
-    Example: A parent changes their own phone and their child's
-      Given a parent whose child is signed up for a program
-      Then they can change their own phone and their child's
-
-    Example: A parent can't change the other parent's phone
-      Given a parent whose child is signed up for a program, and the child's other parent
-      Then they can't change the other parent's phone
 
   Rule: A family can't change another household's details
 

@@ -236,6 +236,11 @@ Step("an adult sailor signed up for a program", async () => {
 Step("a sailor with no date of birth on file, signed up for a program", async () => {
   await signIn(call("the sailor", await sailor("adult", await theTeam(), { share: true, dateOfBirth: null })));
 });
+Step("a child who has signed in, and their parent", async () => {
+  const child = call("the child", await sailor("child", await theTeam(), {}));
+  call("the parent", await guardianOf(child));
+  await signIn(child);
+});
 Step("a user with the Community role whose email isn't in the CRM", async () => {
   await signIn({ id: "", email: email("nobody") });
 });
@@ -553,29 +558,34 @@ const edit = async (who: Person, details: Row) =>
 const detailsOf = async (who: Person, fields: string[]) =>
   (await (await admin()).ok("GET", `/items/people/${who.id}?fields=${fields.join(",")}`)) as Row;
 
-Step("they can change their child's display name and school", async () => {
+/** A school on the club's list, which a family picks from. */
+const aSchool = async () => (await adminCreate("schools", { id: randomUUID(), name: `School ${key("school")}` })).id;
+
+for (const label of ["child", "parent"]) {
+  Step(`they can change their ${label}'s display name, phone, and school from the list`, async () => {
+    const who = the(`the ${label}`);
+    const details = { display_name: `Skipper ${runId}`, phone: phone(), school_id: await aSchool(), school: null };
+    expect(await edit(who, details)).toBeLessThan(300);
+    expect(await detailsOf(who, Object.keys(details))).toEqual(details);
+  });
+}
+Step("they can give their child's school in their own words", async () => {
   const child = the("the child");
-  const details = { display_name: `Skipper ${runId}`, school: SCHOOL };
+  const details = { school_id: null, school: SCHOOL };
   expect(await edit(child, details)).toBeLessThan(300);
   expect(await detailsOf(child, Object.keys(details))).toEqual(details);
+});
+Step("they can change the other parent's phone", async () => {
+  const other = the("the other parent");
+  const number = phone();
+  expect(await edit(other, { phone: number })).toBeLessThan(300);
+  expect((await detailsOf(other, ["phone"]))["phone"]).toBe(number);
 });
 Step("they can't change their own email or their child's", async () => {
   for (const who of [scene.me!, the("the child")]) {
     expect(await edit(who, { email: email("changed") })).toBe(403);
     expect((await detailsOf(who, ["email"]))["email"]).toBe(who.email);
   }
-});
-Step("they can change their own phone and their child's", async () => {
-  for (const who of [scene.me!, the("the child")]) {
-    const number = phone();
-    expect(await edit(who, { phone: number })).toBeLessThan(300);
-    expect((await detailsOf(who, ["phone"]))["phone"]).toBe(number);
-  }
-});
-Step("they can't change the other parent's phone", async () => {
-  const other = the("the other parent");
-  expect(await edit(other, { phone: phone() })).toBe(403);
-  expect((await detailsOf(other, ["phone"]))["phone"]).toBe(other.phone);
 });
 Step("they can't change the teammate's display name", async () => {
   const teammate = the("the teammate");

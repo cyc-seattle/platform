@@ -8,7 +8,7 @@ import {
   type Registration,
 } from "@cyc-seattle/clubspot-sdk";
 import { randomUUID } from "node:crypto";
-import { type ContactRow, type HouseholdRow, type PersonRow } from "../../model/crm/index.ts";
+import { type ContactRow, type HouseholdRow, type PersonRow, type SchoolRow } from "../../model/crm/index.ts";
 import {
   type ClassRow,
   type ContactPointWithParticipant,
@@ -80,6 +80,7 @@ import {
   type RegistrationBillingPlan,
 } from "./registrations.ts";
 import { type CampWithClubspot, type RegistrationEntryWithClubspot } from "./schema.ts";
+import { type SchoolFields, SchoolMatcher } from "./schools.ts";
 import { type RegistrationRank } from "./synced-fields.ts";
 
 /** No prior successful sync: the registration window starts from the beginning of Clubspot history. */
@@ -201,7 +202,7 @@ export function fetchCampDataGateway<Fn extends SyncGateway["fetchCampData"]>(
 // All the collections the schedule and registration passes reconcile against. `people`, `contacts`,
 // and `medical_profiles` aren't here: PersonSync reads those with its own bounded, filtered queries
 // instead of a full table scan. The promotion pass below reads `people` too, but only its `id` and
-// `school` columns - narrower than a full-table read, not wider.
+// school columns - narrower than a full-table read, not wider.
 interface SharedTables {
   camps: CampWithClubspot[];
   classes: ClassRow[];
@@ -519,8 +520,10 @@ async function syncRegistrations(
   // its target fields needs this same config run again against that camp's definitions - see
   // `resolveFallbackTargetValues`.
   let promotedFieldsConfig: readonly PromotedFieldRow[] = [];
+  let schools = new SchoolMatcher([]);
   try {
     promotedFieldsConfig = await directus.readItems<PromotedFieldRow>("clubspot_promoted_fields", { limit: -1 });
+    schools = new SchoolMatcher(await directus.readItems<SchoolRow>("schools", { limit: -1 }));
     const split = splitPromotedFieldTargets(
       buildTargetByDefinitionId(promotedFieldsConfig, tables.customFieldDefinitions),
     );
@@ -804,7 +807,7 @@ async function syncRegistrations(
   // One batch read of every promotable field for every person this camp resolved, so the
   // per-registration promoted-fields sync below never fetches `people` in the entry/billing/
   // response loop - skipped entirely when nothing is configured to promote.
-  const currentPromotableFieldsByPersonId = new Map<string, Partial<Record<PromotablePersonField, string | null>>>();
+  const currentPromotableFieldsByPersonId = new Map<string, Partial<SchoolFields>>();
   if (targetByDefinitionId.size > 0) {
     const personIds = [...new Set(personIdByClubspotParticipantId.values())];
     const people = await readByIds<PersonRow>(directus, "people", "id", personIds);
@@ -902,6 +905,7 @@ async function syncRegistrations(
         rawResponses,
         existingResponsesForRegistration,
         currentPerson,
+        schools,
         fallbackByTargetField,
       );
       if (Object.keys(promotedPlan.patch).length > 0) {
@@ -1035,7 +1039,7 @@ async function runCampPasses(
  * `RunSyncResult.peoplePromoted`.
  */
 async function promotePeopleFields(directus: DirectusClient): Promise<number> {
-  const [customFieldDefinitions, customFieldResponses, registrations, participants, promotedFields, people] =
+  const [customFieldDefinitions, customFieldResponses, registrations, participants, promotedFields, people, schools] =
     await Promise.all([
       // Unscoped: the winning custom-field response for a person can come from any camp, so this
       // pass needs every camp's rows, not one.
@@ -1047,7 +1051,8 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
         fields: ["id", "person_id", "date_of_birth", "guardian_1_name", "guardian_2_name"],
       }),
       directus.readItems<PromotedFieldRow>("clubspot_promoted_fields", { limit: -1 }),
-      directus.readItems<PersonRow>("people", { limit: -1, fields: ["id", "school", "share_contact"] }),
+      directus.readItems<PersonRow>("people", { limit: -1, fields: ["id", "school_id", "school", "share_contact"] }),
+      directus.readItems<SchoolRow>("schools", { limit: -1 }),
     ]);
 
   const { peoplePatches, registrationPatches } = planPromotedFields(
@@ -1057,6 +1062,7 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
     registrations,
     participants,
     people,
+    new SchoolMatcher(schools),
   );
 
   for (const { id, patch } of peoplePatches) {

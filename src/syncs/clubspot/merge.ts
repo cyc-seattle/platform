@@ -1,5 +1,6 @@
 import { normalizeName } from "./people.ts";
 import { contactPointKeyForRow } from "./contact-points.ts";
+import { keyOf } from "./schools.ts";
 
 /**
  * Pure planning for merging duplicate `people` rows (design doc "Merge, unmerge, and review",
@@ -48,6 +49,7 @@ export interface MergePerson {
   city: string | null;
   state: string | null;
   postal_code: string | null;
+  school_id: string | null;
   school: string | null;
   share_contact: boolean | null;
   display_name: string | null;
@@ -65,7 +67,6 @@ const PERSON_SCALAR_FIELDS: readonly (keyof Omit<MergePerson, "id" | "directus_u
   "city",
   "state",
   "postal_code",
-  "school",
   "share_contact",
   "display_name",
 ];
@@ -84,6 +85,7 @@ export const MERGE_PERSON_FIELDS: readonly (keyof MergePerson)[] = [
   "city",
   "state",
   "postal_code",
+  "school_id",
   "school",
   "share_contact",
   "display_name",
@@ -422,6 +424,14 @@ function buildKeeperPersonPatch(
       if (fill) {
         patch[field] = fill[field];
       }
+    }
+  }
+  // A school on the list or in their own words, never one of each, so the pair moves together.
+  if (keyOf(keeper) === null) {
+    const fill = duplicates.find((duplicate) => keyOf(duplicate) !== null);
+    if (fill) {
+      patch["school_id"] = fill.school_id;
+      patch["school"] = fill.school;
     }
   }
 

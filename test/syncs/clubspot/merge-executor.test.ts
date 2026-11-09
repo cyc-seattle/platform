@@ -167,6 +167,7 @@ function person(id: string, overrides: Partial<Record<string, unknown>> = {}) {
     city: null,
     state: null,
     postal_code: null,
+    school_id: null,
     school: null,
     directus_user_id: null,
     ...overrides,

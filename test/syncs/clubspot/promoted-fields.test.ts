@@ -14,6 +14,9 @@ import {
   planPromotedFieldSync,
   planRegistrationPromotedFieldSync,
 } from "../../../src/syncs/clubspot/promoted-fields.ts";
+import { SchoolMatcher } from "../../../src/syncs/clubspot/schools.ts";
+
+const noSchools = new SchoolMatcher([]);
 
 function promotedField(labels: string[], targetField = "school"): PromotedFieldRow {
   return { id: "config-1", target_field: targetField as PromotedFieldRow["target_field"], labels };
@@ -72,7 +75,7 @@ describe("planPromotedFields", () => {
   it("does nothing and logs at info when promoted_fields is empty", () => {
     const info = vi.spyOn(winston, "info").mockReturnThis();
     try {
-      const plan = planPromotedFields([], [definition("def-1", "School")], [], [], [], [person("person-1")]);
+      const plan = planPromotedFields([], [definition("def-1", "School")], [], [], [], [person("person-1")], noSchools);
       expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
       expect(info).toHaveBeenCalled();
     } finally {
@@ -88,9 +91,10 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z")],
       [linkedParticipant("reg-1", "person-1")],
       [person("person-1")],
+      noSchools,
     );
     expect(plan).toEqual({
-      peoplePatches: [{ id: "person-1", patch: { school: "Answer" } }],
+      peoplePatches: [{ id: "person-1", patch: { school_id: null, school: "Answer" } }],
       registrationPatches: [],
     });
   });
@@ -103,9 +107,10 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z")],
       [linkedParticipant("reg-1", "person-1")],
       [person("person-1")],
+      noSchools,
     );
     expect(plan).toEqual({
-      peoplePatches: [{ id: "person-1", patch: { school: "Roosevelt High" } }],
+      peoplePatches: [{ id: "person-1", patch: { school_id: null, school: "Roosevelt High" } }],
       registrationPatches: [],
     });
   });
@@ -118,6 +123,7 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z")],
       [linkedParticipant("reg-1", "person-1")],
       [person("person-1", "Garfield High")],
+      noSchools,
     );
     expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
   });
@@ -130,6 +136,7 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z")],
       [linkedParticipant("reg-1", "person-1")],
       [person("person-1")],
+      noSchools,
     );
     expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
   });
@@ -142,6 +149,7 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z")],
       [linkedParticipant("reg-1", "person-1")],
       [person("person-1")],
+      noSchools,
     );
     expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
   });
@@ -160,9 +168,10 @@ describe("planPromotedFields", () => {
       ],
       [linkedParticipant("reg-archived", "person-1"), linkedParticipant("reg-active", "person-1")],
       [person("person-1")],
+      noSchools,
     );
     expect(plan).toEqual({
-      peoplePatches: [{ id: "person-1", patch: { school: "New School" } }],
+      peoplePatches: [{ id: "person-1", patch: { school_id: null, school: "New School" } }],
       registrationPatches: [],
     });
   });
@@ -178,9 +187,10 @@ describe("planPromotedFields", () => {
       [registration("reg-earlier", "2026-01-01T00:00:00Z"), registration("reg-later", "2026-06-01T00:00:00Z")],
       [linkedParticipant("reg-earlier", "person-1"), linkedParticipant("reg-later", "person-1")],
       [person("person-1")],
+      noSchools,
     );
     expect(plan).toEqual({
-      peoplePatches: [{ id: "person-1", patch: { school: "Later School" } }],
+      peoplePatches: [{ id: "person-1", patch: { school_id: null, school: "Later School" } }],
       registrationPatches: [],
     });
   });
@@ -194,11 +204,12 @@ describe("planPromotedFields", () => {
         [registration("reg-aaa", "2026-01-01T00:00:00Z"), registration("reg-zzz", "2026-01-01T00:00:00Z")],
         [linkedParticipant("reg-aaa", "person-1"), linkedParticipant("reg-zzz", "person-1")],
         [person("person-1")],
+        noSchools,
       );
     const first = buildPlan();
     const second = buildPlan();
     expect(first).toEqual({
-      peoplePatches: [{ id: "person-1", patch: { school: "School Z" } }],
+      peoplePatches: [{ id: "person-1", patch: { school_id: null, school: "School Z" } }],
       registrationPatches: [],
     });
     expect(second).toEqual(first);
@@ -214,6 +225,7 @@ describe("planPromotedFields", () => {
         [registration("reg-1", "2026-01-01T00:00:00Z")],
         [linkedParticipant("reg-1", "person-1")],
         [person("person-1")],
+        noSchools,
       );
       expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
       expect(warn).toHaveBeenCalledWith(expect.stringContaining("grade"), expect.anything());
@@ -232,6 +244,7 @@ describe("planPromotedFields", () => {
         [],
         [],
         [person("person-1")],
+        noSchools,
       );
       expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
       expect(warn).toHaveBeenCalledTimes(1);
@@ -258,6 +271,7 @@ describe("planPromotedFields", () => {
         // Neither participant is linked to a person yet.
         [],
         [person("person-1"), person("person-2")],
+        noSchools,
       );
       expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
       expect(warn).toHaveBeenCalledTimes(1);
@@ -278,6 +292,7 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z")],
       [linkedParticipant("reg-1", "person-1")],
       [person("person-1")],
+      noSchools,
     );
     expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
   });
@@ -290,6 +305,7 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z", { share_contact: null })],
       [],
       [],
+      noSchools,
     );
     expect(plan).toEqual({
       peoplePatches: [],
@@ -305,6 +321,7 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z", { share_contact: false })],
       [],
       [],
+      noSchools,
     );
     expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
   });
@@ -317,6 +334,7 @@ describe("planPromotedFields", () => {
       [registration("reg-1", "2026-01-01T00:00:00Z", { share_contact: null })],
       [],
       [],
+      noSchools,
     );
     expect(plan).toEqual({ peoplePatches: [], registrationPatches: [] });
   });
@@ -331,6 +349,7 @@ describe("planPromotedFieldSync", () => {
       [{ customFieldID: "def-1", response: "Roosevelt High" }],
       [response("resp-1", "reg-1", "def-1", "Roosevelt High")],
       { school: "Staff School" },
+      noSchools,
     );
     expect(plan).toEqual({ patch: {}, written: 0, replacedStaffEdits: 0, blankSkipped: 0, replacedFields: [] });
   });
@@ -341,9 +360,10 @@ describe("planPromotedFieldSync", () => {
       [{ customFieldID: "def-1", response: "Garfield High" }],
       [response("resp-1", "reg-1", "def-1", "Roosevelt High")],
       { school: "Staff School" },
+      noSchools,
     );
     expect(plan).toEqual({
-      patch: { school: "Garfield High" },
+      patch: { school_id: null, school: "Garfield High" },
       written: 1,
       replacedStaffEdits: 1,
       blankSkipped: 0,
@@ -357,9 +377,10 @@ describe("planPromotedFieldSync", () => {
       [{ customFieldID: "def-1", response: "Garfield High" }],
       [response("resp-1", "reg-1", "def-1", "Roosevelt High")],
       { school: "Roosevelt High" },
+      noSchools,
     );
     expect(plan).toEqual({
-      patch: { school: "Garfield High" },
+      patch: { school_id: null, school: "Garfield High" },
       written: 1,
       replacedStaffEdits: 0,
       blankSkipped: 0,
@@ -373,6 +394,7 @@ describe("planPromotedFieldSync", () => {
       [{ customFieldID: "def-1" }],
       [response("resp-1", "reg-1", "def-1", "Roosevelt High")],
       { school: "Staff School" },
+      noSchools,
     );
     expect(plan).toEqual({ patch: {}, written: 0, replacedStaffEdits: 0, blankSkipped: 1, replacedFields: [] });
   });
@@ -381,11 +403,13 @@ describe("planPromotedFieldSync", () => {
     const plan = planPromotedFieldSync(
       targetByDefinitionId,
       [{ customFieldID: "def-1", response: "Roosevelt High" }],
-      [], // no stored response yet for this registration+definition
+      [],
+      // no stored response yet for this registration+definition
       { school: null },
+      noSchools,
     );
     expect(plan).toEqual({
-      patch: { school: "Roosevelt High" },
+      patch: { school_id: null, school: "Roosevelt High" },
       written: 1,
       replacedStaffEdits: 0,
       blankSkipped: 0,
@@ -397,6 +421,7 @@ describe("planPromotedFieldSync", () => {
       [{ customFieldID: "def-1", response: "Roosevelt High" }],
       [],
       { school: "Garfield High" },
+      noSchools,
     );
     expect(alreadySet).toEqual({ patch: {}, written: 0, replacedStaffEdits: 0, blankSkipped: 0, replacedFields: [] });
   });
@@ -407,8 +432,85 @@ describe("planPromotedFieldSync", () => {
       [{ customFieldID: "def-unrelated", response: "5th grade" }],
       [],
       { school: null },
+      noSchools,
     );
     expect(plan).toEqual({ patch: {}, written: 0, replacedStaffEdits: 0, blankSkipped: 0, replacedFields: [] });
+  });
+});
+
+describe("planPromotedFieldSync with a list of schools", () => {
+  const targetByDefinitionId = new Map([["def-1", "school" as const]]);
+  const schools = new SchoolMatcher([
+    { id: "school-1", name: "Roosevelt High", aliases: ["Roosevelt"] },
+    { id: "school-2", name: "Garfield High", aliases: null },
+  ]);
+
+  it("files an answer that matches under the list", () => {
+    const plan = planPromotedFieldSync(
+      targetByDefinitionId,
+      [{ customFieldID: "def-1", response: "roosevelt" }],
+      [],
+      { school_id: null, school: null },
+      schools,
+    );
+    expect(plan.patch).toEqual({ school_id: "school-1", school: null });
+  });
+
+  it("keeps a household's pick while Clubspot names the same school, however it's written", () => {
+    const plan = planPromotedFieldSync(
+      targetByDefinitionId,
+      [{ customFieldID: "def-1", response: "Roosevelt High" }],
+      [response("resp-1", "reg-1", "def-1", "Roosevelt")],
+      { school_id: "school-2", school: null },
+      schools,
+    );
+    expect(plan).toEqual({ patch: {}, written: 0, replacedStaffEdits: 0, blankSkipped: 0, replacedFields: [] });
+  });
+
+  it("replaces a household's pick when Clubspot's answer names a different school", () => {
+    const plan = planPromotedFieldSync(
+      targetByDefinitionId,
+      [{ customFieldID: "def-1", response: "Garfield High" }],
+      [response("resp-1", "reg-1", "def-1", "Roosevelt")],
+      { school_id: null, school: "Lakeside" },
+      schools,
+    );
+    expect(plan).toEqual({
+      patch: { school_id: "school-2", school: null },
+      written: 1,
+      replacedStaffEdits: 1,
+      blankSkipped: 0,
+      replacedFields: ["school"],
+    });
+  });
+
+  it("counts no replaced edit when the person's pick is the school Clubspot last named", () => {
+    const plan = planPromotedFieldSync(
+      targetByDefinitionId,
+      [{ customFieldID: "def-1", response: "Lakeside" }],
+      [response("resp-1", "reg-1", "def-1", "Roosevelt")],
+      { school_id: "school-1", school: null },
+      schools,
+    );
+    expect(plan.patch).toEqual({ school_id: null, school: "Lakeside" });
+    expect(plan.replacedStaffEdits).toBe(0);
+  });
+});
+
+describe("planPromotedFields with a list of schools", () => {
+  const schools = new SchoolMatcher([{ id: "school-1", name: "Roosevelt High", aliases: null }]);
+
+  it("fills a person with no school from a matching answer, and leaves one with a school on the list alone", () => {
+    const plan = planPromotedFields(
+      [promotedField(["School"])],
+      [definition("def-1", "School")],
+      [response("resp-1", "reg-1", "def-1", "roosevelt high"), response("resp-2", "reg-2", "def-1", "Garfield High")],
+      [registration("reg-1", "2026-01-01T00:00:00Z"), registration("reg-2", "2026-01-01T00:00:00Z")],
+      [linkedParticipant("reg-1", "person-1"), linkedParticipant("reg-2", "person-2")],
+      [person("person-1"), { ...person("person-2"), school_id: "school-1" }],
+      schools,
+    );
+    expect(plan.peoplePatches).toEqual([{ id: "person-1", patch: { school_id: "school-1", school: null } }]);
   });
 });
 

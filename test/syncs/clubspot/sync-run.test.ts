@@ -1384,7 +1384,7 @@ describe("runSync", () => {
     // created above were mistaken for prior history, a currently-null field would see `base === v`
     // and skip the write as "unchanged" instead of filling it.
     expect(tables.get("people")!.find((row) => row["id"] === "person-1")).toMatchObject({
-      phone: "2065550100",
+      phone: "+12065550100",
     });
   });
 
