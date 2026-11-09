@@ -108,3 +108,32 @@ export function writeSetResults(
   setId: string,
   engine: Engine,
 ): Promise<boolean>;
+
+/**
+ * Works out a draft Financial Plan's results again, in place of the ones it has, and returns whether
+ * it wrote them. If the engine fails, it clears them and throws. `db` is Directus's knex.
+ */
+export function writeDraftResults(
+  config: SavedVersionsConfig,
+  db: unknown,
+  setId: string,
+  engine: Engine,
+): Promise<boolean>;
+
+/** The draft Financial Plans whose results a write to these rows of `collection` changes. */
+export function draftsChangedBy(
+  config: SavedVersionsConfig,
+  db: unknown,
+  collection: string,
+  keys: string[],
+): Promise<string[]>;
+
+/**
+ * Runs `run` once for each Financial Plan marked, after writes to it stop for `delayMs`, or
+ * `maxWaitMs` after the first, one at a time.
+ */
+export function draftQueue(
+  run: (id: string) => Promise<unknown>,
+  delayMs: number,
+  maxWaitMs: number,
+): { mark(ids: string[]): void };

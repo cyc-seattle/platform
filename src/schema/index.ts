@@ -758,7 +758,7 @@ export interface PlanResources {
   excluded_from_mtdc: boolean;
 }
 
-/** Each cost and revenue line in a saved Financial Plan's P&L. Worked out when it was saved, and never changed. */
+/** Each cost and revenue line in a Financial Plan's P&L. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultLines {
   id: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
@@ -779,7 +779,7 @@ export interface PlanResultLines {
   line_name: string | null;
 }
 
-/** A saved Financial Plan's P&L for each offering, product, and program area. Worked out when it was saved, and never changed. */
+/** A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultPnl {
   id: string;
   level: "offering" | "product" | "program_area";
@@ -802,7 +802,7 @@ export interface PlanResultPnl {
   version_set_member_id: string | VersionSetMembers | null;
 }
 
-/** Each salaried position's pay for the year, in a saved Financial Plan. Worked out when it was saved, and never changed. */
+/** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultPositions {
   id: string;
   position_key: string;
@@ -832,7 +832,7 @@ export interface PlanResultPositions {
   double_booked_dates: number | null;
 }
 
-/** What the P&L warned about when a Financial Plan was saved. Worked out when it was saved, and never changed. */
+/** What a Financial Plan's P&L warns about. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultWarnings {
   id: string;
   /** The kind of warning. */
@@ -843,7 +843,7 @@ export interface PlanResultWarnings {
   version_set_id: string | VersionSets;
 }
 
-/** A saved Financial Plan's totals for the organization. Worked out when it was saved, and never changed. */
+/** A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResults {
   id: string;
   calculated_at: string;
@@ -1145,18 +1145,18 @@ export interface VersionSetMembers {
   version_id: string | PlanVersions;
 }
 
-/** The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Saving it saves them all, and then it never changes, apart from its note. Pick a parent when you add one, and its plans are copied in. */
+/** The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Its P&L is worked out again a moment after each change. Saving it saves them all, and then it never changes, apart from its name and note. Pick a parent when you add one, and its plans are copied in. */
 export interface VersionSets {
   id: string;
   /** The organization the Financial Plan is for. */
   organization_id: string | Organizations;
   /** The year the Financial Plan is for. */
   fiscal_year: number;
-  /** Such as 2027 budget as adopted. */
+  /** Such as 2027 budget as adopted. You can change it after it's saved. */
   name: string;
   /** What it was for, such as "Reviewed with the board". You can change it after it's saved. */
   message: string | null;
-  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved. */
+  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name and note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved. */
   status: "draft" | "saved" | "active";
   /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
   parent_id: string | VersionSets | null;
@@ -1168,6 +1168,6 @@ export interface VersionSets {
   platform_version: string | null;
   /** Each plan in the Financial Plan. Add or remove one only while it's a draft. */
   members: (string | VersionSetMembers)[];
-  /** What the organization's P&L showed when it was saved, worked out a moment after. A Financial Plan with none means working them out failed, and an admin can fill them in. */
+  /** The organization's P&L. A draft's is worked out again a moment after each change to it. A saved one's is what it showed when it was saved, worked out a moment after. One with none means working it out failed, and the logs say why. An admin can fill in a saved one's. */
   results: (string | PlanResults)[];
 }

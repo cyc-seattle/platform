@@ -6,7 +6,7 @@ tags: [architecture, planning, directus]
 
 Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog. `schemas/planning.yaml` declares Financial Plans, the plans they hold, every row a plan holds, and which Financial Plan is active. Baselines and actuals are designed here, but not built yet.
 
-A draft holds only what planners enter. Apps and agents ask the [planning engine](planning-engine.md) to calculate its P&L when they need one. A saved Financial Plan also holds the results the engine calculated when it was saved, which never change ([A saved Financial Plan's results](#a-saved-financial-plans-results)).
+A Financial Plan holds what planners enter, and the results the [planning engine](planning-engine.md) calculates from it ([A Financial Plan's results](#a-financial-plans-results)). A draft's are worked out again a moment after each change to it. A saved one's are worked out when it's saved, and never change.
 
 ### Terms
 
@@ -21,7 +21,7 @@ A draft holds only what planners enter. Apps and agents ask the [planning engine
 - **Catalog offering:** a named offering of a program, such as "J-Pod · fall practices" or "Summer camp · week 3", kept in the catalog. Every Financial Plan's offerings point at one, and so do Clubspot's offerings, so a Clubspot offering finds its plan in whichever Financial Plan is active.
 - **Plan:** one part of a Financial Plan. A **Program Plan** holds one program area's offerings for one year. The **Operations Plan** holds what the areas share, the charges set as a share of revenue, and the products in no area: merchandise, storage and charters.
 - **Plan copy** (`plan_versions`): one plan as one Financial Plan holds it, with every row. A draft until its Financial Plan is saved.
-- **Financial Plan** (`version_sets`): the organization's plan for a year: one Operations Plan and a Program Plan for any of the program areas, with the P&L they make together. Planners change its plans while it's a draft, and saving it saves them all. Then it never changes, apart from its note. A new one starts as a copy of its parent, so two started from the same parent are options to compare, like branches in git.
+- **Financial Plan** (`version_sets`): the organization's plan for a year: one Operations Plan and a Program Plan for any of the program areas, with the P&L they make together. Planners change its plans while it's a draft, and saving it saves them all. Then it never changes, apart from its name and note. A new one starts as a copy of its parent, so two started from the same parent are options to compare, like branches in git.
   - The **active** Financial Plan is the one a planner marked active last for its organization and year: the plan being run, which tracking compares with what happened.
 
 ### Diagram conventions
@@ -187,7 +187,7 @@ A plan copy's `rules` hold what the planner wants that the plan's numbers don't 
 
 A Financial Plan is for one organization and year, and holds one Operations Plan copy and at most one Program Plan copy for each program area, each in no other Financial Plan. A year can have several drafts at once, to weigh options. A planner starts one by adding a `version_sets` row in the Data Studio, which calls them Financial Plans. Given a `parent_id`, a Financial Plan for the same organization and year, the `saved-versions` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. A planner can also add a plan's draft copy to it by hand, as a `version_set_members` row, and take one out. Members change only while the Financial Plan is a draft. Its organization, year, and parent never change.
 
-A Plan Writer saves a Financial Plan by setting its `status` to `saved`. Saving it saves every plan copy in it, in the same statement, so they're saved together, and the database refuses it without an Operations Plan. A plan copy is never saved on its own. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. It stamps the same on each plan copy. Then it works out the results ([A saved Financial Plan's results](#a-saved-financial-plans-results)). A saved Financial Plan never changes, apart from its note (`message`), such as "Reviewed with the board". A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan copy of the same Financial Plan.
+A Plan Writer saves a Financial Plan by setting its `status` to `saved`. Saving it saves every plan copy in it, in the same statement, so they're saved together, and the database refuses it without an Operations Plan. A plan copy is never saved on its own. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. It stamps the same on each plan copy. Then it works out the results again ([A Financial Plan's results](#a-financial-plans-results)). A saved Financial Plan never changes, apart from its `name` and its note (`message`), such as "Reviewed with the board". A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan copy of the same Financial Plan.
 
 A saved Financial Plan doesn't copy the catalog. Recalculating an old one uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
 
@@ -202,7 +202,7 @@ A saved Financial Plan, every plan copy in it, and every row in those, never cha
 
 Together they refuse:
 
-- changing a saved Financial Plan, apart from its note and marking it active, turning it back into a draft, or deleting it
+- changing a saved Financial Plan, apart from its name, its note, and marking it active, turning it back into a draft, or deleting it
 - saving a Financial Plan without an Operations Plan, or without a `platform_version`
 - a new Financial Plan that isn't a draft, or one that starts from another organization's or year's
 - changing a Financial Plan's organization, year, or parent
@@ -213,7 +213,7 @@ Together they refuse:
 - moving a row to another copy, or a copy to another plan
 - a row that links to a row in another copy, such as an activity whose `offering_id` is another copy's offering
 - a Program Plan without its program area, or an Operations Plan with one
-- writing a Financial Plan's results, except by the hook, once, for a saved one
+- writing a Financial Plan's results, except by the hook, a whole set at a time into one with none, or changing or deleting a saved one's
 - marking a draft active, or setting an active one back to saved, except by marking another one active
 - changing a plan's kind, program area, organization, or year once it's in a Financial Plan or has a saved copy
 
@@ -453,7 +453,7 @@ A bonus owner's bonus is `bonus_rate` × the net of its products for the year, a
 
 The Operations Plan also holds `plan_budget_lines` and `plan_labor_lines` for pool and org lines (insurance, the clubhouse fee, fundraising, equipment). They have the same shape as an area plan's lines.
 
-### A saved Financial Plan's results
+### A Financial Plan's results
 
 ```mermaid
 erDiagram
@@ -530,11 +530,15 @@ erDiagram
     }
 ```
 
-When a Financial Plan is saved, the `saved-versions` hook runs the engine on the plans it holds and writes the results with it. Directus runs the hook's action only after it has checked access and committed the save, so the results go in a moment after the save answers. Since a Financial Plan holds every plan it counts, each offering's share of the pools is right, and its results never change. A draft's P&L is calculated whenever someone asks.
+The `saved-versions` hook runs the engine on the plans a Financial Plan holds and writes its results. Since a Financial Plan holds every plan it counts, each offering's share of the pools is right.
+
+A draft's results are worked out again after each change to what they come from, wherever it was made: the app, the Data Studio, or MCP. That's a row in one of its plan copies, one of its plans, its members, or the catalog and organization the engine reads, which changes every draft's. Directus runs the hook's actions after it commits a write. The hook waits until a draft's writes have stopped for a second, or 10 seconds after the first, so a burst of them, such as an agent's over MCP, costs one run. It runs one draft at a time, on Directus's main thread. It replaces the draft's results in one transaction, under the locks a save takes, so readers see the old results or the new, never a mix. If that fails, it clears them, so no stale numbers look current, and logs why. When Directus starts, it works out the results of every draft that has none. A write that skips Directus's actions, such as SQL, leaves a draft's results as they were until its next change; `calculated_at` says when they were worked out.
+
+Saving a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the save answers, with the engine whose version it records. Then they never change.
 
 `plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, RIBs and share of the shared costs, is one filter. Positions and warnings are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
 
-Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, the Financial Plan is saved, and it has no results yet. Results never change. A Plan Reader or Plan Writer can see them. A draft never has results.
+Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, and the Financial Plan has no results yet. They refuse to delete a draft's results without it too, apart from the delete of the draft, or a plan taken out of it, taking its results with it. No result row is ever changed, and a saved one's are never deleted. A Plan Reader or Plan Writer can see them, a draft's the same way as a saved one's. A draft with no `plan_results` row is still being worked out, or the engine failed on it.
 
 Each result line's `line_name` says in plain words what it is, such as "Coach wages" or "G&A share: Payroll tax". `line` is the engine's key for it.
 

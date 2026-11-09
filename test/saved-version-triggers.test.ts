@@ -9,6 +9,7 @@ import { savedVersionsConfig, type SavedVersionsConfig } from "../stacks/backend
 import {
   copyOrder,
   copyParent,
+  draftsChangedBy,
   fingerprint,
   installTriggers,
   MEMBERS_FIXED,
@@ -22,7 +23,10 @@ import {
   STAYS_ACTIVE,
   triggerStatements,
   triggerStatus,
+  writeDraftResults,
+  writeSetResults,
 } from "../stacks/backend/saved-versions.cjs";
+import { computePlan } from "../src/planning/index.ts";
 
 // The saved-versions hook's triggers, in a real Postgres (PGlite), on tables made from the schemas:
 // the only guard on a path that skips Directus's filters, such as a flow's data steps.
@@ -260,9 +264,53 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await hookWrites(set)).toEqual(refusal(RESULTS_BY_SAVE));
     });
 
-    it("refuse results on a draft, even from the hook", async () => {
+    it("let only the hook write or clear a draft's results", async () => {
       const { draftSet } = await plans(db, 2202);
+      expect(await w.refusedInsert("plan_results", { version_set_id: draftSet, total_cents: 0 })).toEqual(
+        refusal(RESULTS_BY_SAVE),
+      );
+      expect(await hookWrites(draftSet)).toBeUndefined();
       expect(await hookWrites(draftSet)).toEqual(refusal(RESULTS_BY_SAVE));
+      const [{ id }] = (
+        await db.query<{ id: string }>(`SELECT id FROM plan_results WHERE version_set_id = $1`, [draftSet])
+      ).rows as [{ id: string }];
+      expect(await w.update("plan_results", id, { total_cents: 1 })).toEqual(refusal(RESULTS_BY_SAVE));
+      expect(await w.remove("plan_results", id)).toEqual(refusal(RESULTS_BY_SAVE));
+      await db.transaction(async (tx) => {
+        await tx.exec("SET LOCAL cyc.writing_results = 'on'");
+        await tx.query(`DELETE FROM plan_result_warnings WHERE version_set_id = $1`, [draftSet]);
+        await tx.query(`DELETE FROM plan_results WHERE version_set_id = $1`, [draftSet]);
+      });
+      expect(await hookWrites(draftSet)).toBeUndefined();
+    });
+
+    it("clear a draft's results when it's saved, for the hook to write again", async () => {
+      const { draftSet, operationsPlan } = await plans(db, 2204);
+      const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
+      await w.insert("version_set_members", { version_set_id: draftSet, version_id: operations });
+      expect(await hookWrites(draftSet)).toBeUndefined();
+      expect(await w.update("version_sets", draftSet, { status: "saved", platform_version: "1.4.0" })).toBeUndefined();
+      for (const table of ["plan_results", "plan_result_warnings"]) {
+        const { rows } = await db.query(`SELECT 1 FROM "${table}" WHERE version_set_id = $1`, [draftSet]);
+        expect(rows, table).toEqual([]);
+      }
+      expect(await hookWrites(draftSet)).toBeUndefined();
+      expect(await hookWrites(draftSet)).toEqual(refusal(RESULTS_BY_SAVE));
+    });
+
+    it("let a draft with results be deleted, or a plan be taken out of it", async () => {
+      const { draftSet, draft } = await plans(db, 2205);
+      const member = await memberOf(db, draft);
+      await db.transaction(async (tx) => {
+        await tx.exec("SET LOCAL cyc.writing_results = 'on'");
+        await tx.query(
+          `INSERT INTO plan_result_pnl (id, version_set_id, version_set_member_id, level) VALUES ($1, $2, $3, 'offering')`,
+          [randomUUID(), draftSet, member],
+        );
+      });
+      expect(await w.remove("version_set_members", member)).toBeUndefined();
+      expect(await hookWrites(draftSet)).toBeUndefined();
+      expect(await w.remove("version_sets", draftSet)).toBeUndefined();
     });
 
     it("refuse to change or delete them", async () => {
@@ -519,14 +567,23 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       ).toEqual(refusal("A new Financial Plan starts as a draft."));
     });
 
-    it("let a saved one's note change, and nothing else", async () => {
+    it("let a saved one's name and note change, and nothing else", async () => {
       const { set } = await plans(db, 2305);
       expect(await w.update("version_sets", set, { message: "Reviewed with the board" })).toBeUndefined();
-      for (const change of [{ name: "Changed" }, { status: "draft" }, { message: "Adopted", name: "Changed" }]) {
+      expect(await w.update("version_sets", set, { name: "Board budget" })).toBeUndefined();
+      for (const change of [
+        { platform_version: "9.9.9" },
+        { status: "draft" },
+        { message: "Adopted", platform_version: "9.9.9" },
+      ]) {
         expect(await w.update("version_sets", set, change), JSON.stringify(change)).toEqual(refusal(SET_STAYS));
       }
       expect(await w.remove("version_sets", set)).toEqual(refusal(SET_STAYS));
-      expect(await w.read("version_sets", set)).toMatchObject({ message: "Reviewed with the board", name: "Budget" });
+      expect(await w.read("version_sets", set)).toMatchObject({
+        message: "Reviewed with the board",
+        name: "Board budget",
+        platform_version: "1.4.0",
+      });
     });
 
     it("refuse to change a draft's organization, year, or parent", async () => {
@@ -667,7 +724,8 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await w.update("version_sets", set, { status: "active" })).toBeUndefined();
       expect(await w.update("version_sets", set, { status: "saved" })).toEqual(refusal(STAYS_ACTIVE));
       expect(await w.update("version_sets", set, { status: "draft" })).toEqual(refusal(STAYS_ACTIVE));
-      expect(await w.update("version_sets", set, { name: "Changed" })).toEqual(refusal(SET_STAYS));
+      expect(await w.update("version_sets", set, { platform_version: "9.9.9" })).toEqual(refusal(SET_STAYS));
+      expect(await w.update("version_sets", set, { name: "Adopted" })).toBeUndefined();
       expect(await w.remove("version_sets", set)).toEqual(refusal(SET_STAYS));
       const spoofed = await db
         .transaction(async (tx) => {
@@ -757,7 +815,7 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
     ]);
     expect((await db.query("SELECT to_regclass('cyc_seed_saved_sets') AS seed")).rows).toEqual([{ seed: null }]);
     // Its triggers are back on.
-    expect(await writer(db).update("version_sets", set, { name: "Changed" })).toEqual(refusal(SET_STAYS));
+    expect(await writer(db).update("version_sets", set, { platform_version: "9.9.9" })).toEqual(refusal(SET_STAYS));
     expect(organization).toBeDefined();
   });
 
@@ -809,7 +867,7 @@ describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () 
     const w = writer(db);
     const { set, operations, saved, draftSet, draft, savedOffering, draftOffering } = await plans(db);
     expect(await w.update("version_sets", set, { status: "active" })).toBeUndefined();
-    expect(await w.update("version_sets", set, { name: "Changed" })).toEqual(refusal(SET_STAYS));
+    expect(await w.update("version_sets", set, { platform_version: "9.9.9" })).toEqual(refusal(SET_STAYS));
     expect(await w.update("plan_offerings", savedOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
     expect(await w.update("plan_versions", saved, { message: "Changed" })).toEqual(refusal(REFUSED));
     // The draft started from it goes first, since it points at it.
@@ -832,12 +890,17 @@ describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () 
 });
 
 /**
- * Just enough of knex, over PGlite, for `copyParent`: `where`, `whereIn`, `first`, `select`,
- * `insert`, `update`, and `transaction`.
+ * Just enough of knex, over PGlite, for `copyParent` and the results: a builder that runs when
+ * awaited, with `where`, `whereIn`, `select`, `first`, `forShare`, `insert`, `update`, and `delete`,
+ * and `raw` and `transaction` on the root.
  */
 function knexOver(db: PGlite | Transaction): unknown {
+  const query = async (sql: string, params: unknown[]) => (await db.query<Values>(sql, params)).rows;
   const builder = (table: string) => {
     const where: [string, unknown[]][] = [];
+    let columns = "*";
+    let lock = "";
+    let one = false;
     const clause = (offset = 0) => {
       const params: unknown[] = [];
       const parts = where.map(([column, values]) => {
@@ -849,37 +912,53 @@ function knexOver(db: PGlite | Transaction): unknown {
       });
       return { sql: parts.length > 0 ? ` WHERE ${parts.join(" AND ")}` : "", params };
     };
-    const select = async (...columns: string[]) => {
+    const run = async () => {
       const { sql, params } = clause();
-      const list = columns.length === 0 || columns.includes("*") ? "*" : columns.map((c) => `"${c}"`).join(", ");
-      return (await db.query<Values>(`SELECT ${list} FROM "${table}"${sql}`, params)).rows;
+      const rows = await query(`SELECT ${columns} FROM "${table}"${sql}${lock}`, params);
+      return one ? rows[0] : rows;
     };
     const self = {
       where: (column: string, value: unknown) => (where.push([column, [value]]), self),
       whereIn: (column: string, values: unknown[]) => (where.push([column, values]), self),
-      select,
-      first: async () => (await select())[0],
+      select: (...list: string[]) => {
+        columns = list.length === 0 || list.includes("*") ? "*" : list.map((c) => `"${c}"`).join(", ");
+        return self;
+      },
+      first: () => ((one = true), self),
+      forShare: () => ((lock = " FOR SHARE"), self),
+      then: <T>(resolve: (rows: unknown) => T, reject: (error: unknown) => T) => run().then(resolve, reject),
       insert: async (rows: Values | Values[]) => {
         for (const row of Array.isArray(rows) ? rows : [rows]) {
-          const columns = Object.keys(row);
-          await db.query(
-            `INSERT INTO "${table}" (${columns.map((c) => `"${c}"`).join(", ")}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(", ")})`,
+          const names = Object.keys(row);
+          await query(
+            `INSERT INTO "${table}" (${names.map((c) => `"${c}"`).join(", ")}) VALUES (${names.map((_, i) => `$${i + 1}`).join(", ")})`,
             Object.values(row),
           );
         }
       },
       update: async (values: Values) => {
-        const columns = Object.keys(values);
-        const { sql, params } = clause(columns.length);
-        await db.query(`UPDATE "${table}" SET ${columns.map((c, i) => `"${c}" = $${i + 1}`).join(", ")}${sql}`, [
+        const names = Object.keys(values);
+        const { sql, params } = clause(names.length);
+        await query(`UPDATE "${table}" SET ${names.map((c, i) => `"${c}" = $${i + 1}`).join(", ")}${sql}`, [
           ...Object.values(values),
           ...params,
         ]);
+      },
+      delete: async () => {
+        const { sql, params } = clause();
+        await query(`DELETE FROM "${table}"${sql}`, params);
       },
     };
     return self;
   };
   return Object.assign(builder, {
+    raw: (sql: string, bindings: unknown[] = []) => {
+      let n = 0;
+      return query(
+        sql.replace(/\?/g, () => `$${++n}`),
+        bindings,
+      );
+    },
     transaction: <T>(fn: (trx: unknown) => Promise<T>) =>
       "transaction" in db ? db.transaction((tx) => fn(knexOver(tx))) : fn(knexOver(db)),
   });
@@ -947,5 +1026,103 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
         if (linked !== table) expect(order.indexOf(linked), `${table} → ${linked}`).toBeLessThan(order.indexOf(table));
       }
     }
+  });
+});
+
+describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
+  const engine = { computePlan };
+  const count = async (db: PGlite, table: string, set: string) =>
+    (await db.query(`SELECT 1 FROM "${table}" WHERE version_set_id = $1`, [set])).rows.length;
+  const totals = async (db: PGlite, set: string) =>
+    (await db.query<Values>(`SELECT * FROM plan_results WHERE version_set_id = $1`, [set])).rows;
+
+  /** A draft holding an Operations Plan copy and the program area's draft copy. */
+  async function draft(db: PGlite, year: number) {
+    const w = writer(db);
+    const made = await plans(db, year);
+    const operations = await w.insert("plan_versions", { plan_id: made.operationsPlan, status: "draft" });
+    await w.insert("version_set_members", { version_set_id: made.draftSet, version_id: operations });
+    return { ...made, w, draftOperations: operations };
+  }
+
+  it("works out a draft's results again in place of the ones it had", async () => {
+    const db = await database(config(false));
+    const { draftSet, draftOffering, w } = await draft(db, 2801);
+    expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
+    const [first] = await totals(db, draftSet);
+    expect(first).toBeDefined();
+    expect(await w.update("plan_offerings", draftOffering, { name: "Renamed" })).toBeUndefined();
+    expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
+    const again = await totals(db, draftSet);
+    expect(again).toHaveLength(1);
+    expect(again[0]!["id"]).not.toBe(first!["id"]);
+  });
+
+  it("clears a draft's results when the engine fails, and says why", async () => {
+    const db = await database(config(false));
+    const { draftSet } = await draft(db, 2802);
+    await writeDraftResults(config(false), knexOver(db), draftSet, engine);
+    const broken = {
+      computePlan: () => {
+        throw new Error("No rates");
+      },
+    };
+    await expect(writeDraftResults(config(false), knexOver(db), draftSet, broken)).rejects.toThrow("No rates");
+    expect(await count(db, "plan_results", draftSet)).toBe(0);
+  });
+
+  it("clears a draft's results when writing them fails in the database", async () => {
+    const db = await database(config(false));
+    const { draftSet } = await draft(db, 2806);
+    await writeDraftResults(config(false), knexOver(db), draftSet, engine);
+    // A line booked to an account that doesn't exist, which the foreign key refuses.
+    const unbookable = {
+      computePlan: (data: Parameters<typeof computePlan>[0]) => {
+        const out = computePlan(data);
+        const line = {
+          cost_center_type: "organization",
+          cost_center_key: null,
+          account_id: randomUUID(),
+          function: "program",
+          amount_cents: 1,
+          line_key: "x",
+          line_name: "X",
+          explanation: null,
+        };
+        return { ...out, lines: [...out.lines, line] };
+      },
+    };
+    await expect(writeDraftResults(config(false), knexOver(db), draftSet, unbookable)).rejects.toThrow();
+    expect(await count(db, "plan_results", draftSet)).toBe(0);
+  });
+
+  it("leaves a saved Financial Plan's results to its save", async () => {
+    const db = await database(config(false));
+    const { set } = await plans(db, 2803);
+    expect(await writeDraftResults(config(false), knexOver(db), set, engine)).toBe(false);
+    expect(await writeSetResults(config(false), knexOver(db), set, engine)).toBe(true);
+    expect(await writeDraftResults(config(false), knexOver(db), set, engine)).toBe(false);
+    expect(await writeSetResults(config(false), knexOver(db), set, engine)).toBe(false);
+    expect(await count(db, "plan_results", set)).toBe(1);
+  });
+
+  it("finds the drafts a change to a plan's rows, its plan, its members, or the catalog changes", async () => {
+    const db = await database(config(false));
+    const { draftSet, draftOffering, savedOffering, plan, product } = await draft(db, 2804);
+    const other = await draft(db, 2805);
+    const knex = knexOver(db);
+    const changes = (collection: string, keys: string[]) => draftsChangedBy(config(false), knex, collection, keys);
+    expect(await changes("plan_offerings", [draftOffering])).toEqual([draftSet]);
+    // A saved Financial Plan's results never change.
+    expect(await changes("plan_offerings", [savedOffering])).toEqual([]);
+    expect(await changes("plans", [plan])).toEqual([draftSet]);
+    const [member] = (
+      await db.query<{ id: string }>(`SELECT id FROM version_set_members WHERE version_set_id = $1`, [draftSet])
+    ).rows;
+    expect(await changes("version_set_members", [member!.id])).toEqual([draftSet]);
+    expect((await changes("products", [product])).sort()).toEqual(
+      expect.arrayContaining([draftSet, other.draftSet].sort()),
+    );
+    expect(await changes("directus_users", [randomUUID()])).toEqual([]);
   });
 });

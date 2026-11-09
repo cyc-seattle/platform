@@ -843,13 +843,13 @@ Step("they try to mark it active", async () => {
 });
 Step("they're told that only a saved Financial Plan can be active", () => expectTold(ONLY_SAVED_ACTIVE));
 
-// A saved Financial Plan never changes, apart from its note.
+// A saved Financial Plan never changes, apart from its name and note.
 Step("a saved Financial Plan", async () => {
   ({ offering } = await programWithOffering());
   financialPlan = await p.savedSet();
 });
 Step("they can't change the Financial Plan or any of its plans", async () => {
-  expectRefused(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { name: "Changed" }));
+  expectRefused(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { platform_version: "0.0.0" }));
   expectRefused(await theyWrite("PATCH", itemPath("plan_versions", offering!["version_id"]), { message: "Changed" }));
   expectRefused(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: 1 }));
 });
@@ -865,6 +865,15 @@ Step("they can't delete the Financial Plan", async () => {
 Step("they can change its note to {string}", async (_, note: string) => {
   expectOk(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { message: note }));
   expect(await one("version_sets", financialPlan, "message")).toEqual({ message: note });
+});
+let savedTotals: Row | undefined;
+Step("they can change its name to {string}", async (_, name: string) => {
+  savedTotals = (await financialPlanResults(financialPlan!)).totals;
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { name }));
+  expect(await one("version_sets", financialPlan, "name")).toEqual({ name });
+});
+Step("its P&L stays the same", async () => {
+  expect((await financialPlanResults(financialPlan!)).totals).toEqual(savedTotals);
 });
 
 // A Financial Plan's P&L.
@@ -884,10 +893,33 @@ Step("a draft Financial Plan whose offering takes in {money}", async (_, money: 
   offering = await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1);
   financialPlan = await p.draftSet();
 });
+Step("they change the offering to take in {money}", async (_, money: string) => {
+  // The offering has one sailor, so its price is what it takes in.
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: cents(money) }));
+});
+Step("they see that the Financial Plan's P&L shows the offering takes in {money}", async (_, money: string) => {
+  // Through the items API, as an AI does over Directus's MCP server, which can't run the engine. A
+  // draft's P&L is worked out again a moment after each change, so this waits for the new one.
+  const they = await theirSession();
+  const filter = encodeURIComponent(
+    JSON.stringify({ version_set_id: { _eq: financialPlan }, level: { _eq: "offering" } }),
+  );
+  const revenue = async () => {
+    const { status, body } = await they.request("GET", `/items/plan_result_pnl?limit=-1&filter=${filter}`);
+    expect(status).toBe(200);
+    const rows = (body as { data: Row[] }).data;
+    return Number(rows.find((r) => r["subject_key"] === offering!["key"])?.["revenue_cents"]);
+  };
+  await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
+});
 Step("the Financial Plan's P&L shows that the offering takes in {money}", async (_, money: string) => {
-  const { pnl } = await financialPlanResults(financialPlan!);
-  const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
-  expect(Number(mine?.["revenue_cents"])).toBe(cents(money));
+  // A draft's P&L is worked out again a moment after each change, so this waits for the new one.
+  const revenue = async () => {
+    const { pnl } = await financialPlanResults(financialPlan!);
+    const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
+    return Number(mine?.["revenue_cents"]);
+  };
+  await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
 });
 Step(
   "a saved Financial Plan named {string} whose offering pays {money} of office costs",

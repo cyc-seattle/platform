@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   databaseError,
+  draftQueue,
   guard,
   MEMBERS_FIXED,
   ONE_PER_AREA,
@@ -130,8 +131,8 @@ describe("the saved-versions hook", () => {
   });
 
   describe("a saved Financial Plan", () => {
-    it("can't be changed, apart from its note", async () => {
-      for (const payload of [{ name: "Changed" }, { status: "draft" }, { message: "Adopted", name: "Changed" }]) {
+    it("can't be changed, apart from its name and note", async () => {
+      for (const payload of [{ fiscal_year: 2028 }, { status: "draft" }, { message: "Adopted", fiscal_year: 2028 }]) {
         await expect(check({ collection: "version_sets", event: "update", payload, keys: ["saved"] })).rejects.toThrow(
           SET_STAYS,
         );
@@ -144,6 +145,9 @@ describe("the saved-versions hook", () => {
           keys: ["saved"],
         }),
       ).resolves.toEqual({ message: "Reviewed with the board" });
+      await expect(
+        check({ collection: "version_sets", event: "update", payload: { name: "Board budget" }, keys: ["saved"] }),
+      ).resolves.toEqual({ name: "Board budget" });
     });
 
     it("can't be deleted, but where dev's tests clean up", async () => {
@@ -194,13 +198,14 @@ describe("the saved-versions hook", () => {
       ).rejects.toThrow(ONLY_SAVED_ACTIVE);
     });
 
-    it("keeps an active one as it is, apart from its note, until another is marked active", async () => {
+    it("keeps an active one as it is, apart from its name and note, until another is marked active", async () => {
       const update = (payload: Record<string, unknown>) =>
         check({ collection: "version_sets", event: "update", payload, keys: ["active"] });
       await expect(update({ message: "Adopted" })).resolves.toEqual({ message: "Adopted" });
       await expect(update({ status: "active" })).resolves.toEqual({ status: "active" });
       for (const status of ["saved", "draft"]) await expect(update({ status })).rejects.toThrow(STAYS_ACTIVE);
-      await expect(update({ name: "Changed" })).rejects.toThrow(SET_STAYS);
+      await expect(update({ name: "Adopted budget" })).resolves.toEqual({ name: "Adopted budget" });
+      await expect(update({ fiscal_year: 2028 })).rejects.toThrow(SET_STAYS);
       await expect(
         check({ collection: "version_sets", event: "delete", payload: ["active"], keys: ["active"] }),
       ).rejects.toThrow(SET_STAYS);
@@ -360,5 +365,72 @@ describe("a database error", () => {
   it("from anything else, stays as it is", () => {
     const other = Object.assign(new Error("deadlock detected"), { code: "40P01" });
     expect(databaseError(other)).toBe(other);
+  });
+});
+
+describe("the queue of drafts to work out", () => {
+  const queue = () => {
+    const runs: string[] = [];
+    let release = () => {};
+    const run = async (id: string) => {
+      runs.push(id);
+      if (id === "slow") await new Promise<void>((resolve) => (release = resolve));
+    };
+    return { runs, release: () => release(), drafts: draftQueue(run, 1000, 10_000) };
+  };
+
+  it("works out a draft once writes to it stop, however many there were", async () => {
+    vi.useFakeTimers();
+    try {
+      const { runs, drafts } = queue();
+      for (let i = 0; i < 200; i++) {
+        drafts.mark(["a"]);
+        await vi.advanceTimersByTimeAsync(10);
+      }
+      drafts.mark(["b", "a"]);
+      expect(runs).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(runs.sort()).toEqual(["a", "b"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("works out a draft that keeps changing after the longest wait, without holding back the others", async () => {
+    vi.useFakeTimers();
+    try {
+      const { runs, drafts } = queue();
+      drafts.mark(["quiet"]);
+      for (let i = 0; i < 19; i++) {
+        drafts.mark(["busy"]);
+        await vi.advanceTimersByTimeAsync(500);
+      }
+      expect(runs).toEqual(["quiet"]);
+      drafts.mark(["busy"]);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(runs).toEqual(["quiet", "busy"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("works one out once more if it changes while it's being worked out, and one at a time", async () => {
+    vi.useFakeTimers();
+    try {
+      const { runs, drafts, release } = queue();
+      drafts.mark(["slow"]);
+      await vi.advanceTimersByTimeAsync(1000);
+      drafts.mark(["slow", "other"]);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(runs).toEqual(["slow"]);
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(runs).toEqual(["slow", "slow"]);
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(runs).toEqual(["slow", "slow", "other"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
