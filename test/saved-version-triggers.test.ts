@@ -264,7 +264,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await hookWrites(set)).toEqual(refusal(RESULTS_BY_SAVE));
     });
 
-    it("let only the hook write a draft's results, and anyone clear them for it to write again", async () => {
+    it("let only the hook write or clear a draft's results", async () => {
       const { draftSet } = await plans(db, 2202);
       expect(await w.refusedInsert("plan_results", { version_set_id: draftSet, total_cents: 0 })).toEqual(
         refusal(RESULTS_BY_SAVE),
@@ -275,8 +275,12 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
         await db.query<{ id: string }>(`SELECT id FROM plan_results WHERE version_set_id = $1`, [draftSet])
       ).rows as [{ id: string }];
       expect(await w.update("plan_results", id, { total_cents: 1 })).toEqual(refusal(RESULTS_BY_SAVE));
-      await db.query(`DELETE FROM plan_result_warnings WHERE version_set_id = $1`, [draftSet]);
-      expect(await w.remove("plan_results", id)).toBeUndefined();
+      expect(await w.remove("plan_results", id)).toEqual(refusal(RESULTS_BY_SAVE));
+      await db.transaction(async (tx) => {
+        await tx.exec("SET LOCAL cyc.writing_results = 'on'");
+        await tx.query(`DELETE FROM plan_result_warnings WHERE version_set_id = $1`, [draftSet]);
+        await tx.query(`DELETE FROM plan_results WHERE version_set_id = $1`, [draftSet]);
+      });
       expect(await hookWrites(draftSet)).toBeUndefined();
     });
 
@@ -294,8 +298,17 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await hookWrites(draftSet)).toEqual(refusal(RESULTS_BY_SAVE));
     });
 
-    it("let a draft with results be deleted", async () => {
-      const { draftSet } = await plans(db, 2205);
+    it("let a draft with results be deleted, or a plan be taken out of it", async () => {
+      const { draftSet, draft } = await plans(db, 2205);
+      const member = await memberOf(db, draft);
+      await db.transaction(async (tx) => {
+        await tx.exec("SET LOCAL cyc.writing_results = 'on'");
+        await tx.query(
+          `INSERT INTO plan_result_pnl (id, version_set_id, version_set_member_id, level) VALUES ($1, $2, $3, 'offering')`,
+          [randomUUID(), draftSet, member],
+        );
+      });
+      expect(await w.remove("version_set_members", member)).toBeUndefined();
       expect(await hookWrites(draftSet)).toBeUndefined();
       expect(await w.remove("version_sets", draftSet)).toBeUndefined();
     });
@@ -1055,6 +1068,31 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
       },
     };
     await expect(writeDraftResults(config(false), knexOver(db), draftSet, broken)).rejects.toThrow("No rates");
+    expect(await count(db, "plan_results", draftSet)).toBe(0);
+  });
+
+  it("clears a draft's results when writing them fails in the database", async () => {
+    const db = await database(config(false));
+    const { draftSet } = await draft(db, 2806);
+    await writeDraftResults(config(false), knexOver(db), draftSet, engine);
+    // A line booked to an account that doesn't exist, which the foreign key refuses.
+    const unbookable = {
+      computePlan: (data: Parameters<typeof computePlan>[0]) => {
+        const out = computePlan(data);
+        const line = {
+          cost_center_type: "organization",
+          cost_center_key: null,
+          account_id: randomUUID(),
+          function: "program",
+          amount_cents: 1,
+          line_key: "x",
+          line_name: "X",
+          explanation: null,
+        };
+        return { ...out, lines: [...out.lines, line] };
+      },
+    };
+    await expect(writeDraftResults(config(false), knexOver(db), draftSet, unbookable)).rejects.toThrow();
     expect(await count(db, "plan_results", draftSet)).toBe(0);
   });
 

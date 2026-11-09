@@ -128,8 +128,12 @@ export function draftsChangedBy(
   keys: string[],
 ): Promise<string[]>;
 
-/** Runs `run` once for each Financial Plan marked, after writes to it stop for `delayMs`, one at a time. */
+/**
+ * Runs `run` once for each Financial Plan marked, after writes to it stop for `delayMs`, or
+ * `maxWaitMs` after the first, one at a time.
+ */
 export function draftQueue(
   run: (id: string) => Promise<unknown>,
   delayMs: number,
-): { mark(ids: string[]): void; idle(): Promise<void> };
+  maxWaitMs: number,
+): { mark(ids: string[]): void };

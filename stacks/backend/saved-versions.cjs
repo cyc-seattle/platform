@@ -285,11 +285,14 @@ DECLARE
 BEGIN
   IF TG_OP = 'DELETE' THEN
     SELECT s.status INTO set_status FROM ${SETS} s WHERE s.id = OLD.version_set_id;
-    -- A Financial Plan that's gone is a draft whose delete cascades to its results.
-    IF NOT ${deletable} AND set_status IS NOT NULL AND set_status <> 'draft' THEN
-      ${raise(RESULTS_BY_SAVE)};
+    -- A Financial Plan or member that's gone is a draft's, whose delete cascades to its results.
+    IF ${deletable} OR set_status IS NULL
+      OR (to_jsonb(OLD) ->> 'version_set_member_id' IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM ${MEMBERS} m WHERE m.id = (to_jsonb(OLD) ->> 'version_set_member_id')::uuid))
+      OR (set_status = 'draft' AND current_setting('cyc.writing_results', true) = 'on') THEN
+      RETURN OLD;
     END IF;
-    RETURN OLD;
+    ${raise(RESULTS_BY_SAVE)};
   END IF;
   IF TG_OP = 'UPDATE' OR current_setting('cyc.writing_results', true) IS DISTINCT FROM 'on' THEN
     ${raise(RESULTS_BY_SAVE)};
@@ -428,7 +431,9 @@ BEGIN
       ${raise(NEEDS_OPERATIONS)};
     END IF;
     -- A draft's results are cleared, for the hook to work out again with the engine it records.
+    PERFORM set_config('cyc.writing_results', 'on', true);
     ${config.results.map((table) => `DELETE FROM ${table} WHERE version_set_id = NEW.id;`).join("\n    ")}
+    PERFORM set_config('cyc.writing_results', 'off', true);
     PERFORM set_config('cyc.saving_set', 'on', true);
     UPDATE ${VERSIONS} SET status = 'saved', platform_version = NEW.platform_version, saved_by = NEW.saved_by
       WHERE id IN (SELECT m.version_id FROM ${MEMBERS} m WHERE m.version_set_id = NEW.id);
@@ -837,30 +842,35 @@ async function writeSetResults(config, db, setId, engine) {
 }
 
 /**
- * Works out a draft Financial Plan's results again, in place of the ones it has. If the engine
- * fails, it clears them, so no stale numbers look current, and throws.
+ * Locks a draft Financial Plan for the rest of `trx`, and clears its results. Returns it, or nothing
+ * if it isn't a draft. Locks the row before the save's lock, in the order a save takes them.
+ */
+async function clearDraft(config, trx, setId) {
+  const set = await trx(SETS).where("id", setId).forShare().first();
+  if (set?.status !== "draft") return undefined;
+  await trx.raw("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", [`cyc_set|${setId}`]);
+  await trx.raw("SET LOCAL cyc.writing_results = 'on'");
+  for (const table of config.results) await trx(table).where("version_set_id", setId).delete();
+  return set;
+}
+
+/**
+ * Works out a draft Financial Plan's results again, in place of the ones it has. If that fails, it
+ * clears them, so no stale numbers look current, and throws.
  */
 async function writeDraftResults(config, db, setId, engine) {
-  let failure;
-  const written = await db.transaction(async (trx) => {
-    // The lock the save takes, so a draft's results and its save never overlap.
-    await trx.raw("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", [`cyc_set|${setId}`]);
-    const set = await trx(SETS).where("id", setId).forShare().first();
-    if (set?.status !== "draft") return false;
-    await trx.raw("SET LOCAL cyc.writing_results = 'on'");
-    for (const table of config.results) await trx(table).where("version_set_id", setId).delete();
-    let results;
-    try {
-      results = await calculate(config, trx, set, engine);
-    } catch (error) {
-      failure = error;
-      return false;
-    }
-    await insertResults(trx, results);
-    return true;
-  });
-  if (failure) throw failure;
-  return written;
+  try {
+    return await db.transaction(async (trx) => {
+      const set = await clearDraft(config, trx, setId);
+      if (!set) return false;
+      await insertResults(trx, await calculate(config, trx, set, engine));
+      return true;
+    });
+  } catch (error) {
+    // The failed transaction rolled back, so clearing them takes one of its own.
+    await db.transaction((trx) => clearDraft(config, trx, setId)).catch(() => {});
+    throw error;
+  }
 }
 
 /** What a draft's results are worked out from apart from its plans' rows, so a change to it changes every draft's. */
@@ -884,32 +894,34 @@ async function draftsChangedBy(config, db, collection, keys) {
 }
 
 /**
- * Runs `run` for each Financial Plan marked, once writes to it have stopped for `delayMs`, one at a
- * time, so many rows changed at once cost one run. One marked again while it runs runs once more.
+ * Runs `run` for each Financial Plan marked, once writes to it have stopped for `delayMs`, or
+ * `maxWaitMs` after the first, so many rows changed at once cost one run. Runs one at a time, and
+ * one marked again while it runs runs once more.
  */
-function draftQueue(run, delayMs) {
-  const pending = new Set();
-  let timer;
+function draftQueue(run, delayMs, maxWaitMs) {
+  const waiting = new Map();
+  const ready = new Set();
   let draining;
   const drain = async () => {
-    while (pending.size > 0) {
-      const [id] = pending;
-      pending.delete(id);
+    while (ready.size > 0) {
+      const [id] = ready;
+      ready.delete(id);
       await run(id).catch(() => {});
     }
     draining = undefined;
   };
+  const due = (id) => {
+    waiting.delete(id);
+    ready.add(id);
+    draining ??= drain();
+  };
   return {
     mark(ids) {
-      if (ids.length === 0) return;
-      for (const id of ids) pending.add(id);
-      clearTimeout(timer);
-      timer = setTimeout(() => (draining ??= drain()), delayMs);
-    },
-    /** Resolves once every marked Financial Plan has run. */
-    async idle() {
-      while (pending.size > 0 || draining) {
-        await (draining ?? new Promise((resolve) => setTimeout(resolve, delayMs)));
+      for (const id of ids) {
+        const since = waiting.get(id)?.since ?? Date.now();
+        clearTimeout(waiting.get(id)?.timer);
+        const wait = Math.max(0, Math.min(delayMs, since + maxWaitMs - Date.now()));
+        waiting.set(id, { since, timer: setTimeout(() => due(id), wait) });
       }
     },
   };
@@ -1014,6 +1026,10 @@ const SCHEMA_EVENTS = ["collections", "fields", "relations"].flatMap((scope) =>
 const DEBOUNCE_MS = 1000;
 // Coalesces a burst of writes to a draft, such as an agent's over MCP, into one run of the engine.
 const DRAFT_DELAY_MS = 1000;
+// So a steady stream of writes to a draft still updates its results.
+const DRAFT_MAX_WAIT_MS = 10_000;
+// How long a write's drafts wait for its action, which never comes if the write fails.
+const BEFORE_TTL_MS = 60_000;
 
 function register({ filter, action, init }, { env, database, logger }) {
   // Written beside this file by `backend`, from ./policies.ts.
@@ -1060,19 +1076,26 @@ function register({ filter, action, init }, { env, database, logger }) {
       throw error;
     }
   };
-  const drafts = draftQueue(async (id) => {
-    try {
-      await writeDraftResults(config, database, id, await loadEngine());
-    } catch (error) {
-      logger.error(error, `saved-versions: couldn't work out the draft results of ${id}`);
-    }
-  }, DRAFT_DELAY_MS);
+  const drafts = draftQueue(
+    async (id) => {
+      try {
+        await writeDraftResults(config, database, id, await loadEngine());
+      } catch (error) {
+        logger.error(error, `saved-versions: couldn't work out the draft results of ${id}`);
+      }
+    },
+    DRAFT_DELAY_MS,
+    DRAFT_MAX_WAIT_MS,
+  );
   init("app.after", async () => {
     await install();
-    // Works out every draft's results again, which also fills them in for drafts from before there were
-    // any, with the engine this deploy brought.
+    // Fills in the results of drafts that have none, such as those from before drafts had any.
     try {
-      drafts.mark((await database(SETS).where("status", "draft").select("id")).map((set) => set.id));
+      const missing = await database(SETS)
+        .where("status", "draft")
+        .whereNotExists(database(RESULTS).select(1).whereRaw(`${RESULTS}.version_set_id = ${SETS}.id`))
+        .select("id");
+      drafts.mark(missing.map((set) => set.id));
     } catch (error) {
       logger.error(error, "saved-versions: couldn't list the drafts to work out their results");
     }
@@ -1103,19 +1126,36 @@ function register({ filter, action, init }, { env, database, logger }) {
       drafts.mark([key]);
     } else await changed(collection, [key]);
   });
-  action("items.update", ({ collection, keys }) => changed(collection, keys ?? []));
-  // A deleted row can't be traced to its drafts once it's gone, so its filter finds them first.
-  const deleting = new Map();
+  // A deleted row, or a member moved to another draft, can't be traced to the drafts it was in once
+  // the write commits, so the write's filter finds them first, for its action.
+  const before = new Map();
+  const remember = async (event, collection, keys, db) => {
+    const found = await draftsChangedBy(config, db, collection, keys).catch(() => []);
+    if (found.length === 0) return;
+    const id = `${event}|${collection}|${JSON.stringify(keys)}`;
+    before.set(id, found);
+    setTimeout(() => before.delete(id), BEFORE_TTL_MS).unref?.();
+  };
+  const recall = (event, collection, keys) => {
+    const id = `${event}|${collection}|${JSON.stringify(keys)}`;
+    const found = before.get(id) ?? [];
+    before.delete(id);
+    return found;
+  };
+  filter("items.update", async (payload, { collection, keys }, { database }) => {
+    if (collection === MEMBERS && "version_set_id" in payload)
+      await remember("update", collection, keys ?? [], database);
+    return payload;
+  });
+  action("items.update", async ({ collection, keys }) => {
+    drafts.mark(recall("update", collection, keys ?? []));
+    await changed(collection, keys ?? []);
+  });
   filter("items.delete", async (keys, { collection }, { database }) => {
-    const found = await draftsChangedBy(config, database, collection, keys).catch(() => []);
-    if (found.length > 0) deleting.set(`${collection}|${JSON.stringify(keys)}`, found);
+    await remember("delete", collection, keys, database);
     return keys;
   });
-  action("items.delete", ({ collection, keys }) => {
-    const id = `${collection}|${JSON.stringify(keys)}`;
-    drafts.mark(deleting.get(id) ?? []);
-    deleting.delete(id);
-  });
+  action("items.delete", ({ collection, keys }) => drafts.mark(recall("delete", collection, keys)));
 
   // The deploy asks this whether every trigger is in place (`SavedVersionsCheck`). It answers with
   // names and yes or no, never data.

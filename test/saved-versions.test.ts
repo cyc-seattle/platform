@@ -376,7 +376,7 @@ describe("the queue of drafts to work out", () => {
       runs.push(id);
       if (id === "slow") await new Promise<void>((resolve) => (release = resolve));
     };
-    return { runs, release: () => release(), drafts: draftQueue(run, 1000) };
+    return { runs, release: () => release(), drafts: draftQueue(run, 1000, 10_000) };
   };
 
   it("works out a draft once writes to it stop, however many there were", async () => {
@@ -390,7 +390,25 @@ describe("the queue of drafts to work out", () => {
       drafts.mark(["b", "a"]);
       expect(runs).toEqual([]);
       await vi.advanceTimersByTimeAsync(1000);
-      expect(runs).toEqual(["a", "b"]);
+      expect(runs.sort()).toEqual(["a", "b"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("works out a draft that keeps changing after the longest wait, without holding back the others", async () => {
+    vi.useFakeTimers();
+    try {
+      const { runs, drafts } = queue();
+      drafts.mark(["quiet"]);
+      for (let i = 0; i < 19; i++) {
+        drafts.mark(["busy"]);
+        await vi.advanceTimersByTimeAsync(500);
+      }
+      expect(runs).toEqual(["quiet"]);
+      drafts.mark(["busy"]);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(runs).toEqual(["quiet", "busy"]);
     } finally {
       vi.useRealTimers();
     }
