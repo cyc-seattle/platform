@@ -1,82 +1,80 @@
 import { describe, expect, it } from "vitest";
 import {
-  type GuardianLink,
+  type NewAnswers,
+  planNewAnswers,
   planSharingBackfill,
-  type SharingParticipant,
-  sharingTargets,
+  recordAnswer,
 } from "../../../src/syncs/clubspot/sharing.ts";
-
-const REGISTERED = "2026-06-01T12:00:00.000Z";
-
-const child = (overrides: Partial<SharingParticipant> = {}): SharingParticipant => ({
-  person_id: "child",
-  date_of_birth: "2014-03-01",
-  guardian_1_name: "Pat Parent",
-  guardian_2_name: null,
-  ...overrides,
-});
-
-const link = (contactId: string, order: number, subjectId = "child"): GuardianLink => ({
-  subject_id: subjectId,
-  contact_id: contactId,
-  contact_order: order,
-  relationship_type: "guardian",
-});
-
-describe("sharingTargets", () => {
-  it("is the sailor themselves when they're an adult on the day they register", () => {
-    expect(sharingTargets(child({ person_id: "adult", date_of_birth: "1990-01-01" }), REGISTERED, [])).toEqual([
-      "adult",
-    ]);
-  });
-
-  it("counts someone who turns 18 after registering as a child", () => {
-    expect(sharingTargets(child({ date_of_birth: "2008-06-02" }), REGISTERED, [link("parent-1", 1)])).toEqual([
-      "parent-1",
-    ]);
-  });
-
-  it("is the guardians a child's form names, not every guardian the CRM has", () => {
-    const links = [link("parent-1", 1), link("parent-2", 2), link("other-child's-parent", 1, "other")];
-    expect(sharingTargets(child(), REGISTERED, links)).toEqual(["parent-1"]);
-    expect(sharingTargets(child({ guardian_2_name: "Sam Parent" }), REGISTERED, links)).toEqual([
-      "parent-1",
-      "parent-2",
-    ]);
-  });
-
-  it("counts a sailor with no date of birth on file as a child", () => {
-    expect(sharingTargets(child({ date_of_birth: null }), REGISTERED, [link("parent-1", 1)])).toEqual(["parent-1"]);
-  });
-
-  it("is no one when the participant has no person yet", () => {
-    expect(sharingTargets(child({ person_id: null }), REGISTERED, [link("parent-1", 1)])).toEqual([]);
-  });
-});
 
 describe("planSharingBackfill", () => {
   const participants = [
-    { id: "p-child", ...child() },
-    { id: "p-adult", ...child({ person_id: "adult", date_of_birth: "1990-01-01" }) },
+    { id: "p-child", person_id: "child" },
+    { id: "p-sibling", person_id: "sibling" },
+    { id: "p-unlinked", person_id: null },
   ];
-  const links = [link("parent-1", 1)];
+  const people = [
+    { id: "child", household_id: "home" },
+    { id: "sibling", household_id: "home" },
+    { id: "parent", household_id: "home" },
+  ];
 
-  it("fills a blank answer from the newest registration that answered", () => {
+  it("fills a blank household from the newest registration of any sailor in it", () => {
     const registrations = [
       { participant_id: "p-child", registered_at: "2025-06-01T00:00:00.000Z", share_contact: false },
-      { participant_id: "p-child", registered_at: "2026-06-01T00:00:00.000Z", share_contact: true },
+      { participant_id: "p-sibling", registered_at: "2026-06-01T00:00:00.000Z", share_contact: true },
       { participant_id: "p-child", registered_at: "2026-07-01T00:00:00.000Z", share_contact: null },
     ];
-    const people = [{ id: "parent-1", share_contact: null }];
-    expect(planSharingBackfill(registrations, participants, links, people)).toEqual([
-      { id: "parent-1", patch: { share_contact: true } },
+    expect(planSharingBackfill(registrations, participants, people, [{ id: "home", share_contact: null }])).toEqual([
+      { id: "home", patch: { share_contact: true } },
     ]);
   });
 
-  it("never replaces an answer the person already has", () => {
-    const registrations = [{ participant_id: "p-adult", registered_at: REGISTERED, share_contact: true }];
-    expect(planSharingBackfill(registrations, participants, links, [{ id: "adult", share_contact: false }])).toEqual(
+  it("never replaces an answer the household already has", () => {
+    const registrations = [{ participant_id: "p-child", registered_at: "2026-06-01", share_contact: true }];
+    expect(planSharingBackfill(registrations, participants, people, [{ id: "home", share_contact: false }])).toEqual(
       [],
     );
+  });
+
+  it("skips a registration whose sailor has no person or no household", () => {
+    const registrations = [
+      { participant_id: "p-unlinked", registered_at: "2026-06-01", share_contact: true },
+      { participant_id: "p-missing", registered_at: "2026-06-01", share_contact: true },
+    ];
+    expect(planSharingBackfill(registrations, participants, people, [{ id: "home", share_contact: null }])).toEqual([]);
+  });
+});
+
+describe("planNewAnswers", () => {
+  const people = [
+    { id: "child", household_id: "home" },
+    { id: "sibling", household_id: "home" },
+    { id: "loner", household_id: null },
+  ];
+
+  it("replaces a household's answer with a new one from a sailor who just joined it", () => {
+    const answers: NewAnswers = new Map();
+    recordAnswer(answers, "sibling", "2026-06-01", false);
+    expect(planNewAnswers(answers, people, [{ id: "home", share_contact: true }])).toEqual([
+      { id: "home", patch: { share_contact: false } },
+    ]);
+  });
+
+  it("takes the newest registration's answer when two sailors in one household answered, whatever the order", () => {
+    const answers: NewAnswers = new Map();
+    recordAnswer(answers, "child", "2026-07-01", true);
+    recordAnswer(answers, "sibling", "2026-06-01", false);
+    recordAnswer(answers, "child", "2026-05-01", false);
+    expect(planNewAnswers(answers, people, [{ id: "home", share_contact: null }])).toEqual([
+      { id: "home", patch: { share_contact: true } },
+    ]);
+  });
+
+  it("writes nothing when the household already holds the answer, or the sailor has no household", () => {
+    const answers: NewAnswers = new Map([
+      ["child", { at: "2026-06-01", value: true }],
+      ["loner", { at: "2026-06-01", value: false }],
+    ]);
+    expect(planNewAnswers(answers, people, [{ id: "home", share_contact: true }])).toEqual([]);
   });
 });

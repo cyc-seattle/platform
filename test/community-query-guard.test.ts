@@ -52,7 +52,16 @@ describe("effectiveAccess", () => {
 
   it("restricts the fields some Team read rule withholds", () => {
     expect(team.restricted).toEqual({
-      people: ["directus_user_id", "email", "phone", "school", "share_contact"],
+      people: [
+        "date_of_birth",
+        "directus_user_id",
+        "display_name",
+        "email",
+        "household_id",
+        "phone",
+        "school",
+        "share_contact",
+      ],
       programs: ["google_group_id", "product_id", "team"],
     });
     expect(team.open).toEqual(["program_areas"]);

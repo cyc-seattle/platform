@@ -12,9 +12,9 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
 ### Scope and non-goals
 
 - Models what Clubspot actually gives us: people, their guardian/emergency-contact relationships,
-  the camp schedule (camps/sessions/classes/capacity), registrations, and billing. No household
-  grouping — Clubspot has no concept of a household, only per-registration guardians and emergency
-  contacts, so that's what the schema keys off.
+  the camp schedule (camps/sessions/classes/capacity), registrations, and billing. Clubspot has no
+  household, only per-registration guardians and emergency contacts, so the sync makes `households`
+  from the guardian links ([Households](#households)).
 - The CRM's terms are ours, and Clubspot's appear only in its mirrors and the sync
   (cyc-seattle/isthmia#241). A **program** is a lasting thing CYC runs, such as Guppies or J-Pod, and
   is what a Google Group or a program role attaches to. A program with `team` set is a **team**, such
@@ -164,6 +164,35 @@ every FK to `people` except `clubspot_participants.person_id` is `on_delete: RES
 their contacts, contact points, medical profile, and role assignments first, or approve a
 `duplicate_person` merge instead.
 
+### Households
+
+A household is everyone joined through a sailor: the sailor, each of their guardians, and those
+guardians' other children, transitively (cyc-seattle/sail-team#29). Parents with separate Clubspot
+accounts land in one. Emergency contacts join none. Each person is in at most one,
+`people.household_id`, which only clubspot-sync writes.
+
+Clubspot decides who's linked to whom, so no one edits membership. clubspot-sync makes every
+household again at the end of each run (`src/syncs/clubspot/households.ts`), from the `contacts`
+guardian links and the people `clubspot_participants` links to. A staff merge or unmerge of people
+changes those links, so the next run follows it. A household keeps its id while most of its people
+stay together:
+
+- Two households joined by a new link become the larger one, and the other is deleted.
+- A household split in two keeps its id in the larger part, and the smaller part gets a new one.
+- A household with no one left in it is deleted.
+
+One wrong guardian link joins two unrelated families into one household. That's a known trade-off:
+the sync guards against nothing here, and a bad link is fixed in Clubspot.
+
+`households.share_contact` is the opt-in for its adults' email and phone ([Community](#community)).
+When two households join, any no wins, then any yes, and otherwise it stays blank. A split copies it
+to both. A household made where none was takes its people's old `people.share_contact` by the same
+rule, and so does someone who joins a household from none. That's how the first run moved the per-adult answers onto households.
+`people.share_contact` is read-only, and goes in a later release.
+
+`people.display_name` is the name apps show, set by the person or their household (cyc-seattle/sail-team#31). No
+sync writes it. A merge fills a keeper's blank one from a duplicate's.
+
 ### Change tracking and provenance
 
 Directus already does this: every API-driven create/update/delete is logged in `directus_activity`
@@ -236,7 +265,7 @@ Reusing it instead of a homegrown field means:
 sail-team's roster page, at `cycsail.team/roster`, shows a signed-in family their own family, and a
 family on a team every team's roster, through the Community and Team policies
 (`stacks/backend/community-rules.ts`, [access.md](access.md#policies)). A team member's email and
-phone show only for an adult who chose to share. Crew sees everyone's contact details and medical
+phone show only for an adult whose household chose to share. Crew sees everyone's contact details and medical
 information, shared or not. A program role, such as Parent Coordinator, gives no access.
 
 Directus runs a filter or sort against the raw column once any rule grants the field, and joins a
@@ -245,9 +274,9 @@ relational filter's rows with no rules at all. So `backend` mounts the query gua
 aggregating on a field some of the user's rules withhold, or crossing a relation into a collection
 they read only in part.
 
-The opt-in is `people.share_contact`, nullable, one per adult. An adult changes their own. Clubspot
-asks the sharing question on each sign-up, and clubspot-sync keeps the answer on the sign-up,
-`clubspot_registrations.share_contact`, and copies it to the people it speaks for
+The opt-in is `households.share_contact`, nullable, one per household. An adult in the household
+changes it. Clubspot asks the sharing question on each sign-up, and clubspot-sync keeps the answer
+on the sign-up, `clubspot_registrations.share_contact`, and copies it to the sailor's household
 ([syncs.md](syncs.md)). The latest answer wins.
 
 ### Permission model

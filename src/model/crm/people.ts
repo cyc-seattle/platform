@@ -13,8 +13,19 @@ export interface PersonRow {
   postal_code: string | null;
   /** Optional, unlike every other column here: only the promoted-fields pass writes it, never person-sync. */
   school?: string | null;
-  /** Whether this adult shares their email and phone with the teams. Null means never answered. */
+  /** What this adult last answered before households held the answer. Only read, to seed a new household. */
   share_contact?: boolean | null;
+  /** The name apps show, set by the person or their household. Never synced. */
+  display_name?: string | null;
+  /** Set only by the households pass, from guardian links. */
+  household_id?: string | null;
+}
+
+/** A sailor and their guardians, with the guardians' other children (`schemas/crm.yaml`). */
+export interface HouseholdRow {
+  id: string;
+  /** Whether the household's adults share their email and phone with teams. Null means never answered. */
+  share_contact: boolean | null;
 }
 
 export type ContactRelationshipType = "guardian" | "emergency_contact";

@@ -22,7 +22,7 @@ Feature: The CRM
 
   - Community: families who have signed up for any program. They see only their own family.
   - Team: families on a team. They also see everyone on every team by name, and the email and phone
-    of the adults on a team who chose to share them.
+    of the adults on a team whose household chose to share them.
   - Crew: people an admin has vetted, such as staff, coaches, directors, and officers. They see
     every roster, everyone's email and phone, everyone's parents and emergency contacts, and every
     sailor's medical information.
@@ -33,11 +33,16 @@ Feature: The CRM
   listed as a sailor's parent or guardian. A child is anyone under 18, or whose date of birth isn't
   on file.
 
-  Each adult decides whether to share their own email and phone with the teams. Clubspot asks when a
-  family signs a sailor up, and the answer counts for the sailor if they're an adult, or for their
-  parents if not. An adult can change their answer later, and the latest answer counts. A child
-  never shares their own email or phone. A program role, such as Parent Coordinator, doesn't change
-  what anyone sees.
+  A household is a sailor, everyone listed as their parent, and those parents' other children. The
+  Clubspot sync puts people in households from the parents Clubspot lists, so a family changes who's
+  in theirs by changing their sign-ups in Clubspot. A household's details are each person's display
+  name, school, email, and phone: the display name is the name the club's apps show.
+
+  Each household decides whether its adults share their email and phone with the teams. Clubspot
+  asks when a family signs a sailor up, and the answer counts for the sailor's whole household. An
+  adult in the household can change the answer later, and the latest answer counts. A child never
+  shares their own email or phone. A program role, such as Parent Coordinator, doesn't change what
+  anyone sees.
 
   Rule: A sailor can have more than one parent, and more than one emergency contact
 
@@ -233,7 +238,48 @@ Feature: The CRM
       When they look up the Google Groups
       Then they don't see that program's Google Group
 
-  Rule: A family on a team sees an adult's email and phone only if that adult chose to share
+  Rule: The Clubspot sync puts a sailor and everyone listed as their parent in one household
+
+    Example: A sailor and their parent are in one household
+      Given a sailor signed up through Clubspot, with a parent
+      When the Clubspot sync runs
+      Then the sailor and their parent are in the same household
+
+  Rule: A parent can see everyone in their household, with their details
+
+    Example: A parent sees their child's other parent's email and phone
+      Given a parent whose child is signed up for a program, and the child's other parent
+      When they look at their household
+      Then they see the other parent's email and phone
+
+  Rule: An adult in a household can change each person's display name and school, but no one's email
+
+    Example: A parent changes their child's display name and school
+      Given a parent whose child is signed up for a program
+      Then they can change their child's display name and school
+
+    Example: A parent can't change anyone's email
+      Given a parent whose child is signed up for a program
+      Then they can't change their own email or their child's
+
+  Rule: An adult can change their own phone and their children's, but not another adult's
+
+    Example: A parent changes their own phone and their child's
+      Given a parent whose child is signed up for a program
+      Then they can change their own phone and their child's
+
+    Example: A parent can't change the other parent's phone
+      Given a parent whose child is signed up for a program, and the child's other parent
+      Then they can't change the other parent's phone
+
+  Rule: A family can't change another household's details
+
+    Example: A parent can't change a teammate's display name
+      Given a parent whose child is on a team
+      And an adult teammate who chose to share
+      Then they can't change the teammate's display name
+
+  Rule: A family on a team sees an adult's email and phone only if that adult's household chose to share
 
     Background:
       Given a parent whose child is on a team
@@ -335,7 +381,7 @@ Feature: The CRM
       Then they see the teammate and their parent by name
       But they don't see either one's email, phone, or medical information
 
-  Rule: Each adult decides for themselves whether to share their email and phone
+  Rule: An adult in a household decides whether the household shares its email and phone
 
     Example: An adult sailor stops sharing, then shares again
       Given an adult sailor signed up for a program
@@ -345,21 +391,21 @@ Feature: The CRM
       Given a parent whose child is on a team
       Then they can stop sharing and share again
 
-    Example: A parent can't decide for another parent
+    Example: A parent can't decide for another household
       Given a parent whose child is on a team
       And a teammate who hasn't answered the sharing question, and their parent
-      Then they can't change whether the teammate's parent shares
+      Then they can't change whether the teammate's household shares
 
-    Example: A sailor with no date of birth on file can't decide for themselves
+    Example: A sailor with no date of birth on file can't decide for their household
       Given a sailor with no date of birth on file, signed up for a program
-      Then they can't change whether they share
+      Then they can't change whether their household shares
 
   Rule: An adult can find their own record by their login, but no one else's
 
-    Example: A parent finds their own record, to see whether they share
+    Example: A parent finds their own record, to see whether their household shares
       Given a parent whose child is on a team
       When they look themselves up by their login
-      Then they see only themselves, with whether they share
+      Then they see only themselves, with whether their household shares
 
     Example: A parent can't look someone else up by their login
       Given a parent whose child is on a team

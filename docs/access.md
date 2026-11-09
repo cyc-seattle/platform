@@ -39,16 +39,31 @@ has users.
 A policy is a named set of permissions. Each role has a policy of its own, which holds its base
 permissions, plus any shared policies it's given:
 
-- Community has one policy, Community: own family, in `stacks/backend/community-rules.ts`. It
+- Community has two policies, Community: own family and Community: phones, in
+  `stacks/backend/community-rules.ts`. Directus keeps one rule per collection and action in a
+  policy, so the phone rule, which changes other rows, has a policy of its own. It
   matches the signed-in user by their login, `people.directus_user_id`, not their email. It gives
-  them and their children's names, registrations, and medical information, the names of programs and
-  program areas, and lets an adult change their own `share_contact`. It reads their own login too, so
-  an app finds their row with a filter on `directus_user_id` for `$CURRENT_USER`.
+  everyone in their household with their details, their children's registrations and medical
+  information, and the names of programs and program areas. It reads their own login too, so an app
+  finds their row with a filter on `directus_user_id` for `$CURRENT_USER`. An adult in a household
+  changes:
+  - whether it shares, `households.share_contact`;
+  - anyone in it's `display_name` and `school`;
+  - their own `phone`, and that of anyone in it known to be under 18.
+
+  An adult is someone 18 or over, or with no date of birth who is someone's guardian. A teen with no
+  date of birth listed as a sibling's guardian counts as one too: Directus refuses `_none`, which
+  ruling them out needs, in a permission rule.
+
+  No one in a household changes an email. The group-policies hook links a login to a person by email,
+  so changing one could hand someone else's person to a stranger. Who's in a household is Clubspot's,
+  through the sync. Medical information follows guardian links, never the household.
+
 - A program role, such as Parent Coordinator, gives no access. It only sets Google Groups.
 - Team has the Community policy, plus Team: names, Team: contacts, and Team: schools. Names cover every team's
   sailors and their parents, and which parent belongs to which sailor, whether they shared or not. A
   team member's email and phone show only if they're an adult, or a guardian not known to be under
-  18, whose `share_contact` is yes. A child's own never show. Names also cover each team's program area and
+  18, whose household's `share_contact` is yes. A child's own never show. Names also cover each team's program area and
   Google Group, which sail-team's rosters group and link teams by. Schools cover each sailor's school, but not
   their parents'.
 - Crew has its own rules, in `stacks/backend/policies.ts`, plus the Community policy, so a Crew

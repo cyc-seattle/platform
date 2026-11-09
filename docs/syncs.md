@@ -98,6 +98,8 @@ almost all of the logic testable with no Directus and no Parse:
   plan here.
 - `audit.ts` - raises `duplicate_person` and `unlinked_participant` findings from `merge.ts`'s
   output.
+- `households.ts` - plans the households from the guardian links; pure, like `merge.ts`.
+- `sharing.ts` - fills a blank household's answer to the sharing question.
 - `merge-executor.ts` - applies an approved `duplicate_person` finding's plan, and the final guard
   that only deletes a duplicate once nothing references it.
 - `sync-run.ts` - `syncCamp`, one camp's full reconcile, and `runSync`, the job entry point.
@@ -143,14 +145,20 @@ registration's own stored answer only, with no ranking. Label matching normalize
 case, so `Race / Ethnicity` and `Race/Ethnicity` match without listing both. Nothing promotes until
 the target's `clubspot_promoted_fields` row exists — it's created by hand, not by Pulumi.
 
-**A sharing answer also counts for the people it speaks for.** When a registration's `share_contact`
-gets a new or changed Clubspot answer, and the registration is the newest for its sailor, the sync
-writes the answer to `people.share_contact`: the sailor's own if they were an adult when they
-registered, otherwise each guardian the form names (the guardian links with that slot's
-`contact_order`). So the latest answer wins over a family's or staff's edit, and an edit stands until
-the family answers again. At the end of each run, a person whose `share_contact` is still blank gets
-the newest answer any registration gave for them. It never replaces a value
-(`src/syncs/clubspot/sharing.ts`).
+**The sync makes the households at the end of each run.** After the promoted-fields pass, it groups
+every sailor and guardian by the guardian links and reconciles `households` and
+`people.household_id` with them (`src/syncs/clubspot/households.ts`).
+[crm-schema.md](crm-schema.md#households) gives the rules. Membership is always Clubspot's, so a
+staff edit to `household_id` lasts only until the next run.
+
+**A sharing answer counts for the sailor's household.** When a registration's `share_contact` gets
+a new or changed Clubspot answer, and the registration is the newest for its sailor, the sync writes
+the answer to the sailor's household's `share_contact`, in the households pass, so a sailor who joins
+a household this run counts. Where two sailors in one household answer in one run, the later
+registration wins. So the latest answer wins over a family's or
+staff's edit, and an edit stands until the family answers again. At the end of each run, after the
+households pass, a household whose `share_contact` is still blank gets the newest answer any of its
+sailors' registrations gave. It never replaces a value (`src/syncs/clubspot/sharing.ts`).
 
 **A person reference is pinned, not gap-filled.** `clubspot_participants.person_id` and `contacts.contact_id`
 are set once, at creation, and never re-resolved. That is what makes a manual merge durable: staff

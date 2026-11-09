@@ -25,6 +25,7 @@ export interface Schema {
   group_members: GroupMembers[];
   group_policies: GroupPolicies[];
   groups: Groups[];
+  households: Households[];
   medical_profiles: MedicalProfiles[];
   offerings: Offerings[];
   organization_cost_accounts: OrganizationCostAccounts[];
@@ -398,6 +399,16 @@ export interface Groups {
   policies: (string | GroupPolicies)[];
 }
 
+/** A sailor and everyone listed as their parent, together with the parents' other children. Made from the Clubspot sign-ups, so change who's in one by fixing the people and their parents. */
+export interface Households {
+  id: string;
+  /** Everyone in the household. */
+  members: (string | People)[];
+  /** Whether the household's adults share their email and phone with the teams they're on. Blank means never answered, which counts as not shared. A child's own email and phone are never shared. */
+  share_contact: boolean | null;
+  date_created: string | null;
+}
+
 /** A person's medical information, kept apart from People so only some staff see it. */
 export interface MedicalProfiles {
   id: string;
@@ -475,10 +486,14 @@ export interface People {
   /** Every email and phone known for this person. */
   contact_point_links: (string | ContactPoints)[];
   school: string | null;
-  /** Null means never answered - treated as not shared. */
+  /** What this adult last answered before households held the answer. Kept for reference only: the household's answer counts now. */
   share_contact: boolean | null;
   /** What this person is signed up for. */
   registrations: (string | Registrations)[];
+  /** The name the club's apps show, if the person or their family gave one. Blank shows the first and last name. */
+  display_name: string | null;
+  /** Set by the Clubspot sync from the person's parents and children, so change those instead. */
+  household_id: string | Households | null;
   /** The person's own Directus login, if they have one. Usually empty. */
   directus_user_id: string | null;
 }
