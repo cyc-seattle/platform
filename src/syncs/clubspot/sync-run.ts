@@ -1070,6 +1070,36 @@ async function promotePeopleFields(directus: DirectusClient): Promise<number> {
 }
 
 /**
+ * Updates `items` in one batch, or one at a time if the batch fails, skipping a row that's gone.
+ * Directus refuses a whole batch, as forbidden, when one of its rows was deleted after this run read
+ * it, such as a person a staff member deleted mid-run.
+ */
+async function updateSurvivors<Row>(
+  directus: DirectusClient,
+  collection: string,
+  items: readonly (Partial<Row> & { id: string })[],
+): Promise<void> {
+  if (items.length === 0) return;
+  try {
+    await directus.updateItems<Row>(collection, items);
+    return;
+  } catch (error) {
+    winston.warn(`Batch update of ${collection} failed; retrying one row at a time`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  for (const item of items) {
+    try {
+      await directus.updateItem<Row>(collection, item.id, item);
+    } catch (error) {
+      const [still] = await readByIds<{ id: string }>(directus, collection, "id", [item.id], ["id"]);
+      if (still) throw error;
+      winston.warn(`Skipping ${collection} ${item.id}, which no longer exists`);
+    }
+  }
+}
+
+/**
  * Makes the households from every guardian link and sailor (`planHouseholds`), then fills each
  * blank household's answer to the sharing question from its newest registration that gave one.
  * After the promoted-fields pass, so a registration's answer filled this run counts. Returns the
@@ -1092,8 +1122,8 @@ async function syncHouseholds(directus: DirectusClient, answers: NewAnswers): Pr
   const sailors = participants.flatMap(({ person_id }) => (person_id ? [person_id] : []));
   const plan = planHouseholds(people, links, sailors, households, randomUUID);
   if (plan.create.length > 0) await directus.createItems<HouseholdRow>("households", plan.create);
-  if (plan.update.length > 0) await directus.updateItems<HouseholdRow>("households", plan.update);
-  if (plan.people.length > 0) await directus.updateItems<PersonRow>("people", plan.people);
+  await updateSurvivors<HouseholdRow>(directus, "households", plan.update);
+  await updateSurvivors<PersonRow>(directus, "people", plan.people);
   for (const id of plan.delete) await directus.deleteItem("households", id);
 
   const householdOf = new Map(plan.people.map((move) => [move.id, move.household_id]));

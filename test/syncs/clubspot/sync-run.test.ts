@@ -787,6 +787,43 @@ describe("runSync", () => {
     expect(householdOf).toEqual({ kid: household!["id"], mom: household!["id"], dad: household!["id"], aunt: null });
   });
 
+  it("still makes the households when someone is deleted after the pass read them", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      clubspot_participants: [{ id: "participant-1", person_id: "kid" }],
+      people: [
+        { id: "kid", household_id: null, share_contact: null },
+        { id: "mom", household_id: null, share_contact: null },
+        { id: "ghost", household_id: null, share_contact: null },
+      ],
+      contacts: [
+        { id: "c-1", subject_id: "kid", contact_id: "mom", relationship_type: "guardian" },
+        { id: "c-2", subject_id: "kid", contact_id: "ghost", relationship_type: "guardian" },
+      ],
+    });
+    const forbidden = () => jsonResponse(403, { errors: [{ message: "forbidden" }] });
+    // Directus refuses a batch, or a single update, naming a row that's gone.
+    const racing = vi.fn(async (url: string, init?: FetchInit) => {
+      const path = new URL(url).pathname;
+      if (init?.method === "PATCH" && path.startsWith("/items/people")) {
+        tables.set(
+          "people",
+          tables.get("people")!.filter((row) => row["id"] !== "ghost"),
+        );
+        if (path === "/items/people/ghost" || (path === "/items/people" && String(init.body).includes("ghost"))) {
+          return forbidden();
+        }
+      }
+      return fetchMock(url, init);
+    });
+    vi.stubGlobal("fetch", racing);
+
+    const result = await runSync(runOptions(new DirectusClient(baseUrl, token), new Date(), makeGateway()));
+
+    expect(result.status).toBe("ok");
+    const [household] = tables.get("households")!;
+    expect(tables.get("people")!.map((row) => row["household_id"])).toEqual([household!["id"], household!["id"]]);
+  });
+
   it("fills a blank household's answer from the newest registration of a sailor in it", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       clubspot_participants: [{ id: "participant-1", person_id: "kid" }],
