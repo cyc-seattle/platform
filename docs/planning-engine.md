@@ -57,6 +57,15 @@ It returns:
 - `positions`: each salaried position's year. See [Salaried positions](#salaried-positions).
 - `warnings`: anything in the plan the engine had to skip or couldn't price.
 
+## Modelling over MCP
+
+An AI working over Directus's MCP server can change a draft's rows but can't run the engine. It
+doesn't need to. Change the draft's inputs, wait about a second, then read the draft's
+`plan_results` and `plan_result_*` rows, filtered on its `version_set_id`. `plan_results.calculated_at`
+says when they were worked out, so a time before the last change means they aren't in yet. A draft
+with no `plan_results` row is still being worked out, or the engine failed on it. Plan Readers and
+Plan Writers can read them.
+
 ## Terms
 
 - **Pool:** a group of shared costs, such as general and administrative (G&A) costs or program

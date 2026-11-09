@@ -897,6 +897,21 @@ Step("they change the offering to take in {money}", async (_, money: string) => 
   // The offering has one sailor, so its price is what it takes in.
   expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: cents(money) }));
 });
+Step("they see that the Financial Plan's P&L shows the offering takes in {money}", async (_, money: string) => {
+  // Through the items API, as an AI does over Directus's MCP server, which can't run the engine. A
+  // draft's P&L is worked out again a moment after each change, so this waits for the new one.
+  const they = await theirSession();
+  const filter = encodeURIComponent(
+    JSON.stringify({ version_set_id: { _eq: financialPlan }, level: { _eq: "offering" } }),
+  );
+  const revenue = async () => {
+    const { status, body } = await they.request("GET", `/items/plan_result_pnl?limit=-1&filter=${filter}`);
+    expect(status).toBe(200);
+    const rows = (body as { data: Row[] }).data;
+    return Number(rows.find((r) => r["subject_key"] === offering!["key"])?.["revenue_cents"]);
+  };
+  await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
+});
 Step("the Financial Plan's P&L shows that the offering takes in {money}", async (_, money: string) => {
   // A draft's P&L is worked out again a moment after each change, so this waits for the new one.
   const revenue = async () => {

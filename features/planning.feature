@@ -428,11 +428,11 @@ Feature: Plans
 
   Rule: A draft's P&L is up to date after every change to it
 
-    Example: A draft's P&L follows a new price
+    Example: A planner's AI changes a price, then sees the new P&L
       Given a user with the Plan Writer policy
       And a draft Financial Plan whose offering takes in $10,000
       When they change the offering to take in $12,000
-      Then the Financial Plan's P&L shows that the offering takes in $12,000
+      Then they see that the Financial Plan's P&L shows the offering takes in $12,000
 
   Rule: A saved Financial Plan keeps the P&L it had when it was saved
 
