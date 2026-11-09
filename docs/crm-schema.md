@@ -134,7 +134,7 @@ write at all — an older registration's form never overwrites a newer one's.
 
 A `people.phone` is compared and written in E.164 (`+12065550100`), the form the club's apps save,
 taking a number with no country code as US. Clubspot's bare digits for the number a family entered
-then compare equal, and don't overwrite it. A number that doesn't parse is kept as typed.
+then compare equal, and don't overwrite it. A number that isn't valid, or has an extension or a note E.164 can't hold, is kept as typed.
 
 Only a participant mirrored for the first time ever — `base` entirely unknown, not merely a known
 blank — falls back to the person's previous newest _other_ linked participant's own value, so a new
@@ -236,11 +236,13 @@ to actually use.
 
 `people.school_id` is the school someone sails for, which may not be the one they attend, picked from
 `schools`. A school not on the list is `people.school`, in the family's own words, with `school_id`
-blank: a person has one or the other, never both. Staff keep the list, and each school's `aliases`
+blank: a person has one or the other, never both. The `school-choice` hook keeps it so for every
+writer through Directus: setting one clears the other, and setting both is refused. Staff keep the list, and each school's `aliases`
 hold the other ways families write it. Families pick from it in the club's apps.
 
-The sync files a Clubspot answer under the school whose name or alias matches it, ignoring case,
-spaces, and punctuation, and otherwise keeps it as their own words. There's no fuzzy match: staff add
+The sync files a Clubspot answer under the school whose name or alias matches it, ignoring case and
+punctuation and counting a run of spaces as one, and otherwise keeps it as their own words. A name
+that matches two schools matches neither. There's no fuzzy match: staff add
 an alias, and the next answer matches. It compares answers by the school they name, so a family's
 pick stands until Clubspot names a different school.
 

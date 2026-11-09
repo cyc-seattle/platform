@@ -157,6 +157,7 @@ describe("Directus's extensions", () => {
     ["community-query-guard", extensions.queryGuard],
     ["group-policies", extensions.groupPolicies],
     ["saved-versions", extensions.savedVersions],
+    ["school-choice", {}],
   ])("mounts %s with its config", (name, config) => {
     const data = find("kubernetes:core/v1:ConfigMap", `directus-${name}`).inputs["data"];
     expect(JSON.parse(data["package.json"])["directus:extension"].type).toBe("hook");

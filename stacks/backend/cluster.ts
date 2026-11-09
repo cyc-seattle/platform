@@ -128,6 +128,7 @@ export async function deployDirectus(
     hook("community-query-guard", "community-query-guard.cjs", extensions.queryGuard),
     hook("group-policies", "group-policies.cjs", extensions.groupPolicies),
     hook("saved-versions", "saved-versions.cjs", extensions.savedVersions, extensions.engine),
+    hook("school-choice", "school-choice.cjs", {}),
     extension("cents-as-dollars", "display", "cents-display.mjs"),
   ];
   // Directus runs each migration it hasn't recorded at start, before it serves.

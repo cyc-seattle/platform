@@ -50,7 +50,9 @@ Options:
 - `--apply-schools <file>` - one-time cleanup of the schools families typed (cyc-seattle/sail-team#57).
   Adds each school in the YAML file to `schools`, or adds its aliases to the one of the same name,
   then files every person's school in their own words under the list where it matches, and clears
-  each value in `clear`. It never removes a school or an alias. It logs each value left in a
+  each value in `clear`. Two names in the file that match make one school. It never removes a school
+  or an alias. It refuses, before writing anything, a file that would leave a name or alias matching
+  two schools, and skips a `clear` value with no letters or digits. It logs each value left in a
   family's own words, with how many people hold it. Safe to rerun, as after staff add an alias, and
   supports `--dry-run`. It writes `schools`, which the sync's machine user only reads, so run it with
   a CRM Writer's token. The file:
@@ -65,8 +67,9 @@ Options:
   ```
 
 - `--normalize-phones` - one-time cleanup: rewrites every `people.phone` that parses into E.164, as
-  the sync writes it now, so a family's edit and Clubspot's bare digits compare equal. It leaves one
-  that doesn't parse alone, and logs the person's id. Safe to rerun, and supports `--dry-run`.
+  the sync writes it now, so a family's edit and Clubspot's bare digits compare equal. It leaves alone,
+  and logs the person's id for, one that isn't a valid number, or has an extension or a note E.164
+  can't hold. Safe to rerun, and supports `--dry-run`.
 - `--approve-matching-duplicates` - one-time migration (step 5): approves every open
   `duplicate_person` finding whose group's rows all share one non-null `date_of_birth` -
   `docs/crm-schema.md`'s participant rule. A group with a null or a differing date of birth stays

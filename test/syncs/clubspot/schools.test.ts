@@ -8,7 +8,7 @@ const lincoln = { id: "school-2", name: "Lincoln High", aliases: ["Hamilton (goi
 describe("SchoolMatcher", () => {
   const schools = new SchoolMatcher([fatima, lincoln]);
 
-  it("matches a name or an alias, ignoring case, spaces, and punctuation", () => {
+  it("matches a name or an alias, ignoring case and punctuation, and counting a run of spaces as one", () => {
     expect(schools.match("our lady of  fatima")).toBe(fatima);
     expect(schools.match(" olf ")).toBe(fatima);
     expect(schools.match("Hamilton - going to Lincoln")).toBe(lincoln);

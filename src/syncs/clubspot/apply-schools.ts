@@ -47,21 +47,54 @@ export interface SchoolUpserts {
 
 /**
  * Adds each school in the file that isn't on the list by name, and adds its aliases to one that is.
- * Never removes a school or an alias: staff may have added them since.
+ * Two names in the file that match make one school. Never removes a school or an alias: staff may
+ * have added them since.
  */
 export function planSchoolUpserts(file: SchoolsFile, existing: readonly SchoolRow[]): SchoolUpserts {
-  const byName = new Map(existing.map((school) => [normalizeName(school.name), school] as const));
-  const plan: SchoolUpserts = { create: [], update: [] };
+  const planned = new Map<string | null, { id?: string; name: string; aliases: string[]; had: number }>();
+  for (const school of existing) {
+    const key = normalizeName(school.name);
+    if (!planned.has(key)) {
+      const aliases = school.aliases ?? [];
+      planned.set(key, { id: school.id, name: school.name, aliases, had: aliases.length });
+    }
+  }
   for (const school of file.schools) {
-    const current = byName.get(normalizeName(school.name));
-    const aliases = withAliases(current?.aliases ?? [], school.aliases ?? []);
-    if (!current) {
-      plan.create.push({ name: school.name, aliases });
-    } else if (aliases.length > (current.aliases ?? []).length) {
-      plan.update.push({ id: current.id, aliases });
+    const key = normalizeName(school.name);
+    const entry = planned.get(key) ?? { name: school.name, aliases: [], had: 0 };
+    entry.aliases = withAliases(entry.aliases, school.aliases ?? []);
+    planned.set(key, entry);
+  }
+
+  const plan: SchoolUpserts = { create: [], update: [] };
+  for (const { id, name, aliases, had } of planned.values()) {
+    if (id === undefined) {
+      plan.create.push({ name, aliases });
+    } else if (aliases.length > had) {
+      plan.update.push({ id, aliases });
     }
   }
   return plan;
+}
+
+/**
+ * Each name or alias that matches more than one school. {@link SchoolMatcher} matches neither, so a
+ * file that would make one is refused before anything is written.
+ */
+export function schoolConflicts(schools: readonly Pick<SchoolRow, "id" | "name" | "aliases">[]): string[] {
+  const owners = new Map<string, { written: string; names: Set<string> }>();
+  for (const school of schools) {
+    for (const written of [school.name, ...(school.aliases ?? [])]) {
+      const key = normalizeName(written);
+      if (!key) continue;
+      const owner = owners.get(key) ?? { written, names: new Set<string>() };
+      owner.names.add(school.name);
+      owners.set(key, owner);
+    }
+  }
+  return [...owners.values()]
+    .filter(({ names }) => names.size > 1)
+    .map(({ written, names }) => `"${written}" names ${[...names].sort().join(" and ")}`);
 }
 
 /** `current` plus each of `added` that doesn't already match one of them. */
@@ -93,14 +126,23 @@ export function planSchoolCleanup(
   schools: SchoolMatcher,
   clear: readonly string[],
 ): SchoolCleanup {
-  const cleared = new Set(clear.map((value) => normalizeName(value)));
+  const cleared = new Set<string>();
+  for (const value of clear) {
+    const normalized = normalizeName(value);
+    if (normalized) {
+      cleared.add(normalized);
+    } else {
+      // It would match every school that's only punctuation.
+      winston.warn(`Not clearing "${value}": it has no letters or digits to match`, { value });
+    }
+  }
   const cleanup: SchoolCleanup = { patches: [], leftOver: new Map() };
   for (const person of people) {
     const text = person.school?.trim();
     if (!person.id || person.school_id || !text) {
       continue;
     }
-    if (cleared.has(normalizeName(text))) {
+    if (cleared.has(normalizeName(text) ?? "")) {
       cleanup.patches.push({ id: person.id, patch: { school: null } });
       continue;
     }
@@ -130,21 +172,28 @@ export async function applySchools(directus: DirectusClient, path: string): Prom
   const file = parseSchoolsFile(fs.readFileSync(path, "utf8"));
   const existing = await directus.readItems<SchoolRow>("schools", { limit: -1 });
   const upserts = planSchoolUpserts(file, existing);
+  const updatedById = new Map(upserts.update.map((row) => [row.id, row.aliases] as const));
+  const after = [
+    ...existing.map((school) => ({ ...school, aliases: updatedById.get(school.id) ?? school.aliases })),
+    ...upserts.create.map((school, index) => ({ ...school, id: `new-school-${index}` })),
+  ];
+  const conflicts = schoolConflicts(after);
+  if (conflicts.length > 0) {
+    throw new Error(`The schools file would make names that match two schools: ${conflicts.join("; ")}`);
+  }
 
   const created = await directus.createItems<Omit<SchoolRow, "id">>("schools", upserts.create);
   if (upserts.update.length > 0) {
     await directus.updateItems<SchoolRow>("schools", upserts.update);
   }
-  // A dry run creates nothing, so its new schools match under a stand-in id.
-  const createdRows = created.map((row, index) => ({
-    ...row,
-    id: (row as Partial<SchoolRow>).id ?? `new-school-${index}`,
-  }));
-  const updatedById = new Map(upserts.update.map((row) => [row.id, row.aliases] as const));
-  const schools = new SchoolMatcher([
-    ...existing.map((school) => ({ ...school, aliases: updatedById.get(school.id) ?? school.aliases })),
-    ...createdRows,
-  ]);
+  // A dry run creates nothing, so its new schools match under their stand-in ids.
+  const createdIds = new Map<string, string>(
+    created.flatMap((row, index) => {
+      const id = (row as Partial<SchoolRow>).id;
+      return id ? [[`new-school-${index}`, id] as const] : [];
+    }),
+  );
+  const schools = new SchoolMatcher(after.map((school) => ({ ...school, id: createdIds.get(school.id) ?? school.id })));
 
   const people = await directus.readItems<PersonRow>("people", {
     limit: -1,

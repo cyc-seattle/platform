@@ -7,7 +7,7 @@ export type SchoolFields = Required<Pick<PersonRow, "school_id" | "school">>;
 
 /**
  * Matches a school as families wrote it to a `schools` row by its name or one of its aliases, after
- * {@link normalizeName} folds case, spaces and punctuation. No fuzzy matching: a near miss stays the
+ * {@link normalizeName} folds case and punctuation and collapses runs of spaces. No fuzzy matching: a near miss stays the
  * family's own words until staff add it as an alias.
  */
 export class SchoolMatcher {

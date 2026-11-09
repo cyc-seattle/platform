@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { parseSchoolsFile, planSchoolCleanup, planSchoolUpserts } from "../../../src/syncs/clubspot/apply-schools.ts";
+import { describe, it, expect, vi } from "vitest";
+import winston from "winston";
+import {
+  parseSchoolsFile,
+  planSchoolCleanup,
+  planSchoolUpserts,
+  schoolConflicts,
+} from "../../../src/syncs/clubspot/apply-schools.ts";
 import { SchoolMatcher } from "../../../src/syncs/clubspot/schools.ts";
 
 const FILE = `
@@ -75,5 +81,46 @@ describe("planSchoolCleanup", () => {
       { id: "p3", patch: { school: null } },
     ]);
     expect(cleanup.leftOver).toEqual(new Map([["Garfield", 2]]));
+  });
+});
+
+describe("planSchoolUpserts within one file", () => {
+  it("makes one school of two names in the file that match", () => {
+    const plan = planSchoolUpserts(
+      parseSchoolsFile(`
+schools:
+  - name: Our Lady of Fatima
+    aliases: ["OLF"]
+  - name: our lady of  fatima
+    aliases: ["Fatima"]
+`),
+      [],
+    );
+    expect(plan).toEqual({ create: [{ name: "Our Lady of Fatima", aliases: ["OLF", "Fatima"] }], update: [] });
+  });
+});
+
+describe("schoolConflicts", () => {
+  it("names each name or alias that matches two schools", () => {
+    expect(
+      schoolConflicts([
+        { id: "school-1", name: "Lincoln High", aliases: ["Lincoln"] },
+        { id: "new-school-0", name: "lincoln", aliases: [] },
+        { id: "school-2", name: "Garfield High", aliases: ["Garfield"] },
+      ]),
+    ).toEqual(['"Lincoln" names Lincoln High and lincoln']);
+  });
+});
+
+describe("planSchoolCleanup's values to clear", () => {
+  it("skips one with no letters or digits, which would match every school that's only punctuation", () => {
+    const warn = vi.spyOn(winston, "warn").mockReturnThis();
+    try {
+      const cleanup = planSchoolCleanup([{ id: "p1", school_id: null, school: "?" }], new SchoolMatcher([]), ["-"]);
+      expect(cleanup.patches).toEqual([]);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("no letters or digits"), expect.anything());
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

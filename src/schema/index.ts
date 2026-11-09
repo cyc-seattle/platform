@@ -1096,7 +1096,7 @@ export interface Schools {
   id: string;
   /** The school's name, as families see it in the list. */
   name: string;
-  /** Other ways families write this school on their Clubspot forms. An answer matching the name or one of these, ignoring capitals, spaces, and punctuation, is this school. Anything else is kept as their own words. */
+  /** Other ways families write this school on their Clubspot forms. An answer matching the name or one of these, ignoring capitals and punctuation and counting a run of spaces as one, is this school. Anything else is kept as their own words. */
   aliases: string[] | null;
 }
 

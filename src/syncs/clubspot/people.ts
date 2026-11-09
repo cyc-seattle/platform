@@ -42,18 +42,25 @@ export function normalizePhone(value: string | null | undefined): string | null 
   return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
 }
 
+/** Only what a phone number is written with. Anything else, such as "x12" or "cell", would be lost. */
+const PHONE_ONLY = /^[\d\s()+.-]+$/;
+
 /**
  * A phone in E.164 (`+12065551234`), the form the club's apps save, so a family's edit and Clubspot's
  * bare digits for the same number compare equal. A number without a country code is taken as US. One
- * that doesn't parse is kept as typed, trimmed, rather than lost.
+ * that isn't a valid number, or carries an extension or a note E.164 can't hold, is kept as typed,
+ * trimmed, rather than lost.
  */
 export function toE164(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) {
     return null;
   }
+  if (!PHONE_ONLY.test(trimmed)) {
+    return trimmed;
+  }
   const parsed = parsePhoneNumberFromString(trimmed, "US");
-  return parsed?.isPossible() ? parsed.number : trimmed;
+  return parsed?.isValid() && !parsed.ext ? parsed.number : trimmed;
 }
 
 /** `undefined`/empty-string Clubspot fields both mean "no value" - collapse them to `null`. */
