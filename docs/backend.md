@@ -82,8 +82,8 @@ Directus 12.3.1 serves MCP at `/mcp`. It needs both:
   `mcp_oauth_enabled`, `mcp_oauth_cimd_enabled`, `mcp_oauth_dcr_enabled`, and `mcp_allow_deletes`
 
 `backend` sets both. The `DirectusSettings` resource writes the settings row through the admin API.
-`backend:mcp` turns MCP on, and it's off when unset. Dev and prod set it. Deletes and dynamic client
-registration are always off.
+`backend:mcp` turns MCP on, and it's off when unset. Dev and prod set it. Deletes are allowed, and
+dynamic client registration is always off.
 
 A client registers by its metadata document (CIMD). Both the document and the redirects must be on
 `claude.ai` or `claude.com`. Loopback redirects, which desktop clients use, are always allowed.
@@ -93,7 +93,7 @@ Custom-scheme redirects, which Directus allows for Cursor and Raycast by default
 
 MCP adds no access. Its tools act as the signed-in user:
 
-- The items tool reads and writes through Directus's `ItemsService`, with the user's own
+- The items tool reads, writes and deletes through Directus's `ItemsService`, with the user's own
   permissions.
 - Tools that change the schema, flows, or operations are hidden from anyone who isn't an admin.
 

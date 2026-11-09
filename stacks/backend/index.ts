@@ -178,7 +178,7 @@ new DirectusSettings(
       mcp_oauth_enabled: mcp,
       mcp_oauth_cimd_enabled: mcp,
       mcp_oauth_dcr_enabled: false,
-      mcp_allow_deletes: false,
+      mcp_allow_deletes: true,
     },
   },
   { dependsOn: [app.then(({ ready }) => ready)] },
