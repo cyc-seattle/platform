@@ -44,13 +44,14 @@ Feature: Signing in
 
   Rule: Every role can open the Data Studio
 
-    Scenario Outline: Crew and admins can open the Data Studio
+    Scenario Outline: Crew, Staff, and admins can open the Data Studio
       Given a user with the <role> role
       Then they can open the Data Studio
 
       Examples:
         | role  |
         | Crew  |
+        | Staff |
         | Admin |
 
     Example: A family member can open the Data Studio

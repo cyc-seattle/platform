@@ -17,7 +17,7 @@ export interface PolicyData {
 }
 
 /** The roles every person who signs in has one of. The hook manages only these roles' users. */
-export const ROLES = ["Community", "Team", "Crew", "Admin"] as const;
+export const ROLES = ["Community", "Team", "Crew", "Staff", "Admin"] as const;
 
 /** The domains whose collections the CRM policies cover. Newer domains have policies of their own. */
 const CRM_DOMAINS = new Set(["clubspot", "crm", "gsuite", "sync"]);

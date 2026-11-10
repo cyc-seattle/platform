@@ -160,6 +160,11 @@ describe("the query guard", () => {
   });
 });
 
+// Staff's own policy has no rules yet; it gets Crew's and the Community policies.
+it("gives Staff what Crew reads", () => {
+  expect(effectiveAccess(config, ["Staff", ...CREW], fieldsOf)).toEqual(accessOf(CREW));
+});
+
 describe("the query guard for Crew", () => {
   const crew = accessOf(CREW);
   const allergies = { participant_links: { medical_allergies: { _contains: "peanut" } } };

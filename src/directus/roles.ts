@@ -25,6 +25,7 @@ export interface CrmIdentities {
   communityRole: DirectusRole;
   teamRole: DirectusRole;
   crewRole: DirectusRole;
+  staffRole: DirectusRole;
   adminRole: DirectusRole;
   clubspotSyncRole: DirectusRole;
   gsuiteSyncRole: DirectusRole;
@@ -37,7 +38,7 @@ export interface CrmIdentities {
 export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
   const { auth, readyForApiCalls } = args;
 
-  // Everyone who signs in has Community, Team, Crew, or Admin (docs/access.md). Groups give the rest.
+  // Everyone who signs in has Community, Team, Crew, Staff, or Admin (docs/access.md). Groups give the rest.
 
   // Everyone's role on their first sign-in, through Directus's AUTH_AUTHENTIK_DEFAULT_ROLE_ID. Its
   // permissions come from the Community policies in stacks/backend/community-rules.ts.
@@ -82,6 +83,19 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
       appAccess: true,
     },
     { dependsOn: readyForApiCalls, aliases: [{ name: "crm-coach" }] },
+  );
+
+  // Paid staff. It has Crew's policies, through `backend`, and its own policy holds anything more.
+  const staffRole = new DirectusRole(
+    "crm-staff",
+    {
+      ...auth,
+      name: "Staff",
+      icon: "badge",
+      description: "Paid staff: everything Crew has. See docs/access.md.",
+      appAccess: true,
+    },
+    { dependsOn: readyForApiCalls },
   );
 
   const adminRole = new DirectusRole(
@@ -189,6 +203,7 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     communityRole,
     teamRole,
     crewRole,
+    staffRole,
     adminRole,
     clubspotSyncRole,
     gsuiteSyncRole,

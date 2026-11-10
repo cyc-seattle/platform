@@ -173,6 +173,7 @@ describe("the Team role", () => {
     ["p-leaves", "u-leaves"],
     ["p-stays", "u-stays"],
     ["p-crew", "u-crew"],
+    ["p-staff", "u-staff"],
     ["p-admin", "u-admin"],
   ]);
   const users = [
@@ -180,12 +181,18 @@ describe("the Team role", () => {
     { id: "u-leaves", role: "Team" },
     { id: "u-stays", role: "Team" },
     { id: "u-crew", role: "Crew" },
+    { id: "u-staff", role: "Staff" },
     { id: "u-admin", role: "Admin" },
     { id: "u-unlinked", role: "Team" },
   ];
 
   it("moves a family onto Team while they're on a team, and back to Community after", () => {
-    const moves = teamMoves({ users, userOf, onTeam: new Set(["p-joins", "p-stays", "p-crew", "p-admin"]), ...roles });
+    const moves = teamMoves({
+      users,
+      userOf,
+      onTeam: new Set(["p-joins", "p-stays", "p-crew", "p-staff", "p-admin"]),
+      ...roles,
+    });
     expect(moves).toEqual([
       { user: "u-joins", role: "Team" },
       { user: "u-leaves", role: "Community" },
@@ -193,9 +200,9 @@ describe("the Team role", () => {
     ]);
   });
 
-  it("never moves Crew or Admin", () => {
+  it("never moves Crew, Staff, or Admin", () => {
     const moves = teamMoves({ users, userOf, onTeam: new Set(), ...roles });
-    expect(moves.map(({ user }) => user).filter((user) => user === "u-crew" || user === "u-admin")).toEqual([]);
+    expect(moves.map(({ user }) => user).filter((user) => ["u-crew", "u-staff", "u-admin"].includes(user))).toEqual([]);
   });
 });
 
