@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Deletes every Financial Plan, plan, plan copy, row and result from $PULUMI_STACK's Directus, once,
+# by hand (cyc-seattle/platform#149). No deploy runs it. Run it in prod only once the maintainer has
+# confirmed. It shows what it would delete, then asks you to type the stack's name at the terminal,
+# so nothing can run it unattended.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+stack="${PULUMI_STACK:?Set PULUMI_STACK to dev or prod}"
+
+# shellcheck source=scripts/cluster-sql
+source scripts/cluster-sql
+connect "$stack"
+
+echo "Financial Plans in ${stack}, by status:"
+sql directus "SELECT status, count(*) FROM version_sets GROUP BY status ORDER BY status;"
+
+read -r -p "Type ${stack} to delete every one of them, with every plan, copy, row and result: " answer </dev/tty
+if [[ "$answer" != "$stack" ]]; then
+  echo "Nothing deleted." >&2
+  exit 1
+fi
+
+sql directus "$(cat scripts/delete-plans.sql)"
+echo "Deleted every plan in ${stack}."
