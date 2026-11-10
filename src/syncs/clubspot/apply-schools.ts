@@ -186,14 +186,21 @@ export async function applySchools(directus: DirectusClient, path: string): Prom
   if (upserts.update.length > 0) {
     await directus.updateItems<SchoolRow>("schools", upserts.update);
   }
-  // A dry run creates nothing, so its new schools match under their stand-in ids.
-  const createdIds = new Map<string, string>(
-    created.flatMap((row, index) => {
+  // Directus returns created rows in primary-key order, not the order sent, so they're paired by
+  // name. A dry run creates nothing, so its new schools match under their stand-in ids.
+  const createdIds = new Map<string | null, string>(
+    created.flatMap((row) => {
       const id = (row as Partial<SchoolRow>).id;
-      return id ? [[`new-school-${index}`, id] as const] : [];
+      return id ? [[normalizeName(row.name), id] as const] : [];
     }),
   );
-  const schools = new SchoolMatcher(after.map((school) => ({ ...school, id: createdIds.get(school.id) ?? school.id })));
+  const schools = new SchoolMatcher(
+    after.map((school) =>
+      school.id.startsWith("new-school-")
+        ? { ...school, id: createdIds.get(normalizeName(school.name)) ?? school.id }
+        : school,
+    ),
+  );
 
   const people = await directus.readItems<PersonRow>("people", {
     limit: -1,

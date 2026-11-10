@@ -1,12 +1,17 @@
-import { describe, it, expect, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import winston from "winston";
 import {
+  applySchools,
   parseSchoolsFile,
   planSchoolCleanup,
   planSchoolUpserts,
   schoolConflicts,
 } from "../../../src/syncs/clubspot/apply-schools.ts";
 import { SchoolMatcher } from "../../../src/syncs/clubspot/schools.ts";
+import { DirectusClient } from "../../../src/syncs/runtime/index.ts";
 
 const FILE = `
 schools:
@@ -122,5 +127,52 @@ describe("planSchoolCleanup's values to clear", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("applySchools", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("files people under the school they named when Directus returns the created schools out of order", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "apply-schools-"));
+    const file = path.join(dir, "schools.yaml");
+    fs.writeFileSync(file, "schools:\n  - name: Zebra Academy\n  - name: Middle School\n  - name: Apple Elementary\n");
+    const people = [
+      { id: "p1", school_id: null, school: "Zebra Academy" },
+      { id: "p2", school_id: null, school: "Middle School" },
+      { id: "p3", school_id: null, school: "Apple Elementary" },
+    ];
+    const patches: unknown[] = [];
+    const json = (body: unknown) => ({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
+        const body = init?.body ? (JSON.parse(init.body) as { name: string }[]) : [];
+        if (init?.method === "POST") {
+          // Directus reads the created rows back in primary-key order; give the first one sent the last id.
+          const rows = body.map((school, index) => ({ id: `id-${body.length - index}`, ...school }));
+          return json({ data: rows.sort((a, b) => a.id.localeCompare(b.id)) });
+        }
+        if (init?.method === "PATCH") {
+          patches.push(...body);
+          return json({ data: body });
+        }
+        return json({ data: url.includes("/items/people") ? people : [] });
+      }),
+    );
+
+    try {
+      await applySchools(new DirectusClient("https://directus.example.com", "token"), file);
+    } finally {
+      fs.rmSync(dir, { recursive: true });
+    }
+
+    expect(patches).toEqual([
+      { id: "p1", school_id: "id-3", school: null },
+      { id: "p2", school_id: "id-2", school: null },
+      { id: "p3", school_id: "id-1", school: null },
+    ]);
   });
 });
