@@ -56,7 +56,7 @@ export function bookSalaries(
           if ((b.product_id == null) === (b.program_area_id == null)) {
             ctx.warn(
               "booking_cost_center",
-              `Booking ${b.key} must name a product or a program area, not both or neither, so it's left out`,
+              `Booking ${b.key} needs a product or a program area, but not both. It's left out`,
               b.key,
             );
             return [];
@@ -76,7 +76,7 @@ export function bookSalaries(
     if (rate === null && charges.length > 0) {
       ctx.warn(
         "no_paid_hours",
-        `${position.name} has hours charged to programs but no paid_hours_per_year, so they cost nothing`,
+        `${position.name} has hours charged to programs but no paid hours per year, so those hours cost nothing`,
         position.key,
       );
     }
@@ -87,7 +87,7 @@ export function bookSalaries(
     if (scale < 1) {
       ctx.warn(
         "position_overbooked",
-        `${position.name}'s hours charged to programs cost more than its salary after ga_share, so they're scaled down`,
+        `${position.name}'s hours charged to programs cost more than its salary less its G&A share, so they're cut to fit`,
         position.key,
       );
     }

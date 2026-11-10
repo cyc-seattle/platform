@@ -163,6 +163,12 @@ The rules for ESM come from cyc-seattle/workplace#6.
   - Import a Node builtin as a default import (`import fs from "node:fs"`). A named or namespace
     import fails to serialize.
 
+### Words people read
+
+Write and review every word a person reads in an app with the `ui-copy` skill from
+[`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills). That includes the planning
+engine's warning messages, which Sail Team shows to planners.
+
 ### Comments
 
 Comments explain **why**, not what. Keep them to a line or two. Write one where a reader would

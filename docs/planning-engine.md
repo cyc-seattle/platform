@@ -153,8 +153,10 @@ a closed day; the rest are `data`, a row that's missing or wrong. The engine sti
 given.
 
 A message says only what's wrong, in plain words, since the warning already gives its plan and date:
-"Guppies Week 2 and Opti Camp Week 2: 23 sailors, but the staff can take 17", or "9 Sailqubes out,
-but CSC has 8, for Guppies Week 4". One about a block names the block's offerings.
+"Guppies Week 2 and Opti Camp Week 2 have 23 sailors, but enough qualified coaches for only 17", or
+"9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
+offerings. Messages follow the `ui-copy` skill from
+[`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
 
 Allocation warnings:
 

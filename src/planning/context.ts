@@ -26,6 +26,18 @@ const ALLOCATION_WARNINGS = new Set([
   "position_double_booked",
 ]);
 
+/** Each cost type as a warning names it. */
+const COST_TYPES: Record<CostType, string> = {
+  coach_wages: "coach wages",
+  salaries: "salaries",
+  payroll_tax: "payroll tax",
+  ribs: "RIBs",
+  boat_maintenance: "boat maintenance",
+  resources: "resources",
+  travel: "travel",
+  cogs: "cost of goods sold",
+};
+
 /** Where a warning applies: a plan copy, and a date. */
 export interface WarningScope {
   version_id?: Id;
@@ -95,7 +107,8 @@ export class Context {
     this.offeringsById = new Map(data.plan_offerings.map((o) => [o.id, o]));
     this.offeringsByKey = new Map(data.plan_offerings.map((o) => [o.key, o]));
     this.rates = data.plan_rates[0];
-    if (data.plan_rates.length > 1) this.warn("many_rates", "More than one plan_rates row, so the first is used");
+    if (data.plan_rates.length > 1)
+      this.warn("many_rates", "The Operations Plan has more than one set of rates. Only the first one counts");
     this.costAccounts = new Map(
       data.organization_cost_accounts
         .filter((c) => c.organization_id === data.organization.id)
@@ -107,7 +120,11 @@ export class Context {
   costAccount(type: CostType): Id | undefined {
     const account = this.costAccounts.get(type);
     if (account === undefined) {
-      this.warn("no_cost_account", `The organization has no account set for ${type}, so that cost is left out`, type);
+      this.warn(
+        "no_cost_account",
+        `${this.data.organization.name} has no account for ${COST_TYPES[type]}, so that cost is left out`,
+        type,
+      );
     }
     return account;
   }
@@ -169,7 +186,7 @@ export class Context {
     if (product.revenue_account_id != null && product.revenue_account_id !== area.revenue_account_id) {
       this.warn(
         "revenue_account_differs",
-        `Product ${product.name} has its own revenue account, but its program area ${area.name}'s is used`,
+        `${product.name} has its own revenue account, but its revenue goes to ${area.name}'s account`,
         product.id,
       );
     }

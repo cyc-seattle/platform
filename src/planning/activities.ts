@@ -29,7 +29,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
     if (ctx.planOfVersion.get(c.version_id)?.kind === "program_area") {
       ctx.warn(
         "closed_date_in_area_plan",
-        `${c.name} is a closed day in a program area's plan, so it's ignored`,
+        `${c.name} is a closed day in a Program Plan. Only the Operations Plan's closed days count`,
         c.key,
       );
       continue;
@@ -40,7 +40,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
   for (const activity of ctx.data.plan_activities) {
     const offering = ctx.offeringsById.get(activity.offering_id);
     if (offering === undefined) {
-      ctx.warn("unknown_offering", `Activity ${activity.key} names a missing offering`, activity.key);
+      ctx.warn("unknown_offering", `Activity ${activity.key} is for an offering that isn't in the plan`, activity.key);
       continue;
     }
     if (!ctx.inYear(offering)) continue;
@@ -52,10 +52,15 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
     const span = start !== null && end !== null ? end - start : 0;
     const closedFor = closed.get(activity.date);
     if (closedFor !== undefined && activity.kind !== "travel") {
-      ctx.warn("closed_date", `${offering.name}'s ${activity.kind} falls on ${closedFor}, a closed day`, activity.key, {
-        version_id: activity.version_id,
-        date: activity.date,
-      });
+      ctx.warn(
+        "closed_date",
+        `${offering.name}'s ${activity.kind} is on ${closedFor}, when ${ctx.data.organization.name} is closed`,
+        activity.key,
+        {
+          version_id: activity.version_id,
+          date: activity.date,
+        },
+      );
     }
     const usesBoats = activity.kind !== "travel" && activity.uses_boats;
     result.push({

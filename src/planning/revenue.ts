@@ -20,7 +20,7 @@ export function bookRevenue(ctx: Context): void {
   for (const offering of ctx.fyOfferings()) {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) {
-      ctx.warn("unknown_product", `Offering ${offering.key} names a missing product`, offering.key);
+      ctx.warn("unknown_product", `Offering ${offering.key} is for a product that doesn't exist`, offering.key);
       continue;
     }
     const enrollment = ctx.enrollment.get(offering.id) ?? 0;
@@ -29,7 +29,7 @@ export function bookRevenue(ctx: Context): void {
     if (total === 0) continue;
     const revenueAccount = ctx.revenueAccount(product);
     if (revenueAccount == null) {
-      ctx.warn("no_revenue_account", `Product ${product.name} has no revenue account`, product.id);
+      ctx.warn("no_revenue_account", `${product.name} has no revenue account, so its revenue is left out`, product.id);
       continue;
     }
     const book = (

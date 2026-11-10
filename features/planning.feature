@@ -61,8 +61,8 @@ Feature: Plans
   program settings and the rules.
 
   A planner is warned when the blocks break a limit: more of the organization's boats, RIBs, or
-  equipment out at once than it has, more sailors in a block than its staff and boats can safely
-  take, or an activity with no staff. Each warning says which plan and date it's about. Each coach
+  equipment out at once than it has, too few qualified coaches or boats for a block's sailors, or
+  an activity with no staff. Each warning says which plan and date it's about. Each coach
   in a block can safely take the program's number of sailors, if they're at the program's staff
   level or qualified for it. Each boat can take its class's number of sailors, and the boats that
   sailors bring count too.
@@ -507,13 +507,13 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 7 RIBs out, but the organization has 6
 
-  Rule: A planner is warned when a block has more sailors than its staff can safely take
+  Rule: A planner is warned when a block has too few qualified coaches for its sailors
 
     Example: One Level 1 Instructor for 14 Guppies
       Given Guppies have a Level 1 Instructor for every 10 sailors
       And a Guppies block of 14 sailors with one Level 1 Instructor and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but the staff can take 10
+      Then the planner is warned that the block has 14 sailors, but enough qualified coaches for only 10
 
     Example: A coach qualified for the program's staff level counts
       Given Guppies have a Level 1 Instructor for every 10 sailors
@@ -526,13 +526,13 @@ Feature: Plans
       Given Guppies have a Level 1 Instructor for every 10 sailors
       And a Guppies block of 10 sailors with one Junior Instructor, who isn't qualified to coach Guppies, and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has 10 sailors, but the staff can take 0
+      Then the planner is warned that the block has 10 sailors and no qualified coach
 
     Example: One coach for 5 Guppies and 5 Minnows is too few
       Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
       And a block of 5 Guppies and 5 Minnows, with one coach and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has more sailors than the staff can take
+      Then the planner is warned that the block has too few qualified coaches
 
     Example: Two coaches for 5 Guppies and 5 Minnows are enough
       Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
@@ -540,13 +540,13 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about the block
 
-  Rule: A planner is warned when a block has more sailors than its boats can take
+  Rule: A planner is warned when a block's boats can't hold its sailors
 
     Example: Five Sailqubes for 14 Guppies
       Given Sailqubes take 2 sailors each
       And a Guppies block of 14 sailors with enough staff and 5 Sailqubes
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but the boats can take 10
+      Then the planner is warned that the block has 14 sailors, but the boats hold only 10
 
     Example: Boats that sailors bring count
       Given Optis take 1 sailor each
