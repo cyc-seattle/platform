@@ -52,7 +52,7 @@ Feature: The public website
       Given the website build's service account
       And a program on the website linked to a program in the catalog
       When it looks at the catalog program through the website's program
-      Then it isn't allowed
+      Then it sees none of the catalog program's details
 
     Example: The website build can't find out about a picture kept elsewhere by searching
       Given the website build's service account

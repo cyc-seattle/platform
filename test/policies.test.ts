@@ -15,7 +15,7 @@ import {
   WEBSITE_FILE_FIELDS,
   websiteBuildRules,
 } from "../stacks/backend/policies.ts";
-import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0005-website-folder.cjs";
+import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0007-website-folder.cjs";
 
 const schemas = discoverSchemaFiles(path.join(import.meta.dirname, "../schemas")).map(({ name, path: file }) => ({
   name,

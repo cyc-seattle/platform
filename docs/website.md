@@ -20,7 +20,7 @@ Directus's API and MCP, as an admin, so every text field is Markdown.
 | `website_sponsor_levels`, `website_sponsors`  | Sponsorship levels, in cents, and sponsors                                                             |
 
 The rest are the join tables behind the sorted lists. Pictures are files in the Website folder, which
-the `cyc0005` migration makes with a fixed ID. Directus keeps files in the environment's Cloud
+the `cyc0007` migration makes with a fixed ID. Directus keeps files in the environment's Cloud
 Storage bucket ([backend.md](backend.md)).
 
 The site's build reads them as the Website Build user ([access.md](access.md#the-website-build)).

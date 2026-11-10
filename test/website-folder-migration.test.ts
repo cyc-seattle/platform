@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { WEBSITE_FOLDER, up } from "../stacks/backend/migrations/cyc0005-website-folder.cjs";
+import { WEBSITE_FOLDER, up } from "../stacks/backend/migrations/cyc0007-website-folder.cjs";
 
 const migrate = (db: PGlite) => up({ raw: (sql: string) => db.exec(sql) });
 

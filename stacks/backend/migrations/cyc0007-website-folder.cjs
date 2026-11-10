@@ -5,6 +5,9 @@
 // Its ID is fixed, because the csc-website build's policy reads only the files in it, and the image
 // fields in schemas/website.yaml upload into it. It does nothing if the folder is there, or if
 // Directus has no folders table yet.
+//
+// Its key is cyc0007: dev recorded cyc0005 for planning blocks, before they became cyc0006, so
+// Directus would never run a cyc0005 there.
 
 const WEBSITE_FOLDER = "1dac44d4-d8ae-4ad1-9e11-f6b4da138a19";
 

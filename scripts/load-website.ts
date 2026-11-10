@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
-import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0005-website-folder.cjs";
+import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0007-website-folder.cjs";
 
 type Row = Record<string, unknown> & { id: string };
 

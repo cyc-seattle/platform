@@ -1,7 +1,7 @@
 import type { PermissionRuleInput } from "../../src/directus/client.ts";
 import { collectionsInSchema } from "../../src/directus/client.ts";
 import { TEAM_MONTHS } from "./community-rules.ts";
-import { WEBSITE_FOLDER } from "./migrations/cyc0005-website-folder.cjs";
+import { WEBSITE_FOLDER } from "./migrations/cyc0007-website-folder.cjs";
 
 // Plain data (no `@pulumi/*` import): the policies `./index.ts` declares, and what the two hook
 // extensions need to know about them. docs/access.md describes the model.

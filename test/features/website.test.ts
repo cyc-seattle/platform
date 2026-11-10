@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, expect } from "vitest";
-import { WEBSITE_FOLDER } from "../../stacks/backend/migrations/cyc0005-website-folder.cjs";
+import { WEBSITE_FOLDER } from "../../stacks/backend/migrations/cyc0007-website-folder.cjs";
 import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
 import { admin, adminCreate, row, runId, runRows } from "./steps/rows.ts";
 
@@ -112,6 +112,22 @@ Step("a program on the website linked to a program in the catalog", async () => 
 Step("it looks at the catalog program through the website's program", async () => {
   const fields = encodeURIComponent("id,catalog_programs.catalog_program_id.*");
   refused = await (await theirSession()).request("GET", `/items/website_programs/${websiteProgramId}?fields=${fields}`);
+});
+
+// Directus leaves out the fields a user can't read, so the list holds only its links' own IDs.
+Step("it sees none of the catalog program's details", () => {
+  expect(refused, "nothing was asked").toBeDefined();
+  const { status, body } = refused!;
+  if (status === 403) {
+    return;
+  }
+  expect(status, JSON.stringify(body)).toBe(200);
+  const links = (body as { data: { catalog_programs: unknown[] } }).data.catalog_programs;
+  expect(links.length, "the website's program lists its link").toBeGreaterThan(0);
+  for (const link of links) {
+    expect(typeof link, JSON.stringify(body)).toBe("string");
+  }
+  expect(JSON.stringify(body)).not.toContain(String(row["programs"]));
 });
 
 Step("a sponsor whose logo is kept outside the website's folder", async () => {
