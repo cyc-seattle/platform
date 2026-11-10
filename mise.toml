@@ -84,6 +84,11 @@ run = "node src/syncs/calendar/main.ts"
 description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
 run = "./scripts/reset"
 
+# By hand only: no deploy runs it, and prod's run waits for the maintainer (cyc-seattle/platform#149).
+[tasks.delete-plans]
+description = "Delete every Financial Plan, plan, copy, row and result from $PULUMI_STACK, after asking"
+run = "./scripts/delete-plans"
+
 # Needs the dev deploy, so it isn't part of ci.
 [tasks.integration]
 description = "Run the integration tests against dev"
