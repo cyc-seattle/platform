@@ -7,6 +7,7 @@ import { cluster, clusterEndpoint } from "./cluster.ts";
 import { address } from "./gateway.ts";
 import { devOutputs } from "./dev.ts";
 import { prodOutputs } from "./prod.ts";
+import { websiteSite } from "./website.ts";
 import "./dev-databases.ts";
 import "./alerts.ts";
 import "./logs.ts";
@@ -29,6 +30,10 @@ export { clusterEndpoint };
 export const gatewayAddress = address.address;
 export const devPlatformOutputs = pulumi.interpolate`gs://${devOutputs.bucket}/${devOutputs.name}`;
 export const prodPlatformOutputs = pulumi.interpolate`gs://${prodOutputs.bucket}/${prodOutputs.name}`;
+
+// csc-website's Firebase Hosting site.
+export const websiteSiteId = websiteSite.siteId;
+export const websiteDefaultUrl = websiteSite.defaultUrl;
 
 // For the Workspace SMTP relay's allowlist, a manual step.
 export const natAddress = clusterNatAddress.address;

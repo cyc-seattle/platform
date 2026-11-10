@@ -258,7 +258,7 @@ new github.RepositoryEnvironmentDeploymentPolicy(
 
 // cyccommunitysailing.org, the public site, built from Directus and served by Firebase Hosting (#150). Its own repo,
 // so the environment that publishes content without a reviewer can't weaken sail-team's prod approval.
-new StandardRepository("csc-website", {
+export const cscWebsite = new StandardRepository("csc-website", {
   description: "CYC Community Sailing Center's public website, cyccommunitysailing.org, built from Directus.",
   visibility: "public",
   autoInit: true,
