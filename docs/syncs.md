@@ -172,7 +172,9 @@ the target's `clubspot_promoted_fields` row exists — it's created by hand, not
 every sailor and guardian by the guardian links and reconciles `households` and
 `people.household_id` with them (`src/syncs/clubspot/households.ts`).
 [crm-schema.md](crm-schema.md#households) gives the rules. Membership is always Clubspot's, so a
-staff edit to `household_id` lasts only until the next run.
+staff edit to `household_id` lasts only until the next run. It moves someone only while they're
+still in the household it read, and deletes a household only while it's empty, so a write made
+during the run stands until the next one (cyc-seattle/platform#198).
 
 **A sharing answer counts for the sailor's household.** When a registration's `share_contact` gets
 a new or changed Clubspot answer, and the registration is the newest for its sailor, the sync writes

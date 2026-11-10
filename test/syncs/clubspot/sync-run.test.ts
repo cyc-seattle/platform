@@ -801,7 +801,8 @@ describe("runSync", () => {
       ],
     });
     const forbidden = () => jsonResponse(403, { errors: [{ message: "forbidden" }] });
-    // Directus refuses a batch, or a single update, naming a row that's gone.
+    // Directus refuses a batch, or a single update, naming a row that's gone. An update by query
+    // just doesn't match it.
     const racing = vi.fn(async (url: string, init?: FetchInit) => {
       const path = new URL(url).pathname;
       if (init?.method === "PATCH" && path.startsWith("/items/people")) {
@@ -809,7 +810,8 @@ describe("runSync", () => {
           "people",
           tables.get("people")!.filter((row) => row["id"] !== "ghost"),
         );
-        if (path === "/items/people/ghost" || (path === "/items/people" && String(init.body).includes("ghost"))) {
+        const batch = path === "/items/people" && String(init.body).startsWith("[");
+        if (path === "/items/people/ghost" || (batch && String(init.body).includes("ghost"))) {
           return forbidden();
         }
       }
@@ -822,6 +824,80 @@ describe("runSync", () => {
     expect(result.status).toBe("ok");
     const [household] = tables.get("households")!;
     expect(tables.get("people")!.map((row) => row["household_id"])).toEqual([household!["id"], household!["id"]]);
+  });
+
+  it("leaves someone another writer put in a household after the pass read them", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      clubspot_participants: [{ id: "participant-1", person_id: "kid" }],
+      people: [
+        { id: "kid", household_id: null, share_contact: null },
+        { id: "mom", household_id: null, share_contact: null },
+      ],
+      contacts: [{ id: "c-1", subject_id: "kid", contact_id: "mom", relationship_type: "guardian" }],
+    });
+    // A family joins its own household between the pass's read and its writes, as a staff edit, or
+    // a feature's fixture, can (cyc-seattle/platform#198).
+    const racing = vi.fn(async (url: string, init?: FetchInit) => {
+      if (init?.method === "POST" && new URL(url).pathname === "/items/households") {
+        // New rows: the fake hands out its own, so a change in place would reach what the pass read.
+        tables.set("households", [...(tables.get("households") ?? []), { id: "theirs", share_contact: null }]);
+        tables.set(
+          "people",
+          tables.get("people")!.map((row) => ({ ...row, household_id: "theirs" })),
+        );
+      }
+      return fetchMock(url, init);
+    });
+    vi.stubGlobal("fetch", racing);
+
+    const result = await runSync(runOptions(new DirectusClient(baseUrl, token), new Date(), makeGateway()));
+
+    expect(result.status).toBe("ok");
+    expect(tables.get("people")!.map((row) => row["household_id"])).toEqual(["theirs", "theirs"]);
+  });
+
+  it("keeps a household someone joined after the pass read it, and skips one already deleted", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [{ id: "adult", household_id: null, share_contact: null }],
+      households: [
+        { id: "joined", share_contact: null },
+        { id: "gone", share_contact: null },
+      ],
+    });
+    const racing = vi.fn(async (url: string, init?: FetchInit) => {
+      const method = init?.method ?? "GET";
+      const path = new URL(url).pathname;
+      const rows = tables.get("households")!;
+      if (method === "DELETE") {
+        const id = path.split("/").at(-1);
+        // Directus refuses to delete a row that's gone.
+        if (!rows.some((row) => row["id"] === id)) return jsonResponse(403, { errors: [{ message: "forbidden" }] });
+        tables.set(
+          "households",
+          rows.filter((row) => row["id"] !== id),
+        );
+        return jsonResponse(204, undefined);
+      }
+      const response = await fetchMock(url, init);
+      if (method === "GET" && path === "/items/households") {
+        // Once the pass has read them, someone joins one, and another run deletes the other.
+        tables.set(
+          "people",
+          tables.get("people")!.map((row) => ({ ...row, household_id: "joined" })),
+        );
+        tables.set(
+          "households",
+          rows.filter((row) => row["id"] !== "gone"),
+        );
+      }
+      return response;
+    });
+    vi.stubGlobal("fetch", racing);
+
+    const result = await runSync(runOptions(new DirectusClient(baseUrl, token), new Date(), makeGateway()));
+
+    expect(result.status).toBe("ok");
+    expect(tables.get("households")).toEqual([{ id: "joined", share_contact: null }]);
   });
 
   it("fills a blank household's answer from the newest registration of a sailor in it", async () => {

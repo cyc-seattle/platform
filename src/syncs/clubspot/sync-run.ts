@@ -42,9 +42,9 @@ import {
 import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipantFindings } from "./audit.ts";
 import { campBackoff, nextSyncState } from "./backoff.ts";
 import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts";
-import { readByIds } from "./directus-batch.ts";
+import { ID_BATCH_SIZE, readByIds } from "./directus-batch.ts";
 import { syncOfferings } from "./offerings.ts";
-import { type HouseholdPerson, planHouseholds } from "./households.ts";
+import { type HouseholdPerson, type HouseholdPlan, planHouseholds } from "./households.ts";
 import { type NewAnswers, planNewAnswers, planSharingBackfill, recordAnswer } from "./sharing.ts";
 import { findDuplicatePeople, MERGE_PERSON_FIELDS, type MergePerson } from "./merge.ts";
 import { runApprovedPersonMerges } from "./merge-executor.ts";
@@ -1106,14 +1106,79 @@ async function updateSurvivors<Row>(
 }
 
 /**
+ * Moves each person to the household the plan gives them, only while they're still in the one the
+ * pass read: someone another writer moved since, such as a staff edit mid-run, stays where they put
+ * them, and the next run plans from there (cyc-seattle/platform#198). Returns who moved.
+ */
+async function moveHouseholdMembers(
+  directus: DirectusClient,
+  people: readonly HouseholdPerson[],
+  moves: HouseholdPlan["people"],
+): Promise<Set<string>> {
+  const read = new Map(people.map((person) => [person.id, person.household_id ?? null]));
+  const groups = new Map<string, { from: string | null; to: string | null; ids: string[] }>();
+  for (const move of moves) {
+    const from = read.get(move.id) ?? null;
+    const key = JSON.stringify([from, move.household_id]);
+    const group = groups.get(key) ?? { from, to: move.household_id, ids: [] };
+    group.ids.push(move.id);
+    groups.set(key, group);
+  }
+  const moved = new Set<string>();
+  for (const { from, to, ids } of groups.values()) {
+    for (let i = 0; i < ids.length; i += ID_BATCH_SIZE) {
+      const batch = ids.slice(i, i + ID_BATCH_SIZE);
+      const rows = await directus.updateItemsByQuery<HouseholdPerson>(
+        "people",
+        { id: { _in: batch.join(",") }, household_id: from ? { _eq: from } : { _null: true } },
+        { household_id: to },
+      );
+      for (const id of directus.isDryRun ? batch : rows.map((row) => row.id)) moved.add(id);
+    }
+  }
+  return moved;
+}
+
+/**
+ * Deletes the households the plan emptied, except one someone joined since the pass read them,
+ * which the foreign key would take them out of, and one that's already gone. Returns those deleted.
+ */
+async function deleteEmptyHouseholds(directus: DirectusClient, ids: readonly string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const members = await readByIds<HouseholdPerson>(directus, "people", "household_id", ids, ["id", "household_id"]);
+  const joined = new Set(members.map((person) => person.household_id));
+  const deleted: string[] = [];
+  for (const id of ids) {
+    if (joined.has(id)) {
+      winston.warn(`Keeping households ${id}, which someone joined during the run`);
+      continue;
+    }
+    try {
+      await directus.deleteItem("households", id);
+      deleted.push(id);
+    } catch (error) {
+      const [still] = await readByIds<{ id: string }>(directus, "households", "id", [id], ["id"]);
+      if (still) throw error;
+      winston.warn(`Skipping households ${id}, which no longer exists`);
+    }
+  }
+  return deleted;
+}
+
+/**
  * Makes the households from every guardian link and sailor (`planHouseholds`), then fills each
  * blank household's answer to the sharing question from its newest registration that gave one.
  * After the promoted-fields pass, so a registration's answer filled this run counts. Returns the
  * rows it wrote.
  */
 async function syncHouseholds(directus: DirectusClient, answers: NewAnswers): Promise<number> {
-  const [people, links, participants, households] = await Promise.all([
-    directus.readItems<HouseholdPerson>("people", { limit: -1, fields: ["id", "household_id", "share_contact"] }),
+  // People first: a person joins a household, or is linked as a guardian, only after it exists, so
+  // the reads after see every household and link the people read points at.
+  const people = await directus.readItems<HouseholdPerson>("people", {
+    limit: -1,
+    fields: ["id", "household_id", "share_contact"],
+  });
+  const [links, participants, households] = await Promise.all([
     directus.readItems<ContactRow>("contacts", {
       limit: -1,
       filter: { relationship_type: { _eq: "guardian" } },
@@ -1129,45 +1194,47 @@ async function syncHouseholds(directus: DirectusClient, answers: NewAnswers): Pr
   const plan = planHouseholds(people, links, sailors, households, randomUUID);
   if (plan.create.length > 0) await directus.createItems<HouseholdRow>("households", plan.create);
   await updateSurvivors<HouseholdRow>(directus, "households", plan.update);
-  await updateSurvivors<PersonRow>(directus, "people", plan.people);
-  for (const id of plan.delete) await directus.deleteItem("households", id);
+  const movedIds = await moveHouseholdMembers(directus, people, plan.people);
+  const deleted = await deleteEmptyHouseholds(directus, plan.delete);
 
+  // Someone another writer moved is left out of the answers, since the plan no longer knows their household.
   const householdOf = new Map(plan.people.map((move) => [move.id, move.household_id]));
-  const moved = people.map((person) =>
-    householdOf.has(person.id) ? { ...person, household_id: householdOf.get(person.id)! } : person,
+  const moved = people.flatMap((person) =>
+    !householdOf.has(person.id)
+      ? [person]
+      : movedIds.has(person.id)
+        ? [{ ...person, household_id: householdOf.get(person.id)! }]
+        : [],
   );
   const current = new Map([...households, ...plan.create, ...plan.update].map((row) => [row.id, row]));
-  for (const id of plan.delete) current.delete(id);
+  for (const id of deleted) current.delete(id);
   const newAnswers = planNewAnswers(answers, moved, [...current.values()]);
-  for (const { id, patch } of newAnswers) {
-    await directus.updateItem<HouseholdRow>("households", id, patch);
-    current.set(id, { id, ...patch });
-  }
+  await updateSurvivors<HouseholdRow>(
+    directus,
+    "households",
+    newAnswers.map(({ id, patch }) => ({ id, ...patch })),
+  );
+  for (const { id, patch } of newAnswers) current.set(id, { id, ...patch });
   const registrations = await directus.readItems<RegistrationRow>("clubspot_registrations", {
     limit: -1,
     fields: ["participant_id", "registered_at", "share_contact"],
   });
   const sharing = planSharingBackfill(registrations, participants, moved, [...current.values()]);
-  for (const { id, patch } of sharing) {
-    await directus.updateItem<HouseholdRow>("households", id, patch);
-  }
+  await updateSurvivors<HouseholdRow>(
+    directus,
+    "households",
+    sharing.map(({ id, patch }) => ({ id, ...patch })),
+  );
 
   winston.info("Households", {
     created: plan.create.length,
     updated: plan.update.length,
-    deleted: plan.delete.length,
-    peopleMoved: plan.people.length,
+    deleted: deleted.length,
+    peopleMoved: movedIds.size,
     answersApplied: newAnswers.length,
     answersFilled: sharing.length,
   });
-  return (
-    plan.create.length +
-    plan.update.length +
-    plan.delete.length +
-    plan.people.length +
-    newAnswers.length +
-    sharing.length
-  );
+  return plan.create.length + plan.update.length + deleted.length + movedIds.size + newAnswers.length + sharing.length;
 }
 
 interface AuditDetectionResult {
