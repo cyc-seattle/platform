@@ -136,6 +136,10 @@ export class DirectusClient {
     }
   }
 
+  /**
+   * Creates `items` and returns the created rows. Directus returns each chunk's rows in primary-key
+   * order, not the order sent, so pair them with `items` by a field other than position.
+   */
   async createItems<T>(collection: string, items: T[]): Promise<T[]> {
     if (this.dryRun) {
       winston.info("Dry run: skipping create", { collection, count: items.length });
