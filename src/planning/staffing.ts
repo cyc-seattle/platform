@@ -61,9 +61,13 @@ function sum(values: Iterable<number>): number {
   return total;
 }
 
-/** `n` of something, in words: "9 Sailqubes", "1 Opti". A name that already ends in "s", such as RIBs, stays. */
+/**
+ * `n` of something, in words: "9 Sailqubes", "1 Opti". Only a one-word name is made plural, and not one that already
+ * ends in "s", such as RIBs; any other name is used as given, since adding an "s" to "Laser Radial" reads wrong.
+ */
 function countOf(n: number, name: string): string {
-  return `${n} ${n === 1 || name.endsWith("s") ? name : `${name}s`}`;
+  const plural = n !== 1 && /^\S+$/.test(name) && !/s$/i.test(name);
+  return `${n} ${plural ? `${name}s` : name}`;
 }
 
 /** Names as a sentence lists them: `a`, `a and b`, or `a, b, and c`. */

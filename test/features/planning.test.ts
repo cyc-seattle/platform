@@ -757,7 +757,7 @@ Step(
     const found = warning("over_inventory_boats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
     // The warning gives the date, so the message starts with the count, and names the organization.
-    expect(found?.message).toMatch(new RegExp(`^${out} \\S+ out, but .+ has ${have}`));
+    expect(found?.message).toMatch(new RegExp(`^${out} .+ out, but .+ has ${have}`));
   },
 );
 Step("the planner isn't warned about {boats}", () => {

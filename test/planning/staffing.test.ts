@@ -444,6 +444,14 @@ describe("staffing", () => {
       expect(out.warnings.map((w) => w.message)).toContain("14 Sailqubes out, but A club has 12, for Guppies Week 3");
     });
 
+    it("uses a boat class's name as given unless it's one word", () => {
+      const data = twoBlocks(9, 5, morning);
+      data.boat_classes[0]!.name = "Laser Radial";
+      expect(computePlan(data).warnings.map((w) => w.message)).toContain(
+        "14 Laser Radial out, but A club has 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+      );
+    });
+
     it("lets a morning block and an afternoon block use the same boats", () => {
       expect(
         codes(
