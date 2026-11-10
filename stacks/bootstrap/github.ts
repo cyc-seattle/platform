@@ -161,14 +161,6 @@ export const maintainers = new github.Team("maintainers", {
   privacy: "closed",
 });
 
-export const isthmia = new StandardRepository("isthmia", {
-  description: "A collection of Typescript packages for managing CYC Community Sailing Center.",
-  visibility: "public",
-  hasProjects: true,
-  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
-  mergeQueue: true,
-});
-
 new StandardRepository(".github", {
   description:
     "Community health files, the org profile, reusable workflows, and the Renovate preset for cyc-seattle repos.",
