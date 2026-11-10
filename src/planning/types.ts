@@ -123,28 +123,19 @@ export interface PlanOffering extends Versioned {
   fill_rate: number | null;
   /** Per kid. */
   price_cents: number | null;
-  sailors_per_coach: number | null;
-  min_coaches: number | null;
-  /** A `plan_staff_levels` key. */
-  coach_level_key: Id | null;
-  required_qualification: Id | null;
-  ribs_per_coach: number | null;
-  byob_share: number | null;
-  fixed_coaches: number | null;
-  fixed_ribs: number | null;
-  fixed_boats: number | null;
   cogs_rate: number | null;
   note: string | null;
-  /** A `plan_salaried_positions` key: the salaried coach who takes one coach on each activity. */
-  coach_position_key?: Id | null;
-  /** How that coach is paid for it: out of the salary (the default), or by the hour at the offering's level. */
-  coach_position_pay?: "salary" | "hourly" | null;
 }
 
-export interface PlanOfferingBoatClass extends Versioned {
-  offering_id: Id;
-  boat_class_id: Id;
-  share: number;
+/** A program's settings in a Program Plan: who coaches it, and how many sailors each coach takes. */
+export interface PlanProgram extends Versioned {
+  /** The program's product. */
+  product_id: Id;
+  /** A `plan_staff_levels` key. */
+  staff_level_key: Id | null;
+  sailors_per_coach: number | null;
+  /** The planner's own words, which only their AI reads. */
+  rules: string | null;
 }
 
 export interface PlanTrip extends Versioned {
@@ -169,17 +160,44 @@ export interface PlanActivity extends Versioned {
   putaway_minutes: number | null;
   kind: ActivityKind;
   uses_boats: boolean;
-  fixed_coaches: number | null;
-  fixed_ribs: number | null;
-  fixed_boats: number | null;
+  /** The block it's staffed in, if any. */
+  block_id: Id | null;
 }
 
-export interface PlanActivityResource extends Versioned {
-  activity_id: Id;
+/** Activities on one date that share their staff, RIBs and boats. */
+export interface PlanActivityBlock extends Versioned {
+  date: DateString;
+  name: string;
+}
+
+/** Staff on a block: a number at one staff level, or a salaried position. */
+export interface PlanBlockStaff extends Versioned {
+  block_id: Id;
+  /** A `plan_staff_levels` key, for hourly or volunteer staff. */
+  staff_level_key: Id | null;
+  /** A `plan_salaried_positions` key. */
+  position_key: Id | null;
+  count: number;
+  /** How a salaried position is paid for the block: out of its salary (the default), or by the hour at its own rate. */
+  pay: "salary" | "hourly" | null;
+}
+
+/** A resource on a block, such as RIBs. */
+export interface PlanBlockResource extends Versioned {
+  block_id: Id;
   /** A `plan_resources` key. */
   resource_key: Id;
   quantity: number;
+  /** Hours each is used; empty for the block's time on the water (RIBs) or its paid time (the rest). */
   hours: number | null;
+}
+
+/** Boats of one class on a block: the organization's, and the ones sailors bring. */
+export interface PlanBlockBoats extends Versioned {
+  block_id: Id;
+  boat_class_id: Id;
+  count: number;
+  sailor_owned: number | null;
 }
 
 export interface PlanLaborLine extends Versioned {
@@ -262,19 +280,8 @@ export interface PlanResource extends Versioned {
 export interface PlanBoatRate extends Versioned {
   boat_class_id: Id;
   maintenance_per_boat_hour_cents: number;
-}
-
-export interface PlanActivityBlockRule extends Versioned {
-  name: string;
-  /** `plan_offerings` keys. */
-  offering_keys: Id[];
-  weekdays: number[] | null;
-  starts_on: DateString | null;
-  ends_on: DateString | null;
-  /** A `plan_staff_levels` id. */
-  coach_level_id: Id | null;
-  /** `plan_salaried_positions` keys. */
-  salaried_positions: Id[] | null;
+  /** How many boats of the class the organization has. */
+  quantity: number | null;
 }
 
 /** A group of shared costs, such as G&A, divided among all of the plan year's offerings by MTDC. */
@@ -337,11 +344,14 @@ export interface PlanData {
   plans: Plan[];
   plan_versions: PlanVersion[];
 
+  plan_programs: PlanProgram[];
   plan_offerings: PlanOffering[];
-  plan_offering_boat_classes: PlanOfferingBoatClass[];
   plan_trips: PlanTrip[];
   plan_activities: PlanActivity[];
-  plan_activity_resources: PlanActivityResource[];
+  plan_activity_blocks: PlanActivityBlock[];
+  plan_block_staff: PlanBlockStaff[];
+  plan_block_resources: PlanBlockResource[];
+  plan_block_boats: PlanBlockBoats[];
   plan_labor_lines: PlanLaborLine[];
   plan_budget_lines: PlanBudgetLine[];
 
@@ -352,7 +362,6 @@ export interface PlanData {
   plan_salaried_bookings: PlanSalariedBooking[];
   plan_resources: PlanResource[];
   plan_boat_rates: PlanBoatRate[];
-  plan_activity_block_rules: PlanActivityBlockRule[];
   plan_pools: PlanPool[];
   plan_bonus_owners: PlanBonusOwner[];
   plan_bonus_owner_products: PlanBonusOwnerProduct[];
@@ -409,17 +418,26 @@ export interface ComputedActivity {
   paid_minutes: number;
   on_water_minutes: number;
   uses_boats: boolean;
+  /** Its share of its block's staff, RIBs and boats, by its sailors. */
   coaches: number;
   ribs: number;
   boats: number;
-  block_rule_id: Id | null;
+  block_id: Id | null;
 }
+
+/** `allocation` when the blocks break a limit or a closed day; `data` when a row is missing or wrong. */
+export type WarningCategory = "allocation" | "data";
 
 export interface EngineWarning {
   code: string;
   message: string;
+  category: WarningCategory;
   /** The key of the row it's about, when there is one. */
   key?: string;
+  /** The plan copy it's about, when there is one. */
+  version_id?: Id;
+  /** The date it's about, when there is one. */
+  date?: DateString;
 }
 
 /**

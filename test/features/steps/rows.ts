@@ -313,15 +313,15 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       ends_on: "2027-08-31",
       capacity: 12,
       price_cents: 50_000,
-      sailors_per_coach: 6,
-      coach_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? null,
     }),
-  plan_offering_boat_classes: async (fixed) =>
+  plan_programs: async (fixed) =>
     versioned(fixed, {
-      offering_id: sameVersionId("plan_offerings", fixed),
-      boat_class_id: row["boat_classes"],
-      share: 1,
+      product_id: row["products"],
+      staff_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? null,
+      sailors_per_coach: 6,
+      rules: "Add a Junior Instructor when there are more than 12 sailors.",
     }),
+  plan_activity_blocks: async (fixed) => versioned(fixed, { date: "2027-06-02", name: `Block ${key("block")}` }),
   plan_trips: async (fixed) =>
     versioned(fixed, { offering_id: sameVersionId("plan_offerings", fixed), name: `Trip ${key("trip")}`, nights: 2 }),
   plan_activities: async (fixed) =>
@@ -332,6 +332,13 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       end_time: "12:00:00",
       kind: "practice",
       uses_boats: true,
+      block_id: sameVersionId("plan_activity_blocks", fixed),
+    }),
+  plan_block_staff: async (fixed) =>
+    versioned(fixed, {
+      block_id: sameVersionId("plan_activity_blocks", fixed),
+      staff_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
+      count: 2,
     }),
   plan_resources: async (fixed) =>
     versioned(fixed, {
@@ -339,11 +346,18 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       name: `Resource ${key("resource")}`,
       cost_per_hour_cents: 1_000,
     }),
-  plan_activity_resources: async (fixed) =>
+  plan_block_resources: async (fixed) =>
     versioned(fixed, {
-      activity_id: sameVersionId("plan_activities", fixed),
+      block_id: sameVersionId("plan_activity_blocks", fixed),
       resource_key: sameVersion("plan_resources", fixed)?.["key"] ?? randomUUID(),
       quantity: 1,
+    }),
+  plan_block_boats: async (fixed) =>
+    versioned(fixed, {
+      block_id: sameVersionId("plan_activity_blocks", fixed),
+      boat_class_id: row["boat_classes"],
+      count: 4,
+      sailor_owned: 1,
     }),
   plan_labor_lines: async (fixed) =>
     versioned(fixed, {
@@ -390,13 +404,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       hours: 40,
     }),
   plan_boat_rates: async (fixed) =>
-    versioned(fixed, { boat_class_id: row["boat_classes"], maintenance_per_boat_hour_cents: 100 }),
-  plan_activity_block_rules: async (fixed) =>
-    versioned(fixed, {
-      name: `Block ${key("block")}`,
-      offering_keys: [sameVersion("plan_offerings", fixed)?.["key"] ?? randomUUID()],
-      weekdays: [3],
-    }),
+    versioned(fixed, { boat_class_id: row["boat_classes"], maintenance_per_boat_hour_cents: 100, quantity: 12 }),
   plan_bonus_owners: async (fixed) =>
     versioned(fixed, { role_name: `Director ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
   plan_bonus_owner_products: async (fixed) =>
@@ -478,11 +486,14 @@ export const changes: Record<string, () => Row> = {
   plan_pools: () => ({ name: `Pool ${key("pool")}` }),
   plan_staff_levels: () => ({ hourly_rate_cents: 2_600 }),
   plan_offerings: () => ({ price_cents: 52_000 }),
-  plan_offering_boat_classes: () => ({ share: 0.5 }),
+  plan_programs: () => ({ sailors_per_coach: 8 }),
+  plan_activity_blocks: () => ({ name: `Block ${key("block")}` }),
+  plan_block_staff: () => ({ count: 3 }),
+  plan_block_resources: () => ({ quantity: 2 }),
+  plan_block_boats: () => ({ count: 5 }),
   plan_trips: () => ({ nights: 3 }),
   plan_activities: () => ({ end_time: "13:00:00" }),
   plan_resources: () => ({ cost_per_hour_cents: 1_100 }),
-  plan_activity_resources: () => ({ quantity: 2 }),
   plan_labor_lines: () => ({ hours: 12 }),
   plan_budget_lines: () => ({ amount_cents: 11_000 }),
   plan_rates: () => ({ payroll_tax_rate: 0.11 }),
@@ -490,7 +501,6 @@ export const changes: Record<string, () => Row> = {
   plan_salaried_positions: () => ({ annual_salary_cents: 5_100_000 }),
   plan_salaried_bookings: () => ({ hours: 45 }),
   plan_boat_rates: () => ({ maintenance_per_boat_hour_cents: 110 }),
-  plan_activity_block_rules: () => ({ weekdays: [3, 5] }),
   plan_bonus_owners: () => ({ bonus_rate: 0.12 }),
   plan_bonus_owner_products: () => ({ product_id: row["products"] }),
 };
@@ -594,11 +604,14 @@ export const PLAN_ROWS = [
   "plan_pools",
   "plan_staff_levels",
   "plan_offerings",
-  "plan_offering_boat_classes",
+  "plan_programs",
   "plan_trips",
+  "plan_activity_blocks",
   "plan_activities",
+  "plan_block_staff",
   "plan_resources",
-  "plan_activity_resources",
+  "plan_block_resources",
+  "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
   "plan_rates",
@@ -606,7 +619,6 @@ export const PLAN_ROWS = [
   "plan_salaried_positions",
   "plan_salaried_bookings",
   "plan_boat_rates",
-  "plan_activity_block_rules",
   "plan_bonus_owners",
   "plan_bonus_owner_products",
 ];

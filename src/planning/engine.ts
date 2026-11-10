@@ -97,7 +97,7 @@ function summarizePositions(
   ];
   for (const key of new Set(named)) {
     if (!known.has(key)) {
-      ctx.warn("unknown_position", `A block, offering or bonus names missing salaried position ${key}`, key);
+      ctx.warn("unknown_position", `A block or bonus names missing salaried position ${key}`, key);
     }
   }
   return ctx.data.plan_salaried_positions.map((position) => {

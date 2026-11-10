@@ -227,20 +227,30 @@ An admin can still get past this in two ways, as a last resort: by changing a pl
 
 ```mermaid
 erDiagram
+    plan_versions ||--o{ plan_programs : contains
+    products ||--o{ plan_programs : "settings of"
     plan_versions ||--o{ plan_offerings : contains
     products ||--o{ plan_offerings : "offering of"
-    qualifications |o--o{ plan_offerings : requires
-    plan_offerings ||--o{ plan_offering_boat_classes : sails
-    boat_classes ||--o{ plan_offering_boat_classes : "boat class"
     plan_offerings ||--o{ plan_activities : runs
     plan_offerings ||--o{ plan_trips : "travels for"
     plan_trips |o--o{ plan_activities : "travel days"
-    plan_activities ||--o{ plan_activity_resources : uses
+    plan_versions ||--o{ plan_activity_blocks : contains
+    plan_activity_blocks |o--o{ plan_activities : holds
+    plan_activity_blocks ||--o{ plan_block_staff : "staffed by"
+    plan_activity_blocks ||--o{ plan_block_resources : uses
+    plan_activity_blocks ||--o{ plan_block_boats : sails
+    boat_classes ||--o{ plan_block_boats : "boat class"
     plan_offerings ||--o{ plan_budget_lines : "direct lines"
     plan_offerings ||--o{ plan_labor_lines : "direct labor"
     accounts ||--o{ plan_budget_lines : "booked to"
     accounts ||--o{ plan_labor_lines : "booked to"
 
+    plan_programs {
+        uuid product_id FK "the program"
+        uuid staff_level_key "operations key"
+        decimal sailors_per_coach
+        text rules "the planner's own words"
+    }
     plan_offerings {
         uuid key "stable"
         uuid product_id FK
@@ -253,24 +263,8 @@ erDiagram
         int target_enrollment "or fill_rate"
         decimal fill_rate
         int price_cents "per kid"
-        decimal sailors_per_coach
-        int min_coaches
-        uuid coach_level_key "operations key"
-        uuid required_qualification FK
-        decimal ribs_per_coach
-        decimal byob_share
-        int fixed_coaches "override"
-        int fixed_ribs "override"
-        int fixed_boats "override"
         decimal cogs_rate
         string note
-        uuid coach_position_key "operations key: its salaried coach"
-        string coach_position_pay "salary|hourly"
-    }
-    plan_offering_boat_classes {
-        uuid offering_id FK
-        uuid boat_class_id FK
-        decimal share
     }
     plan_activities {
         uuid offering_id FK
@@ -283,9 +277,30 @@ erDiagram
         int putaway_minutes
         string kind "practice|regatta|clinic|travel"
         boolean uses_boats
-        int fixed_coaches "override"
-        int fixed_ribs "override"
-        int fixed_boats "override"
+        uuid block_id FK
+    }
+    plan_activity_blocks {
+        date date
+        string name
+    }
+    plan_block_staff {
+        uuid block_id FK
+        uuid staff_level_key "operations key, or"
+        uuid position_key "operations key"
+        int count
+        string pay "salary|hourly, for a position"
+    }
+    plan_block_resources {
+        uuid block_id FK
+        uuid resource_key "operations key"
+        decimal quantity
+        decimal hours "empty for the block's own"
+    }
+    plan_block_boats {
+        uuid block_id FK
+        uuid boat_class_id FK
+        int count "the organization's"
+        int sailor_owned "sailors bring"
     }
     plan_trips {
         uuid offering_id FK
@@ -293,12 +308,6 @@ erDiagram
         int nights
         int airfare_cents "per coach"
         int miles
-    }
-    plan_activity_resources {
-        uuid activity_id FK
-        uuid resource_key "operations key"
-        decimal quantity
-        decimal hours
     }
     plan_labor_lines {
         string name
@@ -327,9 +336,13 @@ All of an offering's revenue and costs go in the plan year it starts in, even if
 
 Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 
+Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, and its `rules`. Like the Program Plan's own `rules` and the Operations Plan's, a program's rules are the planner's words for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan copy, they're versioned, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
+
+A block, in `plan_activity_blocks`, is one or more activities on one date that share their staff and boats, such as Guppies and Minnows on the morning of July 13. Each activity is in at most one block, through `block_id`. A block's rows say what it's given: `plan_block_staff`, a number at a staff level or one salaried position, paid out of the salary or by the hour; `plan_block_resources`, RIBs and other equipment; and `plan_block_boats`, the organization's boats of a class and the ones sailors bring. The planner, or their AI, writes them. Nothing derives them, and nothing records which rule made them. Every foreign key restricts delete, so a block's rows, and its activities' `block_id`, go before the block does.
+
 A program area's plan holds only offerings of that area's programs, and the engine warns about any other.
 
-A budget line counts in its `fiscal_year`. Capital, a line on an asset account such as buying a coach boat, is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest. An offering's `coach_position_key` names a salaried position that coaches all its activities, paid out of the salary or, with `coach_position_pay` `hourly`, by the hour on top of it: at the position's own `hourly_coaching_rate_cents` if it has one, otherwise at the offering's coach level.
+A budget line counts in its `fiscal_year`. Capital, a line on an asset account such as buying a coach boat, is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest.
 
 `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
 
@@ -341,7 +354,6 @@ erDiagram
     plan_versions ||--o{ plan_staff_levels : contains
     plan_versions ||--o{ plan_salaried_positions : contains
     plan_versions ||--o{ plan_resources : contains
-    plan_versions ||--o{ plan_activity_block_rules : contains
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     plan_versions ||--o{ plan_closed_dates : contains
@@ -354,10 +366,8 @@ erDiagram
     plan_versions ||--o{ plan_revenue_charges : contains
     accounts ||--o{ plan_revenue_charges : "booked to"
     plan_salaried_positions }o--o| plan_pools : "rest of salary to"
-    plan_staff_levels |o--o{ plan_activity_block_rules : "hourly level"
     plan_bonus_owners ||--o{ plan_bonus_owner_products : owns
     products ||--o{ plan_bonus_owner_products : "owned by"
-    plan_activity_block_rules }o..o{ plan_offerings : "offering keys"
 
     plan_rates {
         decimal payroll_tax_rate "share of wages"
@@ -401,15 +411,7 @@ erDiagram
     plan_boat_rates {
         uuid boat_class_id FK
         int maintenance_per_boat_hour_cents
-    }
-    plan_activity_block_rules {
-        string name
-        json offering_keys
-        json weekdays
-        date starts_on
-        date ends_on
-        uuid coach_level_id FK
-        json salaried_positions
+        int quantity "boats the organization has"
     }
     plan_pools {
         string name
@@ -441,6 +443,8 @@ erDiagram
 
 `plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position, resource and boat rate also has one rate for the year, so each has a single row.
 
+The fleet is the `quantity` of each resource, such as RIBs, and of each boat class's `plan_boat_rates`. The engine warns when the blocks give out more at once than the organization has. Empty means it isn't checked; for a boat class the blocks use, the engine warns about that too.
+
 `plan_revenue_charges` lists the charges set as a share of revenue, such as scholarships, the program buffer, B&O tax, and card fees. Each applies to every offering of the product kinds it names, at its rate × the offering's revenue. A charge on a revenue account adds revenue, such as the card fees families pay; on an expense account, it adds a cost. `excluded_from_mtdc` leaves it out of MTDC, as for scholarships, which are participant support.
 
 The Operations Plan also holds the offerings of products in no area: merchandise, storage and charters.
@@ -466,6 +470,7 @@ erDiagram
     version_sets |o--o{ plan_result_warnings : warnings
     version_set_members |o--o{ plan_result_lines : "charged in"
     version_set_members |o--o{ plan_result_pnl : "charged in"
+    version_set_members |o--o{ plan_result_warnings : about
     accounts ||--o{ plan_result_lines : "booked to"
 
     plan_results {
@@ -526,9 +531,12 @@ erDiagram
     }
     plan_result_warnings {
         uuid version_set_id FK
+        uuid version_set_member_id FK "the plan it's about"
         string code
         text message
         string subject_key
+        date date "the date it's about"
+        string category "allocation|data"
     }
 ```
 
@@ -538,7 +546,7 @@ A draft's results are worked out again after each change to what they come from,
 
 Saving a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the save answers, with the engine whose version it records. Then they never change.
 
-`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, RIBs and share of the shared costs, is one filter. Positions and warnings are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
+`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, RIBs and share of the shared costs, is one filter. A warning names the member it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
 
 Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, and the Financial Plan has no results yet. They refuse to delete a draft's results without it too, apart from the delete of the draft, or a plan taken out of it, taking its results with it. No result row is ever changed, and a saved one's are never deleted. A Plan Reader or Plan Writer can see them, a draft's the same way as a saved one's. A draft with no `plan_results` row is still being worked out, or the engine failed on it.
 

@@ -5,7 +5,8 @@ import {
   A,
   activity,
   area,
-  blockRule,
+  block,
+  blocks,
   charge,
   budgetLine,
   emptyPlan,
@@ -15,6 +16,7 @@ import {
   pool,
   position,
   product,
+  program,
   rates,
   staffLevel,
   trip,
@@ -54,12 +56,6 @@ function realisticPlan(): PlanData {
     capacity: 24,
     fill_rate: 0.75,
     price_cents: 85_000,
-    sailors_per_coach: 6,
-    min_coaches: 2,
-    ribs_per_coach: 0.5,
-    byob_share: 0.25,
-    coach_level_key: instructor2.key,
-    required_qualification: "q-race",
   });
   const spring = offering(racing.id, {
     ...v("racing-spring"),
@@ -68,11 +64,6 @@ function realisticPlan(): PlanData {
     ends_on: "2027-05-30",
     target_enrollment: 16,
     price_cents: 85_000,
-    sailors_per_coach: 6,
-    min_coaches: 2,
-    ribs_per_coach: 0.5,
-    byob_share: 0.25,
-    coach_level_key: instructor2.key,
   });
   const development = offering(racing.id, {
     ...v("racing-dev"),
@@ -81,10 +72,6 @@ function realisticPlan(): PlanData {
     ends_on: "2027-05-30",
     target_enrollment: 5,
     price_cents: 60_000,
-    sailors_per_coach: 6,
-    min_coaches: 1,
-    ribs_per_coach: 0.5,
-    coach_level_key: instructor1.key,
   });
   const lts = offering(adult.id, {
     ...v("adult-lts-spring"),
@@ -93,9 +80,6 @@ function realisticPlan(): PlanData {
     ends_on: "2027-06-30",
     target_enrollment: 8,
     price_cents: 45_000,
-    sailors_per_coach: 4,
-    ribs_per_coach: 0.5,
-    coach_level_key: instructor1.key,
   });
   const campWeeks = ["2027-06-14", "2027-06-21"].map((monday, i) =>
     offering(camp.id, {
@@ -106,10 +90,6 @@ function realisticPlan(): PlanData {
       capacity: 30,
       fill_rate: 0.9,
       price_cents: 42_000,
-      sailors_per_coach: 8,
-      min_coaches: 2,
-      ribs_per_coach: 0.34,
-      coach_level_key: instructor1.key,
     }),
   );
   const charterYear = offering(charters.id, {
@@ -135,14 +115,6 @@ function realisticPlan(): PlanData {
     cogs_rate: 0.5,
   });
 
-  const boatClasses = (offeringId: string, shares: [string, number][]) =>
-    shares.map(([boat_class_id, share]) => ({
-      ...v(`${offeringId}-${boat_class_id}`),
-      offering_id: offeringId,
-      boat_class_id,
-      share,
-    }));
-
   // A scheduling tool would enter these; here, every listed weekday in the offering's dates.
   const practice = (
     o: { id: string; starts_on: string; ends_on: string },
@@ -167,6 +139,7 @@ function realisticPlan(): PlanData {
     annual_salary_cents: 7_000_000,
     paid_hours_per_year: 2080,
     ga_share: 0.2,
+    qualifications: ["q-race"],
   });
   const facilities = position({
     ...v("facilities"),
@@ -174,6 +147,85 @@ function realisticPlan(): PlanData {
     annual_salary_cents: 5_200_000,
     paid_hours_per_year: null,
   });
+
+  // What the planner, or their AI, gives each block: staff, RIBs and boats.
+  const staff = (level: string, count: number) => ({ staff_level_key: level, count });
+  const ribs = (quantity: number, resource_key = "rib-small-key") => ({ resource_key, quantity });
+  const boats = (boat_class_id: string, count: number, sailor_owned: number | null = null) => ({
+    boat_class_id,
+    count,
+    sailor_owned,
+  });
+  const fallGiven = {
+    staff: [staff(instructor2.key, 3)],
+    resources: [ribs(2)],
+    boats: [boats("opti", 7, 2), boats("420", 4, 1)],
+  };
+  const fallPractices = practice(fall, [2, 4], "16:00", "18:30", { on_water_minutes: 120 });
+  const regattas = ["2026-10-17", "2026-10-18"].map((date) =>
+    activity(fall.id, { date, start_time: "09:00", end_time: "16:00", on_water_minutes: 294, kind: "regatta" }),
+  );
+  const travelDays = ["2026-10-16", "2026-10-19"].map((date) =>
+    activity(fall.id, {
+      date,
+      start_time: "08:00",
+      end_time: "12:00",
+      setup_minutes: 60,
+      kind: "travel",
+      trip_id: "fall-trip",
+    }),
+  );
+  const springSkip = { on_water_minutes: 120, skip: ["2027-04-13", "2027-04-15"] };
+  const springPractices = practice(spring, [2, 4], "16:00", "18:30", springSkip);
+  const devPractices = practice(development, [2, 4], "16:00", "18:30", springSkip);
+  const ltsPractices = practice(lts, [6], "09:00", "13:00", {
+    on_water_minutes: 192,
+    setup_minutes: 15,
+    putaway_minutes: 15,
+  });
+  const campDays = campWeeks.flatMap((w) => practice(w, [1, 2, 3, 4, 5], "09:00", "15:00", { on_water_minutes: 216 }));
+  const activities = [
+    ...fallPractices,
+    ...regattas,
+    ...travelDays,
+    ...springPractices,
+    ...devPractices,
+    ...ltsPractices,
+    ...campDays,
+  ];
+  const allocations = blocks(
+    ...fallPractices.map((a) => block([a], fallGiven, { name: "Fall racing" })),
+    ...regattas.map((a) =>
+      block([a], { ...fallGiven, resources: [ribs(1, "rib-large-key"), ribs(1)] }, { name: "Regatta" }),
+    ),
+    ...travelDays.map((a) => block([a], { staff: [staff(instructor2.key, 3)] }, { name: "Travel" })),
+    // Spring racing and development share their coaches, with the director among them.
+    ...springPractices.map((a) =>
+      block(
+        [a, devPractices.find((d) => d.date === a.date)!],
+        {
+          staff: [{ position_key: director.key, count: 1 }, staff(instructor2.key, 3)],
+          resources: [ribs(2)],
+          boats: [boats("opti", 11, 2), boats("420", 3, 1)],
+        },
+        { name: "Spring youth" },
+      ),
+    ),
+    ...ltsPractices.map((a) =>
+      block(
+        [a],
+        { staff: [staff(instructor1.key, 2)], resources: [ribs(1)], boats: [boats("keelboat", 2)] },
+        { name: "Adult" },
+      ),
+    ),
+    ...campDays.map((a) =>
+      block(
+        [a],
+        { staff: [staff(instructor1.key, 4)], resources: [ribs(2)], boats: [boats("opti", 27)] },
+        { name: "Camp" },
+      ),
+    ),
+  );
 
   const ga = pool({ ...v("pool-ga"), name: "G&A" });
   const admin = pool({ ...v("pool-admin"), name: "Program admin" });
@@ -192,42 +244,13 @@ function realisticPlan(): PlanData {
     ],
     qualifications: [{ id: "q-race", name: "Race coach" }],
     plan_offerings: [fall, spring, development, lts, ...campWeeks, charterYear, storageYear, merchYear],
-    plan_offering_boat_classes: [
-      ...boatClasses(fall.id, [
-        ["opti", 0.5],
-        ["420", 0.5],
-      ]),
-      ...boatClasses(spring.id, [
-        ["opti", 0.5],
-        ["420", 0.5],
-      ]),
-      ...boatClasses(development.id, [["opti", 1]]),
-      ...boatClasses(lts.id, [["keelboat", 1]]),
-      ...campWeeks.flatMap((w) => boatClasses(w.id, [["opti", 1]])),
+    plan_programs: [
+      program(racing.id, { ...v("racing-settings"), staff_level_key: instructor2.key, sailors_per_coach: 6 }),
+      program(camp.id, { ...v("camp-settings"), staff_level_key: instructor1.key, sailors_per_coach: 8 }),
+      program(adult.id, { ...v("adult-settings"), staff_level_key: instructor1.key, sailors_per_coach: 4 }),
     ],
-    plan_activities: [
-      ...practice(fall, [2, 4], "16:00", "18:30", { on_water_minutes: 120 }),
-      ...["2026-10-17", "2026-10-18"].map((date) =>
-        activity(fall.id, { date, start_time: "09:00", end_time: "16:00", on_water_minutes: 294, kind: "regatta" }),
-      ),
-      ...["2026-10-16", "2026-10-19"].map((date) =>
-        activity(fall.id, {
-          date,
-          start_time: "08:00",
-          end_time: "12:00",
-          setup_minutes: 60,
-          kind: "travel",
-          trip_id: "fall-trip",
-        }),
-      ),
-      ...practice(spring, [2, 4], "16:00", "18:30", { on_water_minutes: 120, skip: ["2027-04-13", "2027-04-15"] }),
-      ...practice(development, [2, 4], "16:00", "18:30", {
-        on_water_minutes: 120,
-        skip: ["2027-04-13", "2027-04-15"],
-      }),
-      ...practice(lts, [6], "09:00", "13:00", { on_water_minutes: 192, setup_minutes: 15, putaway_minutes: 15 }),
-      ...campWeeks.flatMap((w) => practice(w, [1, 2, 3, 4, 5], "09:00", "15:00", { on_water_minutes: 216 })),
-    ],
+    plan_activities: activities,
+    ...allocations,
     plan_trips: [
       trip(fall.id, { ...v("fall-trip"), name: "Fall championship", nights: 2, miles: 300, airfare_cents: 0 }),
     ],
@@ -284,17 +307,9 @@ function realisticPlan(): PlanData {
       },
     ],
     plan_boat_rates: [
-      { ...v("rate-opti"), boat_class_id: "opti", maintenance_per_boat_hour_cents: 35 },
-      { ...v("rate-420"), boat_class_id: "420", maintenance_per_boat_hour_cents: 60 },
-      { ...v("rate-keelboat"), boat_class_id: "keelboat", maintenance_per_boat_hour_cents: 250 },
-    ],
-    plan_activity_block_rules: [
-      blockRule([spring.key, development.key], {
-        ...v("spring-block"),
-        name: "Spring youth",
-        weekdays: [2, 4],
-        salaried_positions: [director.key],
-      }),
+      { ...v("rate-opti"), boat_class_id: "opti", maintenance_per_boat_hour_cents: 35, quantity: 30 },
+      { ...v("rate-420"), boat_class_id: "420", maintenance_per_boat_hour_cents: 60, quantity: 10 },
+      { ...v("rate-keelboat"), boat_class_id: "keelboat", maintenance_per_boat_hour_cents: 250, quantity: 3 },
     ],
     plan_labor_lines: [
       laborLine(instructor2.key, {
@@ -425,7 +440,7 @@ describe("a realistic plan, end to end", () => {
 
   it("pays the director's coaching in the shared block", () => {
     expect(sum(lines, (l) => l.line_key === "salary:director-key:coaching")).toBeGreaterThan(0);
-    expect(out.activities.filter((a) => a.block_rule_id !== null).length).toBeGreaterThan(0);
+    expect(out.activities.every((a) => a.block_id !== null)).toBe(true);
   });
 
   it("earns the bonus on the owned product's net after every pool", () => {
@@ -487,18 +502,18 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 1044939,
-          "net": -684939,
+          "expenses": 1044832,
+          "net": -684832,
           "revenue": 360000,
         },
         "Charters": {
-          "expenses": 85697,
-          "net": 514303,
+          "expenses": 84338,
+          "net": 515662,
           "revenue": 600000,
         },
         "Merchandise": {
-          "expenses": 1261674,
-          "net": -761674,
+          "expenses": 1241655,
+          "net": -741655,
           "revenue": 500000,
         },
         "Organization": {
@@ -507,18 +522,18 @@ describe("a realistic plan, end to end", () => {
           "revenue": 0,
         },
         "Storage": {
-          "expenses": 342796,
-          "net": 2057204,
+          "expenses": 337356,
+          "net": 2062644,
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 6170167,
-          "net": -3902167,
+          "expenses": 6119397,
+          "net": -3851397,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 13128141,
-          "net": -9938141,
+          "expenses": 13196755,
+          "net": -10006755,
           "revenue": 3190000,
         },
       }
