@@ -16,7 +16,6 @@ const member = `serviceAccount:${email("deploy-website")}`;
 const poolName = "projects/123/locations/global/workloadIdentityPools/github";
 const providerName = `${poolName}/providers/github`;
 const orgId = "4242";
-const repoId = 1717;
 
 beforeAll(async () => {
   await pulumi.runtime.setMocks(
@@ -40,7 +39,7 @@ beforeAll(async () => {
             state = { ...args.inputs, name: providerName };
             break;
           case "github:index/repository:Repository":
-            state = { ...args.inputs, repoId };
+            state = { ...args.inputs, repoId: 1717 };
             break;
           case "github:index/team:Team":
             return { id: "77", state: args.inputs };
@@ -102,7 +101,7 @@ describe("deploy-website", () => {
       .map((r) => r.inputs.member)
       .sort();
     const subject = (env: string) =>
-      `principal://iam.googleapis.com/${poolName}/subject/repo:cyc-seattle@${orgId}/csc-website@${repoId}:environment:${env}`;
+      `principal://iam.googleapis.com/${poolName}/subject/repo:cyc-seattle/csc-website:environment:${env}`;
     expect(bindings).toEqual(["dev", "prod", "publish"].map(subject).sort());
   });
 });

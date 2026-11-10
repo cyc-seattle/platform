@@ -105,7 +105,8 @@ new github.TeamRepository("csc-website-maintainers", {
   permission: "pull",
 });
 
-const prefix = subjectPrefix("csc-website", cscWebsite.repoId);
+// The repo predates immutable OIDC subjects, so its tokens name it, like isthmia's.
+const prefix = subjectPrefix("csc-website");
 
 for (const env of environments) {
   const environment = new github.RepositoryEnvironment(`csc-website-${env.name}`, {
