@@ -286,6 +286,16 @@ export const defaultViews: DefaultView[] = [
     fields: ["version_set_id", "plan_id", "version_id"],
   },
 
+  // Website
+  { collection: "website_pages", sort: ["slug"], fields: ["title", "slug", "description"] },
+  { collection: "website_categories", sort: ["sort", "title"], fields: ["title", "status", "slug", "programs"] },
+  { collection: "website_programs", sort: ["sort", "title"], fields: ["title", "status", "subtitle", "slug"] },
+  { collection: "website_faq_topics", sort: ["title"], fields: ["title", "heading", "questions"] },
+  { collection: "website_profiles", sort: ["sort", "name"], fields: ["name", "title", "groups"] },
+  { collection: "website_policies", sort: ["sort", "title"], fields: ["title", "in_footer", "versions"] },
+  { collection: "website_sponsor_levels", sort: ["-amount_cents"], fields: ["name", "amount_cents", "sponsors"] },
+  { collection: "website_sponsors", sort: ["sort", "name"], fields: ["name", "level_id", "url"] },
+
   // Sync
   { collection: "sync_runs", sort: ["-started_at"], fields: ["started_at", "source", "status", "finished_at"] },
   {

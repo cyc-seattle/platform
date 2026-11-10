@@ -99,6 +99,19 @@ To add a policy, add a `PolicyData` to `groupPolicies`, or to the list a role ge
 `stacks/backend/index.ts` declares it once, with its rules, and attaches it to each role it's given
 to. A role that shares another role's policy gets a `DirectusAccess` link, not a copy.
 
+## The website build
+
+cyc-seattle/csc-website builds the public website from Directus ([website.md](website.md)). Its build
+signs in as the Website Build machine user, with a static token `backend` generates. Its policy reads
+every `website_*` collection whole, and the files in the Website folder, and nothing else: anything it
+can read could end up on the public site. `features/website.feature` gives the rule.
+
+Anything in the Website folder is public: never put a file there that the public website shouldn't show.
+
+The token is in Secret Manager for the build to read: `csc-website-directus-token` in prod, and
+`dev-csc-website-directus-token` in dev, which `infra` generates, since `deploy-dev` can't write a
+secret.
+
 ## Groups
 
 `schemas/access.yaml` holds the groups:

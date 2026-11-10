@@ -74,6 +74,25 @@ export interface Schema {
   sync_tasks: SyncTasks[];
   version_set_members: VersionSetMembers[];
   version_sets: VersionSets[];
+  website_categories: WebsiteCategories[];
+  website_categories_faq_topics: WebsiteCategoriesFaqTopics[];
+  website_categories_files: WebsiteCategoriesFiles[];
+  website_categories_profiles: WebsiteCategoriesProfiles[];
+  website_categories_programs: WebsiteCategoriesPrograms[];
+  website_faq_topics: WebsiteFaqTopics[];
+  website_faqs: WebsiteFaqs[];
+  website_page_sections: WebsitePageSections[];
+  website_pages: WebsitePages[];
+  website_pages_faq_topics: WebsitePagesFaqTopics[];
+  website_policies: WebsitePolicies[];
+  website_policy_versions: WebsitePolicyVersions[];
+  website_profiles: WebsiteProfiles[];
+  website_programs: WebsitePrograms[];
+  website_programs_catalog_programs: WebsiteProgramsCatalogPrograms[];
+  website_programs_files: WebsiteProgramsFiles[];
+  website_settings: WebsiteSettings;
+  website_sponsor_levels: WebsiteSponsorLevels[];
+  website_sponsors: WebsiteSponsors[];
 }
 
 /** The chart of accounts that plans, results, and actuals book to. */
@@ -1189,4 +1208,244 @@ export interface VersionSets {
   members: (string | VersionSetMembers)[];
   /** The organization's P&L. A draft's is worked out again a moment after each change to it. A saved one's is what it showed when it was saved, worked out a moment after. One with none means working it out failed, and the logs say why. An admin can fill in a saved one's. */
   results: (string | PlanResults)[];
+}
+
+/** Program categories, such as Summer Sailing Camps, each with a page at /program-category/ and its slug. */
+export interface WebsiteCategories {
+  id: string;
+  /** The category's address: /program-category/clinics for clinics. */
+  slug: string;
+  title: string;
+  summary: string | null;
+  /** Open sends a program's button to Clubspot. Coming soon sends it to the newsletter. */
+  status: "open" | "closed" | "coming_soon";
+  sort: number | null;
+  image: string | null;
+  banner: string | null;
+  /** Markdown. */
+  top: string | null;
+  /** Markdown. */
+  bottom: string | null;
+  /** A quote from a family. Leave it empty for none. */
+  testimonial: string | null;
+  /** In the order the page shows them. */
+  programs: (string | WebsiteCategoriesPrograms)[];
+  faq_topics: (string | WebsiteCategoriesFaqTopics)[];
+  profiles: (string | WebsiteCategoriesProfiles)[];
+  /** Photos shown on the category's page, in order. */
+  gallery: (string | WebsiteCategoriesFiles)[];
+}
+
+export interface WebsiteCategoriesFaqTopics {
+  id: string;
+  category_id: string | WebsiteCategories | null;
+  topic_id: string | WebsiteFaqTopics | null;
+  sort: number | null;
+}
+
+export interface WebsiteCategoriesFiles {
+  id: string;
+  category_id: string | WebsiteCategories | null;
+  file_id: string | null;
+  sort: number | null;
+}
+
+export interface WebsiteCategoriesProfiles {
+  id: string;
+  category_id: string | WebsiteCategories | null;
+  profile_id: string | WebsiteProfiles | null;
+  sort: number | null;
+}
+
+export interface WebsiteCategoriesPrograms {
+  id: string;
+  category_id: string | WebsiteCategories | null;
+  program_id: string | WebsitePrograms | null;
+  sort: number | null;
+}
+
+/** Sets of questions and answers, which pages and program categories show. */
+export interface WebsiteFaqTopics {
+  id: string;
+  /** Such as Summer Camp Other Questions. */
+  title: string;
+  /** The heading a page shows above it, such as Registration Questions. */
+  heading: string | null;
+  /** In the order the site shows them. */
+  questions: (string | WebsiteFaqs)[];
+}
+
+/** One question and its answer. */
+export interface WebsiteFaqs {
+  id: string;
+  topic_id: string | WebsiteFaqTopics;
+  sort: number | null;
+  question: string;
+  /** Markdown. */
+  answer: string | null;
+}
+
+export interface WebsitePageSections {
+  id: string;
+  page_id: string | WebsitePages;
+  sort: number | null;
+  title: string;
+  image: string | null;
+  /** Markdown. */
+  body: string | null;
+  action_label: string | null;
+  /** A path on the site, such as /donate, or a full web address. */
+  action_url: string | null;
+}
+
+/** The site's fixed pages, such as Donate and Contact Us. A page's slug is its address. */
+export interface WebsitePages {
+  id: string;
+  /** The page's address: /donate for donate. The home page is home. */
+  slug: string;
+  title: string;
+  /** One or two sentences, for search engines and link previews. */
+  description: string | null;
+  banner: string | null;
+  image: string | null;
+  /** Markdown. */
+  body: string | null;
+  action_label: string | null;
+  /** A path on the site, such as /donate, or a full web address. */
+  action_url: string | null;
+  /** Blocks of text below the body, each with its own picture and button. */
+  sections: (string | WebsitePageSections)[];
+  faq_topics: (string | WebsitePagesFaqTopics)[];
+}
+
+export interface WebsitePagesFaqTopics {
+  id: string;
+  page_id: string | WebsitePages | null;
+  topic_id: string | WebsiteFaqTopics | null;
+  sort: number | null;
+}
+
+/** Policies, each at /policy/ and its slug. The site shows the latest version that has taken effect. */
+export interface WebsitePolicies {
+  id: string;
+  /** The policy's address: /policy/sick-policy for sick-policy. */
+  slug: string;
+  title: string;
+  sort: number | null;
+  in_footer: boolean;
+  versions: (string | WebsitePolicyVersions)[];
+}
+
+export interface WebsitePolicyVersions {
+  id: string;
+  policy_id: string | WebsitePolicies;
+  title: string;
+  effective: string;
+  /** Markdown. */
+  body: string | null;
+}
+
+/** The crew the site shows. Not linked to People, so a public bio can never show private details. */
+export interface WebsiteProfiles {
+  id: string;
+  name: string;
+  /** Such as Sailing Director. */
+  title: string | null;
+  sort: number | null;
+  /** Markdown. */
+  bio: string | null;
+  photo: string | null;
+  /** The lists on Our Crew this person is in. */
+  groups: ("staff" | "officers" | "coach" | "instructor")[] | null;
+}
+
+/** A program's page, at /program/ and its slug, and its card on each category's page. */
+export interface WebsitePrograms {
+  id: string;
+  /** The program's address: /program/opti-race-team for opti-race-team. */
+  slug: string;
+  title: string;
+  /** A hidden program has no page and no card. */
+  status: "published" | "hidden";
+  sort: number | null;
+  /** Such as the ages, under the title. */
+  subtitle: string | null;
+  /** The text on the program's card. */
+  summary: string | null;
+  card_image: string | null;
+  card_button_label: string | null;
+  /** Where the card's button goes: the program's page, or Clubspot. */
+  card_link: string | null;
+  banner: string | null;
+  /** Markdown. */
+  body: string | null;
+  registration_label: string | null;
+  /** The program's Clubspot sign-up page. */
+  registration_url: string | null;
+  /** Photos shown on the program's page, in order. */
+  gallery: (string | WebsiteProgramsFiles)[];
+  /** The programs in the catalog this page is about, for their dates and prices later. Optional. */
+  catalog_programs: (string | WebsiteProgramsCatalogPrograms)[];
+}
+
+export interface WebsiteProgramsCatalogPrograms {
+  id: string;
+  website_program_id: string | WebsitePrograms | null;
+  catalog_program_id: string | Programs | null;
+  sort: number | null;
+}
+
+export interface WebsiteProgramsFiles {
+  id: string;
+  program_id: string | WebsitePrograms | null;
+  file_id: string | null;
+  sort: number | null;
+}
+
+/** What every page of the website shows: the menu, the footer, and the contact details. */
+export interface WebsiteSettings {
+  id: string;
+  /** The center's name, as the site shows it. */
+  name: string;
+  /** One or two sentences about the center, for search engines and link previews. */
+  description: string | null;
+  email: string | null;
+  phone: string | null;
+  /** One line per line of the address. */
+  address: string | null;
+  /** A Google Maps link to the center. */
+  map_url: string | null;
+  /** The center's federal tax ID, which donors need. */
+  ein: string | null;
+  /** Shown in the footer, in this order. */
+  social: unknown;
+  /** Markdown. A banner across the top of every page. Leave it empty for none. */
+  announcement: string | null;
+  logo: string | null;
+  /** The round logo. */
+  badge: string | null;
+  /** The top menu: each heading and the links under it, in order. */
+  menu: unknown;
+}
+
+/** Sponsorship levels, on the Sponsorships page. */
+export interface WebsiteSponsorLevels {
+  id: string;
+  name: string;
+  /** In cents: 12500 is $125.00. */
+  amount_cents: number;
+  sort: number | null;
+  /** Markdown. */
+  benefits: string | null;
+  sponsors: (string | WebsiteSponsors)[];
+}
+
+/** Sponsors, whose logos the Sponsorships page shows. */
+export interface WebsiteSponsors {
+  id: string;
+  name: string;
+  url: string | null;
+  logo: string | null;
+  level_id: string | WebsiteSponsorLevels | null;
+  sort: number | null;
 }

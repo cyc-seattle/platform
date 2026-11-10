@@ -1,0 +1,6472 @@
+# The public website's content (cyc-seattle/platform#150). Admins and coding agents edit it through the API
+# and MCP. The csc-website build reads it with its own token. Text fields are Markdown.
+version: 1
+directus: 12.3.1
+vendor: postgres
+collections:
+  - collection: Website
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: Website
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: public
+      item_duplication_fields: null
+      note: The public website, cyccommunitysailing.org. Each change publishes the site.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+  - collection: website_settings
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_settings
+      color: null
+      display_template: "{{name}}"
+      group: Website
+      hidden: false
+      icon: settings
+      item_duplication_fields: null
+      note: "What every page of the website shows: the menu, the footer, and the contact details."
+      preview_url: null
+      singleton: true
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_settings
+  - collection: website_pages
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_pages
+      color: null
+      display_template: "{{title}}"
+      group: Website
+      hidden: false
+      icon: article
+      item_duplication_fields: null
+      note: The site's fixed pages, such as Donate and Contact Us. A page's slug is its address.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_pages
+  - collection: website_pages_faq_topics
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_pages_faq_topics
+      color: null
+      display_template: "{{topic_id.title}} on {{page_id.title}}"
+      group: Website
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_pages_faq_topics
+  - collection: website_page_sections
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_page_sections
+      color: null
+      display_template: "{{title}} on {{page_id.title}}"
+      group: Website
+      hidden: true
+      icon: view_agenda
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_page_sections
+  - collection: website_programs
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_programs
+      color: null
+      display_template: "{{title}}"
+      group: Website
+      hidden: false
+      icon: sailing
+      item_duplication_fields: null
+      note: A program's page, at /program/ and its slug, and its card on each category's page.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_programs
+  - collection: website_programs_files
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_programs_files
+      color: null
+      display_template: "{{file_id.title}} on {{program_id.title}}"
+      group: Website
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_programs_files
+  - collection: website_programs_catalog_programs
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_programs_catalog_programs
+      color: null
+      display_template: "{{catalog_program_id.name}} for {{website_program_id.title}}"
+      group: Website
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_programs_catalog_programs
+  - collection: website_faq_topics
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_faq_topics
+      color: null
+      display_template: "{{title}}"
+      group: Website
+      hidden: false
+      icon: quiz
+      item_duplication_fields: null
+      note: Sets of questions and answers, which pages and program categories show.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_faq_topics
+  - collection: website_faqs
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_faqs
+      color: null
+      display_template: "{{question}}"
+      group: Website
+      hidden: true
+      icon: help
+      item_duplication_fields: null
+      note: One question and its answer.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_faqs
+  - collection: website_profiles
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_profiles
+      color: null
+      display_template: "{{name}}, {{title}}"
+      group: Website
+      hidden: false
+      icon: badge
+      item_duplication_fields: null
+      note: The crew the site shows. Not linked to People, so a public bio can never show private details.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_profiles
+  - collection: website_categories
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_categories
+      color: null
+      display_template: "{{title}}"
+      group: Website
+      hidden: false
+      icon: category
+      item_duplication_fields: null
+      note: Program categories, such as Summer Sailing Camps, each with a page at /program-category/ and its slug.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_categories
+  - collection: website_categories_programs
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_categories_programs
+      color: null
+      display_template: "{{program_id.title}} in {{category_id.title}}"
+      group: Website
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_categories_programs
+  - collection: website_categories_faq_topics
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_categories_faq_topics
+      color: null
+      display_template: "{{topic_id.title}} on {{category_id.title}}"
+      group: Website
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_categories_faq_topics
+  - collection: website_categories_profiles
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_categories_profiles
+      color: null
+      display_template: "{{profile_id.name}} on {{category_id.title}}"
+      group: Website
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_categories_profiles
+  - collection: website_categories_files
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_categories_files
+      color: null
+      display_template: "{{file_id.title}} on {{category_id.title}}"
+      group: Website
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_categories_files
+  - collection: website_policies
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_policies
+      color: null
+      display_template: "{{title}}"
+      group: Website
+      hidden: false
+      icon: gavel
+      item_duplication_fields: null
+      note: Policies, each at /policy/ and its slug. The site shows the latest version that has taken effect.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_policies
+  - collection: website_policy_versions
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_policy_versions
+      color: null
+      display_template: "{{title}}, from {{effective}}"
+      group: Website
+      hidden: true
+      icon: history_edu
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_policy_versions
+  - collection: website_sponsor_levels
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_sponsor_levels
+      color: null
+      display_template: "{{name}}"
+      group: Website
+      hidden: false
+      icon: workspace_premium
+      item_duplication_fields: null
+      note: Sponsorship levels, on the Sponsorships page.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_sponsor_levels
+  - collection: website_sponsors
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_sponsors
+      color: null
+      display_template: "{{name}}"
+      group: Website
+      hidden: false
+      icon: handshake
+      item_duplication_fields: null
+      note: Sponsors, whose logos the Sponsorships page shows.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_sponsors
+fields:
+  - collection: website_settings
+    field: id
+    type: uuid
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_settings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: name
+    type: string
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: The center's name, as the site shows it.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: website_settings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: description
+    type: text
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: description
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: One or two sentences about the center, for search engines and link previews.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: description
+      table: website_settings
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: email
+    type: string
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: email
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: email
+      table: website_settings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: phone
+    type: string
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: phone
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: phone
+      table: website_settings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: address
+    type: text
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: address
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: One line per line of the address.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: address
+      table: website_settings
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: map_url
+    type: string
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: map_url
+      group: null
+      hidden: false
+      interface: input
+      note: A Google Maps link to the center.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Map link
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: map_url
+      table: website_settings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: ein
+    type: string
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: ein
+      group: null
+      hidden: false
+      interface: input
+      note: The center's federal tax ID, which donors need.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Tax ID (EIN)
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ein
+      table: website_settings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: social
+    type: json
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: social
+      group: null
+      hidden: false
+      interface: list
+      note: Shown in the footer, in this order.
+      options:
+        template: "{{label}}"
+        fields:
+          - field: label
+            name: Name
+            type: string
+            meta:
+              field: label
+              type: string
+              interface: input
+              width: half
+              required: true
+          - field: url
+            name: Link
+            type: string
+            meta:
+              field: url
+              type: string
+              interface: input
+              width: half
+              required: true
+      readonly: false
+      required: false
+      searchable: false
+      sort: 9
+      special:
+        - cast-json
+      translations:
+        - language: en-US
+          translation: Social links
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: social
+      table: website_settings
+      data_type: json
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: announcement
+    type: text
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: announcement
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown. A banner across the top of every page. Leave it empty for none.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: announcement
+      table: website_settings
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_settings
+    field: logo
+    type: uuid
+    meta:
+      collection: website_settings
+      conditions: null
+      display: image
+      display_options: null
+      field: logo
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: logo
+      table: website_settings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_settings
+    field: badge
+    type: uuid
+    meta:
+      collection: website_settings
+      conditions: null
+      display: image
+      display_options: null
+      field: badge
+      group: null
+      hidden: false
+      interface: file-image
+      note: The round logo.
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: badge
+      table: website_settings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_settings
+    field: menu
+    type: json
+    meta:
+      collection: website_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: menu
+      group: null
+      hidden: false
+      interface: list
+      note: "The top menu: each heading and the links under it, in order."
+      options:
+        template: "{{label}}"
+        fields:
+          - field: label
+            name: Name
+            type: string
+            meta:
+              field: label
+              type: string
+              interface: input
+              width: full
+              required: true
+          - field: items
+            name: Links
+            type: json
+            meta:
+              field: items
+              type: json
+              interface: list
+              width: full
+              options:
+                template: "{{label}}"
+                fields:
+                  - field: label
+                    name: Name
+                    type: string
+                    meta:
+                      field: label
+                      type: string
+                      interface: input
+                      width: half
+                      required: true
+                  - field: href
+                    name: Link
+                    type: string
+                    meta:
+                      field: href
+                      type: string
+                      interface: input
+                      width: half
+                      required: true
+      readonly: false
+      required: false
+      searchable: false
+      sort: 13
+      special:
+        - cast-json
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: menu
+      table: website_settings
+      data_type: json
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: id
+    type: uuid
+    meta:
+      collection: website_pages
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_pages
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: slug
+    type: string
+    meta:
+      collection: website_pages
+      conditions: null
+      display: null
+      display_options: null
+      field: slug
+      group: null
+      hidden: false
+      interface: input
+      note: "The page's address: /donate for donate. The home page is home."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: slug
+      table: website_pages
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: title
+    type: string
+    meta:
+      collection: website_pages
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_pages
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: description
+    type: text
+    meta:
+      collection: website_pages
+      conditions: null
+      display: null
+      display_options: null
+      field: description
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: One or two sentences, for search engines and link previews.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: description
+      table: website_pages
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: banner
+    type: uuid
+    meta:
+      collection: website_pages
+      conditions: null
+      display: image
+      display_options: null
+      field: banner
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: banner
+      table: website_pages
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_pages
+    field: image
+    type: uuid
+    meta:
+      collection: website_pages
+      conditions: null
+      display: image
+      display_options: null
+      field: image
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - file
+      translations:
+        - language: en-US
+          translation: Picture
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: image
+      table: website_pages
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_pages
+    field: body
+    type: text
+    meta:
+      collection: website_pages
+      conditions: null
+      display: null
+      display_options: null
+      field: body
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: body
+      table: website_pages
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: action_label
+    type: string
+    meta:
+      collection: website_pages
+      conditions: null
+      display: null
+      display_options: null
+      field: action_label
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Button label
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: action_label
+      table: website_pages
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: action_url
+    type: string
+    meta:
+      collection: website_pages
+      conditions: null
+      display: null
+      display_options: null
+      field: action_url
+      group: null
+      hidden: false
+      interface: input
+      note: A path on the site, such as /donate, or a full web address.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Button link
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: action_url
+      table: website_pages
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: sections
+    type: alias
+    meta:
+      collection: website_pages
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: sections
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: Blocks of text below the body, each with its own picture and button.
+      options:
+        template: "{{title}}"
+        enableSelect: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_pages_faq_topics
+    field: id
+    type: uuid
+    meta:
+      collection: website_pages_faq_topics
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_pages_faq_topics
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages_faq_topics
+    field: page_id
+    type: uuid
+    meta:
+      collection: website_pages_faq_topics
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: page_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: page_id
+      table: website_pages_faq_topics
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_pages
+      foreign_key_column: id
+  - collection: website_pages_faq_topics
+    field: topic_id
+    type: uuid
+    meta:
+      collection: website_pages_faq_topics
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: topic_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: To
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: topic_id
+      table: website_pages_faq_topics
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_faq_topics
+      foreign_key_column: id
+  - collection: website_pages_faq_topics
+    field: sort
+    type: integer
+    meta:
+      collection: website_pages_faq_topics
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_pages_faq_topics
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_pages
+    field: faq_topics
+    type: alias
+    meta:
+      collection: website_pages
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{topic_id.title}}"
+      field: faq_topics
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: null
+      options:
+        template: "{{topic_id.title}}"
+        enableCreate: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special:
+        - m2m
+      translations:
+        - language: en-US
+          translation: FAQs
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_page_sections
+    field: id
+    type: uuid
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_page_sections
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_page_sections
+    field: page_id
+    type: uuid
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: page_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Page
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: page_id
+      table: website_page_sections
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_pages
+      foreign_key_column: id
+  - collection: website_page_sections
+    field: sort
+    type: integer
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_page_sections
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_page_sections
+    field: title
+    type: string
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_page_sections
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_page_sections
+    field: image
+    type: uuid
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: image
+      display_options: null
+      field: image
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - file
+      translations:
+        - language: en-US
+          translation: Picture
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: image
+      table: website_page_sections
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_page_sections
+    field: body
+    type: text
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: body
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: body
+      table: website_page_sections
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_page_sections
+    field: action_label
+    type: string
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: action_label
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Button label
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: action_label
+      table: website_page_sections
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_page_sections
+    field: action_url
+    type: string
+    meta:
+      collection: website_page_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: action_url
+      group: null
+      hidden: false
+      interface: input
+      note: A path on the site, such as /donate, or a full web address.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Button link
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: action_url
+      table: website_page_sections
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: id
+    type: uuid
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: slug
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: slug
+      group: null
+      hidden: false
+      interface: input
+      note: "The program's address: /program/opti-race-team for opti-race-team."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: slug
+      table: website_programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: title
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: status
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Published
+            value: published
+          - text: Hidden
+            value: hidden
+      field: status
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: A hidden program has no page and no card.
+      options:
+        choices:
+          - text: Published
+            value: published
+          - text: Hidden
+            value: hidden
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation:
+        status:
+          _in:
+            - published
+            - hidden
+      validation_message: "Must be one of: published, hidden."
+      width: half
+    schema:
+      name: status
+      table: website_programs
+      data_type: character varying
+      default_value: published
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: sort
+    type: integer
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_programs
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: subtitle
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: subtitle
+      group: null
+      hidden: false
+      interface: input
+      note: Such as the ages, under the title.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: subtitle
+      table: website_programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: summary
+    type: text
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: summary
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: The text on the program's card.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: summary
+      table: website_programs
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: card_image
+    type: uuid
+    meta:
+      collection: website_programs
+      conditions: null
+      display: image
+      display_options: null
+      field: card_image
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special:
+        - file
+      translations:
+        - language: en-US
+          translation: Card picture
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: card_image
+      table: website_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_programs
+    field: card_button_label
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: card_button_label
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Card button label
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: card_button_label
+      table: website_programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: card_link
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: card_link
+      group: null
+      hidden: false
+      interface: input
+      note: "Where the card's button goes: the program's page, or Clubspot."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations:
+        - language: en-US
+          translation: Card button link
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: card_link
+      table: website_programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: banner
+    type: uuid
+    meta:
+      collection: website_programs
+      conditions: null
+      display: image
+      display_options: null
+      field: banner
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: banner
+      table: website_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_programs
+    field: body
+    type: text
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: body
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: body
+      table: website_programs
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: registration_label
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: registration_label
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 13
+      special: null
+      translations:
+        - language: en-US
+          translation: Register button label
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: registration_label
+      table: website_programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: registration_url
+    type: string
+    meta:
+      collection: website_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: registration_url
+      group: null
+      hidden: false
+      interface: input
+      note: The program's Clubspot sign-up page.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 14
+      special: null
+      translations:
+        - language: en-US
+          translation: Register button link
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: registration_url
+      table: website_programs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs_files
+    field: id
+    type: uuid
+    meta:
+      collection: website_programs_files
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_programs_files
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs_files
+    field: program_id
+    type: uuid
+    meta:
+      collection: website_programs_files
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: program_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_id
+      table: website_programs_files
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_programs
+      foreign_key_column: id
+  - collection: website_programs_files
+    field: file_id
+    type: uuid
+    meta:
+      collection: website_programs_files
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: file_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: To
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: file_id
+      table: website_programs_files
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_programs_files
+    field: sort
+    type: integer
+    meta:
+      collection: website_programs_files
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_programs_files
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: gallery
+    type: alias
+    meta:
+      collection: website_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{file_id.title}}"
+      field: gallery
+      group: null
+      hidden: false
+      interface: files
+      note: Photos shown on the program's page, in order.
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 15
+      special:
+        - files
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_programs_catalog_programs
+    field: id
+    type: uuid
+    meta:
+      collection: website_programs_catalog_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_programs_catalog_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs_catalog_programs
+    field: website_program_id
+    type: uuid
+    meta:
+      collection: website_programs_catalog_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: website_program_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: website_program_id
+      table: website_programs_catalog_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_programs
+      foreign_key_column: id
+  - collection: website_programs_catalog_programs
+    field: catalog_program_id
+    type: uuid
+    meta:
+      collection: website_programs_catalog_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: catalog_program_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: To
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: catalog_program_id
+      table: website_programs_catalog_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: programs
+      foreign_key_column: id
+  - collection: website_programs_catalog_programs
+    field: sort
+    type: integer
+    meta:
+      collection: website_programs_catalog_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_programs_catalog_programs
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_programs
+    field: catalog_programs
+    type: alias
+    meta:
+      collection: website_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{catalog_program_id.name}}"
+      field: catalog_programs
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: The programs in the catalog this page is about, for their dates and prices later. Optional.
+      options:
+        template: "{{catalog_program_id.name}}"
+        enableCreate: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 16
+      special:
+        - m2m
+      translations:
+        - language: en-US
+          translation: Catalog programs
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_faq_topics
+    field: id
+    type: uuid
+    meta:
+      collection: website_faq_topics
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_faq_topics
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_faq_topics
+    field: title
+    type: string
+    meta:
+      collection: website_faq_topics
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: Such as Summer Camp Other Questions.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_faq_topics
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_faq_topics
+    field: heading
+    type: string
+    meta:
+      collection: website_faq_topics
+      conditions: null
+      display: null
+      display_options: null
+      field: heading
+      group: null
+      hidden: false
+      interface: input
+      note: The heading a page shows above it, such as Registration Questions.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: heading
+      table: website_faq_topics
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_faq_topics
+    field: questions
+    type: alias
+    meta:
+      collection: website_faq_topics
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{question}}"
+      field: questions
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: In the order the site shows them.
+      options:
+        template: "{{question}}"
+        enableSelect: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_faqs
+    field: id
+    type: uuid
+    meta:
+      collection: website_faqs
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_faqs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_faqs
+    field: topic_id
+    type: uuid
+    meta:
+      collection: website_faqs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: topic_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Topic
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: topic_id
+      table: website_faqs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_faq_topics
+      foreign_key_column: id
+  - collection: website_faqs
+    field: sort
+    type: integer
+    meta:
+      collection: website_faqs
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_faqs
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_faqs
+    field: question
+    type: string
+    meta:
+      collection: website_faqs
+      conditions: null
+      display: null
+      display_options: null
+      field: question
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: question
+      table: website_faqs
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_faqs
+    field: answer
+    type: text
+    meta:
+      collection: website_faqs
+      conditions: null
+      display: null
+      display_options: null
+      field: answer
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: answer
+      table: website_faqs
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_profiles
+    field: id
+    type: uuid
+    meta:
+      collection: website_profiles
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_profiles
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_profiles
+    field: name
+    type: string
+    meta:
+      collection: website_profiles
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: website_profiles
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_profiles
+    field: title
+    type: string
+    meta:
+      collection: website_profiles
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: Such as Sailing Director.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_profiles
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_profiles
+    field: sort
+    type: integer
+    meta:
+      collection: website_profiles
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_profiles
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_profiles
+    field: bio
+    type: text
+    meta:
+      collection: website_profiles
+      conditions: null
+      display: null
+      display_options: null
+      field: bio
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: bio
+      table: website_profiles
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_profiles
+    field: photo
+    type: uuid
+    meta:
+      collection: website_profiles
+      conditions: null
+      display: image
+      display_options: null
+      field: photo
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: photo
+      table: website_profiles
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_profiles
+    field: groups
+    type: json
+    meta:
+      collection: website_profiles
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Staff
+            value: staff
+          - text: Officers
+            value: officers
+          - text: Coaches
+            value: coach
+          - text: Instructors
+            value: instructor
+      field: groups
+      group: null
+      hidden: false
+      interface: select-multiple-checkbox
+      note: The lists on Our Crew this person is in.
+      options:
+        choices:
+          - text: Staff
+            value: staff
+          - text: Officers
+            value: officers
+          - text: Coaches
+            value: coach
+          - text: Instructors
+            value: instructor
+      readonly: false
+      required: false
+      searchable: false
+      sort: 7
+      special:
+        - cast-json
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: groups
+      table: website_profiles
+      data_type: json
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: id
+    type: uuid
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_categories
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: slug
+    type: string
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: slug
+      group: null
+      hidden: false
+      interface: input
+      note: "The category's address: /program-category/clinics for clinics."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: slug
+      table: website_categories
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: title
+    type: string
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_categories
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: summary
+    type: text
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: summary
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: summary
+      table: website_categories
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: status
+    type: string
+    meta:
+      collection: website_categories
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Open
+            value: open
+          - text: Closed
+            value: closed
+          - text: Coming soon
+            value: coming_soon
+      field: status
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: Open sends a program's button to Clubspot. Coming soon sends it to the newsletter.
+      options:
+        choices:
+          - text: Open
+            value: open
+          - text: Closed
+            value: closed
+          - text: Coming soon
+            value: coming_soon
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation:
+        status:
+          _in:
+            - open
+            - closed
+            - coming_soon
+      validation_message: "Must be one of: open, closed, coming_soon."
+      width: half
+    schema:
+      name: status
+      table: website_categories
+      data_type: character varying
+      default_value: closed
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: sort
+    type: integer
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_categories
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: image
+    type: uuid
+    meta:
+      collection: website_categories
+      conditions: null
+      display: image
+      display_options: null
+      field: image
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - file
+      translations:
+        - language: en-US
+          translation: Card picture
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: image
+      table: website_categories
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_categories
+    field: banner
+    type: uuid
+    meta:
+      collection: website_categories
+      conditions: null
+      display: image
+      display_options: null
+      field: banner
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: banner
+      table: website_categories
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_categories
+    field: top
+    type: text
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: top
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Above the programs
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: top
+      table: website_categories
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: bottom
+    type: text
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: bottom
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations:
+        - language: en-US
+          translation: Below the programs
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: bottom
+      table: website_categories
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: testimonial
+    type: text
+    meta:
+      collection: website_categories
+      conditions: null
+      display: null
+      display_options: null
+      field: testimonial
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: A quote from a family. Leave it empty for none.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: testimonial
+      table: website_categories
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories_programs
+    field: id
+    type: uuid
+    meta:
+      collection: website_categories_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_categories_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories_programs
+    field: category_id
+    type: uuid
+    meta:
+      collection: website_categories_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: category_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: category_id
+      table: website_categories_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_categories
+      foreign_key_column: id
+  - collection: website_categories_programs
+    field: program_id
+    type: uuid
+    meta:
+      collection: website_categories_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: program_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: To
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_id
+      table: website_categories_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_programs
+      foreign_key_column: id
+  - collection: website_categories_programs
+    field: sort
+    type: integer
+    meta:
+      collection: website_categories_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_categories_programs
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: programs
+    type: alias
+    meta:
+      collection: website_categories
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{program_id.title}}"
+      field: programs
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: In the order the page shows them.
+      options:
+        template: "{{program_id.title}}"
+        enableCreate: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special:
+        - m2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_categories_faq_topics
+    field: id
+    type: uuid
+    meta:
+      collection: website_categories_faq_topics
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_categories_faq_topics
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories_faq_topics
+    field: category_id
+    type: uuid
+    meta:
+      collection: website_categories_faq_topics
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: category_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: category_id
+      table: website_categories_faq_topics
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_categories
+      foreign_key_column: id
+  - collection: website_categories_faq_topics
+    field: topic_id
+    type: uuid
+    meta:
+      collection: website_categories_faq_topics
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: topic_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: To
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: topic_id
+      table: website_categories_faq_topics
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_faq_topics
+      foreign_key_column: id
+  - collection: website_categories_faq_topics
+    field: sort
+    type: integer
+    meta:
+      collection: website_categories_faq_topics
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_categories_faq_topics
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: faq_topics
+    type: alias
+    meta:
+      collection: website_categories
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{topic_id.title}}"
+      field: faq_topics
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: null
+      options:
+        template: "{{topic_id.title}}"
+        enableCreate: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 13
+      special:
+        - m2m
+      translations:
+        - language: en-US
+          translation: FAQs
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_categories_profiles
+    field: id
+    type: uuid
+    meta:
+      collection: website_categories_profiles
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_categories_profiles
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories_profiles
+    field: category_id
+    type: uuid
+    meta:
+      collection: website_categories_profiles
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: category_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: category_id
+      table: website_categories_profiles
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_categories
+      foreign_key_column: id
+  - collection: website_categories_profiles
+    field: profile_id
+    type: uuid
+    meta:
+      collection: website_categories_profiles
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: profile_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: To
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: profile_id
+      table: website_categories_profiles
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_profiles
+      foreign_key_column: id
+  - collection: website_categories_profiles
+    field: sort
+    type: integer
+    meta:
+      collection: website_categories_profiles
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_categories_profiles
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: profiles
+    type: alias
+    meta:
+      collection: website_categories
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{profile_id.name}}"
+      field: profiles
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: null
+      options:
+        template: "{{profile_id.name}}"
+        enableCreate: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 14
+      special:
+        - m2m
+      translations:
+        - language: en-US
+          translation: Crew
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_categories_files
+    field: id
+    type: uuid
+    meta:
+      collection: website_categories_files
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_categories_files
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories_files
+    field: category_id
+    type: uuid
+    meta:
+      collection: website_categories_files
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: category_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: category_id
+      table: website_categories_files
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_categories
+      foreign_key_column: id
+  - collection: website_categories_files
+    field: file_id
+    type: uuid
+    meta:
+      collection: website_categories_files
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: file_id
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: To
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: file_id
+      table: website_categories_files
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_categories_files
+    field: sort
+    type: integer
+    meta:
+      collection: website_categories_files
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_categories_files
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: gallery
+    type: alias
+    meta:
+      collection: website_categories
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{file_id.title}}"
+      field: gallery
+      group: null
+      hidden: false
+      interface: files
+      note: Photos shown on the category's page, in order.
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 15
+      special:
+        - files
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_policies
+    field: id
+    type: uuid
+    meta:
+      collection: website_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_policies
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policies
+    field: slug
+    type: string
+    meta:
+      collection: website_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: slug
+      group: null
+      hidden: false
+      interface: input
+      note: "The policy's address: /policy/sick-policy for sick-policy."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: slug
+      table: website_policies
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policies
+    field: title
+    type: string
+    meta:
+      collection: website_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_policies
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policies
+    field: sort
+    type: integer
+    meta:
+      collection: website_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_policies
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policies
+    field: in_footer
+    type: boolean
+    meta:
+      collection: website_policies
+      conditions: null
+      display: null
+      display_options: null
+      field: in_footer
+      group: null
+      hidden: false
+      interface: boolean
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - cast-boolean
+      translations:
+        - language: en-US
+          translation: In the footer
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: in_footer
+      table: website_policies
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policies
+    field: versions
+    type: alias
+    meta:
+      collection: website_policies
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}, from {{effective}}"
+      field: versions
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        template: "{{title}}, from {{effective}}"
+        enableSelect: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_policy_versions
+    field: id
+    type: uuid
+    meta:
+      collection: website_policy_versions
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_policy_versions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policy_versions
+    field: policy_id
+    type: uuid
+    meta:
+      collection: website_policy_versions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: policy_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Policy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: policy_id
+      table: website_policy_versions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_policies
+      foreign_key_column: id
+  - collection: website_policy_versions
+    field: title
+    type: string
+    meta:
+      collection: website_policy_versions
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_policy_versions
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policy_versions
+    field: effective
+    type: date
+    meta:
+      collection: website_policy_versions
+      conditions: null
+      display: null
+      display_options: null
+      field: effective
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Takes effect
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: effective
+      table: website_policy_versions
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_policy_versions
+    field: body
+    type: text
+    meta:
+      collection: website_policy_versions
+      conditions: null
+      display: null
+      display_options: null
+      field: body
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: body
+      table: website_policy_versions
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsor_levels
+    field: id
+    type: uuid
+    meta:
+      collection: website_sponsor_levels
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_sponsor_levels
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsor_levels
+    field: name
+    type: string
+    meta:
+      collection: website_sponsor_levels
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: website_sponsor_levels
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsor_levels
+    field: amount_cents
+    type: integer
+    meta:
+      collection: website_sponsor_levels
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: amount_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Amount
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: amount_cents
+      table: website_sponsor_levels
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsor_levels
+    field: sort
+    type: integer
+    meta:
+      collection: website_sponsor_levels
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_sponsor_levels
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsor_levels
+    field: benefits
+    type: text
+    meta:
+      collection: website_sponsor_levels
+      conditions: null
+      display: null
+      display_options: null
+      field: benefits
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: benefits
+      table: website_sponsor_levels
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsor_levels
+    field: sponsors
+    type: alias
+    meta:
+      collection: website_sponsor_levels
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: sponsors
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        template: "{{name}}"
+        enableSelect: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_sponsors
+    field: id
+    type: uuid
+    meta:
+      collection: website_sponsors
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_sponsors
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsors
+    field: name
+    type: string
+    meta:
+      collection: website_sponsors
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: website_sponsors
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsors
+    field: url
+    type: string
+    meta:
+      collection: website_sponsors
+      conditions: null
+      display: null
+      display_options: null
+      field: url
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Website
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: url
+      table: website_sponsors
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_sponsors
+    field: logo
+    type: uuid
+    meta:
+      collection: website_sponsors
+      conditions: null
+      display: image
+      display_options: null
+      field: logo
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: logo
+      table: website_sponsors
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: website_sponsors
+    field: level_id
+    type: uuid
+    meta:
+      collection: website_sponsors
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: level_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Level
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: level_id
+      table: website_sponsors
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_sponsor_levels
+      foreign_key_column: id
+  - collection: website_sponsors
+    field: sort
+    type: integer
+    meta:
+      collection: website_sponsors
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_sponsors
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+relations:
+  - collection: website_settings
+    field: logo
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_settings
+      many_field: logo
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_settings
+      column: logo
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_settings_logo_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_settings
+    field: badge
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_settings
+      many_field: badge
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_settings
+      column: badge
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_settings_badge_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_pages
+    field: banner
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_pages
+      many_field: banner
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_pages
+      column: banner
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_pages_banner_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_pages
+    field: image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_pages
+      many_field: image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_pages
+      column: image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_pages_image_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_pages_faq_topics
+    field: page_id
+    related_collection: website_pages
+    meta:
+      junction_field: topic_id
+      many_collection: website_pages_faq_topics
+      many_field: page_id
+      one_allowed_collections: null
+      one_collection: website_pages
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: faq_topics
+      sort_field: sort
+    schema:
+      table: website_pages_faq_topics
+      column: page_id
+      foreign_key_table: website_pages
+      foreign_key_column: id
+      constraint_name: website_pages_faq_topics_page_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_pages_faq_topics
+    field: topic_id
+    related_collection: website_faq_topics
+    meta:
+      junction_field: page_id
+      many_collection: website_pages_faq_topics
+      many_field: topic_id
+      one_allowed_collections: null
+      one_collection: website_faq_topics
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_pages_faq_topics
+      column: topic_id
+      foreign_key_table: website_faq_topics
+      foreign_key_column: id
+      constraint_name: website_pages_faq_topics_topic_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_page_sections
+    field: page_id
+    related_collection: website_pages
+    meta:
+      junction_field: null
+      many_collection: website_page_sections
+      many_field: page_id
+      one_allowed_collections: null
+      one_collection: website_pages
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: sections
+      sort_field: sort
+    schema:
+      table: website_page_sections
+      column: page_id
+      foreign_key_table: website_pages
+      foreign_key_column: id
+      constraint_name: website_page_sections_page_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_page_sections
+    field: image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_page_sections
+      many_field: image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_page_sections
+      column: image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_page_sections_image_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_programs
+    field: card_image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_programs
+      many_field: card_image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_programs
+      column: card_image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_programs_card_image_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_programs
+    field: banner
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_programs
+      many_field: banner
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_programs
+      column: banner
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_programs_banner_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_programs_files
+    field: program_id
+    related_collection: website_programs
+    meta:
+      junction_field: file_id
+      many_collection: website_programs_files
+      many_field: program_id
+      one_allowed_collections: null
+      one_collection: website_programs
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: gallery
+      sort_field: sort
+    schema:
+      table: website_programs_files
+      column: program_id
+      foreign_key_table: website_programs
+      foreign_key_column: id
+      constraint_name: website_programs_files_program_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_programs_files
+    field: file_id
+    related_collection: directus_files
+    meta:
+      junction_field: program_id
+      many_collection: website_programs_files
+      many_field: file_id
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_programs_files
+      column: file_id
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_programs_files_file_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_programs_catalog_programs
+    field: website_program_id
+    related_collection: website_programs
+    meta:
+      junction_field: catalog_program_id
+      many_collection: website_programs_catalog_programs
+      many_field: website_program_id
+      one_allowed_collections: null
+      one_collection: website_programs
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: catalog_programs
+      sort_field: sort
+    schema:
+      table: website_programs_catalog_programs
+      column: website_program_id
+      foreign_key_table: website_programs
+      foreign_key_column: id
+      constraint_name: website_programs_catalog_programs_website_program_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_programs_catalog_programs
+    field: catalog_program_id
+    related_collection: programs
+    meta:
+      junction_field: website_program_id
+      many_collection: website_programs_catalog_programs
+      many_field: catalog_program_id
+      one_allowed_collections: null
+      one_collection: programs
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_programs_catalog_programs
+      column: catalog_program_id
+      foreign_key_table: programs
+      foreign_key_column: id
+      constraint_name: website_programs_catalog_programs_catalog_program_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_faqs
+    field: topic_id
+    related_collection: website_faq_topics
+    meta:
+      junction_field: null
+      many_collection: website_faqs
+      many_field: topic_id
+      one_allowed_collections: null
+      one_collection: website_faq_topics
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: questions
+      sort_field: sort
+    schema:
+      table: website_faqs
+      column: topic_id
+      foreign_key_table: website_faq_topics
+      foreign_key_column: id
+      constraint_name: website_faqs_topic_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_profiles
+    field: photo
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_profiles
+      many_field: photo
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_profiles
+      column: photo
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_profiles_photo_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_categories
+    field: image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_categories
+      many_field: image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_categories
+      column: image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_categories_image_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_categories
+    field: banner
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_categories
+      many_field: banner
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_categories
+      column: banner
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_categories_banner_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_categories_programs
+    field: category_id
+    related_collection: website_categories
+    meta:
+      junction_field: program_id
+      many_collection: website_categories_programs
+      many_field: category_id
+      one_allowed_collections: null
+      one_collection: website_categories
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: programs
+      sort_field: sort
+    schema:
+      table: website_categories_programs
+      column: category_id
+      foreign_key_table: website_categories
+      foreign_key_column: id
+      constraint_name: website_categories_programs_category_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories_programs
+    field: program_id
+    related_collection: website_programs
+    meta:
+      junction_field: category_id
+      many_collection: website_categories_programs
+      many_field: program_id
+      one_allowed_collections: null
+      one_collection: website_programs
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_categories_programs
+      column: program_id
+      foreign_key_table: website_programs
+      foreign_key_column: id
+      constraint_name: website_categories_programs_program_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories_faq_topics
+    field: category_id
+    related_collection: website_categories
+    meta:
+      junction_field: topic_id
+      many_collection: website_categories_faq_topics
+      many_field: category_id
+      one_allowed_collections: null
+      one_collection: website_categories
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: faq_topics
+      sort_field: sort
+    schema:
+      table: website_categories_faq_topics
+      column: category_id
+      foreign_key_table: website_categories
+      foreign_key_column: id
+      constraint_name: website_categories_faq_topics_category_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories_faq_topics
+    field: topic_id
+    related_collection: website_faq_topics
+    meta:
+      junction_field: category_id
+      many_collection: website_categories_faq_topics
+      many_field: topic_id
+      one_allowed_collections: null
+      one_collection: website_faq_topics
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_categories_faq_topics
+      column: topic_id
+      foreign_key_table: website_faq_topics
+      foreign_key_column: id
+      constraint_name: website_categories_faq_topics_topic_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories_profiles
+    field: category_id
+    related_collection: website_categories
+    meta:
+      junction_field: profile_id
+      many_collection: website_categories_profiles
+      many_field: category_id
+      one_allowed_collections: null
+      one_collection: website_categories
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: profiles
+      sort_field: sort
+    schema:
+      table: website_categories_profiles
+      column: category_id
+      foreign_key_table: website_categories
+      foreign_key_column: id
+      constraint_name: website_categories_profiles_category_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories_profiles
+    field: profile_id
+    related_collection: website_profiles
+    meta:
+      junction_field: category_id
+      many_collection: website_categories_profiles
+      many_field: profile_id
+      one_allowed_collections: null
+      one_collection: website_profiles
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_categories_profiles
+      column: profile_id
+      foreign_key_table: website_profiles
+      foreign_key_column: id
+      constraint_name: website_categories_profiles_profile_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories_files
+    field: category_id
+    related_collection: website_categories
+    meta:
+      junction_field: file_id
+      many_collection: website_categories_files
+      many_field: category_id
+      one_allowed_collections: null
+      one_collection: website_categories
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: gallery
+      sort_field: sort
+    schema:
+      table: website_categories_files
+      column: category_id
+      foreign_key_table: website_categories
+      foreign_key_column: id
+      constraint_name: website_categories_files_category_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories_files
+    field: file_id
+    related_collection: directus_files
+    meta:
+      junction_field: category_id
+      many_collection: website_categories_files
+      many_field: file_id
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_categories_files
+      column: file_id
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_categories_files_file_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_policy_versions
+    field: policy_id
+    related_collection: website_policies
+    meta:
+      junction_field: null
+      many_collection: website_policy_versions
+      many_field: policy_id
+      one_allowed_collections: null
+      one_collection: website_policies
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: versions
+      sort_field: null
+    schema:
+      table: website_policy_versions
+      column: policy_id
+      foreign_key_table: website_policies
+      foreign_key_column: id
+      constraint_name: website_policy_versions_policy_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_sponsors
+    field: logo
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: website_sponsors
+      many_field: logo
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_sponsors
+      column: logo
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: website_sponsors_logo_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_sponsors
+    field: level_id
+    related_collection: website_sponsor_levels
+    meta:
+      junction_field: null
+      many_collection: website_sponsors
+      many_field: level_id
+      one_allowed_collections: null
+      one_collection: website_sponsor_levels
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: sponsors
+      sort_field: null
+    schema:
+      table: website_sponsors
+      column: level_id
+      foreign_key_table: website_sponsor_levels
+      foreign_key_column: id
+      constraint_name: website_sponsors_level_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL

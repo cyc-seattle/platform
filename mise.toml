@@ -94,6 +94,11 @@ run = "./scripts/delete-plans"
 description = "Compare the external domain's Cloud DNS zone with the name servers it's delegated to"
 run = "node scripts/compare-dns.ts"
 
+# By hand only: no deploy runs it (cyc-seattle/platform#150). docs/website.md says how.
+[tasks.load-website]
+description = "Load the website's proof of concept into $DIRECTUS_URL, after asking"
+run = "node scripts/load-website.ts"
+
 # Needs the dev deploy, so it isn't part of ci.
 [tasks.integration]
 description = "Run the integration tests against dev"

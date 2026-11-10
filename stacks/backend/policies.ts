@@ -1,6 +1,7 @@
 import type { PermissionRuleInput } from "../../src/directus/client.ts";
 import { collectionsInSchema } from "../../src/directus/client.ts";
 import { TEAM_MONTHS } from "./community-rules.ts";
+import { WEBSITE_FOLDER } from "./migrations/cyc0007-website-folder.cjs";
 
 // Plain data (no `@pulumi/*` import): the policies `./index.ts` declares, and what the two hook
 // extensions need to know about them. docs/access.md describes the model.
@@ -69,6 +70,57 @@ export function catalogCollections(schemas: LoadedSchema[]): string[] {
     throw new Error("backend: expected a schemas/core.yaml to find the catalog's collections");
   }
   return collectionsInSchema(core);
+}
+
+/** The public website's collections: every one in the website schema. */
+export function websiteCollections(schemas: LoadedSchema[]): string[] {
+  const website = schemas.find(({ name }) => name === "website")?.schema;
+  if (website === undefined) {
+    throw new Error("backend: expected a schemas/website.yaml to find the website's collections");
+  }
+  return collectionsInSchema(website);
+}
+
+export { WEBSITE_BUILD } from "../../src/directus/names.ts";
+
+/**
+ * What the site reads of a picture. Never who uploaded it, its tags, or its metadata, which holds a
+ * photo's EXIF, GPS included, and the website shows children.
+ */
+export const WEBSITE_FILE_FIELDS = [
+  "id",
+  "filename_download",
+  "title",
+  "description",
+  "type",
+  "width",
+  "height",
+  "filesize",
+  "focal_point_x",
+  "focal_point_y",
+  "modified_on",
+];
+
+/**
+ * The csc-website build's rules (cyc-seattle/platform#150): the website's collections, and the files
+ * in the Website folder, which its images are. Nothing else, so the public site can't show CRM data.
+ */
+export function websiteBuildRules(schemas: LoadedSchema[]): PermissionRuleInput[] {
+  return [
+    ...websiteCollections(schemas).map((collection) => ({ collection, action: "read" as const })),
+    {
+      collection: "directus_files",
+      action: "read",
+      permissions: { folder: { _eq: WEBSITE_FOLDER } },
+      fields: WEBSITE_FILE_FIELDS,
+    },
+    {
+      collection: "directus_folders",
+      action: "read",
+      permissions: { id: { _eq: WEBSITE_FOLDER } },
+      fields: ["id", "name"],
+    },
+  ];
 }
 
 /** The plans' collections: every one in the planning schema. */

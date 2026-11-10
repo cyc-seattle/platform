@@ -102,7 +102,16 @@ describe("discoverSchemaFiles", () => {
     const schemasDir = path.resolve(import.meta.dirname, "../schemas");
     const found = discoverSchemaFiles(schemasDir);
 
-    expect(found.map((f) => f.name)).toEqual(["access", "clubspot", "core", "crm", "gsuite", "planning", "sync"]);
+    expect(found.map((f) => f.name)).toEqual([
+      "access",
+      "clubspot",
+      "core",
+      "crm",
+      "gsuite",
+      "planning",
+      "sync",
+      "website",
+    ]);
     for (const { name, path: file } of found) {
       expect(file).toBe(path.join(schemasDir, `${name}.yaml`));
     }

@@ -10,7 +10,7 @@ import { crewRules, groupPolicies, queryGuardConfig } from "../stacks/backend/po
 
 interface Collection {
   collection: string;
-  meta: { hidden: boolean };
+  meta: { hidden: boolean; singleton?: boolean };
   schema?: unknown;
 }
 
@@ -48,7 +48,10 @@ function resolve(collection: string, fieldPath: string): Field | undefined {
 }
 
 describe("the default views", () => {
-  const visible = schema.collections.filter((c) => c.schema !== undefined && !c.meta.hidden).map((c) => c.collection);
+  // A singleton opens straight to its one row's form.
+  const visible = schema.collections
+    .filter((c) => c.schema !== undefined && !c.meta.hidden && !c.meta.singleton)
+    .map((c) => c.collection);
 
   it("give every collection the sidebar shows exactly one", () => {
     expect(defaultViews.map((view) => view.collection).sort()).toEqual([...visible].sort());

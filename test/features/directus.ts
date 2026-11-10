@@ -51,6 +51,29 @@ export class DirectusSession {
     return response;
   }
 
+  /** Uploads a file, as the Data Studio does. Returns the new file's `data`. */
+  async upload(form: FormData): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/files`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${await this.signIn()}` },
+      body: form,
+    });
+    const body = parseJson(await response.text()) as any;
+    if (response.status >= 300) {
+      throw new Error(`${this.email}: upload: ${response.status} ${JSON.stringify(body)}`);
+    }
+    return body?.data;
+  }
+
+  /** A GET that doesn't throw on an error status, for a file's bytes, which aren't JSON. */
+  async fetchAsset(id: string): Promise<number> {
+    const response = await fetch(`${this.baseUrl}/assets/${encodeURIComponent(id)}`, {
+      headers: { authorization: `Bearer ${await this.signIn()}` },
+    });
+    await response.arrayBuffer();
+    return response.status;
+  }
+
   /** A REST call that must succeed. Returns the response's `data`. */
   async ok(method: string, path: string, body?: unknown): Promise<any> {
     const response = await this.request(method, path, body);

@@ -25,6 +25,8 @@ it. The rest are for you and the reviewer, who checks them in dev's Data Studio 
 - A link field (many-to-one) sets `special: [m2o]`, `display: related-values`, and a
   `display_options.template` that names the linked row, usually the linked collection's own
   template.
+- A link to an image (a file) sets `special: [file]` and `display: image`, so the table shows the
+  picture.
 - A list of linked rows (one-to-many or many-to-many) sets `display: related-values` and a
   template. For a many-to-many list, the template goes through the join table:
   `{{person_id.first_name}} {{person_id.last_name}}`.

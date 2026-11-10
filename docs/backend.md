@@ -12,7 +12,8 @@ projects with their resource names unchanged, and their states moved over with `
 - the roles, policies, and permission rules ([access.md](access.md)), including the Community and
   Team policies and the query guard
 - the `group-policies` hook, which gives each user the policies their groups give
-- the admins' accounts, and the clubspot-sync and gsuite-sync machine users with their tokens
+- the admins' accounts, and the clubspot-sync, gsuite-sync, and website build machine users with their
+  tokens
 - Directus's OIDC client at Authentik
 - the MCP settings
 - the clubspot-sync and gsuite-sync CronJobs, their images, and the Secrets that hold their tokens
