@@ -221,6 +221,8 @@ Every foreign key from a plan row restricts delete, so deleting a catalog row a 
 
 An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved Financial Plan, its plans and their rows, and its results, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
 
+`mise run delete-plans` gets past them on purpose, as the database's owner: it empties every planning table in `PULUMI_STACK`'s database, saved plans included, for the move to dated blocks ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). It's run by hand, never by a deploy. It shows how many Financial Plans it would delete and asks you to type the stack's name first. Prod's run waits for the maintainer's confirmation.
+
 ### Program Plan (one copy)
 
 ```mermaid
