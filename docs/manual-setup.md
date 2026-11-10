@@ -155,6 +155,51 @@ If Authentik's own sign-in is ever unreachable, sign in as `akadmin` with the pa
 gcloud secrets versions access latest --secret authentik-bootstrap-password --project cyc-admin-scripts
 ```
 
+## 9. Delegate `cyccommunitysailing.org` to Cloud DNS
+
+The website's domain is registered at Porkbun, which also serves its records. The `infra` stack's
+external zone holds a copy of them (`stacks/infra/external-records.ts`), so switching name servers
+changes no answer (#150). Mail is what breaks if a record is missing, so do this off-season, and not
+during a newsletter send.
+
+1. [ ] Apply prod `infra` with the records, then compare the zone with Porkbun. It queries both for
+       every record name the zone declares and the common ones it might lack, and exits 1 on any
+       difference. A record only Porkbun has goes into `external-records.ts` before you go on.
+
+   ```sh
+   mise run compare-dns
+   ```
+
+2. [ ] In Porkbun's DNS records for the domain, lower each record's TTL to 300 seconds, then wait
+       out the old TTL (10 minutes). A wrong answer after the switch is then cached for only 5 minutes.
+       The script doesn't compare TTLs.
+3. [ ] Check DNSSEC is off at Porkbun: `host -t DS cyccommunitysailing.org` finds no record. Porkbun
+       would sign with keys Cloud DNS doesn't hold, so a DS record left in place breaks the domain.
+4. [ ] Run `mise run compare-dns` once more, then, at Porkbun, replace the domain's authoritative
+       name servers with the zone's:
+
+   ```sh
+   pulumi stack output nameServers --cwd stacks/infra --stack prod
+   ```
+
+5. [ ] Check the switch. The `.org` registry serves the new name servers within minutes, but
+       resolvers may keep the old ones for up to 2 days (their TTL is 86400). Both answer the same.
+
+   - `host -t NS cyccommunitysailing.org` lists `ns-cloud-*.googledomains.com`.
+   - `mise run compare-dns` now compares the zone with itself, so also ask public resolvers:
+     `host -t MX cyccommunitysailing.org 8.8.8.8`, and the same at `1.1.1.1`.
+   - Mail from outside reaches a Workspace inbox, and mail sent out shows `spf=pass` and
+     `dmarc=pass` in its headers at the recipient.
+   - The website loads at the bare domain and at `www`.
+
+6. [ ] Leave Porkbun's records in place for at least 2 days. To roll back, put Porkbun's name servers
+       back.
+7. [ ] Add Google's DKIM: generate the key in the Admin console under **Apps → Google Workspace →
+       Gmail → Authenticate email**, add its `google._domainkey` TXT record to `external-records.ts`,
+       deploy, then press **Start authentication**.
+
+From then on, the domain's records change only in `external-records.ts`, never at Porkbun.
+
 ## When you add a new manual step
 
 If you add infrastructure that needs an out-of-band action, add it here.

@@ -272,8 +272,11 @@ describe("prod certificate and DNS", () => {
     });
   });
 
-  it("writes no A records, which the apps own", () => {
-    const records = created.filter((r) => r.type === "gcp:dns/recordSet:RecordSet" && r.inputs.type === "A");
+  it("writes no A records in the internal zone, which the apps own", () => {
+    const records = created.filter(
+      (r) =>
+        r.type === "gcp:dns/recordSet:RecordSet" && r.inputs.managedZone === "internal_name" && r.inputs.type === "A",
+    );
     expect(records.map((r) => r.name).sort()).toEqual(["dev", "dev-wildcard"]);
   });
 });
@@ -587,5 +590,31 @@ describe("log exclusions", () => {
     for (const { inputs } of exclusions()) {
       expect(inputs.filter).not.toMatch(/namespace_name="(dev|prod)"/);
     }
+  });
+});
+
+describe("external zone", () => {
+  const records = () =>
+    created.filter((r) => r.type === "gcp:dns/recordSet:RecordSet" && r.inputs.managedZone === "external_name");
+
+  it("answers what Porkbun does: Wix's web records, Google mail, and Mailchimp's DKIM", () => {
+    expect(Object.fromEntries(records().map((r) => [`${r.inputs.name} ${r.inputs.type}`, r.inputs.rrdatas]))).toEqual({
+      "example.org. A": ["185.230.63.107"],
+      "www.example.org. CNAME": ["pointing.wixdns.net."],
+      "example.org. MX": [
+        "1 aspmx.l.google.com.",
+        "5 alt1.aspmx.l.google.com.",
+        "5 alt2.aspmx.l.google.com.",
+        "10 alt3.aspmx.l.google.com.",
+        "10 alt4.aspmx.l.google.com.",
+      ],
+      "example.org. TXT": [
+        '"google-site-verification=ljnCtIm2Fg6jW45IWhaoJa2arfDh9Bw1y5_Kua9I3uM"',
+        '"v=spf1 include:_spf.google.com include:amazonses.com ~all"',
+      ],
+      "_dmarc.example.org. TXT": ['"v=DMARC1; p=none;"'],
+      "k2._domainkey.example.org. CNAME": ["dkim2.mcsv.net."],
+      "k3._domainkey.example.org. CNAME": ["dkim3.mcsv.net."],
+    });
   });
 });

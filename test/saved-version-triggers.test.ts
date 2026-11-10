@@ -173,19 +173,25 @@ async function plans(db: PGlite, year = 2027) {
   const offering = async (version: string) =>
     w.insert("plan_offerings", { version_id: version, key: randomUUID(), product_id: product, name: "Offering" });
   const savedOffering = await offering(saved);
-  const offeringKey = (await w.read("plan_offerings", savedOffering))!["key"];
+  const block = await w.insert("plan_activity_blocks", {
+    version_id: saved,
+    key: randomUUID(),
+    date: `${year}-06-06`,
+    name: "Saturday morning",
+  });
   await w.insert("plan_activities", {
     version_id: saved,
     key: randomUUID(),
     offering_id: savedOffering,
     date: `${year}-06-06`,
+    block_id: block,
   });
-  await w.insert("plan_activity_block_rules", {
+  await w.insert("plan_staff_levels", {
     version_id: operations,
     key: randomUUID(),
-    name: "Shared Saturdays",
-    offering_keys: JSON.stringify([offeringKey]),
-    weekdays: JSON.stringify([1, 3]),
+    name: "Level 2 Instructor",
+    pay_type: "hourly",
+    qualifications: JSON.stringify(["q-1", "q-3"]),
   });
   await w.insert("version_set_members", { version_set_id: set, version_id: operations });
   await w.insert("version_set_members", { version_set_id: set, version_id: saved });
@@ -876,7 +882,8 @@ describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () 
     expect(await w.remove("plan_versions", draft)).toBeUndefined();
     expect(await w.remove("version_sets", set)).toBeUndefined();
     await db.query(`DELETE FROM plan_activities WHERE version_id = $1`, [saved]);
-    await db.query(`DELETE FROM plan_activity_block_rules WHERE version_id = $1`, [operations]);
+    await db.query(`DELETE FROM plan_activity_blocks WHERE version_id = $1`, [saved]);
+    await db.query(`DELETE FROM plan_staff_levels WHERE version_id = $1`, [operations]);
     expect(await w.remove("plan_offerings", savedOffering)).toBeUndefined();
     expect(await w.remove("plan_versions", saved)).toBeUndefined();
     expect(
@@ -998,12 +1005,14 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
     expect(offering!["id"]).not.toBe(savedOffering);
     const [activity] = (await db.query<Values>(`SELECT * FROM plan_activities WHERE version_id = $1`, [copy["id"]]))
       .rows;
-    expect(activity).toMatchObject({ offering_id: offering!["id"] });
+    const [block] = (await db.query<Values>(`SELECT * FROM plan_activity_blocks WHERE version_id = $1`, [copy["id"]]))
+      .rows;
+    expect(activity).toMatchObject({ offering_id: offering!["id"], block_id: block!["id"] });
     const operationsCopy = copies.find((v) => v["parent_version_id"] === operations)!;
-    const [rule] = (
-      await db.query<Values>(`SELECT * FROM plan_activity_block_rules WHERE version_id = $1`, [operationsCopy["id"]])
+    const [level] = (
+      await db.query<Values>(`SELECT * FROM plan_staff_levels WHERE version_id = $1`, [operationsCopy["id"]])
     ).rows;
-    expect(rule).toMatchObject({ offering_keys: [original["key"]], weekdays: [1, 3] });
+    expect(level).toMatchObject({ qualifications: ["q-1", "q-3"] });
     // The copy is a draft, so it can change, and the parent stays as it was.
     expect(await w.update("plan_offerings", offering!["id"] as string, { name: "Changed" })).toBeUndefined();
     expect((await w.read("plan_offerings", savedOffering))!["name"]).toBe("Offering");
@@ -1094,6 +1103,30 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     };
     await expect(writeDraftResults(config(false), knexOver(db), draftSet, unbookable)).rejects.toThrow();
     expect(await count(db, "plan_results", draftSet)).toBe(0);
+  });
+
+  it("names the plan and the date each warning is about", async () => {
+    const db = await database(config(false));
+    const { draftSet, draft: copy, draftOffering, w } = await draft(db, 2807);
+    expect(
+      await w.update("plan_offerings", draftOffering, { starts_on: "2807-06-01", ends_on: "2807-06-30" }),
+    ).toBeUndefined();
+    await w.insert("plan_activities", {
+      version_id: copy,
+      key: randomUUID(),
+      offering_id: draftOffering,
+      date: "2807-06-06",
+      kind: "practice",
+    });
+    expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
+    const { rows } = await db.query<Values>(
+      `SELECT version_set_member_id, to_char(date, 'YYYY-MM-DD') AS date, category FROM plan_result_warnings
+        WHERE version_set_id = $1 AND code = 'unallocated_activity'`,
+      [draftSet],
+    );
+    expect(rows).toEqual([
+      { version_set_member_id: await memberOf(db, copy), date: "2807-06-06", category: "allocation" },
+    ]);
   });
 
   it("leaves a saved Financial Plan's results to its save", async () => {

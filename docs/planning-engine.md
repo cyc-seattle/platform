@@ -53,9 +53,10 @@ It returns:
 - `organization`: the organization's year. See [The organization's totals](#the-organizations-totals).
 - `perDay(p)` and `perSailorDay(p)`: an offering's, product's or area's P&L for one day it runs, and
   for one sailor on one day.
-- `activities`: each activity with the coaches, RIBs and boats the engine gave it.
+- `activities`: each activity, with its block and its share of the block's staff, RIBs and boats.
 - `positions`: each salaried position's year. See [Salaried positions](#salaried-positions).
-- `warnings`: anything in the plan the engine had to skip or couldn't price.
+- `warnings`: what breaks a limit, and anything the engine had to skip or couldn't price. See
+  [Warnings](#warnings).
 
 ## Modelling over MCP
 
@@ -77,8 +78,8 @@ Plan Writers can read them.
 ## Order
 
 1. **Activities.** The plan year's activities, with their paid time and time on the water.
-2. **Staffing.** The engine calculates how many coaches, RIBs and boats each activity needs, and what
-   they cost.
+2. **Blocks.** The engine costs each block's staff, RIBs, boats and resources, and checks them against
+   the program settings and the fleet.
 3. **Revenue**, with COGS and the charges set as a share of revenue.
 4. **Lines.** Budget lines, labor lines and salaried positions. Costs on a product or area are divided among
    its offerings last, once every offering's own costs are in.
@@ -110,48 +111,74 @@ Plan Writers can read them.
   `plan_closed_dates`. It still counts it. A closed day in a program area's plan is ignored, with a
   warning.
 
-### Staffing
+### Blocks
+
+The engine costs only what each block is given. It never works out how many coaches, RIBs or boats an
+activity needs: the planner, or their AI, decides that from the program settings and the rules, and
+writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)).
 
 - Enrollment is a whole number of kids: `target_enrollment` if set, otherwise `capacity × fill_rate`
   rounded. Kids who join or leave partway through aren't counted.
-- Coaches are the activity's `fixed_coaches` if set, otherwise the offering's, otherwise one per
-  `sailors_per_coach` kids (rounded up), and at least `min_coaches`.
-- RIBs are the activity's or offering's `fixed_ribs` if set, otherwise coaches × `ribs_per_coach`
-  rounded up. Travel days use no RIBs.
-- Boats: the kids not bringing their own boat (`1 − byob_share`) are split across the offering's boat
-  classes by share, and each class gets enough boats for its sailors at `sailors_per_boat`, rounded
-  up.
-- **Shared coaching.** When an activity block applies (for example, two youth groups on Wednesdays),
-  those offerings share coaches: enough for all their kids together, and at least the largest
-  `min_coaches`. They share RIBs at the highest `ribs_per_coach` among them, and boats are counted
-  for all their sailors together. Each offering pays its share by its number of kids, so it can pay
-  for part of a coach. The block's `coach_level_id` sets the coaches' pay level. Salaried staff in
-  the block coach first, and hourly coaches fill the rest.
-- A block groups its activities on one date only when their times overlap, so a morning and an
-  afternoon practice each get their own coaches. An activity with no times overlaps every other.
-- **An offering's salaried coach.** An offering's `coach_position_key` names a salaried position that
-  takes one of its coaches on each activity other than travel. With `coach_position_pay` `salary`,
-  the default, those hours are charged at the salary's hourly equivalent, as in a block. With
-  `hourly`, the coach is paid by the hour for them, on top of the salary: at the position's own
-  `hourly_coaching_rate_cents` if it has one, even on a volunteer level, otherwise at the offering's
-  coach level. The offering's other coaches are paid its level. In a block,
-  the coach joins the block's salaried staff, counted once, unless the offering fixes its coaches:
-  then the coach is one of its own.
-- The engine warns when a salaried position coaches two activities whose times overlap and that
-  aren't in the same block group. It still charges both. The warning names one pair for each date,
-  and the hours another coach would need that date.
-- Hourly coaches cost their paid hours × their level's `hourly_rate_cents`. Volunteers cost nothing.
-- If a coach level lacks the offering's `required_qualification`, directly or through
-  `qualification_covers`, the engine shows a warning.
-- A RIB costs `cost_per_hour + fuel_per_hour + maintenance_per_hour` for each hour on the water, plus
-  `cost_per_day` for each activity. The engine averages these over the RIB resources, weighted by
-  `quantity`.
-- A boat costs its class's `maintenance_per_boat_hour_cents` for each hour on the water.
-- An activity's `plan_activity_resources` cost `quantity × (hours × hourly cost + cost_per_day)`.
-  If `hours` isn't set, it's the activity's paid hours.
+- A block's paid time runs from its first activity's start to its last one's end, plus the longest
+  setup and the longest put-away among them. A block with an activity that has no times has no paid
+  time.
+- Its time on the water is the longest `on_water_minutes` its activities set. If none sets one, it's
+  the span of its activities that use boats.
+- Each of its costs is split among its offerings by their enrollment, each offering counted once, or
+  evenly if none has any. An offering with several activities in the block splits its share among
+  them. `activities` gives each activity its share of the block's staff, RIBs and boats.
+- Staff at a level cost `count` × paid hours × the level's `hourly_rate_cents`. Volunteers cost
+  nothing.
+- A salaried position on a block with `pay` `salary`, the default, is charged its paid hours at the
+  salary's hourly equivalent (see [Salaried positions](#salaried-positions)). With `hourly`, it's paid
+  by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`. With no rate of its own,
+  those hours cost nothing, and the engine warns.
+- A resource costs `quantity × (hours × (cost_per_hour + fuel_per_hour + maintenance_per_hour) +
+cost_per_day)`. Its hours are its row's `hours` if set; otherwise a RIB's are the block's time on the
+  water, and any other resource's are its paid time. A RIB is a resource of the `rib_resource_kind_id`
+  kind. One `excluded_from_mtdc`, such as a rental, stays out of MTDC.
+- The organization's boats cost `count` × time on the water × their class's
+  `maintenance_per_boat_hour_cents`. Boats sailors bring (`sailor_owned`) cost nothing.
 - A trip costs each coach's airfare, plus `nights` × the year's lodging rate for each coach, plus
-  `miles` × the year's mileage rate once. Its coaches are the ones on its travel days; with no travel
-  days, the offering's coaching ratio sets them. Sailors' own travel isn't charged.
+  `miles` × the year's mileage rate once. Its coaches are the staff on the block of its busiest
+  travel day. With none, it charges only the miles, and the engine warns. Sailors' own travel isn't
+  charged.
+
+### Warnings
+
+Each warning has a `code`, a `message`, and a `category`. When it's about one plan copy or one date,
+it names them in `version_id` and `date`. A warning about a row that's given once for each plan
+copy, such as a program with no settings, names the first date it's seen on. `allocation` warnings say the blocks break a limit or run on
+a closed day; the rest are `data`, a row that's missing or wrong. The engine still costs what it's
+given.
+
+Allocation warnings:
+
+- `unallocated_activity`: an activity, other than a travel day, in no block, or in a block with no
+  staff.
+- `over_inventory_boats`: more of the organization's boats of one class out at once on a date than its
+  `plan_boat_rates.quantity`. Boats sailors bring don't count. Blocks are out from their first
+  activity's start to their last one's end; one with no times is out all day.
+- `over_inventory_resource`: the same for a resource with a `quantity`, such as RIBs.
+- `over_capacity`: more sailors in a block than its staff, or its boats, can safely take. Each
+  program's sailors count against its own `sailors_per_coach`, in its `plan_programs` row: the block
+  is over when Σ (a program's sailors ÷ its sailors per coach) is more than its qualified staff. A
+  staff member is qualified if they're at the staff level of one of the block's programs, or their
+  level's or position's `qualifications` cover every qualification of that level, through
+  `qualification_covers`. Its boats take Σ (boats, the organization's and the sailors' own, × the
+  class's `sailors_per_boat`). A block whose activities don't use boats has no boat limit.
+- `position_double_booked`: a salaried position on two blocks whose times overlap.
+- `closed_date`: an activity, other than a travel day, on a closed day.
+
+Data warnings about blocks:
+
+- `no_program_settings`: a program in a block with no staff level or sailors per coach. Its sailors
+  aren't checked against the staff.
+- `no_sailors_per_boat`: a block's boat class with no `sailors_per_boat`. Its boats take no sailors.
+- `no_fleet_quantity`: a block's boat class with no `plan_boat_rates.quantity`. Its boats aren't
+  checked against the fleet.
+- `no_hourly_rate`, `trip_without_staff`, `unknown_block`, `unknown_staff_level`, `unknown_resource`,
+  and `block_date_mismatch`, an activity in a block on another date.
 
 ### Revenue
 
@@ -186,8 +213,8 @@ The engine warns about:
 ### Salaried positions
 
 - A position costs its `annual_salary_cents`.
-- Its hourly rate is `annual_salary_cents / paid_hours_per_year`. The hours it spends coaching in an
-  activity block, and its `plan_salaried_bookings` hours, are charged at that rate to the offerings
+- Its hourly rate is `annual_salary_cents / paid_hours_per_year`. The hours it spends coaching on a
+  block out of its salary, and its `plan_salaried_bookings` hours, are charged at that rate to the offerings
   or products they were for. A booking names a product or a program area, whose offerings share it
   by MTDC. A booking that names both, or neither, is left out with a warning.
 - First, the `ga_share` part of the salary goes to G&A. If the hours charged to programs add up to
@@ -204,10 +231,10 @@ The engine warns about:
 - the bonuses that name it in `position_key`
 - its total pay: salary, hourly wages and bonus
 - the year's payroll tax on that total
-- its double-booked hours: the hours another coach would need while it's on two or more groups at
-  once, not staffed as one block group. At each moment it's on n groups, it counts n − 1, so three
-  groups at once for 3 hours count 6. It uses each activity's start-to-end time, without setup or
-  put-away. An activity with no times adds no hours.
+- its double-booked hours: the hours another coach would need while it's on two or more blocks at
+  once. At each moment it's on n blocks, it counts n − 1, so three blocks at once for 3 hours count 6.
+  It uses each block's start-to-end time, without setup or put-away. A block with no times adds no
+  hours.
 - its double-booked dates: the dates it's warned about
 
 ### Payroll tax

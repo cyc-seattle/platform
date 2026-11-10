@@ -47,7 +47,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Plans live on GitHub issues. `.plans/` is git-ignored, for local drafts.
 - `.agents/skills/` holds this repo's own skills. `cleanup-duplicate-people` and `cleanup-schools`
   each work through one kind of CRM data problem, proposing a code fix that stops it recurring,
-  then per-row edits for the user to approve. Claude Code reads skills only from `.claude/skills`,
+  then per-row edits for the user to approve. `allocate-plan` fills in a Financial Plan's blocks in
+  a new draft, for a planner to keep or delete. A schema change to planning updates it in the same
+  PR. Claude Code reads skills only from `.claude/skills`,
   so link them there once: `mkdir -p .claude && ln -s ../.agents/skills .claude/skills`.
 - PR titles are conventional commits. PRs merge through the merge queue, which squashes them. To keep
   a branch's history with a merge commit (cyc-seattle/workplace#6), an org admin bypasses the queue,

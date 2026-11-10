@@ -22,6 +22,8 @@ const predefinedRoles = [
   // The infra stack's Job alerts and their email channels (#205).
   "roles/monitoring.alertPolicyEditor",
   "roles/monitoring.notificationChannelEditor",
+  // The infra stack's Firebase Hosting site, and later its custom domains (#150).
+  "roles/firebasehosting.admin",
 ];
 
 for (const role of predefinedRoles) {

@@ -26,8 +26,6 @@ const DECIMALS = new Set([
   "quantity",
   "fill_rate",
   "sailors_per_coach",
-  "ribs_per_coach",
-  "byob_share",
   "cogs_rate",
   "ga_share",
   "bonus_rate",
@@ -50,11 +48,14 @@ function numbers<T extends Row>(rows: T[]): T[] {
 }
 
 const VERSION_ROWS = [
+  "plan_programs",
   "plan_offerings",
-  "plan_offering_boat_classes",
   "plan_trips",
   "plan_activities",
-  "plan_activity_resources",
+  "plan_activity_blocks",
+  "plan_block_staff",
+  "plan_block_resources",
+  "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
   "plan_rates",
@@ -64,7 +65,6 @@ const VERSION_ROWS = [
   "plan_salaried_bookings",
   "plan_resources",
   "plan_boat_rates",
-  "plan_activity_block_rules",
   "plan_pools",
   "plan_bonus_owners",
   "plan_bonus_owner_products",
@@ -86,7 +86,9 @@ type AccountName =
   | "coachBoats"
   | "coachWages"
   | "payrollTax"
-  | "bonus";
+  | "bonus"
+  | "ribs"
+  | "boatUpkeep";
 
 const ACCOUNTS: Record<AccountName, { type: string; default_function?: string }> = {
   programs: { type: "revenue" },
@@ -103,6 +105,8 @@ const ACCOUNTS: Record<AccountName, { type: string; default_function?: string }>
   coachWages: { type: "expense" },
   payrollTax: { type: "expense" },
   bonus: { type: "expense" },
+  ribs: { type: "expense" },
+  boatUpkeep: { type: "expense" },
 };
 
 /** The costs the engine works out, and the account each goes to. */
@@ -110,6 +114,8 @@ const COST_ACCOUNTS: Record<string, AccountName> = {
   salaries: "salaries",
   coach_wages: "coachWages",
   payroll_tax: "payrollTax",
+  ribs: "ribs",
+  boat_maintenance: "boatUpkeep",
 };
 
 /** One example's plans: an organization's Operations Plan, and a plan for each program area. */
@@ -122,6 +128,9 @@ export class PnlPlan {
   readonly products: string[] = [];
   readonly offerings: Item[] = [];
   readonly lines: Record<string, Item> = {};
+  readonly boatClasses: string[] = [];
+  readonly qualifications: string[] = [];
+  private ribKind: string | undefined;
   private poolId: string | undefined;
   output: EngineOutput | undefined;
 
@@ -336,21 +345,94 @@ export class PnlPlan {
     });
   }
 
-  /** Activities of `offering` on `dates`, from `start` to `end` (`HH:MM`). */
-  async activities(offering: Item, dates: string[], start: string, end: string): Promise<void> {
+  /** Activities of `offering` on `dates`, from `start` to `end` (`HH:MM`), with `extra`'s fields. */
+  async activities(offering: Item, dates: string[], start: string, end: string, extra: Row = {}): Promise<Item[]> {
+    const made: Item[] = [];
     for (const date of dates) {
-      await adminCreate("plan_activities", {
-        id: randomUUID(),
-        version_id: offering["version_id"],
-        key: randomUUID(),
-        offering_id: offering.id,
-        date,
-        start_time: start,
-        end_time: end,
-        kind: "practice",
-        uses_boats: false,
-      });
+      made.push(
+        await adminCreate("plan_activities", {
+          id: randomUUID(),
+          version_id: offering["version_id"],
+          key: randomUUID(),
+          offering_id: offering.id,
+          date,
+          start_time: start,
+          end_time: end,
+          kind: "practice",
+          uses_boats: false,
+          ...extra,
+        }),
+      );
     }
+    return made;
+  }
+
+  /** A program's settings in its area's Program Plan. Returns their id. */
+  async programSettings(area: string, product: string, fields: Row): Promise<string> {
+    const settings = await adminCreate("plan_programs", {
+      id: randomUUID(),
+      version_id: this.areaVersion(area),
+      key: randomUUID(),
+      product_id: product,
+      ...fields,
+    });
+    return settings.id;
+  }
+
+  /** A block in `version` on `date`. Returns its id. */
+  async block(version: string, date: string, name = "A block"): Promise<string> {
+    return (
+      await adminCreate("plan_activity_blocks", {
+        id: randomUUID(),
+        version_id: version,
+        key: randomUUID(),
+        date,
+        name,
+      })
+    ).id;
+  }
+
+  /** A row of what block `block` in `version` is given: its staff, resources, or boats. */
+  async given(
+    collection: "plan_block_staff" | "plan_block_resources" | "plan_block_boats",
+    version: string,
+    block: string,
+    fields: Row,
+  ): Promise<void> {
+    await adminCreate(collection, {
+      id: randomUUID(),
+      version_id: version,
+      key: randomUUID(),
+      block_id: block,
+      ...fields,
+    });
+  }
+
+  /** A boat class in the catalog, taking `sailors` sailors a boat. Returns its id. */
+  async boatClass(name: string, sailors: number | null): Promise<string> {
+    const boat = await adminCreate("boat_classes", {
+      id: randomUUID(),
+      name: `${name} ${key("boat")}`,
+      sailors_per_boat: sailors,
+    });
+    this.boatClasses.push(boat.id);
+    return boat.id;
+  }
+
+  /** A qualification in the catalog. Returns its id. */
+  async qualification(name: string): Promise<string> {
+    const made = await adminCreate("qualifications", { id: randomUUID(), name: `${name} ${key("qualification")}` });
+    this.qualifications.push(made.id);
+    return made.id;
+  }
+
+  /** The resource kind the Operations Plan's rates call RIBs. */
+  async rib(): Promise<string> {
+    if (this.ribKind === undefined) {
+      this.ribKind = (await adminCreate("resource_kinds", { id: randomUUID(), name: `RIB ${key("kind")}` })).id;
+      await this.operationsRow("plan_rates", { rib_resource_kind_id: this.ribKind });
+    }
+    return this.ribKind;
   }
 
   /**
@@ -410,13 +492,13 @@ export class PnlPlan {
       organization_cost_accounts: await read("organization_cost_accounts", {
         organization_id: { _eq: this.organizationId },
       }),
-      rib_resource_kind_id: null,
+      rib_resource_kind_id: this.ribKind ?? null,
       products: await read("products", { id: anyOf(this.products) }),
       program_areas: await read("program_areas", { id: anyOf(this.areas) }),
       accounts: await read("accounts", { id: { _in: Object.values(this.accounts) } }),
-      qualifications: [],
-      qualification_covers: [],
-      boat_classes: [],
+      qualifications: await read("qualifications", { id: anyOf(this.qualifications) }),
+      qualification_covers: await read("qualification_covers", { qualification_id: anyOf(this.qualifications) }),
+      boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
       resource_kinds: [],
       plans: await read("plans", { id: { _in: plans } }),
       plan_versions: await read("plan_versions", { id: { _in: versions } }),

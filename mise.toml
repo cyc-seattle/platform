@@ -89,6 +89,11 @@ run = "./scripts/reset"
 description = "Delete every Financial Plan, plan, copy, row and result from $PULUMI_STACK, after asking"
 run = "./scripts/delete-plans"
 
+# Before delegating the external domain to Cloud DNS (docs/manual-setup.md): exits 1 on any difference.
+[tasks.compare-dns]
+description = "Compare the external domain's Cloud DNS zone with the name servers it's delegated to"
+run = "node scripts/compare-dns.ts"
+
 # By hand only: no deploy runs it (cyc-seattle/platform#150). docs/website.md says how.
 [tasks.load-website]
 description = "Load the website's proof of concept into $DIRECTUS_URL, after asking"

@@ -15,7 +15,7 @@ const email = (accountId: string) => `${accountId}@example-project.iam.gservicea
 const poolName = "projects/123/locations/global/workloadIdentityPools/github";
 const providerName = `${poolName}/providers/github`;
 const orgId = "4242";
-const repos = ["isthmia", "platform", "sail-team"];
+const repos = ["platform", "sail-team"];
 
 let wif: typeof import("../stacks/bootstrap/workload-identity.ts");
 
@@ -108,18 +108,17 @@ describe("workload identity bindings", () => {
       .filter((r) => r.inputs.role === "roles/iam.workloadIdentityUser")
       .map((r) => r.inputs.member)
       .sort();
-  // platform and sail-team use immutable subjects (their numeric IDs); isthmia uses names.
+  // Subjects use each repository's numeric ID, which can't be reused.
   const repoIds: Record<string, number> = { platform: 4242, "sail-team": 1717 };
-  const prefix = (repo: string) =>
-    repo in repoIds ? `repo:cyc-seattle@${orgId}/${repo}@${repoIds[repo]}` : `repo:cyc-seattle/${repo}`;
+  const prefix = (repo: string) => `repo:cyc-seattle@${orgId}/${repo}@${repoIds[repo]}`;
   const subject = (repo: string, env: string) =>
     `principal://iam.googleapis.com/${poolName}/subject/${prefix(repo)}:environment:${env}`;
 
-  it("lets dev's environment on isthmia, platform, and sail-team assume deploy-dev, and nothing else", () => {
+  it("lets dev's environment on platform and sail-team assume deploy-dev, and nothing else", () => {
     expect(bindings("deploy-dev")).toEqual(repos.map((repo) => subject(repo, "dev")).sort());
   });
 
-  it("lets the prod environments on isthmia, platform, and sail-team assume deploy-runner, and nothing else", () => {
+  it("lets the prod environments on platform and sail-team assume deploy-runner, and nothing else", () => {
     expect(bindings("deploy-runner")).toEqual(
       repos.flatMap((repo) => ["prod", "prod-preview"].map((env) => subject(repo, env))).sort(),
     );

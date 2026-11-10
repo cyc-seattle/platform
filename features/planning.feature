@@ -136,7 +136,6 @@ Feature: Plans
       When they change the offering's price to $1,200 a sailor in the new Financial Plan
       Then "Budget" still has the offering at $1,000 a sailor
 
-  @pending
   Rule: Each Program Plan sets its programs' staff levels and how many sailors each coach can take
 
     Example: A new draft tries fewer sailors per coach
@@ -363,7 +362,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
-  @pending
   Rule: The P&L costs only the staff, RIBs, and boats each block is given
 
     Example: A block's coaches are paid for its time
@@ -377,7 +375,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays $60 of coaches' wages
 
-  @pending
   Rule: The offerings in a block share its costs by their number of sailors
 
     Example: Two offerings share a coach
@@ -386,7 +383,6 @@ Feature: Plans
       Then the first offering pays $36 of coaches' wages
       And the second offering pays $24 of coaches' wages
 
-  @pending
   Rule: A block runs from its first activity's start to its last activity's end
 
     Example: Two practices that overlap in one block
@@ -395,7 +391,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the two offerings pay $60 of coaches' wages between them
 
-  @pending
   Rule: A block's RIBs cost their rate for its time on the water
 
     Example: Two RIBs for a morning practice
@@ -404,7 +399,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays $60 for RIBs
 
-  @pending
   Rule: The organization's boats cost upkeep for their time on the water, and boats that sailors bring cost nothing
 
     Example: Four of the organization's Optis and three that sailors bring
@@ -413,7 +407,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays $12 of boat upkeep
 
-  @pending
   Rule: A salaried coach on a block is paid out of their salary for its hours
 
     Example: An offering pays for its salaried coach's hours
@@ -422,7 +415,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays $1,200 of the director's salary
 
-  @pending
   Rule: A salaried coach can be paid by the hour for coaching, at their own hourly rate, on top of their salary
 
     Example: A director is paid by the hour for the blocks they coach
@@ -445,7 +437,6 @@ Feature: Plans
       Then the offering pays no coaches' wages
       And the planner is warned that the director has no hourly rate to coach
 
-  @pending
   Rule: A salaried person's pay for the year adds up their salary, their hourly coaching, and their bonus
 
     Example: A director's pay for the year
@@ -460,7 +451,6 @@ Feature: Plans
         | bonus           | $5,000  |
         | total           | $25,900 |
 
-  @pending
   Rule: A salaried coach can't coach two blocks at the same time
 
     Example: Two blocks at the same time get a warning
@@ -475,7 +465,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about the director
 
-  @pending
   Rule: A planner sees how many hours of another coach a double-booked salaried coach needs
 
     Example: Two blocks overlap for two hours
@@ -490,7 +479,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the director's blocks need 6 hours of another coach
 
-  @pending
   Rule: A planner is warned when more of the organization's boats are out at once than it has
 
     Example: 14 Sailqubes out on a morning when the organization has 12
@@ -511,7 +499,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about Optis
 
-  @pending
   Rule: A planner is warned when more RIBs or other equipment are out at once than the organization has
 
     Example: 7 RIBs out on a morning when the organization has 6
@@ -520,7 +507,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 7 RIBs out, but the organization has 6
 
-  @pending
   Rule: A planner is warned when a block has more sailors than its staff can safely take
 
     Example: One Level 1 Instructor for 14 Guppies
@@ -554,7 +540,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about the block
 
-  @pending
   Rule: A planner is warned when a block has more sailors than its boats can take
 
     Example: Five Sailqubes for 14 Guppies
@@ -569,7 +554,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about the block
 
-  @pending
   Rule: A planner is warned about an activity with no staff
 
     Example: A practice in no block
@@ -582,7 +566,6 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice on August 2 has no staff
 
-  @pending
   Rule: A saved Financial Plan keeps its warnings, each with the plan and date it's about
 
     Example: A practice with no staff in a saved Financial Plan
@@ -656,7 +639,6 @@ Feature: Plans
       And a draft Financial Plan
       Then they can write a Program Plan's rules
 
-    @pending
     Example: A Plan Writer writes a program's rules
       Given a user with the Plan Writer policy
       And a draft Financial Plan
@@ -667,7 +649,6 @@ Feature: Plans
       And a saved Financial Plan whose Program Plan has rules
       Then they can't change the Program Plan's rules
 
-  @pending
   Rule: A planner keeps the draft their AI filled in by saving it, or rejects it by deleting it
 
     Example: A planner saves the draft their AI filled in

@@ -4,12 +4,16 @@ import type {
   CostLine,
   EngineOutput,
   PlanActivity,
-  PlanActivityBlockRule,
+  PlanActivityBlock,
+  PlanBlockBoats,
+  PlanBlockResource,
+  PlanBlockStaff,
   PlanBudgetLine,
   PlanData,
   PlanLaborLine,
   PlanOffering,
   PlanPool,
+  PlanProgram,
   PlanRates,
   PlanRevenueCharge,
   PlanSalariedPosition,
@@ -115,11 +119,14 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     resource_kinds: [{ id: "kind-rib", name: "RIB" }],
     plans: [],
     plan_versions: [],
+    plan_programs: [],
     plan_offerings: [],
-    plan_offering_boat_classes: [],
     plan_trips: [],
     plan_activities: [],
-    plan_activity_resources: [],
+    plan_activity_blocks: [],
+    plan_block_staff: [],
+    plan_block_resources: [],
+    plan_block_boats: [],
     plan_labor_lines: [],
     plan_budget_lines: [],
     plan_rates: [],
@@ -129,7 +136,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     plan_salaried_bookings: [],
     plan_resources: [],
     plan_boat_rates: [],
-    plan_activity_block_rules: [],
     plan_pools: [],
     plan_bonus_owners: [],
     plan_bonus_owner_products: [],
@@ -177,15 +183,6 @@ export function offering(productId: string, overrides: Partial<PlanOffering> = {
     target_enrollment: null,
     fill_rate: null,
     price_cents: null,
-    sailors_per_coach: null,
-    min_coaches: null,
-    coach_level_key: null,
-    required_qualification: null,
-    ribs_per_coach: null,
-    byob_share: null,
-    fixed_coaches: null,
-    fixed_ribs: null,
-    fixed_boats: null,
     cogs_rate: null,
     note: null,
     ...overrides,
@@ -217,9 +214,7 @@ export function activity(offeringId: string, overrides: Partial<PlanActivity> = 
     putaway_minutes: null,
     kind: "practice",
     uses_boats: true,
-    fixed_coaches: null,
-    fixed_ribs: null,
-    fixed_boats: null,
+    block_id: null,
     ...overrides,
   };
 }
@@ -252,20 +247,79 @@ export function staffLevel(overrides: Partial<PlanStaffLevel> = {}): PlanStaffLe
   };
 }
 
-export function blockRule(
-  offeringKeys: string[],
-  overrides: Partial<PlanActivityBlockRule> = {},
-): PlanActivityBlockRule {
+export function program(productId: string, overrides: Partial<PlanProgram> = {}): PlanProgram {
   return {
-    ...versioned("block"),
-    name: "A block",
-    offering_keys: offeringKeys,
-    weekdays: null,
-    starts_on: null,
-    ends_on: null,
-    coach_level_id: null,
-    salaried_positions: null,
+    ...versioned("program"),
+    product_id: productId,
+    staff_level_key: null,
+    sailors_per_coach: null,
+    rules: null,
     ...overrides,
+  };
+}
+
+/** What a block is given: staff, resources such as RIBs, and boats. */
+export interface Given {
+  staff?: Partial<PlanBlockStaff>[];
+  resources?: Partial<PlanBlockResource>[];
+  boats?: Partial<PlanBlockBoats>[];
+}
+
+/**
+ * A block on the activities' date, holding them, with what it's given. Returns the rows to add to a
+ * plan, and puts the activities in it.
+ */
+export function block(
+  activities: PlanActivity[],
+  given: Given = {},
+  overrides: Partial<PlanActivityBlock> = {},
+): Pick<PlanData, "plan_activity_blocks" | "plan_block_staff" | "plan_block_resources" | "plan_block_boats"> {
+  const row: PlanActivityBlock = {
+    ...versioned("block"),
+    date: activities[0]?.date ?? "2027-06-01",
+    name: "A block",
+    ...overrides,
+  };
+  for (const a of activities) a.block_id = row.id;
+  return {
+    plan_activity_blocks: [row],
+    plan_block_staff: (given.staff ?? []).map((s) => ({
+      ...versioned("staff"),
+      block_id: row.id,
+      staff_level_key: null,
+      position_key: null,
+      count: 1,
+      pay: null,
+      ...s,
+    })),
+    plan_block_resources: (given.resources ?? []).map((r) => ({
+      ...versioned("use"),
+      block_id: row.id,
+      resource_key: "",
+      quantity: 1,
+      hours: null,
+      ...r,
+    })),
+    plan_block_boats: (given.boats ?? []).map((b) => ({
+      ...versioned("boats"),
+      block_id: row.id,
+      boat_class_id: "",
+      count: 0,
+      sailor_owned: null,
+      ...b,
+    })),
+  };
+}
+
+/** Several blocks' rows, merged. */
+export function blocks(
+  ...each: ReturnType<typeof block>[]
+): Pick<PlanData, "plan_activity_blocks" | "plan_block_staff" | "plan_block_resources" | "plan_block_boats"> {
+  return {
+    plan_activity_blocks: each.flatMap((b) => b.plan_activity_blocks),
+    plan_block_staff: each.flatMap((b) => b.plan_block_staff),
+    plan_block_resources: each.flatMap((b) => b.plan_block_resources),
+    plan_block_boats: each.flatMap((b) => b.plan_block_boats),
   };
 }
 

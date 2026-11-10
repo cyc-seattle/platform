@@ -201,7 +201,7 @@ describe("approving reviews on main", () => {
     const repos = ofType("github:index/repository:Repository")
       .map((r) => r.inputs.name as string)
       .filter((name) => name !== "reviewed-example");
-    expect(repos).toContain("isthmia");
+    expect(repos).toContain("platform");
     for (const name of repos) {
       expect(approvals(name)).toBe(0);
     }

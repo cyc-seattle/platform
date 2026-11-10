@@ -58,16 +58,15 @@ const VISIBLE_KEYS: Record<string, string> = {
 
 /** Key fields planners type on the row's page, copying another row's Key. Out of the default columns. */
 const PLANNER_KEYS: Record<string, string> = {
-  "plan_offerings.coach_level_key": "Planners copy in a staff level's Key.",
-  "plan_activity_resources.resource_key": "Planners copy in a resource's Key.",
+  "plan_programs.staff_level_key": "Planners copy in a staff level's Key.",
+  "plan_block_staff.staff_level_key": "Planners copy in a staff level's Key.",
+  "plan_block_staff.position_key": "Planners copy in a salaried position's Key.",
+  "plan_block_resources.resource_key": "Planners copy in a resource's Key.",
   "plan_labor_lines.staff_level_key": "Planners copy in a staff level's Key.",
   "plan_labor_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
   "plan_budget_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
   "plan_staff_levels.qualifications": "Planners add each qualification's ID.",
   "plan_salaried_positions.qualifications": "Planners add each qualification's ID.",
-  "plan_activity_block_rules.offering_keys": "Planners add each offering's Key.",
-  "plan_activity_block_rules.salaried_positions": "Planners add each salaried position's Key.",
-  "plan_offerings.coach_position_key": "Planners copy in a salaried position's Key.",
   "plan_bonus_owners.position_key": "Planners copy in a salaried position's Key.",
 };
 

@@ -161,14 +161,6 @@ export const maintainers = new github.Team("maintainers", {
   privacy: "closed",
 });
 
-export const isthmia = new StandardRepository("isthmia", {
-  description: "A collection of Typescript packages for managing CYC Community Sailing Center.",
-  visibility: "public",
-  hasProjects: true,
-  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
-  mergeQueue: true,
-});
-
 new StandardRepository(".github", {
   description:
     "Community health files, the org profile, reusable workflows, and the Renovate preset for cyc-seattle repos.",
@@ -263,6 +255,17 @@ new github.RepositoryEnvironmentDeploymentPolicy(
   { repository: sailTeam.name, environment: sailTeamPages.environment, branchPattern: "main" },
   { parent: sailTeamPages },
 );
+
+// cyccommunitysailing.org, the public site, built from Directus and served by Firebase Hosting (#150). Its own repo,
+// so the environment that publishes content without a reviewer can't weaken sail-team's prod approval.
+export const cscWebsite = new StandardRepository("csc-website", {
+  description: "CYC Community Sailing Center's public website, cyccommunitysailing.org, built from Directus.",
+  visibility: "public",
+  autoInit: true,
+  licenseTemplate: "apache-2.0",
+  hasProjects: false,
+  requiredChecks: ["ci / ci", "pr-title / pr-title"],
+});
 
 new StandardRepository("todo-manager", {
   description: "Syncs camp schedules from TheClubSpot to Todoist. Archived.",
