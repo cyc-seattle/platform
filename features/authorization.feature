@@ -1,11 +1,12 @@
 Feature: Roles and groups
-  Everyone who signs in has one of four roles, which decides what they can do to start with:
+  Everyone who signs in has one of five roles, which decides what they can do to start with:
 
   - Community, for the club's families and members, who can see their own family.
   - Team, for the families on a team, who can also see everyone on every team.
   - Crew, for the people an admin has vetted and trusts with every roster, such as staff, coaches,
     directors, officers, and trusted volunteers. They can see every roster, everyone's contact
     details and medical information, and the club's products and revenue accounts.
+  - Staff, for paid staff, who can do everything Crew can.
   - Admin, for the people who run the system.
 
   A team is a program the club marks as one, such as a race team. A program's roster is everyone
@@ -21,12 +22,12 @@ Feature: Roles and groups
   accounts of their own, and the first admin account is the one the system was set up with. Groups
   never change what those accounts can do.
 
-  Rule: Everyone who signs in has the Community, Team, Crew, or Admin role
+  Rule: Everyone who signs in has the Community, Team, Crew, Staff, or Admin role
 
-    Example: Everyone who has signed in has one of the four roles
+    Example: Everyone who has signed in has one of the five roles
       Given the people in the CRM who have signed in
       When an admin looks up their roles
-      Then each of them has the Community, Team, Crew, or Admin role
+      Then each of them has the Community, Team, Crew, Staff, or Admin role
 
   Rule: A family on a team has the Team role, and goes back to Community once they're no longer on one
 
@@ -50,9 +51,9 @@ Feature: Roles and groups
       When their child's last time on a team ended 13 months ago
       Then they have the Community role
 
-  Rule: Joining or leaving a team never changes a Crew member's or an admin's role
+  Rule: Joining or leaving a team never changes the role of Crew, Staff, or an admin
 
-    Scenario Outline: A Crew member or admin whose child signs up for a team keeps their role
+    Scenario Outline: Crew, Staff, or an admin whose child signs up for a team keeps their role
       Given a user with the <role> role
       When their child signs up for a team
       Then they still have the <role> role
@@ -60,6 +61,7 @@ Feature: Roles and groups
       Examples:
         | role  |
         | Crew  |
+        | Staff |
         | Admin |
 
   Rule: Only an admin can change someone's role, apart from moving families between Community and Team
@@ -68,6 +70,12 @@ Feature: Roles and groups
       Given a user with the Community role
       When an admin gives them the Crew role
       Then they have the Crew role
+      And they can see the rosters
+
+    Example: An admin makes a paid staffer Staff
+      Given a user with the Community role
+      When an admin gives them the Staff role
+      Then they have the Staff role
       And they can see the rosters
 
     Scenario Outline: No other role can change anyone's role, even their own

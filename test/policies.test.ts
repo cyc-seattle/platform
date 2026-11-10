@@ -31,6 +31,12 @@ const collections = (name: string, action: string) =>
       .map((rule) => rule.collection),
   );
 
+describe("the group-policies hook", () => {
+  it("manages users on every role a person signs in with, Staff included", () => {
+    expect(groupPoliciesConfig([]).roles).toEqual(["Community", "Team", "Crew", "Staff", "Admin"]);
+  });
+});
+
 describe("the policies a group can give", () => {
   it("are the CRM, Medical, Catalog, and Plan policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([

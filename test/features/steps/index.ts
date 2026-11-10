@@ -380,7 +380,7 @@ Step("an admin looks up their roles", async () => {
     await admin()
   ).ok("GET", `/items/people?filter=${filter}&fields=id,directus_user_id.role.name&limit=-1`);
 });
-Step("each of them has the Community, Team, Crew, or Admin role", () => {
+Step("each of them has the Community, Team, Crew, Staff, or Admin role", () => {
   for (const { id, directus_user_id: user } of signedIn) {
     expect(roleNames, `person ${id}`).toContain(user?.role?.name);
   }

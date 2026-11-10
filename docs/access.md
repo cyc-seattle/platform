@@ -5,7 +5,7 @@ how `backend` builds them.
 
 ## Roles
 
-Everyone who signs in has one of four roles. A role gives base access. The `group-policies` hook
+Everyone who signs in has one of five roles. A role gives base access. The `group-policies` hook
 moves families between Community and Team, and only an admin changes any other role, by hand in the
 Data Studio.
 
@@ -14,6 +14,7 @@ Data Studio.
 | Community | Everyone, on their first sign-in      | Their own household                                                                                                                           |
 | Team      | Households on a team, set by the hook | The Community policy, everyone on every team by name and sailors by school, and the email and phone of team adults who chose to share         |
 | Crew      | People an admin vets and trusts       | Every roster, everyone's contact details and medical information, the catalog's money and the Google Groups to read, and the Community policy |
+| Staff     | Paid staff                            | Everything Crew has                                                                                                                           |
 | Admin     | The people who run the system         | Everything                                                                                                                                    |
 
 A team is a program with `team` set. Someone is on a team while they have a confirmed registration in
@@ -65,6 +66,8 @@ permissions, plus any shared policies it's given:
 - Crew has its own rules, in `stacks/backend/policies.ts`, plus the Community policy, so a Crew
   member who is a parent sees what any parent sees. It reads every person, contact, contact point,
   medical profile, offering, and registration, but not Clubspot's sign-up answers or payments.
+- Staff has Crew's policy and the Community policy. Its own policy is empty, for whatever more
+  access paid staff are given later.
 
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
@@ -140,9 +143,9 @@ change that emitted no event, such as a cascade.
   login yet, or when everyone else with the email is that person's child. Otherwise a shared email
   links nobody. The hook logs it, and an admin links the login by hand.
 - It manages only links to the policies a group can give, and only for users on Community, Team,
-  Crew, or Admin. It never touches a sync's user or the first admin account.
+  Crew, Staff, or Admin. It never touches a sync's user or the first admin account.
 - It moves a Community user whose person is on a team to Team, and a Team user who isn't back to
-  Community. It never changes Crew or Admin. Registrations, offerings, programs, and contacts set it
+  Community. It never changes Crew, Staff, or Admin. Registrations, offerings, programs, and contacts set it
   off too, and the 15-minute run closes the 12-month window as time passes.
 - It refuses a `group_policies` row that names any other policy.
 - It changes links through Directus's `AccessService`, which clears Directus's permission caches.

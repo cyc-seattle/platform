@@ -120,6 +120,7 @@ function roleIds(roles: CrmIdentities) {
     communityRoleId: roles.communityRole.roleId,
     teamRoleId: roles.teamRole.roleId,
     crewRoleId: roles.crewRole.roleId,
+    staffRoleId: roles.staffRole.roleId,
   };
 }
 
@@ -176,6 +177,7 @@ const {
   communityRoleId,
   teamRoleId,
   crewRoleId,
+  staffRoleId,
 } = identities;
 
 // The syncs' CronJobs take their machine users' tokens straight into their Secrets.
@@ -248,6 +250,9 @@ for (const rule of crewRules) {
     { dependsOn: crmSchema, aliases: [{ name: `crm-coach-${name}` }] },
   );
 }
+
+// Staff has everything Crew has: Crew's own rules, shared rather than copied.
+new DirectusAccess("crm-staff-crew", { ...auth, roleId: staffRoleId, policyId: crewPolicyId });
 
 /**
  * Declares a policy once, attached to each of `roleIds`, or to none for one that groups give. Its
@@ -474,10 +479,10 @@ for (const rule of websiteBuild) {
   );
 }
 
-// The Community role's policies (./community-rules.ts), which Team and Crew have too, so a Crew
-// member who is a parent sees what any parent sees.
+// The Community role's policies (./community-rules.ts), which Team, Crew, and Staff have too, so a
+// Crew member who is a parent sees what any parent sees.
 for (const policy of familyPolicies) {
-  declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, teamRoleId, crewRoleId]);
+  declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, teamRoleId, crewRoleId, staffRoleId]);
 }
 
 // Team's own policies. Crew reads every row these do.
