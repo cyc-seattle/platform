@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { cents, load, picturesIn, plan, questions, stableId, type WebsiteApi } from "../scripts/load-website.ts";
+import {
+  cents,
+  load,
+  mimeType,
+  picturesIn,
+  plan,
+  questions,
+  stableId,
+  type WebsiteApi,
+} from "../scripts/load-website.ts";
 
 // The by-hand load of the website's proof of concept, against a Directus held in memory.
 
@@ -95,15 +104,19 @@ const data = {
 function fakeDirectus() {
   const tables = new Map<string, Map<string, Record<string, unknown>>>();
   const table = (name: string) => tables.get(name) ?? tables.set(name, new Map()).get(name)!;
-  const files = new Map<string, string>();
-  const counts = { uploads: 0, creates: 0, removes: 0 };
+  const files = new Map<string, { id: string; type: string | null }>();
+  const counts = { uploads: 0, replaces: 0, creates: 0, removes: 0 };
   let settings: Record<string, unknown> = {};
   const api: WebsiteApi = {
     findFile: async (name) => files.get(name),
-    uploadFile: async (name) => {
+    uploadFile: async (name, _, type) => {
       counts.uploads++;
-      files.set(name, `file-${name}`);
+      files.set(name, { id: `file-${name}`, type });
       return `file-${name}`;
+    },
+    replaceFile: async (id, name, _, type) => {
+      counts.replaces++;
+      files.set(name, { id, type });
     },
     upsert: async (collection, row) => {
       if (!table(collection).has(row.id)) counts.creates++;
@@ -123,7 +136,7 @@ function fakeDirectus() {
   };
   const snapshot = () =>
     JSON.stringify({ tables: [...tables].map(([name, rows]) => [name, [...rows]]), settings, files: [...files] });
-  return { api, table, counts, snapshot, settings: () => settings };
+  return { api, table, files, counts, snapshot, settings: () => settings };
 }
 
 const readPicture = () => new Uint8Array([1]);
@@ -143,7 +156,35 @@ describe("loading the website's proof of concept", () => {
     const { creates } = directus.counts;
     await load(directus.api, data, readPicture);
     expect(directus.snapshot()).toBe(first);
-    expect(directus.counts).toMatchObject({ uploads: 3, creates, removes: 0 });
+    expect(directus.counts).toMatchObject({ uploads: 3, replaces: 0, creates, removes: 0 });
+  });
+
+  it("uploads each picture with its type", async () => {
+    const directus = fakeDirectus();
+    await load(directus.api, data, readPicture);
+    expect(Object.fromEntries([...directus.files].map(([name, { type }]) => [name, type]))).toEqual({
+      "a_banner_mv2.jpg": "image/jpeg",
+      "a_logo_mv2.png": "image/png",
+      "a_photo_mv2.jpg": "image/jpeg",
+    });
+  });
+
+  it("uploads again a picture an earlier run left with no type, keeping its ID", async () => {
+    const directus = fakeDirectus();
+    directus.files.set("a_logo_mv2.png", { id: "old-logo", type: "application/octet-stream" });
+    directus.files.set("a_photo_mv2.jpg", { id: "old-photo", type: null });
+    directus.files.set("a_banner_mv2.jpg", { id: "old-banner", type: "image/jpeg" });
+    await load(directus.api, data, readPicture);
+    expect([...directus.files]).toEqual([
+      ["a_logo_mv2.png", { id: "old-logo", type: "image/png" }],
+      ["a_photo_mv2.jpg", { id: "old-photo", type: "image/jpeg" }],
+      ["a_banner_mv2.jpg", { id: "old-banner", type: "image/jpeg" }],
+    ]);
+    expect(directus.counts).toMatchObject({ uploads: 0, replaces: 2 });
+    expect(directus.settings()).toMatchObject({ logo: "old-logo" });
+
+    await load(directus.api, data, readPicture);
+    expect(directus.counts).toMatchObject({ uploads: 0, replaces: 2 });
   });
 
   it("puts a list back as the proof of concept has it", async () => {
@@ -219,5 +260,17 @@ describe("plan", () => {
       { question: "One", answer: "A" },
       { question: "Two", answer: "B" },
     ]);
+  });
+});
+
+describe("mimeType", () => {
+  it("names a picture's type from its extension, in any case", () => {
+    expect(mimeType("a_mv2.jpeg")).toBe("image/jpeg");
+    expect(mimeType("a_mv2.JPG")).toBe("image/jpeg");
+    expect(mimeType("a_mv2.png")).toBe("image/png");
+  });
+
+  it("refuses a file it can't name a type for, rather than upload it untyped", () => {
+    expect(() => mimeType("notes.txt")).toThrow("No MIME type");
   });
 });

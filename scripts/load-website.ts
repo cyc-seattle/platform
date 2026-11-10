@@ -14,10 +14,12 @@ type Row = Record<string, unknown> & { id: string };
 
 /** What the loader asks of Directus. */
 export interface WebsiteApi {
-  /** The ID of the file in the Website folder with this name, if there is one. */
-  findFile(name: string): Promise<string | undefined>;
+  /** The file in the Website folder with this name, if there is one, and its MIME type. */
+  findFile(name: string): Promise<{ id: string; type: string | null } | undefined>;
   /** Uploads a file into the Website folder, and returns its ID. */
-  uploadFile(name: string, bytes: Uint8Array): Promise<string>;
+  uploadFile(name: string, bytes: Uint8Array, type: string): Promise<string>;
+  /** Uploads a file's contents again, over the file with this ID. */
+  replaceFile(id: string, name: string, bytes: Uint8Array, type: string): Promise<void>;
   /** Adds the row, or changes it to match if a row has its ID. */
   upsert(collection: string, row: Row): Promise<void>;
   /** The IDs of the rows in `collection` whose `field` is `parentId`. */
@@ -126,6 +128,25 @@ export function stableId(...parts: string[]): string {
 
 /** A Wix picture's name in the proof of concept, `e43759_…~mv2.jpg`, as its file is named on disk. */
 export const pictureFile = (media: string) => media.replace("~", "_");
+
+const MIME_TYPES: Record<string, string> = {
+  avif: "image/avif",
+  gif: "image/gif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  svg: "image/svg+xml",
+  webp: "image/webp",
+};
+
+/** A picture's MIME type, from its name. Directus stores what the upload says, and serves it. */
+export function mimeType(name: string): string {
+  const type = MIME_TYPES[path.extname(name).slice(1).toLowerCase()];
+  if (type === undefined) {
+    throw new Error(`No MIME type for ${name}`);
+  }
+  return type;
+}
 
 /** Every picture the content names. */
 export function picturesIn(data: Data): string[] {
@@ -399,7 +420,17 @@ export async function load(api: WebsiteApi, data: Data, readPicture: (media: str
   const fileIds = new Map<string, string>();
   for (const media of picturesIn(data)) {
     const name = pictureFile(media);
-    fileIds.set(media, (await api.findFile(name)) ?? (await api.uploadFile(name, readPicture(media))));
+    const type = mimeType(name);
+    const found = await api.findFile(name);
+    if (found === undefined) {
+      fileIds.set(media, await api.uploadFile(name, readPicture(media), type));
+      continue;
+    }
+    // An earlier run uploaded it with no type. Uploading again makes Directus read its size too.
+    if (!found.type || found.type === "application/octet-stream") {
+      await api.replaceFile(found.id, name, readPicture(media), type);
+    }
+    fileIds.set(media, found.id);
   }
   const writes = plan(data, (media) => (media === undefined ? null : fileIds.get(media)!));
   for (const [collection, row] of writes.rows) {
@@ -436,30 +467,36 @@ export function directusApi(baseUrl: string, token: string): WebsiteApi {
     }
     return data;
   };
+  const send = async (method: string, route: string, name: string, bytes: Uint8Array, type: string) => {
+    const form = new FormData();
+    // Directus reads the fields before the file.
+    form.append("folder", WEBSITE_FOLDER);
+    form.append("file", new Blob([bytes], { type }), name);
+    const response = await fetch(`${baseUrl}${route}`, {
+      method,
+      headers: { authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (response.status >= 300) {
+      throw new Error(`upload ${name}: ${response.status} ${await response.text()}`);
+    }
+    return ((await response.json()) as { data: { id: string } }).data;
+  };
   const query = (filter: object, fields = "id") =>
     `?fields=${fields}&limit=-1&filter=${encodeURIComponent(JSON.stringify(filter))}`;
   return {
     async findFile(name) {
       const found = await ok(
         "GET",
-        `/files${query({ folder: { _eq: WEBSITE_FOLDER }, filename_download: { _eq: name } })}`,
+        `/files${query({ folder: { _eq: WEBSITE_FOLDER }, filename_download: { _eq: name } }, "id,type")}`,
       );
-      return found[0]?.id;
+      return found[0];
     },
-    async uploadFile(name, bytes) {
-      const form = new FormData();
-      // Directus reads the fields before the file.
-      form.append("folder", WEBSITE_FOLDER);
-      form.append("file", new Blob([bytes]), name);
-      const response = await fetch(`${baseUrl}/files`, {
-        method: "POST",
-        headers: { authorization: `Bearer ${token}` },
-        body: form,
-      });
-      if (response.status >= 300) {
-        throw new Error(`upload ${name}: ${response.status} ${await response.text()}`);
-      }
-      return ((await response.json()) as { data: { id: string } }).data.id;
+    async uploadFile(name, bytes, type) {
+      return (await send("POST", "/files", name, bytes, type)).id;
+    },
+    async replaceFile(id, name, bytes, type) {
+      await send("PATCH", `/files/${id}`, name, bytes, type);
     },
     async upsert(collection, row) {
       const { id, ...rest } = row;

@@ -37,5 +37,8 @@ DIRECTUS_URL=https://directus.<domain> DIRECTUS_TOKEN=<an admin's static token> 
 
 It asks you to type the Directus's host before it writes. Each row's ID comes from what the row is,
 and a picture is uploaded only if the Website folder has no file of its name, so a second run adds
-nothing. It also puts every row and list back as the proof of concept has them, so after agents start
+nothing. A picture an earlier run uploaded with no type, which Directus serves as
+`application/octet-stream`, is uploaded again over itself, keeping its ID.
+
+It also puts every row and list back as the proof of concept has them, so after agents start
 editing the content, running it again undoes their edits.
