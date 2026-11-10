@@ -86,6 +86,7 @@ describe("staffing", () => {
         version_id: "v1",
         date: "2027-08-02",
         key: a.key,
+        message: "An offering's practice has no staff",
       }),
     );
   });
@@ -307,7 +308,7 @@ describe("staffing", () => {
 
     function guppies(sailors: number, given: Given, perCoach = 10) {
       const p = product({ name: "Guppies" });
-      const off = offering(p.id, { target_enrollment: sailors });
+      const off = offering(p.id, { name: "Guppies Week 2", target_enrollment: sailors });
       const a = activity(off.id, { uses_boats: false });
       return emptyPlan({
         products: [p],
@@ -326,7 +327,7 @@ describe("staffing", () => {
         expect.objectContaining({
           code: "over_capacity",
           category: "allocation",
-          message: "2027-06-01, Guppies: 14 sailors, but its staff can take 10",
+          message: "Guppies Week 2: 14 sailors, but the staff can take 10",
         }),
       );
       expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
@@ -335,7 +336,7 @@ describe("staffing", () => {
     it("counts a coach qualified for the program's staff level, and not one who isn't", () => {
       expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
       const out = computePlan(guppies(10, { staff: [{ staff_level_key: junior.key }] }));
-      expect(out.warnings.map((w) => w.message)).toContain("2027-06-01, Guppies: 10 sailors, but its staff can take 0");
+      expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2: 10 sailors, but the staff can take 0");
     });
 
     it("counts each program's sailors against its own sailors per coach", () => {
@@ -373,7 +374,7 @@ describe("staffing", () => {
       data.plan_activities[0]!.uses_boats = true;
       data.boat_classes = [{ id: "sailqube", name: "Sailqube", sailors_per_boat: 2, footprint_sq_ft: null }];
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "2027-06-01, Guppies: 14 sailors, but its boats can take 10",
+        "Guppies Week 2: 14 sailors, but the boats can take 10",
       );
       data.plan_block_boats[0]!.sailor_owned = 2;
       expect(codes(data)).not.toContain("over_capacity");
@@ -391,7 +392,10 @@ describe("staffing", () => {
     /** Two blocks on July 13, with `first` and `second` Sailqubes and RIBs, at the given times. */
     function twoBlocks(first: number, second: number, times: [string, string][], sailorOwned = 0) {
       const p = product();
-      const [x, y] = [offering(p.id, { target_enrollment: 1 }), offering(p.id, { target_enrollment: 1 })];
+      const [x, y] = [
+        offering(p.id, { name: "Guppies Week 3", target_enrollment: 1 }),
+        offering(p.id, { name: "Minnows Week 3", target_enrollment: 1 }),
+      ];
       const ax = activity(x.id, { date: "2027-07-13", start_time: times[0]![0], end_time: times[0]![1] });
       const ay = activity(y.id, { date: "2027-07-13", start_time: times[1]![0], end_time: times[1]![1] });
       const given = (n: number) => ({
@@ -402,7 +406,7 @@ describe("staffing", () => {
         products: [p],
         plan_offerings: [x, y],
         plan_activities: [ax, ay],
-        boat_classes: [{ id: "sailqube", name: "Sailqubes", sailors_per_boat: 2, footprint_sq_ft: null }],
+        boat_classes: [{ id: "sailqube", name: "Sailqube", sailors_per_boat: 2, footprint_sq_ft: null }],
         plan_boat_rates: [
           {
             id: "br",
@@ -430,8 +434,21 @@ describe("staffing", () => {
           category: "allocation",
           date: "2027-07-13",
           version_id: "v1",
-          message: "2027-07-13: 14 Sailqubes out, but the organization has 12 (Guppies 9, Minnows 5)",
+          message: "14 Sailqubes out, but A club has 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
         }),
+      );
+    });
+
+    it("names the offerings of the one block that's over", () => {
+      const out = computePlan(twoBlocks(14, 0, morning));
+      expect(out.warnings.map((w) => w.message)).toContain("14 Sailqubes out, but A club has 12, for Guppies Week 3");
+    });
+
+    it("uses a boat class's name as given unless it's one word", () => {
+      const data = twoBlocks(9, 5, morning);
+      data.boat_classes[0]!.name = "Laser Radial";
+      expect(computePlan(data).warnings.map((w) => w.message)).toContain(
+        "14 Laser Radial out, but A club has 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
       );
     });
 
@@ -453,7 +470,7 @@ describe("staffing", () => {
     it("warns when more of a resource, such as RIBs, is out at once than the organization has", () => {
       const out = computePlan(twoBlocks(9, 5, morning));
       expect(out.warnings.map((w) => w.message)).toContain(
-        "2027-07-13: 14 RIBs out, but the organization has 12 (Guppies 9, Minnows 5)",
+        "14 RIBs out, but A club has 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
       );
     });
 

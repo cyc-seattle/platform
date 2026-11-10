@@ -513,7 +513,7 @@ Feature: Plans
       Given Guppies have a Level 1 Instructor for every 10 sailors
       And a Guppies block of 14 sailors with one Level 1 Instructor and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but its staff can take 10
+      Then the planner is warned that the block has 14 sailors, but the staff can take 10
 
     Example: A coach qualified for the program's staff level counts
       Given Guppies have a Level 1 Instructor for every 10 sailors
@@ -526,13 +526,13 @@ Feature: Plans
       Given Guppies have a Level 1 Instructor for every 10 sailors
       And a Guppies block of 10 sailors with one Junior Instructor, who isn't qualified to coach Guppies, and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has 10 sailors, but its staff can take 0
+      Then the planner is warned that the block has 10 sailors, but the staff can take 0
 
     Example: One coach for 5 Guppies and 5 Minnows is too few
       Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
       And a block of 5 Guppies and 5 Minnows, with one coach and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has more sailors than its staff can take
+      Then the planner is warned that the block has more sailors than the staff can take
 
     Example: Two coaches for 5 Guppies and 5 Minnows are enough
       Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
@@ -546,7 +546,7 @@ Feature: Plans
       Given Sailqubes take 2 sailors each
       And a Guppies block of 14 sailors with enough staff and 5 Sailqubes
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but its boats can take 10
+      Then the planner is warned that the block has 14 sailors, but the boats can take 10
 
     Example: Boats that sailors bring count
       Given Optis take 1 sailor each

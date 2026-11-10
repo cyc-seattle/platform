@@ -61,6 +61,25 @@ function sum(values: Iterable<number>): number {
   return total;
 }
 
+/**
+ * `n` of something, in words: "9 Sailqubes", "1 Opti". Only a one-word name is made plural, and not one that already
+ * ends in "s", such as RIBs; any other name is used as given, since adding an "s" to "Laser Radial" reads wrong.
+ */
+function countOf(n: number, name: string): string {
+  const plural = n !== 1 && /^\S+$/.test(name) && !/s$/i.test(name);
+  return `${n} ${plural ? `${name}s` : name}`;
+}
+
+/** Names as a sentence lists them: `a`, `a and b`, or `a, b, and c`. */
+function listOf(names: string[]): string {
+  return names.length <= 2 ? names.join(" and ") : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+}
+
+/** The offerings a block holds, by name, so a warning about it says whose it is. */
+function offeringsOf(block: Block): string {
+  return listOf([...new Set(block.members.map((a) => a.offering.name))]);
+}
+
 function groupBy<T>(rows: T[], key: (row: T) => Id): Map<Id, T[]> {
   const groups = new Map<Id, T[]>();
   for (const row of rows) groups.set(key(row), [...(groups.get(key(row)) ?? []), row]);
@@ -124,7 +143,7 @@ export class Staffing {
       if (row.date !== a.date) {
         this.ctx.warn(
           "block_date_mismatch",
-          `${a.offering.name}'s activity on ${a.date} is in ${row.name}, which is on ${row.date}`,
+          `${a.offering.name}'s ${a.kind} is in ${row.name}, which is on ${row.date}`,
           a.stored.key,
           { version_id: a.stored.version_id, date: a.date },
         );
@@ -173,7 +192,7 @@ export class Staffing {
       if (a.kind === "travel") continue;
       const block = a.stored.block_id == null ? undefined : blocks.get(a.stored.block_id);
       if (block !== undefined && sum(block.staff.map((s) => s.count)) > 0) continue;
-      this.ctx.warn("unallocated_activity", `${a.offering.name}'s ${a.kind} on ${a.date} has no staff`, a.stored.key, {
+      this.ctx.warn("unallocated_activity", `${a.offering.name}'s ${a.kind} has no staff`, a.stored.key, {
         version_id: a.stored.version_id,
         date: a.date,
       });
@@ -206,7 +225,7 @@ export class Staffing {
     const sailors = sum(offerings.map((o) => ctx.enrollment.get(o.id) ?? 0));
     if (sailors <= 0) return;
     const scope = { version_id: block.row.version_id, date: block.row.date };
-    const where = `${block.row.date}, ${block.row.name}`;
+    const where = offeringsOf(block);
 
     let load = 0;
     let counted = 0;
@@ -243,7 +262,7 @@ export class Staffing {
       if (load > qualified + 1e-9) {
         ctx.warn(
           "over_capacity",
-          `${where}: ${counted} sailors, but its staff can take ${Math.floor((qualified * counted) / load + 1e-9)}`,
+          `${where}: ${counted} sailors, but the staff can take ${Math.floor((qualified * counted) / load + 1e-9)}`,
           block.row.key,
           scope,
         );
@@ -267,7 +286,7 @@ export class Staffing {
       seats += (b.count + (b.sailor_owned ?? 0)) * perBoat;
     }
     if (sailors > seats) {
-      ctx.warn("over_capacity", `${where}: ${sailors} sailors, but its boats can take ${seats}`, block.row.key, scope);
+      ctx.warn("over_capacity", `${where}: ${sailors} sailors, but the boats can take ${seats}`, block.row.key, scope);
     }
   }
 
@@ -281,15 +300,20 @@ export class Staffing {
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const fleet = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r.quantity]));
     const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
+    const organization = ctx.data.organization.name;
     for (const [date, list] of dates) {
       const check = (code: string, what: string, have: number | null | undefined, used: (b: Block) => number) => {
         if (have == null) return;
         const out = list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : []));
         const peak = mostAtOnce(out);
         if (peak.total <= have) return;
-        const names = peak.at.map(({ block, n }) => `${block.row.name} ${n}`).join(", ");
+        const whose =
+          peak.at.length === 1
+            ? `, for ${offeringsOf(peak.at[0]!.block)}`
+            : `: ${listOf(peak.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`;
+        const message = `${countOf(peak.total, what)} out, but ${organization} has ${have}${whose}`;
         for (const version of new Set(peak.at.map(({ block }) => block.row.version_id))) {
-          ctx.warn(code, `${date}: ${peak.total} ${what} out, but the organization has ${have} (${names})`, what, {
+          ctx.warn(code, message, what, {
             version_id: version,
             date: date as DateString,
           });
@@ -348,7 +372,7 @@ export class Staffing {
       for (const version of new Set(list.map((b) => b.row.version_id))) {
         this.ctx.warn(
           "position_double_booked",
-          `${names.get(key) ?? key} coaches ${clash[0].row.name} and ${clash[1].row.name} at the same time on ${date}` +
+          `${names.get(key) ?? key} coaches ${clash[0].row.name} and ${clash[1].row.name} at the same time` +
             (hours > 0 ? `, so another coach is needed for ${round2(hours)} hours` : ""),
           key,
           { version_id: version, date },
