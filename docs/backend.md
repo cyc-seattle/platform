@@ -5,7 +5,7 @@ Cloud SQL database `directus`. It came from isthmia's `crm`, `clubspot-sync`, an
 projects with their resource names unchanged, and their states moved over with `pulumi state move`
 (cyc-seattle/workplace#6). It holds:
 
-- Directus, as a `WebService`, with the query guard and the `group-policies` hook mounted as hook
+- Directus, as a `WebService`, keeping uploaded files in the environment's Cloud Storage bucket, with the query guard and the `group-policies` hook mounted as hook
   extensions, and the `cents-as-dollars` display
 - the schema apply, from every `schemas/<domain>.yaml` merged into one snapshot
 - each collection's default view in the Data Studio
@@ -17,6 +17,10 @@ projects with their resource names unchanged, and their states moved over with `
 - the MCP settings
 - the clubspot-sync and gsuite-sync CronJobs, their images, and the Secrets that hold their tokens
 - in dev, the Clubspot and Workspace fakes the syncs talk to
+
+`infra` makes each environment's files bucket, `<project>-directus-files-<environment>`, and lets
+Directus's pod use it through Workload Identity, since neither deploy identity may. The bucket is
+private and versioned, and keeps a deleted or replaced file for 30 days.
 
 Dev deploys it for each PR in the merge queue, and a push to `main` deploys prod after `infra`.
 

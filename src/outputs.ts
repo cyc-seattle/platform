@@ -31,6 +31,11 @@ export function stateBucket(project: string, environment: string): string {
   return `${project}-pulumi-${environment}`;
 }
 
+/** The bucket Directus keeps an environment's uploaded files in, as `stacks/infra/directus-files.ts` names it. */
+export function directusFilesBucket(project: string, environment: string): string {
+  return `${project}-directus-files-${environment}`;
+}
+
 /** Parses and validates the outputs file's text. `source` names the file in error messages. */
 export function parsePlatformOutputs(text: string, source: string): PlatformOutputs {
   let json: unknown;

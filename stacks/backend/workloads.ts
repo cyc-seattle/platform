@@ -17,6 +17,8 @@ export interface DirectusEnvArgs {
   oidcClientId: pulumi.Input<string>;
   /** The most connections Directus holds open. */
   poolMax: number;
+  /** The bucket Directus keeps uploaded files in. */
+  filesBucket: string;
 }
 
 /** Directus's env, as in the VM's compose file, without the secrets. */
@@ -27,6 +29,7 @@ export function directusEnv({
   communityRoleId,
   oidcClientId,
   poolMax,
+  filesBucket,
 }: DirectusEnvArgs): EnvVar[] {
   const site = `https://${domain}`;
   const values: Record<string, pulumi.Input<string>> = {
@@ -37,6 +40,10 @@ export function directusEnv({
     DB_USER: "directus",
     DB_POOL__MIN: "0",
     DB_POOL__MAX: String(poolMax),
+    // Files outlive the pod. Directus signs in to Cloud Storage as its pod, through Workload Identity.
+    STORAGE_LOCATIONS: "gcs",
+    STORAGE_GCS_DRIVER: "gcs",
+    STORAGE_GCS_BUCKET: filesBucket,
     ADMIN_EMAIL: adminEmail,
     PUBLIC_URL: `https://directus.${domain}`,
     // The built-in admin is the break-glass login if Authentik is down (cyc-seattle/isthmia#166).

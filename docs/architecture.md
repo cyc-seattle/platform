@@ -121,7 +121,7 @@ Pulumi + config, restore data).
 
 - **Database**: Cloud SQL automated backups + point-in-time recovery. Also export logical dumps to GCS for a
   provider-independent copy.
-- **App volumes**: Directus uploads — `restic`/`borg` to the bucket below.
+- **Directus files**: a versioned Cloud Storage bucket per environment, which keeps a deleted or replaced file for 30 days.
 - **Bucket**: versioned, lifecycle-managed, in a different region, ideally a separate project for blast-radius
   isolation. CMEK if you want to hold the key.
 - **Verify**: a restore drill each quarter. A backup you haven't restored is a hope.
