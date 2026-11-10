@@ -3,6 +3,7 @@ import {
   loginHost,
   directusRedirectUri,
   lowercaseEmailScopeExpression,
+  googleUserPropertiesExpression,
   signInNormalizeExpression,
   pendingVerificationDenialExpression,
   clearPendingVerificationExpression,
@@ -25,6 +26,17 @@ describe("hostnames", () => {
 describe("lowercaseEmailScopeExpression", () => {
   it("lowercases the user's email in the returned claim", () => {
     expect(lowercaseEmailScopeExpression()).toBe('return {"email": request.user.email.lower()}');
+  });
+});
+
+describe("googleUserPropertiesExpression", () => {
+  it("takes the username from the Google account's lowercased email, with its name", () => {
+    expect(googleUserPropertiesExpression()).toBe(
+      [
+        'email = (info.get("email") or "").lower()',
+        'return {"username": email, "email": email, "name": info.get("name")}',
+      ].join("\n"),
+    );
   });
 });
 

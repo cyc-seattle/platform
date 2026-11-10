@@ -83,6 +83,19 @@ export function lowercaseEmailScopeExpression(): string {
 }
 
 /**
+ * The Python expression body for the Google source's user property mapping. Authentik's Google
+ * type gives only `email` and `name`, so without this the enrollment flow's user-write stage
+ * aborts on an empty username (cyc-seattle/platform#201). Lowercased like the sign-in flow's own
+ * accounts, so both ways in make the same username.
+ */
+export function googleUserPropertiesExpression(): string {
+  return [
+    'email = (info.get("email") or "").lower()',
+    'return {"username": email, "email": email, "name": info.get("name")}',
+  ].join("\n");
+}
+
+/**
  * The Python expression body for the "any signed-in user" policy gating Directus's application. Authentik 2026.8 denies access to an application with no policy bound at all, so
  * this is the whole access decision at the gate - each application's own data layer (Directus's
  * permission rules) decides what a signed-in user can

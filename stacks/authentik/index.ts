@@ -16,6 +16,7 @@ import {
   loginHost,
   directusRedirectUri,
   lowercaseEmailScopeExpression,
+  googleUserPropertiesExpression,
   signInNormalizeExpression,
   pendingVerificationDenialExpression,
   clearPendingVerificationExpression,
@@ -144,9 +145,10 @@ function googleSignInSource(): GoogleSource {
 
   // --- 1. The Google source's own enrollment flow: write the user, then log in - nothing verifies
   // the email because Google already has. A source's own enrollment flow needs no prompt stage
-  // either: `handle_enroll` (authentik/core/sources/flow_manager.py) populates the flow's prompt
-  // data itself and never pre-sets a pending user, so `create_when_required` takes its normal
-  // create-a-new-user path, active immediately, with this stage's own `createUsersAsInactive: false`.
+  // either: `handle_enroll` (authentik/core/sources/flow_manager.py) fills the flow's prompt
+  // data from the source's property mappings (below) and never pre-sets a pending user, so
+  // `create_when_required` takes its normal create-a-new-user path, active immediately, with this
+  // stage's own `createUsersAsInactive: false`.
   const googleEnrollmentFlow = new authentik.Flow(
     "google-enrollment",
     { name: "Google sign-up", slug: "google-enrollment", title: "Create your account", designation: "enrollment" },
@@ -173,6 +175,12 @@ function googleSignInSource(): GoogleSource {
     );
   });
 
+  const googleUserProperties = new authentik.PropertyMappingSourceOauth(
+    "google-user-properties",
+    { name: "Google: username from email", expression: googleUserPropertiesExpression() },
+    opts,
+  );
+
   // --- 2. The Google source: email-based user matching, falling through to the minimal enrollment
   // flow above for a first sign-in from an unmatched email (see GoogleSource's own doc comment).
   const googleSource = new GoogleSource(
@@ -184,6 +192,7 @@ function googleSignInSource(): GoogleSource {
       consumerSecret: secretValue("google-oauth-client-secret"),
       authenticationFlow: sourceAuthenticationFlow.id,
       enrollmentFlow: googleEnrollmentFlow.uuid,
+      propertyMappings: [googleUserProperties.id],
     },
     opts,
   );
