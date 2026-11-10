@@ -87,6 +87,7 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | `directus-community-role-id`        | nothing       | **Pulumi-generated**, from the Community role's ID. The cluster passes the ID to Directus directly     |
 | `clubspot-sync-directus-token`      | clubspot-sync | **Pulumi-generated.** Its machine user's Directus token                                                |
 | `gsuite-sync-directus-token`        | gsuite-sync   | **Pulumi-generated.** Its machine user's Directus token                                                |
+| `csc-website-directus-token`        | csc-website   | **Pulumi-generated.** The website build's Directus token, which cyc-seattle/csc-website's build reads  |
 | `google-oauth-client-id`            | Authentik     | The Google OAuth client's ID (§8)                                                                      |
 | `google-oauth-client-secret`        | Authentik     | The Google OAuth client's secret (§8)                                                                  |
 | `authentik-secret-key`              | Authentik     | **Pulumi-generated.**                                                                                  |

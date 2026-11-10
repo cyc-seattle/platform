@@ -25,6 +25,8 @@ export function prodDirectus({ adminEmail, admins, externalDomain, baseUrl }: Pr
   new Secret("directus-license-key");
   const clubspotSyncToken = randomSecret("clubspot-sync-directus-token");
   const gsuiteSyncToken = randomSecret("gsuite-sync-directus-token");
+  // cyc-seattle/csc-website's build reads it from Secret Manager.
+  const websiteBuildToken = randomSecret("csc-website-directus-token");
   // Authentik generated it, and it moved here from its state, so prod's client never changed
   // (cyc-seattle/workplace#6). Authentik registers it from this stack's outputs.
   const oidcClientSecret = randomSecret("directus-oidc-client-secret");
@@ -42,6 +44,7 @@ export function prodDirectus({ adminEmail, admins, externalDomain, baseUrl }: Pr
     externalDomain,
     clubspotSyncToken: clubspotSyncToken.value,
     gsuiteSyncToken: gsuiteSyncToken.value,
+    websiteBuildToken: websiteBuildToken.value,
   });
 
   // The VM's Directus read the Community role's ID from this secret. Nothing reads it now.

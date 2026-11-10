@@ -89,6 +89,11 @@ run = "./scripts/reset"
 description = "Delete every Financial Plan, plan, copy, row and result from $PULUMI_STACK, after asking"
 run = "./scripts/delete-plans"
 
+# By hand only: no deploy runs it (cyc-seattle/platform#150). docs/website.md says how.
+[tasks.load-website]
+description = "Load the website's proof of concept into $DIRECTUS_URL, after asking"
+run = "node scripts/load-website.ts"
+
 # Needs the dev deploy, so it isn't part of ci.
 [tasks.integration]
 description = "Run the integration tests against dev"

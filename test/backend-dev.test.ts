@@ -135,6 +135,10 @@ describe("Directus on the cluster", () => {
     expect(envNames("directus")).toMatchObject({ DB_POOL__MAX: "10", PUBLIC_URL: "https://directus.dev.example.com" });
   });
 
+  it("keeps uploaded files in dev's bucket", () => {
+    expect(envNames("directus")).toMatchObject({ STORAGE_GCS_BUCKET: "test-project-directus-files-dev" });
+  });
+
   it("logs only warnings and errors", () => {
     expect(envNames("directus")).toMatchObject({ LOG_LEVEL: "warn" });
   });

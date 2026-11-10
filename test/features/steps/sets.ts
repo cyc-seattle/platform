@@ -114,6 +114,28 @@ const sets: Record<string, Target[]> = {
   "revenue accounts": plain("accounts"),
   plans: [...plain("plans", "version_sets", "version_set_members"), ...versions("draft", "saved")],
   groups: plain("groups", "group_members", "group_policies"),
+  // Everything website.feature calls the website, with the lists that link its parts.
+  "the website": plain(
+    "website_settings",
+    "website_pages",
+    "website_page_sections",
+    "website_pages_faq_topics",
+    "website_categories",
+    "website_categories_programs",
+    "website_categories_faq_topics",
+    "website_categories_profiles",
+    "website_categories_files",
+    "website_programs",
+    "website_programs_files",
+    "website_programs_catalog_programs",
+    "website_faq_topics",
+    "website_faqs",
+    "website_profiles",
+    "website_policies",
+    "website_policy_versions",
+    "website_sponsor_levels",
+    "website_sponsors",
+  ),
 };
 
 /** The names a step's `{records}` may take. */

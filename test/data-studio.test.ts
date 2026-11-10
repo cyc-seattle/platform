@@ -10,7 +10,13 @@ import { defaultViews } from "../stacks/backend/default-views.ts";
 
 interface Collection {
   collection: string;
-  meta: { display_template: string | null; group: string | null; hidden: boolean; note: string | null };
+  meta: {
+    display_template: string | null;
+    group: string | null;
+    hidden: boolean;
+    note: string | null;
+    singleton?: boolean;
+  };
   schema?: unknown;
 }
 
@@ -97,6 +103,8 @@ const columns = schema.fields.filter((f) => f.type !== "alias");
 const relationOf = (field: Field) =>
   schema.relations.find((r) => r.collection === field.collection && r.field === field.field && r.related_collection);
 const links = columns.filter((field) => relationOf(field) !== undefined);
+// A file link. A gallery's join table links its files as many-to-one instead.
+const isFile = (field: Field) => field.meta.special?.includes("file") === true;
 const key = (field: Field) => `${field.collection}.${field.field}`;
 const isPrimaryKey = (field: Field) => field.schema?.is_primary_key === true;
 const label = (field: Field) => field.meta.translations?.find((t) => t.language === "en-US")?.translation;
@@ -123,10 +131,15 @@ describe("the Data Studio", () => {
   });
 
   describe("shows a link by the linked row's name", () => {
-    it.each(links.map((f) => [key(f), f]))("%s", (_, field) => {
+    it.each(links.filter((f) => !isFile(f)).map((f) => [key(f), f]))("%s", (_, field) => {
       expect(field.meta.special).toContain("m2o");
       expect(field.meta.display).toBe("related-values");
       expect(field.meta.display_options?.template).toBeTruthy();
+    });
+
+    it.each(links.filter(isFile).map((f) => [key(f), f]))("%s, an image, shows the image", (_, field) => {
+      expect(field.meta.special).toEqual(["file"]);
+      expect(field.meta.display).toBe("image");
     });
 
     it.each(
@@ -187,7 +200,9 @@ describe("the Data Studio", () => {
 
   describe("opens each table usefully", () => {
     it("gives every table the sidebar shows a default view", () => {
+      // A singleton opens straight to its one row's form.
       const missing = visibleTables
+        .filter((c) => !c.meta.singleton)
         .map((c) => c.collection)
         .filter((c) => !defaultViews.some((v) => v.collection === c));
       expect(missing).toEqual([]);

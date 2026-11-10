@@ -11,7 +11,9 @@ import {
   groupPoliciesConfig,
   queryGuardConfig,
   savedVersionsConfig,
+  websiteBuildRules,
 } from "../stacks/backend/policies.ts";
+import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0005-website-folder.cjs";
 
 const schemas = discoverSchemaFiles(path.join(import.meta.dirname, "../schemas")).map(({ name, path: file }) => ({
   name,
@@ -288,6 +290,30 @@ describe("queryGuardConfig", () => {
     expect(config.policies["Community: own family"]?.["medical_profiles"]).toEqual([{ fields: "*", filtered: true }]);
     expect(config.policies["Community: own family"]?.["programs"]).toEqual([
       { fields: ["id", "name"], filtered: false },
+    ]);
+  });
+});
+
+describe("the csc-website build's rules", () => {
+  const rules = websiteBuildRules(schemas);
+
+  it("only read", () => {
+    expect(new Set(rules.map((rule) => rule.action))).toEqual(new Set(["read"]));
+  });
+
+  it("read every website collection whole, and no other collection", () => {
+    const own = rules.filter((rule) => !rule.collection.startsWith("directus_"));
+    expect(own.every((rule) => rule.collection.startsWith("website_"))).toBe(true);
+    expect(own.every((rule) => rule.permissions === undefined && rule.fields === undefined)).toBe(true);
+    expect(own.map((rule) => rule.collection)).toEqual(
+      expect.arrayContaining(["website_settings", "website_programs"]),
+    );
+  });
+
+  it("read only the files in the Website folder, and that folder", () => {
+    expect(rules.filter((rule) => rule.collection.startsWith("directus_"))).toEqual([
+      { collection: "directus_files", action: "read", permissions: { folder: { _eq: WEBSITE_FOLDER } } },
+      { collection: "directus_folders", action: "read", permissions: { id: { _eq: WEBSITE_FOLDER } } },
     ]);
   });
 });

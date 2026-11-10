@@ -15,6 +15,7 @@ import {
   SavedVersionsCheck,
 } from "../../src/directus/resources.ts";
 import * as random from "@pulumi/random";
+import * as gcp from "@pulumi/gcp";
 import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/config.ts";
@@ -25,6 +26,8 @@ import {
   groupPoliciesConfig,
   queryGuardConfig,
   savedVersionsConfig,
+  WEBSITE_BUILD,
+  websiteBuildRules,
   type PolicyData,
 } from "./policies.ts";
 import { isDev, loadCluster } from "../../src/app/cluster.ts";
@@ -68,6 +71,9 @@ const schema = mergeSchemas(loadedSchemas);
 // The policies a group can give (docs/access.md).
 const grantable = groupPolicies(loadedSchemas);
 
+// What the csc-website build reads (docs/access.md).
+const websiteBuild = websiteBuildRules(loadedSchemas);
+
 // Prod keeps what its Directus had on the VM (./prod-state.ts).
 const prod = isDev
   ? undefined
@@ -95,6 +101,7 @@ const app = deployDirectus(
       ...familyPolicies,
       ...teamPolicies,
       { name: "Crew", rules: crewRules },
+      { name: WEBSITE_BUILD, rules: websiteBuild },
       ...grantable,
     ]),
     groupPolicies: groupPoliciesConfig(grantable),
@@ -109,6 +116,7 @@ function roleIds(roles: CrmIdentities) {
     crewPolicyId: roles.crewRole.policyId,
     clubspotSyncPolicyId: roles.clubspotSyncRole.policyId,
     gsuiteSyncPolicyId: roles.gsuiteSyncRole.policyId,
+    websiteBuildPolicyId: roles.websiteBuildRole.policyId,
     communityRoleId: roles.communityRole.roleId,
     teamRoleId: roles.teamRole.roleId,
     crewRoleId: roles.crewRole.roleId,
@@ -142,6 +150,12 @@ function devIdentities(directus: typeof app) {
     externalDomain: config.require("externalDomain"),
     clubspotSyncToken,
     gsuiteSyncToken,
+    // infra generates it, since deploy-dev can only read dev's secrets. csc-website's PR previews read it too.
+    websiteBuildToken: pulumi.secret(
+      gcp.secretmanager
+        .getSecretVersionAccessOutput({ secret: "dev-csc-website-directus-token" })
+        .apply((version) => version.secretData),
+    ),
     communityRoleId: pulumi.output(directus.then(({ communityRoleId }) => communityRoleId)),
   });
   return {
@@ -153,8 +167,16 @@ function devIdentities(directus: typeof app) {
 }
 
 const identities = prod ? prodIdentities(prod) : devIdentities(app);
-const { auth, crewPolicyId, clubspotSyncPolicyId, gsuiteSyncPolicyId, communityRoleId, teamRoleId, crewRoleId } =
-  identities;
+const {
+  auth,
+  crewPolicyId,
+  clubspotSyncPolicyId,
+  gsuiteSyncPolicyId,
+  websiteBuildPolicyId,
+  communityRoleId,
+  teamRoleId,
+  crewRoleId,
+} = identities;
 
 // The syncs' CronJobs take their machine users' tokens straight into their Secrets.
 const { clubspotSyncToken, gsuiteSyncToken } = identities;
@@ -442,6 +464,14 @@ for (const collection of ["sync_tasks", "audit_findings", "google_groups", "goog
       { dependsOn: crmSchema },
     );
   }
+}
+
+for (const rule of websiteBuild) {
+  permissionRule(
+    `website-build-${rule.collection}-${rule.action}`,
+    { ...auth, policyId: websiteBuildPolicyId, ...rule },
+    { dependsOn: crmSchema },
+  );
 }
 
 // The Community role's policies (./community-rules.ts), which Team and Crew have too, so a Crew

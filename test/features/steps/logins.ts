@@ -17,6 +17,7 @@ export interface Actor {
 const services: Record<string, string> = {
   "the Clubspot sync": "Clubspot Sync",
   "the Google sync": "Gsuite Sync",
+  "the website build": "Website Build",
 };
 
 export const policyNames = [

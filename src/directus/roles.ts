@@ -14,6 +14,8 @@ export interface CrmIdentityArgs {
   externalDomain: string;
   clubspotSyncToken: pulumi.Input<string>;
   gsuiteSyncToken: pulumi.Input<string>;
+  /** The csc-website build's token. */
+  websiteBuildToken: pulumi.Input<string>;
   /** Fixes the Community role's ID, so Directus can name it as the default role before it exists. */
   communityRoleId?: pulumi.Input<string>;
 }
@@ -27,6 +29,8 @@ export interface CrmIdentities {
   gsuiteSyncRole: DirectusRole;
   clubspotSyncUser: DirectusUser;
   gsuiteSyncUser: DirectusUser;
+  websiteBuildRole: DirectusRole;
+  websiteBuildUser: DirectusUser;
 }
 
 export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
@@ -158,6 +162,28 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     token: args.gsuiteSyncToken,
   });
 
+  // The public website's build, in cyc-seattle/csc-website's Actions (cyc-seattle/platform#150). It reads the
+  // website's content and images, per its rules in stacks/backend/index.ts, and nothing else.
+  const websiteBuildRole = new DirectusRole(
+    "website-build",
+    {
+      ...auth,
+      name: "Website Build",
+      icon: "public",
+      description: "Machine user for the csc-website build. Reads the website's content and images. API-only.",
+      appAccess: false,
+    },
+    { dependsOn: readyForApiCalls },
+  );
+
+  const websiteBuildUser = new DirectusUser("website-build-user", {
+    ...auth,
+    email: `csc-website-build@${args.externalDomain}`,
+    roleId: websiteBuildRole.roleId,
+    provider: "default",
+    token: args.websiteBuildToken,
+  });
+
   return {
     communityRole,
     teamRole,
@@ -167,5 +193,7 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     gsuiteSyncRole,
     clubspotSyncUser,
     gsuiteSyncUser,
+    websiteBuildRole,
+    websiteBuildUser,
   };
 }
