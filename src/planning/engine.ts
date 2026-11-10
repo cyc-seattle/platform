@@ -64,9 +64,9 @@ function checkAreas(ctx: Context): void {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) continue;
     if (product.kind === "program" && product.program_area_id == null) {
-      ctx.warn("program_without_area", `Program ${product.name} has no program area`, product.id);
+      ctx.warn("program_without_area", `${product.name} is a program but has no program area`, product.id);
     } else if (product.kind !== "program" && product.program_area_id != null) {
-      ctx.warn("area_on_non_program", `Product ${product.name} isn't a program, but has a program area`, product.id);
+      ctx.warn("area_on_non_program", `${product.name} isn't a program but has a program area`, product.id);
     }
     const plan = ctx.planOfVersion.get(offering.version_id);
     if (plan === undefined) continue;
@@ -75,8 +75,11 @@ function checkAreas(ctx: Context): void {
         ? product.program_area_id != null
         : product.program_area_id != null && product.program_area_id !== plan.program_area_id;
     if (wrong) {
-      const where = plan.kind === "operations" ? "the Operations Plan" : "another program area's plan";
-      ctx.warn("offering_in_wrong_plan", `Offering ${offering.name} of ${product.name} is in ${where}`, offering.key);
+      const message =
+        plan.kind === "operations"
+          ? `${offering.name} is in the Operations Plan, but its program is in a program area`
+          : `${offering.name} is in the Program Plan for another program area`;
+      ctx.warn("offering_in_wrong_plan", message, offering.key);
     }
   }
 }
@@ -97,7 +100,7 @@ function summarizePositions(
   ];
   for (const key of new Set(named)) {
     if (!known.has(key)) {
-      ctx.warn("unknown_position", `A block or bonus names missing salaried position ${key}`, key);
+      ctx.warn("unknown_position", `A block or bonus names salaried position ${key}, which isn't in the plan`, key);
     }
   }
   return ctx.data.plan_salaried_positions.map((position) => {

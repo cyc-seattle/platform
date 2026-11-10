@@ -37,10 +37,14 @@ export class CostCenterBooker {
     pending.forEach((entry, i) => {
       const w = weights[i] ?? null;
       if (w === null) {
-        const what = entry.cost_center_type === "product" ? "Product" : "Program area";
+        const key = entry.cost_center_key ?? "";
+        const name =
+          entry.cost_center_type === "product"
+            ? (this.ctx.products.get(key)?.name ?? key)
+            : (this.ctx.areas.get(key)?.name ?? key);
         this.ctx.warn(
           `${entry.cost_center_type}_without_offerings`,
-          `${what} ${entry.cost_center_key} has no offering in the plan year, so ${entry.line_key} stays there`,
+          `${name} has no offerings this year, so ${entry.line_name} isn't split among offerings`,
           entry.cost_center_key ?? undefined,
         );
         this.ctx.book(entry);
@@ -60,7 +64,12 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
     (type === "product" && key != null && ctx.products.has(key)) ||
     (type === "program_area" && key != null && ctx.areas.has(key)) ||
     (type === "pool" && key != null && ctx.data.plan_pools.some((p) => p.key === key));
-  if (!known) ctx.warn("unknown_cost_center", `Line ${line} is on a missing ${type} ${key ?? ""}`, line);
+  if (!known)
+    ctx.warn(
+      "unknown_cost_center",
+      `Line ${line} is charged to ${type.replace("_", " ")} ${key ?? ""}, which isn't in the plan`,
+      line,
+    );
   return known;
 }
 
@@ -77,7 +86,7 @@ export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
     if (capital && line.cost_center_type !== "org") {
       ctx.warn(
         "capital_off_org",
-        `Line ${line.name} is capital, which only the organization pays for, so it's moved there`,
+        `${line.name} is capital, so it's charged to ${ctx.data.organization.name}, which pays for all capital`,
         line.key,
       );
     }
@@ -102,7 +111,11 @@ export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
     if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_key, line.key)) continue;
     const level = levels.get(line.staff_level_key);
     if (level === undefined) {
-      ctx.warn("unknown_staff_level", `Labor line ${line.key} names a missing staff level`, line.key);
+      ctx.warn(
+        "unknown_staff_level",
+        `Labor line ${line.key} has a staff level that isn't in the Operations Plan, so it's left out`,
+        line.key,
+      );
       continue;
     }
     booker.add({

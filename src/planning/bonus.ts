@@ -94,7 +94,7 @@ function baseOf(ctx: Context, owner: PlanBonusOwner): Base {
     if (plan?.kind === "program_area" && product?.program_area_id !== plan.program_area_id) {
       ctx.warn(
         "bonus_outside_area",
-        `${owner.role_name}'s bonus names ${product?.name ?? row.product_id}, which isn't in its plan's program area, so it's left out`,
+        `${owner.role_name}'s bonus names ${product?.name ?? row.product_id}, which isn't in this plan's program area, so it's left out`,
         owner.key,
       );
       continue;

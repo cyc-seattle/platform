@@ -18,7 +18,10 @@ export function allocatePools(ctx: Context): void {
   ctx.entries.splice(0, ctx.entries.length, ...kept);
 
   if (total <= 0) {
-    ctx.warn("no_mtdc", "No offering in the plan year has MTDC, so the shared costs stay with the organization");
+    ctx.warn(
+      "no_mtdc",
+      `No offering this year has costs that count toward MTDC, so ${ctx.data.organization.name} keeps all the shared costs`,
+    );
   }
   for (const e of pooled) {
     const pool = pools.get(e.cost_center_key ?? "");

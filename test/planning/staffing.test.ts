@@ -321,13 +321,13 @@ describe("staffing", () => {
       });
     }
 
-    it("warns when a block's sailors are more than its staff can take", () => {
+    it("warns when a block has more sailors than its qualified coaches are enough for", () => {
       const out = computePlan(guppies(14, { staff: [{ staff_level_key: L1.key }] }));
       expect(out.warnings).toContainEqual(
         expect.objectContaining({
           code: "over_capacity",
           category: "allocation",
-          message: "Guppies Week 2: 14 sailors, but the staff can take 10",
+          message: "Guppies Week 2 has 14 sailors, but enough qualified coaches for only 10",
         }),
       );
       expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
@@ -336,7 +336,7 @@ describe("staffing", () => {
     it("counts a coach qualified for the program's staff level, and not one who isn't", () => {
       expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
       const out = computePlan(guppies(10, { staff: [{ staff_level_key: junior.key }] }));
-      expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2: 10 sailors, but the staff can take 0");
+      expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2 has 10 sailors and no qualified coach");
     });
 
     it("counts each program's sailors against its own sailors per coach", () => {
@@ -354,7 +354,9 @@ describe("staffing", () => {
         plan_staff_levels: [L1],
         ...block(acts, { staff: [{ staff_level_key: L1.key, count: 1 }] }),
       });
-      expect(codes(data)).toContain("over_capacity");
+      expect(computePlan(data).warnings.find((w) => w.code === "over_capacity")?.message).toMatch(
+        / have 10 sailors, but enough qualified coaches for only 6$/,
+      );
       data.plan_block_staff[0]!.count = 2;
       expect(codes(data)).not.toContain("over_capacity");
     });
@@ -366,7 +368,7 @@ describe("staffing", () => {
       expect(codes(data)).not.toContain("over_capacity");
     });
 
-    it("warns when a block's sailors are more than its boats can take, counting the boats sailors bring", () => {
+    it("warns when a block has more sailors than its boats hold, counting the boats sailors bring", () => {
       const data = guppies(14, {
         staff: [{ staff_level_key: L1.key, count: 2 }],
         boats: [{ boat_class_id: "sailqube", count: 5 }],
@@ -374,8 +376,11 @@ describe("staffing", () => {
       data.plan_activities[0]!.uses_boats = true;
       data.boat_classes = [{ id: "sailqube", name: "Sailqube", sailors_per_boat: 2, footprint_sq_ft: null }];
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "Guppies Week 2: 14 sailors, but the boats can take 10",
+        "Guppies Week 2 has 14 sailors, but the boats hold only 10",
       );
+      data.plan_block_boats[0]!.count = 0;
+      expect(computePlan(data).warnings.map((w) => w.message)).toContain("Guppies Week 2 has 14 sailors and no boats");
+      data.plan_block_boats[0]!.count = 5;
       data.plan_block_boats[0]!.sailor_owned = 2;
       expect(codes(data)).not.toContain("over_capacity");
     });
@@ -434,21 +439,23 @@ describe("staffing", () => {
           category: "allocation",
           date: "2027-07-13",
           version_id: "v1",
-          message: "14 Sailqubes out, but A club has 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+          message: "14 Sailqubes out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
         }),
       );
     });
 
     it("names the offerings of the one block that's over", () => {
       const out = computePlan(twoBlocks(14, 0, morning));
-      expect(out.warnings.map((w) => w.message)).toContain("14 Sailqubes out, but A club has 12, for Guppies Week 3");
+      expect(out.warnings.map((w) => w.message)).toContain(
+        "14 Sailqubes out at once for Guppies Week 3, but A club has only 12",
+      );
     });
 
     it("uses a boat class's name as given unless it's one word", () => {
       const data = twoBlocks(9, 5, morning);
       data.boat_classes[0]!.name = "Laser Radial";
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "14 Laser Radial out, but A club has 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+        "14 Laser Radial out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
       );
     });
 
@@ -470,7 +477,7 @@ describe("staffing", () => {
     it("warns when more of a resource, such as RIBs, is out at once than the organization has", () => {
       const out = computePlan(twoBlocks(9, 5, morning));
       expect(out.warnings.map((w) => w.message)).toContain(
-        "14 RIBs out, but A club has 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+        "14 RIBs out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
       );
     });
 

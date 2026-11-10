@@ -66,8 +66,18 @@ function sum(values: Iterable<number>): number {
  * ends in "s", such as RIBs; any other name is used as given, since adding an "s" to "Laser Radial" reads wrong.
  */
 function countOf(n: number, name: string): string {
-  const plural = n !== 1 && /^\S+$/.test(name) && !/s$/i.test(name);
-  return `${n} ${plural ? `${name}s` : name}`;
+  return `${n} ${n === 1 ? name : pluralOf(name)}`;
+}
+
+function pluralOf(name: string): string {
+  return /^\S+$/.test(name) && !/s$/i.test(name) ? `${name}s` : name;
+}
+
+const day = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+
+/** A date as a person says it: "July 13". */
+function dayOf(date: DateString): string {
+  return day.format(new Date(`${date}T00:00:00Z`));
 }
 
 /** Names as a sentence lists them: `a`, `a and b`, or `a, b, and c`. */
@@ -137,13 +147,17 @@ export class Staffing {
       if (id == null) continue;
       const row = rows.get(id);
       if (row === undefined) {
-        this.ctx.warn("unknown_block", `Activity ${a.stored.key} names a missing block`, a.stored.key);
+        this.ctx.warn(
+          "unknown_block",
+          `${a.offering.name}'s ${a.kind} is in a block that isn't in the plan`,
+          a.stored.key,
+        );
         continue;
       }
       if (row.date !== a.date) {
         this.ctx.warn(
           "block_date_mismatch",
-          `${a.offering.name}'s ${a.kind} is in ${row.name}, which is on ${row.date}`,
+          `${a.offering.name}'s ${a.kind} is in ${row.name}, which is on ${dayOf(row.date)}`,
           a.stored.key,
           { version_id: a.stored.version_id, date: a.date },
         );
@@ -225,7 +239,8 @@ export class Staffing {
     const sailors = sum(offerings.map((o) => ctx.enrollment.get(o.id) ?? 0));
     if (sailors <= 0) return;
     const scope = { version_id: block.row.version_id, date: block.row.date };
-    const where = offeringsOf(block);
+    // The block's offerings, with the verb that agrees with them: "Guppies Week 2 has".
+    const has = `${offeringsOf(block)} ${new Set(block.members.map((a) => a.offering.id)).size > 1 ? "have" : "has"}`;
 
     let load = 0;
     let counted = 0;
@@ -235,7 +250,7 @@ export class Staffing {
       if (settings?.staff_level_key == null || settings.sailors_per_coach == null || settings.sailors_per_coach <= 0) {
         this.warnOnce(
           "no_program_settings",
-          `${o.name}'s program has no staff level or sailors per coach, so its sailors aren't checked against its staff`,
+          `${o.name}'s program has no staff level or sailors per coach. Add both to check that it has enough coaches`,
           o.product_id,
           { version_id: o.version_id, date: block.row.date },
         );
@@ -262,7 +277,9 @@ export class Staffing {
       if (load > qualified + 1e-9) {
         ctx.warn(
           "over_capacity",
-          `${where}: ${counted} sailors, but the staff can take ${Math.floor((qualified * counted) / load + 1e-9)}`,
+          qualified === 0
+            ? `${has} ${countOf(counted, "sailor")} and no qualified coach`
+            : `${has} ${countOf(counted, "sailor")}, but enough qualified coaches for only ${Math.floor((qualified * counted) / load + 1e-9)}`,
           block.row.key,
           scope,
         );
@@ -277,7 +294,7 @@ export class Staffing {
       if (perBoat == null || perBoat <= 0) {
         this.warnOnce(
           "no_sailors_per_boat",
-          `Boat class ${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no sailors per boat, so its boats take no sailors`,
+          `${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no sailors per boat. Add it to check that the boats hold every sailor`,
           b.boat_class_id,
           scope,
         );
@@ -286,7 +303,14 @@ export class Staffing {
       seats += (b.count + (b.sailor_owned ?? 0)) * perBoat;
     }
     if (sailors > seats) {
-      ctx.warn("over_capacity", `${where}: ${sailors} sailors, but the boats can take ${seats}`, block.row.key, scope);
+      ctx.warn(
+        "over_capacity",
+        seats === 0
+          ? `${has} ${countOf(sailors, "sailor")} and no boats`
+          : `${has} ${countOf(sailors, "sailor")}, but the boats hold only ${seats}`,
+        block.row.key,
+        scope,
+      );
     }
   }
 
@@ -307,11 +331,10 @@ export class Staffing {
         const out = list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : []));
         const peak = mostAtOnce(out);
         if (peak.total <= have) return;
-        const whose =
+        const message =
           peak.at.length === 1
-            ? `, for ${offeringsOf(peak.at[0]!.block)}`
-            : `: ${listOf(peak.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`;
-        const message = `${countOf(peak.total, what)} out, but ${organization} has ${have}${whose}`;
+            ? `${countOf(peak.total, what)} out at once for ${offeringsOf(peak.at[0]!.block)}, but ${organization} has only ${have}`
+            : `${countOf(peak.total, what)} out at once, but ${organization} has only ${have}: ${listOf(peak.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`;
         for (const version of new Set(peak.at.map(({ block }) => block.row.version_id))) {
           ctx.warn(code, message, what, {
             version_id: version,
@@ -325,7 +348,7 @@ export class Staffing {
           for (const b of list.filter((x) => x.boats.some((y) => y.boat_class_id === id && y.count > 0))) {
             this.warnOnce(
               "no_fleet_quantity",
-              `The Operations Plan doesn't say how many ${classes.get(id)?.name ?? id} the organization has, so they aren't checked`,
+              `The Operations Plan doesn't say how many ${pluralOf(classes.get(id)?.name ?? id)} ${organization} has. Add it to check that there are enough`,
               id,
               { version_id: b.row.version_id, date },
             );
@@ -450,7 +473,7 @@ export class Staffing {
             if (position !== undefined && rate == null) {
               this.warnOnce(
                 "no_hourly_rate",
-                `${position.name} is paid by the hour to coach but has no hourly rate, so those hours cost nothing`,
+                `${position.name} is paid by the hour to coach but has no own hourly coaching rate, so those hours cost nothing`,
                 position.key,
                 scope,
               );
@@ -482,7 +505,7 @@ export class Staffing {
         if (level === undefined) {
           this.warnOnce(
             "unknown_staff_level",
-            `${block.row.name} has staff at a missing staff level, so they cost nothing`,
+            `${block.row.name} has staff at a staff level that isn't in the Operations Plan, so they cost nothing`,
             s.staff_level_key ?? s.key,
             scope,
           );
@@ -498,7 +521,7 @@ export class Staffing {
         if (resource === undefined) {
           this.warnOnce(
             "unknown_resource",
-            `${block.row.name} uses missing resource ${use.resource_key}`,
+            `${block.row.name} uses resource ${use.resource_key}, which isn't in the plan`,
             use.resource_key,
             scope,
           );
@@ -579,7 +602,7 @@ export class Staffing {
           .sort()[0];
         this.warnOnce(
           "trip_without_staff",
-          `${trip.name} has no staff on a travel day's block, so no coach's airfare or lodging is charged`,
+          `${trip.name} has no staff on its travel days, so the plan has no airfare or lodging for its coaches`,
           trip.key,
           { version_id: trip.version_id, ...(first !== undefined && { date: first }) },
         );
@@ -587,10 +610,14 @@ export class Staffing {
       const lodging = ctx.rates?.lodging_per_night_cents ?? null;
       const mileage = ctx.rates?.mileage_rate_cents ?? null;
       if ((trip.nights ?? 0) > 0 && lodging === null) {
-        this.warnOnce("no_rate", "Trips have nights but no lodging_per_night_cents rate", "lodging_per_night_cents");
+        this.warnOnce(
+          "no_rate",
+          "Trips have nights, but the Operations Plan has no lodging per night",
+          "lodging_per_night_cents",
+        );
       }
       if ((trip.miles ?? 0) > 0 && mileage === null) {
-        this.warnOnce("no_rate", "Trips have miles but no mileage_rate_cents rate", "mileage_rate_cents");
+        this.warnOnce("no_rate", "Trips have miles, but the Operations Plan has no mileage rate", "mileage_rate_cents");
       }
       const amount =
         coaches * (trip.airfare_cents ?? 0) +
