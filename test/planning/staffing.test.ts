@@ -143,6 +143,30 @@ describe("staffing", () => {
     expect(out.activities.map((a) => a.coaches)).toEqual([0.6, 0.4]);
   });
 
+  it("counts an offering's sailors once in a block, however many of its activities are in it", () => {
+    const p = product();
+    const level = staffLevel({ hourly_rate_cents: 2000 });
+    const x = offering(p.id, { target_enrollment: 5 });
+    const y = offering(p.id, { target_enrollment: 5 });
+    const acts = [
+      activity(x.id, { start_time: "09:00", end_time: "10:00" }),
+      activity(x.id, { start_time: "10:00", end_time: "11:00" }),
+      activity(y.id, { start_time: "09:00", end_time: "11:00" }),
+    ];
+    const out = computePlan(
+      emptyPlan({
+        products: [p],
+        plan_offerings: [x, y],
+        plan_activities: acts,
+        plan_staff_levels: [level],
+        ...block(acts, { staff: [{ staff_level_key: level.key }] }),
+      }),
+    );
+    // 1 coach × 2 h × 2000¢, half to each offering.
+    expect(total(out, { line: "coach_wages", cost_center_key: x.key })).toBe(2000);
+    expect(total(out, { line: "coach_wages", cost_center_key: y.key })).toBe(2000);
+  });
+
   it("prices RIBs for the block's time on the water, unless the block sets their hours", () => {
     const rib = resource("rib", { cost_per_day_cents: 100, fuel_per_hour_cents: 400, maintenance_per_hour_cents: 100 });
     const { data } = onePractice({ resources: [{ resource_key: "rib", quantity: 2 }] }, { plan_resources: [rib] });
@@ -433,6 +457,19 @@ describe("staffing", () => {
       );
     });
 
+    it("warns when the Operations Plan doesn't say how many of a boat class the organization has", () => {
+      const data = twoBlocks(9, 5, morning);
+      data.plan_boat_rates[0]!.quantity = null;
+      let out = computePlan(data);
+      expect(out.warnings.map((w) => w.code)).not.toContain("over_inventory_boats");
+      expect(out.warnings).toContainEqual(
+        expect.objectContaining({ code: "no_fleet_quantity", category: "data", version_id: "v1", date: "2027-07-13" }),
+      );
+      data.plan_boat_rates = [];
+      out = computePlan(data);
+      expect(out.warnings.map((w) => w.code)).toContain("no_fleet_quantity");
+    });
+
     it("counts a block with no times as out all day", () => {
       const data = twoBlocks(9, 5, [
         ["09:00", "12:00"],
@@ -472,6 +509,37 @@ describe("staffing", () => {
     data.plan_block_staff = [];
     const out = computePlan(data);
     expect(total(out, { line: "trip" })).toBe(7000);
-    expect(out.warnings.map((w) => w.code)).toContain("trip_without_staff");
+    expect(out.warnings).toContainEqual(
+      expect.objectContaining({ code: "trip_without_staff", category: "data", version_id: "v1", date: "2027-06-11" }),
+    );
+  });
+
+  it("takes a trip's coaches only from its travel days' blocks", () => {
+    const level = staffLevel();
+    const p = product();
+    const off = offering(p.id, { target_enrollment: 4 });
+    const t = trip(off.id, { airfare_cents: 30_000 });
+    // A regatta on the trip, staffed by 3, and a travel day staffed by 1.
+    const regatta = activity(off.id, { date: "2027-06-12", kind: "regatta", trip_id: t.id });
+    const travel = activity(off.id, { date: "2027-06-11", kind: "travel", trip_id: t.id });
+    const data = emptyPlan({
+      products: [p],
+      plan_offerings: [off],
+      plan_trips: [t],
+      plan_activities: [regatta, travel],
+      plan_staff_levels: [level],
+      ...blocks(
+        block([regatta], { staff: [{ staff_level_key: level.key, count: 3 }] }),
+        block([travel], { staff: [{ staff_level_key: level.key, count: 1 }] }),
+      ),
+    });
+    expect(total(computePlan(data), { line: "trip" })).toBe(30_000);
+  });
+
+  it("names the plan and the date of a warning about one block's rows", () => {
+    const { data } = onePractice({ staff: [{ staff_level_key: "missing" }] });
+    expect(computePlan(data).warnings).toContainEqual(
+      expect.objectContaining({ code: "unknown_staff_level", category: "data", version_id: "v1", date: "2027-06-01" }),
+    );
   });
 });

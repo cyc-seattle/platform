@@ -124,8 +124,9 @@ writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seatt
   time.
 - Its time on the water is the longest `on_water_minutes` its activities set. If none sets one, it's
   the span of its activities that use boats.
-- Each of its costs is split among its activities by their offerings' enrollment, or evenly if none
-  has any. `activities` gives each activity its share of the block's staff, RIBs and boats.
+- Each of its costs is split among its offerings by their enrollment, each offering counted once, or
+  evenly if none has any. An offering with several activities in the block splits its share among
+  them. `activities` gives each activity its share of the block's staff, RIBs and boats.
 - Staff at a level cost `count` × paid hours × the level's `hourly_rate_cents`. Volunteers cost
   nothing.
 - A salaried position on a block with `pay` `salary`, the default, is charged its paid hours at the
@@ -146,7 +147,8 @@ cost_per_day)`. Its hours are its row's `hours` if set; otherwise a RIB's are th
 ### Warnings
 
 Each warning has a `code`, a `message`, and a `category`. When it's about one plan copy or one date,
-it names them in `version_id` and `date`. `allocation` warnings say the blocks break a limit or run on
+it names them in `version_id` and `date`. A warning about a row that's given once for each plan
+copy, such as a program with no settings, names the first date it's seen on. `allocation` warnings say the blocks break a limit or run on
 a closed day; the rest are `data`, a row that's missing or wrong. The engine still costs what it's
 given.
 
@@ -173,6 +175,8 @@ Data warnings about blocks:
 - `no_program_settings`: a program in a block with no staff level or sailors per coach. Its sailors
   aren't checked against the staff.
 - `no_sailors_per_boat`: a block's boat class with no `sailors_per_boat`. Its boats take no sailors.
+- `no_fleet_quantity`: a block's boat class with no `plan_boat_rates.quantity`. Its boats aren't
+  checked against the fleet.
 - `no_hourly_rate`, `trip_without_staff`, `unknown_block`, `unknown_staff_level`, `unknown_resource`,
   and `block_date_mismatch`, an activity in a block on another date.
 

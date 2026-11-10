@@ -1,4 +1,4 @@
-import type { Context } from "./context.ts";
+import type { Context, WarningScope } from "./context.ts";
 import type { ScheduledActivity } from "./activities.ts";
 import type {
   ComputedActivity,
@@ -79,10 +79,12 @@ export class Staffing {
     }
   }
 
-  private warnOnce(code: string, message: string, key: string): void {
-    if (this.warned.has(`${code}|${key}`)) return;
-    this.warned.add(`${code}|${key}`);
-    this.ctx.warn(code, message, key);
+  /** Warns once for each row and plan copy, about the first date it's seen on. */
+  private warnOnce(code: string, message: string, key: string, scope: WarningScope = {}): void {
+    const id = `${code}|${key}|${scope.version_id ?? ""}`;
+    if (this.warned.has(id)) return;
+    this.warned.add(id);
+    this.ctx.warn(code, message, key, scope);
   }
 
   /** Whether holding `held` qualifies for `required`, through `qualification_covers`. */
@@ -141,8 +143,12 @@ export class Staffing {
         sailingSpan.start === null || sailingSpan.end === null
           ? Math.max(0, ...sailing.map((a) => a.on_water_minutes))
           : sailingSpan.end - sailingSpan.start;
+      // Each offering's sailors count once, split among its activities in the block.
       const enrollment = (a: ScheduledActivity) => this.ctx.enrollment.get(a.offering.id) ?? 0;
-      const total = sum(list.map(enrollment));
+      const byOffering = groupBy(list, (a) => a.offering.id);
+      const total = sum([...byOffering.values()].map((own) => enrollment(own[0]!)));
+      const share = (a: ScheduledActivity) =>
+        (total > 0 ? enrollment(a) / total : 1 / byOffering.size) / byOffering.get(a.offering.id)!.length;
       result.set(id, {
         row,
         members: list,
@@ -155,7 +161,7 @@ export class Staffing {
         staff: staff.get(id) ?? [],
         resources: resources.get(id) ?? [],
         boats: boats.get(id) ?? [],
-        shares: new Map(list.map((a) => [a, total > 0 ? enrollment(a) / total : 1 / list.length])),
+        shares: new Map(list.map((a) => [a, share(a)])),
       });
     }
     return result;
@@ -212,6 +218,7 @@ export class Staffing {
           "no_program_settings",
           `${o.name}'s program has no staff level or sailors per coach, so its sailors aren't checked against its staff`,
           o.product_id,
+          { version_id: o.version_id, date: block.row.date },
         );
         continue;
       }
@@ -253,6 +260,7 @@ export class Staffing {
           "no_sailors_per_boat",
           `Boat class ${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no sailors per boat, so its boats take no sailors`,
           b.boat_class_id,
+          scope,
         );
         continue;
       }
@@ -269,11 +277,11 @@ export class Staffing {
    */
   private checkInventory(blocks: Block[]): void {
     const { ctx } = this;
-    const byDate = groupBy(blocks, (b) => b.row.date);
+    const dates = groupBy(blocks, (b) => b.row.date);
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const fleet = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r.quantity]));
     const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
-    for (const [date, list] of byDate) {
+    for (const [date, list] of dates) {
       const check = (code: string, what: string, have: number | null | undefined, used: (b: Block) => number) => {
         if (have == null) return;
         const out = list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : []));
@@ -287,8 +295,18 @@ export class Staffing {
           });
         }
       };
-      const classIds = new Set(list.flatMap((b) => b.boats.map((x) => x.boat_class_id)));
+      const classIds = new Set(list.flatMap((b) => b.boats.filter((x) => x.count > 0).map((x) => x.boat_class_id)));
       for (const id of classIds) {
+        if (fleet.get(id) == null) {
+          for (const b of list.filter((x) => x.boats.some((y) => y.boat_class_id === id && y.count > 0))) {
+            this.warnOnce(
+              "no_fleet_quantity",
+              `The Operations Plan doesn't say how many ${classes.get(id)?.name ?? id} the organization has, so they aren't checked`,
+              id,
+              { version_id: b.row.version_id, date },
+            );
+          }
+        }
         check("over_inventory_boats", classes.get(id)?.name ?? id, fleet.get(id), (b) =>
           sum(b.boats.filter((x) => x.boat_class_id === id).map((x) => x.count)),
         );
@@ -350,8 +368,9 @@ export class Staffing {
     const blocks = this.blocks(scheduled);
     this.checkUnallocated(scheduled, blocks);
     const programs = this.programs();
-    for (const block of blocks.values()) this.checkCapacity(block, programs);
-    this.checkInventory([...blocks.values()]);
+    // By date, so a warning given once names the first date it's seen on.
+    for (const block of byDate(blocks)) this.checkCapacity(block, programs);
+    this.checkInventory(byDate(blocks));
     const doubleBooked = this.checkDoubleBooked([...blocks.values()]);
 
     const coaching: SalariedCoaching[] = [];
@@ -363,7 +382,8 @@ export class Staffing {
     const ribKind = ctx.data.rib_resource_kind_id;
     const given = new Map<ScheduledActivity, { coaches: number; ribs: number; boats: number }>();
 
-    for (const block of blocks.values()) {
+    for (const block of byDate(blocks)) {
+      const scope = { version_id: block.row.version_id, date: block.row.date };
       const paidHours = block.paid_minutes / 60;
       const waterHours = block.on_water_minutes / 60;
 
@@ -408,6 +428,7 @@ export class Staffing {
                 "no_hourly_rate",
                 `${position.name} is paid by the hour to coach but has no hourly rate, so those hours cost nothing`,
                 position.key,
+                scope,
               );
             }
             wages += hours * (rate ?? 0);
@@ -439,6 +460,7 @@ export class Staffing {
             "unknown_staff_level",
             `${block.row.name} has staff at a missing staff level, so they cost nothing`,
             s.staff_level_key ?? s.key,
+            scope,
           );
           continue;
         }
@@ -454,6 +476,7 @@ export class Staffing {
             "unknown_resource",
             `${block.row.name} uses missing resource ${use.resource_key}`,
             use.resource_key,
+            scope,
           );
           continue;
         }
@@ -490,7 +513,7 @@ export class Staffing {
       }
     }
 
-    this.bookTrips(blocks);
+    this.bookTrips(blocks, scheduled);
 
     return {
       coaching,
@@ -517,18 +540,24 @@ export class Staffing {
    * A trip's coaches each fly and stay; the miles are driven once. Its coaches are the staff on the
    * block of its busiest travel day.
    */
-  private bookTrips(blocks: Map<Id, Block>): void {
+  private bookTrips(blocks: Map<Id, Block>, scheduled: ScheduledActivity[]): void {
     const { ctx } = this;
     for (const trip of ctx.data.plan_trips) {
       const offering = ctx.offeringsById.get(trip.offering_id);
       if (offering === undefined || !ctx.inYear(offering)) continue;
-      const staffed = [...blocks.values()].filter((b) => b.members.some((a) => a.trip?.id === trip.id));
+      const travel = (a: ScheduledActivity) => a.kind === "travel" && a.trip?.id === trip.id;
+      const staffed = [...blocks.values()].filter((b) => b.members.some(travel));
       const coaches = Math.max(0, ...staffed.map((b) => sum(b.staff.map((s) => s.count))));
       if (coaches === 0 && ((trip.airfare_cents ?? 0) > 0 || (trip.nights ?? 0) > 0)) {
+        const first = scheduled
+          .filter(travel)
+          .map((a) => a.date)
+          .sort()[0];
         this.warnOnce(
           "trip_without_staff",
           `${trip.name} has no staff on a travel day's block, so no coach's airfare or lodging is charged`,
           trip.key,
+          { version_id: trip.version_id, ...(first !== undefined && { date: first }) },
         );
       }
       const lodging = ctx.rates?.lodging_per_night_cents ?? null;
@@ -559,6 +588,8 @@ export class Staffing {
     }
   }
 }
+
+const byDate = (blocks: Map<Id, Block>) => [...blocks.values()].sort((x, y) => x.row.date.localeCompare(y.row.date));
 
 /** The first start and last end among `list`; both null when one has no times. */
 function timeSpan(list: ScheduledActivity[]): { start: number | null; end: number | null } {
