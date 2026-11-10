@@ -15,6 +15,7 @@ describe("directusEnv", () => {
       communityRoleId: "r",
       oidcClientId: "client",
       poolMax: 7,
+      filesBucket: "example-directus-files-dev",
     }),
   );
 
@@ -28,6 +29,14 @@ describe("directusEnv", () => {
       AUTH_AUTHENTIK_REDIRECT_ALLOW_LIST: "https://dev.example.com,https://dev.example.com/plans",
       DB_HOST: "10.0.0.5",
       DB_POOL__MAX: "7",
+    });
+  });
+
+  it("keeps uploaded files in the environment's bucket, not on the pod", () => {
+    expect(env).toMatchObject({
+      STORAGE_LOCATIONS: "gcs",
+      STORAGE_GCS_DRIVER: "gcs",
+      STORAGE_GCS_BUCKET: "example-directus-files-dev",
     });
   });
 

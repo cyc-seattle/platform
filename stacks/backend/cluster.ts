@@ -6,12 +6,13 @@ import * as command from "@pulumi/command";
 import * as k8s from "@pulumi/kubernetes";
 import * as random from "@pulumi/random";
 import { WebService } from "../../src/index.ts";
+import { directusFilesBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv } from "./workloads.ts";
 import type { GroupPoliciesConfig, QueryGuardConfig, SavedVersionsConfig } from "./policies.ts";
 
-// Directus on the cluster (cyc-seattle/isthmia#231). Its uploads are ephemeral, as on the VM.
+// Directus on the cluster (cyc-seattle/isthmia#231). Its uploaded files are in a bucket infra makes.
 
 const image = "directus/directus:12.3.1";
 
@@ -163,7 +164,15 @@ export async function deployDirectus(
       // 10 is Directus's default. Dev's instance allows 50 connections, and Authentik holds up to about
       // 12, so even a rollout's two pods fit. A smaller pool queued the tests' requests past the load
       // balancer's 30 s timeout.
-      ...directusEnv({ domain, adminEmail, dbHost: db.host, communityRoleId, oidcClientId, poolMax: 10 }),
+      ...directusEnv({
+        domain,
+        adminEmail,
+        dbHost: db.host,
+        communityRoleId,
+        oidcClientId,
+        poolMax: 10,
+        filesBucket: directusFilesBucket(platform.project, pulumi.getStack()),
+      }),
       secretEnv("DB_PASSWORD", db.secret, "password"),
       // Dev's tests log every request, more than any other pod; its warnings and errors stay.
       ...(isDev ? [{ name: "LOG_LEVEL", value: "warn" }] : []),

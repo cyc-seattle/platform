@@ -96,7 +96,8 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | `authentik-bootstrap-password`      | Authentik     | **Pulumi-generated.** akadmin's break-glass login (§8)                                                 |
 
 Dev reads only `dev-directus-license-key`, set by hand to the same grant key, and the
-`dev-db-<name>-password` secrets that the `infra` stack creates. Its fakes take the place of the
+`dev-db-<name>-password` and `dev-csc-website-directus-token` secrets that the `infra` stack
+creates. Its fakes take the place of the
 Clubspot and Google credentials, and it has no Google sign-in.
 
 ## 6. Directus (`directus.<domain>`)

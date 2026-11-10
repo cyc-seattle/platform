@@ -6,6 +6,7 @@ import { address, gateway, prodDomain } from "./gateway.ts";
 import { writePlatformOutputs } from "./outputs.ts";
 import { artifactRepositoryUrl } from "./artifact-repository.ts";
 import { postgres } from "./database.ts";
+import { directusFiles } from "./directus-files.ts";
 
 // Fits Authentik's server and worker, Directus, the portal, and the two syncs, with room for a
 // rolling update (#231). deploy-runner deploys it through its project-wide container.admin.
@@ -18,6 +19,8 @@ export const prodNamespace = new EnvironmentNamespace(
   },
   { provider },
 );
+
+directusFiles("prod", prodNamespace.metadata.name);
 
 export const prodOutputs = writePlatformOutputs("prod", {
   project: projectId,
