@@ -81,8 +81,25 @@ export function websiteCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(website);
 }
 
-/** The csc-website build's role, and its policy's name. */
-export const WEBSITE_BUILD = "Website Build";
+export { WEBSITE_BUILD } from "../../src/directus/names.ts";
+
+/**
+ * What the site reads of a picture. Never who uploaded it, its tags, or its metadata, which holds a
+ * photo's EXIF, GPS included, and the website shows children.
+ */
+export const WEBSITE_FILE_FIELDS = [
+  "id",
+  "filename_download",
+  "title",
+  "description",
+  "type",
+  "width",
+  "height",
+  "filesize",
+  "focal_point_x",
+  "focal_point_y",
+  "modified_on",
+];
 
 /**
  * The csc-website build's rules (cyc-seattle/platform#150): the website's collections, and the files
@@ -91,8 +108,18 @@ export const WEBSITE_BUILD = "Website Build";
 export function websiteBuildRules(schemas: LoadedSchema[]): PermissionRuleInput[] {
   return [
     ...websiteCollections(schemas).map((collection) => ({ collection, action: "read" as const })),
-    { collection: "directus_files", action: "read", permissions: { folder: { _eq: WEBSITE_FOLDER } } },
-    { collection: "directus_folders", action: "read", permissions: { id: { _eq: WEBSITE_FOLDER } } },
+    {
+      collection: "directus_files",
+      action: "read",
+      permissions: { folder: { _eq: WEBSITE_FOLDER } },
+      fields: WEBSITE_FILE_FIELDS,
+    },
+    {
+      collection: "directus_folders",
+      action: "read",
+      permissions: { id: { _eq: WEBSITE_FOLDER } },
+      fields: ["id", "name"],
+    },
   ];
 }
 

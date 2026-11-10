@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect } from "vitest";
 import { WEBSITE_FOLDER } from "../../stacks/backend/migrations/cyc0005-website-folder.cjs";
 import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
-import { admin, adminCreate, runId } from "./steps/rows.ts";
+import { admin, adminCreate, row, runId, runRows } from "./steps/rows.ts";
 
 // A 1x1 transparent PNG.
 const PICTURE = Buffer.from(
@@ -13,9 +13,13 @@ const PICTURE = Buffer.from(
 const uploaded: string[] = [];
 let pageId: string | undefined;
 let pictureId: string | undefined;
+let websiteProgramId: string | undefined;
+let refused: { status: number; body: unknown } | undefined;
 onEachScenario(() => {
   pageId = undefined;
   pictureId = undefined;
+  websiteProgramId = undefined;
+  refused = undefined;
 });
 
 // Files aren't items, so the shared cleanup can't delete them.
@@ -66,6 +70,62 @@ Step("it can't see the picture", async () => {
   const { status, body } = await user.request("GET", `/files/${pictureId}`);
   expect(status, JSON.stringify(body)).toBe(403);
   expect(await user.fetchAsset(pictureId!)).toBe(403);
+});
+
+// Every collection, the system's own included, read through its own route. A route Directus doesn't
+// serve, such as its migrations', is skipped.
+Step("it can't see anything outside the website", async () => {
+  const everything: { collection: string; schema: unknown }[] = await (
+    await admin()
+  ).ok("GET", "/collections?limit=-1");
+  const allowed = new Set(["directus_files", "directus_folders"]);
+  const seen: string[] = [];
+  for (const { collection, schema } of everything) {
+    // A folder in the Data Studio has no table.
+    if (schema === null || collection.startsWith("website_") || allowed.has(collection)) {
+      continue;
+    }
+    const route = collection.startsWith("directus_")
+      ? `/${collection.slice("directus_".length)}?limit=1`
+      : `/items/${collection}?limit=1`;
+    if ((await (await admin()).request("GET", route)).status === 404) {
+      continue;
+    }
+    const { status } = await (await theirSession()).request("GET", route);
+    seen.push(`${collection}: ${status}`);
+  }
+  expect(seen.filter((line) => !line.endsWith(": 403"))).toEqual([]);
+  expect(seen.length).toBeGreaterThan(50);
+});
+
+Step("a program on the website linked to a program in the catalog", async () => {
+  await runRows();
+  websiteProgramId = (
+    await adminCreate("website_programs", {
+      id: randomUUID(),
+      slug: `program-${runId}-${randomUUID().slice(0, 8)}`,
+      title: `Program ${runId}`,
+      catalog_programs: [{ catalog_program_id: row["programs"] }],
+    })
+  ).id;
+});
+Step("it looks at the catalog program through the website's program", async () => {
+  const fields = encodeURIComponent("id,catalog_programs.catalog_program_id.*");
+  refused = await (await theirSession()).request("GET", `/items/website_programs/${websiteProgramId}?fields=${fields}`);
+});
+
+Step("a sponsor whose logo is kept outside the website's folder", async () => {
+  pictureId = await upload(null);
+  await adminCreate("website_sponsors", { id: randomUUID(), name: `Sponsor ${runId}`, logo: pictureId });
+});
+Step("it searches the sponsors by their logo's file name", async () => {
+  const filter = encodeURIComponent(JSON.stringify({ logo: { filename_download: { _nnull: true } } }));
+  refused = await (await theirSession()).request("GET", `/items/website_sponsors?filter=${filter}`);
+});
+
+Step("it isn't allowed", () => {
+  expect(refused, "nothing was asked").toBeDefined();
+  expect(refused!.status, JSON.stringify(refused!.body)).toBe(403);
 });
 
 describeAccessFeature("website.feature");

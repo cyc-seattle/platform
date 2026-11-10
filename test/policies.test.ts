@@ -11,6 +11,8 @@ import {
   groupPoliciesConfig,
   queryGuardConfig,
   savedVersionsConfig,
+  WEBSITE_BUILD,
+  WEBSITE_FILE_FIELDS,
   websiteBuildRules,
 } from "../stacks/backend/policies.ts";
 import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0005-website-folder.cjs";
@@ -312,8 +314,32 @@ describe("the csc-website build's rules", () => {
 
   it("read only the files in the Website folder, and that folder", () => {
     expect(rules.filter((rule) => rule.collection.startsWith("directus_"))).toEqual([
-      { collection: "directus_files", action: "read", permissions: { folder: { _eq: WEBSITE_FOLDER } } },
-      { collection: "directus_folders", action: "read", permissions: { id: { _eq: WEBSITE_FOLDER } } },
+      {
+        collection: "directus_files",
+        action: "read",
+        permissions: { folder: { _eq: WEBSITE_FOLDER } },
+        fields: WEBSITE_FILE_FIELDS,
+      },
+      {
+        collection: "directus_folders",
+        action: "read",
+        permissions: { id: { _eq: WEBSITE_FOLDER } },
+        fields: ["id", "name"],
+      },
     ]);
+  });
+
+  it("never read who uploaded a picture, its tags, or its metadata", () => {
+    for (const field of ["uploaded_by", "modified_by", "tags", "location", "metadata", "*"]) {
+      expect(WEBSITE_FILE_FIELDS).not.toContain(field);
+    }
+  });
+});
+
+describe("the query guard", () => {
+  it("knows the csc-website build's rules by its role's name", () => {
+    expect(queryGuardConfig([{ name: WEBSITE_BUILD, rules: websiteBuildRules(schemas) }]).policies).toHaveProperty(
+      "Website Build.directus_files",
+    );
   });
 });

@@ -106,6 +106,8 @@ signs in as the Website Build machine user, with a static token `backend` genera
 every `website_*` collection whole, and the files in the Website folder, and nothing else: anything it
 can read could end up on the public site. `features/website.feature` gives the rule.
 
+Anything in the Website folder is public: never put a file there that the public website shouldn't show.
+
 The token is in Secret Manager for the build to read: `csc-website-directus-token` in prod, and
 `dev-csc-website-directus-token` in dev, which `infra` generates, since `deploy-dev` can't write a
 secret.

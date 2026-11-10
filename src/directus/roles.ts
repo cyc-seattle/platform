@@ -1,4 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
+import { WEBSITE_BUILD } from "./names.ts";
 import { DirectusRole, DirectusUser } from "./resources.ts";
 
 // The CRM's roles and the users assigned to them. `backend` declares them for prod's existing Directus
@@ -168,7 +169,7 @@ export function crmIdentities(args: CrmIdentityArgs): CrmIdentities {
     "website-build",
     {
       ...auth,
-      name: "Website Build",
+      name: WEBSITE_BUILD,
       icon: "public",
       description: "Machine user for the csc-website build. Reads the website's content and images. API-only.",
       appAccess: false,

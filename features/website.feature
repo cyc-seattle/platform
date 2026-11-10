@@ -26,6 +26,10 @@ Feature: The public website
 
   Rule: The website build can't see anything else
 
+    Example: The website build can't see anything outside the website
+      Given the website build's service account
+      Then it can't see anything outside the website
+
     Scenario Outline: The website build can't see <records>
       Given the website build's service account
       Then it can't see <records>
@@ -43,3 +47,15 @@ Feature: The public website
       Given the website build's service account
       And a picture outside the website's folder
       Then it can't see the picture
+
+    Example: The website build can't see a catalog program through the website
+      Given the website build's service account
+      And a program on the website linked to a program in the catalog
+      When it looks at the catalog program through the website's program
+      Then it isn't allowed
+
+    Example: The website build can't find out about a picture kept elsewhere by searching
+      Given the website build's service account
+      And a sponsor whose logo is kept outside the website's folder
+      When it searches the sponsors by their logo's file name
+      Then it isn't allowed
