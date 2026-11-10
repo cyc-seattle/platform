@@ -13,7 +13,24 @@ import type {
   PlanRates,
   Product,
   ProgramArea,
+  WarningCategory,
 } from "./types.ts";
+
+/** The warnings about what the blocks are given, or when they run. The rest are about the data. */
+const ALLOCATION_WARNINGS = new Set([
+  "over_inventory_boats",
+  "over_inventory_resource",
+  "over_capacity",
+  "unallocated_activity",
+  "closed_date",
+  "position_double_booked",
+]);
+
+/** Where a warning applies: a plan copy, and a date. */
+export interface WarningScope {
+  version_id?: Id;
+  date?: DateString;
+}
 
 /** The step that recorded an entry. Only `direct` entries count toward MTDC. */
 export type Stage = "direct" | "pool" | "bonus";
@@ -95,9 +112,18 @@ export class Context {
     return account;
   }
 
-  warn(code: string, message: string, key?: string): void {
-    if (this.warnings.some((w) => w.code === code && w.message === message)) return;
-    this.warnings.push(key === undefined ? { code, message } : { code, message, key });
+  warn(code: string, message: string, key?: string, scope: WarningScope = {}): void {
+    const same = (w: EngineWarning) => w.code === code && w.message === message && w.version_id === scope.version_id;
+    if (this.warnings.some(same)) return;
+    const category: WarningCategory = ALLOCATION_WARNINGS.has(code) ? "allocation" : "data";
+    this.warnings.push({
+      code,
+      message,
+      category,
+      ...(key !== undefined && { key }),
+      ...(scope.version_id !== undefined && { version_id: scope.version_id }),
+      ...(scope.date !== undefined && { date: scope.date }),
+    });
   }
 
   book(entry: EntryInput): void {

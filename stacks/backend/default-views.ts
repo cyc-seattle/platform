@@ -145,9 +145,9 @@ export const defaultViews: DefaultView[] = [
     ],
   },
   {
-    collection: "plan_offering_boat_classes",
-    sort: ["offering_id.name", "boat_class_id.name"],
-    fields: ["offering_id", "boat_class_id", "share", "version_id"],
+    collection: "plan_programs",
+    sort: ["version_id.plan_id.name", "product_id.name"],
+    fields: ["product_id", "version_id", "sailors_per_coach"],
   },
   {
     collection: "plan_trips",
@@ -160,9 +160,24 @@ export const defaultViews: DefaultView[] = [
     fields: ["date", "start_time", "end_time", "offering_id", "kind"],
   },
   {
-    collection: "plan_activity_resources",
-    sort: ["activity_id.date"],
-    fields: ["activity_id", "quantity", "hours", "version_id"],
+    collection: "plan_activity_blocks",
+    sort: ["date", "name"],
+    fields: ["date", "name", "version_id"],
+  },
+  {
+    collection: "plan_block_staff",
+    sort: ["block_id.date", "block_id.name"],
+    fields: ["block_id", "count", "pay", "version_id"],
+  },
+  {
+    collection: "plan_block_resources",
+    sort: ["block_id.date", "block_id.name"],
+    fields: ["block_id", "quantity", "hours", "version_id"],
+  },
+  {
+    collection: "plan_block_boats",
+    sort: ["block_id.date", "block_id.name"],
+    fields: ["block_id", "boat_class_id", "count", "sailor_owned", "version_id"],
   },
   {
     collection: "plan_labor_lines",
@@ -208,11 +223,6 @@ export const defaultViews: DefaultView[] = [
     collection: "plan_boat_rates",
     sort: ["version_id.plan_id.name", "boat_class_id.name"],
     fields: ["boat_class_id", "version_id", "maintenance_per_boat_hour_cents"],
-  },
-  {
-    collection: "plan_activity_block_rules",
-    sort: ["version_id.plan_id.name", "name"],
-    fields: ["name", "version_id", "starts_on", "ends_on", "coach_level_id"],
   },
   { collection: "plan_pools", sort: ["version_id.plan_id.name", "name"], fields: ["name", "version_id"] },
   {

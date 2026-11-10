@@ -106,32 +106,6 @@ collections:
       versioning: false
     schema:
       name: plan_offerings
-  - collection: plan_offering_boat_classes
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_offering_boat_classes
-      color: null
-      display_template: "{{offering_id.name}}: {{boat_class_id.name}}"
-      group: Planning
-      hidden: false
-      icon: sailing
-      item_duplication_fields: null
-      note: The boat classes an offering sails, and each one's share of its sailors.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_offering_boat_classes
   - collection: plan_trips
     meta:
       accountability: all
@@ -184,32 +158,6 @@ collections:
       versioning: false
     schema:
       name: plan_activities
-  - collection: plan_activity_resources
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_activity_resources
-      color: null
-      display_template: "{{activity_id.offering_id.name}}: {{activity_id.date}}, {{quantity}}"
-      group: Planning
-      hidden: false
-      icon: construction
-      item_duplication_fields: null
-      note: Equipment an activity uses beyond its coach boats.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_activity_resources
   - collection: plan_labor_lines
     meta:
       accountability: all
@@ -444,32 +392,6 @@ collections:
       versioning: false
     schema:
       name: plan_boat_rates
-  - collection: plan_activity_block_rules
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_activity_block_rules
-      color: null
-      display_template: "{{name}}"
-      group: Planning
-      hidden: false
-      icon: view_week
-      item_duplication_fields: null
-      note: Offerings whose activities share coaches and boats on certain days.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_activity_block_rules
   - collection: plan_pools
     meta:
       accountability: all
@@ -760,6 +682,136 @@ collections:
       versioning: false
     schema:
       name: version_set_members
+  - collection: plan_programs
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_programs
+      color: null
+      display_template: "{{product_id.name}}"
+      group: Planning
+      hidden: false
+      icon: school
+      item_duplication_fields: null
+      note: "A program's settings in a Program Plan: the staff level that coaches it, how many sailors each coach can take, and its rules."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_programs
+  - collection: plan_activity_blocks
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_activity_blocks
+      color: null
+      display_template: "{{date}}: {{name}}"
+      group: Planning
+      hidden: false
+      icon: view_agenda
+      item_duplication_fields: null
+      note: Activities on one date that share their staff, RIBs and boats, such as Guppies and Minnows on the morning of July 13.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_activity_blocks
+  - collection: plan_block_staff
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_block_staff
+      color: null
+      display_template: "{{block_id.date}} {{block_id.name}}: {{count}}"
+      group: Planning
+      hidden: false
+      icon: groups
+      item_duplication_fields: null
+      note: "Who coaches a block: a number of staff at one staff level, or a salaried position."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_block_staff
+  - collection: plan_block_resources
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_block_resources
+      color: null
+      display_template: "{{block_id.date}} {{block_id.name}}: {{quantity}}"
+      group: Planning
+      hidden: false
+      icon: construction
+      item_duplication_fields: null
+      note: RIBs and other equipment a block uses.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_block_resources
+  - collection: plan_block_boats
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_block_boats
+      color: null
+      display_template: "{{block_id.date}} {{block_id.name}}: {{count}} {{boat_class_id.name}}"
+      group: Planning
+      hidden: false
+      icon: sailing
+      item_duplication_fields: null
+      note: "Boats of one class a block sails: the organization's, and the ones sailors bring."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_block_boats
 fields:
   - collection: plans
     field: id
@@ -2011,372 +2063,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_offerings
-    field: sailors_per_coach
-    type: decimal
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: sailors_per_coach
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 13
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: sailors_per_coach
-      table: plan_offerings
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: min_coaches
-    type: integer
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: min_coaches
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 14
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: min_coaches
-      table: plan_offerings
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: coach_level_key
-    type: uuid
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: coach_level_key
-      group: null
-      hidden: false
-      interface: input
-      note: "The coach level: copy the Key from a staff level in the Operations Plan."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 15
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: coach_level_key
-      table: plan_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: required_qualification
-    type: uuid
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: required_qualification
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 16
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Required qualification
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: required_qualification
-      table: plan_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: qualifications
-      foreign_key_column: id
-  - collection: plan_offerings
-    field: ribs_per_coach
-    type: decimal
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: ribs_per_coach
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 17
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: ribs_per_coach
-      table: plan_offerings
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: byob_share
-    type: decimal
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: byob_share
-      group: null
-      hidden: false
-      interface: input
-      note: The share of sailors who bring their own boat. 0.25 means 25%.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 18
-      special: null
-      translations:
-        - language: en-US
-          translation: Bring-own-boat share
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: byob_share
-      table: plan_offerings
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: fixed_coaches
-    type: integer
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: fixed_coaches
-      group: null
-      hidden: false
-      interface: input
-      note: Overrides the coaches the engine works out.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 19
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fixed_coaches
-      table: plan_offerings
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: fixed_ribs
-    type: integer
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: fixed_ribs
-      group: null
-      hidden: false
-      interface: input
-      note: Overrides the coach boats the engine works out.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 20
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fixed_ribs
-      table: plan_offerings
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: fixed_boats
-    type: integer
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: fixed_boats
-      group: null
-      hidden: false
-      interface: input
-      note: Overrides the boats the engine works out.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 21
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fixed_boats
-      table: plan_offerings
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
     field: cogs_rate
     type: decimal
     meta:
@@ -2450,358 +2136,6 @@ fields:
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: coach_position_key
-    type: uuid
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: coach_position_key
-      group: null
-      hidden: false
-      interface: input
-      note: "A salaried coach who coaches every practice: copy the Key from a salaried position in the Operations Plan."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 24
-      special: null
-      translations:
-        - language: en-US
-          translation: Salaried coach
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: coach_position_key
-      table: plan_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: coach_position_pay
-    type: string
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: labels
-      display_options:
-        choices:
-          - text: Out of their salary
-            value: salary
-          - text: By the hour
-            value: hourly
-      field: coach_position_pay
-      group: null
-      hidden: false
-      interface: select-dropdown
-      note: Out of their salary, or by the hour at the offering's coach level, on top of their salary.
-      options:
-        choices:
-          - text: Out of their salary
-            value: salary
-          - text: By the hour
-            value: hourly
-      readonly: false
-      required: false
-      searchable: true
-      sort: 25
-      special: null
-      translations:
-        - language: en-US
-          translation: Salaried coach is paid
-      validation:
-        coach_position_pay:
-          _in:
-            - salary
-            - hourly
-      validation_message: "Must be one of: salary, hourly."
-      width: full
-    schema:
-      name: coach_position_pay
-      table: plan_offerings
-      data_type: character varying
-      default_value: salary
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offering_boat_classes
-    field: id
-    type: uuid
-    meta:
-      collection: plan_offering_boat_classes
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_offering_boat_classes
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offering_boat_classes
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_offering_boat_classes
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The version this row belongs to.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan copy
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_offering_boat_classes
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_offering_boat_classes
-    field: key
-    type: uuid
-    meta:
-      collection: plan_offering_boat_classes
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_offering_boat_classes
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offering_boat_classes
-    field: offering_id
-    type: uuid
-    meta:
-      collection: plan_offering_boat_classes
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: offering_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Offering
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: offering_id
-      table: plan_offering_boat_classes
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_offerings
-      foreign_key_column: id
-  - collection: plan_offering_boat_classes
-    field: boat_class_id
-    type: uuid
-    meta:
-      collection: plan_offering_boat_classes
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: boat_class_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 5
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Boat class
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: boat_class_id
-      table: plan_offering_boat_classes
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: boat_classes
-      foreign_key_column: id
-  - collection: plan_offering_boat_classes
-    field: share
-    type: decimal
-    meta:
-      collection: plan_offering_boat_classes
-      conditions: null
-      display: null
-      display_options: null
-      field: share
-      group: null
-      hidden: false
-      interface: input
-      note: This boat class's share of the offering's sailors. 0.5 means 50%.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: share
-      table: plan_offering_boat_classes
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -3701,406 +3035,40 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_activities
-    field: fixed_coaches
-    type: integer
+    field: block_id
+    type: uuid
     meta:
       collection: plan_activities
       conditions: null
-      display: null
-      display_options: null
-      field: fixed_coaches
+      display: related-values
+      display_options:
+        template: "{{date}}: {{name}}"
+      field: block_id
       group: null
       hidden: false
-      interface: input
-      note: Overrides the coaches the engine works out.
+      interface: select-dropdown-m2o
+      note: The block it's staffed in, with the activities it shares staff and boats with.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 14
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fixed_coaches
-      table: plan_activities
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activities
-    field: fixed_ribs
-    type: integer
-    meta:
-      collection: plan_activities
-      conditions: null
-      display: null
-      display_options: null
-      field: fixed_ribs
-      group: null
-      hidden: false
-      interface: input
-      note: Overrides the coach boats the engine works out.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 15
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fixed_ribs
-      table: plan_activities
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activities
-    field: fixed_boats
-    type: integer
-    meta:
-      collection: plan_activities
-      conditions: null
-      display: null
-      display_options: null
-      field: fixed_boats
-      group: null
-      hidden: false
-      interface: input
-      note: Overrides the boats the engine works out.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 16
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fixed_boats
-      table: plan_activities
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_resources
-    field: id
-    type: uuid
-    meta:
-      collection: plan_activity_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_activity_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_resources
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_activity_resources
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The version this row belongs to.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
       special:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Block
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
-      table: plan_activity_resources
+      name: block_id
+      table: plan_activities
       data_type: uuid
       default_value: null
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_activity_resources
-    field: key
-    type: uuid
-    meta:
-      collection: plan_activity_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_activity_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_resources
-    field: activity_id
-    type: uuid
-    meta:
-      collection: plan_activity_resources
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{offering_id.name}}: {{date}} {{kind}}"
-      field: activity_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Activity
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: activity_id
-      table: plan_activity_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_activities
-      foreign_key_column: id
-  - collection: plan_activity_resources
-    field: resource_key
-    type: uuid
-    meta:
-      collection: plan_activity_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: resource_key
-      group: null
-      hidden: false
-      interface: input
-      note: "The resource it uses: copy the Key from a resource in the Operations Plan."
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: resource_key
-      table: plan_activity_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_resources
-    field: quantity
-    type: decimal
-    meta:
-      collection: plan_activity_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: quantity
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: quantity
-      table: plan_activity_resources
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_resources
-    field: hours
-    type: decimal
-    meta:
-      collection: plan_activity_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: hours
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 7
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: hours
-      table: plan_activity_resources
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
       is_nullable: true
       is_unique: false
       is_indexed: false
@@ -4108,8 +3076,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
   - collection: plan_labor_lines
     field: id
     type: uuid
@@ -7628,410 +6596,37 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: id
-    type: uuid
+  - collection: plan_boat_rates
+    field: quantity
+    type: integer
     meta:
-      collection: plan_activity_block_rules
+      collection: plan_boat_rates
       conditions: null
       display: null
       display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_activity_block_rules
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The version this row belongs to.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan copy
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_activity_block_rules
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_activity_block_rules
-    field: key
-    type: uuid
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: null
-      display_options: null
-      field: key
+      field: quantity
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_activity_block_rules
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: name
-    type: string
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: null
-      display_options: null
-      field: name
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: name
-      table: plan_activity_block_rules
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: offering_keys
-    type: json
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: null
-      display_options: null
-      field: offering_keys
-      group: null
-      hidden: false
-      interface: tags
-      note: "The offerings this rule fills: add the Key of each one."
-      options: null
-      readonly: false
-      required: true
-      searchable: false
-      sort: 5
-      special:
-        - cast-json
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: offering_keys
-      table: plan_activity_block_rules
-      data_type: json
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: weekdays
-    type: json
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: null
-      display_options: null
-      field: weekdays
-      group: null
-      hidden: false
-      interface: tags
-      note: ISO weekdays, 1 for Monday to 7 for Sunday.
+      note: How many boats of the class the organization has.
       options: null
       readonly: false
       required: false
-      searchable: false
+      searchable: true
       sort: 6
-      special:
-        - cast-json
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: weekdays
-      table: plan_activity_block_rules
-      data_type: json
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: starts_on
-    type: date
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: null
-      display_options: null
-      field: starts_on
-      group: null
-      hidden: false
-      interface: datetime
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 7
       special: null
       translations: null
       validation: null
       validation_message: null
       width: full
     schema:
-      name: starts_on
-      table: plan_activity_block_rules
-      data_type: date
+      name: quantity
+      table: plan_boat_rates
+      data_type: integer
       default_value: null
       max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: ends_on
-    type: date
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: null
-      display_options: null
-      field: ends_on
-      group: null
-      hidden: false
-      interface: datetime
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 8
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: ends_on
-      table: plan_activity_block_rules
-      data_type: date
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_block_rules
-    field: coach_level_id
-    type: uuid
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: coach_level_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 9
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Coach level
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: coach_level_id
-      table: plan_activity_block_rules
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_staff_levels
-      foreign_key_column: id
-  - collection: plan_activity_block_rules
-    field: salaried_positions
-    type: json
-    meta:
-      collection: plan_activity_block_rules
-      conditions: null
-      display: null
-      display_options: null
-      field: salaried_positions
-      group: null
-      hidden: false
-      interface: tags
-      note: "The salaried positions it books: add the Key of each one."
-      options: null
-      readonly: false
-      required: false
-      searchable: false
-      sort: 10
-      special:
-        - cast-json
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: salaried_positions
-      table: plan_activity_block_rules
-      data_type: json
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
+      numeric_precision: 32
+      numeric_scale: 0
       is_nullable: true
       is_unique: false
       is_indexed: false
@@ -11419,6 +10014,144 @@ fields:
       has_auto_increment: false
       foreign_key_table: version_sets
       foreign_key_column: id
+  - collection: plan_result_warnings
+    field: version_set_member_id
+    type: uuid
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}}"
+      field: version_set_member_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The plan in the Financial Plan it's about.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_member_id
+      table: plan_result_warnings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_set_members
+      foreign_key_column: id
+  - collection: plan_result_warnings
+    field: date
+    type: date
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: null
+      display_options: null
+      field: date
+      group: null
+      hidden: false
+      interface: datetime
+      note: The date it's about.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date
+      table: plan_result_warnings
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_warnings
+    field: category
+    type: string
+    meta:
+      collection: plan_result_warnings
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Allocation
+            value: allocation
+          - text: Data
+            value: data
+      field: category
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: "Allocation: the blocks break a limit, or run on a closed day. Data: a row is missing or wrong."
+      options:
+        choices:
+          - text: Allocation
+            value: allocation
+          - text: Data
+            value: data
+      readonly: true
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation:
+        category:
+          _in:
+            - allocation
+            - data
+      validation_message: "Must be one of: allocation, data."
+      width: full
+    schema:
+      name: category
+      table: plan_result_warnings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: version_sets
     field: id
     type: uuid
@@ -12080,6 +10813,1437 @@ fields:
       has_auto_increment: false
       foreign_key_table: plan_versions
       foreign_key_column: id
+  - collection: plan_programs
+    field: id
+    type: uuid
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_programs
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan copy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_programs
+    field: key
+    type: uuid
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_programs
+    field: product_id
+    type: uuid
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: product_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The program.
+      options:
+        filter:
+          kind:
+            _eq: program
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product_id
+      table: plan_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: products
+      foreign_key_column: id
+  - collection: plan_programs
+    field: staff_level_key
+    type: uuid
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: staff_level_key
+      group: null
+      hidden: false
+      interface: input
+      note: "The staff level that coaches it: copy the Key from a staff level in the Operations Plan."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: staff_level_key
+      table: plan_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_programs
+    field: sailors_per_coach
+    type: decimal
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: sailors_per_coach
+      group: null
+      hidden: false
+      interface: input
+      note: How many sailors one coach at its staff level can safely take.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sailors_per_coach
+      table: plan_programs
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_programs
+    field: rules
+    type: text
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: rules
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: "What you want for this program that its numbers don't capture, for your AI to follow. For example: if there are more than 12 Guppies, add a Junior Instructor."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: rules
+      table: plan_programs
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_activity_blocks
+    field: id
+    type: uuid
+    meta:
+      collection: plan_activity_blocks
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_activity_blocks
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_activity_blocks
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_activity_blocks
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan copy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_activity_blocks
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_activity_blocks
+    field: key
+    type: uuid
+    meta:
+      collection: plan_activity_blocks
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_activity_blocks
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_activity_blocks
+    field: date
+    type: date
+    meta:
+      collection: plan_activity_blocks
+      conditions: null
+      display: null
+      display_options: null
+      field: date
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date
+      table: plan_activity_blocks
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_activity_blocks
+    field: name
+    type: string
+    meta:
+      collection: plan_activity_blocks
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: Such as Guppies and Minnows, morning.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_activity_blocks
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_staff
+    field: id
+    type: uuid
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_block_staff
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_staff
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan copy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_block_staff
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_block_staff
+    field: key
+    type: uuid
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_block_staff
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_staff
+    field: block_id
+    type: uuid
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{date}}: {{name}}"
+      field: block_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Block
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: block_id
+      table: plan_block_staff
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
+  - collection: plan_block_staff
+    field: staff_level_key
+    type: uuid
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: null
+      display_options: null
+      field: staff_level_key
+      group: null
+      hidden: false
+      interface: input
+      note: "For staff at a staff level: copy the Key from a staff level in the Operations Plan. Leave it empty for a salaried position."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: staff_level_key
+      table: plan_block_staff
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_staff
+    field: position_key
+    type: uuid
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: null
+      display_options: null
+      field: position_key
+      group: null
+      hidden: false
+      interface: input
+      note: "For a salaried position: copy the Key from a salaried position in the Operations Plan. Leave it empty for staff at a staff level."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Salaried position
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: position_key
+      table: plan_block_staff
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_staff
+    field: count
+    type: integer
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: null
+      display_options: null
+      field: count
+      group: null
+      hidden: false
+      interface: input
+      note: How many. A salaried position is 1.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: count
+      table: plan_block_staff
+      data_type: integer
+      default_value: 0
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_staff
+    field: pay
+    type: string
+    meta:
+      collection: plan_block_staff
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Out of their salary
+            value: salary
+          - text: By the hour
+            value: hourly
+      field: pay
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: "For a salaried position: out of their salary, or by the hour at their own hourly rate, on top of it."
+      options:
+        choices:
+          - text: Out of their salary
+            value: salary
+          - text: By the hour
+            value: hourly
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Salaried position is paid
+      validation:
+        pay:
+          _in:
+            - salary
+            - hourly
+      validation_message: "Must be one of: salary, hourly."
+      width: full
+    schema:
+      name: pay
+      table: plan_block_staff
+      data_type: character varying
+      default_value: salary
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_resources
+    field: id
+    type: uuid
+    meta:
+      collection: plan_block_resources
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_block_resources
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_resources
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_block_resources
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan copy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_block_resources
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_block_resources
+    field: key
+    type: uuid
+    meta:
+      collection: plan_block_resources
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_block_resources
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_resources
+    field: block_id
+    type: uuid
+    meta:
+      collection: plan_block_resources
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{date}}: {{name}}"
+      field: block_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Block
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: block_id
+      table: plan_block_resources
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
+  - collection: plan_block_resources
+    field: resource_key
+    type: uuid
+    meta:
+      collection: plan_block_resources
+      conditions: null
+      display: null
+      display_options: null
+      field: resource_key
+      group: null
+      hidden: false
+      interface: input
+      note: "The resource it uses: copy the Key from a resource in the Operations Plan."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: resource_key
+      table: plan_block_resources
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_resources
+    field: quantity
+    type: decimal
+    meta:
+      collection: plan_block_resources
+      conditions: null
+      display: null
+      display_options: null
+      field: quantity
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: quantity
+      table: plan_block_resources
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_resources
+    field: hours
+    type: decimal
+    meta:
+      collection: plan_block_resources
+      conditions: null
+      display: null
+      display_options: null
+      field: hours
+      group: null
+      hidden: false
+      interface: input
+      note: Hours each is used. Leave it empty for the block's time on the water (RIBs) or its paid time (other equipment).
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hours
+      table: plan_block_resources
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_boats
+    field: id
+    type: uuid
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_block_boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_boats
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan copy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_block_boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_block_boats
+    field: key
+    type: uuid
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_block_boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_boats
+    field: block_id
+    type: uuid
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{date}}: {{name}}"
+      field: block_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Block
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: block_id
+      table: plan_block_boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
+  - collection: plan_block_boats
+    field: boat_class_id
+    type: uuid
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: boat_class_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat class
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_class_id
+      table: plan_block_boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+  - collection: plan_block_boats
+    field: count
+    type: integer
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: null
+      display_options: null
+      field: count
+      group: null
+      hidden: false
+      interface: input
+      note: How many of the organization's boats.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: count
+      table: plan_block_boats
+      data_type: integer
+      default_value: 0
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_boats
+    field: sailor_owned
+    type: integer
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: null
+      display_options: null
+      field: sailor_owned
+      group: null
+      hidden: false
+      interface: input
+      note: How many boats sailors bring. They cost nothing and don't count against the organization's.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sailor_owned
+      table: plan_block_boats
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
 relations:
   - collection: plans
     field: program_area_id
@@ -12207,90 +12371,6 @@ relations:
       constraint_name: plan_offerings_product_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: plan_offerings
-    field: required_qualification
-    related_collection: qualifications
-    meta:
-      junction_field: null
-      many_collection: plan_offerings
-      many_field: required_qualification
-      one_allowed_collections: null
-      one_collection: qualifications
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_offerings
-      column: required_qualification
-      foreign_key_table: qualifications
-      foreign_key_column: id
-      constraint_name: plan_offerings_required_qualification_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_offering_boat_classes
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_offering_boat_classes
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_offering_boat_classes
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_offering_boat_classes_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_offering_boat_classes
-    field: offering_id
-    related_collection: plan_offerings
-    meta:
-      junction_field: null
-      many_collection: plan_offering_boat_classes
-      many_field: offering_id
-      one_allowed_collections: null
-      one_collection: plan_offerings
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_offering_boat_classes
-      column: offering_id
-      foreign_key_table: plan_offerings
-      foreign_key_column: id
-      constraint_name: plan_offering_boat_classes_offering_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_offering_boat_classes
-    field: boat_class_id
-    related_collection: boat_classes
-    meta:
-      junction_field: null
-      many_collection: plan_offering_boat_classes
-      many_field: boat_class_id
-      one_allowed_collections: null
-      one_collection: boat_classes
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_offering_boat_classes
-      column: boat_class_id
-      foreign_key_table: boat_classes
-      foreign_key_column: id
-      constraint_name: plan_offering_boat_classes_boat_class_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
   - collection: plan_trips
     field: version_id
     related_collection: plan_versions
@@ -12394,48 +12474,6 @@ relations:
       foreign_key_table: plan_trips
       foreign_key_column: id
       constraint_name: plan_activities_trip_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_activity_resources
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_activity_resources
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_activity_resources
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_activity_resources_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_activity_resources
-    field: activity_id
-    related_collection: plan_activities
-    meta:
-      junction_field: null
-      many_collection: plan_activity_resources
-      many_field: activity_id
-      one_allowed_collections: null
-      one_collection: plan_activities
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_activity_resources
-      column: activity_id
-      foreign_key_table: plan_activities
-      foreign_key_column: id
-      constraint_name: plan_activity_resources_activity_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_labor_lines
@@ -12793,48 +12831,6 @@ relations:
       foreign_key_table: boat_classes
       foreign_key_column: id
       constraint_name: plan_boat_rates_boat_class_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_activity_block_rules
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_activity_block_rules
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_activity_block_rules
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_activity_block_rules_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_activity_block_rules
-    field: coach_level_id
-    related_collection: plan_staff_levels
-    meta:
-      junction_field: null
-      many_collection: plan_activity_block_rules
-      many_field: coach_level_id
-      one_allowed_collections: null
-      one_collection: plan_staff_levels
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_activity_block_rules
-      column: coach_level_id
-      foreign_key_table: plan_staff_levels
-      foreign_key_column: id
-      constraint_name: plan_activity_block_rules_coach_level_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_pools
@@ -13320,3 +13316,255 @@ relations:
       constraint_name: plan_offerings_catalog_offering_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: plan_programs
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_programs
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_programs
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_programs_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_activity_blocks
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_activity_blocks
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_activity_blocks
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_activity_blocks_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_staff
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_block_staff
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_staff
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_block_staff_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_resources
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_block_resources
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_resources
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_block_resources_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_boats
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_block_boats
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_boats
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_block_boats_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_programs
+    field: product_id
+    related_collection: products
+    meta:
+      junction_field: null
+      many_collection: plan_programs
+      many_field: product_id
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_programs
+      column: product_id
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: plan_programs_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_staff
+    field: block_id
+    related_collection: plan_activity_blocks
+    meta:
+      junction_field: null
+      many_collection: plan_block_staff
+      many_field: block_id
+      one_allowed_collections: null
+      one_collection: plan_activity_blocks
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_staff
+      column: block_id
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
+      constraint_name: plan_block_staff_block_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_resources
+    field: block_id
+    related_collection: plan_activity_blocks
+    meta:
+      junction_field: null
+      many_collection: plan_block_resources
+      many_field: block_id
+      one_allowed_collections: null
+      one_collection: plan_activity_blocks
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_resources
+      column: block_id
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
+      constraint_name: plan_block_resources_block_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_boats
+    field: block_id
+    related_collection: plan_activity_blocks
+    meta:
+      junction_field: null
+      many_collection: plan_block_boats
+      many_field: block_id
+      one_allowed_collections: null
+      one_collection: plan_activity_blocks
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_boats
+      column: block_id
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
+      constraint_name: plan_block_boats_block_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_activities
+    field: block_id
+    related_collection: plan_activity_blocks
+    meta:
+      junction_field: null
+      many_collection: plan_activities
+      many_field: block_id
+      one_allowed_collections: null
+      one_collection: plan_activity_blocks
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_activities
+      column: block_id
+      foreign_key_table: plan_activity_blocks
+      foreign_key_column: id
+      constraint_name: plan_activities_block_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_boats
+    field: boat_class_id
+    related_collection: boat_classes
+    meta:
+      junction_field: null
+      many_collection: plan_block_boats
+      many_field: boat_class_id
+      one_allowed_collections: null
+      one_collection: boat_classes
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_boats
+      column: boat_class_id
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+      constraint_name: plan_block_boats_boat_class_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_result_warnings
+    field: version_set_member_id
+    related_collection: version_set_members
+    meta:
+      junction_field: null
+      many_collection: plan_result_warnings
+      many_field: version_set_member_id
+      one_allowed_collections: null
+      one_collection: version_set_members
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_warnings
+      column: version_set_member_id
+      foreign_key_table: version_set_members
+      foreign_key_column: id
+      constraint_name: plan_result_warnings_version_set_member_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE

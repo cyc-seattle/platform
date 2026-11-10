@@ -3,6 +3,7 @@ import { computePlan } from "../../src/planning/index.ts";
 import {
   A,
   activity,
+  block,
   budgetLine,
   emptyPlan,
   laborLine,
@@ -152,17 +153,13 @@ describe("line names", () => {
     const ga = pool({ name: "G&A" });
     const level = staffLevel({ hourly_rate_cents: 2000 });
     const director = position({ name: "Director", remainder_pool_id: ga.id });
-    const o = offering(p.id, {
-      target_enrollment: 1,
-      price_cents: 100_000,
-      min_coaches: 1,
-      coach_level_key: level.key,
-      coach_position_key: director.key,
-    });
+    const o = offering(p.id, { target_enrollment: 1, price_cents: 100_000 });
+    const practice = activity(o.id);
     const data = emptyPlan({
       products: [p],
       plan_offerings: [o],
-      plan_activities: [activity(o.id)],
+      plan_activities: [practice],
+      ...block([practice], { staff: [{ position_key: director.key }] }),
       plan_staff_levels: [level],
       plan_salaried_positions: [director],
       plan_pools: [ga],

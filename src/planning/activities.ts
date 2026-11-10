@@ -56,6 +56,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
         "closed_date",
         `${offering.name} has an activity on ${activity.date}, a closed day: ${closedFor}`,
         activity.key,
+        { version_id: activity.version_id, date: activity.date },
       );
     }
     const usesBoats = activity.kind !== "travel" && activity.uses_boats;

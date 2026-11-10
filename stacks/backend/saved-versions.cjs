@@ -767,7 +767,14 @@ function resultRows(data, out, operations) {
       double_booked_hours: p.double_booked_hours,
       double_booked_dates: p.double_booked_dates,
     })),
-    plan_result_warnings: out.warnings.map((w) => ({ code: w.code, message: w.message, subject_key: w.key ?? null })),
+    plan_result_warnings: out.warnings.map((w) => ({
+      owner: w.version_id ?? null,
+      code: w.code,
+      message: w.message,
+      subject_key: w.key ?? null,
+      date: w.date ?? null,
+      category: w.category,
+    })),
     totals: {
       calculated_at: new Date().toISOString(),
       operating_revenue_cents: operating.revenue_cents,
@@ -799,7 +806,7 @@ function withoutOwner(fields) {
 
 /**
  * A Financial Plan's results, worked out with the engine from the plans it holds. Each line and P&L
- * row names the member that holds what it's charged to.
+ * row names the member that holds what it's charged to, and each warning the member it's about.
  */
 async function calculate(config, db, set, engine) {
   const setId = set.id;
@@ -826,7 +833,7 @@ async function calculate(config, db, set, engine) {
     plan_result_lines: all.plan_result_lines.map(owned),
     plan_result_pnl: all.plan_result_pnl.map(owned),
     plan_result_positions: all.plan_result_positions.map(row),
-    plan_result_warnings: all.plan_result_warnings.map(row),
+    plan_result_warnings: all.plan_result_warnings.map(owned),
   };
   return { rows, totals: row(totals) };
 }

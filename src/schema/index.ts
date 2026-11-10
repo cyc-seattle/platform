@@ -32,17 +32,19 @@ export interface Schema {
   organizations: Organizations[];
   people: People[];
   plan_activities: PlanActivities[];
-  plan_activity_block_rules: PlanActivityBlockRules[];
-  plan_activity_resources: PlanActivityResources[];
+  plan_activity_blocks: PlanActivityBlocks[];
+  plan_block_boats: PlanBlockBoats[];
+  plan_block_resources: PlanBlockResources[];
+  plan_block_staff: PlanBlockStaff[];
   plan_boat_rates: PlanBoatRates[];
   plan_bonus_owner_products: PlanBonusOwnerProducts[];
   plan_bonus_owners: PlanBonusOwners[];
   plan_budget_lines: PlanBudgetLines[];
   plan_closed_dates: PlanClosedDates[];
   plan_labor_lines: PlanLaborLines[];
-  plan_offering_boat_classes: PlanOfferingBoatClasses[];
   plan_offerings: PlanOfferings[];
   plan_pools: PlanPools[];
+  plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
   plan_resources: PlanResources[];
   plan_result_lines: PlanResultLines[];
@@ -519,45 +521,68 @@ export interface PlanActivities {
   putaway_minutes: number | null;
   kind: "practice" | "regatta" | "clinic" | "travel";
   uses_boats: boolean;
-  /** Overrides the coaches the engine works out. */
-  fixed_coaches: number | null;
-  /** Overrides the coach boats the engine works out. */
-  fixed_ribs: number | null;
-  /** Overrides the boats the engine works out. */
-  fixed_boats: number | null;
+  /** The block it's staffed in, with the activities it shares staff and boats with. */
+  block_id: string | PlanActivityBlocks | null;
 }
 
-/** Offerings whose activities share coaches and boats on certain days. */
-export interface PlanActivityBlockRules {
+/** Activities on one date that share their staff, RIBs and boats, such as Guppies and Minnows on the morning of July 13. */
+export interface PlanActivityBlocks {
   id: string;
   /** The version this row belongs to. */
   version_id: string | PlanVersions;
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
+  date: string;
+  /** Such as Guppies and Minnows, morning. */
   name: string;
-  /** The offerings this rule fills: add the Key of each one. */
-  offering_keys: string[];
-  /** ISO weekdays, 1 for Monday to 7 for Sunday. */
-  weekdays: string[] | null;
-  starts_on: string | null;
-  ends_on: string | null;
-  coach_level_id: string | PlanStaffLevels | null;
-  /** The salaried positions it books: add the Key of each one. */
-  salaried_positions: string[] | null;
 }
 
-/** Equipment an activity uses beyond its coach boats. */
-export interface PlanActivityResources {
+/** Boats of one class a block sails: the organization's, and the ones sailors bring. */
+export interface PlanBlockBoats {
   id: string;
   /** The version this row belongs to. */
   version_id: string | PlanVersions;
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
-  activity_id: string | PlanActivities;
+  block_id: string | PlanActivityBlocks;
+  boat_class_id: string | BoatClasses;
+  /** How many of the organization's boats. */
+  count: number;
+  /** How many boats sailors bring. They cost nothing and don't count against the organization's. */
+  sailor_owned: number | null;
+}
+
+/** RIBs and other equipment a block uses. */
+export interface PlanBlockResources {
+  id: string;
+  /** The version this row belongs to. */
+  version_id: string | PlanVersions;
+  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  key: string;
+  block_id: string | PlanActivityBlocks;
   /** The resource it uses: copy the Key from a resource in the Operations Plan. */
   resource_key: string;
   quantity: string;
+  /** Hours each is used. Leave it empty for the block's time on the water (RIBs) or its paid time (other equipment). */
   hours: string | null;
+}
+
+/** Who coaches a block: a number of staff at one staff level, or a salaried position. */
+export interface PlanBlockStaff {
+  id: string;
+  /** The version this row belongs to. */
+  version_id: string | PlanVersions;
+  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  key: string;
+  block_id: string | PlanActivityBlocks;
+  /** For staff at a staff level: copy the Key from a staff level in the Operations Plan. Leave it empty for a salaried position. */
+  staff_level_key: string | null;
+  /** For a salaried position: copy the Key from a salaried position in the Operations Plan. Leave it empty for staff at a staff level. */
+  position_key: string | null;
+  /** How many. A salaried position is 1. */
+  count: number;
+  /** For a salaried position: out of their salary, or by the hour at their own hourly rate, on top of it. */
+  pay: "salary" | "hourly" | null;
 }
 
 /** What an hour of sailing costs in maintenance, for each boat class. */
@@ -570,6 +595,8 @@ export interface PlanBoatRates {
   boat_class_id: string | BoatClasses;
   /** In cents: 12500 is $125.00. */
   maintenance_per_boat_hour_cents: number;
+  /** How many boats of the class the organization has. */
+  quantity: number | null;
 }
 
 /** The products a bonus owner owns. */
@@ -652,19 +679,6 @@ export interface PlanLaborLines {
   note: string | null;
 }
 
-/** The boat classes an offering sails, and each one's share of its sailors. */
-export interface PlanOfferingBoatClasses {
-  id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
-  key: string;
-  offering_id: string | PlanOfferings;
-  boat_class_id: string | BoatClasses;
-  /** This boat class's share of the offering's sailors. 0.5 means 50%. */
-  share: string;
-}
-
 /** A product sold for a period, such as a season or a week. */
 export interface PlanOfferings {
   id: string;
@@ -686,27 +700,9 @@ export interface PlanOfferings {
   fill_rate: string | null;
   /** Per kid. In cents: 12500 is $125.00. */
   price_cents: number | null;
-  sailors_per_coach: string | null;
-  min_coaches: number | null;
-  /** The coach level: copy the Key from a staff level in the Operations Plan. */
-  coach_level_key: string | null;
-  required_qualification: string | Qualifications | null;
-  ribs_per_coach: string | null;
-  /** The share of sailors who bring their own boat. 0.25 means 25%. */
-  byob_share: string | null;
-  /** Overrides the coaches the engine works out. */
-  fixed_coaches: number | null;
-  /** Overrides the coach boats the engine works out. */
-  fixed_ribs: number | null;
-  /** Overrides the boats the engine works out. */
-  fixed_boats: number | null;
   /** Cost of goods sold, as a share of revenue. 0.1 means 10%. */
   cogs_rate: string | null;
   note: string | null;
-  /** A salaried coach who coaches every practice: copy the Key from a salaried position in the Operations Plan. */
-  coach_position_key: string | null;
-  /** Out of their salary, or by the hour at the offering's coach level, on top of their salary. */
-  coach_position_pay: "salary" | "hourly" | null;
 }
 
 /** Shared costs no single offering owns, such as G&A, divided among the year's offerings by MTDC. */
@@ -717,6 +713,23 @@ export interface PlanPools {
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
   name: string;
+}
+
+/** A program's settings in a Program Plan: the staff level that coaches it, how many sailors each coach can take, and its rules. */
+export interface PlanPrograms {
+  id: string;
+  /** The version this row belongs to. */
+  version_id: string | PlanVersions;
+  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  key: string;
+  /** The program. */
+  product_id: string | Products;
+  /** The staff level that coaches it: copy the Key from a staff level in the Operations Plan. */
+  staff_level_key: string | null;
+  /** How many sailors one coach at its staff level can safely take. */
+  sailors_per_coach: string | null;
+  /** What you want for this program that its numbers don't capture, for your AI to follow. For example: if there are more than 12 Guppies, add a Junior Instructor. */
+  rules: string | null;
 }
 
 /** The year's rates. One row at most in each copy. */
@@ -841,6 +854,12 @@ export interface PlanResultWarnings {
   subject_key: string | null;
   /** The Financial Plan these results are for. */
   version_set_id: string | VersionSets;
+  /** The plan in the Financial Plan it's about. */
+  version_set_member_id: string | VersionSetMembers | null;
+  /** The date it's about. */
+  date: string | null;
+  /** Allocation: the blocks break a limit, or run on a closed day. Data: a row is missing or wrong. */
+  category: "allocation" | "data" | null;
 }
 
 /** A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */

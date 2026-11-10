@@ -138,11 +138,14 @@ describe("the Catalog policies", () => {
 const plans = [
   "plans",
   "plan_versions",
+  "plan_programs",
   "plan_offerings",
-  "plan_offering_boat_classes",
   "plan_trips",
   "plan_activities",
-  "plan_activity_resources",
+  "plan_activity_blocks",
+  "plan_block_staff",
+  "plan_block_resources",
+  "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
   "plan_revenue_charges",
@@ -152,7 +155,6 @@ const plans = [
   "plan_salaried_bookings",
   "plan_resources",
   "plan_boat_rates",
-  "plan_activity_block_rules",
   "plan_pools",
   "plan_bonus_owners",
   "plan_bonus_owner_products",
@@ -215,13 +217,13 @@ describe("savedVersionsConfig", () => {
   it("lists every link from a plan row to another, which must stay in the row's version", () => {
     const { links } = savedVersionsConfig(schemas, false, "1.0.0");
     expect(links).toEqual({
-      plan_offering_boat_classes: { offering_id: "plan_offerings" },
       plan_trips: { offering_id: "plan_offerings" },
-      plan_activities: { offering_id: "plan_offerings", trip_id: "plan_trips" },
-      plan_activity_resources: { activity_id: "plan_activities" },
+      plan_activities: { offering_id: "plan_offerings", trip_id: "plan_trips", block_id: "plan_activity_blocks" },
+      plan_block_staff: { block_id: "plan_activity_blocks" },
+      plan_block_resources: { block_id: "plan_activity_blocks" },
+      plan_block_boats: { block_id: "plan_activity_blocks" },
       plan_salaried_positions: { remainder_pool_id: "plan_pools" },
       plan_salaried_bookings: { position_id: "plan_salaried_positions" },
-      plan_activity_block_rules: { coach_level_id: "plan_staff_levels" },
       plan_bonus_owner_products: { bonus_owner_id: "plan_bonus_owners" },
     });
   });
