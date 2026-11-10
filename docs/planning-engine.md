@@ -152,6 +152,10 @@ copy, such as a program with no settings, names the first date it's seen on. `al
 a closed day; the rest are `data`, a row that's missing or wrong. The engine still costs what it's
 given.
 
+A message says only what's wrong, in plain words, since the warning already gives its plan and date:
+"Guppies Week 2 and Opti Camp Week 2: 23 sailors, but the staff can take 17", or "9 Sailqubes out,
+but CSC has 8, for Guppies Week 4". One about a block names the block's offerings.
+
 Allocation warnings:
 
 - `unallocated_activity`: an activity, other than a travel day, in no block, or in a block with no

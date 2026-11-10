@@ -52,12 +52,10 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
     const span = start !== null && end !== null ? end - start : 0;
     const closedFor = closed.get(activity.date);
     if (closedFor !== undefined && activity.kind !== "travel") {
-      ctx.warn(
-        "closed_date",
-        `${offering.name} has an activity on ${activity.date}, a closed day: ${closedFor}`,
-        activity.key,
-        { version_id: activity.version_id, date: activity.date },
-      );
+      ctx.warn("closed_date", `${offering.name}'s ${activity.kind} falls on ${closedFor}, a closed day`, activity.key, {
+        version_id: activity.version_id,
+        date: activity.date,
+      });
     }
     const usesBoats = activity.kind !== "travel" && activity.uses_boats;
     result.push({

@@ -756,8 +756,8 @@ Step(
   (_, out: string, _boats: string, have: string) => {
     const found = warning("over_inventory_boats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    expect(found?.message).toContain(`: ${out} `);
-    expect(found?.message).toContain(`but the organization has ${have}`);
+    // The warning gives the date, so the message starts with the count, and names the organization.
+    expect(found?.message).toMatch(new RegExp(`^${out} \\S+ out, but .+ has ${have}`));
   },
 );
 Step("the planner isn't warned about {boats}", () => {
@@ -783,7 +783,7 @@ Step(
   (_, out: string, have: string) => {
     const found = warning("over_inventory_resource");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    expect(found?.message).toContain(`: ${out} RIBs out, but the organization has ${have}`);
+    expect(found?.message).toMatch(new RegExp(`^${out} RIBs out, but .+ has ${have}`));
   },
 );
 
@@ -835,18 +835,18 @@ Step(
   },
 );
 const overCapacity = (limit: "staff" | "boats") =>
-  p.out.warnings.filter((w) => w.code === "over_capacity" && w.message.includes(`its ${limit} can take`));
+  p.out.warnings.filter((w) => w.code === "over_capacity" && w.message.includes(`the ${limit} can take`));
 for (const limit of ["staff", "boats"] as const) {
   Step(
-    `the planner is warned that the block has {count} sailors, but its ${limit} can take {count}`,
+    `the planner is warned that the block has {count} sailors, but the ${limit} can take {count}`,
     (_, sailors: string, can: string) => {
       expect(overCapacity(limit).map((w) => w.message.split(": ")[1])).toContain(
-        `${sailors} sailors, but its ${limit} can take ${can}`,
+        `${sailors} sailors, but the ${limit} can take ${can}`,
       );
     },
   );
 }
-Step("the planner is warned that the block has more sailors than its staff can take", () => {
+Step("the planner is warned that the block has more sailors than the staff can take", () => {
   expect(overCapacity("staff")).not.toEqual([]);
 });
 Step("the planner isn't warned about the block", () => {

@@ -361,7 +361,13 @@ describe("closed dates", () => {
       plan_closed_dates: [{ id: "c", version_id: "v1", key: "c", date: "2027-09-06", name: "Labor Day" }],
       plan_activities: [activity(o.id, { date: "2027-09-06" })],
     });
-    expect(computePlan(data).warnings.map((w) => w.code)).toContain("closed_date");
+    expect(computePlan(data).warnings).toContainEqual(
+      expect.objectContaining({
+        code: "closed_date",
+        date: "2027-09-06",
+        message: "An offering's practice falls on Labor Day, a closed day",
+      }),
+    );
     data.plan_activities = [activity(o.id, { date: "2027-09-06", kind: "travel" })];
     expect(computePlan(data).warnings.map((w) => w.code)).not.toContain("closed_date");
   });
