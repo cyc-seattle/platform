@@ -483,7 +483,9 @@ async function blockOf(offerings: Item[], times: string, given: Given, date = JU
   const version = offerings[0]!["version_id"] as string;
   const block = await p.block(version, date, name);
   for (const o of offerings) {
-    await p.activities(o, [date], ...span(times), { block_id: block, uses_boats: (given.boats ?? []).length > 0 });
+    // A practice with boats or RIBs is on the water.
+    const sails = (given.boats ?? []).length > 0 || (given.resources ?? []).length > 0;
+    await p.activities(o, [date], ...span(times), { block_id: block, uses_boats: sails });
   }
   for (const s of given.staff ?? []) await p.given("plan_block_staff", version, block, s);
   for (const r of given.resources ?? []) await p.given("plan_block_resources", version, block, r);
@@ -1078,6 +1080,8 @@ Step(
   "a saved Financial Plan named {string} with an offering at {money} a sailor",
   async (_, name: string, money: string) => {
     offering = (await programWithOffering(cents(money))).offering;
+    // A staff level in its Operations Plan, for a draft an AI starts from it.
+    await level("Coach");
     named[name] = await p.savedSet(name);
   },
 );
@@ -1444,6 +1448,8 @@ onEachScenario(() => {
 });
 Step("a saved Financial Plan named {string}", async (_, name: string) => {
   ({ offering } = await programWithOffering());
+  // The staff level the AI gives its blocks, copied into the draft with the rest.
+  await level("Coach");
   named[name] = await p.savedSet(name);
 });
 Step(

@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { up } from "../stacks/backend/migrations/cyc0005-planning-blocks.cjs";
+import { up } from "../stacks/backend/migrations/cyc0006-planning-blocks.cjs";
 
 // The move to blocks, in a real Postgres (PGlite): the three collections that worked out staffing,
 // with an old plan's rows in them guarded by a trigger that refuses changes, like the saved-versions

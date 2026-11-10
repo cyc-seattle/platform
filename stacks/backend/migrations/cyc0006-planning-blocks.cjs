@@ -7,9 +7,11 @@
 // offering's boat classes, and each activity's resources. The apply drops the old fields on offerings
 // and activities itself.
 //
-// Old plans may still hold rows in them; this drops those too, since dropping a table fires no row
-// trigger. It's one statement, so Postgres runs it in one transaction. It skips what's already gone,
-// so it's safe to run again and does nothing on a new database.
+// Its key is cyc0006, not cyc0005, because dev recorded cyc0005 when the branch was tried there, then
+// main's schema made the three again. Old plans may still hold rows in them; this drops those too,
+// since dropping a table fires no row trigger. It's one statement, so Postgres runs it in one
+// transaction. It skips what's already gone, so it's safe to run again and does nothing on a new
+// database.
 
 const SQL = `
 DO $migration$
