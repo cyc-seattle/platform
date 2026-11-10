@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import { enableService } from "../../src/services.ts";
+import { externalRecords } from "./external-records.ts";
 
 const config = new pulumi.Config();
 
@@ -36,3 +37,13 @@ export class ManagedZone extends gcp.dns.ManagedZone {
 export const externalZone = new ManagedZone("external", externalDomain);
 export const internalZone = new ManagedZone("internal", internalDomain);
 export const shortZone = new ManagedZone("short", shortDomain);
+
+for (const record of externalRecords) {
+  new gcp.dns.RecordSet(`external-${record.name || "apex"}-${record.type.toLowerCase()}`, {
+    managedZone: externalZone.name,
+    name: record.name ? `${record.name}.${externalDomain}.` : `${externalDomain}.`,
+    type: record.type,
+    ttl: record.ttl,
+    rrdatas: record.rrdatas,
+  });
+}
