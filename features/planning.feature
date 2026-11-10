@@ -38,19 +38,48 @@ Feature: Plans
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
   capital is never charged to a program area.
 
+  Each Program Plan sets two numbers for each of its programs: the staff level that coaches it, such
+  as Level 1 Instructor, and how many sailors each coach can take. These are the program's
+  settings, and two drafts can try different ones. Each boat class says how many sailors one boat
+  takes. The Operations Plan says how many boats of each class the organization has, and how many
+  RIBs and other equipment.
+
   Each plan can also hold the planner's rules: what they want that the plan's numbers don't
-  capture, in their own words, for their AI to follow when it fills in the plan. For example: every
-  Monday, Wednesday, and Friday, except on school holidays, from 4pm until dusk.
+  capture, in their own words, for their AI to follow when it fills in the plan. A program has its
+  own rules, such as "if there are more than 12 Guppies, add a Junior Instructor", or "Guppies can
+  sail the Harpoon, up to 10 kids, instead of Sailqubes". A Program Plan's rules cover all of its
+  programs, such as "J-Pod and K-Pod share coaches on Wednesdays". The Operations Plan's rules cover
+  the whole organization, such as "keep one RIB ashore for repairs on summer weekdays". The P&L
+  never reads the rules.
+
+  The schedule is planned in blocks. A block is one or more activities on one date that share
+  their coaches and boats, such as Guppies and Minnows on the morning of July 13. Each block lists
+  its staff (the people who coach it), the RIBs and other equipment it uses, and its boats of each
+  class: the organization's own, and the ones sailors bring. A block runs from its first activity's start
+  to its last activity's end. The P&L costs only what the blocks are given, and nothing works out
+  how many coaches or boats a program needs. The planner, or their AI, decides that from the
+  program settings and the rules.
+
+  A planner is warned when the blocks break a limit: more of the organization's boats, RIBs, or
+  equipment out at once than it has, more sailors in a block than its staff and boats can safely
+  take, or an activity with no staff. Each warning says which plan and date it's about. Each coach
+  in a block can safely take the program's number of sailors, if they're at the program's staff
+  level or qualified for it. Each boat can take its class's number of sailors, and the boats that
+  sailors bring count too.
+
+  A planner can ask their AI to fill in the blocks. It works in a new draft Financial Plan, started
+  from the one the planner names, and writes in the draft's note what it changed and which warnings
+  are left. If the planner likes the draft, they save it. If not, they delete it.
 
   The Operations Plan also lists closed days, such as Labor Day, so that no one plans a practice on
   one by mistake.
 
   Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
   each salaried position is paid per year. A salaried coach can also be paid by the hour for
-  coaching, on top of their salary, at the offering's rate or at their own. Bonus rates set the
-  bonus a director earns on the products they run: a share of those products' net, the money they
-  make after their costs. A bonus for one program area's products is in that area's Program Plan. A
-  bonus on products from more than one area is in the Operations Plan. Anyone who can see plans sees
+  coaching, on top of their salary, at their own hourly rate. Bonus rates set the bonus a director
+  earns on the products they run: a share of those products' net, the money they make after their
+  costs. A bonus for one program area's products is in that area's Program Plan. A bonus on
+  products from more than one area is in the Operations Plan. Anyone who can see plans sees
   all of these. To change something means to add, edit, or delete it.
 
   Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
@@ -106,6 +135,16 @@ Feature: Plans
       And they started a new Financial Plan from "Budget"
       When they change the offering's price to $1,200 a sailor in the new Financial Plan
       Then "Budget" still has the offering at $1,000 a sailor
+
+  @pending
+  Rule: Each Program Plan sets its programs' staff levels and how many sailors each coach can take
+
+    Example: A new draft tries fewer sailors per coach
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan named "Budget" where Guppies have a coach for every 10 sailors
+      And they started a new Financial Plan from "Budget"
+      When they change Guppies to a coach for every 8 sailors in the new Financial Plan
+      Then "Budget" still has Guppies with a coach for every 10 sailors
 
   Rule: An offering and its activities stay the same ones in a Financial Plan started from it
 
@@ -324,42 +363,94 @@ Feature: Plans
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
-  Rule: A salaried coach named on an offering coaches all its practices, paid out of their salary
+  @pending
+  Rule: The P&L costs only the staff, RIBs, and boats each block is given
+
+    Example: A block's coaches are paid for its time
+      Given an offering with a practice from 9am to noon, in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $120 of coaches' wages
+
+    Example: A block with fewer coaches than the program's settings call for costs only what it has
+      Given Guppies have a coach for every 5 sailors
+      And a Guppies offering of 10 sailors, with a practice from 9am to noon, in a block with 1 coach paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $60 of coaches' wages
+
+  @pending
+  Rule: The offerings in a block share its costs by their number of sailors
+
+    Example: Two offerings share a coach
+      Given two offerings, of 6 sailors and 4 sailors, in one block from 9am to noon with 1 coach paid $20 an hour
+      When a planner calculates the P&L
+      Then the first offering pays $36 of coaches' wages
+      And the second offering pays $24 of coaches' wages
+
+  @pending
+  Rule: A block runs from its first activity's start to its last activity's end
+
+    Example: Two practices that overlap in one block
+      Given two offerings in one block with 1 coach paid $20 an hour
+      And one practices from 9am to 11am and the other from 10am to noon
+      When a planner calculates the P&L
+      Then the two offerings pay $60 of coaches' wages between them
+
+  @pending
+  Rule: A block's RIBs cost their rate for its time on the water
+
+    Example: Two RIBs for a morning practice
+      Given RIBs that cost $10 an hour on the water
+      And an offering with a practice from 9am to noon, in a block with 2 RIBs
+      When a planner calculates the P&L
+      Then the offering pays $60 for RIBs
+
+  @pending
+  Rule: The organization's boats cost upkeep for their time on the water, and boats that sailors bring cost nothing
+
+    Example: Four of the organization's Optis and three that sailors bring
+      Given Optis that cost $1 an hour on the water in upkeep
+      And an offering with a practice from 9am to noon, in a block with 4 of the organization's Optis and 3 Optis that sailors bring
+      When a planner calculates the P&L
+      Then the offering pays $12 of boat upkeep
+
+  @pending
+  Rule: A salaried coach on a block is paid out of their salary for its hours
 
     Example: An offering pays for its salaried coach's hours
       Given a salaried director paid $40 an hour
-      And an offering they coach, with 10 practices of 3 hours
+      And an offering with 10 practices of 3 hours, each in a block the director coaches
       When a planner calculates the P&L
       Then the offering pays $1,200 of the director's salary
 
-  Rule: A salaried coach can be paid by the hour for coaching, on top of their salary
+  @pending
+  Rule: A salaried coach can be paid by the hour for coaching, at their own hourly rate, on top of their salary
 
-    Example: A director is paid by the hour for an offering they coach
-      Given a director on a $20,000 salary
-      And an offering they coach for $30 an hour, with 10 practices of 3 hours
+    Example: A director is paid by the hour for the blocks they coach
+      Given a director on a $20,000 salary, who's paid $30 an hour to coach
+      And an offering with 10 practices of 3 hours, each in a block the director coaches by the hour
       When a planner calculates the P&L
       Then the offering pays $900 of coaches' wages
       And the offering pays none of the director's salary
 
-  Rule: A salaried coach paid by the hour can have their own hourly rate
-
-    Example: A head coach is paid their own rate, not the offering's
+    Example: The block's other coaches are paid their staff level's rate
       Given a director on a $20,000 salary, who's paid $40 an hour to coach
-      And an offering they coach for $30 an hour, with 10 practices of 3 hours
-      When a planner calculates the P&L
-      Then the offering pays $1,200 of coaches' wages
-
-    Example: The offering's other coaches are paid the offering's rate
-      Given a director on a $20,000 salary, who's paid $40 an hour to coach
-      And an offering they coach with one more coach, for $30 an hour, with 10 practices of 3 hours
+      And an offering with 10 practices of 3 hours, each in a block the director coaches by the hour with a coach paid $30 an hour
       When a planner calculates the P&L
       Then the offering pays $2,100 of coaches' wages
 
+    Example: A director with no hourly rate of their own is paid nothing for those hours
+      Given a director on a $20,000 salary, with no hourly rate to coach
+      And an offering with 10 practices of 3 hours, each in a block the director coaches by the hour
+      When a planner calculates the P&L
+      Then the offering pays no coaches' wages
+      And the planner is warned that the director has no hourly rate to coach
+
+  @pending
   Rule: A salaried person's pay for the year adds up their salary, their hourly coaching, and their bonus
 
     Example: A director's pay for the year
-      Given a director on a $20,000 salary
-      And an offering they coach for $30 an hour, with 10 practices of 3 hours
+      Given a director on a $20,000 salary, who's paid $30 an hour to coach
+      And an offering with 10 practices of 3 hours, each in a block the director coaches by the hour
       And a bonus for the director that comes to $5,000
       When a planner calculates the P&L
       Then the director's pay for the year is:
@@ -369,46 +460,136 @@ Feature: Plans
         | bonus           | $5,000  |
         | total           | $25,900 |
 
-  Rule: A salaried coach can't coach two groups at the same time
+  @pending
+  Rule: A salaried coach can't coach two blocks at the same time
 
-    Example: Two groups at the same time get a warning
-      Given a salaried director who coaches two groups that don't share coaches
-      And both groups practice from 4pm to 7pm on the same day
+    Example: Two blocks at the same time get a warning
+      Given a salaried director who coaches two blocks
+      And both blocks run from 4pm to 7pm on the same day
       When a planner calculates the P&L
-      Then the planner is warned that the director is coaching two groups at once
+      Then the planner is warned that the director is coaching two blocks at once
 
-    Example: A morning group and an afternoon group don't get a warning
-      Given a salaried director who coaches two groups that don't share coaches
-      And one group practices from 9am to noon and the other from 1pm to 4pm on the same day
+    Example: A morning block and an afternoon block don't get a warning
+      Given a salaried director who coaches two blocks
+      And one block runs from 9am to noon and the other from 1pm to 4pm on the same day
       When a planner calculates the P&L
       Then the planner isn't warned about the director
 
+  @pending
   Rule: A planner sees how many hours of another coach a double-booked salaried coach needs
 
-    Example: Two groups overlap for two hours
-      Given a salaried director who coaches two groups that don't share coaches
-      And one group practices from 9am to noon and the other from 10am to 2pm on the same day
+    Example: Two blocks overlap for two hours
+      Given a salaried director who coaches two blocks
+      And one block runs from 9am to noon and the other from 10am to 2pm on the same day
       When a planner calculates the P&L
-      Then the director's groups need 2 hours of another coach
+      Then the director's blocks need 2 hours of another coach
 
-    Example: Three groups at once need two more coaches
-      Given a salaried director who coaches three groups that don't share coaches
-      And all three groups practice from 4pm to 7pm on the same day
+    Example: Three blocks at once need two more coaches
+      Given a salaried director who coaches three blocks
+      And all three blocks run from 4pm to 7pm on the same day
       When a planner calculates the P&L
-      Then the director's groups need 6 hours of another coach
+      Then the director's blocks need 6 hours of another coach
 
-  Rule: Offerings that share coaches on a day share them only when their practices overlap
+  @pending
+  Rule: A planner is warned when more of the organization's boats are out at once than it has
 
-    Scenario Outline: Two groups share a coach only when they're on the water together
-      Given two offerings of 4 sailors each, with a coach for every 8 sailors, that share coaches on Wednesdays
-      And one practices from <first> and the other from <second> on the same Wednesday
+    Example: 14 Sailqubes out on a morning when the organization has 12
+      Given the Operations Plan says the organization has 12 Sailqubes
+      And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
       When a planner calculates the P&L
-      Then each offering pays for <coach>
+      Then the planner is warned that July 13 has 14 Sailqubes out, but the organization has 12
 
-      Examples:
-        | first       | second      | coach         |
-        | 9am to noon | 9am to noon | half a coach  |
-        | 9am to noon | 1pm to 4pm  | a whole coach |
+    Example: A morning block and an afternoon block can use the same boats
+      Given the Operations Plan says the organization has 12 Sailqubes
+      And a Guppies block with 9 Sailqubes on the morning of July 13, and a Minnows block with 5 that afternoon
+      When a planner calculates the P&L
+      Then the planner isn't warned about Sailqubes
+
+    Example: Boats that sailors bring don't count against the organization's
+      Given the Operations Plan says the organization has 12 Optis
+      And a block with 10 of the organization's Optis and 4 Optis that sailors bring
+      When a planner calculates the P&L
+      Then the planner isn't warned about Optis
+
+  @pending
+  Rule: A planner is warned when more RIBs or other equipment are out at once than the organization has
+
+    Example: 7 RIBs out on a morning when the organization has 6
+      Given the Operations Plan says the organization has 6 RIBs
+      And two blocks on the morning of July 13, with 4 RIBs and 3 RIBs
+      When a planner calculates the P&L
+      Then the planner is warned that July 13 has 7 RIBs out, but the organization has 6
+
+  @pending
+  Rule: A planner is warned when a block has more sailors than its staff can safely take
+
+    Example: One Level 1 Instructor for 14 Guppies
+      Given Guppies have a Level 1 Instructor for every 10 sailors
+      And a Guppies block of 14 sailors with one Level 1 Instructor and enough boats
+      When a planner calculates the P&L
+      Then the planner is warned that the block has 14 sailors, but its staff can take 10
+
+    Example: A coach qualified for the program's staff level counts
+      Given Guppies have a Level 1 Instructor for every 10 sailors
+      And a Level 2 Instructor is qualified for everything a Level 1 Instructor is
+      And a Guppies block of 10 sailors with one Level 2 Instructor and enough boats
+      When a planner calculates the P&L
+      Then the planner isn't warned about the block
+
+    Example: A coach who isn't qualified for the program's staff level doesn't count
+      Given Guppies have a Level 1 Instructor for every 10 sailors
+      And a Guppies block of 10 sailors with one Junior Instructor, who isn't qualified to coach Guppies, and enough boats
+      When a planner calculates the P&L
+      Then the planner is warned that the block has 10 sailors, but its staff can take 0
+
+    Example: One coach for 5 Guppies and 5 Minnows is too few
+      Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
+      And a block of 5 Guppies and 5 Minnows, with one coach and enough boats
+      When a planner calculates the P&L
+      Then the planner is warned that the block has more sailors than its staff can take
+
+    Example: Two coaches for 5 Guppies and 5 Minnows are enough
+      Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
+      And a block of 5 Guppies and 5 Minnows, with two coaches and enough boats
+      When a planner calculates the P&L
+      Then the planner isn't warned about the block
+
+  @pending
+  Rule: A planner is warned when a block has more sailors than its boats can take
+
+    Example: Five Sailqubes for 14 Guppies
+      Given Sailqubes take 2 sailors each
+      And a Guppies block of 14 sailors with enough staff and 5 Sailqubes
+      When a planner calculates the P&L
+      Then the planner is warned that the block has 14 sailors, but its boats can take 10
+
+    Example: Boats that sailors bring count
+      Given Optis take 1 sailor each
+      And a block of 12 sailors with enough staff, 8 of the organization's Optis, and 4 Optis that sailors bring
+      When a planner calculates the P&L
+      Then the planner isn't warned about the block
+
+  @pending
+  Rule: A planner is warned about an activity with no staff
+
+    Example: A practice in no block
+      Given an offering with a practice on August 2 that's in no block
+      When a planner calculates the P&L
+      Then the planner is warned that the practice on August 2 has no staff
+
+    Example: A practice in a block with boats but no staff
+      Given an offering with a practice on August 2, in a block with boats but no staff
+      When a planner calculates the P&L
+      Then the planner is warned that the practice on August 2 has no staff
+
+  @pending
+  Rule: A saved Financial Plan keeps its warnings, each with the plan and date it's about
+
+    Example: A practice with no staff in a saved Financial Plan
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan whose Program Plan has a practice on August 2 with no staff
+      When they save the Financial Plan
+      Then the Financial Plan's warnings say that the practice on August 2, in its Program Plan, has no staff
 
   Rule: A planner is warned about an activity on a closed day
 
@@ -475,10 +656,35 @@ Feature: Plans
       And a draft Financial Plan
       Then they can write a Program Plan's rules
 
+    @pending
+    Example: A Plan Writer writes a program's rules
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan
+      Then they can write the rules for one of a Program Plan's programs
+
     Example: A Plan Writer can't change the rules in a saved Financial Plan
       Given a user with the Plan Writer policy
       And a saved Financial Plan whose Program Plan has rules
       Then they can't change the Program Plan's rules
+
+  @pending
+  Rule: A planner keeps the draft their AI filled in by saving it, or rejects it by deleting it
+
+    Example: A planner saves the draft their AI filled in
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan named "Budget"
+      And a draft their AI started from "Budget", with its blocks filled in and a note of what it changed
+      When they save the draft
+      Then the draft is saved with its blocks, its note, and its P&L
+      And its parent is "Budget"
+
+    Example: Deleting the draft leaves the plan it was started from as it was
+      Given a user with the Plan Writer policy
+      And a saved Financial Plan named "Budget" with an offering at $1,000 a sailor
+      And a draft their AI started from "Budget", with its blocks filled in and a note of what it changed
+      When they delete the draft
+      Then the draft is gone
+      And "Budget" still has the offering at $1,000 a sailor
 
   Rule: Planners can see every plan, including wages and bonus rates
 

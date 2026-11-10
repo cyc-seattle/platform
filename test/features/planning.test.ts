@@ -239,25 +239,13 @@ Step("the organization's totals are:", (_, table: { line: string; amount: string
 
 // Pay, bonuses, closed days, and saved P&Ls, which step 12c builds.
 parameter("counted", ["after shared costs", "before shared costs"]);
-parameter("coaches", ["half a coach", "a whole coach"]);
 pattern("times", /\d+(?:am|pm) to (?:noon|\d+(?:am|pm))/);
-/** "4pm" or "noon" as `HH:MM`. */
-function clock(time: string): string {
-  if (time === "noon") return "12:00";
-  const [, hour, half] = /^(\d+)(am|pm)$/.exec(time)!;
-  const h = (Number(hour) % 12) + (half === "pm" ? 12 : 0);
-  return `${String(h).padStart(2, "0")}:00`;
-}
-const span = (times: string) => times.split(" to ").map(clock) as [string, string];
 /** The first `weekday` (0 = Sunday) on or after `from`. */
 function next(weekday: number, from: string): string {
   const d = new Date(`${from}T00:00:00Z`);
   while (d.getUTCDay() !== weekday) d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
-const JUNE = `${PLAN_YEAR}-06-01`;
-const juneDays = (n: number) =>
-  Array.from({ length: n }, (_, i) => `${PLAN_YEAR}-06-${String(i + 1).padStart(2, "0")}`);
 
 // The director's bonus: who owns it, and in which version.
 let earner: { owner: string; version: string; area: string } | undefined;
@@ -347,38 +335,11 @@ async function salaried(name: string, salary: number, hours: number): Promise<vo
     paid_hours_per_year: hours,
   });
 }
-/** An offering the salaried coach coaches, in a new program area, with practices in June. */
-async function coachedOffering(practices: number, hours: number, extra: Row = {}): Promise<Item> {
-  const area = await p.area();
-  const offering = await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 0, {
-    min_coaches: 1,
-    coach_position_key: position,
-    ...extra,
-  });
-  await p.activities(offering, juneDays(practices), "16:00", `${16 + hours}:00`);
-  return offering;
-}
-
 Step("a salaried director paid {money} an hour", (_, money: string) => salaried("Director", cents(money) * 2080, 2080));
-Step("an offering they coach, with {count} practices of {count} hours", (_, practices: string, hours: string) =>
-  coachedOffering(Number(practices), Number(hours)),
-);
 Step("the offering pays {money} of the director's salary", async (_, money: string) => {
   const salaries = await p.account("salaries");
   expect(p.total((l) => onOffering(first(), salaries)(l) && l.line_key.endsWith(":coaching"))).toBe(cents(money));
 });
-Step("a director on a {money} salary", (_, money: string) => salaried("Director", cents(money), 2000));
-Step(
-  "an offering they coach for {money} an hour, with {count} practices of {count} hours",
-  async (_, money: string, practices: string, hours: string) => {
-    const level = await p.operationsRow("plan_staff_levels", {
-      name: "Director's level",
-      pay_type: "hourly",
-      hourly_rate_cents: cents(money),
-    });
-    await coachedOffering(Number(practices), Number(hours), { coach_level_key: level, coach_position_pay: "hourly" });
-  },
-);
 Step("the offering pays {money} of coaches' wages", async (_, money: string) => {
   expect(p.total(onOffering(first(), await p.account("coachWages")))).toBe(cents(money));
 });
@@ -401,77 +362,8 @@ Step("the director's pay for the year is:", (_, table: { pay: string; amount: st
   };
   for (const { pay: line, amount } of table) expect(shown[line], line).toBe(cents(amount));
 });
-
-/** Two offerings the salaried director coaches, with no block between them. */
-let groups: Item[] = [];
-/** `count` offerings the salaried director coaches, with no block between them. */
-async function directorsGroups(count: number): Promise<void> {
-  await salaried("Director", 6_000_000, 2000);
-  const area = await p.area();
-  groups = [];
-  for (let i = 0; i < count; i++) {
-    groups.push(
-      await p.offering(p.areaVersion(area), await p.product("program", area), 0, 1, 0, {
-        min_coaches: 1,
-        coach_position_key: position,
-      }),
-    );
-  }
-}
-Step("a salaried director who coaches two groups that don't share coaches", () => directorsGroups(2));
-Step("both groups practice from {times} on the same day", async (_, times: string) => {
-  for (const group of groups) await p.activities(group, [JUNE], ...span(times));
-});
-Step(
-  "one group practices from {times} and the other from {times} on the same day",
-  async (_, one: string, other: string) => {
-    await p.activities(groups[0]!, [JUNE], ...span(one));
-    await p.activities(groups[1]!, [JUNE], ...span(other));
-  },
-);
-Step("the planner is warned that the director is coaching two groups at once", () => {
-  expect(p.warned("position_double_booked")).toBe(true);
-});
 Step("the planner isn't warned about the director", () => {
   expect(p.warned("position_double_booked")).toBe(false);
-});
-
-Step(
-  "two offerings of {count} sailors each, with a coach for every {count} sailors, that share coaches on Wednesdays",
-  async (_, sailors: string, ratio: string) => {
-    const level = await p.operationsRow("plan_staff_levels", {
-      name: "Coach",
-      pay_type: "hourly",
-      hourly_rate_cents: 2000,
-    });
-    const area = await p.area();
-    groups = [];
-    for (let i = 0; i < 2; i++) {
-      groups.push(
-        await p.offering(p.areaVersion(area), await p.product("program", area), 0, Number(sailors), 0, {
-          sailors_per_coach: Number(ratio),
-          coach_level_key: level,
-        }),
-      );
-    }
-    await p.operationsRow("plan_activity_block_rules", {
-      name: "Wednesdays",
-      offering_keys: groups.map((g) => g["key"]),
-      weekdays: [3],
-    });
-  },
-);
-Step(
-  "one practices from {times} and the other from {times} on the same Wednesday",
-  async (_, one: string, other: string) => {
-    const wednesday = next(3, JUNE);
-    await p.activities(groups[0]!, [wednesday], ...span(one));
-    await p.activities(groups[1]!, [wednesday], ...span(other));
-  },
-);
-Step("each offering pays for {coaches}", (_, coaches: string) => {
-  const each = coaches === "half a coach" ? 0.5 : 1;
-  expect(p.out.activities.map((a) => a.coaches)).toEqual([each, each]);
 });
 
 const laborDay = () => next(1, `${PLAN_YEAR}-09-01`);
@@ -496,30 +388,85 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
     hourly_coaching_rate_cents: cents(rate),
   });
 });
-Step(
-  "an offering they coach with one more coach, for {money} an hour, with {count} practices of {count} hours",
-  async (_, money: string, practices: string, hours: string) => {
-    const level = await p.operationsRow("plan_staff_levels", {
-      name: "Coach",
-      pay_type: "hourly",
-      hourly_rate_cents: cents(money),
-    });
-    await coachedOffering(Number(practices), Number(hours), {
-      coach_level_key: level,
-      coach_position_pay: "hourly",
-      min_coaches: 2,
-    });
-  },
-);
 
-// Double-booked hours.
-Step("a salaried director who coaches three groups that don't share coaches", () => directorsGroups(3));
-Step("all three groups practice from {times} on the same day", async (_, times: string) => {
-  for (const group of groups) await p.activities(group, [JUNE], ...span(times));
-});
-Step("the director's groups need {count} hours of another coach", (_, hours: string) => {
-  expect(p.out.positions.find((x) => x.position_key === position)?.double_booked_hours).toBe(Number(hours));
-});
+// Program settings, blocks, and their warnings, which the next platform PRs build: until then, each
+// of these steps fails.
+parameter("program", ["Guppies", "Minnows"]);
+parameter("level", ["Level 1 Instructor", "Level 2 Instructor", "Junior Instructor"]);
+parameter("boats", ["Sailqubes", "Optis"]);
+parameter("staff", ["one coach", "two coaches"]);
+for (const text of [
+  "a saved Financial Plan named {string}",
+  "a saved Financial Plan named {string} where {program} have a coach for every {count} sailors",
+  "they change {program} to a coach for every {count} sailors in the new Financial Plan",
+  "{string} still has {program} with a coach for every {count} sailors",
+  "{program} have a coach for every {count} sailors",
+  "{program} have a {level} for every {count} sailors",
+  "Guppies have a coach for every {count} sailors, and Minnows a coach for every {count}",
+  "a {level} is qualified for everything a {level} is",
+  "{boats} take {count} sailor each",
+  "{boats} take {count} sailors each",
+  "{boats} that cost {money} an hour on the water in upkeep",
+  "RIBs that cost {money} an hour on the water",
+  "the Operations Plan says the organization has {count} {boats}",
+  "the Operations Plan says the organization has {count} RIBs",
+  "an offering with a practice from {times}, in a block with {count} coaches paid {money} an hour",
+  "an offering with a practice from {times}, in a block with {count} RIBs",
+  "an offering with a practice from {times}, in a block with {count} of the organization's {boats} and {count} {boats} that sailors bring",
+  "a {program} offering of {count} sailors, with a practice from {times}, in a block with {count} coach paid {money} an hour",
+  "two offerings, of {count} sailors and {count} sailors, in one block from {times} with {count} coach paid {money} an hour",
+  "two offerings in one block with {count} coach paid {money} an hour",
+  "one practices from {times} and the other from {times}",
+  "the first offering pays {money} of coaches' wages",
+  "the second offering pays {money} of coaches' wages",
+  "the two offerings pay {money} of coaches' wages between them",
+  "the offering pays {money} for RIBs",
+  "the offering pays {money} of boat upkeep",
+  "the offering pays no coaches' wages",
+  "an offering with {count} practices of {count} hours, each in a block the director coaches",
+  "an offering with {count} practices of {count} hours, each in a block the director coaches by the hour",
+  "an offering with {count} practices of {count} hours, each in a block the director coaches by the hour with a coach paid {money} an hour",
+  "a director on a {money} salary, with no hourly rate to coach",
+  "the planner is warned that the director has no hourly rate to coach",
+  "a salaried director who coaches two blocks",
+  "a salaried director who coaches three blocks",
+  "both blocks run from {times} on the same day",
+  "all three blocks run from {times} on the same day",
+  "one block runs from {times} and the other from {times} on the same day",
+  "the planner is warned that the director is coaching two blocks at once",
+  "the director's blocks need {count} hours of another coach",
+  "a {program} block with {count} {boats} and a {program} block with {count}, both on the morning of July 13",
+  "a {program} block with {count} {boats} on the morning of July 13, and a {program} block with {count} that afternoon",
+  "a block with {count} of the organization's {boats} and {count} {boats} that sailors bring",
+  "the planner is warned that July 13 has {count} {boats} out, but the organization has {count}",
+  "the planner isn't warned about {boats}",
+  "two blocks on the morning of July 13, with {count} RIBs and {count} RIBs",
+  "the planner is warned that July 13 has {count} RIBs out, but the organization has {count}",
+  "a {program} block of {count} sailors with one {level} and enough boats",
+  "a {program} block of {count} sailors with one Junior Instructor, who isn't qualified to coach {program}, and enough boats",
+  "a block of {count} Guppies and {count} Minnows, with {staff} and enough boats",
+  "a {program} block of {count} sailors with enough staff and {count} {boats}",
+  "a block of {count} sailors with enough staff, {count} of the organization's {boats}, and {count} {boats} that sailors bring",
+  "the planner is warned that the block has {count} sailors, but its staff can take {count}",
+  "the planner is warned that the block has {count} sailors, but its boats can take {count}",
+  "the planner is warned that the block has more sailors than its staff can take",
+  "the planner isn't warned about the block",
+  "an offering with a practice on August 2 that's in no block",
+  "an offering with a practice on August 2, in a block with boats but no staff",
+  "the planner is warned that the practice on August 2 has no staff",
+  "a draft Financial Plan whose Program Plan has a practice on August 2 with no staff",
+  "the Financial Plan's warnings say that the practice on August 2, in its Program Plan, has no staff",
+  "they can write the rules for one of a Program Plan's programs",
+  "a draft their AI started from {string}, with its blocks filled in and a note of what it changed",
+  "they save the draft",
+  "the draft is saved with its blocks, its note, and its P&L",
+  "they delete the draft",
+  "the draft is gone",
+]) {
+  Step(text, () => {
+    throw new Error("Not built yet: program settings and blocks");
+  });
+}
 
 // Readable result lines.
 Step("{money} of office costs in a pool named {string}", async (_, money: string, name: string) => {
