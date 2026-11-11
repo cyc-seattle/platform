@@ -432,13 +432,15 @@ for (const collection of ["program_role_assignments", "program_area_role_assignm
   }
 }
 
-// A person merge stops while a duplicate is still in a group (src/syncs/clubspot/merge.ts), so
-// it reads who is in each one, and changes none of them.
-permissionRule(
-  "crm-clubspot-sync-group_members-read",
-  { ...auth, policyId: clubspotSyncPolicyId, collection: "group_members", action: "read", fields: ["id", "person_id"] },
-  { dependsOn: crmSchema },
-);
+// A person merge stops while a duplicate is still in a group, on the coach list, or in a salaried
+// position (src/syncs/clubspot/merge.ts), so it reads who is in each one, and changes none of them.
+for (const collection of ["group_members", "coaches", "plan_salaried_positions"]) {
+  permissionRule(
+    `crm-clubspot-sync-${collection}-read`,
+    { ...auth, policyId: clubspotSyncPolicyId, collection, action: "read", fields: ["id", "person_id"] },
+    { dependsOn: crmSchema },
+  );
+}
 
 // A person merge folds a duplicate's own rows onto its keeper, then deletes the duplicate - the
 // only deletes clubspot-sync's policy grants (cyc-seattle/isthmia#133).

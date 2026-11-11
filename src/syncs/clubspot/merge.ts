@@ -34,6 +34,10 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   // Never repointed: a group gives access, so an admin moves a duplicate's memberships by hand, and
   // until then the merge stops on the final delete.
   { collection: "group_members", field: "person_id" },
+  // Never repointed either. A person is on the coach list once, so an admin folds a duplicate's coach
+  // row by hand, and a saved plan's position never changes.
+  { collection: "coaches", field: "person_id" },
+  { collection: "plan_salaried_positions", field: "person_id" },
 ];
 
 /** A `people` row as the merge needs it - every scalar column, plus `directus_user_id` (an extension field in `schemas/sync.yaml`). */

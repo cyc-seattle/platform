@@ -103,6 +103,14 @@ describe("the policies a group can give", () => {
     }
   });
 
+  it("let the CRM policies keep the coach list, and give Crew none of it", () => {
+    for (const action of ["create", "read", "update"]) {
+      expect(collections("CRM Writer", action).has("coaches")).toBe(true);
+    }
+    expect(collections("CRM Reader", "read").has("coaches")).toBe(true);
+    expect(crewRules.map((rule) => rule.collection)).not.toContain("coaches");
+  });
+
   it("let a CRM Writer change people, but not Clubspot's own records", () => {
     expect(collections("CRM Writer", "update").has("people")).toBe(true);
     expect(collections("CRM Writer", "update").has("clubspot_registrations")).toBe(false);
@@ -182,12 +190,12 @@ const results = plans.filter((collection) => collection.startsWith("plan_result"
 describe("the Plan policies", () => {
   const catalog = collections("Catalog Reader", "read");
 
-  it("let both see every plan and the catalog, with no field held back", () => {
+  it("let both see every plan, the catalog, and the coaches, with no field held back", () => {
     for (const name of ["Plan Reader", "Plan Writer"]) {
-      const rules = named(name).rules.filter((rule) => rule.collection !== "directus_users");
+      const rules = named(name).rules.filter((rule) => !["directus_users", "people"].includes(rule.collection));
       expect(
         [...new Set(rules.filter((rule) => rule.action === "read").map((rule) => rule.collection))].sort(),
-      ).toEqual([...plans, ...catalog].sort());
+      ).toEqual([...plans, ...catalog, "coaches"].sort());
       expect(rules.every((rule) => rule.fields === undefined)).toBe(true);
     }
   });
@@ -196,6 +204,14 @@ describe("the Plan policies", () => {
     for (const name of ["Plan Reader", "Plan Writer"]) {
       expect(named(name).rules.filter((rule) => rule.collection === "directus_users")).toEqual([
         { collection: "directus_users", action: "read", fields: ["id", "first_name", "last_name"] },
+      ]);
+    }
+  });
+
+  it("let both see people's first and last names, and nothing else of theirs", () => {
+    for (const name of ["Plan Reader", "Plan Writer"]) {
+      expect(named(name).rules.filter((rule) => rule.collection === "people")).toEqual([
+        { collection: "people", action: "read", fields: ["id", "first_name", "last_name"] },
       ]);
     }
   });
