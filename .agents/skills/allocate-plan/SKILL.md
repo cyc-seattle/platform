@@ -106,9 +106,14 @@ unless the planner asked you to.
 
 ## 5. Report
 
-Write a short report in the draft's note (`version_sets.message`): what you changed, and which
-warnings are left and why. Don't write which rule made which row anywhere else. Then tell the planner
-the draft's name, and that they can:
+Set the draft's note (`version_sets.message`) to one short line, at most about 120 characters, that
+says what you did, such as "Allocated Summer weeks 3 to 5. 2 warnings left". It's a comment people
+read beside the plan's name in sail-team, not a report, so write it with the `ui-copy` skill from
+[`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills). Never put the report in it.
+
+Give the planner the report in the conversation: what you changed, and which warnings are left and
+why. If they want it in a file too, write it where they say. Don't write which rule made which row
+anywhere else. Then tell the planner the draft's name, and that they can:
 
 - read its warnings and its program area pages in sail-team, and compare it with the plan it started
   from;
