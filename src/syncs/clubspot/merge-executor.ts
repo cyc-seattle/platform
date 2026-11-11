@@ -5,7 +5,6 @@ import { readByIds } from "./directus-batch.ts";
 import {
   groupKey,
   HANDLED_PEOPLE_FOREIGN_KEYS,
-  INVENTORY_PEOPLE_COLLECTIONS,
   MERGE_PERSON_FIELDS,
   type MergeContact,
   type MergeContactPoint,
@@ -57,11 +56,6 @@ async function readGroupRelatedData(directus: DirectusClient, personIds: readonl
     readByIds<MergePersonReference>(directus, "registrations", "person_id", personIds),
     readByIds<MergePersonReference>(directus, "google_group_memberships", "person_id", personIds, ["id", "person_id"]),
   ]);
-  const [boatCharters, boatDamage, storageAgreements] = await Promise.all(
-    INVENTORY_PEOPLE_COLLECTIONS.map((collection) =>
-      readByIds<MergePersonReference>(directus, collection, "person_id", personIds, ["id", "person_id"]),
-    ),
-  );
 
   return {
     participants,
@@ -72,11 +66,6 @@ async function readGroupRelatedData(directus: DirectusClient, personIds: readonl
     programAreaRoleAssignments,
     registrations,
     googleGroupMemberships,
-    inventory: {
-      boat_charters: boatCharters!,
-      boat_damage: boatDamage!,
-      storage_agreements: storageAgreements!,
-    },
   };
 }
 

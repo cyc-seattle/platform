@@ -15,9 +15,6 @@ export interface HandledPeopleForeignKey {
   field: string;
 }
 
-/** The inventory's rows that name a sailor, which the merge repoints like any other. */
-export const INVENTORY_PEOPLE_COLLECTIONS = ["boat_charters", "boat_damage", "storage_agreements"] as const;
-
 /**
  * Every FK to `people` this merge repoints, folds, or deletes through. The FK-coverage test
  * (`test/merge-fk-coverage.test.ts`) reads every `schemas/<domain>.yaml` and fails if a relation
@@ -34,7 +31,6 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   { collection: "registrations", field: "person_id" },
   { collection: "google_group_memberships", field: "person_id" },
   { collection: "clubspot_participants", field: "person_id" },
-  ...INVENTORY_PEOPLE_COLLECTIONS.map((collection) => ({ collection, field: "person_id" })),
   // Never repointed: a group gives access, so an admin moves a duplicate's memberships by hand, and
   // until then the merge stops on the final delete.
   { collection: "group_members", field: "person_id" },
@@ -144,8 +140,6 @@ export interface MergeRelatedData {
   programAreaRoleAssignments: readonly MergePersonReference[];
   registrations: readonly MergePersonReference[];
   googleGroupMemberships: readonly MergePersonReference[];
-  /** Each inventory collection's rows that name one of the group, by collection. */
-  inventory: Readonly<Record<(typeof INVENTORY_PEOPLE_COLLECTIONS)[number], readonly MergePersonReference[]>>;
 }
 
 export interface MergeUpdateStep {
@@ -512,9 +506,6 @@ export function planPersonMerge(
   );
   steps.push(...planSimpleRepoint("registrations", keeper.id, duplicateIds, related.registrations));
   steps.push(...planSimpleRepoint("google_group_memberships", keeper.id, duplicateIds, related.googleGroupMemberships));
-  for (const collection of INVENTORY_PEOPLE_COLLECTIONS) {
-    steps.push(...planSimpleRepoint(collection, keeper.id, duplicateIds, related.inventory[collection]));
-  }
 
   const directusUserHolder = findDirectusUserHolder(keeper, duplicates);
   const personPatch = buildKeeperPersonPatch(keeper, duplicates, directusUserHolder);
