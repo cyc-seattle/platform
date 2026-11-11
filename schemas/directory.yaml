@@ -1,6 +1,6 @@
 # The organizations and venues other pages refer to (cyc-seattle/platform#128): who runs an event, and
-# where. Only an admin changes them; the catalog and plan policies read them. A row still referred to
-# can't be deleted, because every foreign key to these tables restricts delete.
+# where. Only an admin changes them; the catalog and plan policies read them. A venue's organization is
+# optional. A row still referred to can't be deleted, because every foreign key to these tables restricts delete.
 version: 1
 directus: 12.3.1
 vendor: postgres
@@ -569,10 +569,10 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The organization that runs it.
+      note: The organization that runs it. Leave it empty for a public marina.
       options: null
       readonly: false
-      required: true
+      required: false
       searchable: true
       sort: 3
       special:
@@ -591,7 +591,7 @@ fields:
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
