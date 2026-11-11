@@ -5,6 +5,7 @@ export interface Schema {
   accounts: Accounts[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
+  boats: Boats[];
   catalog_offerings: CatalogOfferings[];
   clubspot_camps: ClubspotCamps[];
   clubspot_classes: ClubspotClasses[];
@@ -137,6 +138,26 @@ export interface BoatClasses {
   sailors_per_boat: number;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
+}
+
+/** Each boat CSC owns, for planning the year. Sailors' own boats aren't listed here. */
+export interface Boats {
+  id: string;
+  boat_class_id: string | BoatClasses;
+  /** The boat's name, if it has one. */
+  name: string | null;
+  sail_number: string | null;
+  /** The hull identification number on the transom, if it's known. */
+  hull_number: string | null;
+  /** What the boat is worth. In cents: 12500 is $125.00. */
+  value_cents: number | null;
+  /** The day CSC got the boat. */
+  acquired_on: string | null;
+  /** The day the boat first sailed in a program. */
+  in_service_on: string | null;
+  /** The day CSC stopped using the boat. Empty while it's still in use. */
+  retired_on: string | null;
+  note: string | null;
 }
 
 /** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */

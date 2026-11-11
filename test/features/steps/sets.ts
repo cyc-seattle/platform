@@ -112,6 +112,8 @@ const sets: Record<string, Target[]> = {
   products: plain("products"),
   "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),
+  // CSC's boats, as boats.feature defines them.
+  "the boat list": plain("boats"),
   plans: [...plain("plans", "version_sets", "version_set_members"), ...versions("draft", "saved")],
   groups: plain("groups", "group_members", "group_policies"),
   // Everything website.feature calls the website, with the lists that link its parts.
