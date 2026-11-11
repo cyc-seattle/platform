@@ -1,6 +1,7 @@
 import { scheduleActivities } from "./activities.ts";
 import { bookBonuses } from "./bonus.ts";
 import { Context } from "./context.ts";
+import { boatReserve } from "./depreciation.ts";
 import { bookBudgetLines, bookLaborLines, CostCenterBooker } from "./lines.ts";
 import { mtdc } from "./measures.ts";
 import { bookPayrollTax } from "./payroll.ts";
@@ -16,6 +17,7 @@ import type {
   Pnl,
   PlanData,
   PositionSummary,
+  ReserveLine,
   Totals,
 } from "./types.ts";
 
@@ -28,7 +30,7 @@ export function computePlan(data: PlanData): EngineOutput {
   for (const o of data.plan_offerings) ctx.enrollment.set(o.id, enrollmentOf(o));
   checkAreas(ctx);
 
-  const { activities, coaching, doubleBooked } = new Staffing(ctx).run(scheduleActivities(ctx));
+  const { activities, coaching, doubleBooked, boatHours } = new Staffing(ctx).run(scheduleActivities(ctx));
   countDays(ctx, activities);
   bookRevenue(ctx);
 
@@ -44,10 +46,12 @@ export function computePlan(data: PlanData): EngineOutput {
   const bonuses = bookBonuses(ctx);
 
   const lines = sumLines(ctx);
+  const reserve = boatReserve(ctx, boatHours);
   return {
     lines,
-    pnl: summarize(ctx, lines, mtdcByOffering),
-    organization: organizationTotals(ctx, lines),
+    reserve,
+    pnl: summarize(ctx, lines, mtdcByOffering, reserve),
+    organization: organizationTotals(ctx, lines, reserve),
     activities,
     positions: summarizePositions(ctx, coaching, charged, bonuses, doubleBooked),
     warnings: ctx.warnings,
@@ -132,7 +136,7 @@ function summarizePositions(
  * The organization's year from every line. Capital is any line on an asset account; fundraising is
  * revenue and expense whose function is `fundraising`; everything else is operating.
  */
-function organizationTotals(ctx: Context, lines: CostLine[]): OrganizationTotals {
+function organizationTotals(ctx: Context, lines: CostLine[], reserve: ReserveLine[]): OrganizationTotals {
   const operating = { revenue_cents: 0, expense_cents: 0, net_cents: 0 };
   const fundraising = { revenue_cents: 0, expense_cents: 0, net_cents: 0 };
   let capital = 0;
@@ -152,6 +156,7 @@ function organizationTotals(ctx: Context, lines: CostLine[]): OrganizationTotals
     fundraising,
     capital_cents: capital,
     total_cents: operating.net_cents + fundraising.net_cents - capital,
+    boat_reserve_cents: reserve.reduce((t, r) => t + r.amount_cents, 0),
   };
 }
 
@@ -194,13 +199,20 @@ function sumLines(ctx: Context): CostLine[] {
 }
 
 /** Each plan-year offering's P&L, then each product's, then each program area's. */
-function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, number>): Pnl[] {
-  const pnl = (
-    level: Pnl["level"],
-    key: Id,
-    own: CostLine[],
-    counts: Pick<Pnl, "mtdc_cents" | "enrollment" | "days" | "sailor_days">,
-  ): Pnl => {
+function summarize(
+  ctx: Context,
+  lines: CostLine[],
+  mtdcByOffering: Map<Id, number>,
+  reserve: ReserveLine[],
+): Pnl[] {
+  const reserveOf = new Map<Id, number>();
+  for (const r of reserve) {
+    if (r.cost_center_type === "offering" && r.cost_center_key !== null) {
+      reserveOf.set(r.cost_center_key, (reserveOf.get(r.cost_center_key) ?? 0) + r.amount_cents);
+    }
+  }
+  type Counts = "mtdc_cents" | "enrollment" | "days" | "sailor_days" | "boat_reserve_cents";
+  const pnl = (level: Pnl["level"], key: Id, own: CostLine[], counts: Pick<Pnl, Counts>): Pnl => {
     const byAccount = new Map<Id, number>();
     let revenue = 0;
     let expense = 0;
@@ -232,7 +244,13 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
       "offering",
       o.key,
       lines.filter((l) => l.cost_center_type === "offering" && l.cost_center_key === o.key),
-      { mtdc_cents: Math.round(mtdcByOffering.get(o.key) ?? 0), enrollment, days, sailor_days: enrollment * days },
+      {
+        mtdc_cents: Math.round(mtdcByOffering.get(o.key) ?? 0),
+        enrollment,
+        days,
+        sailor_days: enrollment * days,
+        boat_reserve_cents: reserveOf.get(o.key) ?? 0,
+      },
     );
   });
 
@@ -242,8 +260,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
   const productPnl = [...productIds].sort().map((id) => {
     const own = offeringPnl.filter((s) => ctx.offeringsByKey.get(s.key)?.product_id === id);
     const keys = new Set(own.map((s) => s.key));
-    const add = (field: "mtdc_cents" | "enrollment" | "days" | "sailor_days"): number =>
-      own.reduce((t, s) => t + s[field], 0);
+    const add = (field: Counts): number => own.reduce((t, s) => t + s[field], 0);
     return pnl(
       "product",
       id,
@@ -257,6 +274,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
         enrollment: add("enrollment"),
         days: add("days"),
         sailor_days: add("sailor_days"),
+        boat_reserve_cents: add("boat_reserve_cents"),
       },
     );
   });
@@ -274,8 +292,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
     });
     const keys = new Set(own.map((s) => s.key));
     const products = new Set(own.map((s) => ctx.offeringsByKey.get(s.key)?.product_id));
-    const add = (field: "mtdc_cents" | "enrollment" | "days" | "sailor_days"): number =>
-      own.reduce((t, s) => t + s[field], 0);
+    const add = (field: Counts): number => own.reduce((t, s) => t + s[field], 0);
     return pnl(
       "program_area",
       id,
@@ -290,6 +307,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
         enrollment: add("enrollment"),
         days: add("days"),
         sailor_days: add("sailor_days"),
+        boat_reserve_cents: add("boat_reserve_cents"),
       },
     );
   });

@@ -96,6 +96,9 @@ function groupBy<T>(rows: T[], key: (row: T) => Id): Map<Id, T[]> {
   return groups;
 }
 
+/** The organization's boat-hours on the water, by boat class, then by offering key. */
+export type BoatHours = Map<Id, Map<Id, number>>;
+
 export class Staffing {
   private readonly ctx: Context;
   private readonly warned = new Set<string>();
@@ -388,6 +391,7 @@ export class Staffing {
     activities: ComputedActivity[];
     coaching: SalariedCoaching[];
     doubleBooked: Map<Id, DoubleBooked>;
+    boatHours: BoatHours;
   } {
     const { ctx } = this;
     const blocks = this.blocks(scheduled);
@@ -406,6 +410,7 @@ export class Staffing {
     const boatRates = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r]));
     const ribKind = ctx.data.rib_resource_kind_id;
     const given = new Map<ScheduledActivity, { coaches: number; ribs: number; boats: number }>();
+    const boatHours: BoatHours = new Map();
 
     for (const block of byDate(blocks)) {
       const scope = { version_id: block.row.version_id, date: block.row.date };
@@ -520,6 +525,14 @@ export class Staffing {
       }
 
       for (const b of block.boats) {
+        if (b.count > 0 && waterHours > 0) {
+          const byOffering = boatHours.get(b.boat_class_id) ?? new Map<Id, number>();
+          for (const [a, share] of block.shares) {
+            const key = a.offering.key;
+            byOffering.set(key, (byOffering.get(key) ?? 0) + b.count * waterHours * share);
+          }
+          boatHours.set(b.boat_class_id, byOffering);
+        }
         const rate = boatRates.get(b.boat_class_id);
         if (rate === undefined || b.count <= 0 || waterHours <= 0) continue;
         book(
@@ -543,6 +556,7 @@ export class Staffing {
     return {
       coaching,
       doubleBooked,
+      boatHours,
       activities: scheduled.map((a) => ({
         offering_id: a.offering.id,
         offering_key: a.offering.key,

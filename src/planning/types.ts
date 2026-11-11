@@ -68,6 +68,28 @@ export interface BoatClass {
   name: string;
   sailors_per_boat: number | null;
   footprint_sq_ft: number | null;
+  /** The years a boat of the class depreciates over, straight-line, to nothing. */
+  depreciation_years?: number | null;
+}
+
+// `inventory`, read as it is now, like the catalog
+
+/** One of CSC's own boats. */
+export interface Boat {
+  id: Id;
+  boat_class_id: Id;
+  value_cents: number;
+  acquired_on: DateString | null;
+  in_service_on: DateString | null;
+}
+
+export type BoatStage = "charter" | "beginner" | "retired";
+
+/** A boat moving to its next stage. Its stage is its latest one. */
+export interface BoatStageChange {
+  boat_id: Id;
+  stage: BoatStage;
+  changed_on: DateString;
 }
 
 export interface ResourceKind {
@@ -339,6 +361,9 @@ export interface PlanData {
   qualification_covers: QualificationCover[];
   boat_classes: BoatClass[];
   resource_kinds: ResourceKind[];
+  /** CSC's boats, for the boat replacement reserve. None when left out. */
+  boats?: Boat[];
+  boat_stage_changes?: BoatStageChange[];
 
   /** The plans and versions being calculated, so the engine can tell which plan each offering is in. */
   plans: Plan[];
@@ -404,6 +429,8 @@ export interface Pnl extends Totals {
   days: number;
   /** Enrollment × days. */
   sailor_days: number;
+  /** Its boat replacement reserve: its share of the year's boat depreciation. Not in its net. */
+  boat_reserve_cents: number;
 }
 
 /** An activity with the staffing the engine gave it. */
@@ -451,6 +478,22 @@ export interface OrganizationTotals {
   capital_cents: number;
   /** Operating net, plus fundraising net, less capital. */
   total_cents: number;
+  /** The year's boat depreciation, set aside to replace boats. For information: not in any net or total. */
+  boat_reserve_cents: number;
+}
+
+/**
+ * One boat class's depreciation for the year, on an offering, or on the organization when no offering
+ * sails the class. It's in no account and no net.
+ */
+export interface ReserveLine {
+  cost_center_type: "offering" | "org";
+  cost_center_key: Id | null;
+  boat_class_id: Id;
+  amount_cents: number;
+  /** "Boat replacement reserve: <boat class>". */
+  line_name: string;
+  explanation: string;
 }
 
 /** One salaried position's year: what it's paid, and where its hours went. */
@@ -481,6 +524,8 @@ export interface PositionSummary {
 
 export interface EngineOutput {
   lines: CostLine[];
+  /** The boat replacement reserve, below operating net. */
+  reserve: ReserveLine[];
   /** Each offering's P&L, then each product's, then each program area's. */
   pnl: Pnl[];
   organization: OrganizationTotals;

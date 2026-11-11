@@ -158,6 +158,8 @@ export interface BoatClasses {
   id: string;
   name: string;
   sailors_per_boat: number;
+  /** How many years a boat of this class takes to wear out. Its value is set aside evenly over them, as the boat replacement reserve. */
+  depreciation_years: number | null;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
 }
@@ -903,6 +905,8 @@ export interface PlanResultPnl {
   expense_cents: number;
   /** In cents: 12500 is $125.00. */
   net_cents: number;
+  /** Its share of the year's boat depreciation, set aside to replace boats. Not in its net. In cents: 12500 is $125.00. */
+  boat_reserve_cents: number;
   /** Modified total direct costs, which shared costs are divided by. In cents: 12500 is $125.00. */
   mtdc_cents: number;
   enrollment: number;
@@ -981,6 +985,8 @@ export interface PlanResults {
   capital_cents: number;
   /** Operating net, plus fundraising net, less capital. In cents: 12500 is $125.00. */
   total_cents: number;
+  /** The year's boat depreciation, set aside to replace boats. Not in any net or total. In cents: 12500 is $125.00. */
+  boat_reserve_cents: number;
   /** The Financial Plan these results are for. */
   version_set_id: string | VersionSets;
 }

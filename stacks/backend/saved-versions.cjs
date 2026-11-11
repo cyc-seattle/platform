@@ -634,7 +634,7 @@ async function seedActiveMarks(db) {
   await db.exec(`DROP TABLE ${SEED}`);
 }
 
-// The catalog the engine reads as it is now.
+// The catalog the engine reads as it is now, and the inventory with it.
 const CATALOG = [
   "products",
   "program_areas",
@@ -643,6 +643,8 @@ const CATALOG = [
   "qualification_covers",
   "boat_classes",
   "resource_kinds",
+  "boats",
+  "boat_stage_changes",
 ];
 
 /** A `date` as `YYYY-MM-DD`, whether the driver gives a string, or a `Date` at UTC or local midnight. */
@@ -750,6 +752,7 @@ function resultRows(data, out, operations) {
       enrollment: p.enrollment,
       days: p.days,
       sailor_days: p.sailor_days,
+      boat_reserve_cents: p.boat_reserve_cents,
     })),
     plan_result_positions: out.positions.map((p) => ({
       position_key: p.position_key,
@@ -785,6 +788,7 @@ function resultRows(data, out, operations) {
       fundraising_net_cents: fundraising.net_cents,
       capital_cents: out.organization.capital_cents,
       total_cents: out.organization.total_cents,
+      boat_reserve_cents: out.organization.boat_reserve_cents,
     },
   };
 }

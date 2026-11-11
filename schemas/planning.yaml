@@ -7993,6 +7993,48 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_results
+    field: boat_reserve_cents
+    type: integer
+    meta:
+      collection: plan_results
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: boat_reserve_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "The year's boat depreciation, set aside to replace boats. Not in any net or total. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 14
+      special: null
+      translations:
+        - language: en-US
+          translation: Boat replacement reserve
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_reserve_cents
+      table: plan_results
+      data_type: integer
+      default_value: 0
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
     field: version_set_id
     type: uuid
     meta:
@@ -8879,6 +8921,48 @@ fields:
       table: plan_result_pnl
       data_type: integer
       default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: boat_reserve_cents
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: boat_reserve_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "Its share of the year's boat depreciation, set aside to replace boats. Not in its net. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 16
+      special: null
+      translations:
+        - language: en-US
+          translation: Boat replacement reserve
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_reserve_cents
+      table: plan_result_pnl
+      data_type: integer
+      default_value: 0
       max_length: null
       numeric_precision: 32
       numeric_scale: 0

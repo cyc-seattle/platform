@@ -180,6 +180,7 @@ describe("the organization's totals", () => {
       fundraising: { revenue_cents: 3_000_000, expense_cents: 500_000, net_cents: 2_500_000 },
       capital_cents: 2_000_000,
       total_cents: 1_500_000,
+      boat_reserve_cents: 0,
     });
   });
 
