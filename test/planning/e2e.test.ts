@@ -45,7 +45,6 @@ function realisticPlan(): PlanData {
     ...v("level-ii"),
     name: "Instructor II",
     hourly_rate_cents: 2600,
-    qualifications: ["q-race"],
   });
 
   const fall = offering(racing.id, {
@@ -139,7 +138,6 @@ function realisticPlan(): PlanData {
     annual_salary_cents: 7_000_000,
     paid_hours_per_year: 2080,
     ga_share: 0.2,
-    qualifications: ["q-race"],
   });
   const facilities = position({
     ...v("facilities"),

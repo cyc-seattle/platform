@@ -1107,29 +1107,7 @@ Step("{string} still has the offering at {money} a sailor", async (_, _name: str
   expect(await one("plan_offerings", offering!["id"], "price_cents")).toEqual({ price_cents: cents(money) });
 });
 
-// An offering's catalog offering, and its activities, in a Financial Plan started from it.
-Step(
-  "a saved Financial Plan named {string} with an offering of {string}",
-  async (_, name: string, catalogName: string) => {
-    const area = await p.area();
-    const product = await p.product("program", area);
-    const [program] = await read("programs", { product_id: { _eq: product } }, "id");
-    const catalog = await adminCreate("catalog_offerings", {
-      id: randomUUID(),
-      program_id: program!["id"],
-      name: `${catalogName} ${runId}`,
-    });
-    offering = await p.offering(p.areaVersion(area), product, 100_000, 10, 0, { catalog_offering_id: catalog.id });
-    named[name] = await p.savedSet(name);
-  },
-);
-Step("the new Financial Plan's offering is of {string} too", async (_, catalogName: string) => {
-  const copy = await copyOf(offering!, started!);
-  expect(copy["catalog_offering_id"]).toBe(offering!["catalog_offering_id"]);
-  expect(await one("catalog_offerings", copy["catalog_offering_id"], "name")).toEqual({
-    name: `${catalogName} ${runId}`,
-  });
-});
+// An offering's activities, in a Financial Plan started from it.
 let practice: Item | undefined;
 onEachScenario(() => {
   practice = undefined;

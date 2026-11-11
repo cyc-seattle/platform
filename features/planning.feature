@@ -149,12 +149,6 @@ Feature: Plans
 
   Rule: An offering and its activities stay the same ones in a Financial Plan started from it
 
-    Example: An offering stays of the same catalog offering
-      Given a user with the Plan Writer policy
-      And a saved Financial Plan named "Budget" with an offering of "J-Pod · fall practices"
-      When they start a new Financial Plan from "Budget"
-      Then the new Financial Plan's offering is of "J-Pod · fall practices" too
-
     Example: A practice is the same practice in the new Financial Plan
       Given a user with the Plan Writer policy
       And a saved Financial Plan named "Budget" with a practice on June 6

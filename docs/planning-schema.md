@@ -175,7 +175,6 @@ erDiagram
         uuid organization_id FK
         int fiscal_year "the plan year"
         string name
-        boolean archived
     }
     plan_versions {
         uuid id PK
@@ -244,7 +243,7 @@ Together they refuse:
 - marking a draft active, or setting an active one back to saved, except by marking another one active
 - changing a plan's kind, program area, organization, or year once it's in a Financial Plan or has a saved copy
 
-Every foreign key from a plan row restricts delete, so deleting a catalog row a plan uses, or a plan with copies, fails instead of cascading into a saved one. Archive a plan instead of deleting it. Deleting a draft Financial Plan takes its plans out of it, and leaves the copies.
+Every foreign key from a plan row restricts delete, so deleting a catalog row a plan uses, or a plan with copies, fails instead of cascading into a saved one. Deleting a draft Financial Plan takes its plans out of it, and leaves the copies.
 
 An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:savedVersionsDeletable` lets the integration tests delete a saved Financial Plan, its plans and their rows, and its results, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
 
@@ -281,7 +280,6 @@ erDiagram
     plan_offerings {
         uuid key "stable"
         uuid product_id FK
-        uuid catalog_offering_id FK "the program's catalog offering"
         string name
         string season_term
         date starts_on
@@ -406,16 +404,13 @@ erDiagram
         string name
         string pay_type "hourly|volunteer"
         int hourly_rate_cents
-        json qualifications
     }
     plan_salaried_positions {
         string name
         int annual_salary_cents
         int paid_hours_per_year
-        json qualifications
         decimal ga_share
         uuid remainder_pool_id FK
-        string form_990_line "override"
         int hourly_coaching_rate_cents "its own rate, when paid by the hour"
     }
     plan_salaried_bookings {

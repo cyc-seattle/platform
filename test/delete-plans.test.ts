@@ -22,14 +22,13 @@ const PLAN_TABLES = [
 
 const BEFORE = [
   "CREATE TABLE products (id uuid PRIMARY KEY)",
-  "CREATE TABLE catalog_offerings (id uuid PRIMARY KEY, product_id uuid REFERENCES products (id))",
   "CREATE TABLE version_sets (id uuid PRIMARY KEY, status varchar(255))",
   "CREATE TABLE plans (id uuid PRIMARY KEY)",
   "CREATE TABLE plan_versions (id uuid PRIMARY KEY, plan_id uuid REFERENCES plans (id), status varchar(255))",
   `CREATE TABLE version_set_members (id uuid PRIMARY KEY, version_set_id uuid REFERENCES version_sets (id),
     version_id uuid REFERENCES plan_versions (id))`,
   `CREATE TABLE plan_offerings (id uuid PRIMARY KEY, version_id uuid REFERENCES plan_versions (id),
-    product_id uuid REFERENCES products (id), catalog_offering_id uuid REFERENCES catalog_offerings (id))`,
+    product_id uuid REFERENCES products (id))`,
   "CREATE TABLE plan_results (id uuid PRIMARY KEY, version_set_id uuid REFERENCES version_sets (id))",
   "CREATE TABLE plan_result_lines (id uuid PRIMARY KEY, results_id uuid REFERENCES plan_results (id))",
   `CREATE FUNCTION refuse() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'refused'; END $$`,
@@ -44,13 +43,11 @@ async function database(): Promise<PGlite> {
   for (const statement of BEFORE) await db.exec(statement);
   await db.exec(`
     INSERT INTO products VALUES ('${id(1)}');
-    INSERT INTO catalog_offerings VALUES ('${id(2)}', '${id(1)}');
     INSERT INTO version_sets VALUES ('${id(10)}', 'saved'), ('${id(11)}', 'draft');
     INSERT INTO plans VALUES ('${id(20)}');
     INSERT INTO plan_versions VALUES ('${id(30)}', '${id(20)}', 'saved'), ('${id(31)}', '${id(20)}', 'draft');
     INSERT INTO version_set_members VALUES ('${id(40)}', '${id(10)}', '${id(30)}'), ('${id(41)}', '${id(11)}', '${id(31)}');
-    INSERT INTO plan_offerings VALUES ('${id(50)}', '${id(30)}', '${id(1)}', '${id(2)}'),
-      ('${id(51)}', '${id(31)}', '${id(1)}', '${id(2)}');
+    INSERT INTO plan_offerings VALUES ('${id(50)}', '${id(30)}', '${id(1)}'), ('${id(51)}', '${id(31)}', '${id(1)}');
     INSERT INTO plan_results VALUES ('${id(60)}', '${id(10)}');
     INSERT INTO plan_result_lines VALUES ('${id(70)}', '${id(60)}');
   `);
@@ -76,7 +73,7 @@ describe("deleting every plan", { timeout: 30_000 }, () => {
   it("keeps the catalog, and the saved-versions triggers", async () => {
     const db = await database();
     await db.exec(SQL);
-    expect(await counts(db, ["products", "catalog_offerings"])).toEqual({ products: 1, catalog_offerings: 1 });
+    expect(await counts(db, ["products"])).toEqual({ products: 1 });
     const triggers = await db.query("SELECT 1 FROM pg_trigger WHERE tgname = 'cyc_saved_versions'");
     expect(triggers.rows).toHaveLength(PLAN_TABLES.length);
   });
