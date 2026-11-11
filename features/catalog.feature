@@ -16,6 +16,11 @@ Feature: The catalog
   people in roles such as Director, who plan it. Every program belongs to one program area.
   Merchandise, storage, and charters belong to none. Anyone who signs in can see the program areas.
 
+  Beside the catalog is the directory: the organizations our programs sail with and the venues where
+  events are sailed. An organization is a yacht club, a class association, a regional organizer, a
+  governing body, a sailing center, or one of our own. Each venue is run by one organization. Only
+  admins can change the directory. Anyone with a Catalog or Plan policy can see it.
+
   Planners use the catalog to build plans. They have the Plan Reader or Plan Writer policy. Besides
   admins, only the few people who manage the club's products and revenue accounts can change the
   catalog. They have the Catalog Writer policy. The Catalog Reader policy lets someone see the
@@ -52,6 +57,20 @@ Feature: The catalog
       Given a revenue account in the catalog
       When an admin adds another revenue account with the same number
       Then the catalog doesn't allow it
+
+  Rule: Each venue is run by an organization
+
+    Example: A venue with no organization isn't allowed
+      When an admin adds a venue with no organization
+      Then the directory doesn't allow it
+
+  Rule: An organization that runs a venue can't be deleted
+
+    Example: Deleting an organization with a venue isn't allowed
+      Given an organization that runs a venue
+      When an admin deletes the organization
+      Then the directory doesn't allow it
+      And the organization is still in the directory
 
   Rule: A Catalog Reader can see the catalog, but can't change it
 
@@ -125,3 +144,17 @@ Feature: The catalog
       Given a user with the Community role
       Then they can see program areas
       But they can't change program areas
+
+  Rule: People with a Catalog or Plan policy can see the directory, but only admins can change it
+
+    Scenario Outline: Each Catalog and Plan policy can see the directory, but can't change it
+      Given a user with the <policy> policy
+      Then they can see the directory
+      But they can't change the directory
+
+      Examples:
+        | policy         |
+        | Catalog Reader |
+        | Catalog Writer |
+        | Plan Reader    |
+        | Plan Writer    |

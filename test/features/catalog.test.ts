@@ -83,4 +83,40 @@ Step("an admin adds a program area with no revenue account", async () => {
     expect(status).toBeLessThan(500);
   });
 });
+let organizationId: string | undefined;
+onEachScenario(() => {
+  organizationId = undefined;
+});
+
+Step("an admin adds a venue with no organization", async () => {
+  await runRows();
+  const venue = await newRow("venues", { organization_id: null });
+  const { status } = await (await admin()).request("POST", "/items/venues", venue);
+  if (status < 300) {
+    created.push({ collection: "venues", id: venue["id"] });
+  }
+  expectRefusal(() => {
+    expect(status).toBeGreaterThanOrEqual(400);
+    expect(status).toBeLessThan(500);
+  });
+});
+Step("an organization that runs a venue", async () => {
+  await runRows();
+  organizationId = (
+    await adminCreate(
+      "organizations",
+      await newRow("organizations", { kind: "yacht_club", fiscal_year_start_month: null }),
+    )
+  ).id;
+  await adminCreate("venues", await newRow("venues", { organization_id: organizationId }));
+});
+// As with a program's product, a 500 from the foreign key is the refusal, so the read after it is the check.
+Step("an admin deletes the organization", async () => {
+  const { status } = await (await admin()).request("DELETE", itemPath("organizations", organizationId));
+  expectRefusal(() => expect(status).toBeGreaterThanOrEqual(400));
+});
+Step("the organization is still in the directory", async () => {
+  await (await admin()).ok("GET", itemPath("organizations", organizationId));
+});
+
 describeAccessFeature("catalog.feature");
