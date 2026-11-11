@@ -1,37 +1,46 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { up } from "../stacks/backend/migrations/cyc0008-directory-kind.cjs";
+import { up } from "../stacks/backend/migrations/cyc0009-directory-kind-orphan.cjs";
 
 const migrate = (db: PGlite) => up({ raw: (sql: string) => db.exec(sql) });
 
-async function kinds(db: PGlite) {
-  const { rows } = await db.query<{ name: string; kind: string | null }>(
-    "SELECT name, kind FROM organizations ORDER BY name",
+async function columns(db: PGlite) {
+  const { rows } = await db.query<{ column_name: string }>(
+    "SELECT column_name FROM information_schema.columns WHERE table_name = 'organizations' ORDER BY column_name",
   );
-  return rows;
+  return rows.map(({ column_name }) => column_name);
+}
+
+async function withOrganizations(kind: boolean) {
+  const db = await PGlite.create();
+  await db.exec("CREATE TABLE directus_fields (id serial PRIMARY KEY, collection varchar(64), field varchar(64))");
+  await db.exec(
+    `CREATE TABLE organizations (id uuid PRIMARY KEY, name varchar(255) NOT NULL${kind ? ", kind varchar(255)" : ""})`,
+  );
+  await db.exec("INSERT INTO organizations (id, name) VALUES (gen_random_uuid(), 'Test club')");
+  return db;
 }
 
 // Starting a PGlite can take longer than the 5s default on a CI runner.
-describe("the directory kind migration", { timeout: 30_000 }, () => {
-  it("marks every organization from before the directory as our own, however often it runs", async () => {
-    const db = await PGlite.create();
-    await db.exec("CREATE TABLE organizations (id uuid PRIMARY KEY, name varchar(255) NOT NULL)");
-    await db.exec("INSERT INTO organizations VALUES (gen_random_uuid(), 'Test club')");
+describe("the directory kind orphan migration", { timeout: 30_000 }, () => {
+  it("drops a kind column Directus has no field for, so the apply can create it", async () => {
+    const db = await withOrganizations(true);
     await migrate(db);
     await migrate(db);
-    expect(await kinds(db)).toEqual([{ name: "Test club", kind: "own" }]);
+    expect(await columns(db)).toEqual(["id", "name"]);
   });
 
-  it("leaves a kind already set alone", async () => {
-    const db = await PGlite.create();
-    await db.exec("CREATE TABLE organizations (id uuid PRIMARY KEY, name varchar(255) NOT NULL, kind varchar(255))");
-    await db.exec("INSERT INTO organizations VALUES (gen_random_uuid(), 'Other club', 'yacht_club')");
+  it("leaves kind alone once the apply has made the field", async () => {
+    const db = await withOrganizations(true);
+    await db.exec("INSERT INTO directus_fields (collection, field) VALUES ('organizations', 'kind')");
     await migrate(db);
-    expect(await kinds(db)).toEqual([{ name: "Other club", kind: "yacht_club" }]);
+    expect(await columns(db)).toEqual(["id", "kind", "name"]);
   });
 
-  it("does nothing on a new database", async () => {
-    const db = await PGlite.create();
-    await expect(migrate(db)).resolves.toBeUndefined();
+  it("does nothing before the directory, or on a new database", async () => {
+    const db = await withOrganizations(false);
+    await migrate(db);
+    expect(await columns(db)).toEqual(["id", "name"]);
+    await expect(migrate(await PGlite.create())).resolves.toBeUndefined();
   });
 });

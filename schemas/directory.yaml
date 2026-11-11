@@ -228,7 +228,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown
-      note: Ours keeps its own books and plans here. The rest are the clubs and organizers we sail with.
+      note: Ours keeps its own books and plans here. The rest are the clubs and organizers we sail with. A new organization starts as Ours, so change it for anyone else.
       options:
         choices:
           - text: Ours
@@ -264,7 +264,7 @@ fields:
       name: kind
       table: organizations
       data_type: character varying
-      default_value: null
+      default_value: own
       max_length: 255
       numeric_precision: null
       numeric_scale: null

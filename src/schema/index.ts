@@ -485,7 +485,7 @@ export interface Organizations {
   name: string;
   /** What people call it for short, such as its initials. */
   short_name: string | null;
-  /** Ours keeps its own books and plans here. The rest are the clubs and organizers we sail with. */
+  /** Ours keeps its own books and plans here. The rest are the clubs and organizers we sail with. A new organization starts as Ours, so change it for anyone else. */
   kind: "own" | "yacht_club" | "class_association" | "regional_organizer" | "governing_body" | "sailing_center";
   /** Its website's address, starting https://. */
   website: string | null;
