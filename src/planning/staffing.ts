@@ -278,8 +278,8 @@ export class Staffing {
         ctx.warn(
           "over_capacity",
           qualified === 0
-            ? `${has} ${countOf(counted, "sailor")} and no qualified coach`
-            : `${has} ${countOf(counted, "sailor")}, but enough qualified coaches for only ${Math.floor((qualified * counted) / load + 1e-9)}`,
+            ? `${has} ${countOf(counted, "sailor")} and no coach`
+            : `${has} ${countOf(counted, "sailor")}, but enough coaches for only ${Math.floor((qualified * counted) / load + 1e-9)}`,
           block.row.key,
           scope,
         );

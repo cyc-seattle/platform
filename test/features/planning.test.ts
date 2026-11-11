@@ -840,18 +840,17 @@ const overCapacity = (limit: "coach" | "boats") =>
 const saysBlockHas = (limit: "coach" | "boats", text: string) =>
   expect(overCapacity(limit).map((w) => w.message.replace(/^.+? ha(s|ve) /, ""))).toContain(text);
 Step(
-  "the planner is warned that the block has {count} sailors, but enough qualified coaches for only {count}",
-  (_, sailors: string, can: string) =>
-    saysBlockHas("coach", `${sailors} sailors, but enough qualified coaches for only ${can}`),
+  "the planner is warned that the block has {count} sailors, but enough coaches for only {count}",
+  (_, sailors: string, can: string) => saysBlockHas("coach", `${sailors} sailors, but enough coaches for only ${can}`),
 );
-Step("the planner is warned that the block has {count} sailors and no qualified coach", (_, sailors: string) =>
-  saysBlockHas("coach", `${sailors} sailors and no qualified coach`),
+Step("the planner is warned that the block has {count} sailors and no coach", (_, sailors: string) =>
+  saysBlockHas("coach", `${sailors} sailors and no coach`),
 );
 Step(
   "the planner is warned that the block has {count} sailors, but the boats hold only {count}",
   (_, sailors: string, can: string) => saysBlockHas("boats", `${sailors} sailors, but the boats hold only ${can}`),
 );
-Step("the planner is warned that the block has too few qualified coaches", () => {
+Step("the planner is warned that the block has too few coaches", () => {
   expect(overCapacity("coach")).not.toEqual([]);
 });
 Step("the planner isn't warned about the block", () => {

@@ -321,13 +321,13 @@ describe("staffing", () => {
       });
     }
 
-    it("warns when a block has more sailors than its qualified coaches are enough for", () => {
+    it("warns when a block has more sailors than its coaches are enough for", () => {
       const out = computePlan(guppies(14, { staff: [{ staff_level_key: L1.key }] }));
       expect(out.warnings).toContainEqual(
         expect.objectContaining({
           code: "over_capacity",
           category: "allocation",
-          message: "Guppies Week 2 has 14 sailors, but enough qualified coaches for only 10",
+          message: "Guppies Week 2 has 14 sailors, but enough coaches for only 10",
         }),
       );
       expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
@@ -336,7 +336,7 @@ describe("staffing", () => {
     it("counts a coach qualified for the program's staff level, and not one who isn't", () => {
       expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
       const out = computePlan(guppies(10, { staff: [{ staff_level_key: junior.key }] }));
-      expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2 has 10 sailors and no qualified coach");
+      expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2 has 10 sailors and no coach");
     });
 
     it("counts each program's sailors against its own sailors per coach", () => {
@@ -355,7 +355,7 @@ describe("staffing", () => {
         ...block(acts, { staff: [{ staff_level_key: L1.key, count: 1 }] }),
       });
       expect(computePlan(data).warnings.find((w) => w.code === "over_capacity")?.message).toMatch(
-        / have 10 sailors, but enough qualified coaches for only 6$/,
+        / have 10 sailors, but enough coaches for only 6$/,
       );
       data.plan_block_staff[0]!.count = 2;
       expect(codes(data)).not.toContain("over_capacity");
