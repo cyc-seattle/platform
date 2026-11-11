@@ -784,8 +784,6 @@ export interface PlanOfferings {
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
   product_id: string | Products;
-  /** Which of the program's catalog offerings this is, such as "J-Pod · fall practices". It's how Clubspot's sign-ups find it, in every Financial Plan. */
-  catalog_offering_id: string | CatalogOfferings | null;
   name: string;
   season_term: string | null;
   starts_on: string;
@@ -1029,13 +1027,10 @@ export interface PlanSalariedPositions {
   /** In cents: 12500 is $125.00. */
   annual_salary_cents: number;
   paid_hours_per_year: number | null;
-  /** The qualifications this position needs. Add each one's ID, from the end of its page's web address. */
-  qualifications: string[] | null;
   /** The share of its salary that is general and administrative (G&A). 0.2 means 20%. */
   ga_share: string | null;
   /** The pool that takes the salary its hours don't charge to programs. */
   remainder_pool_id: string | PlanPools | null;
-  form_990_line: string | null;
   /** What this position is paid an hour to coach an offering that pays its salaried coach by the hour, instead of the offering's coach level. Leave empty to use the level. In cents: 12500 is $125.00. */
   hourly_coaching_rate_cents: number | null;
 }
@@ -1051,8 +1046,6 @@ export interface PlanStaffLevels {
   pay_type: "hourly" | "volunteer";
   /** In cents: 12500 is $125.00. */
   hourly_rate_cents: number | null;
-  /** The qualifications this level needs. Add each one's ID, from the end of its page's web address. */
-  qualifications: string[] | null;
 }
 
 /** A trip an offering travels for, such as an away regatta. */
@@ -1101,8 +1094,6 @@ export interface Plans {
   /** The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved copy. */
   fiscal_year: number;
   name: string;
-  /** A plan with a saved copy can't be deleted, so archive it instead. */
-  archived: boolean;
   /** The plan's copy in each Financial Plan. */
   versions: (string | PlanVersions)[];
 }

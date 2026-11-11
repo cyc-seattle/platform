@@ -239,19 +239,15 @@ export interface PlanStaffLevel extends Versioned {
   name: string;
   pay_type: "hourly" | "volunteer";
   hourly_rate_cents: number | null;
-  /** `qualifications` ids. */
-  qualifications: Id[] | null;
 }
 
 export interface PlanSalariedPosition extends Versioned {
   name: string;
   annual_salary_cents: number;
   paid_hours_per_year: number | null;
-  qualifications: Id[] | null;
   ga_share: number | null;
   /** The pool that takes the salary its hours don't charge to programs. */
   remainder_pool_id: Id | null;
-  form_990_line: string | null;
   /** What it's paid an hour to coach an offering that pays it by the hour, instead of the offering's level. */
   hourly_coaching_rate_cents?: number | null;
 }

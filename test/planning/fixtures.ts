@@ -242,7 +242,6 @@ export function staffLevel(overrides: Partial<PlanStaffLevel> = {}): PlanStaffLe
     name: "Coach",
     pay_type: "hourly",
     hourly_rate_cents: 2000,
-    qualifications: null,
     ...overrides,
   };
 }
@@ -360,10 +359,8 @@ export function position(overrides: Partial<PlanSalariedPosition> = {}): PlanSal
     name: "Director",
     annual_salary_cents: 1_200_000,
     paid_hours_per_year: 2000,
-    qualifications: null,
     ga_share: null,
     remainder_pool_id: null,
-    form_990_line: null,
     ...overrides,
   };
 }

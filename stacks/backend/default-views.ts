@@ -168,16 +168,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_offerings",
     sort: ["version_id.plan_id.name", "starts_on", "name"],
-    fields: [
-      "name",
-      "version_id",
-      "product_id",
-      "catalog_offering_id",
-      "starts_on",
-      "ends_on",
-      "capacity",
-      "price_cents",
-    ],
+    fields: ["name", "version_id", "product_id", "starts_on", "ends_on", "capacity", "price_cents"],
   },
   {
     collection: "plan_programs",

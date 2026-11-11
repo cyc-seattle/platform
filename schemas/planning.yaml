@@ -30,8 +30,8 @@ collections:
     meta:
       accountability: all
       archive_app_filter: true
-      archive_field: archived
-      archive_value: "true"
+      archive_field: null
+      archive_value: null
       autosave_revision_interval: null
       collapse: open
       collection: plans
@@ -48,7 +48,7 @@ collections:
       sort_field: null
       status: active
       translations: null
-      unarchive_value: "false"
+      unarchive_value: null
       versioning: false
     schema:
       name: plans
@@ -1080,46 +1080,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plans
-    field: archived
-    type: boolean
-    meta:
-      collection: plans
-      conditions: null
-      display: null
-      display_options: null
-      field: archived
-      group: null
-      hidden: false
-      interface: boolean
-      note: A plan with a saved copy can't be deleted, so archive it instead.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 7
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: archived
-      table: plans
-      data_type: boolean
-      default_value: false
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plans
     field: versions
     type: alias
     meta:
@@ -1698,50 +1658,6 @@ fields:
       generation_expression: null
       has_auto_increment: false
       foreign_key_table: products
-      foreign_key_column: id
-  - collection: plan_offerings
-    field: catalog_offering_id
-    type: uuid
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{program_id.name}} · {{name}}"
-      field: catalog_offering_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: Which of the program's catalog offerings this is, such as "J-Pod · fall practices". It's how Clubspot's sign-ups find it, in every Financial Plan.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Catalog offering
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: catalog_offering_id
-      table: plan_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: catalog_offerings
       foreign_key_column: id
   - collection: plan_offerings
     field: name
@@ -5080,47 +4996,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_staff_levels
-    field: qualifications
-    type: json
-    meta:
-      collection: plan_staff_levels
-      conditions: null
-      display: null
-      display_options: null
-      field: qualifications
-      group: null
-      hidden: false
-      interface: tags
-      note: The qualifications this level needs. Add each one's ID, from the end of its page's web address.
-      options: null
-      readonly: false
-      required: false
-      searchable: false
-      sort: 7
-      special:
-        - cast-json
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: qualifications
-      table: plan_staff_levels
-      data_type: json
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_salaried_positions
     field: id
     type: uuid
@@ -5370,47 +5245,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_salaried_positions
-    field: qualifications
-    type: json
-    meta:
-      collection: plan_salaried_positions
-      conditions: null
-      display: null
-      display_options: null
-      field: qualifications
-      group: null
-      hidden: false
-      interface: tags
-      note: The qualifications this position needs. Add each one's ID, from the end of its page's web address.
-      options: null
-      readonly: false
-      required: false
-      searchable: false
-      sort: 7
-      special:
-        - cast-json
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: qualifications
-      table: plan_salaried_positions
-      data_type: json
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_salaried_positions
     field: ga_share
     type: decimal
     meta:
@@ -5496,48 +5330,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plan_pools
       foreign_key_column: id
-  - collection: plan_salaried_positions
-    field: form_990_line
-    type: string
-    meta:
-      collection: plan_salaried_positions
-      conditions: null
-      display: null
-      display_options: null
-      field: form_990_line
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 10
-      special: null
-      translations:
-        - language: en-US
-          translation: Form 990 line
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: form_990_line
-      table: plan_salaried_positions
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_salaried_positions
     field: hourly_coaching_rate_cents
     type: integer
@@ -13299,27 +13091,6 @@ relations:
       foreign_key_table: version_sets
       foreign_key_column: id
       constraint_name: version_sets_parent_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_offerings
-    field: catalog_offering_id
-    related_collection: catalog_offerings
-    meta:
-      junction_field: null
-      many_collection: plan_offerings
-      many_field: catalog_offering_id
-      one_allowed_collections: null
-      one_collection: catalog_offerings
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_offerings
-      column: catalog_offering_id
-      foreign_key_table: catalog_offerings
-      foreign_key_column: id
-      constraint_name: plan_offerings_catalog_offering_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_programs

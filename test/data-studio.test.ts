@@ -65,8 +65,6 @@ const PLANNER_KEYS: Record<string, string> = {
   "plan_labor_lines.staff_level_key": "Planners copy in a staff level's Key.",
   "plan_labor_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
   "plan_budget_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
-  "plan_staff_levels.qualifications": "Planners add each qualification's ID.",
-  "plan_salaried_positions.qualifications": "Planners add each qualification's ID.",
   "plan_bonus_owners.position_key": "Planners copy in a salaried position's Key.",
 };
 

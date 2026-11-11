@@ -186,12 +186,12 @@ async function plans(db: PGlite, year = 2027) {
     date: `${year}-06-06`,
     block_id: block,
   });
-  await w.insert("plan_staff_levels", {
+  await w.insert("plan_revenue_charges", {
     version_id: operations,
     key: randomUUID(),
-    name: "Level 2 Instructor",
-    pay_type: "hourly",
-    qualifications: JSON.stringify(["q-1", "q-3"]),
+    name: "Card fees",
+    rate: 0,
+    product_kinds: JSON.stringify(["program", "charter"]),
   });
   await w.insert("version_set_members", { version_set_id: set, version_id: operations });
   await w.insert("version_set_members", { version_set_id: set, version_id: saved });
@@ -481,7 +481,7 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       ]) {
         expect(await w.update("plans", plan, change), JSON.stringify(change)).toEqual(refusal(message));
       }
-      expect(await w.update("plans", plan, { name: "Renamed", archived: true })).toBeUndefined();
+      expect(await w.update("plans", plan, { name: "Renamed" })).toBeUndefined();
       expect(await w.update("plans", operationsPlan, { fiscal_year: 2115 })).toEqual(refusal(message));
     });
 
@@ -883,7 +883,7 @@ describe("the saved-versions triggers with dev's flag", { timeout: 30_000 }, () 
     expect(await w.remove("version_sets", set)).toBeUndefined();
     await db.query(`DELETE FROM plan_activities WHERE version_id = $1`, [saved]);
     await db.query(`DELETE FROM plan_activity_blocks WHERE version_id = $1`, [saved]);
-    await db.query(`DELETE FROM plan_staff_levels WHERE version_id = $1`, [operations]);
+    await db.query(`DELETE FROM plan_revenue_charges WHERE version_id = $1`, [operations]);
     expect(await w.remove("plan_offerings", savedOffering)).toBeUndefined();
     expect(await w.remove("plan_versions", saved)).toBeUndefined();
     expect(
@@ -1009,10 +1009,10 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
       .rows;
     expect(activity).toMatchObject({ offering_id: offering!["id"], block_id: block!["id"] });
     const operationsCopy = copies.find((v) => v["parent_version_id"] === operations)!;
-    const [level] = (
-      await db.query<Values>(`SELECT * FROM plan_staff_levels WHERE version_id = $1`, [operationsCopy["id"]])
+    const [charge] = (
+      await db.query<Values>(`SELECT * FROM plan_revenue_charges WHERE version_id = $1`, [operationsCopy["id"]])
     ).rows;
-    expect(level).toMatchObject({ qualifications: ["q-1", "q-3"] });
+    expect(charge).toMatchObject({ product_kinds: ["program", "charter"] });
     // The copy is a draft, so it can change, and the parent stays as it was.
     expect(await w.update("plan_offerings", offering!["id"] as string, { name: "Changed" })).toBeUndefined();
     expect((await w.read("plan_offerings", savedOffering))!["name"]).toBe("Offering");
