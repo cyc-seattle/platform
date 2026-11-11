@@ -60,6 +60,17 @@ describe("readItems", () => {
     expect(params.get("filter[_or][1][run_after][_lte]")).toBe("2026");
   });
 
+  it("reads a Directus system collection at its own endpoint, since /items refuses it", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new DirectusClient(baseUrl, token);
+
+    await client.readItems("directus_revisions");
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(new URL(url).pathname).toBe("/revisions");
+  });
+
   it("sends the bearer token in the Authorization header", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: [] }));
     vi.stubGlobal("fetch", fetchMock);

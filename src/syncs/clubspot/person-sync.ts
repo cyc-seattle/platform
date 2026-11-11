@@ -40,11 +40,15 @@ import {
   emptyFieldTally,
   type FieldTally,
   isNewestParticipant,
+  type AnswerTimes,
+  fieldsToOverwrite,
   planSyncedFields,
   type Ranked,
   type RegistrationRank,
   resolveFieldBase,
+  rowEditTimes,
 } from "./synced-fields.ts";
+import { EditTimeReader } from "./edit-times.ts";
 
 // Directus has no trigram operator over REST, so the fallback candidate fetch is a bounded
 // last-name substring search rather than every row in `people`.
@@ -196,9 +200,11 @@ export function logReplacedFields(collection: string, id: string, fields: readon
  */
 export class PersonSync {
   private readonly directus: DirectusClient;
+  private readonly editTimes: EditTimeReader;
 
   constructor(directus: DirectusClient) {
     this.directus = directus;
+    this.editTimes = new EditTimeReader(directus);
   }
 
   /**
@@ -259,11 +265,22 @@ export class PersonSync {
       ? { isNewest: true }
       : await this.rankAgainstSiblings(resolved.id, registration, batchSiblings);
     const { isNewest, fallbackMirror, fallbackRegistrationId } = ranking;
+    const answer: AnswerTimes = {
+      registeredAt: registration.registered_at,
+      participantUpdatedAt: participant.updatedAt?.toISOString(),
+    };
 
     const personFields =
       resolved.created || !isNewest
         ? emptyFieldTally()
-        : await this.applySyncedPersonFields(resolved.id, resolved.current, priorMirror, mirrorFields, fallbackMirror);
+        : await this.applySyncedPersonFields(
+            resolved.id,
+            resolved.current,
+            priorMirror,
+            mirrorFields,
+            fallbackMirror,
+            answer,
+          );
 
     const medicalFields = await this.syncMedicalProfile(
       resolved.id,
@@ -271,6 +288,7 @@ export class PersonSync {
       mirrorFields,
       isNewest,
       fallbackMirror,
+      answer,
     );
     const guardianResult = await this.syncGuardianContacts(
       participant,
@@ -279,6 +297,7 @@ export class PersonSync {
       mirrorFields,
       isNewest,
       fallbackMirror,
+      answer,
     );
     const emergencyResult = await this.syncEmergencyContacts(
       participant,
@@ -287,6 +306,7 @@ export class PersonSync {
       mirrorFields,
       isNewest,
       fallbackMirror,
+      answer,
     );
 
     const slots: ContactPointSlot[] = [
@@ -444,6 +464,7 @@ export class PersonSync {
     priorMirror: ParticipantRow | undefined,
     mirrorFields: ParticipantMirrorFields,
     fallbackMirror: ParticipantMirrorFields | undefined,
+    answer: AnswerTimes,
   ): Promise<FieldTally> {
     if (!current) {
       return emptyFieldTally();
@@ -451,12 +472,19 @@ export class PersonSync {
     const base = priorMirror ? personFieldValuesFromMirror(priorMirror) : undefined;
     const fallbackBase = fallbackMirror ? personFieldValuesFromMirror(fallbackMirror) : undefined;
     const v = personFieldValuesFromMirror(mirrorFields);
+    const comparable = withComparableContact(current);
+    const directus = await this.editTimes.forItem(
+      "people",
+      personId,
+      fieldsToOverwrite(PERSON_SYNCED_FIELDS, comparable, v),
+    );
     const plan = reconcileEmailCasing(
       planSyncedFields<PersonRow>(
         PERSON_SYNCED_FIELDS,
-        withComparableContact(current),
+        comparable,
         resolveFieldBase<PersonRow>(base, fallbackBase),
         v,
+        rowEditTimes(PERSON_SYNCED_FIELDS, base, v, answer, directus),
       ),
       current.email,
       v.email,
@@ -683,6 +711,7 @@ export class PersonSync {
     mirrorFields: ParticipantMirrorFields,
     isNewest: boolean,
     fallbackMirror: ParticipantMirrorFields | undefined,
+    answer: AnswerTimes,
   ): Promise<{ slots: ContactPointSlot[]; fields: FieldTally; slotNameMismatches: number }> {
     const inputs = guardianInputsFromParticipant(participant);
     if (inputs.length === 0) {
@@ -749,6 +778,7 @@ export class PersonSync {
           this.resolveFallbackSlot(current, fallbackSlot),
           mirrorSlot,
           isNewest,
+          answer,
         );
         fields = addFieldTally(fields, slotResult.fields);
         nameMatches = slotResult.nameMatches;
@@ -778,7 +808,14 @@ export class PersonSync {
         if (!resolved.created && resolved.current) {
           // A slot linked to this contact for the first time - there's no minor-side history to
           // fall back to either, only a fresh fill of the contact's own null columns.
-          const result = this.planContactFieldUpdate(resolved.current, undefined, undefined, mirrorSlot);
+          const result = await this.planContactFieldUpdate(
+            contactPersonId,
+            resolved.current,
+            undefined,
+            undefined,
+            mirrorSlot,
+            answer,
+          );
           await this.writePersonPatch(contactPersonId, resolved.current, result.patch);
           fields = addFieldTally(fields, result);
         }
@@ -798,6 +835,7 @@ export class PersonSync {
     mirrorFields: ParticipantMirrorFields,
     isNewest: boolean,
     fallbackMirror: ParticipantMirrorFields | undefined,
+    answer: AnswerTimes,
   ): Promise<{ slots: ContactPointSlot[]; fields: FieldTally; slotNameMismatches: number }> {
     const inputs = emergencyContactInputsFromParticipant(participant);
     if (inputs.length === 0) {
@@ -864,6 +902,7 @@ export class PersonSync {
           this.resolveFallbackSlot(current, fallbackSlot),
           mirrorSlot,
           isNewest,
+          answer,
         );
         fields = addFieldTally(fields, slotResult.fields);
         nameMatches = slotResult.nameMatches;
@@ -885,7 +924,14 @@ export class PersonSync {
         if (!resolved.created && resolved.current) {
           // A slot linked to this contact for the first time - no minor-side history to fall back
           // to either, only a fresh fill of the contact's own null columns.
-          const result = this.planContactFieldUpdate(resolved.current, undefined, undefined, mirrorSlot);
+          const result = await this.planContactFieldUpdate(
+            contactPersonId,
+            resolved.current,
+            undefined,
+            undefined,
+            mirrorSlot,
+            answer,
+          );
           await this.writePersonPatch(contactPersonId, resolved.current, result.patch);
           fields = addFieldTally(fields, result);
         }
@@ -950,6 +996,7 @@ export class PersonSync {
     fallbackSlot: ContactMirrorSlot | undefined,
     mirrorSlot: ContactMirrorSlot,
     isNewest: boolean,
+    answer: AnswerTimes,
   ): Promise<{ fields: FieldTally; nameMatches: boolean }> {
     const nameMatches = current !== undefined && slotNameMatchesContact(current, mirrorSlot.name);
     if (!nameMatches) {
@@ -962,7 +1009,14 @@ export class PersonSync {
     if (!isNewest || !current) {
       return { fields: emptyFieldTally(), nameMatches: true };
     }
-    const result = this.planContactFieldUpdate(current, priorSlot, fallbackSlot, mirrorSlot);
+    const result = await this.planContactFieldUpdate(
+      contactPersonId,
+      current,
+      priorSlot,
+      fallbackSlot,
+      mirrorSlot,
+      answer,
+    );
     await this.writePersonPatch(contactPersonId, current, result.patch);
     logReplacedFields("people", contactPersonId, result.replacedFields);
     return { fields: result, nameMatches: true };
@@ -972,21 +1026,30 @@ export class PersonSync {
    * Plans a guardian or emergency-contact slot's field update, without writing it - called only
    * once the slot's name has already been checked against `current` (see `syncContactSlot`).
    */
-  private planContactFieldUpdate(
+  private async planContactFieldUpdate(
+    personId: string,
     current: PersonRow,
     priorSlot: ContactMirrorSlot | undefined,
     fallbackSlot: ContactMirrorSlot | undefined,
     newSlot: ContactMirrorSlot,
-  ): FieldTally & { patch: Partial<PersonRow> } {
+    answer: AnswerTimes,
+  ): Promise<FieldTally & { patch: Partial<PersonRow> }> {
     const base = priorSlot ? contactFieldValuesFromMirror(priorSlot) : undefined;
     const fallbackBase = fallbackSlot ? contactFieldValuesFromMirror(fallbackSlot) : undefined;
     const v = contactFieldValuesFromMirror(newSlot);
+    const comparable = withComparableContact(current);
+    const directus = await this.editTimes.forItem(
+      "people",
+      personId,
+      fieldsToOverwrite(CONTACT_SYNCED_FIELDS, comparable, v),
+    );
     return reconcileEmailCasing(
       planSyncedFields<PersonRow>(
         CONTACT_SYNCED_FIELDS,
-        withComparableContact(current),
+        comparable,
         resolveFieldBase<PersonRow>(base, fallbackBase),
         v,
+        rowEditTimes(CONTACT_SYNCED_FIELDS, base, v, answer, directus),
       ),
       current.email,
       v.email,
@@ -1006,6 +1069,7 @@ export class PersonSync {
     mirrorFields: ParticipantMirrorFields,
     isNewest: boolean,
     fallbackMirror: ParticipantMirrorFields | undefined,
+    answer: AnswerTimes,
   ): Promise<FieldTally> {
     const existing = await this.directus.readItems<MedicalProfileRow>("medical_profiles", {
       filter: { person_id: { _eq: personId } },
@@ -1023,11 +1087,17 @@ export class PersonSync {
 
     const base = priorMirror ? medicalFieldValuesFromMirror(priorMirror) : undefined;
     const fallbackBase = fallbackMirror ? medicalFieldValuesFromMirror(fallbackMirror) : undefined;
+    const directus = await this.editTimes.forItem(
+      "medical_profiles",
+      current.id,
+      fieldsToOverwrite(MEDICAL_SYNCED_FIELDS, current, v),
+    );
     const plan = planSyncedFields<MedicalProfileRow>(
       MEDICAL_SYNCED_FIELDS,
       current,
       resolveFieldBase<MedicalProfileRow>(base, fallbackBase),
       v,
+      rowEditTimes(MEDICAL_SYNCED_FIELDS, base, v, answer, directus),
     );
     if (Object.keys(plan.patch).length > 0) {
       await this.directus.updateItem<MedicalProfileRow>("medical_profiles", current.id, plan.patch);

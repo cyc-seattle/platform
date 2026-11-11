@@ -14,7 +14,15 @@ import {
 import { normalizeName } from "./people.ts";
 import { type CustomFieldResponseInput } from "./registrations.ts";
 import { keyOf, type SchoolFields, type SchoolMatcher } from "./schools.ts";
-import { emptyFieldTally, type FieldTally, parseYesNo, planSyncedField, resolveBase } from "./synced-fields.ts";
+import {
+  type AnswerTimes,
+  clubspotAnswerTime,
+  emptyFieldTally,
+  type FieldTally,
+  parseYesNo,
+  planSyncedField,
+  resolveBase,
+} from "./synced-fields.ts";
 
 /**
  * Copies a staff-configured set of custom field responses onto `people` columns (e.g. "School"),
@@ -216,6 +224,9 @@ export function needsFallbackTargetValues(
  *
  * The caller gates this on the newest-linked-participant check - an older registration's answer
  * must never overwrite a newer one's, same as any other curated field.
+ *
+ * `times` dates the answer and the person's last Directus edit of `school_id` or `school`, for the
+ * latest-edit-wins rule (cyc-seattle/platform#157) - see {@link promotedFieldsToOverwrite}.
  */
 export function planPromotedFieldSync(
   targetByDefinitionId: ReadonlyMap<string, PromotablePersonField>,
@@ -224,6 +235,7 @@ export function planPromotedFieldSync(
   currentPerson: Partial<SchoolFields>,
   schools: SchoolMatcher,
   fallbackByTargetField: ReadonlyMap<PromotablePersonField, string> = new Map(),
+  times?: { answer: AnswerTimes; directus: ReadonlyMap<string, string> },
 ): PromotedFieldSyncPlan {
   const existingByDefinitionId = new Map(existingResponses.map((row) => [row.definition_id, row] as const));
 
@@ -240,11 +252,21 @@ export function planPromotedFieldSync(
     const fallbackBase = fallbackByTargetField.get(targetField);
     const base = resolveBase(ownBase, fallbackBase);
     const v = trimmedValue(response.response ?? null);
+    const vKey = schools.keyFor(v);
 
     const outcome = planSyncedField(
       keyOf(currentPerson),
       base === undefined ? undefined : schools.keyFor(base),
-      schools.keyFor(v),
+      vKey,
+      times && {
+        clubspot: clubspotAnswerTime(
+          ownBase === undefined ? undefined : schools.keyFor(ownBase),
+          vKey,
+          times.answer.registeredAt,
+          times.answer.participantUpdatedAt,
+        ),
+        directus: latestTime(SCHOOL_COLUMNS.map((column) => times.directus.get(column))),
+      },
     );
     if (outcome.action === "write") {
       patch = schools.fieldsFor(v) ?? {};
@@ -259,6 +281,35 @@ export function planPromotedFieldSync(
   }
 
   return { patch, ...tally };
+}
+
+// The columns a school answer writes (`schools.ts`); a Directus edit of either is an edit of the pick.
+const SCHOOL_COLUMNS = ["school_id", "school"] as const;
+
+function latestTime(times: readonly (string | undefined)[]): string | undefined {
+  return times.reduce<string | undefined>(
+    (latest, time) =>
+      time !== undefined && (latest === undefined || Date.parse(time) > Date.parse(latest)) ? time : latest,
+    undefined,
+  );
+}
+
+/**
+ * The person columns {@link planPromotedFieldSync} might replace - the only ones whose Directus edit
+ * times are worth reading. Empty when every promotable answer already names the current pick.
+ */
+export function promotedFieldsToOverwrite(
+  targetByDefinitionId: ReadonlyMap<string, PromotablePersonField>,
+  responses: readonly CustomFieldResponseInput[],
+  currentPerson: Partial<SchoolFields>,
+  schools: SchoolMatcher,
+): string[] {
+  const current = keyOf(currentPerson);
+  const changes = responses.some((response) => {
+    const v = schools.keyFor(trimmedValue(response.response ?? null));
+    return targetByDefinitionId.has(response.customFieldID) && v !== null && v !== current;
+  });
+  return changes ? [...SCHOOL_COLUMNS] : [];
 }
 
 export interface RegistrationPromotedFieldSyncPlan extends FieldTally {

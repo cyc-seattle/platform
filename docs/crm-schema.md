@@ -118,9 +118,7 @@ another person's medical and emergency data.
 
 Updating an existing person follows one rule for every curated field — `people`, `medical_profiles`,
 a guardian/emergency contact's own `people` row, and a promoted field (cyc-seattle/isthmia#137): **the latest edit
-always wins**, whether it was made in Directus or in Clubspot. The sync does not fully implement
-this yet (cyc-seattle/isthmia#171): with no edit times, it treats a repeated or first-ever form answer as older than a
-staff edit, as described below. A
+always wins**, whether it was made in Directus or in Clubspot (cyc-seattle/platform#157). A
 person's newest linked participant is ranked non-archived registrations first, then
 `registered_at` descending, then `clubspot_registrations.id` as a tiebreak — the same order `clubspot_promoted_fields`
 falls back to below. The mirror itself — `clubspot_participants` for every field but a promoted one,
@@ -131,6 +129,16 @@ holds; `v` different from `base` writes `v`, and counts a replaced staff edit if
 neither `base` nor null; a null `v` is never written, for any field — a removed allergy or a blanked
 phone number stays on the CRM record until staff clear it. Only the newest linked participant may
 write at all — an older registration's form never overwrites a newer one's.
+
+That rule settles Clubspot against itself. When someone other than `clubspot-sync` set the field's
+current value, edit times settle it instead: Clubspot's answer replaces that edit only if it was
+given later, whether or not it repeats `base`, and a blank is still never written. The edit's time
+is its latest revision in Directus, read only for a row the sync is about to change. An edit made
+outside the Directus API, or one whose revision was pruned, isn't seen, so the base rule applies.
+An answer is dated by its registration's confirmation, or by the participant's `updatedAt` when it
+differs from this participant's own mirrored answer, since `updatedAt` moves when any answer
+changes. Clubspot doesn't date its answers against each other, so two siblings' forms naming the
+same guardian differently fall to the base rule, not to time.
 
 A `people.phone` is compared and written in E.164 (`+12065550100`), the form the club's apps save,
 taking a number with no country code as US. Clubspot's bare digits for the number a family entered

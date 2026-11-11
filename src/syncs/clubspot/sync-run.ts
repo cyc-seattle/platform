@@ -55,10 +55,12 @@ import {
   needsFallbackTargetValues,
   planPromotedFields,
   planPromotedFieldSync,
+  promotedFieldsToOverwrite,
   planRegistrationPromotedFieldSync,
   splitPromotedFieldTargets,
   trimmedValue,
 } from "./promoted-fields.ts";
+import { EditTimeReader } from "./edit-times.ts";
 import {
   type CollectionPlan,
   diffFields,
@@ -521,6 +523,7 @@ async function syncRegistrations(
   // `resolveFallbackTargetValues`.
   let promotedFieldsConfig: readonly PromotedFieldRow[] = [];
   let schools = new SchoolMatcher([]);
+  const editTimes = new EditTimeReader(directus);
   try {
     promotedFieldsConfig = await directus.readItems<PromotedFieldRow>("clubspot_promoted_fields", { limit: -1 });
     schools = new SchoolMatcher(await directus.readItems<SchoolRow>("schools", { limit: -1 }));
@@ -900,6 +903,11 @@ async function syncRegistrations(
               await fallbackRawResponses(directus, fallbackRegistrationId, rawResponsesByRegistrationId, tables),
             )
           : new Map<PromotablePersonField, string>();
+      const directusEditTimes = await editTimes.forItem(
+        "people",
+        personId,
+        promotedFieldsToOverwrite(targetByDefinitionId, rawResponses, currentPerson, schools),
+      );
       const promotedPlan = planPromotedFieldSync(
         targetByDefinitionId,
         rawResponses,
@@ -907,6 +915,13 @@ async function syncRegistrations(
         currentPerson,
         schools,
         fallbackByTargetField,
+        {
+          answer: {
+            registeredAt: registration.get("confirmed_at")?.toISOString() ?? EPOCH.toISOString(),
+            participantUpdatedAt: participant?.updatedAt?.toISOString(),
+          },
+          directus: directusEditTimes,
+        },
       );
       if (Object.keys(promotedPlan.patch).length > 0) {
         await directus.updateItem<PersonRow>("people", personId, promotedPlan.patch);
