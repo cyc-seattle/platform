@@ -326,7 +326,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   ];
 }
 
-/** What coaches write: a recommendation for each sailor after a term. */
+/** What coaches write: a recommendation for each sailor after a season. */
 export const COACHING = "recommendations";
 
 /**
@@ -355,8 +355,6 @@ export const crewRules: PermissionRuleInput[] = [
   { collection: "program_areas", action: "read" },
   { collection: "accounts", action: "read" },
   { collection: "google_groups", action: "read" },
-  // A recommendation is for a term.
-  { collection: "terms", action: "read" },
   ...(["create", "read", "update", "delete"] as const).map((action) => ({ collection: COACHING, action })),
 ];
 

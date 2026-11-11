@@ -1195,12 +1195,14 @@ export interface Qualifications {
   covers: (string | QualificationCovers)[];
 }
 
-/** What a coach recommends for a sailor after a term, such as the program to sign up for next. One for each sailor each term. */
+/** What a coach recommends for a sailor after a season, such as the program to sign up for next. One for each sailor each season. */
 export interface Recommendations {
   id: string;
   person_id: string | People;
-  /** The term the sailor was coached in. */
-  term_id: string | Terms;
+  /** The year the sailor was coached in, such as 2026. */
+  year: number;
+  /** The season the sailor was coached in. */
+  season: "winter" | "spring" | "summer" | "fall";
   /** The program the coach recommends next. Leave it blank to say it only in the note. */
   program_id: string | Programs | null;
   /** What the coach recommends, and why. */

@@ -151,8 +151,8 @@ export const defaultViews: DefaultView[] = [
   },
   {
     collection: "recommendations",
-    sort: ["-term_id.starts_on", "person_id.last_name"],
-    fields: ["person_id", "term_id", "program_id", "coach_id"],
+    sort: ["-year", "person_id.last_name"],
+    fields: ["person_id", "year", "season", "program_id", "coach_id"],
   },
 
   // Google Workspace

@@ -366,10 +366,10 @@ describe("planPersonMerge", () => {
 
   it("repoints a duplicate's recommendations, as the sailor and as the coach", () => {
     const recommendations = [
-      { id: "r1", person_id: "dup", coach_id: null, term_id: "fall" },
-      { id: "r2", person_id: "sailor", coach_id: "dup", term_id: "fall" },
-      { id: "r3", person_id: "dup", coach_id: "dup", term_id: "spring" },
-      { id: "r4", person_id: "keep", coach_id: "coach", term_id: "summer" },
+      { id: "r1", person_id: "dup", coach_id: null, year: 2026, season: "fall" },
+      { id: "r2", person_id: "sailor", coach_id: "dup", year: 2026, season: "fall" },
+      { id: "r3", person_id: "dup", coach_id: "dup", year: 2026, season: "spring" },
+      { id: "r4", person_id: "keep", coach_id: "coach", year: 2026, season: "summer" },
     ];
     const steps = planPersonMerge(person({ id: "keep" }), [person({ id: "dup" })], related({ recommendations }));
     expect(steps.filter((step) => step.type === "update" && step.collection === "recommendations")).toEqual([
@@ -379,12 +379,12 @@ describe("planPersonMerge", () => {
     ]);
   });
 
-  it("leaves a duplicate's recommendation for a term the keeper already has one for, so the merge stops", () => {
+  it("leaves a duplicate's recommendation for a season the keeper already has one for, so the merge stops", () => {
     const recommendations = [
-      { id: "r1", person_id: "keep", coach_id: null, term_id: "fall" },
-      { id: "r2", person_id: "dup", coach_id: null, term_id: "fall" },
-      { id: "r3", person_id: "dup2", coach_id: null, term_id: "spring" },
-      { id: "r4", person_id: "dup", coach_id: null, term_id: "spring" },
+      { id: "r1", person_id: "keep", coach_id: null, year: 2026, season: "fall" },
+      { id: "r2", person_id: "dup", coach_id: null, year: 2026, season: "fall" },
+      { id: "r3", person_id: "dup2", coach_id: null, year: 2026, season: "spring" },
+      { id: "r4", person_id: "dup", coach_id: null, year: 2026, season: "spring" },
     ];
     const steps = planPersonMerge(
       person({ id: "keep" }),

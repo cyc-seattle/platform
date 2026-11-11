@@ -257,15 +257,16 @@ pick stands until Clubspot names a different school.
 ### Recommendations
 
 `recommendations`, in `schemas/coaching.yaml`, holds what a coach recommends for a sailor after a
-term: the program to sign up for next, a note, or both. A sailor has one a term. Directus can't make
-a pair of columns unique, so the `recommendation-key` hook fills the hidden `key` from the sailor and
-the term on every write, and its unique constraint refuses a second. The hook refuses a change to
-the sailor or the term of more than one recommendation in one write, since each one's key is its own.
+season, such as fall 2026: the program to sign up for next, a note, or both. A sailor has one a
+season. Directus can't make several columns unique together, so the `recommendation-key` hook fills
+the hidden `key` from the sailor, the year and the season on every write, and its unique constraint
+refuses a second. The hook refuses a change to the sailor, year or season of more than one
+recommendation in one write, since each one's key is its own.
 Coaches, who are Crew, write them, through sail-team or the Data Studio
 (cyc-seattle/sail-team#28).
 
 A person merge moves a duplicate's recommendations to the keeper, as the sailor and as the coach,
-except one for a term the keeper already has one for. That one stops the merge, as a group
+except one for a season the keeper already has one for. That one stops the merge, as a group
 membership does, until staff delete one of the two.
 
 ### Promoted fields

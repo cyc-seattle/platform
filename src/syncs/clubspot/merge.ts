@@ -141,7 +141,8 @@ export interface MergeRecommendation {
   id: string;
   person_id: string;
   coach_id: string | null;
-  term_id: string;
+  year: number;
+  season: string;
 }
 
 /** The rows the merge needs across the whole group (the keeper and every duplicate) - already narrowed to those referencing one of them. */
@@ -426,21 +427,22 @@ function planSimpleRepoint(
 
 /**
  * Repoints the coach always, and the sailor unless the keeper already has a recommendation for that
- * term: a sailor has one a term. One left behind stops the merge on the final delete, for staff to
- * keep one of the two by hand.
+ * season: a sailor has one a season. One left behind stops the merge on the final delete, for staff
+ * to keep one of the two by hand.
  */
 function planRecommendationMerge(
   keeperId: string,
   duplicateIds: ReadonlySet<string>,
   rows: readonly MergeRecommendation[],
 ): MergeStep[] {
-  const keeperTerms = new Set(rows.filter((row) => row.person_id === keeperId).map((row) => row.term_id));
+  const season = (row: MergeRecommendation) => `${row.year}-${row.season}`;
+  const keeperSeasons = new Set(rows.filter((row) => row.person_id === keeperId).map(season));
   const steps: MergeStep[] = [];
   for (const row of rows) {
     const patch: Record<string, unknown> = {};
-    if (duplicateIds.has(row.person_id) && !keeperTerms.has(row.term_id)) {
+    if (duplicateIds.has(row.person_id) && !keeperSeasons.has(season(row))) {
       patch["person_id"] = keeperId;
-      keeperTerms.add(row.term_id);
+      keeperSeasons.add(season(row));
     }
     if (row.coach_id !== null && duplicateIds.has(row.coach_id)) patch["coach_id"] = keeperId;
     if (Object.keys(patch).length > 0) {

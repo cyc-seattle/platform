@@ -12,14 +12,14 @@ collections:
       collapse: open
       collection: recommendations
       color: null
-      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{term_id.name}}"
+      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{season}} {{year}}"
       group: CRM
       hidden: false
       icon: recommend
       item_duplication_fields: null
       note: >-
-        What a coach recommends for a sailor after a term, such as the program to sign up for next. One for each sailor
-        each term.
+        What a coach recommends for a sailor after a season, such as the program to sign up for next. One for each
+        sailor each season.
       preview_url: null
       singleton: false
       sort: null
@@ -118,39 +118,92 @@ fields:
       foreign_key_table: people
       foreign_key_column: id
   - collection: recommendations
-    field: term_id
-    type: uuid
+    field: year
+    type: integer
     meta:
       collection: recommendations
       conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: term_id
+      display: null
+      display_options: null
+      field: year
       group: null
       hidden: false
-      interface: select-dropdown-m2o
-      note: The term the sailor was coached in.
-      options:
-        template: "{{name}}"
+      interface: input
+      note: The year the sailor was coached in, such as 2026.
+      options: null
       readonly: false
       required: true
       searchable: true
       sort: 3
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Term
+      special: null
+      translations: null
       validation: null
       validation_message: null
       width: half
     schema:
-      name: term_id
+      name: year
       table: recommendations
-      data_type: uuid
+      data_type: integer
       default_value: null
       max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: recommendations
+    field: season
+    type: string
+    meta:
+      collection: recommendations
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
+      field: season
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: The season the sailor was coached in.
+      options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: season
+      table: recommendations
+      data_type: character varying
+      default_value: null
+      max_length: 255
       numeric_precision: null
       numeric_scale: null
       is_nullable: false
@@ -160,8 +213,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: terms
-      foreign_key_column: id
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: recommendations
     field: program_id
     type: uuid
@@ -181,7 +234,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 4
+      sort: 5
       special:
         - m2o
       translations:
@@ -224,7 +277,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 5
+      sort: 6
       special: null
       translations:
         - language: en-US
@@ -268,7 +321,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 6
+      sort: 7
       special:
         - m2o
       translations:
@@ -312,7 +365,7 @@ fields:
       readonly: true
       required: false
       searchable: true
-      sort: 7
+      sort: 8
       special:
         - date-created
       translations:
@@ -356,7 +409,7 @@ fields:
       readonly: true
       required: false
       searchable: true
-      sort: 8
+      sort: 9
       special:
         - date-updated
       translations:
@@ -399,7 +452,7 @@ fields:
       readonly: true
       required: false
       searchable: true
-      sort: 9
+      sort: 10
       special: null
       translations: null
       validation: null
@@ -442,27 +495,6 @@ relations:
       foreign_key_table: people
       foreign_key_column: id
       constraint_name: recommendations_person_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: recommendations
-    field: term_id
-    related_collection: terms
-    meta:
-      junction_field: null
-      many_collection: recommendations
-      many_field: term_id
-      one_allowed_collections: null
-      one_collection: terms
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: recommendations
-      column: term_id
-      foreign_key_table: terms
-      foreign_key_column: id
-      constraint_name: recommendations_term_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: recommendations

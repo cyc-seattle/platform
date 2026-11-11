@@ -1,13 +1,13 @@
 // A Directus hook extension, mounted into Directus as-is: CommonJS, with no imports, since an
 // extension's folder has no node_modules of its own.
 //
-// Keeps a sailor to one recommendation a term (docs/crm-schema.md), for every writer through
-// Directus. Directus can't make a pair of columns unique, so this fills `recommendations.key` from
-// the sailor and the term, and the column's unique constraint refuses a second one. A migration
-// can't add the constraint instead: it runs before the schema apply makes the table.
+// Keeps a sailor to one recommendation a season (docs/crm-schema.md), for every writer through
+// Directus. Directus can't make several columns unique together, so this fills `recommendations.key`
+// from the sailor, the year and the season, and the column's unique constraint refuses a second one.
+// A migration can't add the constraint instead: it runs before the schema apply makes the table.
 
 const COLLECTION = "recommendations";
-const DUPLICATE = "This sailor already has a recommendation for this term. Change that one instead.";
+const DUPLICATE = "This sailor already has a recommendation for this season. Change that one instead.";
 
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
 function invalid(reason) {
@@ -24,24 +24,30 @@ function idOf(value) {
   return value !== null && typeof value === "object" ? value.id : value;
 }
 
-function recommendationKey(personId, termId) {
-  return `${personId}:${termId}`;
+/** The fields a recommendation's key comes from. */
+const KEYED = ["person_id", "year", "season"];
+
+function recommendationKey(personId, year, season) {
+  return `${personId}:${year}-${season}`;
+}
+
+function changesKey(payload) {
+  return KEYED.some((field) => field in payload);
 }
 
 /**
- * `payload` with its `key` set from the sailor and the term, over `current`, the stored row an update
- * changes. A key in the payload is dropped, and an update that changes neither keeps the stored one.
+ * `payload` with its `key` set from the sailor, the year and the season, over `current`, the stored
+ * row an update changes. A key in the payload is dropped, and an update that changes none of them
+ * keeps the stored one.
  */
 function withKey(payload, current) {
   const rest = { ...payload };
   delete rest.key;
-  const changes = "person_id" in rest || "term_id" in rest;
-  if (current !== undefined && !changes) return rest;
-  const personId = idOf("person_id" in rest ? rest.person_id : current?.person_id);
-  const termId = idOf("term_id" in rest ? rest.term_id : current?.term_id);
-  // A missing sailor or term is the required columns' error to give, not this hook's.
-  if (personId == null || termId == null) return rest;
-  return { ...rest, key: recommendationKey(personId, termId) };
+  if (current !== undefined && !changesKey(rest)) return rest;
+  const [personId, year, season] = KEYED.map((field) => (field in rest ? rest[field] : current?.[field]));
+  // A missing one is the required fields' error to give, not this hook's.
+  if (idOf(personId) == null || year == null || season == null) return rest;
+  return { ...rest, key: recommendationKey(idOf(personId), year, season) };
 }
 
 async function refuseDuplicate(database, key, ownId) {
@@ -59,10 +65,10 @@ function register({ filter }) {
   });
 
   filter(`${COLLECTION}.items.update`, async (payload, { keys }, { database }) => {
-    if (!("person_id" in payload || "term_id" in payload)) return withKey(payload, {});
-    // Each row's key comes from its own sailor and term, which one payload can't give for many rows.
-    if (keys.length !== 1) throw invalid("Change the sailor or the term of one recommendation at a time.");
-    const current = await database(COLLECTION).select("person_id", "term_id").where({ id: keys[0] }).first();
+    if (!changesKey(payload)) return withKey(payload, {});
+    // Each row's key comes from its own sailor and season, which one payload can't give for many rows.
+    if (keys.length !== 1) throw invalid("Change the sailor or the season of one recommendation at a time.");
+    const current = await database(COLLECTION).select(KEYED).where({ id: keys[0] }).first();
     const next = withKey(payload, current ?? {});
     await refuseDuplicate(database, next.key, keys[0]);
     return next;
