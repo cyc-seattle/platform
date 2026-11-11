@@ -13,6 +13,7 @@ import {
   planPromotedFields,
   planPromotedFieldSync,
   planRegistrationPromotedFieldSync,
+  promotedFieldsToOverwrite,
 } from "../../../src/syncs/clubspot/promoted-fields.ts";
 import { SchoolMatcher } from "../../../src/syncs/clubspot/schools.ts";
 
@@ -352,6 +353,51 @@ describe("planPromotedFieldSync", () => {
       noSchools,
     );
     expect(plan).toEqual({ patch: {}, written: 0, replacedStaffEdits: 0, blankSkipped: 0, replacedFields: [] });
+  });
+
+  // cyc-seattle/platform#157: a newer form's answer beats an older staff pick, even repeating base.
+  it("writes an answer given after a staff edit of the school, even one that repeats the stored response", () => {
+    const plan = planPromotedFieldSync(
+      targetByDefinitionId,
+      [{ customFieldID: "def-1", response: "Roosevelt High" }],
+      [response("resp-1", "reg-1", "def-1", "Roosevelt High")],
+      { school: "Staff School" },
+      noSchools,
+      new Map(),
+      {
+        answer: { registeredAt: "2026-04-01T00:00:00.000Z", participantUpdatedAt: undefined },
+        directus: new Map([["school_id", "2026-03-01T00:00:00.000Z"]]),
+      },
+    );
+    expect(plan.patch).toEqual({ school_id: null, school: "Roosevelt High" });
+    expect(plan.replacedStaffEdits).toBe(1);
+  });
+
+  it("keeps a staff edit of the school made after the answer", () => {
+    const plan = planPromotedFieldSync(
+      targetByDefinitionId,
+      [{ customFieldID: "def-1", response: "Garfield High" }],
+      [response("resp-1", "reg-1", "def-1", "Roosevelt High")],
+      { school: "Staff School" },
+      noSchools,
+      new Map(),
+      {
+        answer: { registeredAt: "2026-01-01T00:00:00.000Z", participantUpdatedAt: "2026-02-01T00:00:00.000Z" },
+        directus: new Map([["school", "2026-03-01T00:00:00.000Z"]]),
+      },
+    );
+    expect(plan.patch).toEqual({});
+  });
+
+  it("asks for the school columns' edit times only when an answer names a different school", () => {
+    const answers = [{ customFieldID: "def-1", response: "Roosevelt High" }];
+    expect(promotedFieldsToOverwrite(targetByDefinitionId, answers, { school: "Roosevelt High" }, noSchools)).toEqual(
+      [],
+    );
+    expect(promotedFieldsToOverwrite(targetByDefinitionId, answers, { school: "Staff School" }, noSchools)).toEqual([
+      "school_id",
+      "school",
+    ]);
   });
 
   it("writes over a stale answer, counting the replaced staff edit", () => {

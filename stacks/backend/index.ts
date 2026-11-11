@@ -380,6 +380,46 @@ permissionRule(
   { dependsOn: crmSchema },
 );
 
+// Between staff and Clubspot the latest edit wins (cyc-seattle/platform#157), so the sync reads when
+// someone last edited a field it's about to overwrite, and tells its own edits apart by its user's id.
+const editHistoryCollections = ["people", "medical_profiles"];
+permissionRule(
+  "crm-clubspot-sync-revisions-read",
+  {
+    ...auth,
+    policyId: clubspotSyncPolicyId,
+    collection: "directus_revisions",
+    action: "read",
+    fields: ["id", "collection", "item", "delta", "activity"],
+    permissions: { collection: { _in: editHistoryCollections } },
+  },
+  { dependsOn: crmSchema },
+);
+permissionRule(
+  "crm-clubspot-sync-activity-read",
+  {
+    ...auth,
+    policyId: clubspotSyncPolicyId,
+    collection: "directus_activity",
+    action: "read",
+    fields: ["id", "collection", "user", "timestamp"],
+    permissions: { collection: { _in: editHistoryCollections } },
+  },
+  { dependsOn: crmSchema },
+);
+permissionRule(
+  "crm-clubspot-sync-users-read",
+  {
+    ...auth,
+    policyId: clubspotSyncPolicyId,
+    collection: "directus_users",
+    action: "read",
+    fields: ["id"],
+    permissions: { id: { _eq: "$CURRENT_USER" } },
+  },
+  { dependsOn: crmSchema },
+);
+
 // Program and program area role assignments and google_group_memberships are owned elsewhere - the
 // merge executor only repoints person_id off a duplicate onto its keeper (cyc-seattle/isthmia#133).
 for (const collection of ["program_role_assignments", "program_area_role_assignments", "google_group_memberships"]) {

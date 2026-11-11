@@ -48,10 +48,14 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
   const fetchMock = vi.fn(async (url: string, init?: FetchInit) => {
     const method = init?.method ?? "GET";
     const parsed = new URL(url);
-    const [, , collection, id] = parsed.pathname.split("/");
+    const [, root, itemsCollection, id] = parsed.pathname.split("/");
+    // Directus's own collections are read at `/revisions`, `/users`, ...
+    const collection = root === "items" ? itemsCollection : `directus_${root}`;
 
     if (method === "GET") {
-      const rows = table(collection!).filter((row) => matchesFilter(row, filterFromParams(parsed.searchParams)));
+      // The one `directus_users` row stands for the token's own user, whatever `$CURRENT_USER` is.
+      const filter = collection === "directus_users" ? {} : filterFromParams(parsed.searchParams);
+      const rows = table(collection!).filter((row) => matchesFilter(row, filter));
       return jsonResponse(200, { data: rows });
     }
     if (method === "POST") {
@@ -81,8 +85,8 @@ function parseObject(id: string, data: Record<string, unknown>) {
   return { id, get: (key: string) => data[key] };
 }
 
-function participant(data: Record<string, unknown>, id = "participant-1") {
-  return parseObject(id, data) as unknown as Participant;
+function participant(data: Record<string, unknown>, id = "participant-1", updatedAt?: Date) {
+  return { ...parseObject(id, data), updatedAt } as unknown as Participant;
 }
 
 function rank(id: string, archived: boolean, registeredAt: string): RegistrationRank {
@@ -1597,5 +1601,167 @@ describe("PersonSync.syncParticipant - medical_profiles", () => {
 
     expect(resolved.fieldsBlankSkipped).toBeGreaterThanOrEqual(1);
     expect(tables.get("medical_profiles")![0]).toMatchObject({ allergies: "peanuts" });
+  });
+});
+
+describe("PersonSync.syncParticipant - the latest edit wins (cyc-seattle/platform#157)", () => {
+  const syncUser = { id: "sync-user" };
+
+  function seedPerson(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: "person-1",
+      first_name: "Alex",
+      last_name: "Rivera",
+      email: null,
+      phone: null,
+      date_of_birth: "2015-04-01",
+      gender: null,
+      street: null,
+      city: null,
+      state: null,
+      postal_code: null,
+      ...overrides,
+    };
+  }
+
+  function revision(id: number, user: string, timestamp: string, delta: Record<string, unknown>) {
+    return { id, collection: "people", item: "person-1", delta, activity: { user, timestamp } };
+  }
+
+  /** The Fall registration whose mirror is a new season's fallback base. */
+  function fallSeed() {
+    return {
+      clubspot_participants: [
+        { id: "participant-fall", person_id: "person-1", first_name: "Alex", last_name: "Rivera", city: "Tacoma" },
+      ],
+      clubspot_registrations: [
+        {
+          id: "reg-fall",
+          participant_id: "participant-fall",
+          camp_id: "camp-fall",
+          registered_at: "2025-09-01T00:00:00.000Z",
+          status: "confirmed",
+          waiver_status: null,
+          archived: false,
+        },
+      ],
+    };
+  }
+
+  async function syncSpring(registeredAt: string) {
+    const sync = new PersonSync(new DirectusClient(baseUrl, token));
+    const data = { firstName: "Alex", lastName: "Rivera", city: "Tacoma" };
+    return sync.syncParticipant(
+      participant(data, "participant-spring"),
+      options({
+        existingPersonId: "person-1",
+        mirrorFields: mirrorFieldsFor(data, "participant-spring"),
+        registration: rank("reg-spring", false, registeredAt),
+      }),
+    );
+  }
+
+  it("writes a newer form's answer over an older staff edit, even when it repeats the form before", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ city: "Seattle" })],
+      ...fallSeed(),
+      directus_users: [syncUser],
+      directus_revisions: [
+        revision(1, "sync-user", "2025-09-02T00:00:00.000Z", { city: "Tacoma" }),
+        revision(2, "staff-user", "2025-10-01T00:00:00.000Z", { city: "Seattle" }),
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const resolved = await syncSpring("2026-03-01T00:00:00Z");
+
+    expect(tables.get("people")![0]).toMatchObject({ city: "Tacoma" });
+    expect(resolved.fieldsReplacedStaffEdits).toBe(1);
+  });
+
+  it("keeps a staff edit made after the form was answered", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ city: "Seattle" })],
+      ...fallSeed(),
+      directus_users: [syncUser],
+      directus_revisions: [revision(2, "staff-user", "2026-04-01T00:00:00.000Z", { city: "Seattle" })],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const resolved = await syncSpring("2026-03-01T00:00:00Z");
+
+    expect(tables.get("people")![0]).toMatchObject({ city: "Seattle" });
+    expect(resolved.fieldsWritten).toBe(0);
+  });
+
+  it("writes a first-ever answer given after a staff edit, instead of only filling a null", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ city: "Seattle" })],
+      directus_users: [syncUser],
+      directus_revisions: [revision(2, "staff-user", "2025-10-01T00:00:00.000Z", { city: "Seattle" })],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await syncSpring("2026-03-01T00:00:00Z");
+
+    expect(tables.get("people")![0]).toMatchObject({ city: "Tacoma" });
+  });
+
+  it("dates a changed answer by the participant's last update, not its registration", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ city: "Seattle" })],
+      directus_users: [syncUser],
+      directus_revisions: [revision(2, "staff-user", "2026-03-01T00:00:00.000Z", { city: "Seattle" })],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const sync = new PersonSync(new DirectusClient(baseUrl, token));
+
+    const priorMirror = participantRow({ id: "participant-1", person_id: "person-1", city: "Tacoma" });
+    const data = { firstName: "Alex", lastName: "Rivera", city: "Bellevue" };
+    await sync.syncParticipant(
+      participant(data, "participant-1", new Date("2026-05-01T00:00:00Z")),
+      options({
+        existingPersonId: "person-1",
+        priorMirror,
+        mirrorFields: mirrorFieldsFor(data),
+        registration: rank("reg-1", false, "2026-01-01T00:00:00Z"),
+      }),
+    );
+
+    expect(tables.get("people")![0]).toMatchObject({ city: "Bellevue" });
+  });
+
+  it("settles Clubspot against itself by the base rule once the sync made the latest edit", async () => {
+    // Staff's edit was replaced by a sync write since, so the person's city came from a form. A
+    // sibling's form naming the same guardian must not flip it back and forth by answer time.
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [seedPerson({ city: "Seattle" })],
+      ...fallSeed(),
+      directus_users: [syncUser],
+      directus_revisions: [
+        revision(2, "staff-user", "2025-10-01T00:00:00.000Z", { city: "Bellevue" }),
+        revision(3, "sync-user", "2025-11-01T00:00:00.000Z", { city: "Seattle" }),
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const resolved = await syncSpring("2026-03-01T00:00:00Z");
+
+    expect(tables.get("people")![0]).toMatchObject({ city: "Seattle" });
+    expect(resolved.fieldsWritten).toBe(0);
+  });
+
+  it("reads no revisions when Clubspot's answers already match the person", async () => {
+    const { fetchMock } = makeDirectusStore({
+      people: [seedPerson({ city: "Tacoma" })],
+      ...fallSeed(),
+      directus_users: [syncUser],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await syncSpring("2026-03-01T00:00:00Z");
+
+    const revisionReads = fetchMock.mock.calls.filter(([url]) => new URL(url).pathname === "/revisions");
+    expect(revisionReads).toHaveLength(0);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   bestRanked,
+  clubspotAnswerTime,
   isNewestParticipant,
   parseYesNo,
   planSyncedField,
@@ -97,6 +98,78 @@ interface Row {
   first_name: string | null;
   last_name: string | null;
 }
+
+describe("planSyncedField - the latest edit wins (cyc-seattle/platform#157)", () => {
+  const staffEditedAt = "2026-03-01T00:00:00.000Z";
+
+  it("writes an answer given after the staff edit, even one that repeats base", () => {
+    expect(
+      planSyncedField("Yes", "No", "No", { clubspot: "2026-04-01T00:00:00.000Z", directus: staffEditedAt }),
+    ).toEqual({
+      action: "write",
+      value: "No",
+      replacedStaffEdit: true,
+    });
+  });
+
+  it("writes a first-ever answer given after the staff edit, instead of only filling a null", () => {
+    expect(
+      planSyncedField("Yes", undefined, "No", { clubspot: "2026-04-01T00:00:00.000Z", directus: staffEditedAt }),
+    ).toEqual({ action: "write", value: "No", replacedStaffEdit: true });
+  });
+
+  it("keeps a staff edit made after the answer", () => {
+    expect(
+      planSyncedField("Yes", "Maybe", "No", { clubspot: "2026-02-01T00:00:00.000Z", directus: staffEditedAt }),
+    ).toEqual({
+      action: "skip",
+      reason: "edited-later",
+    });
+  });
+
+  it("keeps a staff edit made at the same moment as the answer", () => {
+    expect(planSyncedField("Yes", "No", "No", { clubspot: staffEditedAt, directus: staffEditedAt })).toMatchObject({
+      action: "skip",
+    });
+  });
+
+  it("never writes a blank, however new", () => {
+    expect(
+      planSyncedField("Yes", "No", null, { clubspot: "2026-04-01T00:00:00.000Z", directus: staffEditedAt }),
+    ).toEqual({
+      action: "skip",
+      reason: "blank",
+    });
+  });
+
+  it("falls back to the base rule when no Directus edit set the value", () => {
+    expect(planSyncedField("Yes", "No", "No", { clubspot: "2026-04-01T00:00:00.000Z", directus: undefined })).toEqual({
+      action: "skip",
+      reason: "unchanged",
+    });
+  });
+});
+
+describe("clubspotAnswerTime", () => {
+  const registeredAt = "2026-01-01T00:00:00.000Z";
+  const updatedAt = "2026-05-01T00:00:00.000Z";
+
+  it("dates a participant's first answer by its registration", () => {
+    expect(clubspotAnswerTime(undefined, "No", registeredAt, updatedAt)).toBe(registeredAt);
+  });
+
+  it("dates an answer unchanged since the last mirror by its registration, since updatedAt may date another field", () => {
+    expect(clubspotAnswerTime("No", "No", registeredAt, updatedAt)).toBe(registeredAt);
+  });
+
+  it("dates a changed answer by the participant's last update", () => {
+    expect(clubspotAnswerTime("Yes", "No", registeredAt, updatedAt)).toBe(updatedAt);
+  });
+
+  it("dates a changed answer by its registration when Parse gives no update time", () => {
+    expect(clubspotAnswerTime("Yes", "No", registeredAt, undefined)).toBe(registeredAt);
+  });
+});
 
 describe("planSyncedFields", () => {
   const fields = ["first_name", "last_name"] as const;
