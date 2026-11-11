@@ -182,6 +182,12 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const catalog = catalogCollections(schemas);
   const plans = planCollections(schemas);
   const readCatalog = catalog.map((collection) => ({ collection, action: "read" as const }));
+  // So a saved Financial Plan can name who saved it (cyc-seattle/platform#138).
+  const readUserNames = {
+    collection: "directus_users",
+    action: "read" as const,
+    fields: ["id", "first_name", "last_name"],
+  };
   return [
     {
       key: "crm-reader",
@@ -237,8 +243,8 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       key: "plan-reader",
       name: "Plan Reader",
       icon: "event_note",
-      description: "Sees every plan, wages and bonus rates included, and the catalog.",
-      rules: [...readCatalog, ...plans.map((collection) => ({ collection, action: "read" as const }))],
+      description: "Sees every plan, wages and bonus rates included, the catalog, and users' names.",
+      rules: [...readCatalog, readUserNames, ...plans.map((collection) => ({ collection, action: "read" as const }))],
     },
     // The saved-versions hook keeps a saved version from changing, for every user (docs/planning-schema.md).
     {
@@ -246,9 +252,10 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Plan Writer",
       icon: "edit_calendar",
       description:
-        "Changes any plan in a draft Financial Plan, saves a Financial Plan, and marks a saved one active. Sees the catalog.",
+        "Changes any plan in a draft Financial Plan, saves a Financial Plan, and marks a saved one active. Sees the catalog and users' names.",
       rules: [
         ...readCatalog,
+        readUserNames,
         ...plans.flatMap((collection) =>
           (isResultCollection(collection)
             ? (["read"] as const)
