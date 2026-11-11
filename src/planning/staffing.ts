@@ -98,14 +98,10 @@ function groupBy<T>(rows: T[], key: (row: T) => Id): Map<Id, T[]> {
 
 export class Staffing {
   private readonly ctx: Context;
-  private readonly covers = new Map<Id, Set<Id>>();
   private readonly warned = new Set<string>();
 
   constructor(ctx: Context) {
     this.ctx = ctx;
-    for (const c of ctx.data.qualification_covers) {
-      this.covers.set(c.qualification_id, new Set([...(this.covers.get(c.qualification_id) ?? []), c.covers_id]));
-    }
   }
 
   /** Warns once for each row and plan copy, about the first date it's seen on. */
@@ -114,20 +110,6 @@ export class Staffing {
     if (this.warned.has(id)) return;
     this.warned.add(id);
     this.ctx.warn(code, message, key, scope);
-  }
-
-  /** Whether holding `held` qualifies for `required`, through `qualification_covers`. */
-  qualifies(held: Id[], required: Id): boolean {
-    const seen = new Set<Id>();
-    const stack = [...held];
-    while (stack.length > 0) {
-      const q = stack.pop() as Id;
-      if (q === required) return true;
-      if (seen.has(q)) continue;
-      seen.add(q);
-      stack.push(...(this.covers.get(q) ?? []));
-    }
-    return false;
   }
 
   /**
@@ -218,18 +200,11 @@ export class Staffing {
     return new Map(this.ctx.data.plan_programs.map((p) => [p.product_id, p]));
   }
 
-  /** Whether a staff member holding `held`, at level `levelKey` if any, may coach a program coached at `required`. */
-  private qualifiedFor(held: Id[], levelKey: Id | null, required: Id): boolean {
-    if (levelKey === required) return true;
-    const level = this.ctx.data.plan_staff_levels.find((l) => l.key === required);
-    const needed = level?.qualifications ?? [];
-    return needed.length > 0 && needed.every((q) => this.qualifies(held, q));
-  }
-
   /**
    * Warns when a block's sailors are more than its staff or its boats can safely take. Each program's
-   * sailors count against its own sailors per coach, and a coach counts if they're at the staff
-   * level of one of the block's programs, or qualified for it. Boats count the ones sailors bring.
+   * sailors count against its own sailors per coach. A staff-level row counts if it's at one of the
+   * block's programs' levels, and a salaried position counts for any of them (#208). Boats count the
+   * ones sailors bring.
    */
   private checkCapacity(block: Block, programs: Map<Id, PlanProgram>): void {
     const { ctx } = this;
@@ -262,24 +237,15 @@ export class Staffing {
       required.push(settings.staff_level_key);
     }
     if (counted > 0) {
-      const levels = new Map(ctx.data.plan_staff_levels.map((l) => [l.key, l]));
-      const positions = new Map(ctx.data.plan_salaried_positions.map((p) => [p.key, p]));
-      const qualified = sum(
-        block.staff.map((s) => {
-          const held =
-            s.position_key != null
-              ? (positions.get(s.position_key)?.qualifications ?? [])
-              : (levels.get(s.staff_level_key ?? "")?.qualifications ?? []);
-          const level = s.position_key != null ? null : s.staff_level_key;
-          return required.some((r) => this.qualifiedFor(held, level, r)) ? s.count : 0;
-        }),
+      const coaches = sum(
+        block.staff.map((s) => (s.position_key != null || required.includes(s.staff_level_key ?? "") ? s.count : 0)),
       );
-      if (load > qualified + 1e-9) {
+      if (load > coaches + 1e-9) {
         ctx.warn(
           "over_capacity",
-          qualified === 0
+          coaches === 0
             ? `${has} ${countOf(counted, "sailor")} and no coach`
-            : `${has} ${countOf(counted, "sailor")}, but enough coaches for only ${Math.floor((qualified * counted) / load + 1e-9)}`,
+            : `${has} ${countOf(counted, "sailor")}, but enough coaches for only ${Math.floor((coaches * counted) / load + 1e-9)}`,
           block.row.key,
           scope,
         );

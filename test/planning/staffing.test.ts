@@ -333,10 +333,22 @@ describe("staffing", () => {
       expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
     });
 
-    it("counts a coach qualified for the program's staff level, and not one who isn't", () => {
-      expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
-      const out = computePlan(guppies(10, { staff: [{ staff_level_key: junior.key }] }));
-      expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2 has 10 sailors and no coach");
+    it("counts only coaches at the program's own staff level, whatever their qualifications", () => {
+      for (const level of [L2, junior]) {
+        const out = computePlan(guppies(10, { staff: [{ staff_level_key: level.key }] }));
+        expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2 has 10 sailors and no coach");
+      }
+    });
+
+    it("counts a salaried position on the block as one coach", () => {
+      const director = position();
+      const data = guppies(10, { staff: [{ position_key: director.key }] });
+      data.plan_salaried_positions = [director];
+      expect(codes(data)).not.toContain("over_capacity");
+      data.plan_offerings[0]!.target_enrollment = 11;
+      expect(computePlan(data).warnings.map((w) => w.message)).toContain(
+        "Guppies Week 2 has 11 sailors, but enough coaches for only 10",
+      );
     });
 
     it("counts each program's sailors against its own sailors per coach", () => {
