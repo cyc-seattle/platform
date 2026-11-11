@@ -25,8 +25,8 @@ importers:
         specifier: ^13.1.0
         version: 13.1.0(commander@13.1.0)
       '@cyc-seattle/clubspot-sdk':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.4.1
+        version: 0.4.1
       '@cyc-seattle/commodore':
         specifier: ^0.1.0
         version: 0.1.2
@@ -72,9 +72,6 @@ importers:
       '@types/node':
         specifier: ^22.19.1
         version: 22.20.5
-      '@types/parse':
-        specifier: ^3.0.9
-        version: 3.0.9
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
@@ -136,8 +133,8 @@ packages:
     peerDependencies:
       commander: ~13.1.0
 
-  '@cyc-seattle/clubspot-sdk@0.3.0':
-    resolution: {integrity: sha512-Wbxh4vIuk9NAm228nIiyTF7UkYuYl7VIV4Q5i5XSxn3Kq3K6rh23WvAIoPezct+oH9NwUk54VvEeaLPQMyenKA==}
+  '@cyc-seattle/clubspot-sdk@0.4.1':
+    resolution: {integrity: sha512-dMICTUGsp2dftQQ4uRaoALjU3j7mA0Vpv++haBcdC2i0/NLIQ+jdfE83uXZhvuUjLe9vu6/baWSLZDd9nEakFw==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -851,9 +848,6 @@ packages:
   '@types/node@22.20.5':
     resolution: {integrity: sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==}
 
-  '@types/parse@3.0.9':
-    resolution: {integrity: sha512-DGTHygc7krgmNAK8h42giwmAofCd9uv2++RD+zw6OmWI7AEnlTYZwEuWsx22SA2CSMQrZW8P2INHLpQbnQFUng==}
-
   '@types/qs@6.15.1':
     resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
 
@@ -1466,8 +1460,8 @@ packages:
     resolution: {integrity: sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==}
     engines: {node: '>=0.10.0'}
 
-  idb-keyval@6.2.1:
-    resolution: {integrity: sha512-8Sb3veuYCyrZL+VBt9LJfZjLUPWVvqn8tG28VqYNFCo43KHcKuq+b4EiXGeuaLAQWL2YmyDgMp2aSpH9JHsEQg==}
+  idb-keyval@6.2.2:
+    resolution: {integrity: sha512-yjD9nARJ/jb1g+CvD0tlhUHOrJ9Sy0P8T9MF3YaLlHnSRpwPfpTX0XIvpmw3gAJUmEu3FiICLBDPXVwyEvrleg==}
 
   ignore-walk@8.0.0:
     resolution: {integrity: sha512-FCeMZT4NiRQGh+YkeKMtWrOmBgWjHjMJ26WQWrRQyoyzqevdaGSakUaJW5xQYmjLlUVk2qUnCjYVBax9EKKg8A==}
@@ -1886,9 +1880,9 @@ packages:
     resolution: {integrity: sha512-ZHEmNKMq1wyJXNwLxyHnluPfRAFSIliBvbK/UiOceROt4Xh9Pz0fq49NytIaeaCUf5VR86hwQ/34FCcNU5/LKQ==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  parse@5.3.0:
-    resolution: {integrity: sha512-mWBnE6hHJhdvlx5KPQcYgCGRdgqKhPw+5fSC0j7vOfse3Lkh3xtDwOfmDpvv2LXZVBj72G/mgVKMRmbAICRzkQ==}
-    engines: {node: 18 || 19 || 20 || 22}
+  parse@7.1.2:
+    resolution: {integrity: sha512-PXcPZDElBni06WPMxg0e6XmvgYBu3v39pRezZDbsomi8y9k1uNEDO/uICIqndw8jdES2ZfVpHp0TQoar2SObHQ==}
+    engines: {node: 18 || 19 || 20 || 22 || 24}
 
   parsecurrency@1.1.1:
     resolution: {integrity: sha512-IAw/8PSFgiko70KfZGv63rbEXhmVu+zpb42PvEtgHAm83Mze3eQJHWV1ZoOhPnrYeOyufvv0GS6hZDuQOdBH4Q==}
@@ -2358,10 +2352,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  xmlhttprequest@1.8.0:
-    resolution: {integrity: sha512-58Im/U0mlVBLM38NdZjHyhuMtCqa61469k2YP/AaPbvCoV9aQGUpbJBj1QRm2ytRiVQBD/fsw7L2bJGDVQswBA==}
-    engines: {node: '>=0.4.0'}
-
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -2410,12 +2400,12 @@ snapshots:
     dependencies:
       commander: 13.1.0
 
-  '@cyc-seattle/clubspot-sdk@0.3.0':
+  '@cyc-seattle/clubspot-sdk@0.4.1':
     dependencies:
       '@commander-js/extra-typings': 13.1.0(commander@13.1.0)
       '@cyc-seattle/commodore': 0.1.2
       commander: 13.1.0
-      parse: 5.3.0
+      parse: 7.1.2
       winston: 3.19.0
     transitivePeerDependencies:
       - bufferutil
@@ -3192,10 +3182,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/parse@3.0.9':
-    dependencies:
-      '@types/node': 22.20.5
-
   '@types/qs@6.15.1': {}
 
   '@types/range-parser@1.2.7': {}
@@ -3468,8 +3454,7 @@ snapshots:
       shebang-command: 2.0.0
       which: 2.0.2
 
-  crypto-js@4.2.0:
-    optional: true
+  crypto-js@4.2.0: {}
 
   cssesc@3.0.0: {}
 
@@ -3881,7 +3866,7 @@ snapshots:
       safer-buffer: 2.1.2
     optional: true
 
-  idb-keyval@6.2.1: {}
+  idb-keyval@6.2.2: {}
 
   ignore-walk@8.0.0:
     dependencies:
@@ -4287,16 +4272,13 @@ snapshots:
       just-diff: 6.0.2
       just-diff-apply: 5.5.0
 
-  parse@5.3.0:
+  parse@7.1.2:
     dependencies:
       '@babel/runtime-corejs3': 8.0.10
-      idb-keyval: 6.2.1
-      react-native-crypto-js: 1.0.0
-      uuid: 11.1.1
-      ws: 8.22.1
-      xmlhttprequest: 1.8.0
-    optionalDependencies:
       crypto-js: 4.2.0
+      idb-keyval: 6.2.2
+      react-native-crypto-js: 1.0.0
+      ws: 8.22.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -4717,8 +4699,6 @@ snapshots:
       signal-exit: 4.1.0
 
   ws@8.22.1: {}
-
-  xmlhttprequest@1.8.0: {}
 
   y18n@5.0.8: {}
 
