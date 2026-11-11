@@ -1,0 +1,2599 @@
+version: 1
+directus: 12.3.1
+vendor: postgres
+collections:
+  - collection: Inventory
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: Inventory
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: inventory_2
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+  - collection: boats
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: boats
+      color: null
+      display_template: "{{boat_class_id.name}} {{sail_number}} · {{hull_number}}"
+      group: Inventory
+      hidden: false
+      icon: sailing
+      item_duplication_fields: null
+      note: Each of CSC's own boats. Sailors' own boats aren't listed here.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: boats
+  - collection: boat_stage_changes
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: boat_stage_changes
+      color: null
+      display_template: "{{boat_id.boat_class_id.name}} {{boat_id.sail_number}} · {{boat_id.hull_number}}: {{stage}} from {{changed_on}}"
+      group: Inventory
+      hidden: false
+      icon: swap_horiz
+      item_duplication_fields: null
+      note: When each boat started its charter life, moved to its beginner life, or retired. A boat's stage is its latest row. Add a row to move a boat on. A row can't be changed once it's added.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: boat_stage_changes
+  - collection: boat_charters
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: boat_charters
+      color: null
+      display_template: "{{boat_id.boat_class_id.name}} {{boat_id.sail_number}} · {{boat_id.hull_number}}: {{person_id.first_name}} {{person_id.last_name}}, {{term_id.name}}"
+      group: Inventory
+      hidden: false
+      icon: handshake
+      item_duplication_fields: null
+      note: Which sailor charters which boat each term.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: boat_charters
+  - collection: boat_damage
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: boat_damage
+      color: null
+      display_template: "{{boat_id.boat_class_id.name}} {{boat_id.sail_number}} · {{boat_id.hull_number}}, {{occurred_on}}"
+      group: Inventory
+      hidden: false
+      icon: build
+      item_duplication_fields: null
+      note: Damage to CSC's boats, what it cost to repair, and what the sailor was charged.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: boat_damage
+  - collection: storage_spaces
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: storage_spaces
+      color: null
+      display_template: "{{location}} ({{boat_class_id.name}})"
+      group: Inventory
+      hidden: false
+      icon: warehouse
+      item_duplication_fields: null
+      note: The racks and deck space CSC keeps boats on, each for one boat class.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: storage_spaces
+  - collection: storage_agreements
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: storage_agreements
+      color: null
+      display_template: "{{person_id.first_name}} {{person_id.last_name}}: {{storage_space_id.location}}, from {{starts_on}}"
+      group: Inventory
+      hidden: false
+      icon: contract
+      item_duplication_fields: null
+      note: Storage CSC sells to sailors for their own boats.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: storage_agreements
+fields:
+  - collection: boats
+    field: id
+    type: uuid
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: boat_class_id
+    type: uuid
+    meta:
+      collection: boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: boat_class_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat class
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_class_id
+      table: boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+  - collection: boats
+    field: sail_number
+    type: string
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: sail_number
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Sail number
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sail_number
+      table: boats
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: hull_number
+    type: string
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: hull_number
+      group: null
+      hidden: false
+      interface: input
+      note: The hull identification number on the transom.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Hull number
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hull_number
+      table: boats
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: name
+    type: string
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: The boat's name, if it has one.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: boats
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: acquired_how
+    type: string
+    meta:
+      collection: boats
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Bought
+            value: bought
+          - text: Donated
+            value: donated
+      field: acquired_how
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Bought
+            value: bought
+          - text: Donated
+            value: donated
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Bought or donated
+      validation:
+        acquired_how:
+          _in:
+            - bought
+            - donated
+      validation_message: "Must be one of: bought, donated."
+      width: full
+    schema:
+      name: acquired_how
+      table: boats
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: value_cents
+    type: integer
+    meta:
+      collection: boats
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: value_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What CSC paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Value
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: value_cents
+      table: boats
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: acquired_on
+    type: date
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: acquired_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The day CSC got the boat.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Acquired
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: acquired_on
+      table: boats
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: in_service_on
+    type: date
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: in_service_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The day the boat first sailed in a program.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: In service
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: in_service_on
+      table: boats
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: storage_space_id
+    type: uuid
+    meta:
+      collection: boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{location}} ({{boat_class_id.name}})"
+      field: storage_space_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Stored on
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: storage_space_id
+      table: boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: storage_spaces
+      foreign_key_column: id
+  - collection: boats
+    field: note
+    type: text
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: boats
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: stage_changes
+    type: alias
+    meta:
+      collection: boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{stage}} from {{changed_on}}"
+      field: stage_changes
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        template: "{{stage}} from {{changed_on}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Stage changes
+      validation: null
+      validation_message: null
+      width: full
+  - collection: boats
+    field: damage
+    type: alias
+    meta:
+      collection: boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{occurred_on}}: {{status}}"
+      field: damage
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        template: "{{occurred_on}}: {{status}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 13
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Damage
+      validation: null
+      validation_message: null
+      width: full
+  - collection: boat_stage_changes
+    field: id
+    type: uuid
+    meta:
+      collection: boat_stage_changes
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: boat_stage_changes
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_stage_changes
+    field: boat_id
+    type: uuid
+    meta:
+      collection: boat_stage_changes
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{boat_class_id.name}} {{sail_number}} · {{hull_number}}"
+      field: boat_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_id
+      table: boat_stage_changes
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: boats
+      foreign_key_column: id
+  - collection: boat_stage_changes
+    field: stage
+    type: string
+    meta:
+      collection: boat_stage_changes
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Charter life
+            value: charter
+          - text: Beginner life
+            value: beginner
+          - text: Retired
+            value: retired
+      field: stage
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: A boat wears down over its charter life, then its beginner life.
+      options:
+        choices:
+          - text: Charter life
+            value: charter
+          - text: Beginner life
+            value: beginner
+          - text: Retired
+            value: retired
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation:
+        stage:
+          _in:
+            - charter
+            - beginner
+            - retired
+      validation_message: "Must be one of: charter, beginner, retired."
+      width: full
+    schema:
+      name: stage
+      table: boat_stage_changes
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_stage_changes
+    field: changed_on
+    type: date
+    meta:
+      collection: boat_stage_changes
+      conditions: null
+      display: null
+      display_options: null
+      field: changed_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: From
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: changed_on
+      table: boat_stage_changes
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_stage_changes
+    field: note
+    type: text
+    meta:
+      collection: boat_stage_changes
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: Why it moved, such as hull damage.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: boat_stage_changes
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_charters
+    field: id
+    type: uuid
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: boat_charters
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_charters
+    field: boat_id
+    type: uuid
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{boat_class_id.name}} {{sail_number}} · {{hull_number}}"
+      field: boat_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_id
+      table: boat_charters
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: boats
+      foreign_key_column: id
+  - collection: boat_charters
+    field: person_id
+    type: uuid
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
+      field: person_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Sailor
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: person_id
+      table: boat_charters
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: people
+      foreign_key_column: id
+  - collection: boat_charters
+    field: term_id
+    type: uuid
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: term_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Term
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: term_id
+      table: boat_charters
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: terms
+      foreign_key_column: id
+  - collection: boat_charters
+    field: product_id
+    type: uuid
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: product_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The charter product the boat's costs go to.
+      options:
+        filter:
+          kind:
+            _eq: charter
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Charter
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product_id
+      table: boat_charters
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: products
+      foreign_key_column: id
+  - collection: boat_charters
+    field: starts_on
+    type: date
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: null
+      display_options: null
+      field: starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: starts_on
+      table: boat_charters
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_charters
+    field: ends_on
+    type: date
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: null
+      display_options: null
+      field: ends_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ends_on
+      table: boat_charters
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_charters
+    field: fee_cents
+    type: integer
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: fee_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What the sailor pays for the charter. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Fee
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: fee_cents
+      table: boat_charters
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_charters
+    field: agreement_url
+    type: string
+    meta:
+      collection: boat_charters
+      conditions: null
+      display: null
+      display_options: null
+      field: agreement_url
+      group: null
+      hidden: false
+      interface: input
+      note: A link to the signed charter agreement.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Agreement
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: agreement_url
+      table: boat_charters
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_damage
+    field: id
+    type: uuid
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: boat_damage
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_damage
+    field: boat_id
+    type: uuid
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{boat_class_id.name}} {{sail_number}} · {{hull_number}}"
+      field: boat_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_id
+      table: boat_damage
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: boats
+      foreign_key_column: id
+  - collection: boat_damage
+    field: occurred_on
+    type: date
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: null
+      display_options: null
+      field: occurred_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Date
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: occurred_on
+      table: boat_damage
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_damage
+    field: description
+    type: text
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: null
+      display_options: null
+      field: description
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: What happened
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: description
+      table: boat_damage
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_damage
+    field: status
+    type: string
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Open
+            value: open
+          - text: Repaired
+            value: repaired
+          - text: Written off
+            value: written_off
+      field: status
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Open
+            value: open
+          - text: Repaired
+            value: repaired
+          - text: Written off
+            value: written_off
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation:
+        status:
+          _in:
+            - open
+            - repaired
+            - written_off
+      validation_message: "Must be one of: open, repaired, written_off."
+      width: full
+    schema:
+      name: status
+      table: boat_damage
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_damage
+    field: repair_cost_cents
+    type: integer
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: repair_cost_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What the repair cost, or will cost. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Repair cost
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: repair_cost_cents
+      table: boat_damage
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boat_damage
+    field: person_id
+    type: uuid
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
+      field: person_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The sailor charged for the damage, if anyone is.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Sailor charged
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: person_id
+      table: boat_damage
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: people
+      foreign_key_column: id
+  - collection: boat_damage
+    field: charged_cents
+    type: integer
+    meta:
+      collection: boat_damage
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: charged_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What the sailor was charged. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Charged to sailor
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: charged_cents
+      table: boat_damage
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_spaces
+    field: id
+    type: uuid
+    meta:
+      collection: storage_spaces
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: storage_spaces
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_spaces
+    field: kind
+    type: string
+    meta:
+      collection: storage_spaces
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Rack
+            value: rack
+          - text: Deck space
+            value: deck
+      field: kind
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Rack
+            value: rack
+          - text: Deck space
+            value: deck
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation:
+        kind:
+          _in:
+            - rack
+            - deck
+      validation_message: "Must be one of: rack, deck."
+      width: full
+    schema:
+      name: kind
+      table: storage_spaces
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_spaces
+    field: location
+    type: string
+    meta:
+      collection: storage_spaces
+      conditions: null
+      display: null
+      display_options: null
+      field: location
+      group: null
+      hidden: false
+      interface: input
+      note: Where it is, such as Rack 3 or North deck.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: location
+      table: storage_spaces
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_spaces
+    field: boat_class_id
+    type: uuid
+    meta:
+      collection: storage_spaces
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: boat_class_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat class
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_class_id
+      table: storage_spaces
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+  - collection: storage_spaces
+    field: capacity
+    type: integer
+    meta:
+      collection: storage_spaces
+      conditions: null
+      display: null
+      display_options: null
+      field: capacity
+      group: null
+      hidden: false
+      interface: input
+      note: How many boats it holds.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: capacity
+      table: storage_spaces
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_spaces
+    field: footprint_sq_ft
+    type: decimal
+    meta:
+      collection: storage_spaces
+      conditions: null
+      display: null
+      display_options: null
+      field: footprint_sq_ft
+      group: null
+      hidden: false
+      interface: input
+      note: The floor space it takes.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Footprint (sq ft)
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: footprint_sq_ft
+      table: storage_spaces
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 10
+      numeric_scale: 2
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_agreements
+    field: id
+    type: uuid
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: storage_agreements
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_agreements
+    field: person_id
+    type: uuid
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
+      field: person_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Sailor
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: person_id
+      table: storage_agreements
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: people
+      foreign_key_column: id
+  - collection: storage_agreements
+    field: storage_space_id
+    type: uuid
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{location}} ({{boat_class_id.name}})"
+      field: storage_space_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Space
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: storage_space_id
+      table: storage_agreements
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: storage_spaces
+      foreign_key_column: id
+  - collection: storage_agreements
+    field: product_id
+    type: uuid
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: product_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The storage product the agreement is sold as.
+      options:
+        filter:
+          kind:
+            _eq: storage_lease
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Storage
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product_id
+      table: storage_agreements
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: products
+      foreign_key_column: id
+  - collection: storage_agreements
+    field: boat_description
+    type: string
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: null
+      display_options: null
+      field: boat_description
+      group: null
+      hidden: false
+      interface: input
+      note: The sailor's own boat, such as its class and sail number.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Boat
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_description
+      table: storage_agreements
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_agreements
+    field: starts_on
+    type: date
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: null
+      display_options: null
+      field: starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: starts_on
+      table: storage_agreements
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_agreements
+    field: ends_on
+    type: date
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: null
+      display_options: null
+      field: ends_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: Empty while the agreement runs on.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ends_on
+      table: storage_agreements
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_agreements
+    field: fee_cents
+    type: integer
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: fee_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What the sailor pays for the agreement. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Fee
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: fee_cents
+      table: storage_agreements
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: storage_agreements
+    field: agreement_url
+    type: string
+    meta:
+      collection: storage_agreements
+      conditions: null
+      display: null
+      display_options: null
+      field: agreement_url
+      group: null
+      hidden: false
+      interface: input
+      note: A link to the signed storage agreement.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Agreement
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: agreement_url
+      table: storage_agreements
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+relations:
+  - collection: boats
+    field: boat_class_id
+    related_collection: boat_classes
+    meta:
+      junction_field: null
+      many_collection: boats
+      many_field: boat_class_id
+      one_allowed_collections: null
+      one_collection: boat_classes
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boats
+      column: boat_class_id
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+      constraint_name: boats_boat_class_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boats
+    field: storage_space_id
+    related_collection: storage_spaces
+    meta:
+      junction_field: null
+      many_collection: boats
+      many_field: storage_space_id
+      one_allowed_collections: null
+      one_collection: storage_spaces
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boats
+      column: storage_space_id
+      foreign_key_table: storage_spaces
+      foreign_key_column: id
+      constraint_name: boats_storage_space_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: boat_stage_changes
+    field: boat_id
+    related_collection: boats
+    meta:
+      junction_field: null
+      many_collection: boat_stage_changes
+      many_field: boat_id
+      one_allowed_collections: null
+      one_collection: boats
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: stage_changes
+      sort_field: null
+    schema:
+      table: boat_stage_changes
+      column: boat_id
+      foreign_key_table: boats
+      foreign_key_column: id
+      constraint_name: boat_stage_changes_boat_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boat_charters
+    field: boat_id
+    related_collection: boats
+    meta:
+      junction_field: null
+      many_collection: boat_charters
+      many_field: boat_id
+      one_allowed_collections: null
+      one_collection: boats
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boat_charters
+      column: boat_id
+      foreign_key_table: boats
+      foreign_key_column: id
+      constraint_name: boat_charters_boat_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boat_charters
+    field: person_id
+    related_collection: people
+    meta:
+      junction_field: null
+      many_collection: boat_charters
+      many_field: person_id
+      one_allowed_collections: null
+      one_collection: people
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boat_charters
+      column: person_id
+      foreign_key_table: people
+      foreign_key_column: id
+      constraint_name: boat_charters_person_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boat_charters
+    field: term_id
+    related_collection: terms
+    meta:
+      junction_field: null
+      many_collection: boat_charters
+      many_field: term_id
+      one_allowed_collections: null
+      one_collection: terms
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boat_charters
+      column: term_id
+      foreign_key_table: terms
+      foreign_key_column: id
+      constraint_name: boat_charters_term_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boat_charters
+    field: product_id
+    related_collection: products
+    meta:
+      junction_field: null
+      many_collection: boat_charters
+      many_field: product_id
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boat_charters
+      column: product_id
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: boat_charters_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boat_damage
+    field: boat_id
+    related_collection: boats
+    meta:
+      junction_field: null
+      many_collection: boat_damage
+      many_field: boat_id
+      one_allowed_collections: null
+      one_collection: boats
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: damage
+      sort_field: null
+    schema:
+      table: boat_damage
+      column: boat_id
+      foreign_key_table: boats
+      foreign_key_column: id
+      constraint_name: boat_damage_boat_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boat_damage
+    field: person_id
+    related_collection: people
+    meta:
+      junction_field: null
+      many_collection: boat_damage
+      many_field: person_id
+      one_allowed_collections: null
+      one_collection: people
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boat_damage
+      column: person_id
+      foreign_key_table: people
+      foreign_key_column: id
+      constraint_name: boat_damage_person_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: storage_spaces
+    field: boat_class_id
+    related_collection: boat_classes
+    meta:
+      junction_field: null
+      many_collection: storage_spaces
+      many_field: boat_class_id
+      one_allowed_collections: null
+      one_collection: boat_classes
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: storage_spaces
+      column: boat_class_id
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+      constraint_name: storage_spaces_boat_class_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: storage_agreements
+    field: person_id
+    related_collection: people
+    meta:
+      junction_field: null
+      many_collection: storage_agreements
+      many_field: person_id
+      one_allowed_collections: null
+      one_collection: people
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: storage_agreements
+      column: person_id
+      foreign_key_table: people
+      foreign_key_column: id
+      constraint_name: storage_agreements_person_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: storage_agreements
+    field: storage_space_id
+    related_collection: storage_spaces
+    meta:
+      junction_field: null
+      many_collection: storage_agreements
+      many_field: storage_space_id
+      one_allowed_collections: null
+      one_collection: storage_spaces
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: storage_agreements
+      column: storage_space_id
+      foreign_key_table: storage_spaces
+      foreign_key_column: id
+      constraint_name: storage_agreements_storage_space_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: storage_agreements
+    field: product_id
+    related_collection: products
+    meta:
+      junction_field: null
+      many_collection: storage_agreements
+      many_field: product_id
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: storage_agreements
+      column: product_id
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: storage_agreements_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT

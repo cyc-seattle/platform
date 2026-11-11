@@ -420,9 +420,17 @@ permissionRule(
   { dependsOn: crmSchema },
 );
 
-// Program and program area role assignments and google_group_memberships are owned elsewhere - the
-// merge executor only repoints person_id off a duplicate onto its keeper (cyc-seattle/isthmia#133).
-for (const collection of ["program_role_assignments", "program_area_role_assignments", "google_group_memberships"]) {
+// Program and program area role assignments, google_group_memberships and the inventory's sailors are
+// owned elsewhere - the merge executor only repoints person_id off a duplicate onto its keeper
+// (cyc-seattle/isthmia#133).
+for (const collection of [
+  "program_role_assignments",
+  "program_area_role_assignments",
+  "google_group_memberships",
+  "boat_charters",
+  "boat_damage",
+  "storage_agreements",
+]) {
   for (const action of ["read", "update"] as const) {
     permissionRule(
       `crm-clubspot-sync-${collection}-${action}`,
