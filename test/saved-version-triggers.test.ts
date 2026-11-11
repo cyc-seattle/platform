@@ -43,7 +43,7 @@ interface Relation {
   schema?: { on_delete?: string } | null;
 }
 
-const schemas = ["core", "planning"].map((name) => ({
+const schemas = ["core", "directory", "planning"].map((name) => ({
   name,
   schema: yaml.load(fs.readFileSync(path.resolve(import.meta.dirname, `../schemas/${name}.yaml`), "utf8")) as {
     fields: Field[];
@@ -144,7 +144,7 @@ const refusal = (message: string) => expect.objectContaining({ code: "CY001", me
  */
 async function plans(db: PGlite, year = 2027) {
   const w = writer(db);
-  const organization = await w.insert("organizations", { name: "Test club", fiscal_year_start_month: 10 });
+  const organization = await w.insert("organizations", { name: "Test club", kind: "own", fiscal_year_start_month: 10 });
   const area = await w.insert("program_areas", { name: "Test area" });
   const product = await w.insert("products", { name: "Test product", kind: "program", program_area_id: area });
   const kind = await w.insert("resource_kinds", { name: "Safety boat" });
