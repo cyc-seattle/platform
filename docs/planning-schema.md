@@ -4,7 +4,7 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog. `schemas/planning.yaml` declares Financial Plans, the plans they hold, every row a plan holds, and which Financial Plan is active. Baselines and actuals are designed here, but not built yet.
+Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, and `schemas/directory.yaml` the organizations it belongs to. `schemas/planning.yaml` declares Financial Plans, the plans they hold, every row a plan holds, and which Financial Plan is active. Baselines and actuals are designed here, but not built yet.
 
 A Financial Plan holds what planners enter, and the results the [planning engine](planning-engine.md) calculates from it ([A Financial Plan's results](#a-financial-plans-results)). A draft's are worked out again a moment after each change to it. A saved one's are worked out when it's saved, and never change.
 
@@ -98,7 +98,8 @@ erDiagram
     organizations {
         uuid id PK
         string name
-        int fiscal_year_start_month "1-12"
+        string kind "own|yacht_club|class_association|regional_organizer|governing_body|sailing_center"
+        int fiscal_year_start_month "1-12, for kind own"
     }
     qualification_covers {
         uuid id PK
@@ -125,7 +126,33 @@ erDiagram
 
 `programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted.
 
-A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` holds each organization's fiscal year. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
+A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows.
+
+### Directory
+
+```mermaid
+erDiagram
+    organizations ||--o{ venues : runs
+
+    organizations {
+        uuid id PK
+        string name
+        string short_name
+        string kind "own|yacht_club|class_association|regional_organizer|governing_body|sailing_center"
+        string website
+        uuid logo FK "a file"
+        int fiscal_year_start_month "1-12, for kind own"
+    }
+    venues {
+        uuid id PK
+        string name
+        uuid organization_id FK "required"
+        text address
+        json aliases "other names it goes by"
+    }
+```
+
+The directory is who runs an event and where: the clubs and organizers we sail with, our own organizations among them, and their venues. Only an admin changes it; the catalog and plan policies read it. Every foreign key to it restricts delete, so an organization or venue still in use can't be deleted. A venue's location and time zone come with the dusk rule.
 
 ### Financial Plans
 

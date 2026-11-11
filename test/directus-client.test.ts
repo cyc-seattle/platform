@@ -107,6 +107,7 @@ describe("discoverSchemaFiles", () => {
       "clubspot",
       "core",
       "crm",
+      "directory",
       "gsuite",
       "planning",
       "sync",
