@@ -123,6 +123,24 @@ export function websiteBuildRules(schemas: LoadedSchema[]): PermissionRuleInput[
   ];
 }
 
+/** The inventory's collections: every one in the inventory schema. */
+export function inventoryCollections(schemas: LoadedSchema[]): string[] {
+  const inventory = schemas.find(({ name }) => name === "inventory")?.schema;
+  if (inventory === undefined) {
+    throw new Error("backend: expected a schemas/inventory.yaml to find the inventory's collections");
+  }
+  return collectionsInSchema(inventory);
+}
+
+/** A boat moves to its next stage by a new row, never by an edit (cyc-seattle/platform#126). */
+const STAGE_CHANGES = "boat_stage_changes";
+
+/** What the inventory links to and the Inventory policies read: boat classes, products, terms, and sailors' names. */
+const INVENTORY_READS: PermissionRuleInput[] = [
+  ...["boat_classes", "products", "terms"].map((collection) => ({ collection, action: "read" as const })),
+  { collection: "people", action: "read", fields: ["id", "first_name", "last_name"] },
+];
+
 /** The plans' collections: every one in the planning schema. */
 export function planCollections(schemas: LoadedSchema[]): string[] {
   const planning = schemas.find(({ name }) => name === "planning")?.schema;
@@ -182,6 +200,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const catalog = catalogCollections(schemas);
   const plans = planCollections(schemas);
   const readCatalog = catalog.map((collection) => ({ collection, action: "read" as const }));
+  const inventory = inventoryCollections(schemas);
   // So a saved Financial Plan can name who saved it (cyc-seattle/platform#138).
   const readUserNames = {
     collection: "directus_users",
@@ -237,6 +256,31 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       rules: catalog.flatMap((collection) =>
         (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
       ),
+    },
+    {
+      key: "inventory-reader",
+      name: "Inventory Reader",
+      icon: "inventory",
+      description: "Sees the club's boats, charters, damage, and storage, and the names of the sailors they're with.",
+      rules: [...inventory.map((collection) => ({ collection, action: "read" as const })), ...INVENTORY_READS],
+    },
+    // Program directors keep the inventory, and close a term so its boat costs stop changing.
+    {
+      key: "inventory-writer",
+      name: "Inventory Writer",
+      icon: "inventory_2",
+      description:
+        "Changes the club's boats, charters, damage, and storage, moves a boat to its next stage, and closes and reopens a term.",
+      rules: [
+        ...inventory.flatMap((collection) =>
+          (collection === STAGE_CHANGES
+            ? (["create", "read"] as const)
+            : (["create", "read", "update", "delete"] as const)
+          ).map((action) => ({ collection, action })),
+        ),
+        ...INVENTORY_READS,
+        { collection: "terms", action: "update", fields: ["closed_on"] },
+      ],
     },
     // Planners read wages and bonus rates with the rest of a plan: no field is hidden.
     {

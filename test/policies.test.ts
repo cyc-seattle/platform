@@ -38,12 +38,14 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, and Plan policies", () => {
+  it("are the CRM, Medical, Catalog, Inventory, and Plan policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
       "CRM Reader",
       "CRM Writer",
       "Catalog Reader",
       "Catalog Writer",
+      "Inventory Reader",
+      "Inventory Writer",
       "Medical Reader",
       "Medical Writer",
       "Plan Reader",
@@ -66,7 +68,7 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters and no field lists, but a person's writable fields and CRM Writer's two hand-set ones", () => {
+  it("are coarse: no row filters and no field lists, but a person's writable fields, CRM Writer's two hand-set ones, and the Inventory policies' own", () => {
     for (const rule of policies.flatMap((policy) => policy.rules)) {
       expect(rule.permissions).toBeUndefined();
     }
@@ -75,6 +77,12 @@ describe("the policies a group can give", () => {
       "clubspot_classes.program_id",
       "clubspot_participants.person_id",
     ]);
+    const others = policies
+      .filter((policy) => !policy.name.startsWith("CRM "))
+      .flatMap((policy) =>
+        policy.rules.filter((rule) => rule.fields).map((rule) => `${policy.name}: ${rule.collection}`),
+      );
+    expect(others.filter((rule) => !rule.startsWith("Inventory ") && !rule.endsWith("directus_users"))).toEqual([]);
   });
 
   it("keep medical information to the Medical policies", () => {
@@ -96,7 +104,8 @@ describe("the policies a group can give", () => {
         expect(changed).not.toContain("products");
         expect(changed).not.toContain("accounts");
       }
-      if (!policy.name.startsWith("Catalog ") && !policy.name.startsWith("Plan ")) {
+      // The Inventory policies read products, so a charter or storage agreement can name its own.
+      if (!["Catalog ", "Plan ", "Inventory "].some((prefix) => policy.name.startsWith(prefix))) {
         expect(touched).not.toContain("products");
         expect(touched).not.toContain("accounts");
       }
@@ -123,6 +132,7 @@ describe("the Catalog policies", () => {
     "catalog_offerings",
     "organizations",
     "organization_cost_accounts",
+    "terms",
   ];
 
   it("let a Catalog Reader see the whole catalog, and change none of it", () => {
@@ -142,6 +152,44 @@ describe("the Catalog policies", () => {
     );
     expect(writers.map(({ name }) => name)).toEqual(["Catalog Writer"]);
     expect(collections("CRM Writer", "read").has("programs")).toBe(true);
+  });
+});
+
+describe("the Inventory policies", () => {
+  const inventory = [
+    "boats",
+    "boat_stage_changes",
+    "boat_charters",
+    "boat_damage",
+    "storage_spaces",
+    "storage_agreements",
+  ];
+  const linked = ["boat_classes", "products", "terms", "people"];
+
+  it("let both see the inventory, and only sailors' names", () => {
+    for (const name of ["Inventory Reader", "Inventory Writer"]) {
+      expect([...collections(name, "read")].sort()).toEqual([...inventory, ...linked].sort());
+      const people = named(name).rules.find((rule) => rule.collection === "people")!;
+      expect(people.fields).toEqual(["id", "first_name", "last_name"]);
+    }
+    expect(named("Inventory Reader").rules.every((rule) => rule.action === "read")).toBe(true);
+  });
+
+  it("let an Inventory Writer change the inventory, but move a boat on only by adding a stage change", () => {
+    expect([...collections("Inventory Writer", "create")].sort()).toEqual([...inventory].sort());
+    const edited = inventory.filter((collection) => collection !== "boat_stage_changes");
+    for (const action of ["update", "delete"]) {
+      expect([...collections("Inventory Writer", action)].filter((c) => c !== "terms").sort()).toEqual(
+        [...edited].sort(),
+      );
+    }
+  });
+
+  it("let an Inventory Writer close and reopen a term, and change nothing else of the catalog", () => {
+    const catalogChanges = named("Inventory Writer").rules.filter(
+      (rule) => rule.action !== "read" && !inventory.includes(rule.collection),
+    );
+    expect(catalogChanges).toEqual([{ collection: "terms", action: "update", fields: ["closed_on"] }]);
   });
 });
 
