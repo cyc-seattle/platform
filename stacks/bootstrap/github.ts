@@ -253,7 +253,9 @@ const sailTeamPages = new github.RepositoryEnvironment("sail-team-github-pages",
 new github.RepositoryEnvironmentDeploymentPolicy(
   "sail-team-github-pages-main",
   { repository: sailTeam.name, environment: sailTeamPages.environment, branchPattern: "main" },
-  { parent: sailTeamPages },
+  // Pages made this policy when it was turned on. Creating it again gets GitHub's 303 and a policy id of 0, which
+  // the next refresh drops (#191).
+  { parent: sailTeamPages, import: "sail-team:github-pages:65914372" },
 );
 
 // cyccommunitysailing.org, the public site, built from Directus and served by Firebase Hosting (#150). Its own repo,
