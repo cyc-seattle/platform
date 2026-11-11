@@ -332,9 +332,11 @@ describe("a person's login", () => {
 });
 
 describe("Crew", () => {
-  it("reads every roster, everyone's details and medical information, and the catalog's money, and changes nothing", () => {
-    expect(crewRules.every((rule) => rule.action === "read" && rule.permissions === undefined)).toBe(true);
-    expect(crewRules.map((rule) => rule.collection)).toEqual(
+  const others = crewRules.filter((rule) => rule.collection !== "recommendations");
+
+  it("reads every roster, everyone's details and medical information, and the catalog's money, and changes nothing else", () => {
+    expect(others.every((rule) => rule.action === "read" && rule.permissions === undefined)).toBe(true);
+    expect(others.map((rule) => rule.collection)).toEqual(
       expect.arrayContaining([
         "clubspot_registration_entries",
         "people",
@@ -347,6 +349,12 @@ describe("Crew", () => {
         "program_areas",
         "accounts",
       ]),
+    );
+  });
+
+  it("writes and reads every coach's recommendations", () => {
+    expect(crewRules.filter((rule) => rule.collection === "recommendations")).toEqual(
+      ["create", "read", "update", "delete"].map((action) => ({ collection: "recommendations", action })),
     );
   });
 

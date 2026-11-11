@@ -21,8 +21,9 @@ Feature: Registrations from Clubspot
 
   A person's details are their name, email, and phone, any extra emails and phone numbers, and who
   their parents and emergency contacts are. A person's program roles are the roles they have in
-  programs, such as coach or Parent Coordinator. To change something means to add, edit, or delete
-  it.
+  programs, such as coach or Parent Coordinator. A coach's recommendation says what a sailor should
+  do after a season, such as the program to sign up for next. To change something means to add,
+  edit, or delete it.
 
   Rule: Each sailor and parent on a registration becomes a person in the CRM
 
@@ -98,13 +99,15 @@ Feature: Registrations from Clubspot
       Given the Clubspot sync's service account
       Then it can't add or see programs
 
-  Rule: When the Clubspot sync merges two people, the person kept takes over the duplicate's program roles
+  Rule: When the Clubspot sync merges two people, the person kept takes over the duplicate's program roles and recommendations
 
-    Example: The person kept becomes the coach
+    Example: The person kept becomes the coach, and has the duplicate's recommendation
       Given two people who are the same sailor, one a coach in a program
+      And the one who is a coach has a recommendation for fall 2026
       And staff have approved merging them
       When the Clubspot sync runs
       Then the person kept is the coach
+      And the person kept has the recommendation for fall 2026
       And the duplicate is gone
 
   Rule: The Clubspot sync can move a person's program roles and which Google groups they're in to someone else, but can't add or delete them

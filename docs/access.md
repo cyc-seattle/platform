@@ -65,7 +65,8 @@ permissions, plus any shared policies it's given:
   their parents'.
 - Crew has its own rules, in `stacks/backend/policies.ts`, plus the Community policy, so a Crew
   member who is a parent sees what any parent sees. It reads every person, contact, contact point,
-  medical profile, offering, and registration, but not Clubspot's sign-up answers or payments.
+  medical profile, offering, and registration, but not Clubspot's sign-up answers or payments. The one
+  thing it changes is coaches' recommendations for sailors.
 - Staff has Crew's policy and the Community policy. Its own policy is empty, for whatever more
   access paid staff are given later.
 

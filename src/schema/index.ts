@@ -71,6 +71,7 @@ export interface Schema {
   programs: Programs[];
   qualification_covers: QualificationCovers[];
   qualifications: Qualifications[];
+  recommendations: Recommendations[];
   registrations: Registrations[];
   resource_kinds: ResourceKinds[];
   schools: Schools[];
@@ -1190,6 +1191,25 @@ export interface Qualifications {
   name: string;
   /** The qualifications this one satisfies a requirement for. */
   covers: (string | QualificationCovers)[];
+}
+
+/** What a coach recommends for a sailor after a season, such as the program to sign up for next. One for each sailor each season. */
+export interface Recommendations {
+  id: string;
+  person_id: string | People;
+  /** The year the sailor was coached in, such as 2026. */
+  year: number;
+  /** The season the sailor was coached in. */
+  season: "winter" | "spring" | "summer" | "fall";
+  /** The program the coach recommends next. Leave it blank to say it only in the note. */
+  program_id: string | Programs | null;
+  /** What the coach recommends, and why. */
+  note: string | null;
+  /** The coach who made the recommendation. */
+  coach_id: string | People | null;
+  date_created: string | null;
+  date_updated: string | null;
+  key: string;
 }
 
 /** One person registered in one offering. The Clubspot sync makes one for each sailor in a class and session, so edit it in Clubspot. */

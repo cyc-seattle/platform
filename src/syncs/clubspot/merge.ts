@@ -35,6 +35,8 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   { collection: "google_group_memberships", field: "person_id" },
   { collection: "clubspot_participants", field: "person_id" },
   ...INVENTORY_PEOPLE_COLLECTIONS.map((collection) => ({ collection, field: "person_id" })),
+  { collection: "recommendations", field: "person_id" },
+  { collection: "recommendations", field: "coach_id" },
   // Never repointed: a group gives access, so an admin moves a duplicate's memberships by hand, and
   // until then the merge stops on the final delete.
   { collection: "group_members", field: "person_id" },
@@ -134,6 +136,15 @@ export interface MergePersonReference {
   person_id: string;
 }
 
+/** A coach's recommendation for a sailor, which names a person twice: the sailor and the coach. */
+export interface MergeRecommendation {
+  id: string;
+  person_id: string;
+  coach_id: string | null;
+  year: number;
+  season: string;
+}
+
 /** The rows the merge needs across the whole group (the keeper and every duplicate) - already narrowed to those referencing one of them. */
 export interface MergeRelatedData {
   participants: readonly MergeParticipant[];
@@ -146,6 +157,8 @@ export interface MergeRelatedData {
   googleGroupMemberships: readonly MergePersonReference[];
   /** Each inventory collection's rows that name one of the group, by collection. */
   inventory: Readonly<Record<(typeof INVENTORY_PEOPLE_COLLECTIONS)[number], readonly MergePersonReference[]>>;
+  /** Recommendations for one of the group, or by one of them as the coach. */
+  recommendations: readonly MergeRecommendation[];
 }
 
 export interface MergeUpdateStep {
@@ -413,6 +426,33 @@ function planSimpleRepoint(
 }
 
 /**
+ * Repoints the coach always, and the sailor unless the keeper already has a recommendation for that
+ * season: a sailor has one a season. One left behind stops the merge on the final delete, for staff
+ * to keep one of the two by hand.
+ */
+function planRecommendationMerge(
+  keeperId: string,
+  duplicateIds: ReadonlySet<string>,
+  rows: readonly MergeRecommendation[],
+): MergeStep[] {
+  const season = (row: MergeRecommendation) => `${row.year}-${row.season}`;
+  const keeperSeasons = new Set(rows.filter((row) => row.person_id === keeperId).map(season));
+  const steps: MergeStep[] = [];
+  for (const row of rows) {
+    const patch: Record<string, unknown> = {};
+    if (duplicateIds.has(row.person_id) && !keeperSeasons.has(season(row))) {
+      patch["person_id"] = keeperId;
+      keeperSeasons.add(season(row));
+    }
+    if (row.coach_id !== null && duplicateIds.has(row.coach_id)) patch["coach_id"] = keeperId;
+    if (Object.keys(patch).length > 0) {
+      steps.push({ type: "update", collection: "recommendations", id: row.id, patch });
+    }
+  }
+  return steps;
+}
+
+/**
  * The keeper's own row: its non-null scalars win, a duplicate's non-null value fills only a null
  * one, taken in the given order. `directus_user_id` is separate - it isn't filled, it's moved, and
  * `directusUserHolder` (the duplicate giving it up, if any) is passed in rather than recomputed, so
@@ -515,6 +555,7 @@ export function planPersonMerge(
   for (const collection of INVENTORY_PEOPLE_COLLECTIONS) {
     steps.push(...planSimpleRepoint(collection, keeper.id, duplicateIds, related.inventory[collection]));
   }
+  steps.push(...planRecommendationMerge(keeper.id, duplicateIds, related.recommendations));
 
   const directusUserHolder = findDirectusUserHolder(keeper, duplicates);
   const personPatch = buildKeeperPersonPatch(keeper, duplicates, directusUserHolder);

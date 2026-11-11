@@ -20,7 +20,7 @@ export interface PolicyData {
 export const ROLES = ["Community", "Team", "Crew", "Staff", "Admin"] as const;
 
 /** The domains whose collections the CRM policies cover. Newer domains have policies of their own. */
-const CRM_DOMAINS = new Set(["clubspot", "crm", "gsuite", "sync"]);
+const CRM_DOMAINS = new Set(["clubspot", "coaching", "crm", "gsuite", "sync"]);
 
 export interface LoadedSchema {
   name: string;
@@ -324,9 +324,13 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   ];
 }
 
+/** What coaches write: a recommendation for each sailor after a season. */
+export const COACHING = "recommendations";
+
 /**
  * Crew's own rules, beside the Community policies it also has: every roster, everyone's contact
  * details and medical information, and the catalog's money. Not Clubspot's sign-up answers or payments.
+ * The one thing Crew changes is coaches' recommendations.
  */
 export const crewRules: PermissionRuleInput[] = [
   ...[
@@ -349,6 +353,7 @@ export const crewRules: PermissionRuleInput[] = [
   { collection: "program_areas", action: "read" },
   { collection: "accounts", action: "read" },
   { collection: "google_groups", action: "read" },
+  ...(["create", "read", "update", "delete"] as const).map((action) => ({ collection: COACHING, action })),
 ];
 
 /** One read rule as the query guard sees it: which fields, and whether it limits rows. */

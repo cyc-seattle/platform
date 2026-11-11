@@ -157,6 +157,15 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     person_id: fixed["person_id"] ?? (await fresh("people")),
     allergies: "none",
   }),
+  // A sailor has one recommendation a season, so each new one is for a person of its own.
+  recommendations: async (fixed) => ({
+    id: randomUUID(),
+    person_id: fixed["person_id"] ?? (await fresh("people")),
+    year: 2026,
+    season: "fall",
+    program_id: row["programs"],
+    note: "Ready for the next level.",
+  }),
   clubspot_participants: async (fixed) => ({
     id: key("participant"),
     person_id: fixed["person_id"] ?? (await fresh("people")),
@@ -462,6 +471,7 @@ export const changes: Record<string, () => Row> = {
   contacts: () => ({ relationship_detail: "Changed" }),
   contact_points: () => ({ last_seen_at: new Date().toISOString() }),
   medical_profiles: () => ({ medications: "none" }),
+  recommendations: () => ({ note: "Changed." }),
   clubspot_participants: () => ({ last_name: `Test ${runId}` }),
   clubspot_registrations: () => ({ waiver_status: "signed" }),
   clubspot_registration_entries: () => ({ priority: 1 }),
@@ -551,6 +561,7 @@ async function createRows(): Promise<void> {
     ["contacts", () => ({ relationship_type: "guardian" })],
     ["contact_points", () => ({})],
     ["medical_profiles", () => ({ person_id: row["people"] })],
+    ["recommendations", () => ({ person_id: row["people"] })],
     ["clubspot_participants", () => ({ person_id: row["people"] })],
     ["clubspot_registrations", () => ({ participant_id: row["clubspot_participants"] })],
     ["clubspot_custom_field_responses", () => ({})],

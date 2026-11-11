@@ -110,12 +110,13 @@ describeAccessFeature("clubspot.feature", {
     });
   },
 
-  "The person kept becomes the coach": ({ Given, And, When, Then }) => {
+  "The person kept becomes the coach, and has the duplicate's recommendation": ({ Given, And, When, Then }) => {
     const run = clubspotRun();
     const { runId } = run;
     let keeperId: string;
     let duplicateId: string;
     let assignmentId: string;
+    let recommendationId: string;
 
     Given("two people who are the same sailor, one a coach in a program", async () => {
       // The same name is what makes them one merge group.
@@ -130,6 +131,15 @@ describeAccessFeature("clubspot.feature", {
           program_id: program.id,
           program_role_id: coach.id,
         })
+      ).id;
+    });
+
+    And("the one who is a coach has a recommendation for fall 2026", async () => {
+      recommendationId = (
+        await adminCreate(
+          "recommendations",
+          await newRow("recommendations", { person_id: duplicateId, year: 2026, season: "fall" }),
+        )
       ).id;
     });
 
@@ -155,6 +165,11 @@ describeAccessFeature("clubspot.feature", {
     Then("the person kept is the coach", async () => {
       const assignment = await (await admin()).ok("GET", itemPath("program_role_assignments", assignmentId));
       expect(assignment.person_id).toBe(keeperId);
+    });
+
+    And("the person kept has the recommendation for fall 2026", async () => {
+      const recommendation = await (await admin()).ok("GET", itemPath("recommendations", recommendationId));
+      expect(recommendation.person_id).toBe(keeperId);
     });
 
     And("the duplicate is gone", async () => {
