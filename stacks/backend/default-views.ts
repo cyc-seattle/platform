@@ -113,6 +113,11 @@ export const defaultViews: DefaultView[] = [
     sort: ["-offering_id.starts_on", "person_id.last_name"],
     fields: ["person_id", "offering_id", "status"],
   },
+  {
+    collection: "recommendations",
+    sort: ["-term_id.starts_on", "person_id.last_name"],
+    fields: ["person_id", "term_id", "program_id", "coach_id"],
+  },
 
   // Google Workspace
   { collection: "google_groups", sort: ["name"], fields: ["name", "email", "parent_id", "settings_template"] },
