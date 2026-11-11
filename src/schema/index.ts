@@ -161,7 +161,7 @@ export interface BoatClasses {
   footprint_sq_ft: string | null;
 }
 
-/** Damage to the club's boats, what it cost to repair, and what the sailor was charged. */
+/** Damage to CSC's boats, what it cost to repair, and what the sailor was charged. */
 export interface BoatDamage {
   id: string;
   boat_id: string | Boats;
@@ -187,7 +187,7 @@ export interface BoatStageChanges {
   note: string | null;
 }
 
-/** Each of the club's own boats. Sailors' own boats aren't listed here. */
+/** Each of CSC's own boats. Sailors' own boats aren't listed here. */
 export interface Boats {
   id: string;
   boat_class_id: string | BoatClasses;
@@ -197,9 +197,9 @@ export interface Boats {
   /** The boat's name, if it has one. */
   name: string | null;
   acquired_how: "bought" | "donated";
-  /** What the club paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00. */
+  /** What CSC paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00. */
   value_cents: number;
-  /** The day the club got the boat. */
+  /** The day CSC got the boat. */
   acquired_on: string | null;
   /** The day the boat first sailed in a program. */
   in_service_on: string | null;
@@ -1210,7 +1210,7 @@ export interface Schools {
   aliases: string[] | null;
 }
 
-/** Storage the club sells to sailors for their own boats. */
+/** Storage CSC sells to sailors for their own boats. */
 export interface StorageAgreements {
   id: string;
   person_id: string | People;
@@ -1228,7 +1228,7 @@ export interface StorageAgreements {
   agreement_url: string | null;
 }
 
-/** The racks and deck space the club keeps boats on, each for one boat class. */
+/** The racks and deck space CSC keeps boats on, each for one boat class. */
 export interface StorageSpaces {
   id: string;
   kind: "rack" | "deck";

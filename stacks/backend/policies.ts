@@ -261,7 +261,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       key: "inventory-reader",
       name: "Inventory Reader",
       icon: "inventory",
-      description: "Sees the club's boats, charters, damage, and storage, and the names of the sailors they're with.",
+      description: "Sees CSC's boats, charters, damage, and storage, and the names of the sailors they're with.",
       rules: [...inventory.map((collection) => ({ collection, action: "read" as const })), ...INVENTORY_READS],
     },
     // Program directors keep the inventory, and close a term so its boat costs stop changing.
@@ -270,7 +270,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Inventory Writer",
       icon: "inventory_2",
       description:
-        "Changes the club's boats, charters, damage, and storage, moves a boat to its next stage, and closes and reopens a term.",
+        "Changes CSC's boats, charters, damage, and storage, moves a boat to its next stage, and closes and reopens a term.",
       rules: [
         ...inventory.flatMap((collection) =>
           (collection === STAGE_CHANGES
