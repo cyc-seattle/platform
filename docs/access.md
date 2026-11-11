@@ -78,8 +78,8 @@ can give, attached to no role:
 | CRM Writer     | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                  |
 | Medical Reader | Reads every sailor's medical information                                                                              |
 | Medical Writer | Changes every sailor's medical information                                                                            |
-| Catalog Reader | Reads the catalog: every collection in `schemas/core.yaml`, programs included                                         |
-| Catalog Writer | Changes the catalog                                                                                                   |
+| Catalog Reader | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                      |
+| Catalog Writer | Changes the catalog, and reads the directory                                                                          |
 | Plan Reader    | Reads every plan, wages and bonus rates included, the catalog, and users' names                                       |
 | Plan Writer    | Changes any plan's draft, saves it as a version, and makes a saved version active. Reads the catalog and users' names |
 
@@ -88,7 +88,7 @@ policy reads only each user's first and last name, so a saved Financial Plan nam
 saved plan version never changes, even for an admin, so the `saved-versions` hook enforces that
 rather than a policy (`docs/planning-schema.md`). A Medical policy is given with a CRM policy.
 Programs belong to the catalog, so only a Catalog Writer changes them. A CRM policy reads them, and
-so do Crew and the Google sync, but none of them changes them.
+so do Crew and the Google sync, but none of them changes them. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
 
 One field is held back: no policy a person can hold sets a person's login,
 `people.directus_user_id`, because the login decides whose groups' policies a user gets. Only an

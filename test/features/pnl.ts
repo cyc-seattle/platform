@@ -144,6 +144,7 @@ export class PnlPlan {
         await adminCreate("organizations", {
           id: randomUUID(),
           name: `P&L ${key("organization")}`,
+          kind: "own",
           fiscal_year_start_month: 1,
         })
       ).id;

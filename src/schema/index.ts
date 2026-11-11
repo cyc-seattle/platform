@@ -73,6 +73,7 @@ export interface Schema {
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
+  venues: Venues[];
   version_set_members: VersionSetMembers[];
   version_sets: VersionSets[];
   website_categories: WebsiteCategories[];
@@ -478,12 +479,19 @@ export interface OrganizationCostAccounts {
   account_id: string | Accounts;
 }
 
-/** A legal entity that keeps its own books. The fiscal year is set here, per organization. */
+/** Yacht clubs, class associations, regional organizers, governing bodies and sailing centers, and our own organizations, which keep their own books. Only an admin changes them. */
 export interface Organizations {
   id: string;
   name: string;
-  /** The month the fiscal year starts in. */
-  fiscal_year_start_month: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+  /** What people call it for short, such as its initials. */
+  short_name: string | null;
+  /** Ours keeps its own books and plans here. The rest are the clubs and organizers we sail with. */
+  kind: "own" | "yacht_club" | "class_association" | "regional_organizer" | "governing_body" | "sailing_center";
+  /** Its website's address, starting https://. */
+  website: string | null;
+  logo: string | null;
+  /** The month the fiscal year starts in. Only for our own organizations. */
+  fiscal_year_start_month: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | null;
 }
 
 /** One row for each person the club knows. */
@@ -1181,6 +1189,18 @@ export interface SyncTasks {
   finished_at: string | null;
   /** Set once the task has failed too many times. It keeps retrying; this flags it for staff. */
   needs_attention: boolean;
+}
+
+/** Where events are sailed, and who runs each place. Only an admin changes them. */
+export interface Venues {
+  id: string;
+  name: string;
+  /** The organization that runs it. */
+  organization_id: string | Organizations;
+  /** Its street address, or where to find it. */
+  address: string | null;
+  /** Other names it goes by, such as on a regatta's notice of race. */
+  aliases: string[] | null;
 }
 
 /** One plan in a Financial Plan: the copy of the plan it holds. Add or remove one only while the Financial Plan is a draft. */
