@@ -697,7 +697,6 @@ export class PersonSync {
     let slotNameMismatches = 0;
     const slots: ContactPointSlot[] = [];
     for (const input of inputs) {
-      const existingContact = existing.find((row) => row.contact_order === input.contactOrder);
       const mirrorSlot: ContactMirrorSlot =
         input.contactOrder === 1
           ? {
@@ -737,6 +736,7 @@ export class PersonSync {
             }
         : undefined;
 
+      const existingContact = findSlotContact(existing, input.contactOrder, currentByContactId, mirrorSlot.name);
       let contactPersonId: string;
       let nameMatches = true;
       if (existingContact) {
@@ -812,7 +812,6 @@ export class PersonSync {
     let slotNameMismatches = 0;
     const slots: ContactPointSlot[] = [];
     for (const input of inputs) {
-      const existingContact = existing.find((row) => row.contact_order === input.contactOrder);
       const mirrorSlot: ContactMirrorSlot =
         input.contactOrder === 1
           ? {
@@ -852,6 +851,7 @@ export class PersonSync {
             }
         : undefined;
 
+      const existingContact = findSlotContact(existing, input.contactOrder, currentByContactId, mirrorSlot.name);
       let contactPersonId: string;
       let nameMatches = true;
       if (existingContact) {
@@ -1035,4 +1035,24 @@ export class PersonSync {
     logReplacedFields("medical_profiles", personId, plan.replacedFields);
     return plan;
   }
+}
+
+/**
+ * The `contacts` row in a slot, preferring the one whose person the form names. A merge can leave
+ * two rows in one `contact_order` slot (cyc-seattle/platform#156); with no name match, the first
+ * one goes on to the slot-name mismatch check as before.
+ */
+function findSlotContact(
+  existing: readonly ContactRow[],
+  contactOrder: number,
+  currentByContactId: ReadonlyMap<string, PersonRow>,
+  name: string | null,
+): ContactRow | undefined {
+  const inSlot = existing.filter((row) => row.contact_order === contactOrder);
+  return (
+    inSlot.find((row) => {
+      const current = currentByContactId.get(row.contact_id);
+      return current !== undefined && slotNameMatchesContact(current, name);
+    }) ?? inSlot[0]
+  );
 }
