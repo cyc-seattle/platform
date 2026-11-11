@@ -42,6 +42,7 @@ function related(overrides: Partial<MergeRelatedData> = {}): MergeRelatedData {
     registrations: [],
     googleGroupMemberships: [],
     inventory: { boat_charters: [], boat_damage: [], storage_agreements: [] },
+    recommendations: [],
     ...overrides,
   };
 }
@@ -360,6 +361,38 @@ describe("planPersonMerge", () => {
       { type: "update", collection: "boat_charters", id: "bc1", patch: { person_id: "keep" } },
       { type: "update", collection: "boat_damage", id: "bd1", patch: { person_id: "keep" } },
       { type: "update", collection: "storage_agreements", id: "sa1", patch: { person_id: "keep" } },
+    ]);
+  });
+
+  it("repoints a duplicate's recommendations, as the sailor and as the coach", () => {
+    const recommendations = [
+      { id: "r1", person_id: "dup", coach_id: null, term_id: "fall" },
+      { id: "r2", person_id: "sailor", coach_id: "dup", term_id: "fall" },
+      { id: "r3", person_id: "dup", coach_id: "dup", term_id: "spring" },
+      { id: "r4", person_id: "keep", coach_id: "coach", term_id: "summer" },
+    ];
+    const steps = planPersonMerge(person({ id: "keep" }), [person({ id: "dup" })], related({ recommendations }));
+    expect(steps.filter((step) => step.type === "update" && step.collection === "recommendations")).toEqual([
+      { type: "update", collection: "recommendations", id: "r1", patch: { person_id: "keep" } },
+      { type: "update", collection: "recommendations", id: "r2", patch: { coach_id: "keep" } },
+      { type: "update", collection: "recommendations", id: "r3", patch: { person_id: "keep", coach_id: "keep" } },
+    ]);
+  });
+
+  it("leaves a duplicate's recommendation for a term the keeper already has one for, so the merge stops", () => {
+    const recommendations = [
+      { id: "r1", person_id: "keep", coach_id: null, term_id: "fall" },
+      { id: "r2", person_id: "dup", coach_id: null, term_id: "fall" },
+      { id: "r3", person_id: "dup2", coach_id: null, term_id: "spring" },
+      { id: "r4", person_id: "dup", coach_id: null, term_id: "spring" },
+    ];
+    const steps = planPersonMerge(
+      person({ id: "keep" }),
+      [person({ id: "dup" }), person({ id: "dup2" })],
+      related({ recommendations }),
+    );
+    expect(steps.filter((step) => step.type === "update" && step.collection === "recommendations")).toEqual([
+      { type: "update", collection: "recommendations", id: "r3", patch: { person_id: "keep" } },
     ]);
   });
 

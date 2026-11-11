@@ -443,7 +443,7 @@ relations:
       foreign_key_column: id
       constraint_name: recommendations_person_id_foreign
       on_update: NO ACTION
-      on_delete: CASCADE
+      on_delete: RESTRICT
   - collection: recommendations
     field: term_id
     related_collection: terms
@@ -506,4 +506,4 @@ relations:
       foreign_key_column: id
       constraint_name: recommendations_coach_id_foreign
       on_update: NO ACTION
-      on_delete: SET NULL
+      on_delete: RESTRICT

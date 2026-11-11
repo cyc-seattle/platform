@@ -264,6 +264,10 @@ the sailor or the term of more than one recommendation in one write, since each 
 Coaches, who are Crew, write them, through sail-team or the Data Studio
 (cyc-seattle/sail-team#28).
 
+A person merge moves a duplicate's recommendations to the keeper, as the sailor and as the coach,
+except one for a term the keeper already has one for. That one stops the merge, as a group
+membership does, until staff delete one of the two.
+
 ### Promoted fields
 
 `clubspot_promoted_fields` maps a Clubspot custom-field question — asked per camp, so

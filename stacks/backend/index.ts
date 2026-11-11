@@ -420,9 +420,9 @@ permissionRule(
   { dependsOn: crmSchema },
 );
 
-// Program and program area role assignments, google_group_memberships and the inventory's sailors are
-// owned elsewhere - the merge executor only repoints person_id off a duplicate onto its keeper
-// (cyc-seattle/isthmia#133).
+// Program and program area role assignments, google_group_memberships, the inventory's sailors and
+// coaches' recommendations are owned elsewhere - the merge executor only repoints a duplicate's
+// references onto its keeper (cyc-seattle/isthmia#133).
 for (const collection of [
   "program_role_assignments",
   "program_area_role_assignments",
@@ -430,6 +430,7 @@ for (const collection of [
   "boat_charters",
   "boat_damage",
   "storage_agreements",
+  "recommendations",
 ]) {
   for (const action of ["read", "update"] as const) {
     permissionRule(

@@ -13,6 +13,7 @@ import {
   type MergeParticipant,
   type MergePerson,
   type MergePersonReference,
+  type MergeRecommendation,
   type MergeRelatedData,
   type MergeStep,
   planPersonMerge,
@@ -62,6 +63,12 @@ async function readGroupRelatedData(directus: DirectusClient, personIds: readonl
       readByIds<MergePersonReference>(directus, collection, "person_id", personIds, ["id", "person_id"]),
     ),
   );
+  const recommendationFields = ["id", "person_id", "coach_id", "term_id"];
+  const [recommendationsFor, recommendationsBy] = await Promise.all(
+    (["person_id", "coach_id"] as const).map((field) =>
+      readByIds<MergeRecommendation>(directus, "recommendations", field, personIds, recommendationFields),
+    ),
+  );
 
   return {
     participants,
@@ -77,6 +84,7 @@ async function readGroupRelatedData(directus: DirectusClient, personIds: readonl
       boat_damage: boatDamage!,
       storage_agreements: storageAgreements!,
     },
+    recommendations: dedupeById([...recommendationsFor!, ...recommendationsBy!]),
   };
 }
 
