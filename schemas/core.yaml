@@ -288,6 +288,32 @@ collections:
       versioning: false
     schema:
       name: organization_cost_accounts
+  - collection: boats
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: boats
+      color: null
+      display_template: "{{boat_class_id.name}} {{sail_number}} {{name}}"
+      group: Catalog
+      hidden: false
+      icon: sailing
+      item_duplication_fields: null
+      note: Each boat CSC owns, for planning the year. Sailors' own boats aren't listed here.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: boats
 fields:
   - collection: accounts
     field: id
@@ -2187,6 +2213,423 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: boats
+    field: id
+    type: uuid
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: boat_class_id
+    type: uuid
+    meta:
+      collection: boats
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: boat_class_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Boat class
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: boat_class_id
+      table: boats
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+  - collection: boats
+    field: name
+    type: string
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: The boat's name, if it has one.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: boats
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: sail_number
+    type: string
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: sail_number
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Sail number
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sail_number
+      table: boats
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: hull_number
+    type: string
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: hull_number
+      group: null
+      hidden: false
+      interface: input
+      note: The hull identification number on the transom, if it's known.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Hull number
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hull_number
+      table: boats
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: value_cents
+    type: integer
+    meta:
+      collection: boats
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: value_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What the boat is worth. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Value
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: value_cents
+      table: boats
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: acquired_on
+    type: date
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: acquired_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The day CSC got the boat.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Acquired
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: acquired_on
+      table: boats
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: in_service_on
+    type: date
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: in_service_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The day the boat first sailed in a program.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: In service
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: in_service_on
+      table: boats
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: retired_on
+    type: date
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: retired_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The day CSC stopped using the boat. Empty while it's still in use.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Retired
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: retired_on
+      table: boats
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: boats
+    field: note
+    type: text
+    meta:
+      collection: boats
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: boats
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
 relations:
   - collection: accounts
     field: contra_account_id
@@ -2417,5 +2860,26 @@ relations:
       foreign_key_table: programs
       foreign_key_column: id
       constraint_name: catalog_offerings_program_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: boats
+    field: boat_class_id
+    related_collection: boat_classes
+    meta:
+      junction_field: null
+      many_collection: boats
+      many_field: boat_class_id
+      one_allowed_collections: null
+      one_collection: boat_classes
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boats
+      column: boat_class_id
+      foreign_key_table: boat_classes
+      foreign_key_column: id
+      constraint_name: boats_boat_class_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT

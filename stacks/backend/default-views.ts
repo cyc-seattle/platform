@@ -63,6 +63,11 @@ export const defaultViews: DefaultView[] = [
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
   { collection: "boat_classes", sort: ["name"], fields: ["name", "sailors_per_boat", "footprint_sq_ft"] },
+  {
+    collection: "boats",
+    sort: ["boat_class_id.name", "sail_number"],
+    fields: ["boat_class_id", "sail_number", "name", "hull_number", "value_cents", "retired_on"],
+  },
   { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
   { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },
   { collection: "programs", sort: ["name"], fields: ["name", "product_id"] },
