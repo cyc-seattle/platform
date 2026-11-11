@@ -427,13 +427,15 @@ async function join(personId: string, policy: string): Promise<void> {
   memberships.push({ groupId, grantIds, memberId: await addToGroup(groupId, personId) });
 }
 
-async function aNewcomer(policies: string[]): Promise<void> {
+/** A person who has never signed in, in a group for each of `policies`. Returns their person's id. */
+export async function aNewcomer(policies: string[]): Promise<string> {
   const signIn = email("newcomer");
   const personId = await newPerson({ email: signIn });
   for (const policy of policies) {
     await join(personId, policy);
   }
   newcomer = { email: signIn, personId, policies };
+  return personId;
 }
 Step("a person in the CRM who has never signed in", () => aNewcomer([]));
 Step("a person in the CRM who has never signed in, in a group that gives the {policy} policy", (_, policy: string) =>

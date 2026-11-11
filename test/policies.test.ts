@@ -68,7 +68,7 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters and no field lists, but a person's writable fields, CRM Writer's two hand-set ones, and the Inventory policies' own", () => {
+  it("are coarse: no row filters and no field lists, but a person's writable fields, CRM Writer's two hand-set ones, the Inventory policies' own, and the Plan policies' names", () => {
     for (const rule of policies.flatMap((policy) => policy.rules)) {
       expect(rule.permissions).toBeUndefined();
     }
@@ -82,7 +82,14 @@ describe("the policies a group can give", () => {
       .flatMap((policy) =>
         policy.rules.filter((rule) => rule.fields).map((rule) => `${policy.name}: ${rule.collection}`),
       );
-    expect(others.filter((rule) => !rule.startsWith("Inventory ") && !rule.endsWith("directus_users"))).toEqual([]);
+    expect(
+      others.filter(
+        (rule) =>
+          !rule.startsWith("Inventory ") &&
+          !rule.endsWith("directus_users") &&
+          !(rule.startsWith("Plan ") && rule.endsWith(": people")),
+      ),
+    ).toEqual([]);
   });
 
   it("keep medical information to the Medical policies", () => {
@@ -110,6 +117,15 @@ describe("the policies a group can give", () => {
         expect(touched).not.toContain("accounts");
       }
     }
+  });
+
+  it("let a CRM Writer add and edit coaches, but not delete them, and give Crew none of the list", () => {
+    for (const action of ["create", "read", "update"]) {
+      expect(collections("CRM Writer", action).has("coaches")).toBe(true);
+    }
+    expect(collections("CRM Writer", "delete").has("coaches")).toBe(false);
+    expect(collections("CRM Reader", "read").has("coaches")).toBe(true);
+    expect(crewRules.map((rule) => rule.collection)).not.toContain("coaches");
   });
 
   it("let a CRM Writer change people, but not Clubspot's own records", () => {
@@ -239,12 +255,12 @@ const results = plans.filter((collection) => collection.startsWith("plan_result"
 describe("the Plan policies", () => {
   const catalog = collections("Catalog Reader", "read");
 
-  it("let both see every plan and the catalog, with no field held back", () => {
+  it("let both see every plan, the catalog, and the coaches, with no field held back", () => {
     for (const name of ["Plan Reader", "Plan Writer"]) {
-      const rules = named(name).rules.filter((rule) => rule.collection !== "directus_users");
+      const rules = named(name).rules.filter((rule) => !["directus_users", "people"].includes(rule.collection));
       expect(
         [...new Set(rules.filter((rule) => rule.action === "read").map((rule) => rule.collection))].sort(),
-      ).toEqual([...plans, ...catalog].sort());
+      ).toEqual([...plans, ...catalog, "coaches"].sort());
       expect(rules.every((rule) => rule.fields === undefined)).toBe(true);
     }
   });
@@ -253,6 +269,14 @@ describe("the Plan policies", () => {
     for (const name of ["Plan Reader", "Plan Writer"]) {
       expect(named(name).rules.filter((rule) => rule.collection === "directus_users")).toEqual([
         { collection: "directus_users", action: "read", fields: ["id", "first_name", "last_name"] },
+      ]);
+    }
+  });
+
+  it("let both see people's first and last names, and nothing else of theirs", () => {
+    for (const name of ["Plan Reader", "Plan Writer"]) {
+      expect(named(name).rules.filter((rule) => rule.collection === "people")).toEqual([
+        { collection: "people", action: "read", fields: ["id", "first_name", "last_name"] },
       ]);
     }
   });

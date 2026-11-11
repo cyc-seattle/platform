@@ -98,6 +98,15 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     fiscal_year_start_month: 10,
   }),
   program_roles: async () => ({ id: randomUUID(), name: `Role ${key("role")}` }),
+  // A person is on the coach list once, so each new coach is a new person. A level's key is a plan
+  // row's, which nothing checks, so any key will do.
+  coaches: async (fixed) => ({
+    id: randomUUID(),
+    person_id: fixed["person_id"] ?? (await fresh("people")),
+    staff_level_key: randomUUID(),
+    profit_share: false,
+    active: true,
+  }),
   schools: async () => ({ id: randomUUID(), name: `School ${key("school")}`, aliases: [`school ${runId}`] }),
   clubspot_camps: async () => ({
     id: key("camp"),
@@ -468,6 +477,7 @@ export const changes: Record<string, () => Row> = {
   clubspot_registration_billing: () => ({ tax: 1 }),
   offerings: () => ({ capacity: 11 }),
   registrations: () => ({ status: "waitlist" }),
+  coaches: () => ({ profit_share: true }),
   program_role_assignments: () => ({ ends_on: daysFromNow(30) }),
   program_area_role_assignments: () => ({ ends_on: daysFromNow(30) }),
   sync_tasks: () => ({ last_error: "Changed." }),
@@ -560,6 +570,7 @@ async function createRows(): Promise<void> {
     ["registrations", () => ({ clubspot_entry_id: row["clubspot_registration_entries"] })],
     ["program_role_assignments", () => ({})],
     ["program_area_role_assignments", () => ({})],
+    ["coaches", () => ({ person_id: guardianPersonId })],
     ["sync_tasks", () => ({})],
     ["sync_runs", () => ({})],
     ["audit_findings", () => ({})],

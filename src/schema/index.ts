@@ -22,6 +22,7 @@ export interface Schema {
   clubspot_registrations: ClubspotRegistrations[];
   clubspot_session_classes: ClubspotSessionClasses[];
   clubspot_sessions: ClubspotSessions[];
+  coaches: Coaches[];
   contact_points: ContactPoints[];
   contacts: Contacts[];
   google_group_memberships: GoogleGroupMemberships[];
@@ -409,6 +410,21 @@ export interface ClubspotSessions {
   end_date: string | null;
   name: string | null;
   archived: boolean;
+}
+
+/** CSC's coaches, each at a staff level. Archive a coach who's left; don't delete them. */
+export interface Coaches {
+  id: string;
+  /** A person is on the list once. */
+  person_id: string | People;
+  /** The coach's level: copy the Key from a staff level in the Operations Plan. A coach keeps it after the level is retired. */
+  staff_level_key: string;
+  /** The coach's own rate, when it isn't their level's. In cents: 2500 is $25.00. */
+  hourly_rate_cents: number | null;
+  /** Whether the coach gets a share of the profit. */
+  profit_share: boolean;
+  /** Clear it to archive a coach who's left. */
+  active: boolean;
 }
 
 /** Every email and phone known for a person, from forms and from staff, not only their main ones. */
@@ -1038,6 +1054,8 @@ export interface PlanSalariedPositions {
   form_990_line: string | null;
   /** What this position is paid an hour to coach an offering that pays its salaried coach by the hour, instead of the offering's coach level. Leave empty to use the level. In cents: 12500 is $125.00. */
   hourly_coaching_rate_cents: number | null;
+  /** The person in the position, if it's filled. */
+  person_id: string | People | null;
 }
 
 /** A level hourly staff are paid at, such as head coach. */
@@ -1053,6 +1071,8 @@ export interface PlanStaffLevels {
   hourly_rate_cents: number | null;
   /** The qualifications this level needs. Add each one's ID, from the end of its page's web address. */
   qualifications: string[] | null;
+  /** A retired level stays in the plan for the coaches who have it. Pick another for new work. */
+  retired: boolean;
 }
 
 /** A trip an offering travels for, such as an away regatta. */

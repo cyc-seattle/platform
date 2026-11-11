@@ -20,7 +20,7 @@ export interface PolicyData {
 export const ROLES = ["Community", "Team", "Crew", "Staff", "Admin"] as const;
 
 /** The domains whose collections the CRM policies cover. Newer domains have policies of their own. */
-const CRM_DOMAINS = new Set(["clubspot", "crm", "gsuite", "sync"]);
+const CRM_DOMAINS = new Set(["clubspot", "crm", "gsuite", "staff", "sync"]);
 
 export interface LoadedSchema {
   name: string;
@@ -174,6 +174,9 @@ export function isResultCollection(collection: string): boolean {
  * participant's match to a person. `fieldsOf` lists a collection's fields, so a rule can leave out
  * the ones only an admin writes.
  */
+/** Collections staff archive rather than delete, so only an admin deletes a row. */
+const ARCHIVED_NOT_DELETED = new Set(["coaches"]);
+
 export function writerRules(
   collections: string[],
   readOnlyCollections: string[],
@@ -188,6 +191,7 @@ export function writerRules(
     }
     const withheld = ADMIN_ONLY[collection];
     for (const action of ["create", "read", "update", "delete"] as const) {
+      if (action === "delete" && ARCHIVED_NOT_DELETED.has(collection)) continue;
       if (withheld !== undefined && (action === "create" || action === "update")) {
         const fields = fieldsOf(collection).filter((field) => !withheld.includes(field));
         rules.push({ collection, action, fields });
@@ -217,6 +221,9 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
     action: "read" as const,
     fields: ["id", "first_name", "last_name"],
   };
+  // So planners see who's a coach, and who's in a salaried position, by name (cyc-seattle/platform#125).
+  const readPeopleNames = { collection: "people", action: "read" as const, fields: ["id", "first_name", "last_name"] };
+  const readCoaches = { collection: "coaches", action: "read" as const };
   return [
     {
       key: "crm-reader",
@@ -300,8 +307,15 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       key: "plan-reader",
       name: "Plan Reader",
       icon: "event_note",
-      description: "Sees every plan, wages and bonus rates included, the catalog, and users' names.",
-      rules: [...readCatalog, readUserNames, ...plans.map((collection) => ({ collection, action: "read" as const }))],
+      description:
+        "Sees every plan, wages and bonus rates included, the catalog, the coaches, and people's and users' names.",
+      rules: [
+        ...readCatalog,
+        readUserNames,
+        readPeopleNames,
+        readCoaches,
+        ...plans.map((collection) => ({ collection, action: "read" as const })),
+      ],
     },
     // The saved-versions hook keeps a saved version from changing, for every user (docs/planning-schema.md).
     {
@@ -309,10 +323,12 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Plan Writer",
       icon: "edit_calendar",
       description:
-        "Changes any plan in a draft Financial Plan, saves a Financial Plan, and marks a saved one active. Sees the catalog and users' names.",
+        "Changes any plan in a draft Financial Plan, saves a Financial Plan, and marks a saved one active. Sees the catalog, the coaches, and people's and users' names.",
       rules: [
         ...readCatalog,
         readUserNames,
+        readPeopleNames,
+        readCoaches,
         ...plans.flatMap((collection) =>
           (isResultCollection(collection)
             ? (["read"] as const)

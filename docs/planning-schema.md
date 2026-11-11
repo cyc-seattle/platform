@@ -393,6 +393,7 @@ erDiagram
     plan_versions ||--o{ plan_revenue_charges : contains
     accounts ||--o{ plan_revenue_charges : "booked to"
     plan_salaried_positions }o--o| plan_pools : "rest of salary to"
+    people |o--o{ plan_salaried_positions : "in the position"
     plan_bonus_owners ||--o{ plan_bonus_owner_products : owns
     products ||--o{ plan_bonus_owner_products : "owned by"
 
@@ -407,6 +408,7 @@ erDiagram
         string pay_type "hourly|volunteer"
         int hourly_rate_cents
         json qualifications
+        boolean retired "kept for the coaches who have it"
     }
     plan_salaried_positions {
         string name
@@ -417,6 +419,7 @@ erDiagram
         uuid remainder_pool_id FK
         string form_990_line "override"
         int hourly_coaching_rate_cents "its own rate, when paid by the hour"
+        uuid person_id FK "the person in it"
     }
     plan_salaried_bookings {
         uuid position_id FK
@@ -477,6 +480,11 @@ The fleet is the `quantity` of each resource, such as RIBs, and of each boat cla
 The Operations Plan also holds the offerings of products in no area: merchandise, storage and charters.
 
 A salaried booking names a product, or a program area whose offerings share it by MTDC.
+
+A salaried position can name the person in it. The engine doesn't read it. Plans budget coaches by
+staff level and name no coaches; CSC's coaches are a lasting list outside the plans
+([docs/staff-schema.md](staff-schema.md)), each at a staff level's key. A retired level stays in the
+plan, so its coaches keep it, and the engine still prices it wherever a block or labor line uses it.
 
 A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. Everything in a pool is divided among all of the year's offerings by MTDC.
 

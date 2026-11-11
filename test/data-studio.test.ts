@@ -68,6 +68,7 @@ const PLANNER_KEYS: Record<string, string> = {
   "plan_staff_levels.qualifications": "Planners add each qualification's ID.",
   "plan_salaried_positions.qualifications": "Planners add each qualification's ID.",
   "plan_bonus_owners.position_key": "Planners copy in a salaried position's Key.",
+  "coaches.staff_level_key": "Program directors copy in a staff level's Key, since levels are plan rows.",
 };
 
 /** A planning row's own Key: read-only, and visible so planners can copy it into the fields above. */

@@ -139,6 +139,11 @@ export const defaultViews: DefaultView[] = [
     fields: ["person_id", "program_area_id", "program_role_id", "starts_on", "ends_on"],
   },
   {
+    collection: "coaches",
+    sort: ["person_id.last_name", "person_id.first_name"],
+    fields: ["person_id", "hourly_rate_cents", "profit_share", "active"],
+  },
+  {
     collection: "offerings",
     sort: ["-starts_on", "program_id.name"],
     fields: ["program_id", "starts_on", "ends_on", "capacity"],
@@ -355,4 +360,10 @@ export const defaultViews: DefaultView[] = [
 export const familyViews: DefaultView[] = [
   { collection: "offerings", sort: ["-starts_on"], fields: ["program_id", "starts_on", "ends_on"] },
   { collection: "registrations", sort: ["status", "person_id"], fields: ["person_id", "offering_id", "status"] },
+  // A planner among them reads every person's name but not every person, so the guard refuses a sort by name.
+  {
+    collection: "coaches",
+    sort: ["-active", "person_id"],
+    fields: ["person_id", "hourly_rate_cents", "profit_share", "active"],
+  },
 ];
