@@ -1255,6 +1255,44 @@ describe("PersonSync.syncParticipant - guardian and emergency-contact slots", ()
     }
   });
 
+  // cyc-seattle/platform#156: a merge repoints the duplicate's guardian-1 onto the keeper, which
+  // already had its own guardian-1, so the slot holds two rows.
+  it("takes the guardian the form names when a merge left two contacts in the same slot", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      people: [
+        seedMinor(),
+        seedGuardian({ id: "guardian-maria", first_name: "Maria", last_name: "Garcia", email: "maria@example.com" }),
+        seedGuardian({ email: "robert@example.com" }),
+      ],
+      contacts: [
+        { ...seedGuardianContact(), id: "contact-maria", contact_id: "guardian-maria" },
+        seedGuardianContact(),
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const sync = new PersonSync(new DirectusClient(baseUrl, token));
+
+    const priorData = {
+      firstName: "Alex",
+      lastName: "Rivera",
+      DOB: new Date("2015-04-01T00:00:00Z"),
+      parentGuardianName: "Robert Smith",
+      parentGuardianEmail: "robert@example.com",
+    };
+    const priorMirror = participantRow({ id: "participant-1", person_id: "person-1", ...mirrorFieldsFor(priorData) });
+    const data = { ...priorData, parentGuardianEmail: "robert.new@example.com" };
+
+    const resolved = await sync.syncParticipant(
+      participant(data),
+      options({ existingPersonId: "person-1", priorMirror, mirrorFields: mirrorFieldsFor(data) }),
+    );
+
+    expect(resolved.slotNameMismatches).toBe(0);
+    const people = tables.get("people")!;
+    expect(people.find((row) => row["id"] === "guardian-1")).toMatchObject({ email: "robert.new@example.com" });
+    expect(people.find((row) => row["id"] === "guardian-maria")).toMatchObject({ email: "maria@example.com" });
+  });
+
   // The regression test for finding 3: previously, a mismatch was only ever checked when this
   // registration was the newest linked to its person - an older registration's stale guardian slot
   // blindly upserted its contact points onto whoever the slot used to name, newest or not.
