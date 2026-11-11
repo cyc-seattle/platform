@@ -302,9 +302,9 @@ describe("staffing", () => {
   });
 
   describe("capacity", () => {
-    const L1 = staffLevel({ name: "Level 1 Instructor", qualifications: ["q-l1"] });
-    const L2 = staffLevel({ name: "Level 2 Instructor", qualifications: ["q-l2"] });
-    const junior = staffLevel({ name: "Junior Instructor", qualifications: ["q-junior"] });
+    const L1 = staffLevel({ name: "Level 1 Instructor" });
+    const L2 = staffLevel({ name: "Level 2 Instructor" });
+    const director = position({ name: "Sailing Director" });
 
     function guppies(sailors: number, given: Given, perCoach = 10) {
       const p = product({ name: "Guppies" });
@@ -315,8 +315,8 @@ describe("staffing", () => {
         plan_programs: [program(p.id, { staff_level_key: L1.key, sailors_per_coach: perCoach })],
         plan_offerings: [off],
         plan_activities: [a],
-        plan_staff_levels: [L1, L2, junior],
-        qualification_covers: [{ qualification_id: "q-l2", covers_id: "q-l1" }],
+        plan_staff_levels: [L1, L2],
+        plan_salaried_positions: [director],
         ...block([a], given, { name: "Guppies" }),
       });
     }
@@ -333,10 +333,42 @@ describe("staffing", () => {
       expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
     });
 
-    it("counts a coach qualified for the program's staff level, and not one who isn't", () => {
-      expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
-      const out = computePlan(guppies(10, { staff: [{ staff_level_key: junior.key }] }));
+    it("counts only coaches at the program's own staff level", () => {
+      const out = computePlan(guppies(10, { staff: [{ staff_level_key: L2.key }] }));
       expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2 has 10 sailors and no coach");
+    });
+
+    it("counts a salaried position on the block as one coach", () => {
+      expect(codes(guppies(10, { staff: [{ position_key: director.key }] }))).not.toContain("over_capacity");
+      const out = computePlan(guppies(14, { staff: [{ position_key: director.key }] }));
+      expect(out.warnings.map((w) => w.message)).toContain(
+        "Guppies Week 2 has 14 sailors, but enough coaches for only 10",
+      );
+    });
+
+    it("counts each level's coaches toward its own programs, and a salaried position toward any", () => {
+      const [g, m] = [product(), product()];
+      const [og, om] = [offering(g.id, { target_enrollment: 10 }), offering(m.id, { target_enrollment: 10 })];
+      const acts = [activity(og.id, { uses_boats: false }), activity(om.id, { uses_boats: false })];
+      const data = (staff: NonNullable<Given["staff"]>) =>
+        emptyPlan({
+          products: [g, m],
+          plan_programs: [
+            program(g.id, { staff_level_key: L1.key, sailors_per_coach: 10 }),
+            program(m.id, { staff_level_key: L2.key, sailors_per_coach: 10 }),
+          ],
+          plan_offerings: [og, om],
+          plan_activities: acts,
+          plan_staff_levels: [L1, L2],
+          plan_salaried_positions: [director],
+          ...block(acts, { staff }),
+        });
+      // The second Level 1 Instructor can't coach the Level 2 program's sailors.
+      expect(
+        computePlan(data([{ staff_level_key: L1.key, count: 2 }])).warnings.find((w) => w.code === "over_capacity")
+          ?.message,
+      ).toMatch(/ have 20 sailors, but enough coaches for only 10$/);
+      expect(codes(data([{ staff_level_key: L1.key }, { position_key: director.key }]))).not.toContain("over_capacity");
     });
 
     it("counts each program's sailors against its own sailors per coach", () => {

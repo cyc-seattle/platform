@@ -167,11 +167,12 @@ Allocation warnings:
   activity's start to their last one's end; one with no times is out all day.
 - `over_inventory_resource`: the same for a resource with a `quantity`, such as RIBs.
 - `over_capacity`: more sailors in a block than its staff, or its boats, can safely take. Each
-  program's sailors count against its own `sailors_per_coach`, in its `plan_programs` row: the block
-  is over when Σ (a program's sailors ÷ its sailors per coach) is more than its qualified staff. A
-  staff member is qualified if they're at the staff level of one of the block's programs, or their
-  level's or position's `qualifications` cover every qualification of that level, through
-  `qualification_covers`. Its boats take Σ (boats, the organization's and the sailors' own, × the
+  program's sailors count against its own `sailors_per_coach`, in its `plan_programs` row, and need
+  coaches at its own `staff_level_key`: each level needs Σ (its programs' sailors ÷ their sailors per
+  coach). A staff-level row counts only toward its own level. A salaried position on the block counts
+  as one coach toward any level's shortfall, since the plan trusts the planner's allocation. The
+  block is over when the coaches it needs are more than the ones that count. Qualifications aren't
+  checked (#208). Its boats take Σ (boats, the organization's and the sailors' own, × the
   class's `sailors_per_boat`). A block whose activities don't use boats has no boat limit.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
 - `closed_date`: an activity, other than a travel day, on a closed day.
