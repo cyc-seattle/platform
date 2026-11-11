@@ -330,6 +330,21 @@ for (const action of ["create", "read", "update", "delete"] as const) {
   );
 }
 
+// Each sync holds its queues' leases while it runs, and deletes one that has expired or that it's done
+// with (cyc-seattle/platform#160).
+for (const [name, policyId] of [
+  ["clubspot-sync", clubspotSyncPolicyId],
+  ["gsuite-sync", gsuiteSyncPolicyId],
+] as const) {
+  for (const action of ["create", "read", "update", "delete"] as const) {
+    permissionRule(
+      `crm-${name}-sync_leases-${action}`,
+      { ...auth, policyId, collection: "sync_leases", action },
+      { dependsOn: crmSchema },
+    );
+  }
+}
+
 // The sync derives offerings, registrations, and households from the mirrors and guardian links, and
 // deletes one whose source is gone.
 for (const collection of ["offerings", "registrations", "households"]) {

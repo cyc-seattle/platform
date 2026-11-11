@@ -71,6 +71,7 @@ describe("SyncQueue.enqueue", () => {
 });
 
 describe("runQueue", () => {
+  const signal = new AbortController().signal;
   const dueTask: SyncTaskRow = {
     id: "task-1",
     queue: "clubspot-sync",
@@ -108,7 +109,7 @@ describe("runQueue", () => {
     vi.stubGlobal("fetch", fetchMock);
     const handler = vi.fn().mockResolvedValue(undefined);
 
-    const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler });
+    const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler }, signal);
 
     expect(result.processed).toBe(1);
     expect(handler).toHaveBeenCalledOnce();
@@ -140,6 +141,7 @@ describe("runQueue", () => {
       new DirectusClient(baseUrl, token),
       "clubspot-sync",
       { sync_camp: vi.fn().mockResolvedValue(undefined) },
+      signal,
       () => new Date("2026-01-15T12:00:00Z"),
     );
 
@@ -168,7 +170,7 @@ describe("runQueue", () => {
     vi.stubGlobal("fetch", fetchMock);
     const handler = vi.fn();
 
-    const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler });
+    const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler }, signal);
 
     expect(result.processed).toBe(0);
     expect(handler).not.toHaveBeenCalled();
@@ -187,7 +189,7 @@ describe("runQueue", () => {
     const handler = vi.fn().mockRejectedValue(new Error("clubspot is down"));
     const warnSpy = vi.spyOn(winston, "warn").mockReturnThis();
 
-    await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler });
+    await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler }, signal);
 
     expect(calls(fetchMock)[3]!.body).toMatchObject({ status: "pending", last_error: "clubspot is down" });
     expect(warnSpy).toHaveBeenCalledWith(
@@ -205,7 +207,7 @@ describe("runQueue", () => {
       .mockResolvedValueOnce(jsonResponse(200, { data: [dueTask] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", {})).rejects.toThrow(
+    await expect(runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", {}, signal)).rejects.toThrow(
       /No handler registered for sync_tasks kind "sync_camp"/,
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -221,7 +223,7 @@ describe("runQueue", () => {
     vi.stubGlobal("fetch", fetchMock);
     const warnSpy = vi.spyOn(winston, "warn").mockReturnThis();
 
-    const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", {});
+    const result = await runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", {}, signal);
 
     expect(result.processed).toBe(0);
     const sweep = calls(fetchMock)[1]!;
@@ -233,5 +235,22 @@ describe("runQueue", () => {
     );
 
     warnSpy.mockRestore();
+  });
+
+  it("stops before its next claim once the queue's lease is lost", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [dueTask] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const lost = new AbortController();
+    lost.abort(new Error("Lost the queue's lease to another run"));
+    const handler = vi.fn();
+
+    await expect(
+      runQueue(new DirectusClient(baseUrl, token), "clubspot-sync", { sync_camp: handler }, lost.signal),
+    ).rejects.toThrow(/Lost the queue's lease/);
+    expect(handler).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

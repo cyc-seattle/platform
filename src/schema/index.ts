@@ -70,6 +70,7 @@ export interface Schema {
   registrations: Registrations[];
   resource_kinds: ResourceKinds[];
   schools: Schools[];
+  sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
   version_set_members: VersionSetMembers[];
@@ -1136,6 +1137,15 @@ export interface Schools {
   name: string;
   /** Other ways families write this school on their Clubspot forms. An answer matching the name or one of these, ignoring capitals and punctuation and counting a run of spaces as one, is this school. Anything else is kept as their own words. */
   aliases: string[] | null;
+}
+
+/** Which syncs are running now. A sync holds its queue while it runs, so a second run waits its turn. Written by the syncs. */
+export interface SyncLeases {
+  id: string;
+  /** Which sync's queue is held. A queue has one lease at a time. */
+  queue: string;
+  /** The running sync renews this every minute. Once it passes, the sync has stopped, and the next run takes the queue. */
+  expires_at: string;
 }
 
 /** One row each time a sync runs. */
