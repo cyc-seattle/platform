@@ -60,38 +60,6 @@ export const defaultViews: DefaultView[] = [
   },
   { collection: "clubspot_promoted_fields", sort: ["target_field"], fields: ["target_field", "labels"] },
 
-  // Inventory
-  {
-    collection: "boats",
-    sort: ["boat_class_id.name", "sail_number"],
-    fields: ["boat_class_id", "sail_number", "hull_number", "name", "value_cents", "storage_space_id"],
-  },
-  {
-    collection: "boat_stage_changes",
-    sort: ["-changed_on"],
-    fields: ["boat_id", "stage", "changed_on"],
-  },
-  {
-    collection: "boat_charters",
-    sort: ["-starts_on"],
-    fields: ["boat_id", "person_id", "starts_on", "product_id", "fee_cents"],
-  },
-  {
-    collection: "boat_damage",
-    sort: ["-occurred_on"],
-    fields: ["boat_id", "occurred_on", "status", "repair_cost_cents", "charged_cents"],
-  },
-  {
-    collection: "storage_spaces",
-    sort: ["location"],
-    fields: ["location", "kind", "boat_class_id", "capacity", "footprint_sq_ft"],
-  },
-  {
-    collection: "storage_agreements",
-    sort: ["-starts_on"],
-    fields: ["person_id", "storage_space_id", "product_id", "starts_on", "ends_on", "fee_cents"],
-  },
-
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
   { collection: "boat_classes", sort: ["name"], fields: ["name", "sailors_per_boat", "footprint_sq_ft"] },

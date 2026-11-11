@@ -41,7 +41,6 @@ function related(overrides: Partial<MergeRelatedData> = {}): MergeRelatedData {
     programAreaRoleAssignments: [],
     registrations: [],
     googleGroupMemberships: [],
-    inventory: { boat_charters: [], boat_damage: [], storage_agreements: [] },
     ...overrides,
   };
 }
@@ -341,26 +340,6 @@ describe("planPersonMerge", () => {
       id: "es1",
       patch: { person_id: "keep" },
     });
-  });
-
-  it("repoints a duplicate's boat charters, boat damage, and storage agreements", () => {
-    const inventory = {
-      boat_charters: [{ id: "bc1", person_id: "dup" }],
-      boat_damage: [{ id: "bd1", person_id: "dup" }],
-      storage_agreements: [
-        { id: "sa1", person_id: "dup" },
-        { id: "sa2", person_id: "keep" },
-      ],
-    };
-    const steps = planPersonMerge(person({ id: "keep" }), [person({ id: "dup" })], related({ inventory }));
-    const repointed = steps.filter(
-      (step) => step.type === "update" && Object.keys(inventory).includes(step.collection),
-    );
-    expect(repointed).toEqual([
-      { type: "update", collection: "boat_charters", id: "bc1", patch: { person_id: "keep" } },
-      { type: "update", collection: "boat_damage", id: "bd1", patch: { person_id: "keep" } },
-      { type: "update", collection: "storage_agreements", id: "sa1", patch: { person_id: "keep" } },
-    ]);
   });
 
   it("moves a duplicate's directus_user_id to the keeper as one batch update, duplicate cleared before keeper set", () => {
