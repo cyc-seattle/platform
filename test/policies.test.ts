@@ -129,18 +129,30 @@ describe("the Catalog policies", () => {
     "resource_kinds",
     "programs",
     "catalog_offerings",
-    "organizations",
     "organization_cost_accounts",
   ];
+  const directory = ["organizations", "venues"];
 
-  it("let a Catalog Reader see the whole catalog, and change none of it", () => {
-    expect([...collections("Catalog Reader", "read")].sort()).toEqual([...catalog].sort());
+  it("let a Catalog Reader see the whole catalog and the directory, and change none of it", () => {
+    expect([...collections("Catalog Reader", "read")].sort()).toEqual([...catalog, ...directory].sort());
     expect(named("Catalog Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Catalog Writer change the whole catalog", () => {
-    for (const action of ["create", "read", "update", "delete"]) {
+  it("let a Catalog Writer change the whole catalog, and only see the directory", () => {
+    for (const action of ["create", "update", "delete"]) {
       expect([...collections("Catalog Writer", action)].sort()).toEqual([...catalog].sort());
+    }
+    expect([...collections("Catalog Writer", "read")].sort()).toEqual([...catalog, ...directory].sort());
+  });
+
+  it("leave the directory to admins: no policy a group gives changes it", () => {
+    const writers = policies.filter((policy) =>
+      policy.rules.some((rule) => directory.includes(rule.collection) && rule.action !== "read"),
+    );
+    expect(writers).toEqual([]);
+    for (const collection of directory) {
+      expect(collections("Plan Reader", "read").has(collection)).toBe(true);
+      expect(collections("Plan Writer", "read").has(collection)).toBe(true);
     }
   });
 

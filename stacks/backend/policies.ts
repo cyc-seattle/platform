@@ -72,6 +72,15 @@ export function catalogCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(core);
 }
 
+/** The directory's collections: every one in the directory schema. Only an admin changes them. */
+export function directoryCollections(schemas: LoadedSchema[]): string[] {
+  const directory = schemas.find(({ name }) => name === "directory")?.schema;
+  if (directory === undefined) {
+    throw new Error("backend: expected a schemas/directory.yaml to find the directory's collections");
+  }
+  return collectionsInSchema(directory);
+}
+
 /** The public website's collections: every one in the website schema. */
 export function websiteCollections(schemas: LoadedSchema[]): string[] {
   const website = schemas.find(({ name }) => name === "website")?.schema;
@@ -181,7 +190,8 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const collections = crmCollections(schemas).filter((collection) => collection !== MEDICAL);
   const catalog = catalogCollections(schemas);
   const plans = planCollections(schemas);
-  const readCatalog = catalog.map((collection) => ({ collection, action: "read" as const }));
+  const readDirectory = directoryCollections(schemas).map((collection) => ({ collection, action: "read" as const }));
+  const readCatalog = [...catalog.map((collection) => ({ collection, action: "read" as const })), ...readDirectory];
   // So a saved Financial Plan can name who saved it (cyc-seattle/platform#138).
   const readUserNames = {
     collection: "directus_users",
@@ -229,17 +239,22 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       key: "catalog-reader",
       name: "Catalog Reader",
       icon: "menu_book",
-      description: "Sees the catalog: products, program areas, revenue accounts, programs, and the rest.",
+      description:
+        "Sees the catalog: products, program areas, revenue accounts, programs, and the rest. Also the organizations and venues.",
       rules: readCatalog,
     },
     {
       key: "catalog-writer",
       name: "Catalog Writer",
       icon: "edit_note",
-      description: "Changes the catalog: products, program areas, revenue accounts, programs, and the rest.",
-      rules: catalog.flatMap((collection) =>
-        (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
-      ),
+      description:
+        "Changes the catalog: products, program areas, revenue accounts, programs, and the rest. Sees the organizations and venues.",
+      rules: [
+        ...catalog.flatMap((collection) =>
+          (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
+        ),
+        ...readDirectory,
+      ],
     },
     // Planners read wages and bonus rates with the rest of a plan: no field is hidden.
     {

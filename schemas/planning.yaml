@@ -966,7 +966,10 @@ fields:
       hidden: false
       interface: select-dropdown-m2o
       note: The organization the plan is for. Can't change once the plan has a saved copy.
-      options: null
+      options:
+        filter:
+          kind:
+            _eq: own
       readonly: false
       required: true
       searchable: true
@@ -10291,7 +10294,10 @@ fields:
       hidden: false
       interface: select-dropdown-m2o
       note: The organization the Financial Plan is for.
-      options: null
+      options:
+        filter:
+          kind:
+            _eq: own
       readonly: false
       required: true
       searchable: true

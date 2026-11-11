@@ -69,12 +69,15 @@ export const defaultViews: DefaultView[] = [
   { collection: "catalog_offerings", sort: ["program_id.name", "name"], fields: ["program_id", "name"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
   { collection: "resource_kinds", sort: ["name"], fields: ["name"] },
-  { collection: "organizations", sort: ["name"], fields: ["name", "fiscal_year_start_month"] },
   {
     collection: "organization_cost_accounts",
     sort: ["organization_id.name", "cost_type"],
     fields: ["organization_id", "cost_type", "account_id"],
   },
+
+  // Directory
+  { collection: "organizations", sort: ["name"], fields: ["name", "short_name", "kind", "website"] },
+  { collection: "venues", sort: ["name"], fields: ["name", "organization_id", "address"] },
 
   // CRM
   { collection: "people", sort: ["last_name", "first_name"], fields: ["last_name", "first_name", "email", "phone"] },
