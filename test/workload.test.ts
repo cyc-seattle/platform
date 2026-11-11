@@ -89,6 +89,7 @@ beforeAll(async () => {
     replicas: 2,
     minAvailable: 1,
     spreadAcrossZones: true,
+    progressDeadlineSeconds: 1200,
     podAnnotations: { "cluster-autoscaler.kubernetes.io/safe-to-evict": "false" },
   });
   jobMember = new ScheduledJob("dev-sync", jobArgs("dev")).member;
@@ -189,6 +190,16 @@ describe("Workload", () => {
         labelSelector: { matchLabels: { "app.kubernetes.io/name": "prod-ha" } },
       },
     ]);
+  });
+
+  it("leaves a Workload's shutdown and rollout deadline at Kubernetes' defaults", () => {
+    expect(podSpec("dev-worker").containers[0]).not.toHaveProperty("lifecycle");
+    expect(podSpec("dev-worker")).not.toHaveProperty("terminationGracePeriodSeconds");
+    expect(find("kubernetes:apps/v1:Deployment", "dev-worker").spec).not.toHaveProperty("progressDeadlineSeconds");
+  });
+
+  it("gives a slow rollout a longer deadline", () => {
+    expect(find("kubernetes:apps/v1:Deployment", "prod-ha").spec.progressDeadlineSeconds).toBe(1200);
   });
 
   it("keeps minAvailable pods up through drains", () => {

@@ -156,6 +156,12 @@ describe("Authentik on prod's cluster", () => {
     expect(template("authentik-worker").metadata.annotations).toBeUndefined();
   });
 
+  it("gives the server's rollout time to wait for a node and pull its image", () => {
+    const spec = (name: string) => find("kubernetes:apps/v1:Deployment", name).inputs["spec"];
+    expect(spec("authentik-server").progressDeadlineSeconds).toBe(1200);
+    expect(spec("authentik-worker").progressDeadlineSeconds).toBeUndefined();
+  });
+
   it("points login. at the Gateway", () => {
     expect(find("gcp:dns/recordSet:RecordSet", "authentik-a").inputs).toMatchObject({
       name: "login.example.com.",
