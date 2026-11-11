@@ -72,23 +72,22 @@ permissions, plus any shared policies it's given:
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
 
-| Policy           | Gives                                                                                                                  |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| CRM Reader       | Reads every CRM collection but medical information                                                                     |
-| CRM Writer       | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                   |
-| Medical Reader   | Reads every sailor's medical information                                                                               |
-| Medical Writer   | Changes every sailor's medical information                                                                             |
-| Catalog Reader   | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                       |
-| Catalog Writer   | Changes the catalog, and reads the directory                                                                           |
-| Inventory Reader | Reads CSC's boats, charters, damage and storage, the boat classes, products and terms they name, and sailors' names    |
-| Inventory Writer | Changes the inventory, moves a boat to its next stage, and closes and reopens a term. Reads what Inventory Reader does |
-| Plan Reader      | Reads every plan, wages and bonus rates included, the catalog, and users' names                                        |
-| Plan Writer      | Changes any plan's draft, saves it as a version, and makes a saved version active. Reads the catalog and users' names  |
+| Policy           | Gives                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| CRM Reader       | Reads every CRM collection but medical information                                                                    |
+| CRM Writer       | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                  |
+| Medical Reader   | Reads every sailor's medical information                                                                              |
+| Medical Writer   | Changes every sailor's medical information                                                                            |
+| Catalog Reader   | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                      |
+| Catalog Writer   | Changes the catalog, and reads the directory                                                                          |
+| Inventory Reader | Reads CSC's boats, charters, damage and storage, the boat classes and products they name, and sailors' names          |
+| Inventory Writer | Changes the inventory, and moves a boat to its next stage. Reads what Inventory Reader does                           |
+| Plan Reader      | Reads every plan, wages and bonus rates included, the catalog, and users' names                                       |
+| Plan Writer      | Changes any plan's draft, saves it as a version, and makes a saved version active. Reads the catalog and users' names |
 
 They're coarse: whole collections, with no row filters and no hidden fields, but for users: a Plan
 policy reads only each user's first and last name, so a saved Financial Plan names who saved it. An
-Inventory policy reads only each person's name, and an Inventory Writer changes only a term's
-`closed_on`. A
+Inventory policy reads only each person's name. A
 saved plan version never changes, even for an admin, so the `saved-versions` hook enforces that
 rather than a policy (`docs/planning-schema.md`). A Medical policy is given with a CRM policy.
 Programs belong to the catalog, so only a Catalog Writer changes them. A CRM policy reads them, and
