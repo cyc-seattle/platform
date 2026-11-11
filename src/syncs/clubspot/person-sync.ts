@@ -132,6 +132,13 @@ export interface SyncParticipantOptions {
   registration: RegistrationRank;
   /** Every other registration in this run's batch already resolved to the same person - see {@link BatchSibling}. */
   batchSiblings?: readonly BatchSibling[];
+  /**
+   * Runs after every CRM write and before the `contact_points` upsert, whose rows reference the
+   * participant by FK. `sync-run.ts` creates a new participant's mirror row here, so a run that
+   * fails before it leaves no mirror to turn the retry's `base` into this run's `v`
+   * (cyc-seattle/platform#158).
+   */
+  beforeContactPoints?: () => Promise<void>;
 }
 
 /**
@@ -234,7 +241,14 @@ export class PersonSync {
   }
 
   async syncParticipant(participant: Participant, options: SyncParticipantOptions): Promise<ParticipantSyncResult> {
-    const { existingPersonId, priorMirror, mirrorFields, registration, batchSiblings = [] } = options;
+    const {
+      existingPersonId,
+      priorMirror,
+      mirrorFields,
+      registration,
+      batchSiblings = [],
+      beforeContactPoints,
+    } = options;
     const fields = buildPersonFieldsFromParticipant(participant);
     const resolved = existingPersonId
       ? await this.reusePerson(existingPersonId)
@@ -298,6 +312,7 @@ export class PersonSync {
       ...candidate,
       participantId: participant.id,
     }));
+    await beforeContactPoints?.();
     const contactPoints = await upsertContactPoints(this.directus, candidates, new Date());
 
     const fieldTally = [personFields, medicalFields, guardianResult.fields, emergencyResult.fields].reduce(
