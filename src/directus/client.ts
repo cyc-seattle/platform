@@ -638,6 +638,38 @@ export async function applySchema(baseUrl: string, token: string, schema: unknow
         `schema did not actually take: ${missing.join(", ")}`,
     );
   }
+  const dropped = droppedRelations(
+    appSchema.relations as DirectusRelationEntry[],
+    applied.relations as DirectusRelationEntry[],
+  );
+  if (dropped.length > 0) {
+    throw new Error(
+      `/schema/apply returned successfully but these relations are missing or lost their foreign key ` +
+        `afterward: ${dropped.join("; ")}`,
+    );
+  }
+}
+
+// A relation as the snapshot holds it. `schema` is its foreign key; a relation without one has none.
+interface DirectusRelationEntry extends DirectusFieldEntry {
+  schema?: { constraint_name?: string | null; on_delete?: string | null } | null;
+}
+
+/** The submitted relations that are absent from `live`, or whose foreign key's constraint or
+ * `on_delete` differs there: Directus can drop a foreign key and still report success
+ * (cyc-seattle/platform#163). */
+function droppedRelations(submitted: DirectusRelationEntry[], live: DirectusRelationEntry[]): string[] {
+  const liveByKey = new Map(live.map((r) => [`${r.collection}.${r.field}`, r]));
+  return submitted.flatMap((relation) => {
+    const key = `${relation.collection}.${relation.field}`;
+    const found = liveByKey.get(key);
+    if (found === undefined) return [`${key} is missing`];
+    if (!relation.schema) return [];
+    const problems = (["constraint_name", "on_delete"] as const)
+      .filter((prop) => (found.schema?.[prop] ?? null) !== (relation.schema?.[prop] ?? null))
+      .map((prop) => `${prop} is ${found.schema?.[prop] ?? "missing"}, not ${relation.schema?.[prop] ?? "missing"}`);
+    return problems.length > 0 ? [`${key}: ${problems.join(", ")}`] : [];
+  });
 }
 
 // --- Users. Directus enforces a unique email, so a user this program should own may already

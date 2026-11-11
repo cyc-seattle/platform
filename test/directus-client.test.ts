@@ -172,6 +172,49 @@ describe("applySchema", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
+  describe("verifies relations and their foreign keys (cyc-seattle/platform#163)", () => {
+    const relation = {
+      collection: "a",
+      field: "person_id",
+      related_collection: "people",
+      schema: { constraint_name: "a_person_id_foreign", on_delete: "CASCADE" },
+    };
+    const withRelations = (relations: unknown[]) => ({ ...snapshot(["a"]), relations });
+
+    async function applyAndVerifyAgainst(live: unknown) {
+      const pendingDiff = { hash: "abc", diff: { relations: [{ collection: "a", diff: [{ kind: "N" }] }] } };
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(jsonResponse(200, { data: snapshot(["a"]) })) // GET /schema/snapshot
+          .mockResolvedValueOnce(jsonResponse(200, { data: pendingDiff })) // POST /schema/diff
+          .mockResolvedValueOnce(jsonResponse(204, undefined)) // POST /schema/apply
+          .mockResolvedValueOnce(jsonResponse(200, { data: live })), // verify
+      );
+      return applySchema(baseUrl, token, withRelations([relation]));
+    }
+
+    it("succeeds when every relation keeps its constraint and on_delete", async () => {
+      await expect(applyAndVerifyAgainst(withRelations([relation]))).resolves.toBeUndefined();
+    });
+
+    it("throws when a relation comes back without its foreign key", async () => {
+      await expect(applyAndVerifyAgainst(withRelations([{ ...relation, schema: null }]))).rejects.toThrow(
+        /a\.person_id: constraint_name is missing, not a_person_id_foreign, on_delete is missing, not CASCADE/,
+      );
+    });
+
+    it("throws when a relation's on_delete changed", async () => {
+      const live = withRelations([{ ...relation, schema: { ...relation.schema, on_delete: "NO ACTION" } }]);
+      await expect(applyAndVerifyAgainst(live)).rejects.toThrow(/a\.person_id: on_delete is NO ACTION, not CASCADE/);
+    });
+
+    it("throws when a relation is missing", async () => {
+      await expect(applyAndVerifyAgainst(withRelations([]))).rejects.toThrow(/a\.person_id is missing/);
+    });
+  });
+
   it("scopes the diff to this app's own collections: a collection outside this app's schema is preserved", async () => {
     // Regression test for cyc-seattle/isthmia#109: applySchema used to diff the bare app schema against the whole
     // instance, so a collection belonging to another app (not mentioned in this app's schema.yaml)
