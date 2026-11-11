@@ -274,6 +274,8 @@ fields:
             _in:
               - CRM Reader
               - CRM Writer
+              - Calendar Reader
+              - Calendar Writer
               - Catalog Reader
               - Catalog Writer
               - Medical Reader

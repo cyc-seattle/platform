@@ -81,6 +81,15 @@ export function directoryCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(directory);
 }
 
+/** The calendar's collections: every one in the calendar schema. */
+export function calendarCollections(schemas: LoadedSchema[]): string[] {
+  const calendar = schemas.find(({ name }) => name === "calendar")?.schema;
+  if (calendar === undefined) {
+    throw new Error("backend: expected a schemas/calendar.yaml to find the calendar's collections");
+  }
+  return collectionsInSchema(calendar);
+}
+
 /** The public website's collections: every one in the website schema. */
 export function websiteCollections(schemas: LoadedSchema[]): string[] {
   const website = schemas.find(({ name }) => name === "website")?.schema;
@@ -192,6 +201,9 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const plans = planCollections(schemas);
   const readDirectory = directoryCollections(schemas).map((collection) => ({ collection, action: "read" as const }));
   const readCatalog = [...catalog.map((collection) => ({ collection, action: "read" as const })), ...readDirectory];
+  const calendar = calendarCollections(schemas);
+  // An event names its organizer, venue, and boat classes.
+  const calendarLinks = [...readDirectory, { collection: "boat_classes", action: "read" as const }];
   // So a saved Financial Plan can name who saved it (cyc-seattle/platform#138).
   const readUserNames = {
     collection: "directus_users",
@@ -231,6 +243,28 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       icon: "medical_services",
       description: "Changes every sailor's medical information. Given with a CRM policy.",
       rules: (["create", "read", "update", "delete"] as const).map((action) => ({ collection: MEDICAL, action })),
+    },
+    {
+      key: "calendar-reader",
+      name: "Calendar Reader",
+      icon: "calendar_month",
+      description:
+        "Sees the regattas and clinics, their series, and the holiday, school, and staff calendars. Also the organizations, venues, and boat classes.",
+      rules: [...calendar.map((collection) => ({ collection, action: "read" as const })), ...calendarLinks],
+    },
+    // Race and program staff keep the calendar (cyc-seattle/platform#124).
+    {
+      key: "calendar-writer",
+      name: "Calendar Writer",
+      icon: "event_available",
+      description:
+        "Changes the regattas and clinics, their series, and the holiday, school, and staff calendars. Sees the organizations, venues, and boat classes.",
+      rules: [
+        ...calendar.flatMap((collection) =>
+          (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
+        ),
+        ...calendarLinks,
+      ],
     },
     {
       key: "catalog-reader",

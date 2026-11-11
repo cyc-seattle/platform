@@ -60,6 +60,16 @@ export const defaultViews: DefaultView[] = [
   },
   { collection: "clubspot_promoted_fields", sort: ["target_field"], fields: ["target_field", "labels"] },
 
+  // Calendar
+  {
+    collection: "events",
+    sort: ["starts_on"],
+    fields: ["starts_on", "ends_on", "name", "status", "event_type", "organizer_id", "venue_id", "adopted"],
+  },
+  { collection: "event_series", sort: ["name"], fields: ["name", "organizer_id", "website"] },
+  { collection: "calendars", sort: ["name"], fields: ["name", "kind", "color"] },
+  { collection: "calendar_dates", sort: ["starts_on"], fields: ["starts_on", "ends_on", "name", "calendar_id"] },
+
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
   { collection: "boat_classes", sort: ["name"], fields: ["name", "sailors_per_boat", "footprint_sq_ft"] },
