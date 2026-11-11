@@ -25,6 +25,8 @@ export const policyNames = [
   "CRM Writer",
   "Medical Reader",
   "Medical Writer",
+  "Calendar Reader",
+  "Calendar Writer",
   "Catalog Reader",
   "Catalog Writer",
   "Plan Reader",
