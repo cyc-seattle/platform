@@ -455,7 +455,7 @@ The Operations Plan also holds the offerings of products in no area: merchandise
 A salaried booking names a product, or a program area whose offerings share it by MTDC.
 
 A salaried position can name the person in it. The engine doesn't read it. Plans budget coaches by
-staff level and name no coaches; the club's coaches are a lasting list outside the plans
+staff level and name no coaches; CSC's coaches are a lasting list outside the plans
 ([docs/staff-schema.md](staff-schema.md)), each at a staff level's key. A retired level stays in the
 plan, so its coaches keep it, and the engine still prices it wherever a block or labor line uses it.
 

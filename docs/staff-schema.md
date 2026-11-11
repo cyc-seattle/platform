@@ -4,7 +4,7 @@ tags: [architecture, crm, directus]
 
 ## Staff: schema
 
-`schemas/staff.yaml` holds the club's coaches: a lasting list of the people it employs to coach,
+`schemas/staff.yaml` holds CSC's coaches: a lasting list of the people it employs to coach,
 outside any Financial Plan ([cyc-seattle/platform#125](https://github.com/cyc-seattle/platform/issues/125)).
 Plans still budget coaches by staff level ([docs/planning-schema.md](planning-schema.md)). They don't
 name the coaches, apart from the person in a salaried position.

@@ -342,7 +342,7 @@ export interface ClubspotSessions {
   archived: boolean;
 }
 
-/** The club's coaches, each at a staff level. Archive a coach who's left; don't delete them. */
+/** CSC's coaches, each at a staff level. Archive a coach who's left; don't delete them. */
 export interface Coaches {
   id: string;
   /** A person is on the list once. */

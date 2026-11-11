@@ -17,7 +17,7 @@ collections:
       hidden: false
       icon: sports
       item_duplication_fields: null
-      note: "The club's coaches, each at a staff level. Archive a coach who's left; don't delete them."
+      note: "CSC's coaches, each at a staff level. Archive a coach who's left; don't delete them."
       preview_url: null
       singleton: false
       sort: null
