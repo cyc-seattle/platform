@@ -3,8 +3,9 @@
  * paging can be tested against a fake query instead of a live one.
  */
 export interface PageableQuery<T> {
+  ascending(key: "objectId"): PageableQuery<T>;
+  greaterThan(key: "objectId", value: string): PageableQuery<T>;
   limit(n: number): PageableQuery<T>;
-  skip(n: number): PageableQuery<T>;
   find(): Promise<T[]>;
 }
 
@@ -13,14 +14,23 @@ export interface PageableQuery<T> {
 // Paging removes the cap instead of moving it.
 const PAGE_SIZE = 1000;
 
-/** Pages a Parse query in fixed-size batches, so a result larger than one page is never truncated. */
-export async function findAll<T>(query: PageableQuery<T>, pageSize = PAGE_SIZE): Promise<T[]> {
+/**
+ * Pages a Parse query in fixed-size batches, so a result larger than one page is never truncated.
+ *
+ * Pages by key on `objectId`, not by `skip`: Parse on Postgres promises no order without a sort,
+ * and a row inserted mid-run shifts every later skip page, so skip paging can drop one row and
+ * repeat another (cyc-seattle/platform#159). The sort replaces any sort the caller set.
+ */
+export async function findAll<T extends { id: string }>(query: PageableQuery<T>, pageSize = PAGE_SIZE): Promise<T[]> {
   const results: T[] = [];
-  for (let skip = 0; ; skip += pageSize) {
-    const page = await query.limit(pageSize).skip(skip).find();
+  query.ascending("objectId").limit(pageSize);
+  for (;;) {
+    const page = await query.find();
     results.push(...page);
-    if (page.length < pageSize) {
+    const last = page.at(-1);
+    if (page.length < pageSize || !last) {
       return results;
     }
+    query.greaterThan("objectId", last.id);
   }
 }
