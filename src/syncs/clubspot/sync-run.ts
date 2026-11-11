@@ -38,6 +38,7 @@ import {
   runQueue,
   targetFromKey,
   TaskOrphaned,
+  withQueueLease,
 } from "../runtime/index.ts";
 import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipantFindings } from "./audit.ts";
 import { campBackoff, nextSyncState } from "./backoff.ts";
@@ -1611,54 +1612,62 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
         }
       }
     } else {
-      const campTaskIds = await enqueueDueCamps(clubId, now, directus, queue, gateway);
-      const queueCounts: RegistrationSyncCounts = {
-        participantsCreated: 0,
-        participantsMirrored: 0,
-        contactPointsCreated: 0,
-        contactPointsTouched: 0,
-        fieldsWritten: 0,
-        fieldsReplacedStaffEdits: 0,
-        fieldsBlankSkipped: 0,
-        slotNameMismatches: 0,
-        participantsUnlinkedSkipped: 0,
-      };
-      const { taskIds: claimedTaskIds } = await runQueue(directus, "clubspot-sync", {
-        sync_camp: campTaskHandler(directus, personSync, gateway, syncRun?.id, queueCounts, answers),
+      // Around the enqueue too: an enqueue resets a task another run holds.
+      await withQueueLease(directus, ["clubspot-sync"], async (signal) => {
+        const campTaskIds = await enqueueDueCamps(clubId, now, directus, queue, gateway);
+        const queueCounts: RegistrationSyncCounts = {
+          participantsCreated: 0,
+          participantsMirrored: 0,
+          contactPointsCreated: 0,
+          contactPointsTouched: 0,
+          fieldsWritten: 0,
+          fieldsReplacedStaffEdits: 0,
+          fieldsBlankSkipped: 0,
+          slotNameMismatches: 0,
+          participantsUnlinkedSkipped: 0,
+        };
+        const { taskIds: claimedTaskIds } = await runQueue(
+          directus,
+          "clubspot-sync",
+          {
+            sync_camp: campTaskHandler(directus, personSync, gateway, syncRun?.id, queueCounts, answers),
+          },
+          signal,
+        );
+        participantsCreated += queueCounts.participantsCreated;
+        participantsMirrored += queueCounts.participantsMirrored;
+        contactPointsCreated += queueCounts.contactPointsCreated;
+        contactPointsTouched += queueCounts.contactPointsTouched;
+        fieldsWritten += queueCounts.fieldsWritten;
+        fieldsReplacedStaffEdits += queueCounts.fieldsReplacedStaffEdits;
+        fieldsBlankSkipped += queueCounts.fieldsBlankSkipped;
+        slotNameMismatches += queueCounts.slotNameMismatches;
+        participantsUnlinkedSkipped += queueCounts.participantsUnlinkedSkipped;
+
+        // The union, not just what this run enqueued: a task left over from an earlier run - pending
+        // a retry, or simply never claimable until now - is claimed here without being re-enqueued,
+        // and still belongs in what this run reports on. What discovery no longer returns is absent
+        // from both sets, so it drops out of the count instead of hanging on the stable sync_run
+        // parent forever (cyc-seattle/isthmia#143 finding 4).
+        const checkedTaskIds = [...new Set([...campTaskIds, ...claimedTaskIds])];
+        campsChecked = checkedTaskIds.length;
+
+        if (checkedTaskIds.length > 0) {
+          const tasks = await directus.readItems<SyncTaskRow>("sync_tasks", {
+            filter: { queue: { _eq: "clubspot-sync" } },
+            limit: -1,
+          });
+          const taskById = new Map(tasks.filter((task) => task.id).map((task) => [task.id as string, task]));
+          // Neither "done" nor "cancelled" is a failure worth surfacing: "cancelled" means the task's
+          // own camp evaporated from Clubspot, not that anything is broken - see `TaskOrphaned`.
+          // A task still "pending" is, whether it failed once or has been failing for weeks
+          // (`needs_attention`) - the queue keeps retrying either way.
+          campsFailed = checkedTaskIds.filter((id) => {
+            const status = taskById.get(id)?.status;
+            return status !== "done" && status !== "cancelled";
+          }).length;
+        }
       });
-      participantsCreated += queueCounts.participantsCreated;
-      participantsMirrored += queueCounts.participantsMirrored;
-      contactPointsCreated += queueCounts.contactPointsCreated;
-      contactPointsTouched += queueCounts.contactPointsTouched;
-      fieldsWritten += queueCounts.fieldsWritten;
-      fieldsReplacedStaffEdits += queueCounts.fieldsReplacedStaffEdits;
-      fieldsBlankSkipped += queueCounts.fieldsBlankSkipped;
-      slotNameMismatches += queueCounts.slotNameMismatches;
-      participantsUnlinkedSkipped += queueCounts.participantsUnlinkedSkipped;
-
-      // The union, not just what this run enqueued: a task left over from an earlier run - pending
-      // a retry, or simply never claimable until now - is claimed here without being re-enqueued,
-      // and still belongs in what this run reports on. What discovery no longer returns is absent
-      // from both sets, so it drops out of the count instead of hanging on the stable sync_run
-      // parent forever (cyc-seattle/isthmia#143 finding 4).
-      const checkedTaskIds = [...new Set([...campTaskIds, ...claimedTaskIds])];
-      campsChecked = checkedTaskIds.length;
-
-      if (checkedTaskIds.length > 0) {
-        const tasks = await directus.readItems<SyncTaskRow>("sync_tasks", {
-          filter: { queue: { _eq: "clubspot-sync" } },
-          limit: -1,
-        });
-        const taskById = new Map(tasks.filter((task) => task.id).map((task) => [task.id as string, task]));
-        // Neither "done" nor "cancelled" is a failure worth surfacing: "cancelled" means the task's
-        // own camp evaporated from Clubspot, not that anything is broken - see `TaskOrphaned`.
-        // A task still "pending" is, whether it failed once or has been failing for weeks
-        // (`needs_attention`) - the queue keeps retrying either way.
-        campsFailed = checkedTaskIds.filter((id) => {
-          const status = taskById.get(id)?.status;
-          return status !== "done" && status !== "cancelled";
-        }).length;
-      }
     }
   } catch (error) {
     winston.error("Sync run failed", {

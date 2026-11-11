@@ -298,6 +298,7 @@ export const defaultViews: DefaultView[] = [
 
   // Sync
   { collection: "sync_runs", sort: ["-started_at"], fields: ["started_at", "source", "status", "finished_at"] },
+  { collection: "sync_leases", sort: ["queue"], fields: ["queue", "expires_at"] },
   {
     collection: "sync_tasks",
     sort: ["-needs_attention", "-run_after"],

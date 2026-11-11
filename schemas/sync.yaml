@@ -80,6 +80,32 @@ collections:
       versioning: false
     schema:
       name: sync_runs
+  - collection: sync_leases
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: sync_leases
+      color: null
+      display_template: "{{queue}} until {{expires_at}}"
+      group: Sync
+      hidden: false
+      icon: lock_clock
+      item_duplication_fields: null
+      note: Which syncs are running now. A sync holds its queue while it runs, so a second run waits its turn. Written by the syncs.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: sync_leases
   - collection: Sync
     meta:
       accountability: all
@@ -1241,6 +1267,127 @@ fields:
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: sync_leases
+    field: id
+    type: uuid
+    meta:
+      collection: sync_leases
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: sync_leases
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: sync_leases
+    field: queue
+    type: string
+    meta:
+      collection: sync_leases
+      conditions: null
+      display: null
+      display_options: null
+      field: queue
+      group: null
+      hidden: false
+      interface: input
+      note: Which sync's queue is held. A queue has one lease at a time.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: queue
+      table: sync_leases
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: sync_leases
+    field: expires_at
+    type: timestamp
+    meta:
+      collection: sync_leases
+      conditions: null
+      display: null
+      display_options: null
+      field: expires_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: The running sync renews this every minute. Once it passes, the sync has stopped, and the next run takes the queue.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: expires_at
+      table: sync_leases
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false

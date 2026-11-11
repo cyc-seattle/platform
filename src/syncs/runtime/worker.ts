@@ -24,10 +24,8 @@ export type SyncTaskHandler = (task: SyncTaskRow) => Promise<void>;
  * succeed, so `runQueue` retires the task as `cancelled` instead of treating this as a failure. */
 export class TaskOrphaned extends Error {}
 
-/**
- * Thin executor over `DirectusClient` and the pure decisions in `queue.ts`. Holds no decision
- * logic of its own - see `planClaim` for why claiming needs no lease.
- */
+/** Thin executor over `DirectusClient` and the pure decisions in `queue.ts`. Holds no decision
+ * logic of its own. */
 export class SyncQueue {
   private readonly directus: DirectusClient;
 
@@ -57,14 +55,18 @@ export class SyncQueue {
  * Claims and runs every due task in `queue`, one at a time, until none remain. It reads the due tasks
  * in batches: a handler may enqueue children mid-run, and the next batch picks them up. So a run
  * reads the queue once per level of the task tree, not once per task (cyc-seattle/platform#81).
+ *
+ * The caller holds the queue's lease (`withQueueLease`) and passes its signal, which stops the run
+ * before its next claim once the lease is lost.
  */
 export async function runQueue(
   directus: DirectusClient,
   queue: string,
   handlers: Readonly<Record<string, SyncTaskHandler>>,
+  signal: AbortSignal,
   now: () => Date = () => new Date(),
 ): Promise<{ processed: number; taskIds: string[] }> {
-  // A `running` row this early can only be one a prior run's worker crashed on - see
+  // The lease makes a `running` row this early one a prior run's worker crashed on - see
   // `staleRunningTasks`.
   const stale = await directus.readItems<SyncTaskRow>("sync_tasks", { filter: staleRunningFilter(queue), limit: -1 });
   for (const task of stale) {
@@ -89,6 +91,7 @@ export async function runQueue(
       if (!task.id) {
         continue;
       }
+      signal.throwIfAborted();
       const handler = handlers[task.kind];
       if (!handler) {
         throw new Error(`No handler registered for sync_tasks kind "${task.kind}" in queue "${queue}"`);

@@ -15,6 +15,7 @@ import {
   type SyncTaskRow,
   targetFromKey,
   TaskOrphaned,
+  withQueueLease,
 } from "../runtime/index.ts";
 import { resolveGroupSettingsTemplate } from "@cyc-seattle/gsuite-sdk";
 import { type DirectoryReader, runAudit } from "./audit-writer.ts";
@@ -414,57 +415,70 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
   let runError: string | undefined;
 
   try {
-    const discoveryEnqueuedIds = await enqueueDiscovery(now, queue);
-    const { taskIds: discoveryClaimedIds } = await runQueue(directus, DISCOVERY_QUEUE, {
-      [DISCOVERY_KIND]: discoveryTaskHandler(directus, directory, customer),
-    });
-
-    const enqueued = await Promise.all([
-      enqueueDueProgramGroups(now, directus, queue),
-      enqueueGroupSettings(now, directus, queue),
-      enqueueGroupNesting(now, directus, queue),
-      enqueueGroupOwners(now, directus, queue),
-      enqueueAudit(now, queue),
-    ]);
-    const enqueuedTaskIds = enqueued.flat();
-
-    const { taskIds: claimedTaskIds } = await runQueue(directus, QUEUE, {
-      [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(
+    // Both queues' leases, around the enqueues too: an enqueue resets a task another run holds.
+    await withQueueLease(directus, [DISCOVERY_QUEUE, QUEUE], async (signal) => {
+      const discoveryEnqueuedIds = await enqueueDiscovery(now, queue);
+      const { taskIds: discoveryClaimedIds } = await runQueue(
         directus,
-        directory,
-        adder,
-        sharedMembershipSnapshot(directus),
-        now,
-      ),
-      [SETTINGS_KIND]: groupSettingsTaskHandler(directus, settingsApplier),
-      [NESTING_KIND]: groupNestingTaskHandler(directus, adder),
-      [OWNERS_KIND]: groupOwnersTaskHandler(directus, adder, groupOwners),
-      [AUDIT_KIND]: auditTaskHandler(directus, directory, settingsReader, groupOwners, now),
-    });
-
-    // The union, not just what this run enqueued: a task the seeder orphaned earlier (its program
-    // or group deleted, say) is claimed and retired here without ever being re-enqueued, and still
-    // belongs in what this run reports on - see `TaskOrphaned`.
-    checkedTaskIds = [
-      ...new Set([...discoveryEnqueuedIds, ...discoveryClaimedIds, ...enqueuedTaskIds, ...claimedTaskIds]),
-    ];
-
-    if (checkedTaskIds.length > 0) {
-      const [mainTasks, discoveryTasks] = await Promise.all([
-        directus.readItems<SyncTaskRow>("sync_tasks", { filter: { queue: { _eq: QUEUE } }, limit: -1 }),
-        directus.readItems<SyncTaskRow>("sync_tasks", { filter: { queue: { _eq: DISCOVERY_QUEUE } }, limit: -1 }),
-      ]);
-      const taskById = new Map(
-        [...mainTasks, ...discoveryTasks].filter((task) => task.id).map((task) => [task.id as string, task]),
+        DISCOVERY_QUEUE,
+        {
+          [DISCOVERY_KIND]: discoveryTaskHandler(directus, directory, customer),
+        },
+        signal,
       );
-      // Neither "done" nor "cancelled" is a failure worth surfacing: "cancelled" means the task's
-      // own precondition evaporated, not that anything is broken. A task still "pending" is,
-      // whether it failed once or has been failing for weeks (`needs_attention`).
-      tasksFailed = checkedTaskIds.filter((id) => {
-        const status = taskById.get(id)?.status;
-        return status !== "done" && status !== "cancelled";
-      }).length;
-    }
+
+      const enqueued = await Promise.all([
+        enqueueDueProgramGroups(now, directus, queue),
+        enqueueGroupSettings(now, directus, queue),
+        enqueueGroupNesting(now, directus, queue),
+        enqueueGroupOwners(now, directus, queue),
+        enqueueAudit(now, queue),
+      ]);
+      const enqueuedTaskIds = enqueued.flat();
+
+      const { taskIds: claimedTaskIds } = await runQueue(
+        directus,
+        QUEUE,
+        {
+          [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(
+            directus,
+            directory,
+            adder,
+            sharedMembershipSnapshot(directus),
+            now,
+          ),
+          [SETTINGS_KIND]: groupSettingsTaskHandler(directus, settingsApplier),
+          [NESTING_KIND]: groupNestingTaskHandler(directus, adder),
+          [OWNERS_KIND]: groupOwnersTaskHandler(directus, adder, groupOwners),
+          [AUDIT_KIND]: auditTaskHandler(directus, directory, settingsReader, groupOwners, now),
+        },
+        signal,
+      );
+
+      // The union, not just what this run enqueued: a task the seeder orphaned earlier (its program
+      // or group deleted, say) is claimed and retired here without ever being re-enqueued, and still
+      // belongs in what this run reports on - see `TaskOrphaned`.
+      checkedTaskIds = [
+        ...new Set([...discoveryEnqueuedIds, ...discoveryClaimedIds, ...enqueuedTaskIds, ...claimedTaskIds]),
+      ];
+
+      if (checkedTaskIds.length > 0) {
+        const [mainTasks, discoveryTasks] = await Promise.all([
+          directus.readItems<SyncTaskRow>("sync_tasks", { filter: { queue: { _eq: QUEUE } }, limit: -1 }),
+          directus.readItems<SyncTaskRow>("sync_tasks", { filter: { queue: { _eq: DISCOVERY_QUEUE } }, limit: -1 }),
+        ]);
+        const taskById = new Map(
+          [...mainTasks, ...discoveryTasks].filter((task) => task.id).map((task) => [task.id as string, task]),
+        );
+        // Neither "done" nor "cancelled" is a failure worth surfacing: "cancelled" means the task's
+        // own precondition evaporated, not that anything is broken. A task still "pending" is,
+        // whether it failed once or has been failing for weeks (`needs_attention`).
+        tasksFailed = checkedTaskIds.filter((id) => {
+          const status = taskById.get(id)?.status;
+          return status !== "done" && status !== "cancelled";
+        }).length;
+      }
+    });
   } catch (error) {
     winston.error("Group sync run failed", {
       error: error instanceof Error ? { message: error.message, stack: error.stack } : error,

@@ -102,6 +102,12 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
       rows[index] = { ...rows[index], ...patch };
       return jsonResponse(200, { data: rows[index] });
     }
+    if (method === "DELETE") {
+      tables.set(
+        collection!,
+        table(collection!).filter((row) => row["id"] !== id),
+      );
+    }
     return jsonResponse(204, undefined);
   });
 

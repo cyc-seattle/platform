@@ -10,6 +10,10 @@ The code lives in `src/`, outside the published package:
   wouldn't survive a move off Clubspot.
 - `src/syncs/runtime/` is what both syncs share: the Directus row client, the `sync_tasks` queue
   and its worker, sync runs, and audit findings.
+- A run holds its queues' leases (`sync_leases`) while it enqueues and drains them, so a second run,
+  such as a manual Job during a scheduled one, skips the queue instead of claiming tasks the first
+  holds. A lease lasts five minutes and the run renews it every minute, so a run that dies frees its
+  queue within five minutes, and the next run resets the task it left `running`.
 - `src/syncs/clubspot/`, `src/syncs/gsuite/` and `src/syncs/calendar/` are the syncs. Each has a
   `main.ts`, the CLI.
 
