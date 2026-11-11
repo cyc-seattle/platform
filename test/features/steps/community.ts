@@ -21,7 +21,7 @@ const yearsAgo = (years: number) => {
 const ADULT = yearsAgo(40);
 const CHILD = yearsAgo(12);
 
-interface Person {
+export interface Person {
   id: string;
   email: string;
   phone?: string;
@@ -67,7 +67,7 @@ onEachScenario(() => {
   scene = newScene();
 });
 
-function the(label: string): Person {
+export function the(label: string): Person {
   const person = scene.people[label]?.at(-1);
   if (!person) {
     throw new Error(`This scenario has no ${label}.`);
