@@ -88,12 +88,12 @@ collections:
       collapse: open
       collection: boat_charters
       color: null
-      display_template: "{{boat_id.boat_class_id.name}} {{boat_id.sail_number}} · {{boat_id.hull_number}}: {{person_id.first_name}} {{person_id.last_name}}, {{term_id.name}}"
+      display_template: "{{boat_id.boat_class_id.name}} {{boat_id.sail_number}} · {{boat_id.hull_number}}: {{person_id.first_name}} {{person_id.last_name}}, from {{starts_on}}"
       group: Inventory
       hidden: false
       icon: handshake
       item_duplication_fields: null
-      note: Which sailor charters which boat each term.
+      note: Which sailor charters which boat, and when.
       preview_url: null
       singleton: false
       sort: null
@@ -1068,50 +1068,6 @@ fields:
       generation_expression: null
       has_auto_increment: false
       foreign_key_table: people
-      foreign_key_column: id
-  - collection: boat_charters
-    field: term_id
-    type: uuid
-    meta:
-      collection: boat_charters
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: term_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Term
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: term_id
-      table: boat_charters
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: terms
       foreign_key_column: id
   - collection: boat_charters
     field: product_id
@@ -2427,27 +2383,6 @@ relations:
       foreign_key_table: people
       foreign_key_column: id
       constraint_name: boat_charters_person_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: boat_charters
-    field: term_id
-    related_collection: terms
-    meta:
-      junction_field: null
-      many_collection: boat_charters
-      many_field: term_id
-      one_allowed_collections: null
-      one_collection: terms
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: boat_charters
-      column: term_id
-      foreign_key_table: terms
-      foreign_key_column: id
-      constraint_name: boat_charters_term_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: boat_charters

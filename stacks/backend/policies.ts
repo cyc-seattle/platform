@@ -153,9 +153,9 @@ export function inventoryCollections(schemas: LoadedSchema[]): string[] {
 /** A boat moves to its next stage by a new row, never by an edit (cyc-seattle/platform#126). */
 const STAGE_CHANGES = "boat_stage_changes";
 
-/** What the inventory links to and the Inventory policies read: boat classes, products, terms, and sailors' names. */
+/** What the inventory links to and the Inventory policies read: boat classes, products, and sailors' names. */
 const INVENTORY_READS: PermissionRuleInput[] = [
-  ...["boat_classes", "products", "terms"].map((collection) => ({ collection, action: "read" as const })),
+  ...["boat_classes", "products"].map((collection) => ({ collection, action: "read" as const })),
   { collection: "people", action: "read", fields: ["id", "first_name", "last_name"] },
 ];
 
@@ -313,13 +313,12 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       description: "Sees CSC's boats, charters, damage, and storage, and the names of the sailors they're with.",
       rules: [...inventory.map((collection) => ({ collection, action: "read" as const })), ...INVENTORY_READS],
     },
-    // Program directors keep the inventory, and close a term so its boat costs stop changing.
+    // Program directors keep the inventory.
     {
       key: "inventory-writer",
       name: "Inventory Writer",
       icon: "inventory_2",
-      description:
-        "Changes CSC's boats, charters, damage, and storage, moves a boat to its next stage, and closes and reopens a term.",
+      description: "Changes CSC's boats, charters, damage, and storage, and moves a boat to its next stage.",
       rules: [
         ...inventory.flatMap((collection) =>
           (collection === STAGE_CHANGES
@@ -328,7 +327,6 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
           ).map((action) => ({ collection, action })),
         ),
         ...INVENTORY_READS,
-        { collection: "terms", action: "update", fields: ["closed_on"] },
       ],
     },
     // Planners read wages and bonus rates with the rest of a plan: no field is hidden.

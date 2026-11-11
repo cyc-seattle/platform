@@ -20,7 +20,6 @@ erDiagram
     boats ||--o{ boat_stage_changes : "moved on by"
     boats ||--o{ boat_charters : "chartered as"
     people ||--o{ boat_charters : sailor
-    terms ||--o{ boat_charters : term
     products ||--o{ boat_charters : "charter product"
     boats ||--o{ boat_damage : "damaged"
     people |o--o{ boat_damage : "charged"
@@ -53,7 +52,6 @@ erDiagram
         uuid id PK
         uuid boat_id FK
         uuid person_id FK
-        uuid term_id FK
         uuid product_id FK "kind charter"
         date starts_on
         date ends_on
@@ -96,15 +94,11 @@ retired. A boat moves on by a new row, never by an edit, so the Inventory Writer
 row but not change or delete one. An admin fixes a mistake. Nothing stores the stage on the boat,
 so a page works it out from the rows.
 
-`terms` lives in the catalog (`schemas/core.yaml`), for other domains to use too. A program director
-closes a term by setting its `closed_on`, so its boat costs stop changing, and clears it to reopen
-the term. That's the only catalog field the Inventory Writer policy changes.
-
 A charter and a storage agreement name a product, of kind Charter or Storage lease, not a catalog
 offering, since a catalog offering is always a program's. Agreements are links to the signed copy,
 not uploaded files.
 
 Every link to `people` restricts delete, and the Clubspot sync's person merge moves a duplicate's
-charters, damage and storage agreements onto the person it keeps. Deleting a boat, a term or a
+charters, damage and storage agreements onto the person it keeps. Deleting a boat or a
 storage space that something still names fails. Deleting a storage space with boats on it leaves
 those boats with no space.
