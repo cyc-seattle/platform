@@ -74,7 +74,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "boat_charters",
     sort: ["-starts_on"],
-    fields: ["boat_id", "person_id", "starts_on", "product_id", "fee_cents"],
+    fields: ["boat_id", "person_id", "term_id", "product_id", "fee_cents"],
   },
   {
     collection: "boat_damage",
@@ -101,6 +101,7 @@ export const defaultViews: DefaultView[] = [
   { collection: "catalog_offerings", sort: ["program_id.name", "name"], fields: ["program_id", "name"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
   { collection: "resource_kinds", sort: ["name"], fields: ["name"] },
+  { collection: "terms", sort: ["-starts_on"], fields: ["name", "starts_on", "ends_on", "closed_on"] },
   {
     collection: "organization_cost_accounts",
     sort: ["organization_id.name", "cost_type"],
