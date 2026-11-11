@@ -261,9 +261,8 @@ export async function deletePermission(baseUrl: string, token: string, permissio
 
 /**
  * Finds the permission row keyed by (policy, collection, action), or null if none exists yet.
- * {@link ensurePermission} uses this to adopt a row the old `DirectusRole` provider already created
- * for this key, instead of posting a duplicate - those rows outlive the code that made them, since
- * `DirectusRole` no longer clears or recreates them.
+ * {@link ensurePermission} uses this to replace a row already under this key, instead of leaving a
+ * duplicate beside the one it posts.
  */
 export async function findPermission(
   baseUrl: string,
@@ -281,9 +280,7 @@ export async function findPermission(
   return res.data[0] !== undefined ? String(res.data[0].id) : null;
 }
 
-/** Overwrites a permission row's `permissions` filter and `fields` list to match `rule`. Shared by
- * `DirectusPermissionRule`'s `update` and by {@link ensurePermission}'s adopt path, which needs the
- * identical PATCH. */
+/** Overwrites a permission row's `permissions` filter and `fields` list to match `rule`. */
 export async function patchPermission(
   baseUrl: string,
   token: string,
@@ -320,13 +317,12 @@ export async function reconcilePermission(
 }
 
 /**
- * Returns the id of the permission row for (policyId, collection, action) declared by `rule`,
- * creating it if absent. Adopting a pre-existing row (e.g. one `DirectusRole` created before
- * permission rules became their own resource) only confirms its identity, not that its content
- * matches `rule` - unlike `update`, `create` has no prior recorded state to diff against, so an
- * adopted row must be reconciled immediately. Skipping that would let Pulumi record the declared
- * inputs as this resource's state while Directus quietly holds something else, with no later
- * `pulumi up` able to notice or correct it.
+ * Returns the id of a permission row for (policyId, collection, action) holding `rule`'s content.
+ * A row already under that key (a renamed rule's, or one the old `DirectusRole` provider created) is
+ * replaced by a new row, not adopted by id: when a rule's resource is renamed, Pulumi deletes the old
+ * resource after creating the new one, and a shared id would delete the row the new one holds
+ * (cyc-seattle/platform#166). The old resource's delete then finds its row gone, which
+ * {@link deletePermission} counts as success. The new row is posted first, so access never lapses.
  */
 export async function ensurePermission(
   baseUrl: string,
@@ -335,11 +331,9 @@ export async function ensurePermission(
   rule: PermissionRuleInput,
 ): Promise<string> {
   const existing = await findPermission(baseUrl, token, policyId, rule.collection, rule.action);
-  if (existing !== null) {
-    await patchPermission(baseUrl, token, existing, rule);
-    return existing;
-  }
-  return grantPermission(baseUrl, token, policyId, rule);
+  const permissionId = await grantPermission(baseUrl, token, policyId, rule);
+  if (existing !== null) await deletePermission(baseUrl, token, existing);
+  return permissionId;
 }
 
 async function schemaDiff(

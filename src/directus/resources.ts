@@ -357,9 +357,7 @@ export const directusPermissionRuleProvider: pulumi.dynamic.ResourceProvider = {
     await waitForReachable(inputs.baseUrl);
     const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
 
-    // Adopts a row the old DirectusRole provider already created for this (policy, collection,
-    // action) instead of posting a duplicate, and reconciles its permissions/fields to match -
-    // see ensurePermission's doc comment for why adoption alone isn't enough.
+    // Replaces any row already under this (policy, collection, action), such as a renamed rule's.
     const permissionId = await ensurePermission(inputs.baseUrl, token, inputs.policyId, inputs);
 
     const outs: DirectusPermissionRuleOutputs = { ...inputs, permissionId };
@@ -374,7 +372,7 @@ export const directusPermissionRuleProvider: pulumi.dynamic.ResourceProvider = {
       const token = await login(news.baseUrl, news.adminEmail, news.adminPassword);
       // Recreates rather than failing if the row is gone (e.g. DirectusRole.delete dropped its
       // policy, taking every row under it - possibly declared in a different stack than the one
-      // deleting the policy) - mirrors ensurePermission's find-or-create-and-reconcile shape.
+      // deleting the policy).
       const permissionId = await reconcilePermission(news.baseUrl, token, news.policyId, olds.permissionId, news);
 
       const outs: DirectusPermissionRuleOutputs = { ...news, permissionId };

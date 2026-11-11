@@ -3,6 +3,7 @@ import {
   omitUndefined,
   directusAccessProvider,
   directusPolicyProvider,
+  directusPermissionRuleProvider,
   directusPresetProvider,
   directusRoleProvider,
   directusSettingsProvider,
@@ -182,6 +183,31 @@ describe("DirectusUser.diff", () => {
   it("updates a user whose role changes", async () => {
     const news = { ...auth, email: "a@b.com", roleId: "role-2", provider: "authentik" };
     await expect(directusUserProvider.diff?.("user-1", olds, news)).resolves.toEqual({ changes: true });
+  });
+});
+
+describe("DirectusPermissionRule renamed", () => {
+  // Pulumi creates the renamed resource, then deletes the old one, whose state still holds row 99.
+  it("keeps the new rule's row when the old resource is deleted (cyc-seattle/platform#166)", async () => {
+    const rule = { ...auth, policyId: "policy-1", collection: "classes", action: "update" as const };
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, {})); // GET /server/ping
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 99 }] })); // GET /permissions: old rule's row
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: 100 } })); // POST /permissions
+    fetchMock.mockResolvedValueOnce(jsonResponse(204, undefined)); // DELETE /permissions/99
+    stubLogin(fetchMock);
+    fetchMock.mockResolvedValueOnce(jsonResponse(404, { errors: [{ message: "not found" }] })); // DELETE /permissions/99
+    vi.stubGlobal("fetch", fetchMock);
+
+    const created = await directusPermissionRuleProvider.create(rule);
+    await directusPermissionRuleProvider.delete?.("99", { ...rule, permissionId: "99" });
+
+    expect(created.id).toBe("100");
+    const deleted = fetchMock.mock.calls
+      .filter(([, init]) => (init as { method?: string } | undefined)?.method === "DELETE")
+      .map(([url]) => url as string);
+    expect(deleted).toEqual([`${baseUrl}/permissions/99`, `${baseUrl}/permissions/99`]);
   });
 });
 
