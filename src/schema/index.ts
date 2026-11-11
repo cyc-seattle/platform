@@ -1195,8 +1195,8 @@ export interface SyncTasks {
 export interface Venues {
   id: string;
   name: string;
-  /** The organization that runs it. */
-  organization_id: string | Organizations;
+  /** The organization that runs it. Leave it empty for a public marina. */
+  organization_id: string | Organizations | null;
   /** Its street address, or where to find it. */
   address: string | null;
   /** Other names it goes by, such as on a regatta's notice of race. */
