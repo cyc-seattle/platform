@@ -75,7 +75,7 @@ can give, attached to no role:
 | Policy           | Gives                                                                                                                                               |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CRM Reader       | Reads every CRM collection but medical information, the coach list included                                                                         |
-| CRM Writer       | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                                                |
+| CRM Writer       | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only, and coaches are archived, not deleted         |
 | Medical Reader   | Reads every sailor's medical information                                                                                                            |
 | Medical Writer   | Changes every sailor's medical information                                                                                                          |
 | Catalog Reader   | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                                                    |

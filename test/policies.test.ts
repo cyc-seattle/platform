@@ -119,10 +119,11 @@ describe("the policies a group can give", () => {
     }
   });
 
-  it("let the CRM policies keep the coach list, and give Crew none of it", () => {
+  it("let a CRM Writer add and edit coaches, but not delete them, and give Crew none of the list", () => {
     for (const action of ["create", "read", "update"]) {
       expect(collections("CRM Writer", action).has("coaches")).toBe(true);
     }
+    expect(collections("CRM Writer", "delete").has("coaches")).toBe(false);
     expect(collections("CRM Reader", "read").has("coaches")).toBe(true);
     expect(crewRules.map((rule) => rule.collection)).not.toContain("coaches");
   });

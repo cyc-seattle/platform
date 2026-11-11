@@ -48,6 +48,7 @@ const sets: Record<string, Target[]> = {
   "people and their details": plain("people", "contacts", "contact_points"),
   "medical information": plain("medical_profiles"),
   "the list of schools": plain("schools"),
+  coaches: plain("coaches"),
   "the rosters": plain(
     "programs",
     "clubspot_camps",

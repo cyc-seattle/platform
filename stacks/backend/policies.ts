@@ -174,6 +174,9 @@ export function isResultCollection(collection: string): boolean {
  * participant's match to a person. `fieldsOf` lists a collection's fields, so a rule can leave out
  * the ones only an admin writes.
  */
+/** Collections staff archive rather than delete, so only an admin deletes a row. */
+const ARCHIVED_NOT_DELETED = new Set(["coaches"]);
+
 export function writerRules(
   collections: string[],
   readOnlyCollections: string[],
@@ -188,6 +191,7 @@ export function writerRules(
     }
     const withheld = ADMIN_ONLY[collection];
     for (const action of ["create", "read", "update", "delete"] as const) {
+      if (action === "delete" && ARCHIVED_NOT_DELETED.has(collection)) continue;
       if (withheld !== undefined && (action === "create" || action === "update")) {
         const fields = fieldsOf(collection).filter((field) => !withheld.includes(field));
         rules.push({ collection, action, fields });

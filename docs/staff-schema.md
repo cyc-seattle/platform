@@ -24,7 +24,8 @@ erDiagram
     }
 ```
 
-- A person is on the list once. A coach who leaves is archived by clearing `active`, never deleted.
+- A person is on the list once. A coach who leaves is archived by clearing `active`. Only an
+  admin can delete a coach, since a CRM Writer can add and edit coaches but not delete them.
 - A coach's level is a `plan_staff_levels` key. A level is a plan row, and its key stays the same in
   every copy of the Operations Plan, so the key finds the coach's level, and its rate, in whichever
   Financial Plan is being read. A level that's retired (`retired`) stays in the plan, so its coaches
@@ -32,8 +33,8 @@ erDiagram
 - `hourly_rate_cents`, when set, is what the coach is paid instead of their level's rate. It isn't
   versioned: it's the rate now.
 - Being on the list gives no access. Crew is still an admin's decision.
-- The CRM policies read and change the list, like people. The Plan policies read it, and read each
-  person's first and last name, so a planner sees who's on it.
+- A CRM Reader reads the list, and a CRM Writer adds and edits it. The Plan policies read it,
+  and read each person's first and last name, so a planner sees who's on it.
 - A person merge stops while a duplicate is on the list, or in a salaried position, as it does for
   one in a group. An admin moves those by hand. A saved plan's position never changes, so a
   duplicate named in one stays.
