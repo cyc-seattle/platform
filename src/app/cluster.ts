@@ -34,13 +34,21 @@ const siblings = new Map<string, pulumi.StackReference>();
  * project before this one may not have deployed yet; an update requires it.
  */
 export function siblingOutput(project: string, output: string): pulumi.Output<string> {
+  return siblingValue(project, output).apply((v: string | undefined) => v ?? "");
+}
+
+/** A list output of another project's stack in this environment, empty where `siblingOutput` is "". */
+export function siblingList(project: string, output: string): pulumi.Output<string[]> {
+  return siblingValue(project, output).apply((v: string[] | undefined) => v ?? []);
+}
+
+function siblingValue(project: string, output: string) {
   let stack = siblings.get(project);
   if (!stack) {
     stack = new pulumi.StackReference(`organization/${project}/${pulumi.getStack()}`);
     siblings.set(project, stack);
   }
-  const value = pulumi.runtime.isDryRun() ? stack.getOutput(output) : stack.requireOutput(output);
-  return value.apply((v: string | undefined) => v ?? "");
+  return pulumi.runtime.isDryRun() ? stack.getOutput(output) : stack.requireOutput(output);
 }
 
 /** A secret output of another project's stack in this environment. */

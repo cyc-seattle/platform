@@ -7,7 +7,8 @@ import {
   UnverifiedEmailUserWriteStage,
   VerifiedEmailUserWriteStage,
 } from "./resources.ts";
-import { isDev, siblingOutput, siblingSecret } from "../../src/app/cluster.ts";
+import { isDev, siblingList, siblingOutput, siblingSecret } from "../../src/app/cluster.ts";
+import { adminGroup } from "./admins.ts";
 import { deployAuthentik } from "./cluster.ts";
 import { EmbeddedOutpost } from "./embedded-outpost.ts";
 import { prodSecrets } from "./prod-secrets.ts";
@@ -344,12 +345,16 @@ new authentik.Brand(
 
 // --- 4. Users cannot change their own email. Already Authentik's shipped default; declared
 // explicitly so a future Authentik upgrade changing that default can't silently reopen it.
-new authentik.SystemSettings("system-settings", { defaultUserChangeEmail: false }, opts);
+// Impersonation is on, for admins to see what someone sees; Authentik's default asks them for a reason.
+new authentik.SystemSettings("system-settings", { defaultUserChangeEmail: false, impersonation: true }, opts);
 
 // --- 5. The `staff` group. Membership is managed by hand, not synced from anywhere.
 new authentik.Group(STAFF_GROUP_NAME, { name: STAFF_GROUP_NAME }, opts);
 
-// --- 6. The embedded outpost. It gated isthmia's portal, which is retired (cyc-seattle/sail-team#1), so it
+// --- 6. Directus's admins, as Authentik superusers.
+adminGroup(siblingList("backend", "directusAdmins"), opts);
+
+// --- 7. The embedded outpost. It gated isthmia's portal, which is retired (cyc-seattle/sail-team#1), so it
 // serves no provider now. Authentik owns it, so this project only ever updates it.
 // The embedded outpost's Authentik-assigned id (`GET /api/v3/outposts/instances/`), different on
 // each instance. The `import` option below adopts the live resource rather than creating a second.
@@ -383,7 +388,7 @@ if (embeddedOutpostId !== undefined) {
   });
 }
 
-// --- 7. The Directus OIDC provider and application. The client comes from platform's `backend`
+// --- 8. The Directus OIDC provider and application. The client comes from platform's `backend`
 // stack, which deploys Directus.
 const directusEmailScopeMapping = new authentik.PropertyMappingProviderScope(
   "directus-email-lowercase",
@@ -433,7 +438,7 @@ const directusApplication = new authentik.Application(
   opts,
 );
 
-// --- 8. Authentik 2026.8 denies access to an application with no policy bound at all - the Directus
+// --- 9. Authentik 2026.8 denies access to an application with no policy bound at all - the Directus
 // gate is meant to be "any signed-in user", so it needs this one bound explicitly.
 // `target` takes the application's `uuid`, not its Terraform `id` (which Application uses for its
 // slug) - the field the Application resource itself calls "Generated." rather than "ID of the

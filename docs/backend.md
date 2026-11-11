@@ -31,6 +31,7 @@ Dev deploys it for each PR in the merge queue, and a push to `main` deploys prod
 | -------------------------- | ------------------------------------------- |
 | `directusOidcClientId`     | isthmia's `authentik`, to register Directus |
 | `directusOidcClientSecret` | isthmia's `authentik`, to register Directus |
+| `directusAdmins`           | `authentik`, to make them superusers        |
 
 `backend` owns the OIDC client and Authentik registers it, so platform never reads isthmia's
 outputs. Dev's client is generated here. Prod's is the one Authentik generated before
