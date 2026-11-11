@@ -598,14 +598,12 @@ describe("findPermission", () => {
 });
 
 describe("ensurePermission", () => {
-  it("adopts a pre-existing row and PATCHes it to match the declared permissions/fields", async () => {
-    // Regression coverage: adoption alone isn't enough. A row the old DirectusRole provider left
-    // behind may not carry this rule's declared content, and Pulumi records the declared inputs as
-    // state regardless - so create must reconcile the row now, or a mismatch is invisible forever.
+  it("replaces a row already under the key with a new one, posting before it deletes (cyc-seattle/platform#166)", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 99 }] })) // GET /permissions: row exists
-      .mockResolvedValueOnce(jsonResponse(204, undefined)); // PATCH /permissions/99
+      .mockResolvedValueOnce(jsonResponse(200, { data: { id: 100 } })) // POST /permissions
+      .mockResolvedValueOnce(jsonResponse(204, undefined)); // DELETE /permissions/99
     vi.stubGlobal("fetch", fetchMock);
 
     const permissionId = await ensurePermission(baseUrl, token, "policy-1", {
@@ -615,18 +613,25 @@ describe("ensurePermission", () => {
       fields: ["id", "notes"],
     });
 
-    expect(permissionId).toBe("99");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      `${baseUrl}/permissions/99`,
-      expect.objectContaining({ method: "PATCH" }),
-    );
+    expect(permissionId).toBe("100");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `${baseUrl}/permissions`, expect.objectContaining({ method: "POST" }));
     const body = JSON.parse((fetchMock.mock.calls[1]?.[1] as { body: string }).body) as Record<string, unknown>;
-    expect(body).toEqual({ permissions: { person_id: { _eq: "$CURRENT_USER" } }, fields: ["id", "notes"] });
+    expect(body).toEqual({
+      policy: "policy-1",
+      collection: "people",
+      action: "read",
+      permissions: { person_id: { _eq: "$CURRENT_USER" } },
+      fields: ["id", "notes"],
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      `${baseUrl}/permissions/99`,
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 
-  it("posts a new row when none exists yet, without issuing a PATCH", async () => {
+  it("posts a new row when none exists yet, without deleting anything", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(200, { data: [] })) // GET /permissions: nothing to adopt
