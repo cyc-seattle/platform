@@ -158,13 +158,13 @@ erDiagram
     venues {
         uuid id PK
         string name
-        uuid organization_id FK "required"
+        uuid organization_id FK "optional"
         text address
         json aliases "other names it goes by"
     }
 ```
 
-The directory is who runs an event and where: the clubs and organizers we sail with, our own organizations among them, and their venues. Only an admin changes it; the catalog and plan policies read it. Every foreign key to it restricts delete, so an organization or venue still in use can't be deleted. A venue's location and time zone come with the dusk rule.
+The directory is who runs an event and where: the clubs and organizers we sail with, our own organizations among them, and their venues. Only an admin changes it; the catalog and plan policies read it. A venue's organization is optional, since we don't track who runs a public marina. Every foreign key to it restricts delete, so an organization or venue still in use can't be deleted. A venue's location and time zone come with the dusk rule.
 
 ### Financial Plans
 

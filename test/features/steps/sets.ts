@@ -112,6 +112,8 @@ const sets: Record<string, Target[]> = {
   products: plain("products"),
   "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),
+  // The directory, as directory.feature defines it.
+  "the directory": plain("organizations", "venues"),
   // CSC's boats, as boats.feature defines them.
   "the boat list": plain("boats"),
   plans: [...plain("plans", "version_sets", "version_set_members"), ...versions("draft", "saved")],
