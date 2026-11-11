@@ -76,6 +76,8 @@ can give, attached to no role:
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | CRM Reader       | Reads every CRM collection but medical information                                                                    |
 | CRM Writer       | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                  |
+| Calendar Reader  | Reads the calendar: every collection in `schemas/calendar.yaml`, the directory, and the boat classes                  |
+| Calendar Writer  | Changes the calendar, and reads the directory and the boat classes                                                    |
 | Medical Reader   | Reads every sailor's medical information                                                                              |
 | Medical Writer   | Changes every sailor's medical information                                                                            |
 | Catalog Reader   | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                      |
@@ -91,7 +93,7 @@ Inventory policy reads only each person's name. A
 saved plan version never changes, even for an admin, so the `saved-versions` hook enforces that
 rather than a policy (`docs/planning-schema.md`). A Medical policy is given with a CRM policy.
 Programs belong to the catalog, so only a Catalog Writer changes them. A CRM policy reads them, and
-so do Crew and the Google sync, but none of them changes them. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
+so do Crew and the Google sync, but none of them changes them. The directory, `schemas/directory.yaml`, is the organizations and venues; every calendar, catalog and plan policy reads it, and only an admin changes it.
 
 One field is held back: no policy a person can hold sets a person's login,
 `people.directus_user_id`, because the login decides whose groups' policies a user gets. Only an

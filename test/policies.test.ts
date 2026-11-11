@@ -38,10 +38,12 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, Inventory, and Plan policies", () => {
+  it("are the CRM, Medical, Calendar, Catalog, Inventory, and Plan policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
       "CRM Reader",
       "CRM Writer",
+      "Calendar Reader",
+      "Calendar Writer",
       "Catalog Reader",
       "Catalog Writer",
       "Inventory Reader",
@@ -163,6 +165,23 @@ describe("the Catalog policies", () => {
     );
     expect(writers.map(({ name }) => name)).toEqual(["Catalog Writer"]);
     expect(collections("CRM Writer", "read").has("programs")).toBe(true);
+  });
+});
+
+describe("the Calendar policies", () => {
+  const calendar = ["event_series", "events", "events_boat_classes", "calendars", "calendar_dates"];
+  const linked = ["organizations", "venues", "boat_classes"];
+
+  it("let a Calendar Reader see the calendar and what its events name, and change none of it", () => {
+    expect([...collections("Calendar Reader", "read")].sort()).toEqual([...calendar, ...linked].sort());
+    expect(named("Calendar Reader").rules.every((rule) => rule.action === "read")).toBe(true);
+  });
+
+  it("let a Calendar Writer change the calendar, and only see what its events name", () => {
+    for (const action of ["create", "update", "delete"]) {
+      expect([...collections("Calendar Writer", action)].sort()).toEqual([...calendar].sort());
+    }
+    expect([...collections("Calendar Writer", "read")].sort()).toEqual([...calendar, ...linked].sort());
   });
 });
 

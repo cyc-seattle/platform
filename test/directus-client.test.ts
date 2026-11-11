@@ -104,6 +104,7 @@ describe("discoverSchemaFiles", () => {
 
     expect(found.map((f) => f.name)).toEqual([
       "access",
+      "calendar",
       "clubspot",
       "core",
       "crm",

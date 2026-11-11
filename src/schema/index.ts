@@ -9,6 +9,8 @@ export interface Schema {
   boat_damage: BoatDamage[];
   boat_stage_changes: BoatStageChanges[];
   boats: Boats[];
+  calendar_dates: CalendarDates[];
+  calendars: Calendars[];
   catalog_offerings: CatalogOfferings[];
   clubspot_camps: ClubspotCamps[];
   clubspot_classes: ClubspotClasses[];
@@ -24,6 +26,9 @@ export interface Schema {
   clubspot_sessions: ClubspotSessions[];
   contact_points: ContactPoints[];
   contacts: Contacts[];
+  event_series: EventSeries[];
+  events: Events[];
+  events_boat_classes: EventsBoatClasses[];
   google_group_memberships: GoogleGroupMemberships[];
   google_groups: GoogleGroups[];
   group_members: GroupMembers[];
@@ -206,6 +211,28 @@ export interface Boats {
   note: string | null;
   stage_changes: (string | BoatStageChanges)[];
   damage: (string | BoatDamage)[];
+}
+
+/** The days on a calendar. */
+export interface CalendarDates {
+  id: string;
+  calendar_id: string | Calendars;
+  name: string;
+  starts_on: string;
+  /** Leave blank for a single day. */
+  ends_on: string | null;
+}
+
+/** Holidays, school days off, and staff's own dates such as closures or training days. Each shows in its own colour. */
+export interface Calendars {
+  id: string;
+  name: string;
+  /** Holidays are public holidays. School is one school district's days off. Staff is any list of our own, such as closures. */
+  kind: "holidays" | "school" | "staff";
+  /** The colour its dates show in. */
+  color: string | null;
+  note: string | null;
+  dates: (string | CalendarDates)[];
 }
 
 /** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */
@@ -433,6 +460,56 @@ export interface Contacts {
   relationship_type: "guardian" | "emergency_contact";
   contact_order: number | null;
   relationship_detail: string | null;
+}
+
+/** A regatta or clinic that comes back each year. Next year's dates are projected from its events. */
+export interface EventSeries {
+  id: string;
+  name: string;
+  /** Who runs it. */
+  organizer_id: string | Organizations;
+  /** Its page, starting https://. */
+  website: string | null;
+  /** Where its notice of race is posted each year, starting https://. */
+  notice_of_race_url: string | null;
+  note: string | null;
+  /** Each year's dates. */
+  events: (string | Events)[];
+}
+
+/** Regattas and clinics, one row each, even when several sites publish one. */
+export interface Events {
+  id: string;
+  name: string;
+  /** The yearly event this is one of. Leave blank for a one-off. */
+  series_id: string | EventSeries | null;
+  /** Cancelled stays on the calendar, marked as cancelled. */
+  status: "confirmed" | "cancelled";
+  starts_on: string;
+  /** Leave blank for a one-day event. */
+  ends_on: string | null;
+  event_type: "regatta" | "clinic" | "other";
+  organizer_id: string | Organizations;
+  venue_id: string | Venues | null;
+  area: "puget_sound" | "pacific_northwest" | "elsewhere" | null;
+  /** The boat classes it's for. */
+  boat_classes: (string | EventsBoatClasses)[];
+  /** CSC supports this event, such as by coaching or sending sailors to it. */
+  adopted: boolean;
+  /** Its notice of race, starting https://. */
+  notice_of_race_url: string | null;
+  /** Where sailors sign up, starting https://. */
+  registration_url: string | null;
+  /** Where we found it, starting https://. */
+  source_url: string | null;
+  note: string | null;
+}
+
+/** The boat classes an event is for. */
+export interface EventsBoatClasses {
+  id: string;
+  event_id: string | Events | null;
+  boat_class_id: string | BoatClasses | null;
 }
 
 /** One row for each person the sync has seen in a program's Google Group. Set Removed at to stop the sync adding them back. Delete the row to let the sync add them again. */

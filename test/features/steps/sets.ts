@@ -109,6 +109,10 @@ const sets: Record<string, Target[]> = {
     "programs",
     "catalog_offerings",
   ),
+  // Everything calendar.feature calls the calendar, with the list of each event's boat classes.
+  "the calendar": plain("event_series", "events", "events_boat_classes", "calendars", "calendar_dates"),
+  "the organizations and venues": plain("organizations", "venues"),
+  "boat classes": plain("boat_classes"),
   products: plain("products"),
   "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),
