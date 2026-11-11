@@ -184,8 +184,19 @@ describe("the Plan policies", () => {
 
   it("let both see every plan and the catalog, with no field held back", () => {
     for (const name of ["Plan Reader", "Plan Writer"]) {
-      expect([...collections(name, "read")].sort()).toEqual([...plans, ...catalog].sort());
-      expect(named(name).rules.every((rule) => rule.fields === undefined)).toBe(true);
+      const rules = named(name).rules.filter((rule) => rule.collection !== "directus_users");
+      expect(
+        [...new Set(rules.filter((rule) => rule.action === "read").map((rule) => rule.collection))].sort(),
+      ).toEqual([...plans, ...catalog].sort());
+      expect(rules.every((rule) => rule.fields === undefined)).toBe(true);
+    }
+  });
+
+  it("let both see users' first and last names, and nothing else of theirs", () => {
+    for (const name of ["Plan Reader", "Plan Writer"]) {
+      expect(named(name).rules.filter((rule) => rule.collection === "directus_users")).toEqual([
+        { collection: "directus_users", action: "read", fields: ["id", "first_name", "last_name"] },
+      ]);
     }
   });
 
