@@ -81,6 +81,7 @@ export interface Schema {
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
   terms: Terms[];
+  venues: Venues[];
   version_set_members: VersionSetMembers[];
   version_sets: VersionSets[];
   website_categories: WebsiteCategories[];
@@ -162,7 +163,7 @@ export interface BoatClasses {
   footprint_sq_ft: string | null;
 }
 
-/** Damage to the club's boats, what it cost to repair, and what the sailor was charged. */
+/** Damage to CSC's boats, what it cost to repair, and what the sailor was charged. */
 export interface BoatDamage {
   id: string;
   boat_id: string | Boats;
@@ -188,7 +189,7 @@ export interface BoatStageChanges {
   note: string | null;
 }
 
-/** Each of the club's own boats. Sailors' own boats aren't listed here. */
+/** Each of CSC's own boats. Sailors' own boats aren't listed here. */
 export interface Boats {
   id: string;
   boat_class_id: string | BoatClasses;
@@ -198,9 +199,9 @@ export interface Boats {
   /** The boat's name, if it has one. */
   name: string | null;
   acquired_how: "bought" | "donated";
-  /** What the club paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00. */
+  /** What CSC paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00. */
   value_cents: number;
-  /** The day the club got the boat. */
+  /** The day CSC got the boat. */
   acquired_on: string | null;
   /** The day the boat first sailed in a program. */
   in_service_on: string | null;
@@ -550,12 +551,19 @@ export interface OrganizationCostAccounts {
   account_id: string | Accounts;
 }
 
-/** A legal entity that keeps its own books. The fiscal year is set here, per organization. */
+/** Yacht clubs, class associations, regional organizers, governing bodies and sailing centers, and our own organizations, which keep their own books. Only an admin changes them. */
 export interface Organizations {
   id: string;
   name: string;
-  /** The month the fiscal year starts in. */
-  fiscal_year_start_month: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+  /** What people call it for short, such as its initials. */
+  short_name: string | null;
+  /** Ours keeps its own books and plans here. The rest are the clubs and organizers we sail with. A new organization starts as Ours, so change it for anyone else. */
+  kind: "own" | "yacht_club" | "class_association" | "regional_organizer" | "governing_body" | "sailing_center";
+  /** Its website's address, starting https://. */
+  website: string | null;
+  logo: string | null;
+  /** The month the fiscal year starts in. Only for our own organizations. */
+  fiscal_year_start_month: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | null;
 }
 
 /** One row for each person the club knows. */
@@ -1228,7 +1236,7 @@ export interface Schools {
   aliases: string[] | null;
 }
 
-/** Storage the club sells to sailors for their own boats. */
+/** Storage CSC sells to sailors for their own boats. */
 export interface StorageAgreements {
   id: string;
   person_id: string | People;
@@ -1246,7 +1254,7 @@ export interface StorageAgreements {
   agreement_url: string | null;
 }
 
-/** The racks and deck space the club keeps boats on, each for one boat class. */
+/** The racks and deck space CSC keeps boats on, each for one boat class. */
 export interface StorageSpaces {
   id: string;
   kind: "rack" | "deck";
@@ -1312,6 +1320,18 @@ export interface Terms {
   ends_on: string;
   /** The day a program director closed the term, so its boat costs stop changing. Clear it to reopen the term. */
   closed_on: string | null;
+}
+
+/** Where events are sailed, and who runs each place. Only an admin changes them. */
+export interface Venues {
+  id: string;
+  name: string;
+  /** The organization that runs it. */
+  organization_id: string | Organizations;
+  /** Its street address, or where to find it. */
+  address: string | null;
+  /** Other names it goes by, such as on a regatta's notice of race. */
+  aliases: string[] | null;
 }
 
 /** One plan in a Financial Plan: the copy of the plan it holds. Add or remove one only while the Financial Plan is a draft. */

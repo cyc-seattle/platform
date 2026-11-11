@@ -41,7 +41,7 @@ collections:
       hidden: false
       icon: sailing
       item_duplication_fields: null
-      note: Each of the club's own boats. Sailors' own boats aren't listed here.
+      note: Each of CSC's own boats. Sailors' own boats aren't listed here.
       preview_url: null
       singleton: false
       sort: null
@@ -119,7 +119,7 @@ collections:
       hidden: false
       icon: build
       item_duplication_fields: null
-      note: Damage to the club's boats, what it cost to repair, and what the sailor was charged.
+      note: Damage to CSC's boats, what it cost to repair, and what the sailor was charged.
       preview_url: null
       singleton: false
       sort: null
@@ -145,7 +145,7 @@ collections:
       hidden: false
       icon: warehouse
       item_duplication_fields: null
-      note: The racks and deck space the club keeps boats on, each for one boat class.
+      note: The racks and deck space CSC keeps boats on, each for one boat class.
       preview_url: null
       singleton: false
       sort: null
@@ -171,7 +171,7 @@ collections:
       hidden: false
       icon: contract
       item_duplication_fields: null
-      note: Storage the club sells to sailors for their own boats.
+      note: Storage CSC sells to sailors for their own boats.
       preview_url: null
       singleton: false
       sort: null
@@ -460,7 +460,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "What the club paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00."
+      note: "What CSC paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: true
@@ -502,7 +502,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: The day the club got the boat.
+      note: The day CSC got the boat.
       options: null
       readonly: false
       required: false

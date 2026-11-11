@@ -4,7 +4,7 @@ tags: [architecture, inventory, directus]
 
 ## Inventory: schema
 
-`schemas/inventory.yaml` declares the register of the club's own boats, who charters them, damage to
+`schemas/inventory.yaml` declares the register of CSC's own boats, who charters them, damage to
 them, and the racks and deck space boats are stored on (cyc-seattle/platform#126). Sailors' own
 boats aren't in the register: a storage agreement describes one in words. Program directors keep it
 up to date, with the Inventory Writer policy ([access.md](access.md)).

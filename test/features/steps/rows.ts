@@ -94,6 +94,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   organizations: async () => ({
     id: randomUUID(),
     name: `Organization ${key("organization")}`,
+    kind: "own",
     fiscal_year_start_month: 10,
   }),
   program_roles: async () => ({ id: randomUUID(), name: `Role ${key("role")}` }),
