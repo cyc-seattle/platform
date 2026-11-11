@@ -103,6 +103,25 @@ To add a policy, add a `PolicyData` to `groupPolicies`, or to the list a role ge
 `stacks/backend/index.ts` declares it once, with its rules, and attaches it to each role it's given
 to. A role that shares another role's policy gets a `DirectusAccess` link, not a copy.
 
+## Seeing what someone sees
+
+An admin can sign in as someone else to check what they see, in sail-team or the Data Studio, through
+Authentik's impersonation:
+
+1. In Authentik's admin interface, under Directory, then Users, choose Impersonate on the person, and
+   give a reason.
+2. Sign out of the Data Studio, then open sail-team. Directus signs you in as them.
+3. When you're done, stop impersonating in Authentik, and sign out of Directus again. The Directus
+   session as them outlasts the impersonation.
+
+Look, don't change. Directus records anything changed this way as theirs. Authentik records who
+impersonated whom, when, and why, in its event log. Someone who has never signed in has no Authentik
+account yet, so they can't be impersonated until they do.
+
+The `authentik` stack makes everyone in `backend:directusAdmins` a member of its `Admins` group, an
+Authentik superuser, once they've signed in. The permission to impersonate alone would be no
+narrower, since it lets its holder impersonate a superuser.
+
 ## The website build
 
 cyc-seattle/csc-website builds the public website from Directus ([website.md](website.md)). Its build

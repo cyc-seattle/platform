@@ -74,12 +74,19 @@ const grantable = groupPolicies(loadedSchemas);
 // What the csc-website build reads (docs/access.md).
 const websiteBuild = websiteBuildRules(loadedSchemas);
 
+// Core has no SSO, and refuses a user whose provider isn't `default`, so unlicensed there are none.
+const admins = isDev
+  ? licensed
+    ? (config.getObject<string[]>("directusAdmins") ?? [])
+    : []
+  : requireStringList("directusAdmins");
+
 // Prod keeps what its Directus had on the VM (./prod-state.ts).
 const prod = isDev
   ? undefined
   : prodDirectus({
       adminEmail: directusAdminEmail,
-      admins: requireStringList("directusAdmins"),
+      admins,
       externalDomain: config.require("externalDomain"),
       // deployDirectus needs prod's values first, so its own baseUrl comes too late.
       baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
@@ -146,8 +153,7 @@ function devIdentities(directus: typeof app) {
     auth,
     readyForApiCalls: [directus.then(({ ready }) => ready)],
     // Whoever signs in through this environment's Authentik with one of these emails gets admin.
-    // Core has no SSO, and refuses a user whose provider isn't `default`, so unlicensed there are none.
-    admins: licensed ? (config.getObject<string[]>("directusAdmins") ?? []) : [],
+    admins,
     externalDomain: config.require("externalDomain"),
     clubspotSyncToken,
     gsuiteSyncToken,
@@ -189,6 +195,9 @@ void loadCluster().then((cluster) =>
 // Authentik registers Directus's client from these (cyc-seattle/workplace#6).
 export const directusOidcClientId = pulumi.output(app.then(({ oidcClientId }) => oidcClientId));
 export const directusOidcClientSecret = pulumi.secret(app.then(({ oidcClientSecret }) => oidcClientSecret));
+
+// Authentik makes them superusers, so they can impersonate someone (docs/access.md).
+export const directusAdmins = admins;
 
 // Settings -> AI. MCP acts as the signed-in user and adds no access of its own, so it's on for every
 // signed-in user, in prod too (cyc-seattle/workplace#6 decision 16, docs/backend.md).
