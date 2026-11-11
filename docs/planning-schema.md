@@ -166,7 +166,7 @@ erDiagram
         uuid organization_id FK
         int fiscal_year "the plan year"
         string name
-        text message "its note, which can change after it's saved"
+        text message "its note, a one-line comment that can change after it's saved"
         string status "draft|saved|active, one active for its organization and year"
         uuid parent_id FK "the Financial Plan it started from"
         uuid saved_by

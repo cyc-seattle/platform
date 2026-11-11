@@ -69,8 +69,9 @@ Feature: Plans
   sailors bring count too.
 
   A planner can ask their AI to fill in the blocks. It works in a new draft Financial Plan, started
-  from the one the planner names, and writes in the draft's note what it changed and which warnings
-  are left. If the planner likes the draft, they save it. If not, they delete it.
+  from the one the planner names. It tells the planner what it changed and which warnings are left,
+  and gives the draft a one-line note, such as "Allocated Summer weeks 3 to 5". If the planner likes
+  the draft, they save it. If not, they delete it.
 
   The Operations Plan also lists closed days, such as Labor Day, so that no one plans a practice on
   one by mistake.
