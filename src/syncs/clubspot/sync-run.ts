@@ -702,9 +702,16 @@ async function syncRegistrations(
     // answer (see `priorMirrorById` above).
     const priorMirror = priorMirrorById.get(participant.id);
 
-    // Written before `syncParticipant`, whose `contact_points` rows reference it by FK.
-    // `priorMirrorById` was read before the loop, so this doesn't give the first run a `base`.
-    if (!priorParticipant) {
+    // The mirror keeps Clubspot's last non-blank answer for every field (cyc-seattle/isthmia#137 review), unlike the
+    // CRM row's own one-CRM-field rule - `mergeParticipantMirrorFields` is only what's written to
+    // `clubspot_participants` here; `mirrorFields` itself stays this run's raw `v` for `syncParticipant`
+    // below. `last_sync_run_id` only moves in the same patch as an actual change, so an unchanged
+    // participant carries no trace of a run that touched nothing of its. The CRM row is written
+    // first and the mirror second, crash-safe: a rerun after a crash between the two sees the same
+    // change and reapplies it harmlessly. A new participant's row is created inside
+    // `syncParticipant`, after its CRM writes but before its `contact_points`, which reference it by
+    // FK (cyc-seattle/platform#158).
+    const createParticipant = async () => {
       const newParticipant: ParticipantRow = {
         id: participant.id,
         person_id: personId,
@@ -715,21 +722,14 @@ async function syncRegistrations(
       newParticipants.push(newParticipant);
       existingParticipantById.set(participant.id, newParticipant);
       participantsMirrored++;
-    }
-
-    // The mirror keeps Clubspot's last non-blank answer for every field (cyc-seattle/isthmia#137 review), unlike the
-    // CRM row's own one-CRM-field rule - `mergeParticipantMirrorFields` is only what's written to
-    // `clubspot_participants` here; `mirrorFields` itself stays this run's raw `v` for `syncParticipant`
-    // below. `last_sync_run_id` only moves in the same patch as an actual change, so an unchanged
-    // participant carries no trace of a run that touched nothing of its. The CRM row is written
-    // first and the mirror second, crash-safe: a rerun after a crash between the two sees the same
-    // change and reapplies it harmlessly.
+    };
     const resolved = await personSync.syncParticipant(participant, {
       existingPersonId: personId,
       ...(priorMirror ? { priorMirror } : {}),
       mirrorFields,
       registration: registrationRank,
       batchSiblings,
+      ...(priorParticipant ? {} : { beforeContactPoints: createParticipant }),
     });
     personIdByClubspotParticipantId.set(participant.id, resolved.id);
     isNewestByRegistrationId.set(registration.id, resolved.isNewestParticipant);

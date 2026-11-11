@@ -1104,6 +1104,90 @@ describe("runSync", () => {
     expect(tables.get("people")!.find((row) => row["id"] === "person-1")).toMatchObject({ school: "Garfield High" });
   });
 
+  // cyc-seattle/platform#158: a new participant's mirror row used to be written before its CRM
+  // writes, so a run that failed between the two left the retry comparing `v` against itself.
+  it("still applies a new participant's changed field on the retry after a run that failed before writing it", async () => {
+    const registration = parseObject("reg-2026", {
+      campObject: { id: "camp-2026" },
+      participantsArray: [
+        parseObject("participant-2026", {
+          firstName: "John",
+          lastName: "Smith",
+          email: "john@example.com",
+          city: "Seattle",
+        }),
+      ],
+      confirmed_at: new Date("2026-06-01T00:00:00Z"),
+      status: "confirmed",
+      waiver_status: "fully_signed",
+      archived: false,
+    }) as unknown as Registration;
+
+    const { fetchMock: storeFetch, tables } = makeDirectusStore({
+      clubspot_camps: [
+        { id: "camp-2026", clubspot_sales_account: null, name: "Camp 2026", synced_through: null, quiet_runs: 0 },
+      ],
+      clubspot_registrations: [
+        {
+          id: "reg-2025",
+          participant_id: "participant-2025",
+          camp_id: "camp-2025",
+          registered_at: "2025-06-01T00:00:00.000Z",
+          status: "confirmed",
+          waiver_status: null,
+          archived: false,
+        },
+      ],
+      clubspot_participants: [
+        { id: "participant-2025", person_id: "person-1", first_name: "John", last_name: "Smith", city: "Tacoma" },
+      ],
+      people: [
+        {
+          id: "person-1",
+          first_name: "John",
+          last_name: "Smith",
+          email: "john@example.com",
+          phone: null,
+          date_of_birth: null,
+          gender: null,
+          street: null,
+          city: "Tacoma",
+          state: null,
+          postal_code: null,
+        },
+      ],
+    });
+    let failPeopleWrites = true;
+    let failedPeopleWrites = 0;
+    const fetchMock = vi.fn(async (url: string, init?: FetchInit) => {
+      const collection = new URL(url).pathname.split("/")[2];
+      if (failPeopleWrites && init?.method === "PATCH" && collection === "people") {
+        failedPeopleWrites++;
+        return jsonResponse(400, { errors: [{ message: "rejected" }] });
+      }
+      return storeFetch(url, init);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const directus = new DirectusClient(baseUrl, token);
+    const gateway = makeGateway({
+      discoverCamps: vi.fn(async () => [camp("camp-2026")]),
+      fetchCampData: vi.fn(async (forCamp: Camp) => ({ ...emptyCampData(forCamp), registrations: [registration] })),
+    });
+
+    await runSync(runOptions(directus, new Date("2026-06-02T12:00:00Z"), gateway));
+    failPeopleWrites = false;
+    expect(failedPeopleWrites).toBeGreaterThan(0);
+    expect(tables.get("clubspot_participants")!.some((row) => row["id"] === "participant-2026")).toBe(false);
+
+    await runSync(runOptions(directus, new Date("2026-06-03T12:00:00Z"), gateway));
+
+    expect(tables.get("people")!.find((row) => row["id"] === "person-1")).toMatchObject({ city: "Seattle" });
+    expect(tables.get("clubspot_participants")!.find((row) => row["id"] === "participant-2026")).toMatchObject({
+      person_id: "person-1",
+      city: "Seattle",
+    });
+  });
+
   it("marks the run failed, without touching camp results, when the promotion pass throws", async () => {
     const now = new Date("2026-01-15T12:00:00Z");
     // Everything but promoted_fields goes through a real store; that one collection always errors,
