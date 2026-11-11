@@ -3,7 +3,7 @@ Feature: Coaches' recommendations
   After a season, a sailor's coach recommends what they should do next, such as the program to sign
   up for. A recommendation is for one sailor and one season: winter, spring, summer, or fall of a
   year, such as fall 2026. It names the program the coach recommends, gives a note, or both, and says
-  which coach made it. Coaches write them in the club's apps.
+  which coach made it. Coaches write them in CSC's apps.
 
   Coaches are Crew: people an admin has vetted and trusts with every roster, such as staff, coaches,
   and directors. Staff also get permissions from the groups they're in:
