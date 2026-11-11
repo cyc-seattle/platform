@@ -10,10 +10,6 @@ export async function discoverCamps(clubId: string): Promise<Camp[]> {
   const club = await new LoggedQuery(Club).get(clubId);
 
   return findAll(
-    new LoggedQuery(Camp)
-      .equalTo("clubObject", club)
-      .equalTo("archived", false)
-      .addDescending("startDate")
-      .include("chartOfAccounts"),
+    new LoggedQuery(Camp).equalTo("clubObject", club).equalTo("archived", false).include("chartOfAccounts"),
   );
 }
