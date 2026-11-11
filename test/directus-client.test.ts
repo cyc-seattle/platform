@@ -108,6 +108,7 @@ describe("discoverSchemaFiles", () => {
       "core",
       "crm",
       "gsuite",
+      "inventory",
       "planning",
       "sync",
       "website",
