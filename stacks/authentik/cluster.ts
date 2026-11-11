@@ -161,6 +161,9 @@ export async function deployAuthentik(
     image,
     port: 9000,
     healthCheck: { path: healthCheckPath, checkIntervalSec: 30, timeoutSec: 10 },
+    // A new pod can wait minutes for a node, then take two more to pull the image, which ran past the
+    // default 600s and failed a deploy that went on to finish (cyc-seattle/platform#153).
+    progressDeadlineSeconds: 1200,
     ...pods.server,
   });
 

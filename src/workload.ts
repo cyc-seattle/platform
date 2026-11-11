@@ -58,6 +58,8 @@ export interface WorkloadArgs extends PodArgs {
   spreadAcrossZones?: boolean;
   /** Adds a PodDisruptionBudget that keeps this many pods up through drains. Must be below `replicas`. */
   minAvailable?: number;
+  /** How long a rollout may take before the Deployment, and so the deploy, fails. Defaults to 600. */
+  progressDeadlineSeconds?: number;
 }
 
 /** The pods' Workload Identity principal, for IAM grants. */
@@ -159,6 +161,8 @@ export function podSpec(
   }));
 }
 
+const preStopSeconds = 10;
+
 export interface DeploymentParts {
   serviceAccount: k8s.core.v1.ServiceAccount;
   service?: k8s.core.v1.Service;
@@ -185,6 +189,11 @@ export function deployment(parent: pulumi.Resource, name: string, args: Workload
     throw new Error(`${name}: "minAvailable" (${args.minAvailable}) must be below "replicas" (${replicas}).`);
   }
   const ports = [...(http !== undefined ? [{ name: "http", port: http }] : []), ...(args.ports ?? [])];
+  // The load balancer keeps sending to a stopping pod for a few seconds (cyc-seattle/platform#153), so
+  // a WebService's pod keeps serving that long before it gets SIGTERM, then has the default 30s to exit.
+  const drain = http !== undefined && {
+    lifecycle: { preStop: { sleep: { seconds: preStopSeconds } } },
+  };
 
   new k8s.apps.v1.Deployment(
     name,
@@ -192,6 +201,7 @@ export function deployment(parent: pulumi.Resource, name: string, args: Workload
       metadata,
       spec: {
         replicas,
+        ...(args.progressDeadlineSeconds !== undefined && { progressDeadlineSeconds: args.progressDeadlineSeconds }),
         selector: { matchLabels: labels },
         template: {
           metadata: { labels, ...(args.podAnnotations && { annotations: args.podAnnotations }) },
@@ -200,8 +210,10 @@ export function deployment(parent: pulumi.Resource, name: string, args: Workload
             ...(args.readinessProbe && { readinessProbe: args.readinessProbe }),
             ...(args.livenessProbe && { livenessProbe: args.livenessProbe }),
             ...(args.startupProbe && { startupProbe: args.startupProbe }),
+            ...drain,
           }).apply((spec) => ({
             ...spec,
+            ...(drain && { terminationGracePeriodSeconds: preStopSeconds + 30 }),
             ...(args.spreadAcrossZones && {
               topologySpreadConstraints: [
                 {

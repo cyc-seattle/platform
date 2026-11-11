@@ -110,6 +110,13 @@ describe("WebService placement", () => {
   });
 });
 
+describe("WebService shutdown", () => {
+  it("keeps serving while the load balancer stops sending, then gives the app 30s to exit", () => {
+    expect(podSpec("dev-web").containers[0].lifecycle).toEqual({ preStop: { sleep: { seconds: 10 } } });
+    expect(podSpec("dev-web").terminationGracePeriodSeconds).toBe(40);
+  });
+});
+
 describe("WebService resources", () => {
   it("sets its limits to its requests", () => {
     expect(podSpec("dev-web").containers[0].resources).toEqual({
