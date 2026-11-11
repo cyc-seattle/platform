@@ -105,9 +105,11 @@ describe("discoverSchemaFiles", () => {
     expect(found.map((f) => f.name)).toEqual([
       "access",
       "clubspot",
+      "coaching",
       "core",
       "crm",
       "gsuite",
+      "inventory",
       "planning",
       "sync",
       "website",

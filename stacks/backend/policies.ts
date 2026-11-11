@@ -340,6 +340,8 @@ export const crewRules: PermissionRuleInput[] = [
   { collection: "program_areas", action: "read" },
   { collection: "accounts", action: "read" },
   { collection: "google_groups", action: "read" },
+  // A recommendation is for a term.
+  { collection: "terms", action: "read" },
   ...(["create", "read", "update", "delete"] as const).map((action) => ({ collection: COACHING, action })),
 ];
 

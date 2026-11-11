@@ -1192,7 +1192,7 @@ export interface Recommendations {
   id: string;
   person_id: string | People;
   /** The term the sailor was coached in. */
-  term_id: string;
+  term_id: string | Terms;
   /** The program the coach recommends next. Leave it blank to say it only in the note. */
   program_id: string | Programs | null;
   /** What the coach recommends, and why. */
