@@ -109,6 +109,7 @@ describe("discoverSchemaFiles", () => {
       "crm",
       "gsuite",
       "planning",
+      "staff",
       "sync",
       "website",
     ]);
