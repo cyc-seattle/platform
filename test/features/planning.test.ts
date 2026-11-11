@@ -392,7 +392,7 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
-parameter("level", ["Level 1 Instructor", "Level 2 Instructor", "Junior Instructor"]);
+parameter("level", ["Level 1 Instructor", "Level 2 Instructor"]);
 parameter("boats", ["Sailqubes", "Optis"]);
 parameter("staff", ["one coach", "two coaches"]);
 /** "4pm" or "noon" as `HH:MM`. */
@@ -432,7 +432,7 @@ async function programNamed(name: string): Promise<string> {
   return programs[name];
 }
 /** A staff level in the Operations Plan, paid `rate` cents an hour. */
-async function level(name: string, rate = 2000, qualifications: string[] = []): Promise<Item> {
+async function level(name: string, rate = 2000): Promise<Item> {
   levels[name] ??= await adminCreate("plan_staff_levels", {
     id: randomUUID(),
     version_id: await p.operationsVersion(),
@@ -440,7 +440,6 @@ async function level(name: string, rate = 2000, qualifications: string[] = []): 
     name,
     pay_type: "hourly",
     hourly_rate_cents: rate,
-    qualifications,
   });
   return levels[name];
 }
@@ -533,12 +532,6 @@ Step(
     }
   },
 );
-Step("a {level} is qualified for everything a {level} is", async (_, higher: string, lower: string) => {
-  const [low, high] = [await p.qualification(lower), await p.qualification(higher)];
-  await adminCreate("qualification_covers", { id: randomUUID(), qualification_id: high, covers_id: low });
-  await (await admin()).ok("PATCH", itemPath("plan_staff_levels", (await level(lower)).id), { qualifications: [low] });
-  await level(higher, 2000, [high]);
-});
 for (const text of ["{boats} take {count} sailor each", "{boats} take {count} sailors each"]) {
   Step(text, (_, boats: string, sailors: string) => boatClass(boats, Number(sailors)));
 }
@@ -798,10 +791,10 @@ Step(
   },
 );
 Step(
-  "a {program} block of {count} sailors with one Junior Instructor, who isn't qualified to coach {program}, and enough boats",
+  "a {program} block of {count} sailors that the director coaches, with enough boats",
   async (_, program: string, sailors: string) => {
     await blockOf([await offeringOf(program, Number(sailors))], MORNING, {
-      staff: [await staffAt("Junior Instructor", 1)],
+      staff: [{ position_key: position, count: 1 }],
       boats: await enoughBoats(Number(sailors)),
     });
   },

@@ -34,9 +34,8 @@ such as one program area or some weeks.
 
 From the Operations Plan's copy:
 
-- `plan_staff_levels`: each level's `key`, name, pay and `qualifications`.
-- `plan_salaried_positions`: each position's `key`, name, `qualifications` and
-  `hourly_coaching_rate_cents`.
+- `plan_staff_levels`: each level's `key`, name and pay.
+- `plan_salaried_positions`: each position's `key`, name and `hourly_coaching_rate_cents`.
 - `plan_resources`: each resource's `key`, name, kind and `quantity`. The resource kind in
   `plan_rates.rib_resource_kind_id` is RIBs.
 - `plan_boat_rates`: each boat class's `quantity`, how many the organization has. Read each class's
@@ -68,7 +67,9 @@ For each date, in the part of the plan you're allocating:
    Program Plan copy.
 2. **Give each block its staff**, in `plan_block_staff`. Start from each program's
    `sailors_per_coach`: a block of several programs needs Σ (a program's sailors ÷ its sailors per
-   coach) staff, rounded up, at the program's staff level or one qualified for it. Then apply the
+   coach) staff, rounded up, at the program's own staff level, since a plan doesn't count on a
+   higher level covering a lower one. A salaried position on the block counts as one coach for any
+   of its programs. Then apply the
    rules, such as "if there are more than 12 Guppies, add a Junior Instructor". A row is either a
    `staff_level_key` with a `count`, or one salaried position's `position_key` with `count` 1 and
    `pay` `salary` or `hourly`. A rule says who coaches what; a salaried position can't be on two

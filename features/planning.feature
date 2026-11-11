@@ -64,7 +64,8 @@ Feature: Plans
   equipment out at once than it has, too few coaches or boats for a block's sailors, or
   an activity with no staff. Each warning says which plan and date it's about. Each coach
   in a block can safely take the program's number of sailors, if they're at the program's staff
-  level or qualified for it. Each boat can take its class's number of sailors, and the boats that
+  level. A plan doesn't count on a coach at one level covering another. A salaried coach, such as a
+  director, counts as one coach for any program in their block. Each boat can take its class's number of sailors, and the boats that
   sailors bring count too.
 
   A planner can ask their AI to fill in the blocks. It works in a new draft Financial Plan, started
@@ -515,18 +516,18 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the block has 14 sailors, but enough coaches for only 10
 
-    Example: A coach qualified for the program's staff level counts
+    Example: A coach at another staff level doesn't count
       Given Guppies have a Level 1 Instructor for every 10 sailors
-      And a Level 2 Instructor is qualified for everything a Level 1 Instructor is
       And a Guppies block of 10 sailors with one Level 2 Instructor and enough boats
       When a planner calculates the P&L
-      Then the planner isn't warned about the block
-
-    Example: A coach who isn't qualified for the program's staff level doesn't count
-      Given Guppies have a Level 1 Instructor for every 10 sailors
-      And a Guppies block of 10 sailors with one Junior Instructor, who isn't qualified to coach Guppies, and enough boats
-      When a planner calculates the P&L
       Then the planner is warned that the block has 10 sailors and no coach
+
+    Example: A salaried director on a block counts as one coach
+      Given Guppies have a Level 1 Instructor for every 10 sailors
+      And a salaried director paid $30 an hour
+      And a Guppies block of 10 sailors that the director coaches, with enough boats
+      When a planner calculates the P&L
+      Then the planner isn't warned about the block
 
     Example: One coach for 5 Guppies and 5 Minnows is too few
       Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5

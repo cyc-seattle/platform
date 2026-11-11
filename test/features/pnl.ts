@@ -129,7 +129,6 @@ export class PnlPlan {
   readonly offerings: Item[] = [];
   readonly lines: Record<string, Item> = {};
   readonly boatClasses: string[] = [];
-  readonly qualifications: string[] = [];
   private ribKind: string | undefined;
   private poolId: string | undefined;
   output: EngineOutput | undefined;
@@ -419,13 +418,6 @@ export class PnlPlan {
     return boat.id;
   }
 
-  /** A qualification in the catalog. Returns its id. */
-  async qualification(name: string): Promise<string> {
-    const made = await adminCreate("qualifications", { id: randomUUID(), name: `${name} ${key("qualification")}` });
-    this.qualifications.push(made.id);
-    return made.id;
-  }
-
   /** The resource kind the Operations Plan's rates call RIBs. */
   async rib(): Promise<string> {
     if (this.ribKind === undefined) {
@@ -496,8 +488,9 @@ export class PnlPlan {
       products: await read("products", { id: anyOf(this.products) }),
       program_areas: await read("program_areas", { id: anyOf(this.areas) }),
       accounts: await read("accounts", { id: { _in: Object.values(this.accounts) } }),
-      qualifications: await read("qualifications", { id: anyOf(this.qualifications) }),
-      qualification_covers: await read("qualification_covers", { qualification_id: anyOf(this.qualifications) }),
+      // The engine doesn't read qualifications (#208).
+      qualifications: [],
+      qualification_covers: [],
       boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
       resource_kinds: [],
       plans: await read("plans", { id: { _in: plans } }),
