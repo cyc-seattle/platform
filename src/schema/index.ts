@@ -80,7 +80,6 @@ export interface Schema {
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
-  terms: Terms[];
   venues: Venues[];
   version_set_members: VersionSetMembers[];
   version_sets: VersionSets[];
@@ -138,12 +137,11 @@ export interface AuditFindings {
   fingerprint: string;
 }
 
-/** Which sailor charters which boat each term. */
+/** Which sailor charters which boat, and when. */
 export interface BoatCharters {
   id: string;
   boat_id: string | Boats;
   person_id: string | People;
-  term_id: string | Terms;
   /** The charter product the boat's costs go to. */
   product_id: string | Products;
   starts_on: string;
@@ -1311,17 +1309,6 @@ export interface SyncTasks {
   finished_at: string | null;
   /** Set once the task has failed too many times. It keeps retrying; this flags it for staff. */
   needs_attention: boolean;
-}
-
-/** A season of the year, such as Fall 2026, that boat charters and boat costs count in. */
-export interface Terms {
-  id: string;
-  /** Such as Fall 2026. */
-  name: string;
-  starts_on: string;
-  ends_on: string;
-  /** The day a program director closed the term, so its boat costs stop changing. Clear it to reopen the term. */
-  closed_on: string | null;
 }
 
 /** Where events are sailed, and who runs each place. Only an admin changes them. */

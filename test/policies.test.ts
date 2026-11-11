@@ -147,7 +147,6 @@ describe("the Catalog policies", () => {
     "programs",
     "catalog_offerings",
     "organization_cost_accounts",
-    "terms",
   ];
   const directory = ["organizations", "venues"];
 
@@ -192,7 +191,7 @@ describe("the Inventory policies", () => {
     "storage_spaces",
     "storage_agreements",
   ];
-  const linked = ["boat_classes", "products", "terms", "people"];
+  const linked = ["boat_classes", "products", "people"];
 
   it("let both see the inventory, and only sailors' names", () => {
     for (const name of ["Inventory Reader", "Inventory Writer"]) {
@@ -207,17 +206,15 @@ describe("the Inventory policies", () => {
     expect([...collections("Inventory Writer", "create")].sort()).toEqual([...inventory].sort());
     const edited = inventory.filter((collection) => collection !== "boat_stage_changes");
     for (const action of ["update", "delete"]) {
-      expect([...collections("Inventory Writer", action)].filter((c) => c !== "terms").sort()).toEqual(
-        [...edited].sort(),
-      );
+      expect([...collections("Inventory Writer", action)].sort()).toEqual([...edited].sort());
     }
   });
 
-  it("let an Inventory Writer close and reopen a term, and change nothing else of the catalog", () => {
-    const catalogChanges = named("Inventory Writer").rules.filter(
+  it("let an Inventory Writer change nothing outside the inventory", () => {
+    const outside = named("Inventory Writer").rules.filter(
       (rule) => rule.action !== "read" && !inventory.includes(rule.collection),
     );
-    expect(catalogChanges).toEqual([{ collection: "terms", action: "update", fields: ["closed_on"] }]);
+    expect(outside).toEqual([]);
   });
 });
 
