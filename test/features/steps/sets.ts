@@ -112,6 +112,26 @@ const sets: Record<string, Target[]> = {
   products: plain("products"),
   "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),
+  // The directory, as catalog.feature defines it.
+  "the directory": plain("organizations", "venues"),
+  // The inventory, as inventory.feature defines it.
+  "the inventory": plain(
+    "boats",
+    "boat_stage_changes",
+    "boat_charters",
+    "boat_damage",
+    "storage_spaces",
+    "storage_agreements",
+  ),
+  "boats, charters, damage, and storage": plain(
+    "boats",
+    "boat_charters",
+    "boat_damage",
+    "storage_spaces",
+    "storage_agreements",
+  ),
+  "stage changes": plain("boat_stage_changes"),
+  "boat classes and products": plain("boat_classes", "products"),
   plans: [...plain("plans", "version_sets", "version_set_members"), ...versions("draft", "saved")],
   groups: plain("groups", "group_members", "group_policies"),
   // Everything website.feature calls the website, with the lists that link its parts.

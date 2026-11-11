@@ -27,6 +27,8 @@ export const policyNames = [
   "Medical Writer",
   "Catalog Reader",
   "Catalog Writer",
+  "Inventory Reader",
+  "Inventory Writer",
   "Plan Reader",
   "Plan Writer",
 ];
