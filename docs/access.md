@@ -131,8 +131,8 @@ list creates a new row, so someone not yet in People is added there first.
 
 The `group-policies` hook (`stacks/backend/group-policies.cjs`) keeps each user's own policy links
 equal to what their groups give. It runs after any change to a group, a member, or a grant, when a
-user or person is made, and when a person's email or login changes. It also runs every 15 minutes, to catch a
-change that emitted no event, such as a cascade.
+user or person is made, and when a person's email, login, or name changes. It also runs every 15
+minutes, to catch a change that emitted no event, such as a cascade.
 
 - A person's login is `people.directus_user_id`. A group member with none is linked by their email,
   once, and the hook stores the link. So someone added to a group before they first sign in gets its
@@ -147,6 +147,9 @@ change that emitted no event, such as a cascade.
 - It moves a Community user whose person is on a team to Team, and a Team user who isn't back to
   Community. It never changes Crew, Staff, or Admin. Registrations, offerings, programs, and contacts set it
   off too, and the 15-minute run closes the 12-month window as time passes.
+- It gives each user their person's first and last name, so the Data Studio, comments, and
+  revisions show a name, not an email. People is the source of truth, so the next run puts back a
+  name changed on the user.
 - It refuses a `group_policies` row that names any other policy.
 - It changes links through Directus's `AccessService`, which clears Directus's permission caches.
 

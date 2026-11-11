@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyMoves, coalesce, plan, teamMoves } from "../stacks/backend/group-policies.cjs";
+import { applyMoves, coalesce, plan, renames, teamMoves } from "../stacks/backend/group-policies.cjs";
 
 const users = [
   { id: "u-crew", email: "crew@example.com" },
@@ -203,6 +203,39 @@ describe("the Team role", () => {
   it("never moves Crew, Staff, or Admin", () => {
     const moves = teamMoves({ users, userOf, onTeam: new Set(), ...roles });
     expect(moves.map(({ user }) => user).filter((user) => ["u-crew", "u-staff", "u-admin"].includes(user))).toEqual([]);
+  });
+});
+
+describe("users' names", () => {
+  const userOf = new Map([
+    ["p-new", "u-new"],
+    ["p-same", "u-same"],
+    ["p-renamed", "u-renamed"],
+  ]);
+  const people = [
+    { id: "p-new", first_name: "Ada", last_name: "Lovelace" },
+    { id: "p-same", first_name: "Grace", last_name: "Hopper" },
+    { id: "p-renamed", first_name: "Kat", last_name: null },
+  ];
+
+  it("gives each user their person's first and last name, when they differ", () => {
+    const updates = renames({
+      users: [
+        { id: "u-new", first_name: null, last_name: null },
+        { id: "u-same", first_name: "Grace", last_name: "Hopper" },
+        { id: "u-renamed", first_name: "Katherine", last_name: "Johnson" },
+      ],
+      people,
+      userOf,
+    });
+    expect(updates).toEqual([
+      { user: "u-new", first_name: "Ada", last_name: "Lovelace" },
+      { user: "u-renamed", first_name: "Kat", last_name: null },
+    ]);
+  });
+
+  it("leaves a user no person is linked to with the name they have", () => {
+    expect(renames({ users: [{ id: "u-alone", first_name: "Sam", last_name: null }], people, userOf })).toEqual([]);
   });
 });
 
