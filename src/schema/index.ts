@@ -4,7 +4,11 @@
 export interface Schema {
   accounts: Accounts[];
   audit_findings: AuditFindings[];
+  boat_charters: BoatCharters[];
   boat_classes: BoatClasses[];
+  boat_damage: BoatDamage[];
+  boat_stage_changes: BoatStageChanges[];
+  boats: Boats[];
   calendar_dates: CalendarDates[];
   calendars: Calendars[];
   catalog_offerings: CatalogOfferings[];
@@ -75,9 +79,12 @@ export interface Schema {
   registrations: Registrations[];
   resource_kinds: ResourceKinds[];
   schools: Schools[];
+  storage_agreements: StorageAgreements[];
+  storage_spaces: StorageSpaces[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
+  terms: Terms[];
   venues: Venues[];
   version_set_members: VersionSetMembers[];
   version_sets: VersionSets[];
@@ -135,6 +142,22 @@ export interface AuditFindings {
   fingerprint: string;
 }
 
+/** Which sailor charters which boat each term. */
+export interface BoatCharters {
+  id: string;
+  boat_id: string | Boats;
+  person_id: string | People;
+  term_id: string | Terms;
+  /** The charter product the boat's costs go to. */
+  product_id: string | Products;
+  starts_on: string;
+  ends_on: string;
+  /** What the sailor pays for the charter. In cents: 12500 is $125.00. */
+  fee_cents: number;
+  /** A link to the signed charter agreement. */
+  agreement_url: string | null;
+}
+
 /** A kind of boat offerings sail, such as Opti or 420. */
 export interface BoatClasses {
   id: string;
@@ -142,6 +165,54 @@ export interface BoatClasses {
   sailors_per_boat: number;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
+}
+
+/** Damage to CSC's boats, what it cost to repair, and what the sailor was charged. */
+export interface BoatDamage {
+  id: string;
+  boat_id: string | Boats;
+  occurred_on: string;
+  description: string;
+  status: "open" | "repaired" | "written_off";
+  /** What the repair cost, or will cost. In cents: 12500 is $125.00. */
+  repair_cost_cents: number | null;
+  /** The sailor charged for the damage, if anyone is. */
+  person_id: string | People | null;
+  /** What the sailor was charged. In cents: 12500 is $125.00. */
+  charged_cents: number | null;
+}
+
+/** When each boat started its charter life, moved to its beginner life, or retired. A boat's stage is its latest row. Add a row to move a boat on. A row can't be changed once it's added. */
+export interface BoatStageChanges {
+  id: string;
+  boat_id: string | Boats;
+  /** A boat wears down over its charter life, then its beginner life. */
+  stage: "charter" | "beginner" | "retired";
+  changed_on: string;
+  /** Why it moved, such as hull damage. */
+  note: string | null;
+}
+
+/** Each of CSC's own boats. Sailors' own boats aren't listed here. */
+export interface Boats {
+  id: string;
+  boat_class_id: string | BoatClasses;
+  sail_number: string | null;
+  /** The hull identification number on the transom. */
+  hull_number: string;
+  /** The boat's name, if it has one. */
+  name: string | null;
+  acquired_how: "bought" | "donated";
+  /** What CSC paid, or what a donated boat was worth when it arrived. In cents: 12500 is $125.00. */
+  value_cents: number;
+  /** The day CSC got the boat. */
+  acquired_on: string | null;
+  /** The day the boat first sailed in a program. */
+  in_service_on: string | null;
+  storage_space_id: string | StorageSpaces | null;
+  note: string | null;
+  stage_changes: (string | BoatStageChanges)[];
+  damage: (string | BoatDamage)[];
 }
 
 /** The days on a calendar. */
@@ -1224,6 +1295,37 @@ export interface Schools {
   aliases: string[] | null;
 }
 
+/** Storage CSC sells to sailors for their own boats. */
+export interface StorageAgreements {
+  id: string;
+  person_id: string | People;
+  storage_space_id: string | StorageSpaces;
+  /** The storage product the agreement is sold as. */
+  product_id: string | Products;
+  /** The sailor's own boat, such as its class and sail number. */
+  boat_description: string | null;
+  starts_on: string;
+  /** Empty while the agreement runs on. */
+  ends_on: string | null;
+  /** What the sailor pays for the agreement. In cents: 12500 is $125.00. */
+  fee_cents: number;
+  /** A link to the signed storage agreement. */
+  agreement_url: string | null;
+}
+
+/** The racks and deck space CSC keeps boats on, each for one boat class. */
+export interface StorageSpaces {
+  id: string;
+  kind: "rack" | "deck";
+  /** Where it is, such as Rack 3 or North deck. */
+  location: string;
+  boat_class_id: string | BoatClasses;
+  /** How many boats it holds. */
+  capacity: number;
+  /** The floor space it takes. */
+  footprint_sq_ft: string | null;
+}
+
 /** Which syncs are running now. A sync holds its queue while it runs, so a second run waits its turn. Written by the syncs. */
 export interface SyncLeases {
   id: string;
@@ -1266,6 +1368,17 @@ export interface SyncTasks {
   finished_at: string | null;
   /** Set once the task has failed too many times. It keeps retrying; this flags it for staff. */
   needs_attention: boolean;
+}
+
+/** A season of the year, such as Fall 2026, that boat charters and boat costs count in. */
+export interface Terms {
+  id: string;
+  /** Such as Fall 2026. */
+  name: string;
+  starts_on: string;
+  ends_on: string;
+  /** The day a program director closed the term, so its boat costs stop changing. Clear it to reopen the term. */
+  closed_on: string | null;
 }
 
 /** Where events are sailed, and who runs each place. Only an admin changes them. */

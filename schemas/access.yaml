@@ -278,6 +278,8 @@ fields:
               - Calendar Writer
               - Catalog Reader
               - Catalog Writer
+              - Inventory Reader
+              - Inventory Writer
               - Medical Reader
               - Medical Writer
               - Plan Reader
