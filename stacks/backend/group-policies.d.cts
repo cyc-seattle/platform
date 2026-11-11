@@ -38,6 +38,16 @@ export interface TeamMovesInput {
 /** The users to move between the Community and Team roles, and the role each moves to. */
 export function teamMoves(input: TeamMovesInput): { user: string; role: string }[];
 
+export interface RenamesInput {
+  users: { id: string; first_name?: string | null; last_name?: string | null }[];
+  people: { id: string; first_name?: string | null; last_name?: string | null }[];
+  /** Each person's login. */
+  userOf: Map<string, string>;
+}
+
+/** The users whose first and last name differ from their person's, and the names to give them. */
+export function renames(input: RenamesInput): { user: string; first_name: string | null; last_name: string | null }[];
+
 /** The slice of knex `applyMoves` uses. */
 export interface MovesDatabase {
   transaction<T>(run: (trx: unknown) => Promise<T>): Promise<T>;

@@ -4,7 +4,8 @@
 // Keeps each user's own policy links equal to what their groups give (docs/access.md). It manages
 // only links to the policies a group may give, and only for users on the roles it's told, so it
 // never touches a machine user or the first admin account. It also moves a user between Community
-// and Team as they join and leave a team, and never changes any other role.
+// and Team as they join and leave a team, and never changes any other role, and gives each user
+// their person's first and last name.
 
 const WATCHED = new Set(["groups", "group_members", "group_policies"]);
 // What decides who is on a team.
@@ -125,6 +126,25 @@ function teamMoves({ users, userOf, onTeam, community, team }) {
 }
 
 /**
+ * The users whose first and last name differ from their person's. `userOf` maps a person to their
+ * user, and a user it doesn't map keeps the name they have.
+ */
+function renames({ users, people, userOf }) {
+  const personOf = new Map([...userOf].map(([person, user]) => [user, person]));
+  const byId = new Map(people.map((person) => [person.id, person]));
+  const updates = [];
+  for (const user of users) {
+    const person = byId.get(personOf.get(user.id));
+    if (!person) continue;
+    const first_name = person.first_name ?? null;
+    const last_name = person.last_name ?? null;
+    if (first_name === (user.first_name ?? null) && last_name === (user.last_name ?? null)) continue;
+    updates.push({ user: user.id, first_name, last_name });
+  }
+  return updates;
+}
+
+/**
  * Moves each user to their new role, but only if they're still on one of the `family` roles: an
  * admin may have changed their role since the hook read it. The row lock makes an admin's change
  * that lands meanwhile wait, then win. Through the service, so Directus clears its permission caches.
@@ -226,7 +246,13 @@ function register({ filter, action, schedule }, { services, database, getSchema,
     const users = (
       await database("directus_users")
         .join("directus_roles", "directus_roles.id", "directus_users.role")
-        .select("directus_users.id", "directus_users.email", "directus_roles.name as role")
+        .select(
+          "directus_users.id",
+          "directus_users.email",
+          "directus_users.first_name",
+          "directus_users.last_name",
+          "directus_roles.name as role",
+        )
         .whereIn("directus_roles.name", config.roles)
     ).filter((user) => (user.email ?? "").toLowerCase() !== bootstrapAdmin);
     const grants =
@@ -241,7 +267,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
     const userEmails = [...new Set(users.filter((user) => user.email).map((user) => user.email.toLowerCase()))];
     // Everyone a managed user is, or could be linked to: the Team role needs a family's person too.
     const people = await database("people")
-      .select("id", "email", "directus_user_id")
+      .select("id", "email", "first_name", "last_name", "directus_user_id")
       .where((where) => {
         where.whereIn("id", personIds).orWhereIn("directus_user_id", userIds);
         if (userEmails.length > 0) where.orWhereIn(database.raw("lower(email)"), userEmails);
@@ -318,6 +344,15 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       logger.info(`group-policies: gave ${add.length} and took away ${remove.length} policy links`);
     }
 
+    const named = renames({ users, people, userOf });
+    if (named.length > 0) {
+      const usersService = new services.UsersService({ schema, knex: database });
+      for (const { user, first_name, last_name } of named) {
+        await usersService.updateOne(user, { first_name, last_name }, { emitEvents: false });
+      }
+      logger.info(`group-policies: named ${named.length} users from their people`);
+    }
+
     const families = new Set(
       users.filter((user) => user.role === config.community || user.role === config.team).map((user) => user.id),
     );
@@ -366,7 +401,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
   }
   action("people.items.create", request);
   action("people.items.update", ({ payload }) => {
-    if ("email" in payload || "directus_user_id" in payload) request();
+    if (["email", "directus_user_id", "first_name", "last_name"].some((field) => field in payload)) request();
   });
   action("users.create", request);
   action("users.update", ({ payload }) => {
@@ -394,5 +429,6 @@ function register({ filter, action, schedule }, { services, database, getSchema,
 module.exports = register;
 module.exports.plan = plan;
 module.exports.teamMoves = teamMoves;
+module.exports.renames = renames;
 module.exports.applyMoves = applyMoves;
 module.exports.coalesce = coalesce;
