@@ -202,9 +202,9 @@ export class Staffing {
 
   /**
    * Warns when a block's sailors are more than its staff or its boats can safely take. Each program's
-   * sailors count against its own sailors per coach, and need coaches at its own staff level. A
-   * salaried position on the block counts as a coach for any of its programs, since the plan trusts
-   * the planner's allocation (#208). Boats count the ones sailors bring.
+   * sailors count against its own sailors per coach, and every coach on the block counts, at any
+   * staff level or salaried: the ratio is required, a coach's level isn't (cyc-seattle/sail-team#82).
+   * Boats count the ones sailors bring.
    */
   private checkCapacity(block: Block, programs: Map<Id, PlanProgram>): void {
     const { ctx } = this;
@@ -217,8 +217,8 @@ export class Staffing {
     // The block's offerings, with the verb that agrees with them: "Guppies Week 2 has".
     const has = `${offeringsOf(block)} ${new Set(block.members.map((a) => a.offering.id)).size > 1 ? "have" : "has"}`;
 
-    // Coaches each level needs, from the sailors of the programs coached at it.
-    const needed = new Map<Id, number>();
+    // Coaches the block needs: each program's sailors over its sailors per coach.
+    let load = 0;
     let counted = 0;
     for (const o of offerings) {
       const settings = programs.get(o.product_id);
@@ -232,26 +232,11 @@ export class Staffing {
         continue;
       }
       const n = ctx.enrollment.get(o.id) ?? 0;
-      needed.set(
-        settings.staff_level_key,
-        (needed.get(settings.staff_level_key) ?? 0) + n / settings.sailors_per_coach,
-      );
+      load += n / settings.sailors_per_coach;
       counted += n;
     }
     if (counted > 0) {
-      const load = sum(needed.values());
-      // Each level's staff cover only its own programs; salaried positions cover what's left.
-      let short = 0;
-      let covered = 0;
-      for (const [level, need] of needed) {
-        const have = sum(
-          block.staff.filter((s) => s.position_key == null && s.staff_level_key === level).map((s) => s.count),
-        );
-        covered += Math.min(need, have);
-        short += Math.max(0, need - have);
-      }
-      const salaried = sum(block.staff.filter((s) => s.position_key != null).map((s) => s.count));
-      covered += Math.min(short, salaried);
+      const covered = Math.min(load, sum(block.staff.map((s) => s.count)));
       if (load > covered + 1e-9) {
         ctx.warn(
           "over_capacity",

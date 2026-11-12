@@ -836,9 +836,6 @@ Step(
   "the planner is warned that the block has {count} sailors, but enough coaches for only {count}",
   (_, sailors: string, can: string) => saysBlockHas("coach", `${sailors} sailors, but enough coaches for only ${can}`),
 );
-Step("the planner is warned that the block has {count} sailors and no coach", (_, sailors: string) =>
-  saysBlockHas("coach", `${sailors} sailors and no coach`),
-);
 Step(
   "the planner is warned that the block has {count} sailors, but the boats hold only {count}",
   (_, sailors: string, can: string) => saysBlockHas("boats", `${sailors} sailors, but the boats hold only ${can}`),
