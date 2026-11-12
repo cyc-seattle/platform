@@ -787,6 +787,14 @@ function resultRows(data, out, operations) {
       double_booked_hours: p.double_booked_hours,
       double_booked_dates: p.double_booked_dates,
     })),
+    plan_result_capital: out.capital.map((c) => ({
+      rank: c.rank,
+      item_key: c.key,
+      name: c.name,
+      amount_cents: c.amount_cents,
+      running_cents: c.running_cents,
+      funded: c.funded,
+    })),
     plan_result_warnings: out.warnings.map((w) => ({
       owner: w.version_id ?? null,
       code: w.code,
@@ -853,6 +861,7 @@ async function calculate(config, db, set, engine) {
     plan_result_lines: all.plan_result_lines.map(owned),
     plan_result_pnl: all.plan_result_pnl.map(owned),
     plan_result_positions: all.plan_result_positions.map(row),
+    plan_result_capital: all.plan_result_capital.map(row),
     plan_result_warnings: all.plan_result_warnings.map(owned),
   };
   return { rows, totals: row(totals) };

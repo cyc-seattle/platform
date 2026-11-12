@@ -382,7 +382,7 @@ A block, in `plan_activity_blocks`, is one or more activities on one date that s
 
 A program area's plan holds only offerings of that area's programs, and the engine warns about any other.
 
-A budget line counts in its `fiscal_year`. Capital, a line on an asset account such as buying a coach boat, is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest.
+A budget line counts in its `fiscal_year`. Capital belongs in the Operations Plan's ranked `plan_capital_items`. A budget line on an asset account is capital too, and is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest.
 
 `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
 
@@ -397,6 +397,8 @@ erDiagram
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     plan_versions ||--o{ plan_closed_dates : contains
+    plan_versions ||--o{ plan_capital_items : contains
+    accounts ||--o{ plan_capital_items : "booked to"
     resource_kinds ||--o{ plan_resources : "kind of"
     resource_kinds |o--o{ plan_rates : "RIB kind"
     boat_classes ||--o{ plan_boat_rates : "rate for"
@@ -472,6 +474,14 @@ erDiagram
         date date
         string name
     }
+    plan_capital_items {
+        string name
+        int amount_cents
+        uuid account_id FK "an asset account"
+        int sort "rank: 1 is the most needed"
+        text note
+        string link "a quote or listing"
+    }
     plan_bonus_owner_products {
         uuid bonus_owner_id FK
         uuid product_id FK
@@ -492,6 +502,8 @@ A pool is a group of shared costs that no single offering owns, such as general 
 
 A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before the pools (`basis`), if that net is above zero. A bonus on one program area's products can be in that area's plan instead, with its own `plan_bonus_owner_products`; the engine ignores, with a warning, any product from another area. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay.
 
+`plan_capital_items` is the ranked list of what the organization means to buy, such as a coach boat, with the most needed first. Planners drag the rows into order in the Data Studio. Each is capital on the organization, and the engine says how far down the list the year's money goes.
+
 `plan_closed_dates` lists the days the organization is closed, such as Labor Day. Agents read them when they write activities, and the engine warns about an activity on one.
 
 The Operations Plan also holds `plan_budget_lines` and `plan_labor_lines` for pool and org lines (insurance, the clubhouse fee, fundraising, equipment). They have the same shape as an area plan's lines.
@@ -504,6 +516,7 @@ erDiagram
     version_sets |o--o{ plan_result_lines : lines
     version_sets |o--o{ plan_result_pnl : "P&L"
     version_sets |o--o{ plan_result_positions : pay
+    version_sets |o--o{ plan_result_capital : "capital, ranked"
     version_sets |o--o{ plan_result_warnings : warnings
     version_set_members |o--o{ plan_result_lines : "charged in"
     version_set_members |o--o{ plan_result_pnl : "charged in"
@@ -565,6 +578,15 @@ erDiagram
         int payroll_tax_cents
         decimal double_booked_hours
         int double_booked_dates
+    }
+    plan_result_capital {
+        uuid version_set_id FK
+        int rank
+        uuid item_key
+        string name
+        int amount_cents
+        int running_cents "this and everything above it"
+        boolean funded "the year's money covers it"
     }
     plan_result_warnings {
         uuid version_set_id FK

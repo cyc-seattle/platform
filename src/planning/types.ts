@@ -225,6 +225,19 @@ export interface PlanBudgetLine extends Versioned {
   note: string | null;
 }
 
+/**
+ * Something lasting the Operations Plan means to buy, ranked by `sort` with the most needed first.
+ * Its account is an asset account.
+ */
+export interface PlanCapitalItem extends Versioned {
+  name: string;
+  amount_cents: number;
+  account_id: Id;
+  sort: number | null;
+  note?: string | null;
+  link?: string | null;
+}
+
 // Operations plan
 
 /** The year's rates. An Operations plan version has at most one row. */
@@ -362,6 +375,7 @@ export interface PlanData {
   plan_bonus_owners: PlanBonusOwner[];
   plan_bonus_owner_products: PlanBonusOwnerProduct[];
   plan_closed_dates?: PlanClosedDate[];
+  plan_capital_items?: PlanCapitalItem[];
 }
 
 // Output
@@ -449,6 +463,23 @@ export interface OrganizationTotals {
   total_cents: number;
 }
 
+/**
+ * One planned purchase in the ranked capital list: what's left of the year's money after operations
+ * and fundraising pays for each in rank order, as far as it goes.
+ */
+export interface CapitalRank {
+  rank: number;
+  /** The `plan_capital_items` key, or for capital entered as a budget line, that line's key. */
+  key: Id;
+  name: string;
+  account_id: Id;
+  amount_cents: number;
+  /** This item's amount plus every item ranked above it. */
+  running_cents: number;
+  /** Whether the operating net plus the fundraising net covers `running_cents`. */
+  funded: boolean;
+}
+
 /** One salaried position's year: what it's paid, and where its hours went. */
 export interface PositionSummary {
   position_key: Id;
@@ -483,5 +514,7 @@ export interface EngineOutput {
   activities: ComputedActivity[];
   /** Each salaried position's pay for the year. */
   positions: PositionSummary[];
+  /** The planned capital purchases, most needed first. */
+  capital: CapitalRank[];
   warnings: EngineWarning[];
 }

@@ -41,6 +41,7 @@ export interface Schema {
   plan_bonus_owner_products: PlanBonusOwnerProducts[];
   plan_bonus_owners: PlanBonusOwners[];
   plan_budget_lines: PlanBudgetLines[];
+  plan_capital_items: PlanCapitalItems[];
   plan_closed_dates: PlanClosedDates[];
   plan_labor_lines: PlanLaborLines[];
   plan_offerings: PlanOfferings[];
@@ -48,6 +49,7 @@ export interface Schema {
   plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
   plan_resources: PlanResources[];
+  plan_result_capital: PlanResultCapital[];
   plan_result_lines: PlanResultLines[];
   plan_result_pnl: PlanResultPnl[];
   plan_result_positions: PlanResultPositions[];
@@ -697,6 +699,27 @@ export interface PlanBudgetLines {
   note: string | null;
 }
 
+/** Something lasting CSC means to buy, ranked with the most needed first. */
+export interface PlanCapitalItems {
+  id: string;
+  /** The version this row belongs to. Capital goes in the Operations Plan's. */
+  version_id: string | PlanVersions;
+  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  key: string;
+  /** What to buy, such as a coach boat. */
+  name: string;
+  /** In cents: 12500 is $125.00. */
+  amount_cents: number;
+  /** The asset account it goes on, such as Equipment. */
+  account_id: string | Accounts;
+  /** 1 is the most needed. Drag rows in the table to reorder them. */
+  sort: number | null;
+  /** Why CSC needs it. */
+  note: string | null;
+  /** A quote or listing for it, as a web address. */
+  link: string | null;
+}
+
 /** A day the organization is closed, such as Labor Day. The P&L warns about an activity on one. */
 export interface PlanClosedDates {
   id: string;
@@ -816,6 +839,23 @@ export interface PlanResources {
   maintenance_per_hour_cents: number | null;
   /** Set for a rental, whose cost is left out of modified total direct costs (MTDC). */
   excluded_from_mtdc: boolean;
+}
+
+/** The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+export interface PlanResultCapital {
+  id: string;
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
+  /** 1 is the most needed. */
+  rank: number | null;
+  item_key: string;
+  name: string | null;
+  /** In cents: 12500 is $125.00. */
+  amount_cents: number | null;
+  /** This and everything ranked above it. In cents: 12500 is $125.00. */
+  running_cents: number | null;
+  /** Whether what's left after operations and fundraising covers it, with everything ranked above it. */
+  funded: boolean | null;
 }
 
 /** Each cost and revenue line in a Financial Plan's P&L. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */

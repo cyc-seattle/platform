@@ -55,6 +55,7 @@ It returns:
   for one sailor on one day.
 - `activities`: each activity, with its block and its share of the block's staff, RIBs and boats.
 - `positions`: each salaried position's year. See [Salaried positions](#salaried-positions).
+- `capital`: the planned purchases in rank order. See [Capital](#capital).
 - `warnings`: what breaks a limit, and anything the engine had to skip or couldn't price. See
   [Warnings](#warnings).
 
@@ -81,7 +82,7 @@ Plan Writers can read them.
 2. **Blocks.** The engine costs each block's staff, RIBs, boats and resources, and checks them against
    the program settings and the fleet.
 3. **Revenue**, with COGS and the charges set as a share of revenue.
-4. **Lines.** Budget lines, labor lines and salaried positions. Costs on a product or area are divided among
+4. **Lines.** Budget lines, capital items, labor lines and salaried positions. Costs on a product or area are divided among
    its offerings last, once every offering's own costs are in.
 5. **Payroll tax** on every wage.
 6. **Pools**, divided among the offerings.
@@ -206,8 +207,24 @@ Data warnings about blocks:
 - A labor line costs its hours × its staff level's rate, and is a wage.
 - A cost on a product, or on a program area, is divided among its offerings that year by MTDC. If it
   has no offerings that year, the cost stays where it is and the engine shows a warning.
-- Capital is a budget line on an asset account. It's the organization's, so a capital line on an
+- A budget line on an asset account is capital. It's the organization's, so a capital line on an
   offering, product, area or pool is moved to the organization, with a warning.
+
+### Capital
+
+Capital is something lasting the organization buys, such as a coach boat. Planners list it in the
+Operations Plan's `plan_capital_items`, each with its `sort`, its rank: 1 is the most needed.
+
+- Each item is a line on its asset account, on the organization, keyed `capital:<item key>`. It
+  never reaches a program area or an offering, and never counts toward MTDC. An item on any other
+  kind of account is left out, with a warning (`capital_not_asset`).
+- `capital` lists the items by `sort`, then name, with an item with no `sort` last. Each has its
+  rank, its amount, its running total (its amount and every item's above it), and whether it's
+  covered: whether the operating net plus the fundraising net is at least its running total. So
+  the money left after the year's operations and fundraising buys the items in rank order, as far
+  as it goes.
+- Capital entered as a budget line on an asset account has no rank. It comes after the items, by
+  name, with a warning (`capital_unranked`).
 
 ### Program areas and plans
 

@@ -379,6 +379,13 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       fiscal_year: 2027,
       excluded_from_mtdc: false,
     }),
+  plan_capital_items: async (fixed) =>
+    versioned(fixed, {
+      name: `Coach boat ${key("capital")}`,
+      account_id: row["accounts"],
+      amount_cents: 2_000_000,
+      sort: 1,
+    }),
   // One row at most in each version, so a new one goes in a draft of its own.
   plan_rates: async (fixed) => ({
     id: randomUUID(),
@@ -502,6 +509,7 @@ export const changes: Record<string, () => Row> = {
   plan_resources: () => ({ cost_per_hour_cents: 1_100 }),
   plan_labor_lines: () => ({ hours: 12 }),
   plan_budget_lines: () => ({ amount_cents: 11_000 }),
+  plan_capital_items: () => ({ amount_cents: 2_100_000 }),
   plan_rates: () => ({ payroll_tax_rate: 0.11 }),
   plan_revenue_charges: () => ({ rate: 0.03 }),
   plan_salaried_positions: () => ({ annual_salary_cents: 5_100_000 }),
@@ -622,6 +630,7 @@ export const PLAN_ROWS = [
   "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
+  "plan_capital_items",
   "plan_rates",
   "plan_revenue_charges",
   "plan_salaried_positions",
