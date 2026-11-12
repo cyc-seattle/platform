@@ -7,6 +7,7 @@ import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
 import { savedVersionsConfig, type SavedVersionsConfig } from "../stacks/backend/policies.ts";
 import {
+  ACTIVE_NOT_ARCHIVED,
   copyOrder,
   copyParent,
   draftsChangedBy,
@@ -718,6 +719,17 @@ describe("the saved-versions triggers", { timeout: 30_000 }, () => {
       expect(await w.read("version_sets", set)).toMatchObject({ status: "saved", message: "Adopted" });
       expect(await w.read("version_sets", another)).toMatchObject({ status: "active" });
       expect(await w.read("version_sets", otherYear.set)).toMatchObject({ status: "active" });
+    });
+
+    it("archive a draft or a saved one, but never an active one", async () => {
+      const { set, draftSet } = await plans(db, 2506);
+      const archived = { archived_at: new Date().toISOString() };
+      expect(await w.update("version_sets", draftSet, archived)).toBeUndefined();
+      expect(await w.update("version_sets", set, archived)).toBeUndefined();
+      expect(await w.update("version_sets", set, { status: "active" })).toEqual(refusal(ACTIVE_NOT_ARCHIVED));
+      expect(await w.update("version_sets", set, { archived_at: null })).toBeUndefined();
+      expect(await w.update("version_sets", set, { status: "active" })).toBeUndefined();
+      expect(await w.update("version_sets", set, archived)).toEqual(refusal(ACTIVE_NOT_ARCHIVED));
     });
 
     it("refuse a draft", async () => {

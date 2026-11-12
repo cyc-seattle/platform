@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  ACTIVE_NOT_ARCHIVED,
   databaseError,
   draftQueue,
   guard,
@@ -27,6 +28,7 @@ const sets: Record<string, FinancialPlan> = {
   draft: { id: "draft", status: "draft" },
   saved: { id: "saved", status: "saved" },
   active: { id: "active", status: "active" },
+  archived: { id: "archived", status: "saved", archived_at: "2027-01-01T00:00:00.000Z" },
 };
 // Each offering is named for the version it belongs to.
 const config = {
@@ -127,6 +129,35 @@ describe("the saved-versions hook", () => {
       await expect(
         check({ collection: "version_sets", event: "delete", payload: ["draft"], keys: ["draft"] }),
       ).resolves.toEqual(["draft"]);
+    });
+  });
+
+  describe("archiving a Financial Plan", () => {
+    it("takes a draft or a saved one, and brings it back", async () => {
+      for (const key of ["draft", "saved"]) {
+        for (const archived_at of [now, null]) {
+          await expect(
+            check({ collection: "version_sets", event: "update", payload: { archived_at }, keys: [key] }),
+          ).resolves.toEqual({ archived_at });
+        }
+      }
+    });
+
+    it("refuses an active one, or marking an archived one active", async () => {
+      await expect(
+        check({ collection: "version_sets", event: "update", payload: { archived_at: now }, keys: ["active"] }),
+      ).rejects.toThrow(ACTIVE_NOT_ARCHIVED);
+      await expect(
+        check({ collection: "version_sets", event: "update", payload: { status: "active" }, keys: ["archived"] }),
+      ).rejects.toThrow(ACTIVE_NOT_ARCHIVED);
+      await expect(
+        check({
+          collection: "version_sets",
+          event: "update",
+          payload: { status: "active", archived_at: null },
+          keys: ["archived"],
+        }),
+      ).resolves.toEqual({ status: "active", archived_at: null });
     });
   });
 

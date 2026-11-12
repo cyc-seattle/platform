@@ -210,6 +210,7 @@ erDiagram
         uuid saved_by
         timestamp saved_at
         string platform_version "the @cyc-seattle/platform that calculated it"
+        timestamp archived_at "hides it from Planning's list"
     }
     version_set_members {
         uuid id PK
@@ -225,11 +226,13 @@ A plan copy's `rules` hold what the planner wants that the plan's numbers don't 
 
 A Financial Plan is for one organization and year, and holds one Operations Plan copy and at most one Program Plan copy for each program area, each in no other Financial Plan. A year can have several drafts at once, to weigh options. A planner starts one by adding a `version_sets` row in the Data Studio, which calls them Financial Plans. Given a `parent_id`, a Financial Plan for the same organization and year, the `saved-versions` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. A planner can also add a plan's draft copy to it by hand, as a `version_set_members` row, and take one out. Members change only while the Financial Plan is a draft. Its organization, year, and parent never change.
 
-A Plan Writer saves a Financial Plan by setting its `status` to `saved`. Saving it saves every plan copy in it, in the same statement, so they're saved together, and the database refuses it without an Operations Plan. A plan copy is never saved on its own. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. It stamps the same on each plan copy. Then it works out the results again ([A Financial Plan's results](#a-financial-plans-results)). A saved Financial Plan never changes, apart from its `name` and its note (`message`), such as "Reviewed with the board". A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan copy of the same Financial Plan.
+A Plan Writer saves a Financial Plan by setting its `status` to `saved`. Saving it saves every plan copy in it, in the same statement, so they're saved together, and the database refuses it without an Operations Plan. A plan copy is never saved on its own. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. It stamps the same on each plan copy. Then it works out the results again ([A Financial Plan's results](#a-financial-plans-results)). A saved Financial Plan never changes, apart from its `name`, its note (`message`), such as "Reviewed with the board", and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan copy of the same Financial Plan.
 
 A saved Financial Plan doesn't copy the catalog. Recalculating an old one uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
 
 A Plan Writer marks a saved Financial Plan active by setting its `status` to `active`. An active Financial Plan is a saved one: it's frozen the same way, and has the same results. An organization's year has at most one, which a partial unique index on `version_sets` keeps. Marking one active sets the one active before it back to `saved`, in the same statement. No one sets an active one back by hand. Directus's revisions record who marked one active, and when (cyc-seattle/sail-team#50).
+
+A Plan Writer archives a Financial Plan, a draft or a saved one, by setting `archived_at`, which hides it from Planning's list, and clears it to bring the plan back. Archiving changes nothing else, so a saved one can be archived too. An active Financial Plan can't be archived, and an archived one can't be marked active (cyc-seattle/sail-team#82).
 
 #### A saved Financial Plan never changes
 

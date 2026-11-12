@@ -26,6 +26,8 @@ export interface Plan {
 export interface FinancialPlan {
   id: string;
   status: "draft" | "saved" | "active";
+  /** When it was archived, or none. */
+  archived_at?: string | null;
 }
 
 export interface Lookup {
@@ -87,6 +89,7 @@ export const SAVED_WITH_SET: string;
 export const NEEDS_OPERATIONS: string;
 export const ONE_PER_AREA: string;
 export const ONLY_SAVED_ACTIVE: string;
+export const ACTIVE_NOT_ARCHIVED: string;
 export const STAYS_ACTIVE: string;
 
 /**

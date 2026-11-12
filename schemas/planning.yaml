@@ -10387,6 +10387,48 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: version_sets
+    field: archived_at
+    type: timestamp
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: archived_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. An active Financial Plan can't be archived.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special: null
+      translations:
+        - language: en-US
+          translation: Archived
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: archived_at
+      table: version_sets
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
     field: members
     type: alias
     meta:
