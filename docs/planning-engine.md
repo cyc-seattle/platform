@@ -36,8 +36,9 @@ Planners enter each of these in the plans ([docs/planning-schema.md](planning-sc
 - The plan copies are the ones a Financial Plan holds: its Operations Plan and each of its Program
   Plans. A Program Plan's row that names an Operations Plan row by key means the row with that key
   in that Operations Plan copy.
-- Every pool is divided among all of the Financial Plan's offerings, so each Program Plan's share of
-  the pools, and the organization's totals, count every plan in it.
+- Every pool is divided among all of the Financial Plan's programs' offerings, after non-program's
+  net offsets it, so each Program Plan's share of the pools, and the organization's totals, count
+  every plan in it.
 - `rib_resource_kind_id` is in that Operations Plan copy's `plan_rates`.
 - The catalog is read as it is now. A saved Financial Plan doesn't copy it, so recalculating an old
   one uses today's catalog.
@@ -45,8 +46,8 @@ Planners enter each of these in the plans ([docs/planning-schema.md](planning-sc
 It returns:
 
 - `lines`: every cost and revenue line for the year, on its offering, product, program area, pool or
-  the organization, by account. Amounts are always positive cents; the account's type says whether it's
-  revenue or expense. Each has a `line_key`, and a `line_name` that says in plain words what it is.
+  the organization, by account. Amounts are positive cents, but for the credit when non-program
+  loses money (see [Pools](#pools)); the account's type says whether it's revenue or expense. Each has a `line_key`, and a `line_name` that says in plain words what it is.
   See [Line names](#line-names).
 - `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
   area's, which add up their offerings. Each also has its MTDC, enrollment, days and sailor-days.
@@ -70,7 +71,9 @@ Plan Writers can read them.
 ## Terms
 
 - **Pool:** a group of shared costs, such as general and administrative (G&A) costs or program
-  admin, that no single offering owns. The engine divides each pool among the offerings.
+  admin, that no single offering owns. The engine divides each pool among the programs' offerings.
+- **Non-program:** every offering whose product isn't a program, such as merchandise, storage and
+  charters.
 - **MTDC** (modified total direct costs): an offering's own costs, less a few kinds a federal grant
   rule leaves out. Shared costs are divided among offerings by MTDC: an offering with twice the MTDC
   takes twice the share.
@@ -265,11 +268,20 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 
 ### Pools
 
-- Everything in every pool is divided among all of the year's offerings by MTDC, keeping its
-  account. Its line key is `pool:<pool key>:<the original line key>`.
+- Non-program's net offsets the pools first (cyc-seattle/platform#242). Its net is its offerings'
+  revenue less their own costs, before any bonus. Every pooled amount gives up the same fraction,
+  net ÷ everything in every pool, so each pool is offset in proportion to its size. That part stays
+  on the organization's books, keeping its account and function, keyed
+  `offset:<pool key>:<the original line key>`. A loss works the same way: the fraction is negative,
+  the organization's line is a credit, and the programs share more than the pools hold.
+- If non-program's net is more than everything in every pool, the organization keeps all of them,
+  and the engine warns (`non_program_exceeds_pools`). Non-program keeps the rest as its margin.
+- The rest of every pooled amount is divided among the year's programs' offerings by MTDC, keeping
+  its account. Its line key is `pool:<pool key>:<the original line key>`. Non-program's offerings
+  take no share, so their P&L shows their own margin.
 - Because shared costs never count toward MTDC, the order the pools are divided in doesn't matter.
-- If no offering has any MTDC, the shared costs stay on the organization's books and the engine
-  shows a warning.
+- If no program's offering has any MTDC, the shared costs stay on the organization's books and the
+  engine shows a warning.
 
 ### Bonuses
 
@@ -310,6 +322,8 @@ Each line's `line_name` says what it is:
 - payroll tax is "Payroll tax"
 - a bonus is "Bonus: <role>", and its tax "Payroll tax on bonus: <role>"
 - a share of a pool is "<pool> share: <the line it shares>", such as "G&A share: Payroll tax"
+- the part of a pool non-program's net offsets is "<pool> covered by non-program: <the line it
+  shares>"
 
 ### The organization's totals
 

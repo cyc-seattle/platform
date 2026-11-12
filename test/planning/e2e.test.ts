@@ -500,38 +500,38 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 1044832,
-          "net": -684832,
+          "expenses": 948624,
+          "net": -588624,
           "revenue": 360000,
         },
         "Charters": {
-          "expenses": 84338,
-          "net": 515662,
+          "expenses": 18000,
+          "net": 582000,
           "revenue": 600000,
         },
         "Merchandise": {
-          "expenses": 1241655,
-          "net": -741655,
+          "expenses": 265000,
+          "net": 235000,
           "revenue": 500000,
         },
         "Organization": {
-          "expenses": 2800000,
+          "expenses": 5945001,
           "net": 0,
           "revenue": 0,
         },
         "Storage": {
-          "expenses": 337356,
-          "net": 2062644,
+          "expenses": 72000,
+          "net": 2328000,
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 6119397,
-          "net": -3851397,
+          "expenses": 5592752,
+          "net": -3324752,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 13196755,
-          "net": -10006755,
+          "expenses": 11982956,
+          "net": -8792956,
           "revenue": 3190000,
         },
       }
