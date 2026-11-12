@@ -48,9 +48,10 @@ const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most on
 const IN_ANOTHER = "A plan copy is in only one Financial Plan.";
 const STAYS_ACTIVE = "An active Financial Plan stays active until another one for its year is marked active.";
 const ONLY_SAVED_ACTIVE = "Only a saved Financial Plan can be marked active.";
+const ACTIVE_NOT_ARCHIVED = "An active Financial Plan can't be archived.";
 
-/** What a saved Financial Plan lets change: its name, its note, and its status, to mark it active. */
-const SET_EDITABLE = ["name", "message", "status"];
+/** What a saved Financial Plan lets change: its name, its note, its status, to mark it active, and whether it's archived. */
+const SET_EDITABLE = ["name", "message", "status", "archived_at"];
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
@@ -76,6 +77,7 @@ const REASONS = {
   [ONE_PER_AREA]: 400,
   [IN_ANOTHER]: 400,
   [ONLY_SAVED_ACTIVE]: 400,
+  [ACTIVE_NOT_ARCHIVED]: 400,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
@@ -113,7 +115,7 @@ function unstamped(payload, fields) {
  * - `versionIds(collection, keys)`: the `version_id` of each row
  * - `plans(ids)`: each plan's `id`, `kind`, and `program_area_id`
  * - `versions(ids)`: each version's `id`, `plan_id`, `status`, and `platform_version`
- * - `sets(ids)`: each Financial Plan's `id` and `status`
+ * - `sets(ids)`: each Financial Plan's `id`, `status`, and `archived_at`
  * - `memberSets(keys)`: the Financial Plan each of these members is in
  * - `deletesSaved(user)`: whether this user may delete a saved Financial Plan, which only dev allows
  */
@@ -161,8 +163,13 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
       return payload;
     }
     const sets = await lookup.sets(keys);
+    for (const set of sets) {
+      const status = payload.status ?? set.status;
+      const archived = "archived_at" in payload ? payload.archived_at : set.archived_at;
+      if (status === "active" && archived) throw refuse(ACTIVE_NOT_ARCHIVED, 400);
+    }
     if (sets.some((set) => isSaved(set.status))) {
-      // Only its name and note change, such as "Reviewed with the board", and a saved one can be marked active.
+      // Only its name and note change, such as "Reviewed with the board", and a saved one can be marked active or archived.
       if (Object.keys(payload).some((field) => !SET_EDITABLE.includes(field))) throw refuse(SET_STAYS);
       if ("status" in payload) {
         for (const set of sets) {
@@ -225,7 +232,17 @@ function columnsNeeded(config) {
   return {
     [PLANS]: ["id", "kind", "program_area_id", "organization_id", "fiscal_year"],
     [VERSIONS]: ["id", "plan_id", "status", "platform_version", "saved_by", "saved_at"],
-    [SETS]: ["id", "organization_id", "fiscal_year", "status", "parent_id", "platform_version", "saved_by", "saved_at"],
+    [SETS]: [
+      "id",
+      "organization_id",
+      "fiscal_year",
+      "status",
+      "parent_id",
+      "platform_version",
+      "saved_by",
+      "saved_at",
+      "archived_at",
+    ],
     [MEMBERS]: ["id", "version_set_id", "plan_id", "version_id"],
     ...Object.fromEntries(config.results.map((table) => [table, ["id", "version_set_id"]])),
     ...Object.fromEntries(
@@ -386,6 +403,9 @@ BEGIN
       END IF;
     END IF;
     RETURN NEW;
+  END IF;
+  IF NEW.status = 'active' AND NEW.archived_at IS NOT NULL THEN
+    ${raise(ACTIVE_NOT_ARCHIVED)};
   END IF;
   IF OLD.status IN ('saved', 'active') THEN
     IF (to_jsonb(NEW) - ${editable}) IS DISTINCT FROM (to_jsonb(OLD) - ${editable}) THEN
@@ -1220,7 +1240,8 @@ function register({ filter, action, init }, { env, database, logger }) {
       ids.length === 0
         ? []
         : database(VERSIONS).select("id", "plan_id", "status", "platform_version").whereIn("id", ids),
-    sets: async (ids) => (ids.length === 0 ? [] : database(SETS).select("id", "status").whereIn("id", ids)),
+    sets: async (ids) =>
+      ids.length === 0 ? [] : database(SETS).select("id", "status", "archived_at").whereIn("id", ids),
     memberSets: async (keys) =>
       keys.length === 0
         ? []
@@ -1274,4 +1295,5 @@ module.exports.SAVED_WITH_SET = SAVED_WITH_SET;
 module.exports.NEEDS_OPERATIONS = NEEDS_OPERATIONS;
 module.exports.ONE_PER_AREA = ONE_PER_AREA;
 module.exports.ONLY_SAVED_ACTIVE = ONLY_SAVED_ACTIVE;
+module.exports.ACTIVE_NOT_ARCHIVED = ACTIVE_NOT_ARCHIVED;
 module.exports.STAYS_ACTIVE = STAYS_ACTIVE;
