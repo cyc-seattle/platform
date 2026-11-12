@@ -333,9 +333,12 @@ describe("staffing", () => {
       expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
     });
 
-    it("counts only coaches at the program's own staff level", () => {
-      const out = computePlan(guppies(10, { staff: [{ staff_level_key: L2.key }] }));
-      expect(out.warnings.map((w) => w.message)).toContain("Guppies Week 2 has 10 sailors and no coach");
+    it("counts a coach at another staff level, since only the ratio is required", () => {
+      expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
+      const out = computePlan(guppies(14, { staff: [{ staff_level_key: L2.key }] }));
+      expect(out.warnings.map((w) => w.message)).toContain(
+        "Guppies Week 2 has 14 sailors, but enough coaches for only 10",
+      );
     });
 
     it("counts a salaried position on the block as one coach", () => {
@@ -346,7 +349,7 @@ describe("staffing", () => {
       );
     });
 
-    it("counts each level's coaches toward its own programs, and a salaried position toward any", () => {
+    it("counts every coach on the block toward any of its programs, whatever their level", () => {
       const [g, m] = [product(), product()];
       const [og, om] = [offering(g.id, { target_enrollment: 10 }), offering(m.id, { target_enrollment: 10 })];
       const acts = [activity(og.id, { uses_boats: false }), activity(om.id, { uses_boats: false })];
@@ -363,12 +366,11 @@ describe("staffing", () => {
           plan_salaried_positions: [director],
           ...block(acts, { staff }),
         });
-      // The second Level 1 Instructor can't coach the Level 2 program's sailors.
-      expect(
-        computePlan(data([{ staff_level_key: L1.key, count: 2 }])).warnings.find((w) => w.code === "over_capacity")
-          ?.message,
-      ).toMatch(/ have 20 sailors, but enough coaches for only 10$/);
+      expect(codes(data([{ staff_level_key: L1.key, count: 2 }]))).not.toContain("over_capacity");
       expect(codes(data([{ staff_level_key: L1.key }, { position_key: director.key }]))).not.toContain("over_capacity");
+      expect(
+        computePlan(data([{ staff_level_key: L2.key }])).warnings.find((w) => w.code === "over_capacity")?.message,
+      ).toMatch(/ have 20 sailors, but enough coaches for only 10$/);
     });
 
     it("counts each program's sailors against its own sailors per coach", () => {

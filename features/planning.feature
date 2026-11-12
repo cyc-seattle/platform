@@ -64,9 +64,9 @@ Feature: Plans
   A planner is warned when the blocks break a limit: more of the organization's boats, RIBs, or
   equipment out at once than it has, too few coaches or boats for a block's sailors, or
   an activity with no staff. Each warning says which plan and date it's about. Each coach
-  in a block can safely take the program's number of sailors, if they're at the program's staff
-  level. A plan doesn't count on a coach at one level covering another. A salaried coach, such as a
-  director, counts as one coach for any program in their block. Each boat can take its class's number of sailors, and the boats that
+  in a block can safely take the program's number of sailors. A program's staff level is what the
+  planner aims for, not a hard rule: any coach in the block counts, and so does a salaried coach,
+  such as a director. Each boat can take its class's number of sailors, and the boats that
   sailors bring count too.
 
   A planner can ask their AI to fill in the blocks. It works in a new draft Financial Plan, started
@@ -512,11 +512,11 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the block has 14 sailors, but enough coaches for only 10
 
-    Example: A coach at another staff level doesn't count
+    Example: A coach at another staff level counts
       Given Guppies have a Level 1 Instructor for every 10 sailors
       And a Guppies block of 10 sailors with one Level 2 Instructor and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has 10 sailors and no coach
+      Then the planner isn't warned about the block
 
     Example: A salaried director on a block counts as one coach
       Given Guppies have a Level 1 Instructor for every 10 sailors
