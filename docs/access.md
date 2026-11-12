@@ -111,8 +111,15 @@ Authentik's impersonation:
 1. In Authentik's admin interface, under Directory, then Users, choose Impersonate on the person, and
    give a reason.
 2. Sign out of the Data Studio, then open sail-team. Directus signs you in as them.
-3. When you're done, stop impersonating in Authentik, and sign out of Directus again. The Directus
-   session as them outlasts the impersonation.
+3. When you're done, choose Sign out in sail-team's menu under their name, then sign in as yourself.
+   It ends the Directus session, then Authentik's (`/flows/-/default/invalidation/` on the `login.`
+   host, the login brand's sign-out flow), which ends the impersonation with it.
+
+Authentik's own Stop impersonation button is only in its user and admin interfaces, and the
+`login.` host sends its user interface on to sail-team, so you won't see it. To stop without signing
+out of Authentik, open `/api/v3/core/users/impersonate_end/` on the `login.` host in the same browser,
+which is what that button calls, then sign out of Directus, whose session as them outlasts the
+impersonation.
 
 Look, don't change. Directus records anything changed this way as theirs. Authentik records who
 impersonated whom, when, and why, in its event log. Someone who has never signed in has no Authentik
