@@ -1,5 +1,6 @@
 import { scheduleActivities } from "./activities.ts";
 import { bookBonuses } from "./bonus.ts";
+import { bookCapitalItems, rankCapital } from "./capital.ts";
 import { Context } from "./context.ts";
 import { bookBudgetLines, bookLaborLines, CostCenterBooker } from "./lines.ts";
 import { mtdc } from "./measures.ts";
@@ -34,6 +35,7 @@ export function computePlan(data: PlanData): EngineOutput {
 
   const booker = new CostCenterBooker(ctx);
   bookBudgetLines(ctx, booker);
+  bookCapitalItems(ctx, booker);
   bookLaborLines(ctx, booker);
   const charged = bookSalaries(ctx, coaching, booker);
   booker.flush();
@@ -44,12 +46,14 @@ export function computePlan(data: PlanData): EngineOutput {
   const bonuses = bookBonuses(ctx);
 
   const lines = sumLines(ctx);
+  const organization = organizationTotals(ctx, lines);
   return {
     lines,
     pnl: summarize(ctx, lines, mtdcByOffering),
-    organization: organizationTotals(ctx, lines),
+    organization,
     activities,
     positions: summarizePositions(ctx, coaching, charged, bonuses, doubleBooked),
+    capital: rankCapital(ctx, lines, organization),
     warnings: ctx.warnings,
   };
 }

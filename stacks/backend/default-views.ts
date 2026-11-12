@@ -189,6 +189,11 @@ export const defaultViews: DefaultView[] = [
     fields: ["name", "version_id", "account_id", "amount_cents", "fiscal_year"],
   },
   {
+    collection: "plan_capital_items",
+    sort: ["version_id.plan_id.name", "sort", "name"],
+    fields: ["sort", "name", "amount_cents", "account_id", "version_id"],
+  },
+  {
     collection: "plan_rates",
     sort: ["version_id.plan_id.name"],
     fields: ["version_id", "payroll_tax_rate", "lodging_per_night_cents", "mileage_rate_cents"],
@@ -267,6 +272,11 @@ export const defaultViews: DefaultView[] = [
       "double_booked_hours",
       "version_set_id",
     ],
+  },
+  {
+    collection: "plan_result_capital",
+    sort: ["version_set_id.name", "rank"],
+    fields: ["rank", "name", "amount_cents", "running_cents", "funded", "version_set_id"],
   },
   {
     collection: "plan_result_warnings",

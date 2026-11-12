@@ -58,6 +58,7 @@ const VERSION_ROWS = [
   "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
+  "plan_capital_items",
   "plan_rates",
   "plan_revenue_charges",
   "plan_staff_levels",

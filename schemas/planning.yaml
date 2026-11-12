@@ -210,6 +210,32 @@ collections:
       versioning: false
     schema:
       name: plan_budget_lines
+  - collection: plan_capital_items
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_capital_items
+      color: null
+      display_template: "{{name}}"
+      group: Planning
+      hidden: false
+      icon: shopping_cart
+      item_duplication_fields: null
+      note: Something lasting CSC means to buy, ranked with the most needed first.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_capital_items
   - collection: plan_revenue_charges
     meta:
       accountability: all
@@ -600,6 +626,32 @@ collections:
       versioning: false
     schema:
       name: plan_result_positions
+  - collection: plan_result_capital
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_result_capital
+      color: null
+      display_template: "{{rank}}. {{name}}"
+      group: Planning
+      hidden: false
+      icon: format_list_numbered
+      item_duplication_fields: null
+      note: The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_result_capital
   - collection: plan_result_warnings
     meta:
       accountability: all
@@ -4030,6 +4082,383 @@ fields:
       data_type: text
       default_value: null
       max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_capital_items
+    field: id
+    type: uuid
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_capital_items
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_capital_items
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to. Capital goes in the Operations Plan's.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan copy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_capital_items
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_capital_items
+    field: key
+    type: uuid
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_capital_items
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_capital_items
+    field: name
+    type: string
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: What to buy, such as a coach boat.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_capital_items
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_capital_items
+    field: amount_cents
+    type: integer
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: amount_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Amount
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: amount_cents
+      table: plan_capital_items
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_capital_items
+    field: account_id
+    type: uuid
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
+      field: account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The asset account it goes on, such as Equipment.
+      options:
+        filter:
+          type:
+            _eq: asset
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Account
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: account_id
+      table: plan_capital_items
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
+  - collection: plan_capital_items
+    field: sort
+    type: integer
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: false
+      interface: input
+      note: 1 is the most needed. Drag rows in the table to reorder them.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Rank
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: plan_capital_items
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_capital_items
+    field: note
+    type: text
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input-multiline
+      note: Why CSC needs it.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: plan_capital_items
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_capital_items
+    field: link
+    type: string
+    meta:
+      collection: plan_capital_items
+      conditions: null
+      display: null
+      display_options: null
+      field: link
+      group: null
+      hidden: false
+      interface: input
+      note: A quote or listing for it, as a web address.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: link
+      table: plan_capital_items
+      data_type: character varying
+      default_value: null
+      max_length: 255
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -9604,6 +10033,337 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_result_capital
+    field: id
+    type: uuid
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_result_capital
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_capital
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The Financial Plan these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Financial Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: plan_result_capital
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: plan_result_capital
+    field: rank
+    type: integer
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: null
+      display_options: null
+      field: rank
+      group: null
+      hidden: false
+      interface: input
+      note: 1 is the most needed.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: rank
+      table: plan_result_capital
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_capital
+    field: item_key
+    type: uuid
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: null
+      display_options: null
+      field: item_key
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: item_key
+      table: plan_result_capital
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_capital
+    field: name
+    type: string
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_result_capital
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_capital
+    field: amount_cents
+    type: integer
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: amount_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Amount
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: amount_cents
+      table: plan_result_capital
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_capital
+    field: running_cents
+    type: integer
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: running_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "This and everything ranked above it. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Running total
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: running_cents
+      table: plan_result_capital
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_capital
+    field: funded
+    type: boolean
+    meta:
+      collection: plan_result_capital
+      conditions: null
+      display: null
+      display_options: null
+      field: funded
+      group: null
+      hidden: false
+      interface: boolean
+      note: Whether what's left after operations and fundraising covers it, with everything ranked above it.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Covered
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: funded
+      table: plan_result_capital
+      data_type: boolean
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_result_warnings
     field: id
     type: uuid
@@ -12358,6 +13118,48 @@ relations:
       constraint_name: plan_budget_lines_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: plan_capital_items
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_capital_items
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_capital_items
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_capital_items_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_capital_items
+    field: account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: plan_capital_items
+      many_field: account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_capital_items
+      column: account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: plan_capital_items_account_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
   - collection: plan_rates
     field: version_id
     related_collection: plan_versions
@@ -13007,6 +13809,27 @@ relations:
       foreign_key_table: version_sets
       foreign_key_column: id
       constraint_name: plan_result_positions_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_capital
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: plan_result_capital
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_capital
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: plan_result_capital_version_set_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_result_warnings
