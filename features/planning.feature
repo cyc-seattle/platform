@@ -30,9 +30,10 @@ Feature: Plans
   worked out again a moment after every change to it, whether the change was made in the app, in
   the Data Studio, or by an AI. A saved Financial Plan keeps the P&L it had when it was saved, and
   that never changes either. Each line of a saved P&L says in plain words what it is.
-  Shared costs are the costs that several offerings share, such as the office. They're divided
-  among all of a Financial Plan's offerings by their direct costs, counted the way federal grant
-  rules count them, so each Program Plan's P&L includes its share of them. Some charges are set as
+  Shared costs are the costs that several offerings share, such as the office. What non-program
+  sales make, or lose, comes off the shared costs first, so a good year for charters lowers every
+  program's share. The rest is divided among the programs' offerings by their direct costs, counted
+  the way federal grant rules count them, so each Program Plan's P&L includes its share of them. Some charges are set as
   a share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with
   its rate and the kinds of product it applies to. Revenue from programs and other sales pays for
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
