@@ -1154,6 +1154,8 @@ export interface Programs {
   product_id: string | Products;
   /** A team, such as a race team. Families on a team see everyone on every team. */
   team: boolean;
+  /** The program's color on calendars and charts in Sail Team. Leave it empty and it gets one of its own. */
+  color: string | null;
   /** Who has a role in this program. */
   role_assignments: (string | ProgramRoleAssignments)[];
   /** The program's Google Group, if it has one. Most programs don't. */

@@ -1634,6 +1634,52 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: programs
+    field: color
+    type: string
+    meta:
+      collection: programs
+      conditions: null
+      display: color
+      display_options: null
+      field: color
+      group: null
+      hidden: false
+      interface: select-color
+      note: The program's color on calendars and charts in Sail Team. Leave it empty and it gets one of its own.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      # Directus fails `_regex` on a null, so an empty color needs the `_null` branch.
+      validation:
+        _or:
+          - color:
+              _null: true
+          - color:
+              _regex: ^#[0-9A-Fa-f]{6}$
+      validation_message: "A color is a # and six hex digits, such as #0274c7."
+      width: half
+    schema:
+      name: color
+      table: programs
+      data_type: character varying
+      default_value: null
+      max_length: 7
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: products
     field: programs
     type: alias

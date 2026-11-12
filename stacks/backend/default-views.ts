@@ -70,7 +70,7 @@ export const defaultViews: DefaultView[] = [
   },
   { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
   { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },
-  { collection: "programs", sort: ["name"], fields: ["name", "product_id"] },
+  { collection: "programs", sort: ["name"], fields: ["name", "product_id", "color"] },
   { collection: "catalog_offerings", sort: ["program_id.name", "name"], fields: ["program_id", "name"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
   { collection: "resource_kinds", sort: ["name"], fields: ["name"] },
