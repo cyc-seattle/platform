@@ -26,6 +26,7 @@ import {
   STAFF_GROUP_NAME,
   IMPLICIT_CONSENT_FLOW,
   PROVIDER_INVALIDATION_FLOW,
+  INVALIDATION_FLOW,
   SOURCE_AUTHENTICATION_FLOW,
   SIGNING_CERTIFICATE,
   OPENID_SCOPE_MAPPING,
@@ -135,6 +136,8 @@ function numericId(id: pulumi.Input<string>): pulumi.Output<number> {
 // project never fights Authentik's own first-boot blueprint for objects it doesn't own.
 const implicitConsentFlow = authentik.getFlowOutput({ slug: whenReady(IMPLICIT_CONSENT_FLOW) }, invokeOpts);
 const providerInvalidationFlow = authentik.getFlowOutput({ slug: whenReady(PROVIDER_INVALIDATION_FLOW) }, invokeOpts);
+// The one that signs out of Authentik itself, ending any impersonation. sail-team's Sign out ends there.
+const invalidationFlow = authentik.getFlowOutput({ slug: whenReady(INVALIDATION_FLOW) }, invokeOpts);
 const sourceAuthenticationFlow = authentik.getFlowOutput({ slug: whenReady(SOURCE_AUTHENTICATION_FLOW) }, invokeOpts);
 // Without a signing key, ID tokens are HS256-signed with the client secret; Directus accepts RS256 only.
 const signingCertificate = authentik.getCertificateKeyPairOutput({ name: whenReady(SIGNING_CERTIFICATE) }, invokeOpts);
@@ -337,6 +340,8 @@ new authentik.Brand(
   {
     domain: internalDomain.apply((domain) => loginHost(domain)),
     flowAuthentication: emailCodeFlow.uuid,
+    // Unset, Authentik picks the first sign-out flow by slug, which only happens to be this one.
+    flowInvalidation: invalidationFlow.id,
   },
   // Authentik fills in its default images, and the provider diffs them against the empty input,
   // the same bug as goauthentik/terraform-provider-authentik#981.
