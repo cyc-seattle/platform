@@ -1104,35 +1104,31 @@ Step("{string} still has the offering at {money} a sailor", async (_, _name: str
   expect(await one("plan_offerings", offering!["id"], "price_cents")).toEqual({ price_cents: cents(money) });
 });
 
-// An offering's season.
-for (const [text, season] of [
-  ["a draft Financial Plan with an offering", null],
-  ["a draft Financial Plan with an offering in the summer", "summer"],
-] as const) {
-  Step(text, async () => {
-    offering = (await programWithOffering(100_000, { season_term: season })).offering;
-    financialPlan = await p.draftSet();
-  });
+// An offering's term, one of the Operations Plan's.
+let term: string | undefined;
+onEachScenario(() => {
+  term = undefined;
+});
+async function draftWithTerm(name: string, inTerm: boolean): Promise<void> {
+  term = await p.operationsRow("plan_terms", { name, starts_on: `${PLAN_YEAR}-06-01`, ends_on: `${PLAN_YEAR}-08-31` });
+  offering = (await programWithOffering(100_000, inTerm ? { term_key: term } : {})).offering;
+  financialPlan = await p.draftSet();
 }
-Step("they set the offering's season to {word}", async (_, season: string) => {
-  await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { season_term: season });
+Step("a draft Financial Plan whose Operations Plan has a term named {string}, with an offering", (_, name: string) =>
+  draftWithTerm(name, false),
+);
+Step("a draft Financial Plan whose offering is in a term", () => draftWithTerm(`Summer ${PLAN_YEAR}`, true));
+Step("they put the offering in {string}", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: term }));
 });
-Step("they set the offering's season to {string}", async (_, season: string) => {
-  await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { season_term: season });
+Step("they take the offering out of its term", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: null }));
 });
-Step("they set the offering to no season", async () => {
-  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { season_term: null }));
+Step("the offering is in {string}", async () => {
+  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: term });
 });
-Step("the offering runs in the {word}", async (_, season: string) => {
-  expectOk(attempt);
-  expect(await one("plan_offerings", offering!["id"], "season_term")).toEqual({ season_term: season });
-});
-Step("the offering runs in no season", async () => {
-  expect(await one("plan_offerings", offering!["id"], "season_term")).toEqual({ season_term: null });
-});
-Step("they're told that the season must be winter, spring, summer, or fall", () => {
-  expect(attempt?.status, JSON.stringify(attempt?.body)).toBe(400);
-  expect(attempt?.body.errors?.[0]?.message).toContain("season");
+Step("the offering is in no term", async () => {
+  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: null });
 });
 
 // An offering's activities, in a Financial Plan started from it.
