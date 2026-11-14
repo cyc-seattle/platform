@@ -278,6 +278,7 @@ fields:
               - Catalog Writer
               - Medical Reader
               - Medical Writer
+              - Plan Approver
               - Plan Reader
               - Plan Writer
         template: "{{policy_id.name}}"

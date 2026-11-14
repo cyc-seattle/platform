@@ -14,7 +14,8 @@ limit, and you fix what you can.
 `docs/planning-schema.md` describes every collection named here, and `docs/planning-engine.md`
 says how the engine costs blocks and what each warning means. Read both first.
 
-You work as the planner, with their Plan Writer policy, through the Directus MCP tools
+You work as the planner, with their Plan Writer policy, which changes Program Plans in a draft but not
+the Operations Plan, through the Directus MCP tools
 (`mcp__directus__*`). If the tools need auth, run their `authenticate` tool first. Never use an
 admin account or SQL.
 
@@ -117,10 +118,12 @@ anywhere else. Then tell the planner the draft's name, and that they can:
 
 - read its warnings and its program area pages in sail-team, and compare it with the plan it started
   from;
-- keep it by saving it, and mark it active if it's the one to run;
+- keep it, and ask the finance committee to save it, or make it active from a date, if it's the one
+  to run;
 - delete it, or tell you what to change.
 
-Saving, marking active, and deleting are the planner's. Don't do them yourself.
+Deleting is the planner's, and saving and making active the finance committee's. Don't do them
+yourself.
 
 ## Check it
 

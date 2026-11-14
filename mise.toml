@@ -89,6 +89,11 @@ run = "./scripts/reset"
 description = "Delete every Financial Plan, plan, copy, row and result from $PULUMI_STACK, after asking"
 run = "./scripts/delete-plans"
 
+# By hand only, once in each stack, before the cost-shift warnings reach prod (cyc-seattle/platform#251).
+[tasks.move-storage]
+description = "Move each draft's storage rent and bonuses into its Operations Plan in $PULUMI_STACK, after asking (--dry-run only shows)"
+run = "./scripts/move-storage"
+
 # Before delegating the external domain to Cloud DNS (docs/manual-setup.md): exits 1 on any difference.
 [tasks.compare-dns]
 description = "Compare the external domain's Cloud DNS zone with the name servers it's delegated to"

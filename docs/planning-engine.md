@@ -66,8 +66,8 @@ An AI working over Directus's MCP server can change a draft's rows but can't run
 doesn't need to. Change the draft's inputs, wait about a second, then read the draft's
 `plan_results` and `plan_result_*` rows, filtered on its `version_set_id`. `plan_results.calculated_at`
 says when they were worked out, so a time before the last change means they aren't in yet. A draft
-with no `plan_results` row is still being worked out, or the engine failed on it. Plan Readers and
-Plan Writers can read them.
+with no `plan_results` row is still being worked out, or the engine failed on it. Anyone with a
+Plan policy can read them.
 
 ## Terms
 
@@ -240,6 +240,11 @@ The engine warns about:
 - a program with no program area, or another kind of product with one
 - an offering in an area plan whose product is in another area, and an offering in the Operations
   Plan whose product is in an area
+- a line in a Program Plan that moves a cost off the area's programs (`cost_off_programs`): one left
+  out of MTDC, one charged to a pool or to the organization, or capital charged to the organization
+  (capital charged anywhere else has `capital_off_org`). The finance committee looks these over
+  before it makes a plan active (cyc-seattle/platform#251). The Operations Plan's lines never get
+  one, and the engine costs the line as it's given.
 
 ### Salaried positions
 
