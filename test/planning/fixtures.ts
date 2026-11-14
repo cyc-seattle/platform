@@ -176,7 +176,7 @@ export function offering(productId: string, overrides: Partial<PlanOffering> = {
     ...versioned("offering"),
     product_id: productId,
     name: "An offering",
-    season_term: null,
+    term_key: null,
     starts_on: "2027-06-01",
     ends_on: "2027-06-30",
     capacity: null,

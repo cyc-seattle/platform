@@ -59,6 +59,7 @@ export interface Schema {
   plan_salaried_bookings: PlanSalariedBookings[];
   plan_salaried_positions: PlanSalariedPositions[];
   plan_staff_levels: PlanStaffLevels[];
+  plan_terms: PlanTerms[];
   plan_trips: PlanTrips[];
   plan_versions: PlanVersions[];
   plans: Plans[];
@@ -760,7 +761,8 @@ export interface PlanOfferings {
   key: string;
   product_id: string | Products;
   name: string;
-  season_term: string | null;
+  /** The term it runs in: copy the Key from a term in the Operations Plan. Leave it empty for an offering in no term. */
+  term_key: string | null;
   starts_on: string;
   ends_on: string;
   capacity: number | null;
@@ -1038,6 +1040,21 @@ export interface PlanStaffLevels {
   pay_type: "hourly" | "volunteer";
   /** In cents: 12500 is $125.00. */
   hourly_rate_cents: number | null;
+}
+
+/** A planning period, such as Summer 2027, with its start and end dates. An offering in a Program Plan can be in one of its Financial Plan's terms. */
+export interface PlanTerms {
+  id: string;
+  /** The version this row belongs to. */
+  version_id: string | PlanVersions;
+  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  key: string;
+  /** What it's called, such as Summer 2027. */
+  name: string;
+  /** Its first day. */
+  starts_on: string;
+  /** Its last day. */
+  ends_on: string;
 }
 
 /** A trip an offering travels for, such as an away regatta. */

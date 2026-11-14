@@ -89,7 +89,7 @@ policy reads only each user's first and last name, so a saved Financial Plan nam
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
 Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `version_id.plan_id.kind`, and none of the collections only an Operations Plan uses
-(`OPERATIONS_ONLY`), such as rates, staff levels, pools, and bonuses. On a Financial Plan it sets
+(`OPERATIONS_ONLY`), such as rates, staff levels, pools, terms, and bonuses. On a Financial Plan it sets
 only the name, note, and parent. A Plan Admin changes a row only in an Operations Plan, and a
 Financial Plan's status, the date it's active from, and whether it's archived. Every Plan Writer reads
 and writes every program area: there's no per-area access. A

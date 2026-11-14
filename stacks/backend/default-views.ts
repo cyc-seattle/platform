@@ -240,6 +240,11 @@ export const defaultViews: DefaultView[] = [
     fields: ["bonus_owner_id", "product_id", "version_id"],
   },
   {
+    collection: "plan_terms",
+    sort: ["version_id.plan_id.name", "starts_on"],
+    fields: ["name", "starts_on", "ends_on", "version_id"],
+  },
+  {
     collection: "plan_closed_dates",
     sort: ["version_id.plan_id.name", "date"],
     fields: ["date", "name", "version_id"],

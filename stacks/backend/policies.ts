@@ -172,6 +172,7 @@ export const OPERATIONS_ONLY = [
   "plan_bonus_owner_products",
   "plan_closed_dates",
   "plan_capital_items",
+  "plan_terms",
 ];
 
 /** A plan copy's rows, of one kind of plan. */

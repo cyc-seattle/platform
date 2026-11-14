@@ -522,6 +522,32 @@ collections:
       versioning: false
     schema:
       name: plan_closed_dates
+  - collection: plan_terms
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_terms
+      color: null
+      display_template: "{{name}}"
+      group: Planning
+      hidden: false
+      icon: date_range
+      item_duplication_fields: null
+      note: A planning period, such as Summer 2027, with its start and end dates. An offering in a Program Plan can be in one of its Financial Plan's terms.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_terms
   - collection: plan_results
     meta:
       accountability: all
@@ -1752,34 +1778,36 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_offerings
-    field: season_term
-    type: string
+    field: term_key
+    type: uuid
     meta:
       collection: plan_offerings
       conditions: null
       display: null
       display_options: null
-      field: season_term
+      field: term_key
       group: null
       hidden: false
       interface: input
-      note: null
+      note: "The term it runs in: copy the Key from a term in the Operations Plan. Leave it empty for an offering in no term."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 6
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Term
       validation: null
       validation_message: null
       width: full
     schema:
-      name: season_term
+      name: term_key
       table: plan_offerings
-      data_type: character varying
+      data_type: uuid
       default_value: null
-      max_length: 255
+      max_length: null
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -7794,6 +7822,252 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_terms
+    field: id
+    type: uuid
+    meta:
+      collection: plan_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_terms
+    field: version_id
+    type: uuid
+    meta:
+      collection: plan_terms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
+      field: version_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The version this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan copy
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_id
+      table: plan_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+  - collection: plan_terms
+    field: key
+    type: uuid
+    meta:
+      collection: plan_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_terms
+    field: name
+    type: string
+    meta:
+      collection: plan_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: What it's called, such as Summer 2027.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_terms
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_terms
+    field: starts_on
+    type: date
+    meta:
+      collection: plan_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: Its first day.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: starts_on
+      table: plan_terms
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_terms
+    field: ends_on
+    type: date
+    meta:
+      collection: plan_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: ends_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: Its last day.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ends_on
+      table: plan_terms
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_results
     field: id
     type: uuid
@@ -13699,6 +13973,27 @@ relations:
       foreign_key_table: plan_versions
       foreign_key_column: id
       constraint_name: plan_closed_dates_version_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_terms
+    field: version_id
+    related_collection: plan_versions
+    meta:
+      junction_field: null
+      many_collection: plan_terms
+      many_field: version_id
+      one_allowed_collections: null
+      one_collection: plan_versions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_terms
+      column: version_id
+      foreign_key_table: plan_versions
+      foreign_key_column: id
+      constraint_name: plan_terms_version_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_result_lines

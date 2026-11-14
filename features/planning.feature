@@ -173,6 +173,20 @@ Feature: Plans
       When they start a new Financial Plan from "Budget"
       Then its practice on June 6 is the same practice as the one in "Budget"
 
+  Rule: An offering can be in one of the terms the Operations Plan lists, or in none
+
+    Example: An offering in the summer term
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan whose Operations Plan has a term named "Summer 2027", with an offering
+      When they put the offering in "Summer 2027"
+      Then the offering is in "Summer 2027"
+
+    Example: An offering in no term, such as Adult Learn to Sail
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan whose offering is in a term
+      When they take the offering out of its term
+      Then the offering is in no term
+
   Rule: The plan in force on a day is the active one with the latest date on or before it
 
     Example: A re-plan for the fall takes over on its date
