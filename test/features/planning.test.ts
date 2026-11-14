@@ -377,6 +377,43 @@ Step("the program area's P&L for {string} includes {money} of bonus", async (_, 
   expect((await areaTerm(term))?.by_account.find((a) => a.account_id === bonus)?.amount_cents).toBe(cents(money));
 });
 
+// Bonuses by term.
+const byNet = async (term: string | null, net: number) => {
+  const extra = { term_key: await termKey(term) };
+  return net < 0 ? bonusProgram(0, -net, extra) : bonusProgram(net, 0, extra);
+};
+Step(
+  "its programs make {money} in {string} and lose {money} in {string}",
+  async (_, made: string, first: string, lost: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, -cents(lost));
+  },
+);
+Step(
+  "its programs make {money} in {string} and {money} in no term",
+  async (_, made: string, term: string, none: string) => {
+    await byNet(term, cents(made));
+    await byNet(null, cents(none));
+  },
+);
+Step(
+  "its programs make {money} in {string} and {money} in {string}",
+  async (_, made: string, first: string, more: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, cents(more));
+  },
+);
+Step("the director's bonus for each term is:", (_, table: { term: string; net: string; bonus: string }[]) => {
+  const mine = p.out.bonuses.filter((b) => b.program_area_id === earner!.area);
+  expect(mine.map((b) => ({ term: termNamed(b.term_key), net: b.net_cents, bonus: b.bonus_cents }))).toEqual(
+    table.map((r) => ({ term: r.term, net: cents(r.net), bonus: cents(r.bonus) })),
+  );
+});
+Step("the program area's P&L for {string} includes {money} of bonus", async (_, term: string, money: string) => {
+  const bonus = await p.account("bonus");
+  expect((await areaTerm(term))?.by_account.find((a) => a.account_id === bonus)?.amount_cents).toBe(cents(money));
+});
+
 const COUNTED: Record<string, Row> = {
   "after shared costs": { basis: "after_shared_costs" },
   "before shared costs": { basis: "before_shared_costs" },
