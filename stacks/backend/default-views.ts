@@ -62,11 +62,17 @@ export const defaultViews: DefaultView[] = [
 
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
-  { collection: "boat_classes", sort: ["name"], fields: ["name", "sailors_per_boat", "footprint_sq_ft"] },
+  { collection: "boat_classes", sort: ["name"], fields: ["name", "max_capacity", "footprint_sq_ft"] },
   {
-    collection: "boats",
+    collection: "assets",
+    sort: ["kind", "name"],
+    fields: ["kind", "name", "value_cents", "acquired_on", "disposed_on"],
+  },
+  { collection: "boats", sort: ["asset_id.name"], fields: ["asset_id", "hull_number", "registration_number"] },
+  {
+    collection: "sailboats",
     sort: ["boat_class_id.name", "sail_number"],
-    fields: ["boat_class_id", "sail_number", "name", "hull_number", "value_cents", "retired_on"],
+    fields: ["boat_class_id", "sail_number", "boat_id"],
   },
   { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
   { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },
@@ -221,7 +227,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_resources",
     sort: ["version_id.plan_id.name", "name"],
-    fields: ["name", "version_id", "resource_kind_id", "quantity"],
+    fields: ["name", "version_id", "resource_kind_id", "cost_per_hour_cents"],
   },
   {
     collection: "plan_boat_rates",

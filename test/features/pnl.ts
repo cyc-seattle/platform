@@ -130,6 +130,8 @@ export class PnlPlan {
   readonly offerings: Item[] = [];
   readonly lines: Record<string, Item> = {};
   readonly boatClasses: string[] = [];
+  /** The organization's boats and equipment this scenario added to the asset list. */
+  readonly assets: string[] = [];
   private ribKind: string | undefined;
   private poolId: string | undefined;
   output: EngineOutput | undefined;
@@ -409,15 +411,34 @@ export class PnlPlan {
     });
   }
 
-  /** A boat class in the catalog, taking `sailors` sailors a boat. Returns its id. */
+  /** A boat class in the catalog, whose boats take at most `sailors` sailors. Returns its id. */
   async boatClass(name: string, sailors: number | null): Promise<string> {
     const boat = await adminCreate("boat_classes", {
       id: randomUUID(),
       name: `${name} ${key("boat")}`,
-      sailors_per_boat: sailors,
+      max_capacity: sailors,
     });
     this.boatClasses.push(boat.id);
     return boat.id;
+  }
+
+  /** Adds `count` sailboats of a boat class to the asset list, with `dates` such as `acquired_on`. */
+  async sailboats(boatClass: string, count: number, dates: Row = {}): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      const boat = await this.boat("sailboat", dates);
+      await adminCreate("sailboats", { id: randomUUID(), boat_id: boat, boat_class_id: boatClass });
+    }
+  }
+
+  /** Adds `count` powerboats to the asset list, with `dates` such as `acquired_on`. */
+  async powerboats(count: number, dates: Row = {}): Promise<void> {
+    for (let i = 0; i < count; i++) await this.boat("powerboat", dates);
+  }
+
+  private async boat(kind: "sailboat" | "powerboat", dates: Row): Promise<string> {
+    const asset = await adminCreate("assets", { id: randomUUID(), kind, name: `Boat ${key("boat")}`, ...dates });
+    this.assets.push(asset.id);
+    return (await adminCreate("boats", { id: randomUUID(), asset_id: asset.id })).id;
   }
 
   /** The resource kind the Operations Plan's rates call RIBs. */
@@ -494,6 +515,9 @@ export class PnlPlan {
       qualifications: [],
       qualification_covers: [],
       boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
+      assets: await read("assets", { id: anyOf(this.assets) }),
+      boats: await read("boats", { asset_id: anyOf(this.assets) }),
+      sailboats: await read("sailboats", { boat_id: { asset_id: anyOf(this.assets) } }),
       resource_kinds: [],
       plans: await read("plans", { id: { _in: plans } }),
       plan_versions: await read("plan_versions", { id: { _in: versions } }),

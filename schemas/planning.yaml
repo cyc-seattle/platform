@@ -5132,7 +5132,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The kind of resource whose cost prices coach boat (RIB) hours.
+      note: The kind of resource whose cost prices coach boat hours. Blocks are checked against the powerboats in the asset list.
       options: null
       readonly: false
       required: false
@@ -6359,46 +6359,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_resources
-    field: quantity
-    type: integer
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: quantity
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: quantity
-      table: plan_resources
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
     field: cost_per_hour_cents
     type: integer
     meta:
@@ -6812,46 +6772,6 @@ fields:
       numeric_precision: 32
       numeric_scale: 0
       is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_boat_rates
-    field: quantity
-    type: integer
-    meta:
-      collection: plan_boat_rates
-      conditions: null
-      display: null
-      display_options: null
-      field: quantity
-      group: null
-      hidden: false
-      interface: input
-      note: How many boats of the class the organization has.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: quantity
-      table: plan_boat_rates
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false

@@ -66,8 +66,33 @@ export interface QualificationCover {
 export interface BoatClass {
   id: Id;
   name: string;
-  sailors_per_boat: number | null;
+  /** The most sailors one boat can safely take. */
+  max_capacity: number | null;
   footprint_sq_ft: number | null;
+}
+
+/** Something the organization owns that planning counts: a sailboat, a powerboat, or other equipment. */
+export interface Asset {
+  id: Id;
+  kind: "sailboat" | "powerboat" | "other";
+  name: string | null;
+  /** The day the organization got it, or expects to; empty counts it from the start. */
+  acquired_on: DateString | null;
+  /** The day it stopped being the organization's; empty while it still is. */
+  disposed_on: DateString | null;
+}
+
+/** A sailboat or powerboat asset's boat details. */
+export interface Boat {
+  id: Id;
+  asset_id: Id;
+}
+
+/** A sailboat boat's class. */
+export interface Sailboat {
+  id: Id;
+  boat_id: Id;
+  boat_class_id: Id;
 }
 
 export interface ResourceKind {
@@ -164,7 +189,7 @@ export interface PlanActivity extends Versioned {
   block_id: Id | null;
 }
 
-/** Activities on one date that share their staff, RIBs and boats. */
+/** Activities on one date that share their staff, coach boats and boats. */
 export interface PlanActivityBlock extends Versioned {
   date: DateString;
   name: string;
@@ -182,13 +207,13 @@ export interface PlanBlockStaff extends Versioned {
   pay: "salary" | "hourly" | null;
 }
 
-/** A resource on a block, such as RIBs. */
+/** A resource on a block, such as coach boats. */
 export interface PlanBlockResource extends Versioned {
   block_id: Id;
   /** A `plan_resources` key. */
   resource_key: Id;
   quantity: number;
-  /** Hours each is used; empty for the block's time on the water (RIBs) or its paid time (the rest). */
+  /** Hours each is used; empty for the block's time on the water (coach boats) or its paid time (the rest). */
   hours: number | null;
 }
 
@@ -277,7 +302,6 @@ export interface PlanSalariedBooking extends Versioned {
 export interface PlanResource extends Versioned {
   resource_kind_id: Id;
   name: string;
-  quantity: number | null;
   cost_per_hour_cents: number | null;
   cost_per_day_cents: number | null;
   fuel_per_hour_cents: number | null;
@@ -289,8 +313,6 @@ export interface PlanResource extends Versioned {
 export interface PlanBoatRate extends Versioned {
   boat_class_id: Id;
   maintenance_per_boat_hour_cents: number;
-  /** How many boats of the class the organization has. */
-  quantity: number | null;
 }
 
 /** A group of shared costs, such as G&A, divided among all of the plan year's offerings by MTDC. */
@@ -338,7 +360,7 @@ export interface PlanData {
   fiscal_year: number;
   organization: Organization;
   organization_cost_accounts: OrganizationCostAccount[];
-  /** The resource kind whose `plan_resources` price RIB hours. */
+  /** The resource kind whose `plan_resources` price coach boat hours, and are checked against the powerboats. */
   rib_resource_kind_id: Id | null;
 
   products: Product[];
@@ -348,6 +370,10 @@ export interface PlanData {
   qualification_covers: QualificationCover[];
   boat_classes: BoatClass[];
   resource_kinds: ResourceKind[];
+  /** The asset list, with its boats and sailboats, which the engine counts on each day. */
+  assets: Asset[];
+  boats: Boat[];
+  sailboats: Sailboat[];
 
   /** The plans and versions being calculated, so the engine can tell which plan each offering is in. */
   plans: Plan[];
@@ -428,7 +454,7 @@ export interface ComputedActivity {
   paid_minutes: number;
   on_water_minutes: number;
   uses_boats: boolean;
-  /** Its share of its block's staff, RIBs and boats, by its sailors. */
+  /** Its share of its block's staff, coach boats and boats, by its sailors. */
   coaches: number;
   ribs: number;
   boats: number;

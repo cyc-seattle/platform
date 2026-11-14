@@ -5,6 +5,7 @@ import {
   A,
   activity,
   area,
+  assetList,
   block,
   blocks,
   charge,
@@ -236,10 +237,16 @@ function realisticPlan(): PlanData {
     products: [racing, camp, adult, charters, storage, merch],
     program_areas: [youth, adults],
     boat_classes: [
-      { id: "opti", name: "Opti", sailors_per_boat: 1, footprint_sq_ft: 40 },
-      { id: "420", name: "420", sailors_per_boat: 2, footprint_sq_ft: 90 },
-      { id: "keelboat", name: "Keelboat", sailors_per_boat: 4, footprint_sq_ft: 300 },
+      { id: "opti", name: "Opti", max_capacity: 1, footprint_sq_ft: 40 },
+      { id: "420", name: "420", max_capacity: 2, footprint_sq_ft: 90 },
+      { id: "keelboat", name: "Keelboat", max_capacity: 4, footprint_sq_ft: 300 },
     ],
+    ...assetList([
+      { boat_class_id: "opti", count: 30 },
+      { boat_class_id: "420", count: 10 },
+      { boat_class_id: "keelboat", count: 3 },
+      { count: 4 },
+    ]),
     qualifications: [{ id: "q-race", name: "Race coach" }],
     plan_offerings: [fall, spring, development, lts, ...campWeeks, charterYear, storageYear, merchYear],
     plan_programs: [
@@ -285,7 +292,6 @@ function realisticPlan(): PlanData {
         ...v("rib-small"),
         resource_kind_id: "kind-rib",
         name: "Small RIB",
-        quantity: 3,
         cost_per_hour_cents: 0,
         cost_per_day_cents: 200,
         fuel_per_hour_cents: 600,
@@ -296,7 +302,6 @@ function realisticPlan(): PlanData {
         ...v("rib-large"),
         resource_kind_id: "kind-rib",
         name: "Large RIB",
-        quantity: 1,
         cost_per_hour_cents: 0,
         cost_per_day_cents: 300,
         fuel_per_hour_cents: 1200,
@@ -305,9 +310,9 @@ function realisticPlan(): PlanData {
       },
     ],
     plan_boat_rates: [
-      { ...v("rate-opti"), boat_class_id: "opti", maintenance_per_boat_hour_cents: 35, quantity: 30 },
-      { ...v("rate-420"), boat_class_id: "420", maintenance_per_boat_hour_cents: 60, quantity: 10 },
-      { ...v("rate-keelboat"), boat_class_id: "keelboat", maintenance_per_boat_hour_cents: 250, quantity: 3 },
+      { ...v("rate-opti"), boat_class_id: "opti", maintenance_per_boat_hour_cents: 35 },
+      { ...v("rate-420"), boat_class_id: "420", maintenance_per_boat_hour_cents: 60 },
+      { ...v("rate-keelboat"), boat_class_id: "keelboat", maintenance_per_boat_hour_cents: 250 },
     ],
     plan_labor_lines: [
       laborLine(instructor2.key, {

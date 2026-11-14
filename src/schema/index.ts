@@ -3,6 +3,7 @@
 /** Every collection, for `createDirectus<Schema>()`. */
 export interface Schema {
   accounts: Accounts[];
+  assets: Assets[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
   boats: Boats[];
@@ -72,6 +73,7 @@ export interface Schema {
   qualifications: Qualifications[];
   registrations: Registrations[];
   resource_kinds: ResourceKinds[];
+  sailboats: Sailboats[];
   schools: Schools[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
@@ -118,6 +120,24 @@ export interface Accounts {
   retired: boolean;
 }
 
+/** Each boat and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, and others such as trailers. Planning counts the ones CSC has on each day. */
+export interface Assets {
+  id: string;
+  /** A sailboat or powerboat also needs a row in Boats, and a sailboat one in Sailboats. Directus can't check that, so keep them matching. */
+  kind: "sailboat" | "powerboat" | "other";
+  /** Its name, if it has one, such as Scooter or the van. */
+  name: string | null;
+  /** This asset's boat details, if it is a sailboat or a powerboat. */
+  boats: (string | Boats)[];
+  /** What it's worth. In cents: 12500 is $125.00. */
+  value_cents: number | null;
+  /** The day CSC got it, or expects to. Planning counts it from this day; empty counts it from the start. */
+  acquired_on: string | null;
+  /** The day CSC sold, scrapped, or gave it away. Planning stops counting it on this day. Empty while CSC still has it. */
+  disposed_on: string | null;
+  note: string | null;
+}
+
 /** Something a sync noticed but didn't fix. A dismissed finding stays dismissed on later runs. */
 export interface AuditFindings {
   id: string;
@@ -137,29 +157,23 @@ export interface AuditFindings {
 export interface BoatClasses {
   id: string;
   name: string;
-  sailors_per_boat: number;
+  /** The most sailors one boat can safely take, such as 4 in an FJ. */
+  max_capacity: number;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
 }
 
-/** Each boat CSC owns, for planning the year. Sailors' own boats aren't listed here. */
+/** A boat's own details: its asset is a sailboat or a powerboat. */
 export interface Boats {
   id: string;
-  boat_class_id: string | BoatClasses;
-  /** The boat's name, if it has one. */
-  name: string | null;
-  sail_number: string | null;
+  /** The asset this boat is. Its kind must be Sailboat or Powerboat. */
+  asset_id: string | Assets;
+  /** This boat's sailboat details, if it is a sailboat. */
+  sailboats: (string | Sailboats)[];
   /** The hull identification number on the transom, if it's known. */
   hull_number: string | null;
-  /** What the boat is worth. In cents: 12500 is $125.00. */
-  value_cents: number | null;
-  /** The day CSC got the boat. */
-  acquired_on: string | null;
-  /** The day the boat first sailed in a program. */
-  in_service_on: string | null;
-  /** The day CSC stopped using the boat. Empty while it's still in use. */
-  retired_on: string | null;
-  note: string | null;
+  /** The state registration number on the bow, such as WN 1234 AB, if it has one. */
+  registration_number: string | null;
 }
 
 /** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */
@@ -646,8 +660,6 @@ export interface PlanBoatRates {
   boat_class_id: string | BoatClasses;
   /** In cents: 12500 is $125.00. */
   maintenance_per_boat_hour_cents: number;
-  /** How many boats of the class the organization has. */
-  quantity: number | null;
 }
 
 /** The products a bonus owner owns. */
@@ -815,7 +827,7 @@ export interface PlanRates {
   lodging_per_night_cents: number | null;
   /** In cents: 12500 is $125.00. */
   mileage_rate_cents: number | null;
-  /** The kind of resource whose cost prices coach boat (RIB) hours. */
+  /** The kind of resource whose cost prices coach boat hours. Blocks are checked against the powerboats in the asset list. */
   rib_resource_kind_id: string | ResourceKinds | null;
 }
 
@@ -828,7 +840,6 @@ export interface PlanResources {
   key: string;
   resource_kind_id: string | ResourceKinds;
   name: string;
-  quantity: number | null;
   /** In cents: 12500 is $125.00. */
   cost_per_hour_cents: number | null;
   /** In cents: 12500 is $125.00. */
@@ -1190,6 +1201,15 @@ export interface Registrations {
 export interface ResourceKinds {
   id: string;
   name: string;
+}
+
+/** A sailboat's own details: its class and sail number. Sailors' own boats aren't listed here. */
+export interface Sailboats {
+  id: string;
+  /** The boat this sailboat is. Its asset's kind must be Sailboat. */
+  boat_id: string | Boats;
+  boat_class_id: string | BoatClasses;
+  sail_number: string | null;
 }
 
 /** The schools a sailor can sail for, which families pick from. A school's other names match what families typed on their Clubspot forms. */

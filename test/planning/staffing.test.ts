@@ -3,6 +3,7 @@ import { computePlan, type PlanData, type PlanResource } from "../../src/plannin
 import {
   A,
   activity,
+  assetList,
   block,
   blocks,
   emptyPlan,
@@ -27,7 +28,6 @@ function resource(key: string, overrides: Partial<PlanResource> = {}): PlanResou
     key,
     resource_kind_id: "kind-rib",
     name: key,
-    quantity: null,
     cost_per_hour_cents: null,
     cost_per_day_cents: null,
     fuel_per_hour_cents: null,
@@ -219,7 +219,7 @@ describe("staffing", () => {
     const { data } = onePractice(
       { boats: [{ boat_class_id: "opti", count: 4, sailor_owned: 3 }] },
       {
-        boat_classes: [{ id: "opti", name: "Opti", sailors_per_boat: 1, footprint_sq_ft: null }],
+        boat_classes: [{ id: "opti", name: "Opti", max_capacity: 1, footprint_sq_ft: null }],
         plan_boat_rates: [
           {
             id: "br",
@@ -227,7 +227,6 @@ describe("staffing", () => {
             key: "br",
             boat_class_id: "opti",
             maintenance_per_boat_hour_cents: 50,
-            quantity: null,
           },
         ],
       },
@@ -408,7 +407,7 @@ describe("staffing", () => {
         boats: [{ boat_class_id: "sailqube", count: 5 }],
       });
       data.plan_activities[0]!.uses_boats = true;
-      data.boat_classes = [{ id: "sailqube", name: "Sailqube", sailors_per_boat: 2, footprint_sq_ft: null }];
+      data.boat_classes = [{ id: "sailqube", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }];
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
         "Guppies Week 2 has 14 sailors, but the boats hold only 10",
       );
@@ -419,16 +418,16 @@ describe("staffing", () => {
       expect(codes(data)).not.toContain("over_capacity");
     });
 
-    it("warns when a class has no sailors per boat", () => {
+    it("warns when a class has no max capacity", () => {
       const data = guppies(1, { staff: [{ staff_level_key: L1.key }], boats: [{ boat_class_id: "x", count: 1 }] });
       data.plan_activities[0]!.uses_boats = true;
-      data.boat_classes = [{ id: "x", name: "X", sailors_per_boat: null, footprint_sq_ft: null }];
-      expect(codes(data)).toContain("no_sailors_per_boat");
+      data.boat_classes = [{ id: "x", name: "X", max_capacity: null, footprint_sq_ft: null }];
+      expect(codes(data)).toContain("no_max_capacity");
     });
   });
 
   describe("inventory", () => {
-    /** Two blocks on July 13, with `first` and `second` Sailqubes and RIBs, at the given times. */
+    /** Two blocks on July 13, with `first` and `second` Sailqubes and coach boats, at the given times. */
     function twoBlocks(first: number, second: number, times: [string, string][], sailorOwned = 0) {
       const p = product();
       const [x, y] = [
@@ -445,18 +444,9 @@ describe("staffing", () => {
         products: [p],
         plan_offerings: [x, y],
         plan_activities: [ax, ay],
-        boat_classes: [{ id: "sailqube", name: "Sailqube", sailors_per_boat: 2, footprint_sq_ft: null }],
-        plan_boat_rates: [
-          {
-            id: "br",
-            version_id: "ops",
-            key: "br",
-            boat_class_id: "sailqube",
-            maintenance_per_boat_hour_cents: 0,
-            quantity: 12,
-          },
-        ],
-        plan_resources: [resource("rib", { name: "RIBs", quantity: 12 })],
+        boat_classes: [{ id: "sailqube", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }],
+        ...assetList([{ boat_class_id: "sailqube", count: 12 }, { count: 12 }]),
+        plan_resources: [resource("rib", { name: "RIB fleet" })],
         ...blocks(block([ax], given(first), { name: "Guppies" }), block([ay], given(second), { name: "Minnows" })),
       });
     }
@@ -508,24 +498,62 @@ describe("staffing", () => {
       expect(codes(twoBlocks(6, 5, morning, 4))).not.toContain("over_inventory_boats");
     });
 
-    it("warns when more of a resource, such as RIBs, is out at once than the organization has", () => {
-      const out = computePlan(twoBlocks(9, 5, morning));
-      expect(out.warnings.map((w) => w.message)).toContain(
-        "14 RIBs out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+    it("counts a boat from the day the organization gets it until the day it disposes of it", () => {
+      const data = twoBlocks(9, 5, morning);
+      const sailqubes = (boats: Parameters<typeof assetList>[0]) => Object.assign(data, assetList(boats));
+      sailqubes([
+        { boat_class_id: "sailqube", count: 12 },
+        { boat_class_id: "sailqube", count: 2, acquired_on: "2027-07-13" },
+      ]);
+      expect(codes(data)).not.toContain("over_inventory_boats");
+      sailqubes([
+        { boat_class_id: "sailqube", count: 12 },
+        { boat_class_id: "sailqube", count: 2, acquired_on: "2027-07-14" },
+      ]);
+      expect(codes(data)).toContain("over_inventory_boats");
+      sailqubes([
+        { boat_class_id: "sailqube", count: 12 },
+        { boat_class_id: "sailqube", count: 2, disposed_on: "2027-07-14" },
+      ]);
+      expect(codes(data)).not.toContain("over_inventory_boats");
+      sailqubes([
+        { boat_class_id: "sailqube", count: 12 },
+        { boat_class_id: "sailqube", count: 2, disposed_on: "2027-07-13" },
+      ]);
+      expect(codes(data)).toContain("over_inventory_boats");
+    });
+
+    it("says the organization has none of a boat class with no boats that day", () => {
+      const data = Object.assign(twoBlocks(9, 5, morning), assetList([{ count: 12 }]));
+      expect(computePlan(data).warnings.map((w) => w.message)).toContain(
+        "14 Sailqubes out at once, but A club has none: 9 for Guppies Week 3 and 5 for Minnows Week 3",
       );
     });
 
-    it("warns when the Operations Plan doesn't say how many of a boat class the organization has", () => {
-      const data = twoBlocks(9, 5, morning);
-      data.plan_boat_rates[0]!.quantity = null;
-      let out = computePlan(data);
-      expect(out.warnings.map((w) => w.code)).not.toContain("over_inventory_boats");
+    it("warns when more coach boats are out at once than the organization has powerboats", () => {
+      const out = computePlan(twoBlocks(9, 5, morning));
       expect(out.warnings).toContainEqual(
-        expect.objectContaining({ code: "no_fleet_quantity", category: "data", version_id: "v1", date: "2027-07-13" }),
+        expect.objectContaining({
+          code: "over_inventory_resource",
+          message: "14 coach boats out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+        }),
       );
-      data.plan_boat_rates = [];
-      out = computePlan(data);
-      expect(out.warnings.map((w) => w.code)).toContain("no_fleet_quantity");
+    });
+
+    it("counts every coach boat resource against the same powerboats, and nothing else", () => {
+      const data = twoBlocks(0, 0, morning);
+      data.plan_resources = [
+        resource("rib"),
+        resource("annie", { name: "Annie Jo" }),
+        resource("van", { resource_kind_id: "kind-van" }),
+      ];
+      data.plan_block_resources = [
+        { ...data.plan_block_resources[0]!, resource_key: "rib", quantity: 10 },
+        { ...data.plan_block_resources[1]!, resource_key: "annie", quantity: 3 },
+      ];
+      expect(codes(data)).toContain("over_inventory_resource");
+      data.plan_block_resources[1]!.resource_key = "van";
+      expect(codes(data)).not.toContain("over_inventory_resource");
     });
 
     it("counts a block with no times as out all day", () => {
