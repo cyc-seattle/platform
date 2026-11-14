@@ -66,8 +66,8 @@ An AI working over Directus's MCP server can change a draft's rows but can't run
 doesn't need to. Change the draft's inputs, wait about a second, then read the draft's
 `plan_results` and `plan_result_*` rows, filtered on its `version_set_id`. `plan_results.calculated_at`
 says when they were worked out, so a time before the last change means they aren't in yet. A draft
-with no `plan_results` row is still being worked out, or the engine failed on it. Plan Readers and
-Plan Writers can read them.
+with no `plan_results` row is still being worked out, or the engine failed on it. Anyone with a
+Plan policy can read them.
 
 ## Terms
 

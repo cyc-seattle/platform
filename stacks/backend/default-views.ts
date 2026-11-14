@@ -287,7 +287,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "version_sets",
     sort: ["-fiscal_year", "status", "-saved_at"],
-    fields: ["name", "fiscal_year", "status", "parent_id", "saved_at", "message"],
+    fields: ["name", "fiscal_year", "status", "effective_from", "parent_id", "saved_at", "message"],
   },
   {
     collection: "version_set_members",

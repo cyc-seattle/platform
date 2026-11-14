@@ -2,7 +2,8 @@
 // extension's folder has no node_modules of its own.
 //
 // Keeps a saved Financial Plan, and every plan in it, from changing, for every user, admins
-// included (docs/planning-schema.md), apart from its name and note, and marking one active. Its filters refuse such a
+// included (docs/planning-schema.md), apart from its name, its note, the date it's active from, and whether it's
+// archived. Its filters refuse such a
 // request with a clear 403, and stamp who saved a Financial Plan. Directus skips filters on some
 // paths, such as a flow's data steps, so the database triggers it installs refuse the same writes on
 // every path.
@@ -37,7 +38,7 @@ const AREA_NAMED = "A program area's plan names its program area, and an Operati
 const RESULTS_BY_SAVE = "A Financial Plan's results are worked out from its plans, and can't be written by hand.";
 const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
 const SET_STAYS =
-  "A saved Financial Plan can't be changed, apart from its name, its note, and marking it active. Start a new one from it.";
+  "A saved Financial Plan can't be changed, apart from its name, its note, the date it's active from, and whether it's archived. Start a new one from it.";
 const SET_FIXED = "A Financial Plan's organization, year, and parent can't change.";
 const PARENT_SAME_YEAR = "A Financial Plan can only start from one for the same organization and year.";
 const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's saved.";
@@ -46,12 +47,17 @@ const MEMBER_DRAFT = "Only a draft plan can be added to a Financial Plan.";
 const MEMBER_YEAR = "A plan in a Financial Plan must be for the same organization and year.";
 const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
 const IN_ANOTHER = "A plan copy is in only one Financial Plan.";
-const STAYS_ACTIVE = "An active Financial Plan stays active until another one for its year is marked active.";
-const ONLY_SAVED_ACTIVE = "Only a saved Financial Plan can be marked active.";
-const ACTIVE_NOT_ARCHIVED = "An active Financial Plan can't be archived.";
+const ONE_PER_DATE = "Another Financial Plan for the year is already active from that date.";
+const IN_FORCE_NOT_ARCHIVED = "The plan in force can't be archived, and nor can one active from a later date.";
+const ARCHIVED_NOT_ACTIVE = "An archived Financial Plan can't be made active. Bring it back from the archive first.";
+const ACTIVE_STAYS = "An active Financial Plan can't be deleted. Clear the date it's active from first.";
+const BONUS_IN_OPERATIONS = "A bonus goes in the Operations Plan.";
 
-/** What a saved Financial Plan lets change: its name, its note, its status, to mark it active, and whether it's archived. */
-const SET_EDITABLE = ["name", "message", "status", "archived_at"];
+/** What a saved Financial Plan lets change: its name, its note, the date it's active from, and whether it's archived. */
+const SET_EDITABLE = ["name", "message", "effective_from", "archived_at"];
+
+/** The plan rows only an Operations Plan holds, which the database refuses in a Program Plan. */
+const OPERATIONS_ONLY_ROWS = ["plan_bonus_owners", "plan_bonus_owner_products"];
 
 /** Each reason a trigger gives, which the hook answers with its status. */
 const REASONS = {
@@ -59,7 +65,7 @@ const REASONS = {
   [PLAN_FIXED]: 403,
   [SET_STAYS]: 403,
   [MEMBERS_FIXED]: 403,
-  [STAYS_ACTIVE]: 403,
+  [ACTIVE_STAYS]: 403,
   [RESULTS_BY_SAVE]: 403,
   [NEW_DRAFT]: 400,
   [SAVED_WITH_SET]: 400,
@@ -76,15 +82,17 @@ const REASONS = {
   [MEMBER_YEAR]: 400,
   [ONE_PER_AREA]: 400,
   [IN_ANOTHER]: 400,
-  [ONLY_SAVED_ACTIVE]: 400,
-  [ACTIVE_NOT_ARCHIVED]: 400,
+  [ONE_PER_DATE]: 400,
+  [IN_FORCE_NOT_ARCHIVED]: 400,
+  [ARCHIVED_NOT_ACTIVE]: 400,
+  [BONUS_IN_OPERATIONS]: 400,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
 
-/** Whether a Financial Plan's status is saved, or active, which is a saved one marked active. */
+/** Whether a Financial Plan's status is saved. */
 function isSaved(status) {
-  return status === "saved" || status === "active";
+  return status === "saved";
 }
 
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
@@ -162,25 +170,16 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
       if ((await savedSet(keys)) && !(await lookup.deletesSaved(user))) throw refuse(SET_STAYS);
       return payload;
     }
+    // The triggers check the dates it's active from, and archiving, against the other Financial Plans.
     const sets = await lookup.sets(keys);
-    for (const set of sets) {
-      const status = payload.status ?? set.status;
-      const archived = "archived_at" in payload ? payload.archived_at : set.archived_at;
-      if (status === "active" && archived) throw refuse(ACTIVE_NOT_ARCHIVED, 400);
-    }
     if (sets.some((set) => isSaved(set.status))) {
-      // Only its name and note change, such as "Reviewed with the board", and a saved one can be marked active or archived.
-      if (Object.keys(payload).some((field) => !SET_EDITABLE.includes(field))) throw refuse(SET_STAYS);
-      if ("status" in payload) {
-        for (const set of sets) {
-          if (payload.status === set.status || (payload.status === "active" && set.status === "saved")) continue;
-          // A draft changed with a saved one is refused too, rather than saved without its stamps.
-          throw refuse(set.status === "active" ? STAYS_ACTIVE : SET_STAYS);
-        }
-      }
+      // Only its name and note change, such as "Reviewed with the board", and when it's active, and whether it's archived.
+      const changed = Object.keys(payload).filter((field) => !(field === "status" && payload.status === "saved"));
+      if (changed.some((field) => !SET_EDITABLE.includes(field))) throw refuse(SET_STAYS);
+      // A draft changed with a saved one is refused too, rather than saved without its stamps.
+      if ("status" in payload && sets.some((set) => set.status !== payload.status)) throw refuse(SET_STAYS);
       return payload;
     }
-    if (payload.status === "active") throw refuse(ONLY_SAVED_ACTIVE, 400);
     const rest = unstamped(payload, stamps);
     if (rest.status !== "saved") return rest;
     // The hook works out a saved Financial Plan's results, so it records its own engine's version.
@@ -242,6 +241,7 @@ function columnsNeeded(config) {
       "saved_by",
       "saved_at",
       "archived_at",
+      "effective_from",
     ],
     [MEMBERS]: ["id", "version_set_id", "plan_id", "version_id"],
     ...Object.fromEntries(config.results.map((table) => [table, ["id", "version_set_id"]])),
@@ -277,6 +277,11 @@ BEGIN
   END IF;
   IF TG_OP = 'DELETE' THEN
     RETURN OLD;
+  END IF;
+  IF TG_TABLE_NAME IN (${OPERATIONS_ONLY_ROWS.map(literal).join(", ")}) AND EXISTS (
+    SELECT 1 FROM ${VERSIONS} v JOIN ${PLANS} p ON p.id = v.plan_id WHERE v.id = NEW.version_id AND p.kind <> 'operations'
+  ) THEN
+    ${raise(BONUS_IN_OPERATIONS)};
   END IF;
   -- The trigger's arguments are pairs: a field, then the table it links to.
   FOR i IN 0 .. TG_NARGS - 1 BY 2 LOOP
@@ -379,18 +384,35 @@ END
 $fn$`;
 
   // Saving a Financial Plan saves every plan copy in it, in the same statement, so they're saved together.
-  // Marking one active sets the one active before it back to saved, in the same statement, so a year
-  // has one at a time. An active one is a saved one: nothing else about it changes.
+  // The plan in force on a day is the one for its year with the latest date on or before it, so no
+  // two share a date. Today is the database's date, which is UTC.
   const set = `
 CREATE OR REPLACE FUNCTION cyc_saved_versions_set() RETURNS trigger LANGUAGE plpgsql AS $fn$
 DECLARE
   parent record;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    IF OLD.status IN ('saved', 'active') AND NOT ${deletable} THEN
+    IF OLD.status = 'saved' AND NOT ${deletable} THEN
       ${raise(SET_STAYS)};
     END IF;
+    IF OLD.effective_from IS NOT NULL AND NOT ${deletable} THEN
+      ${raise(ACTIVE_STAYS)};
+    END IF;
     RETURN OLD;
+  END IF;
+  IF NEW.effective_from IS NOT NULL AND (TG_OP = 'INSERT' OR NEW.effective_from IS DISTINCT FROM OLD.effective_from) THEN
+    IF NEW.archived_at IS NOT NULL THEN
+      ${raise(ARCHIVED_NOT_ACTIVE)};
+    END IF;
+    PERFORM pg_advisory_xact_lock(hashtextextended(
+      concat_ws('|', 'cyc_set_activation', NEW.organization_id, NEW.fiscal_year), 0));
+    IF EXISTS (
+      SELECT 1 FROM ${SETS} o
+        WHERE o.organization_id = NEW.organization_id AND o.fiscal_year = NEW.fiscal_year
+          AND o.effective_from = NEW.effective_from AND o.id <> NEW.id
+    ) THEN
+      ${raise(ONE_PER_DATE)};
+    END IF;
   END IF;
   IF TG_OP = 'INSERT' THEN
     IF NEW.status IS DISTINCT FROM 'draft' THEN
@@ -404,40 +426,23 @@ BEGIN
     END IF;
     RETURN NEW;
   END IF;
-  IF NEW.status = 'active' AND NEW.archived_at IS NOT NULL THEN
-    ${raise(ACTIVE_NOT_ARCHIVED)};
+  -- In force today, or from a later date: no plan for the year dated after it has taken over by today.
+  IF NEW.archived_at IS NOT NULL AND OLD.archived_at IS NULL AND NEW.effective_from IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM ${SETS} o
+        WHERE o.organization_id = NEW.organization_id AND o.fiscal_year = NEW.fiscal_year AND o.id <> NEW.id
+          AND o.effective_from > NEW.effective_from AND o.effective_from <= current_date
+    ) THEN
+    ${raise(IN_FORCE_NOT_ARCHIVED)};
   END IF;
-  IF OLD.status IN ('saved', 'active') THEN
+  IF OLD.status = 'saved' THEN
     IF (to_jsonb(NEW) - ${editable}) IS DISTINCT FROM (to_jsonb(OLD) - ${editable}) THEN
       ${raise(SET_STAYS)};
     END IF;
-    IF NEW.status = OLD.status THEN
-      RETURN NEW;
-    END IF;
-    IF OLD.status = 'saved' AND NEW.status = 'active' THEN
-      PERFORM pg_advisory_xact_lock(hashtextextended(
-        concat_ws('|', 'cyc_set_activation', NEW.organization_id, NEW.fiscal_year), 0));
-      PERFORM set_config('cyc.activating_set', 'on', true);
-      UPDATE ${SETS} SET status = 'saved'
-        WHERE organization_id = NEW.organization_id AND fiscal_year = NEW.fiscal_year
-          AND status = 'active' AND id <> NEW.id;
-      PERFORM set_config('cyc.activating_set', 'off', true);
-      RETURN NEW;
-    END IF;
-    IF OLD.status = 'active' THEN
-      -- Only from inside the trigger above, as with saving a plan copy.
-      IF NEW.status = 'saved' AND current_setting('cyc.activating_set', true) = 'on' AND pg_trigger_depth() >= 2 THEN
-        RETURN NEW;
-      END IF;
-      ${raise(STAYS_ACTIVE)};
-    END IF;
-    ${raise(SET_STAYS)};
+    RETURN NEW;
   END IF;
   IF (NEW.organization_id, NEW.fiscal_year, NEW.parent_id) IS DISTINCT FROM (OLD.organization_id, OLD.fiscal_year, OLD.parent_id) THEN
     ${raise(SET_FIXED)};
-  END IF;
-  IF NEW.status = 'active' THEN
-    ${raise(ONLY_SAVED_ACTIVE)};
   END IF;
   IF NEW.status = 'saved' THEN
     IF coalesce(btrim(NEW.platform_version), '') = '' THEN
@@ -476,7 +481,7 @@ DECLARE
 BEGIN
   IF TG_OP <> 'INSERT' THEN
     SELECT s.status INTO set_row FROM ${SETS} s WHERE s.id = OLD.version_set_id FOR SHARE;
-    IF set_row.status IN ('saved', 'active') AND NOT (TG_OP = 'DELETE' AND ${deletable}) THEN
+    IF set_row.status = 'saved' AND NOT (TG_OP = 'DELETE' AND ${deletable}) THEN
       ${raise(MEMBERS_FIXED)};
     END IF;
     IF TG_OP = 'DELETE' THEN
@@ -484,7 +489,7 @@ BEGIN
     END IF;
   END IF;
   SELECT s.status, s.organization_id, s.fiscal_year INTO set_row FROM ${SETS} s WHERE s.id = NEW.version_set_id FOR SHARE;
-  IF set_row.status IN ('saved', 'active') THEN
+  IF set_row.status = 'saved' THEN
     ${raise(MEMBERS_FIXED)};
   END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended('cyc_set|' || NEW.version_set_id, 0));
@@ -541,8 +546,10 @@ $fn$`;
     ...trigger(VERSIONS, "cyc_saved_versions_version", all),
     ...trigger(SETS, "cyc_saved_versions_set", all),
     ...trigger(MEMBERS, "cyc_saved_versions_member", all),
-    // One active Financial Plan for an organization's year.
-    `CREATE UNIQUE INDEX IF NOT EXISTS cyc_one_active_set ON ${SETS} (organization_id, fiscal_year) WHERE status = 'active'`,
+    // A Financial Plan is active from a date, in place of an active status (cyc0015).
+    "DROP INDEX IF EXISTS cyc_one_active_set",
+    // One Financial Plan for an organization's year active from each date, should two writes race the trigger.
+    `CREATE UNIQUE INDEX IF NOT EXISTS cyc_one_set_per_date ON ${SETS} (organization_id, fiscal_year, effective_from) WHERE effective_from IS NOT NULL`,
     ...config.results.flatMap((table) => trigger(table, "cyc_saved_versions_result", all)),
     ...config.versioned.flatMap((table) =>
       trigger(table, "cyc_saved_versions_row", all, Object.entries(config.links[table] ?? {}).flat()),
@@ -603,12 +610,12 @@ async function installTriggers(config, db) {
   const status = await triggerStatus(config, db);
   const hash = fingerprint(config);
   if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
-    await seedActiveMarks(db);
+    await seedEffectiveDates(db);
     return { missing: [], installed: false };
   }
   for (const statement of triggerStatements(config)) await db.exec(statement);
   await db.exec(`COMMENT ON FUNCTION cyc_saved_versions_row() IS ${literal(hash)}`);
-  await seedActiveMarks(db);
+  await seedEffectiveDates(db);
   return { missing: [], installed: true };
 }
 
@@ -631,24 +638,22 @@ async function seedSaved(db) {
   await db.exec(`DROP TABLE ${SAVED_SEED}`);
 }
 
-/** Where the Financial Plans migration (cyc0002) lists the saved Financial Plans to mark active. */
-const SEED = "cyc_seed_active_sets";
+/** Where the effective dates migration (cyc0015) lists the Financial Plans that were active, with their dates. */
+const SEED = "cyc_seed_effective_sets";
 
 /**
- * Marks active each saved Financial Plan the Financial Plans migration listed, in a year with none active yet, then
- * drops the list. The migration runs before the schema apply adds `version_sets.status`, so it can't mark them itself.
+ * Sets the date each Financial Plan the effective dates migration listed is active from, then drops
+ * the list. The migration runs before the schema apply adds `version_sets.effective_from`, so it
+ * can't set them itself. A saved one allows a new date, but its trigger is off for the one
+ * statement, as the migration's own update was.
  */
-async function seedActiveMarks(db) {
+async function seedEffectiveDates(db) {
   const [{ seed }] = await db.query(`SELECT to_regclass('${SEED}') IS NOT NULL AS seed`);
   if (!seed) return;
   await db.exec(`ALTER TABLE ${SETS} DISABLE TRIGGER USER`);
   await db.exec(
-    `UPDATE ${SETS} s SET status = 'active' FROM ${SEED} seed
-      WHERE s.id = seed.version_set_id AND s.status = 'saved'
-        AND NOT EXISTS (
-          SELECT 1 FROM ${SETS} o
-            WHERE o.organization_id = s.organization_id AND o.fiscal_year = s.fiscal_year AND o.status = 'active'
-        )`,
+    `UPDATE ${SETS} s SET effective_from = seed.effective_from FROM ${SEED} seed
+      WHERE s.id = seed.version_set_id AND s.effective_from IS NULL`,
   );
   await db.exec(`ALTER TABLE ${SETS} ENABLE TRIGGER USER`);
   await db.exec(`DROP TABLE ${SEED}`);
@@ -1006,7 +1011,19 @@ async function copyParent(config, db, setId) {
     const set = await trx(SETS).where("id", setId).first();
     if (!set?.parent_id) return false;
     if (await trx(MEMBERS).where("version_set_id", setId).first()) return false;
-    const members = await trx(MEMBERS).where("version_set_id", set.parent_id).select("version_id");
+    const members = await trx(MEMBERS).where("version_set_id", set.parent_id).select("version_id", "plan_id");
+    const kinds = new Map(
+      (
+        await trx(PLANS)
+          .whereIn(
+            "id",
+            members.map((m) => m.plan_id),
+          )
+          .select("id", "kind")
+      ).map((p) => [p.id, p.kind]),
+    );
+    const operations = members.find((m) => kinds.get(m.plan_id) === "operations")?.version_id;
+    const programPlans = new Set(members.filter((m) => m.version_id !== operations).map((m) => m.version_id));
     const copyOf = new Map();
     for (const { version_id: from } of members) {
       const source = await trx(VERSIONS).where("id", from).first();
@@ -1026,8 +1043,11 @@ async function copyParent(config, db, setId) {
       const links = Object.entries(config.links[table] ?? {});
       const rows = ids.length === 0 ? [] : await trx(table).whereIn("version_id", ids).select("*");
       const self = links.filter(([, linked]) => linked === table);
+      // A bonus a Program Plan held before bonuses moved to the Operations Plan moves there in the copy.
+      const moves = OPERATIONS_ONLY_ROWS.includes(table) && operations !== undefined;
       const copies = rows.map((row) => {
-        const copy = { ...asWritten(row), id: crypto.randomUUID(), version_id: copyOf.get(row.version_id) };
+        const into = moves && programPlans.has(row.version_id) ? operations : row.version_id;
+        const copy = { ...asWritten(row), id: crypto.randomUUID(), version_id: copyOf.get(into) };
         copyOf.set(row.id, copy.id);
         return copy;
       });
@@ -1303,6 +1323,8 @@ module.exports.MEMBERS_FIXED = MEMBERS_FIXED;
 module.exports.SAVED_WITH_SET = SAVED_WITH_SET;
 module.exports.NEEDS_OPERATIONS = NEEDS_OPERATIONS;
 module.exports.ONE_PER_AREA = ONE_PER_AREA;
-module.exports.ONLY_SAVED_ACTIVE = ONLY_SAVED_ACTIVE;
-module.exports.ACTIVE_NOT_ARCHIVED = ACTIVE_NOT_ARCHIVED;
-module.exports.STAYS_ACTIVE = STAYS_ACTIVE;
+module.exports.ONE_PER_DATE = ONE_PER_DATE;
+module.exports.IN_FORCE_NOT_ARCHIVED = IN_FORCE_NOT_ARCHIVED;
+module.exports.ARCHIVED_NOT_ACTIVE = ARCHIVED_NOT_ACTIVE;
+module.exports.ACTIVE_STAYS = ACTIVE_STAYS;
+module.exports.BONUS_IN_OPERATIONS = BONUS_IN_OPERATIONS;

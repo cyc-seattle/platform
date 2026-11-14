@@ -1278,8 +1278,8 @@ export interface VersionSets {
   name: string;
   /** What it was for, such as "Reviewed with the board". You can change it after it's saved. */
   message: string | null;
-  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name and note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved. */
-  status: "draft" | "saved" | "active";
+  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name, its note, the date it's active from, and whether it's archived. */
+  status: "draft" | "saved";
   /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
   parent_id: string | VersionSets | null;
   /** Set when the Financial Plan is saved. */
@@ -1288,7 +1288,9 @@ export interface VersionSets {
   saved_at: string | null;
   /** The version of the planning engine that calculated its numbers. */
   platform_version: string | null;
-  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. An active Financial Plan can't be archived. */
+  /** The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date. */
+  effective_from: string | null;
+  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived. */
   archived_at: string | null;
   /** Each plan in the Financial Plan. Add or remove one only while it's a draft. */
   members: (string | VersionSetMembers)[];
