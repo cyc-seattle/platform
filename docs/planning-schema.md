@@ -377,6 +377,8 @@ All of an offering's revenue and costs go in its plan's year, and its dates may 
 
 An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
 
+An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
+
 Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 
 Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, and its `rules`. Like the Program Plan's own `rules` and the Operations Plan's, a program's rules are the planner's words for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan copy, they're versioned, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
@@ -515,10 +517,12 @@ erDiagram
     version_sets |o--o{ plan_result_lines : lines
     version_sets |o--o{ plan_result_pnl : "P&L"
     version_sets |o--o{ plan_result_positions : pay
+    version_sets |o--o{ plan_result_bonuses : "bonuses, by term"
     version_sets |o--o{ plan_result_capital : "capital, ranked"
     version_sets |o--o{ plan_result_warnings : warnings
     version_set_members |o--o{ plan_result_lines : "charged in"
     version_set_members |o--o{ plan_result_pnl : "charged in"
+    version_set_members |o--o{ plan_result_bonuses : "paid in"
     version_set_members |o--o{ plan_result_warnings : about
     accounts ||--o{ plan_result_lines : "booked to"
 
@@ -550,7 +554,7 @@ erDiagram
     plan_result_pnl {
         uuid version_set_id FK
         uuid version_set_member_id FK
-        string level "offering|product|program_area"
+        string level "offering|product|program_area|program_area_term"
         uuid subject_key
         string name
         int revenue_cents
@@ -560,6 +564,22 @@ erDiagram
         int enrollment
         int days
         int sailor_days
+        uuid term_key "for program_area_term; null is no term"
+        string term_name
+        date term_starts_on
+    }
+    plan_result_bonuses {
+        uuid version_set_id FK
+        uuid version_set_member_id FK "the plan that pays it"
+        uuid bonus_owner_key
+        string name "the role"
+        uuid term_key "null is no term, on the year"
+        string term_name
+        date term_starts_on
+        decimal bonus_rate
+        int net_cents
+        int bonus_cents
+        uuid program_area_key "null when its products span areas"
     }
     plan_result_positions {
         uuid version_set_id FK
@@ -604,7 +624,7 @@ A draft's results are worked out again after each change to what they come from,
 
 Saving a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the save answers, with the engine whose version it records. Then they never change.
 
-`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, powerboats and share of the shared costs, is one filter. A warning names the member it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
+`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, powerboats and share of the shared costs, is one filter. A warning names the member it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). A program area's P&L by term goes with the area's Program Plan, and a bonus with the plan that pays it. Each P&L by term and each bonus keeps its term's name and first day, as they were when it was worked out. Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
 
 Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, and the Financial Plan has no results yet. They refuse to delete a draft's results without it too, apart from the delete of the draft, or a plan taken out of it, taking its results with it. No result row is ever changed, and a saved one's are never deleted. A Plan Reader or Plan Writer can see them, a draft's the same way as a saved one's. A draft with no `plan_results` row is still being worked out, or the engine failed on it.
 

@@ -410,9 +410,12 @@ export interface Totals {
 
 /** One offering's P&L for the plan year, or a product's or program area's, which adds up its offerings. */
 export interface Pnl extends Totals {
-  level: "offering" | "product" | "program_area";
+  /** `program_area_term` is a program area's offerings in one term, or in none. */
+  level: "offering" | "product" | "program_area" | "program_area_term";
   /** An offering key, a product id, or a program area id. */
   key: Id;
+  /** A `program_area_term`'s `plan_terms` key, null for its offerings in no term. Only that level has one. */
+  term_key?: Id | null;
   /** Each account's total, revenue and expense alike. */
   by_account: { account_id: Id; amount_cents: number }[];
   mtdc_cents: number;
@@ -512,10 +515,27 @@ export interface PositionSummary {
   double_booked_dates: number;
 }
 
+/** A bonus owner's bonus for one term, or on its offerings in no term for the year. */
+export interface BonusSummary {
+  bonus_owner_key: Id;
+  role_name: string;
+  position_key: Id | null;
+  /** The program area of all the owner's products, or null when they're in more than one. */
+  program_area_id: Id | null;
+  /** A `plan_terms` key, or null for its offerings in no term. */
+  term_key: Id | null;
+  bonus_rate: number;
+  /** The net the bonus is figured on, which can be below zero. */
+  net_cents: number;
+  bonus_cents: number;
+}
+
 export interface EngineOutput {
   lines: CostLine[];
-  /** Each offering's P&L, then each product's, then each program area's. */
+  /** Each offering's P&L, then each product's, then each program area's, then each area's terms. */
   pnl: Pnl[];
+  /** Each bonus owner's bonus in each term it has offerings in, then in no term. */
+  bonuses: BonusSummary[];
   organization: OrganizationTotals;
   activities: ComputedActivity[];
   /** Each salaried position's pay for the year. */
