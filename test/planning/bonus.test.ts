@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computePlan, type PlanBonusOwner } from "../../src/planning/index.ts";
-import { A, budgetLine, emptyPlan, offering, pool, product, total } from "./fixtures.ts";
+import { A, area, budgetLine, emptyPlan, offering, pnlOf, pool, product, total } from "./fixtures.ts";
 
 function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
   return {
@@ -35,7 +35,7 @@ function twoProducts(lossCents: number) {
 }
 
 describe("bonus owners", () => {
-  it("earns its rate on the combined net, so one product's loss offsets another's gain", () => {
+  it("earns its rate on the combined net in a season, so one product's loss offsets another's gain", () => {
     // Net: 100000 + 1000 − 21000 = 80000.
     const { data } = twoProducts(21_000);
     expect(total(computePlan(data), { line: "bonus", account_id: A.bonus })).toBe(8000);
@@ -68,5 +68,86 @@ describe("bonus owners", () => {
     );
     // 100000 + 1000 − 1200 − 51000
     expect(total(computePlan(data), { line: "bonus" })).toBe(4880);
+  });
+});
+
+describe("bonuses by season", () => {
+  // Summer takes in 200000, fall 10000 and loses 50000 on rent, no season takes in 30000.
+  function seasons() {
+    const a = area();
+    const p = product({ program_area_id: a.id });
+    const summer = offering(p.id, { season_term: "summer", target_enrollment: 20, price_cents: 10_000 });
+    const fall = offering(p.id, { season_term: "fall", target_enrollment: 1, price_cents: 10_000 });
+    const none = offering(p.id, { target_enrollment: 3, price_cents: 10_000 });
+    const data = emptyPlan({
+      program_areas: [a],
+      products: [p],
+      plan_offerings: [summer, fall, none],
+      plan_budget_lines: [
+        budgetLine({
+          account_id: A.rent,
+          amount_cents: 60_000,
+          cost_center_type: "offering",
+          cost_center_key: fall.key,
+        }),
+      ],
+      plan_bonus_owners: [owner()],
+      plan_bonus_owner_products: [
+        { id: "bp1", version_id: "v1", key: "bp1", bonus_owner_id: "owner", product_id: p.id },
+      ],
+    });
+    return { a, summer, fall, none, data };
+  }
+
+  it("pays each season on its own net, so a season's loss doesn't lower another's bonus", () => {
+    const { a, data } = seasons();
+    const out = computePlan(data);
+    expect(out.bonuses.map((b) => [b.season, b.net_cents, b.bonus_cents])).toEqual([
+      ["summer", 200_000, 20_000],
+      ["fall", -50_000, 0],
+      [null, 30_000, 3000],
+    ]);
+    expect(out.bonuses[0]).toMatchObject({ bonus_owner_key: "owner-key", program_area_id: a.id, bonus_rate: 0.1 });
+    expect(total(out, { line: "bonus:" })).toBe(23_000);
+  });
+
+  it("charges each season's bonus to that season's offerings", () => {
+    const { summer, fall, none, data } = seasons();
+    const out = computePlan(data);
+    expect(total(out, { line: "bonus:", cost_center_key: summer.key })).toBe(20_000);
+    expect(total(out, { line: "bonus:", cost_center_key: fall.key })).toBe(0);
+    expect(total(out, { line: "bonus:", cost_center_key: none.key })).toBe(3000);
+  });
+
+  it("gives a program area a P&L for each season, and one for its offerings in no season", () => {
+    const { a, data } = seasons();
+    const out = computePlan(data);
+    const rows = out.pnl.filter((p) => p.level === "program_area_season" && p.key === a.id);
+    expect(rows.map((r) => [r.season, r.revenue_cents, r.net_cents])).toEqual([
+      ["summer", 200_000, 180_000],
+      ["fall", 10_000, -50_000],
+      [null, 30_000, 27_000],
+    ]);
+    const year = pnlOf(out, a.id, "program_area");
+    expect(rows.reduce((t, r) => t + r.net_cents, 0)).toBe(year.net_cents);
+  });
+
+  it("puts a cost left on the program area, with no offerings to divide it among, in no season", () => {
+    const a = area();
+    const out = computePlan(
+      emptyPlan({
+        program_areas: [a],
+        plan_budget_lines: [
+          budgetLine({
+            account_id: A.rent,
+            amount_cents: 5000,
+            cost_center_type: "program_area",
+            cost_center_key: a.id,
+          }),
+        ],
+      }),
+    );
+    const rows = out.pnl.filter((p) => p.level === "program_area_season");
+    expect(rows.map((r) => [r.season, r.expense_cents])).toEqual([[null, 5000]]);
   });
 });

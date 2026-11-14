@@ -49,6 +49,7 @@ export interface Schema {
   plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
   plan_resources: PlanResources[];
+  plan_result_bonuses: PlanResultBonuses[];
   plan_result_capital: PlanResultCapital[];
   plan_result_lines: PlanResultLines[];
   plan_result_pnl: PlanResultPnl[];
@@ -842,6 +843,27 @@ export interface PlanResources {
   excluded_from_mtdc: boolean;
 }
 
+/** Each bonus in a Financial Plan, for each season, and for the offerings in no season on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+export interface PlanResultBonuses {
+  id: string;
+  /** The bonus's role, such as Director. */
+  name: string;
+  /** The season it's paid on. Empty for the offerings in no season, such as Adult Learn to Sail, whose bonus is worked out on the year. */
+  season: "winter" | "spring" | "summer" | "fall" | null;
+  /** A share of the net. 0.05 means 5%. */
+  bonus_rate: string;
+  /** The net of its products in the season, which the bonus is figured on. In cents: 12500 is $125.00. */
+  net_cents: number;
+  /** Its rate × the net, or nothing when the net is a loss. In cents: 12500 is $125.00. */
+  bonus_cents: number;
+  bonus_owner_key: string;
+  program_area_key: string | null;
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
+  /** The plan in the Financial Plan that pays the bonus. */
+  version_set_member_id: string | VersionSetMembers | null;
+}
+
 /** The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultCapital {
   id: string;
@@ -883,7 +905,7 @@ export interface PlanResultLines {
 /** A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultPnl {
   id: string;
-  level: "offering" | "product" | "program_area";
+  level: "offering" | "product" | "program_area" | "program_area_season";
   subject_key: string;
   name: string;
   /** In cents: 12500 is $125.00. */
@@ -901,6 +923,8 @@ export interface PlanResultPnl {
   version_set_id: string | VersionSets;
   /** The plan in the Financial Plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
+  /** For a program area by season, the season. Empty for its offerings in no season, such as Adult Learn to Sail. */
+  season: "winter" | "spring" | "summer" | "fall" | null;
 }
 
 /** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */

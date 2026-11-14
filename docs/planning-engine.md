@@ -51,6 +51,8 @@ It returns:
   See [Line names](#line-names).
 - `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
   area's, which add up their offerings. Each also has its MTDC, enrollment, days and sailor-days.
+  Last come each program area's seasons. See [Seasons](#seasons).
+- `bonuses`: each bonus owner's net and bonus in each season. See [Bonuses](#bonuses).
 - `organization`: the organization's year. See [The organization's totals](#the-organizations-totals).
 - `perDay(p)` and `perSailorDay(p)`: an offering's, product's or area's P&L for one day it runs, and
   for one sailor on one day.
@@ -299,14 +301,32 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 - If no program's offering has any MTDC, the shared costs stay on the organization's books and the
   engine shows a warning.
 
+### Seasons
+
+- An offering's season is its `season_term`: winter, spring, summer or fall. Any other value, or
+  none, is no season.
+- Each program area has a P&L, at level `program_area_season`, for each season it has an offering
+  in, and one more, with `season` null, for its offerings in no season. Together they add up to the
+  area's P&L.
+- A season's P&L adds up its offerings'. Costs on a product or the area, and the pools, already
+  reach the offerings, so a season has its share of them.
+- A cost left on a product or the area, because it had no offerings that year, is in no season.
+
 ### Bonuses
 
-- A bonus owner earns `bonus_rate` × the net of its products for the year, if it's above zero.
-  `basis` `after_shared_costs`, the default, counts each offering's share of the pools;
+- A bonus is paid per season. In each season its products have an offering in, a bonus owner earns
+  `bonus_rate` × the net of those offerings, if it's above zero. A season's loss doesn't lower
+  another season's bonus.
+- Its products' offerings in no season make one more net, for the year, with anything booked on
+  the products themselves.
+- `basis` `after_shared_costs`, the default, counts each offering's share of the pools;
   `before_shared_costs` doesn't.
 - No bonus counts in any bonus's base.
-- The bonus is divided among its products' offerings by revenue. If none has revenue, they share it
-  evenly; if there are none this year, it's left out. Either way the engine warns.
+- Each season's bonus is divided among that season's offerings by revenue. If none has revenue,
+  they share it evenly; if there are none, it's left out. Either way the engine warns.
+- `bonuses` has a row for each owner and season: the net, which can be below zero, and the bonus.
+  Its `program_area_id` is the area of all the owner's products, or null when they're in more than
+  one.
 - The year's `payroll_tax_rate` × the bonus is booked as payroll tax on the same offerings.
 - Neither the bonus nor its tax counts in MTDC.
 - A bonus owner in a program area's plan counts only that area's products. The engine warns about

@@ -1,6 +1,8 @@
 // Row types named as docs/planning-schema.md names its collections and fields, so a caller maps
 // Directus rows onto them as they are. Optional fields are `null` when empty, as Directus returns them.
 
+import type { Season } from "./seasons.ts";
+
 /** A `uuid`. */
 export type Id = string;
 /** A `date`, as `YYYY-MM-DD`. */
@@ -403,9 +405,12 @@ export interface Totals {
 
 /** One offering's P&L for the plan year, or a product's or program area's, which adds up its offerings. */
 export interface Pnl extends Totals {
-  level: "offering" | "product" | "program_area";
+  /** `program_area_season` is a program area's offerings in one season, or in none. */
+  level: "offering" | "product" | "program_area" | "program_area_season";
   /** An offering key, a product id, or a program area id. */
   key: Id;
+  /** A `program_area_season`'s season, null for its offerings in no season. Only that level has one. */
+  season?: Season | null;
   /** Each account's total, revenue and expense alike. */
   by_account: { account_id: Id; amount_cents: number }[];
   mtdc_cents: number;
@@ -506,10 +511,26 @@ export interface PositionSummary {
   double_booked_dates: number;
 }
 
+/** A bonus owner's bonus for one season, or on its offerings in no season for the year. */
+export interface BonusSummary {
+  bonus_owner_key: Id;
+  role_name: string;
+  position_key: Id | null;
+  /** The program area of all the owner's products, or null when they're in more than one. */
+  program_area_id: Id | null;
+  season: Season | null;
+  bonus_rate: number;
+  /** The net the bonus is figured on, which can be below zero. */
+  net_cents: number;
+  bonus_cents: number;
+}
+
 export interface EngineOutput {
   lines: CostLine[];
-  /** Each offering's P&L, then each product's, then each program area's. */
+  /** Each offering's P&L, then each product's, then each program area's, then each area's seasons. */
   pnl: Pnl[];
+  /** Each bonus owner's bonus in each season it has offerings in, then in no season. */
+  bonuses: BonusSummary[];
   organization: OrganizationTotals;
   activities: ComputedActivity[];
   /** Each salaried position's pay for the year. */

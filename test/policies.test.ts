@@ -187,6 +187,7 @@ const plans = [
   "plan_result_lines",
   "plan_result_pnl",
   "plan_result_positions",
+  "plan_result_bonuses",
   "plan_result_capital",
   "plan_result_warnings",
   "version_sets",
