@@ -25,7 +25,7 @@ export interface Plan {
 
 export interface FinancialPlan {
   id: string;
-  status: "draft" | "saved" | "active";
+  status: "draft" | "saved";
   /** When it was archived, or none. */
   archived_at?: string | null;
 }
@@ -88,9 +88,11 @@ export const MEMBERS_FIXED: string;
 export const SAVED_WITH_SET: string;
 export const NEEDS_OPERATIONS: string;
 export const ONE_PER_AREA: string;
-export const ONLY_SAVED_ACTIVE: string;
-export const ACTIVE_NOT_ARCHIVED: string;
-export const STAYS_ACTIVE: string;
+export const ONE_PER_DATE: string;
+export const IN_FORCE_NOT_ARCHIVED: string;
+export const ARCHIVED_NOT_ACTIVE: string;
+export const ACTIVE_STAYS: string;
+export const BONUS_IN_OPERATIONS: string;
 
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each plan, with every row and its

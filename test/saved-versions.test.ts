@@ -1,17 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  ACTIVE_NOT_ARCHIVED,
   databaseError,
   draftQueue,
   guard,
   MEMBERS_FIXED,
   ONE_PER_AREA,
-  ONLY_SAVED_ACTIVE,
   REFUSED,
   RESULTS_BY_SAVE,
   SAVED_WITH_SET,
   SET_STAYS,
-  STAYS_ACTIVE,
   type FinancialPlan,
   type Lookup,
   type Plan,
@@ -27,7 +24,6 @@ const versions: Record<string, Version> = {
 const sets: Record<string, FinancialPlan> = {
   draft: { id: "draft", status: "draft" },
   saved: { id: "saved", status: "saved" },
-  active: { id: "active", status: "active" },
   archived: { id: "archived", status: "saved", archived_at: "2027-01-01T00:00:00.000Z" },
 };
 // Each offering is named for the version it belongs to.
@@ -143,26 +139,20 @@ describe("the saved-versions hook", () => {
       }
     });
 
-    it("refuses an active one, or marking an archived one active", async () => {
-      await expect(
-        check({ collection: "version_sets", event: "update", payload: { archived_at: now }, keys: ["active"] }),
-      ).rejects.toThrow(ACTIVE_NOT_ARCHIVED);
-      await expect(
-        check({ collection: "version_sets", event: "update", payload: { status: "active" }, keys: ["archived"] }),
-      ).rejects.toThrow(ACTIVE_NOT_ARCHIVED);
+    it("leaves the plan in force, and dates, to the database's triggers", async () => {
       await expect(
         check({
           collection: "version_sets",
           event: "update",
-          payload: { status: "active", archived_at: null },
+          payload: { effective_from: "2026-09-01", archived_at: null },
           keys: ["archived"],
         }),
-      ).resolves.toEqual({ status: "active", archived_at: null });
+      ).resolves.toEqual({ effective_from: "2026-09-01", archived_at: null });
     });
   });
 
   describe("a saved Financial Plan", () => {
-    it("can't be changed, apart from its name and note", async () => {
+    it("can't be changed, apart from its name, its note, its date, and whether it's archived", async () => {
       for (const payload of [{ fiscal_year: 2028 }, { status: "draft" }, { message: "Adopted", fiscal_year: 2028 }]) {
         await expect(check({ collection: "version_sets", event: "update", payload, keys: ["saved"] })).rejects.toThrow(
           SET_STAYS,
@@ -179,6 +169,14 @@ describe("the saved-versions hook", () => {
       await expect(
         check({ collection: "version_sets", event: "update", payload: { name: "Board budget" }, keys: ["saved"] }),
       ).resolves.toEqual({ name: "Board budget" });
+      await expect(
+        check({
+          collection: "version_sets",
+          event: "update",
+          payload: { status: "saved", effective_from: "2026-09-01" },
+          keys: ["saved"],
+        }),
+      ).resolves.toEqual({ status: "saved", effective_from: "2026-09-01" });
     });
 
     it("can't be deleted, but where dev's tests clean up", async () => {
@@ -214,32 +212,14 @@ describe("the saved-versions hook", () => {
     });
   });
 
-  describe("marking a Financial Plan active", () => {
-    it("takes a saved one, with or without its note", async () => {
-      for (const payload of [{ status: "active" }, { status: "active", message: "Adopted" }]) {
-        await expect(check({ collection: "version_sets", event: "update", payload, keys: ["saved"] })).resolves.toEqual(
+  describe("making a Financial Plan active from a date", () => {
+    it("takes a draft or a saved one", async () => {
+      for (const key of ["draft", "saved"]) {
+        const payload = { effective_from: "2026-07-01" };
+        await expect(check({ collection: "version_sets", event: "update", payload, keys: [key] })).resolves.toEqual(
           payload,
         );
       }
-    });
-
-    it("refuses a draft", async () => {
-      await expect(
-        check({ collection: "version_sets", event: "update", payload: { status: "active" }, keys: ["draft"] }),
-      ).rejects.toThrow(ONLY_SAVED_ACTIVE);
-    });
-
-    it("keeps an active one as it is, apart from its name and note, until another is marked active", async () => {
-      const update = (payload: Record<string, unknown>) =>
-        check({ collection: "version_sets", event: "update", payload, keys: ["active"] });
-      await expect(update({ message: "Adopted" })).resolves.toEqual({ message: "Adopted" });
-      await expect(update({ status: "active" })).resolves.toEqual({ status: "active" });
-      for (const status of ["saved", "draft"]) await expect(update({ status })).rejects.toThrow(STAYS_ACTIVE);
-      await expect(update({ name: "Adopted budget" })).resolves.toEqual({ name: "Adopted budget" });
-      await expect(update({ fiscal_year: 2028 })).rejects.toThrow(SET_STAYS);
-      await expect(
-        check({ collection: "version_sets", event: "delete", payload: ["active"], keys: ["active"] }),
-      ).rejects.toThrow(SET_STAYS);
     });
   });
 

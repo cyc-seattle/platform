@@ -107,12 +107,12 @@ Feature: Plans
   Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
 
     Example: A Financial Plan can start with only an Operations Plan
-      Given a user with the Plan Writer policy
+      Given a finance committee member
       When they start a Financial Plan for next year with only an Operations Plan
       Then the Financial Plan is a draft, with the Operations Plan in it
 
     Example: A Financial Plan can't be saved without an Operations Plan
-      Given a user with the Plan Writer policy
+      Given a finance committee member
       And a draft Financial Plan with a Program Plan but no Operations Plan
       When they try to save the Financial Plan
       Then they're told that the Financial Plan needs an Operations Plan
@@ -121,7 +121,7 @@ Feature: Plans
   Rule: A Financial Plan holds at most one Program Plan for each program area
 
     Example: A second Program Plan for the same program area
-      Given a user with the Plan Writer policy
+      Given a finance committee member
       And a draft Financial Plan with a Program Plan for Youth Racing
       When they try to add another Program Plan for Youth Racing to it
       Then they're told that the Financial Plan already has a Program Plan for Youth Racing
@@ -129,7 +129,7 @@ Feature: Plans
   Rule: Saving a Financial Plan saves all of its plans together
 
     Example: The Operations Plan and both Program Plans are saved with the Financial Plan
-      Given a user with the Plan Writer policy
+      Given a finance committee member
       And a draft Financial Plan with an Operations Plan and two Program Plans
       When they save the Financial Plan
       Then the Financial Plan and all three of its plans are saved at the same moment
@@ -175,39 +175,22 @@ Feature: Plans
       When they start a new Financial Plan from "Budget"
       Then its practice on June 6 is the same practice as the one in "Budget"
 
-  Rule: A planner marks one saved Financial Plan active for its year
-
-    Example: Marking another Financial Plan active replaces the active one
-      Given a user with the Plan Writer policy
-      And two saved Financial Plans for next year, "Budget" marked active and "Adopted budget"
-      When they mark "Adopted budget" active
-      Then "Adopted budget" is the active Financial Plan for next year
-      And "Budget" is saved, and no longer active
-
-    Example: A draft can't be marked active
-      Given a user with the Plan Writer policy
-      And a draft Financial Plan
-      When they try to mark it active
-      Then they're told that only a saved Financial Plan can be active
-
-  @pending
   Rule: The plan in force on a day is the active one with the latest date on or before it
 
     Example: A re-plan for the fall takes over on its date
-      Given a Financial Plan for next year named "Budget", active from July 1
+      Given a Financial Plan named "Budget", active from July 1
       And one named "Fall re-plan", active from September 1
       Then "Budget" is in force on August 31
       And "Fall re-plan" is in force on September 1
 
     Example: A plan made active ahead of time isn't in force yet
       Given a finance committee member
-      And a Financial Plan for this year named "Budget", in force today
-      And a draft Financial Plan for this year named "Spring re-plan"
+      And a Financial Plan named "Budget", in force today
+      And a draft Financial Plan named "Spring re-plan"
       When they make "Spring re-plan" active from next month
       Then "Budget" is still in force today
       And "Spring re-plan" is in force from next month
 
-  @pending
   Rule: A draft can be active, and program directors keep changing it while it's in force
 
     Example: A program director changes the draft in force
@@ -222,7 +205,6 @@ Feature: Plans
       When they save it
       Then it's saved, and still in force
 
-  @pending
   Rule: The finance committee can change any plan's date
 
     Example: Moving a saved plan's date earlier
@@ -233,35 +215,36 @@ Feature: Plans
 
     Example: Two Financial Plans for a year can't be active from the same date
       Given a finance committee member
-      And a Financial Plan for next year named "Budget", active from July 1
-      And a draft Financial Plan for next year named "Fall re-plan"
+      And a Financial Plan named "Budget", active from July 1
+      And a draft Financial Plan named "Fall re-plan"
       When they make "Fall re-plan" active from July 1
       Then they're told that another Financial Plan for the year is active from that date
 
-  @pending
   Rule: The plan in force can't be archived
 
     Example: Archiving the plan in force
       Given a finance committee member
-      And a Financial Plan for this year named "Budget", in force today
+      And a Financial Plan named "Budget", in force today
       When they try to archive "Budget"
       Then they're told that the plan in force can't be archived
 
     Example: Archiving a plan another has taken over from
       Given a finance committee member
-      And a Financial Plan for this year named "Budget", active from last month
+      And a Financial Plan named "Budget", active from last month
       And one named "Re-plan", in force today
       When they archive "Budget"
       Then "Budget" is archived
 
-  @pending
   Rule: A program director can start a draft and change any Program Plan in it, but not the Operations Plan
 
-    Example: A program director starts a draft and changes another area's Program Plan
+    Example: A program director starts a Financial Plan from another
       Given a program director
-      And a saved Financial Plan named "Budget"
-      When they start a new Financial Plan from "Budget"
-      Then they can change any Program Plan in the new Financial Plan
+      Then they can start a Financial Plan from another
+
+    Example: A program director changes a Program Plan in a draft someone else started
+      Given a program director
+      And a draft Financial Plan someone else started
+      Then they can change its Program Plans
       But they can't change its Operations Plan
 
     Example: A program director can't save a Financial Plan, make one active, or archive one
@@ -269,16 +252,20 @@ Feature: Plans
       And a draft Financial Plan
       Then they can't save it, make it active, or archive it
 
-  @pending
   Rule: A finance committee member can change the Operations Plan in a draft, and save, make active, and archive a Financial Plan
 
     Example: A finance committee member changes the Operations Plan
       Given a finance committee member
-      And a draft Financial Plan
-      Then they can change its Operations Plan
-      And they can save it, make it active, and archive it
+      And a draft Financial Plan someone else started
+      Then they can change its Program Plans
+      And they can change its Operations Plan
 
-  @pending
+    Example: A finance committee member makes a draft active, saves it, and archives another
+      Given a finance committee member
+      And a draft Financial Plan
+      Then they can make it active from a date, and save it
+      And they can archive a Financial Plan that isn't active
+
   Rule: Bonuses are set only in the Operations Plan
 
     Example: A bonus can't go in a Program Plan, even for an admin
@@ -451,19 +438,13 @@ Feature: Plans
         | capital         | -$20,000 |
         | total           | $15,000  |
 
-  Rule: A Program Plan can pay a director a bonus on that area's programs
+  Rule: The Operations Plan can pay a director a bonus on a program area's programs
 
-    Example: A director's bonus in a Program Plan
-      Given a Program Plan that pays its director 50% of its programs' net
+    Example: A director's bonus on their area's programs
+      Given the Operations Plan pays a program area's director 50% of its programs' net
       And its programs make $10,000 after their costs and shared costs
       When a planner calculates the P&L
       Then the director's bonus is $5,000
-
-    Example: A Program Plan can't pay a bonus on another area's program
-      Given a Program Plan that pays its director a bonus on a program from another program area
-      When a planner calculates the P&L
-      Then the planner is warned that the bonus is on another program area's program
-      And the other area's program doesn't count toward the bonus
 
   Rule: A bonus is figured on the net after shared costs, or before them, as the plan says
 
@@ -785,7 +766,7 @@ Feature: Plans
   Rule: A planner keeps the draft their AI filled in by saving it, or rejects it by deleting it
 
     Example: A planner saves the draft their AI filled in
-      Given a user with the Plan Writer policy
+      Given a finance committee member
       And a saved Financial Plan named "Budget"
       And a draft their AI started from "Budget", with its blocks filled in and a note of what it changed
       When they save the draft
@@ -808,9 +789,10 @@ Feature: Plans
       Then they can see every part of the plan, wages and bonus rates included
 
       Examples:
-        | policy      |
-        | Plan Reader |
-        | Plan Writer |
+        | policy        |
+        | Plan Reader   |
+        | Plan Writer   |
+        | Plan Approver |
 
   Rule: A Plan Reader can't change plans
 
@@ -818,26 +800,13 @@ Feature: Plans
       Given a user with the Plan Reader policy
       Then they can't change plans
 
-  Rule: A Plan Writer can change any plan in a draft Financial Plan, even one someone else started
-
-    Example: A Plan Writer changes another planner's Program Plan
-      Given a user with the Plan Writer policy
-      And a draft Financial Plan someone else started
-      Then they can change any of its plans
-
-  Rule: A Plan Writer can start, save, and mark a Financial Plan active, and a Plan Reader can only look at one
-
-    Example: A Plan Writer starts, saves, and marks a Financial Plan active
-      Given a user with the Plan Writer policy
-      Then they can start a Financial Plan
-      And they can save a draft Financial Plan
-      And they can mark a saved Financial Plan active
+  Rule: A Plan Reader can only look at a Financial Plan
 
     Example: A Plan Reader looks at a Financial Plan
       Given a user with the Plan Reader policy
       And a saved Financial Plan
       Then they can see the Financial Plan and its P&L
-      But they can't start, save, or mark a Financial Plan active
+      But they can't start, save, or make a Financial Plan active
 
   Rule: Only admins and planners can see plans
 

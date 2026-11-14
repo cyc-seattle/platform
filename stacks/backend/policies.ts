@@ -143,6 +143,39 @@ export function planCollections(schemas: LoadedSchema[]): string[] {
 
 /** A Financial Plan's plans, which change only while it's a draft. */
 const MEMBERS = "version_set_members";
+const PLANS = "plans";
+const VERSIONS = "plan_versions";
+
+/** What a Plan Writer sets on a Financial Plan: not its status, or the date it's active from. */
+const SET_FIELDS = ["id", "organization_id", "fiscal_year", "name", "message", "parent_id"];
+
+/** The plans' collections whose rows belong to one plan copy. */
+function versionedIn(plans: string[], schemas: LoadedSchema[]): string[] {
+  return plans.filter((collection) => collection !== MEMBERS && fieldsIn(schemas, collection).includes("version_id"));
+}
+
+/**
+ * The collections only an Operations Plan uses: the rules every program area plans within, which only
+ * a Plan Approver changes (cyc-seattle/platform#251). Every other plan row is in a Program Plan, or
+ * in either kind.
+ */
+export const OPERATIONS_ONLY = [
+  "plan_rates",
+  "plan_staff_levels",
+  "plan_salaried_positions",
+  "plan_salaried_bookings",
+  "plan_resources",
+  "plan_boat_rates",
+  "plan_pools",
+  "plan_revenue_charges",
+  "plan_bonus_owners",
+  "plan_bonus_owner_products",
+  "plan_closed_dates",
+  "plan_capital_items",
+];
+
+/** A plan copy's rows, of one kind of plan. */
+const inPlan = (kind: "program_area" | "operations") => ({ version_id: { plan_id: { kind: { _eq: kind } } } });
 
 /** A saved Financial Plan's results, which only the saved-versions hook writes, once, when it's saved. */
 export function isResultCollection(collection: string): boolean {
@@ -185,7 +218,10 @@ export function writerRules(
 
 const MEDICAL = "medical_profiles";
 
-/** The policies a group can give. Each is coarse: whole collections, with no row filter. */
+/**
+ * The policies a group can give. Each is coarse: whole collections, with no row filter, but the
+ * planners', which split a Financial Plan's rows by the kind of plan they're in.
+ */
 export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const collections = crmCollections(schemas).filter((collection) => collection !== MEDICAL);
   const catalog = catalogCollections(schemas);
@@ -262,20 +298,59 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       rules: [...readCatalog, readUserNames, ...plans.map((collection) => ({ collection, action: "read" as const }))],
     },
     // The saved-versions hook keeps a saved version from changing, for every user (docs/planning-schema.md).
+    // Program directors: their own programs, within the Operations Plan's rules.
     {
       key: "plan-writer",
       name: "Plan Writer",
       icon: "edit_calendar",
       description:
-        "Changes any plan in a draft Financial Plan, saves a Financial Plan, and marks a saved one active. Sees the catalog and users' names.",
+        "Starts a draft Financial Plan, and changes any Program Plan in a draft. Sees every plan, the catalog, and users' names.",
       rules: [
         ...readCatalog,
         readUserNames,
-        ...plans.flatMap((collection) =>
-          (isResultCollection(collection)
-            ? (["read"] as const)
-            : (["create", "read", "update", "delete"] as const)
-          ).map((action) => ({ collection, action })),
+        ...plans.map((collection) => ({ collection, action: "read" as const })),
+        // The hook copies a new draft's plans from its parent, and refuses a status other than draft.
+        { collection: "version_sets", action: "create", fields: [...SET_FIELDS, "status"] },
+        { collection: "version_sets", action: "update", fields: SET_FIELDS.filter((f) => f !== "id") },
+        { collection: "version_sets", action: "delete", permissions: { status: { _eq: "draft" } } },
+        {
+          collection: VERSIONS,
+          action: "update",
+          fields: ["message", "rules"],
+          permissions: { plan_id: { kind: { _eq: "program_area" } } },
+        },
+        ...versionedIn(plans, schemas)
+          .filter((collection) => !OPERATIONS_ONLY.includes(collection))
+          .flatMap((collection) =>
+            (["create", "update", "delete"] as const).map((action) => ({
+              collection,
+              action,
+              permissions: inPlan("program_area"),
+            })),
+          ),
+      ],
+    },
+    // The finance committee, who also have Plan Writer: the rules, and which Financial Plan is in force.
+    {
+      key: "plan-approver",
+      name: "Plan Approver",
+      icon: "approval",
+      description:
+        "Changes the Operations Plan in a draft, saves a Financial Plan, makes one active from a date, and archives one. Sees every plan, the catalog, and users' names.",
+      rules: [
+        ...readCatalog,
+        readUserNames,
+        ...plans.map((collection) => ({ collection, action: "read" as const })),
+        { collection: "version_sets", action: "update", fields: ["status", "effective_from", "archived_at"] },
+        ...[PLANS, VERSIONS, MEMBERS].flatMap((collection) =>
+          (["create", "update", "delete"] as const).map((action) => ({ collection, action })),
+        ),
+        ...versionedIn(plans, schemas).flatMap((collection) =>
+          (["create", "update", "delete"] as const).map((action) => ({
+            collection,
+            action,
+            permissions: inPlan("operations"),
+          })),
         ),
       ],
     },
@@ -379,9 +454,7 @@ export function savedVersionsConfig(
   deletable: boolean,
   platformVersion: string,
 ): SavedVersionsConfig {
-  const versioned = planCollections(schemas).filter(
-    (collection) => collection !== MEMBERS && fieldsIn(schemas, collection).includes("version_id"),
-  );
+  const versioned = versionedIn(planCollections(schemas), schemas);
   const relations = schemas.flatMap(
     ({ schema }) =>
       (schema as { relations?: { collection: string; field: string; related_collection: string | null }[] })

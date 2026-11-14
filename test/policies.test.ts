@@ -9,6 +9,7 @@ import {
   fieldsIn,
   groupPolicies,
   groupPoliciesConfig,
+  OPERATIONS_ONLY,
   queryGuardConfig,
   savedVersionsConfig,
   WEBSITE_BUILD,
@@ -46,6 +47,7 @@ describe("the policies a group can give", () => {
       "Catalog Writer",
       "Medical Reader",
       "Medical Writer",
+      "Plan Approver",
       "Plan Reader",
       "Plan Writer",
     ]);
@@ -66,8 +68,9 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters and no field lists, but a person's writable fields and CRM Writer's two hand-set ones", () => {
-    for (const rule of policies.flatMap((policy) => policy.rules)) {
+  it("are coarse: no row filters but the planners' by kind of plan, and no field lists but a person's writable fields and CRM Writer's two hand-set ones", () => {
+    const planners = ["Plan Writer", "Plan Approver"];
+    for (const rule of policies.filter(({ name }) => !planners.includes(name)).flatMap((policy) => policy.rules)) {
       expect(rule.permissions).toBeUndefined();
     }
     const fielded = named("CRM Writer").rules.filter((rule) => rule.fields && rule.collection !== "people");
@@ -197,18 +200,18 @@ const results = plans.filter((collection) => collection.startsWith("plan_result"
 describe("the Plan policies", () => {
   const catalog = collections("Catalog Reader", "read");
 
-  it("let both see every plan and the catalog, with no field held back", () => {
-    for (const name of ["Plan Reader", "Plan Writer"]) {
+  it("let each see every plan and the catalog, with no field held back", () => {
+    for (const name of ["Plan Reader", "Plan Writer", "Plan Approver"]) {
       const rules = named(name).rules.filter((rule) => rule.collection !== "directus_users");
       expect(
         [...new Set(rules.filter((rule) => rule.action === "read").map((rule) => rule.collection))].sort(),
       ).toEqual([...plans, ...catalog].sort());
-      expect(rules.every((rule) => rule.fields === undefined)).toBe(true);
+      expect(rules.filter((rule) => rule.action === "read").every((rule) => rule.fields === undefined)).toBe(true);
     }
   });
 
-  it("let both see users' first and last names, and nothing else of theirs", () => {
-    for (const name of ["Plan Reader", "Plan Writer"]) {
+  it("let each see users' first and last names, and nothing else of theirs", () => {
+    for (const name of ["Plan Reader", "Plan Writer", "Plan Approver"]) {
       expect(named(name).rules.filter((rule) => rule.collection === "directus_users")).toEqual([
         { collection: "directus_users", action: "read", fields: ["id", "first_name", "last_name"] },
       ]);
@@ -219,12 +222,76 @@ describe("the Plan policies", () => {
     expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Plan Writer change plans and Financial Plans, and none of the catalog or the results", () => {
+  const writes = (name: string) => named(name).rules.filter((rule) => rule.action !== "read");
+  const rows = plans.filter(
+    (collection) => !["plans", "plan_versions", "version_sets", "version_set_members", ...results].includes(collection),
+  );
+  const inPlan = (kind: string) => ({ version_id: { plan_id: { kind: { _eq: kind } } } });
+
+  it("let a Plan Writer change a Program Plan's rows, and none of the Operations Plan's own", () => {
     for (const action of ["create", "update", "delete"]) {
-      expect([...collections("Plan Writer", action)].sort()).toEqual(
-        plans.filter((collection) => !results.includes(collection)).sort(),
+      const rules = writes("Plan Writer").filter((rule) => rule.action === action && rows.includes(rule.collection));
+      expect(rules.map((rule) => rule.collection).sort()).toEqual(
+        rows.filter((collection) => !OPERATIONS_ONLY.includes(collection)).sort(),
+      );
+      expect(rules.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("program_area")))).toBe(
+        true,
       );
     }
+  });
+
+  it("let a Plan Writer start and delete a draft, and name it, but not save it, date it, or archive it", () => {
+    const sets = writes("Plan Writer").filter((rule) => rule.collection === "version_sets");
+    expect(sets).toEqual([
+      {
+        collection: "version_sets",
+        action: "create",
+        fields: ["id", "organization_id", "fiscal_year", "name", "message", "parent_id", "status"],
+      },
+      {
+        collection: "version_sets",
+        action: "update",
+        fields: ["organization_id", "fiscal_year", "name", "message", "parent_id"],
+      },
+      { collection: "version_sets", action: "delete", permissions: { status: { _eq: "draft" } } },
+    ]);
+    expect(writes("Plan Writer").filter((rule) => ["plans", "version_set_members"].includes(rule.collection))).toEqual(
+      [],
+    );
+    expect(writes("Plan Writer").filter((rule) => rule.collection === "plan_versions")).toEqual([
+      {
+        collection: "plan_versions",
+        action: "update",
+        fields: ["message", "rules"],
+        permissions: { plan_id: { kind: { _eq: "program_area" } } },
+      },
+    ]);
+  });
+
+  it("let a Plan Approver change the Operations Plan's rows, which plans a Financial Plan holds, and when it's in force", () => {
+    for (const action of ["create", "update", "delete"]) {
+      const rules = writes("Plan Approver").filter((rule) => rule.action === action && rows.includes(rule.collection));
+      expect(rules.map((rule) => rule.collection).sort()).toEqual([...rows].sort());
+      expect(rules.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("operations")))).toBe(
+        true,
+      );
+      for (const collection of ["plans", "plan_versions", "version_set_members"]) {
+        expect(collections("Plan Approver", action).has(collection), `${action} ${collection}`).toBe(true);
+      }
+    }
+    expect(writes("Plan Approver").filter((rule) => rule.collection === "version_sets")).toEqual([
+      { collection: "version_sets", action: "update", fields: ["status", "effective_from", "archived_at"] },
+    ]);
+  });
+
+  it("let no planner write a Financial Plan's results", () => {
+    for (const name of ["Plan Writer", "Plan Approver"]) {
+      expect(writes(name).filter((rule) => results.includes(rule.collection))).toEqual([]);
+    }
+  });
+
+  it("leave none of the Operations Plan's own collections out", () => {
+    expect(OPERATIONS_ONLY.every((collection) => rows.includes(collection))).toBe(true);
   });
 
   it("are the only policies that see plans", () => {

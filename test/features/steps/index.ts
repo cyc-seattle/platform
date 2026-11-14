@@ -151,6 +151,9 @@ Step("a user with the {role} role and the {policy} policy", (_, role: string, po
   setThey(actor({ role, policies: [policy] })),
 );
 Step("{service}'s service account", (_, service: string) => setThey(actor({ service })));
+// The two groups that plan, as planning.feature describes them.
+Step("a finance committee member", () => setThey(actor({ policies: ["Plan Writer", "Plan Approver"] })));
+Step("a program director", () => setThey(actor({ policies: ["Plan Writer"] })));
 
 const ACTIONS = ["create", "read", "update", "delete"] as const;
 type Action = (typeof ACTIONS)[number];
