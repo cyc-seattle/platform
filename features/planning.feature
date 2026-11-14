@@ -156,6 +156,26 @@ Feature: Plans
       When they start a new Financial Plan from "Budget"
       Then its practice on June 6 is the same practice as the one in "Budget"
 
+  Rule: An offering runs in winter, spring, summer, or fall, or in no season
+
+    Example: An offering in the summer
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan with an offering
+      When they set the offering's season to summer
+      Then the offering runs in the summer
+
+    Example: An offering with no season, such as Adult Learn to Sail
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan with an offering in the summer
+      When they set the offering to no season
+      Then the offering runs in no season
+
+    Example: A season that isn't one of the four
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan with an offering
+      When they set the offering's season to "Term 2"
+      Then they're told that the season must be winter, spring, summer, or fall
+
   Rule: A planner marks one saved Financial Plan active for its year
 
     Example: Marking another Financial Plan active replaces the active one

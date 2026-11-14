@@ -760,7 +760,8 @@ export interface PlanOfferings {
   key: string;
   product_id: string | Products;
   name: string;
-  season_term: string | null;
+  /** The season it runs in. Leave it empty for one with no season, such as Adult Learn to Sail. */
+  season_term: "winter" | "spring" | "summer" | "fall" | null;
   starts_on: string;
   ends_on: string;
   capacity: number | null;
