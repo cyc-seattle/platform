@@ -47,14 +47,14 @@ describe("activities", () => {
     expect(pnlOf(out, o.key).sailor_days).toBe(12);
   });
 
-  it("leaves out an offering that starts in another plan year", () => {
+  it("schedules an offering's activities on both sides of the plan year's start", () => {
     const p = product();
     const o = offering(p.id, { starts_on: "2026-12-01", ends_on: "2027-01-31", target_enrollment: 6 });
     const data = emptyPlan({
       products: [p],
       plan_offerings: [o],
-      plan_activities: [activity(o.id, { date: "2027-01-05" })],
+      plan_activities: [activity(o.id, { date: "2026-12-05" }), activity(o.id, { date: "2027-01-05" })],
     });
-    expect(computePlan(data).activities).toEqual([]);
+    expect(computePlan(data).activities.map((a) => a.date)).toEqual(["2026-12-05", "2027-01-05"]);
   });
 });

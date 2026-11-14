@@ -18,7 +18,7 @@ export interface ScheduledActivity {
 }
 
 /**
- * The plan year's activities. Paid time is start to end plus setup and put-away; on-water time is
+ * The plan's activities. Paid time is start to end plus setup and put-away; on-water time is
  * `on_water_minutes` if set, otherwise the whole span, and zero when the activity uses no boats.
  */
 export function scheduleActivities(ctx: Context): ScheduledActivity[] {
@@ -43,7 +43,6 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
       ctx.warn("unknown_offering", `Activity ${activity.key} is for an offering that isn't in the plan`, activity.key);
       continue;
     }
-    if (!ctx.inYear(offering)) continue;
     const timed = activity.start_time != null && activity.end_time != null;
     const start = timed ? minutesOf(activity.start_time as string) : null;
     let end = timed ? minutesOf(activity.end_time as string) : null;

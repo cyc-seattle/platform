@@ -293,7 +293,7 @@ export interface PlanBoatRate extends Versioned {
   quantity: number | null;
 }
 
-/** A group of shared costs, such as G&A, divided among all of the plan year's offerings by MTDC. */
+/** A group of shared costs, such as G&A, divided among all of the plan's offerings by MTDC. */
 export interface PlanPool extends Versioned {
   name: string;
 }

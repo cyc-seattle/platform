@@ -95,8 +95,13 @@ Plan Writers can read them.
 
 ### The plan year
 
-- All of an offering's revenue and costs go in the plan year it starts in, even if it runs into the
-  next year.
+- All of an offering's revenue and costs go in its plan's year, whatever its dates. A winter
+  offering from December to March sits whole in one plan, normally the year most of its sessions
+  fall in ([cyc-seattle/platform#252](https://github.com/cyc-seattle/platform/issues/252)). The
+  organization books on a cash basis, so the books may record its fees and wages a year apart from
+  the plan; budget-against-actuals tracking deals with that, not the plan.
+- The engine checks coaches and boats only across the blocks of one Financial Plan, so a block in
+  late December of one plan and a block in January of the next aren't checked against each other.
 - Each staff level, salaried position, resource and boat rate has one rate for the year.
 - Each cost the engine calculates (coach wages, salaries, payroll tax, RIBs, boat maintenance,
   resources, travel and COGS) is recorded in the account set for it in
