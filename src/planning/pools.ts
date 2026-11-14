@@ -9,12 +9,7 @@ function isProgram(ctx: Context, productId: Id): boolean {
 
 /** Non-program's net before the pools: its offerings' revenue less their own costs. */
 function nonProgramNet(ctx: Context): number {
-  const keys = new Set(
-    ctx
-      .fyOfferings()
-      .filter((o) => !isProgram(ctx, o.product_id))
-      .map((o) => o.key),
-  );
+  const keys = new Set(ctx.data.plan_offerings.filter((o) => !isProgram(ctx, o.product_id)).map((o) => o.key));
   let net = 0;
   for (const e of ctx.entries) {
     if (e.cost_center_type !== "offering" || !keys.has(e.cost_center_key ?? "")) continue;
@@ -26,7 +21,7 @@ function nonProgramNet(ctx: Context): number {
 }
 
 /**
- * Divides everything in each pool among the plan year's programs' offerings by MTDC, keeping each
+ * Divides everything in each pool among the plan's programs' offerings by MTDC, keeping each
  * amount's account and function. Non-program's net offsets the pools first (cyc-seattle/platform#242):
  * that part of each pooled amount stays with the organization, so a gain shrinks every program's
  * share and a loss grows it. Shared costs never count toward MTDC, so one pool's split never shifts
@@ -34,8 +29,7 @@ function nonProgramNet(ctx: Context): number {
  */
 export function allocatePools(ctx: Context): void {
   const weights = new Map(
-    ctx
-      .fyOfferings()
+    ctx.data.plan_offerings
       .filter((o) => isProgram(ctx, o.product_id))
       .map((o) => [o.key, Math.max(0, mtdc(ctx, o.key))]),
   );

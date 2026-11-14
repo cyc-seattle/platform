@@ -59,6 +59,29 @@ Step("the planner is warned that the program has no program area", () => {
   expect(p.warned("program_without_area")).toBe(true);
 });
 
+// The plan is for PLAN_YEAR, 2027, and the winter starts the December before it.
+let winter: Item | undefined;
+Step(
+  "a winter offering in the 2027 plan, from December 2026 to March 2027, that takes in {money}",
+  async (_, money: string) => {
+    const area = await p.area();
+    winter = await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1, 0, {
+      starts_on: `${PLAN_YEAR - 1}-12-07`,
+      ends_on: `${PLAN_YEAR}-03-28`,
+    });
+  },
+);
+Step(
+  "a practice on December 7, 2026 from {times}, in a block with {count} coaches paid {money} an hour",
+  async (_, times: string, count: string, money: string) => {
+    await blockOf([winter!], times, await coachesPaid(count, money), `${PLAN_YEAR - 1}-12-07`);
+  },
+);
+Step("the offering takes in {money}", (_, money: string) => {
+  const pnl = p.out.pnl.find((x) => x.level === "offering" && x.key === first());
+  expect(pnl?.revenue_cents).toBe(cents(money));
+});
+
 /** A program area with two programs, each with one offering. */
 async function twoOfferings(price: number, costs: [number, number]): Promise<string> {
   const area = await p.area();

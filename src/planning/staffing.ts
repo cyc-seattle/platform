@@ -554,7 +554,7 @@ export class Staffing {
     const { ctx } = this;
     for (const trip of ctx.data.plan_trips) {
       const offering = ctx.offeringsById.get(trip.offering_id);
-      if (offering === undefined || !ctx.inYear(offering)) continue;
+      if (offering === undefined) continue;
       const travel = (a: ScheduledActivity) => a.kind === "travel" && a.trip?.id === trip.id;
       const staffed = [...blocks.values()].filter((b) => b.members.some(travel));
       const coaches = Math.max(0, ...staffed.map((b) => sum(b.staff.map((s) => s.count))));

@@ -223,6 +223,18 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the program has no program area
 
+  Rule: An offering counts in full in the plan it's in, even when its dates run past that plan's year
+    A winter program usually goes in the plan for the year most of its sessions fall in. The
+    organization books on a cash basis, so fees paid in December show up in the books a year before
+    the plan counts them. Budget-against-actuals tracking deals with that gap, not the plan.
+
+    Example: A winter program from December to March counts in full in the 2027 plan
+      Given a winter offering in the 2027 plan, from December 2026 to March 2027, that takes in $10,000
+      And a practice on December 7, 2026 from 9am to noon, in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering takes in $10,000
+      And the offering pays $120 of coaches' wages
+
   Rule: A program area's P&L adds up its offerings and the costs charged to the area
 
     Example: A program area's P&L includes its storage
