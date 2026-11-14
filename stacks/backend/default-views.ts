@@ -267,7 +267,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_result_pnl",
     sort: ["version_set_id.name", "level", "name"],
-    fields: ["name", "level", "revenue_cents", "expense_cents", "net_cents", "version_set_id"],
+    fields: ["name", "level", "term_name", "revenue_cents", "expense_cents", "net_cents", "version_set_id"],
   },
   {
     collection: "plan_result_positions",
@@ -281,6 +281,11 @@ export const defaultViews: DefaultView[] = [
       "double_booked_hours",
       "version_set_id",
     ],
+  },
+  {
+    collection: "plan_result_bonuses",
+    sort: ["version_set_id.name", "name", "term_starts_on"],
+    fields: ["name", "term_name", "net_cents", "bonus_cents", "version_set_id"],
   },
   {
     collection: "plan_result_capital",
