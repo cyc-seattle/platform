@@ -17,7 +17,7 @@ export function countDays(ctx: Context, activities: ComputedActivity[]): void {
  * account, a cost.
  */
 export function bookRevenue(ctx: Context): void {
-  for (const offering of ctx.fyOfferings()) {
+  for (const offering of ctx.data.plan_offerings) {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) {
       ctx.warn("unknown_product", `Offering ${offering.key} is for a product that doesn't exist`, offering.key);

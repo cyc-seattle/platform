@@ -53,32 +53,33 @@ Feature: Plans
 
   Each Program Plan sets two numbers for each of its programs: the staff level that coaches it, such
   as Level 1 Instructor, and how many sailors each coach can take. These are the program's
-  settings, and two drafts can try different ones. Each boat class says how many sailors one boat
-  takes. The Operations Plan says how many boats of each class the organization has, and how many
-  RIBs and other equipment.
+  settings, and two drafts can try different ones. Each boat class says the most sailors one boat
+  can safely take. The asset list says which boats the organization has on each day
+  (assets.feature), so every plan counts the same boats. The Operations Plan sets each boat class's
+  rates for the year: fuel and upkeep for each hour one of the organization's boats is on the water,
+  and a charter rate for each day one is chartered.
 
   Each plan can also hold the planner's rules: what they want that the plan's numbers don't
   capture, in their own words, for their AI to follow when it fills in the plan. A program has its
   own rules, such as "if there are more than 12 Guppies, add a Junior Instructor", or "Guppies can
   sail the Harpoon, up to 10 kids, instead of Sailqubes". A Program Plan's rules cover all of its
   programs, such as "J-Pod and K-Pod share coaches on Wednesdays". The Operations Plan's rules cover
-  the whole organization, such as "keep one RIB ashore for repairs on summer weekdays". The P&L
+  the whole organization, such as "keep one coach boat ashore for repairs on summer weekdays". The P&L
   never reads the rules.
 
   The schedule is planned in blocks. A block is one or more activities on one date that share
   their coaches and boats, such as Guppies and Minnows on the morning of July 13. Each block lists
-  its staff (the people who coach it), the RIBs and other equipment it uses, and its boats of each
-  class: the organization's own, and the ones sailors bring. A block runs from its first activity's start
-  to its last activity's end. The P&L costs only what the blocks are given, and nothing works out
-  how many coaches or boats a program needs. The planner, or their AI, decides that from the
-  program settings and the rules.
+  its staff (the people who coach it) and its boats of each class, sailboats and powerboats such as
+  coach boats: the organization's own, the ones it charters, and the ones sailors bring. A block runs from its first activity's start to its last activity's end. The P&L costs
+  only what the blocks are given, and nothing works out how many coaches or boats a program needs.
+  The planner, or their AI, decides that from the program settings and the rules.
 
-  A planner is warned when the blocks break a limit: more of the organization's boats, RIBs, or
-  equipment out at once than it has, too few coaches or boats for a block's sailors, or
+  A planner is warned when the blocks break a limit: more of the organization's boats of a class out
+  at once than it has that day, too few coaches or boats for a block's sailors, or
   an activity with no staff. Each warning says which plan and date it's about. Each coach
   in a block can safely take the program's number of sailors. A program's staff level is what the
   planner aims for, not a hard rule: any coach in the block counts, and so does a salaried coach,
-  such as a director. Each boat can take its class's number of sailors, and the boats that
+  such as a director. Each boat can take its class's most sailors, and the boats that
   sailors bring count too.
 
   A planner is also warned about each Program Plan line that moves a cost off the area's programs:
@@ -172,6 +173,20 @@ Feature: Plans
       And a saved Financial Plan named "Budget" with a practice on June 6
       When they start a new Financial Plan from "Budget"
       Then its practice on June 6 is the same practice as the one in "Budget"
+
+  Rule: An offering can be in one of the terms the Operations Plan lists, or in none
+
+    Example: An offering in the summer term
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan whose Operations Plan has a term named "Summer 2027", with an offering
+      When they put the offering in "Summer 2027"
+      Then the offering is in "Summer 2027"
+
+    Example: An offering in no term, such as Adult Learn to Sail
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan whose offering is in a term
+      When they take the offering out of its term
+      Then the offering is in no term
 
   Rule: A planner marks one saved Financial Plan active for its year
 
@@ -357,6 +372,18 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the program has no program area
 
+  Rule: An offering counts in full in the plan it's in, even when its dates run past that plan's year
+    A winter program usually goes in the plan for the year most of its sessions fall in. The
+    organization books on a cash basis, so fees paid in December show up in the books a year before
+    the plan counts them. Budget-against-actuals tracking deals with that gap, not the plan.
+
+    Example: A winter program from December to March counts in full in the 2027 plan
+      Given a winter offering in the 2027 plan, from December 2026 to March 2027, that takes in $10,000
+      And a practice on December 7, 2026 from 9am to noon, in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering takes in $10,000
+      And the offering pays $120 of coaches' wages
+
   Rule: A program area's P&L adds up its offerings and the costs charged to the area
 
     Example: A program area's P&L includes its storage
@@ -493,7 +520,7 @@ Feature: Plans
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
-  Rule: The P&L costs only the staff, RIBs, and boats each block is given
+  Rule: The P&L costs only the staff and boats each block is given
 
     Example: A block's coaches are paid for its time
       Given an offering with a practice from 9am to noon, in a block with 2 coaches paid $20 an hour
@@ -522,13 +549,21 @@ Feature: Plans
       When a planner calculates the P&L
       Then the two offerings pay $60 of coaches' wages between them
 
-  Rule: A block's RIBs cost their rate for its time on the water
+  Rule: The organization's coach boats cost fuel and upkeep for their time on the water
 
     Example: Two RIBs for a morning practice
-      Given RIBs that cost $10 an hour on the water
-      And an offering with a practice from 9am to noon, in a block with 2 RIBs
+      Given RIBs that cost $6 an hour in fuel and $4 an hour in upkeep
+      And an offering with a practice from 9am to noon, in a block with 2 of the organization's RIBs
       When a planner calculates the P&L
-      Then the offering pays $60 for RIBs
+      Then the offering pays $60 for coach boats
+
+  Rule: A chartered boat costs its class's charter rate for each day it's chartered
+
+    Example: A RIB chartered for a morning and an afternoon costs one day
+      Given RIBs that charter for $150 a day
+      And a block with 1 chartered RIB on the morning of July 13, and another with 1 that afternoon
+      When a planner calculates the P&L
+      Then the two offerings pay $150 for boat charters between them
 
   Rule: The organization's boats cost upkeep for their time on the water, and boats that sailors bring cost nothing
 
@@ -610,33 +645,55 @@ Feature: Plans
       When a planner calculates the P&L
       Then the director's blocks need 6 hours of another coach
 
-  Rule: A planner is warned when more of the organization's boats are out at once than it has
+  Rule: A planner is warned when more of the organization's boats are out at once than it has that day
 
     Example: 14 Sailqubes out on a morning when the organization has 12
-      Given the Operations Plan says the organization has 12 Sailqubes
+      Given the organization has 12 Sailqubes
       And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 14 Sailqubes out, but the organization has 12
 
     Example: A morning block and an afternoon block can use the same boats
-      Given the Operations Plan says the organization has 12 Sailqubes
+      Given the organization has 12 Sailqubes
       And a Guppies block with 9 Sailqubes on the morning of July 13, and a Minnows block with 5 that afternoon
       When a planner calculates the P&L
       Then the planner isn't warned about Sailqubes
 
     Example: Boats that sailors bring don't count against the organization's
-      Given the Operations Plan says the organization has 12 Optis
+      Given the organization has 12 Optis
       And a block with 10 of the organization's Optis and 4 Optis that sailors bring
       When a planner calculates the P&L
       Then the planner isn't warned about Optis
 
-  Rule: A planner is warned when more RIBs or other equipment are out at once than the organization has
+    Example: Chartered boats don't count against the organization's
+      Given the organization has 6 RIBs
+      And a block on the morning of July 13 with 6 of the organization's RIBs and 2 chartered RIBs
+      When a planner calculates the P&L
+      Then the planner isn't warned about RIBs
 
     Example: 7 RIBs out on a morning when the organization has 6
-      Given the Operations Plan says the organization has 6 RIBs
+      Given the organization has 6 RIBs
       And two blocks on the morning of July 13, with 4 RIBs and 3 RIBs
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 7 RIBs out, but the organization has 6
+
+    Example: Boats the organization gets before the day count
+      Given the organization has 12 Sailqubes, and gets 2 more on July 1
+      And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
+      When a planner calculates the P&L
+      Then the planner isn't warned about Sailqubes
+
+    Example: Boats the organization gets after the day don't count yet
+      Given the organization has 12 Sailqubes, and gets 2 more on August 1
+      And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
+      When a planner calculates the P&L
+      Then the planner is warned that July 13 has 14 Sailqubes out, but the organization has 12
+
+    Example: Boats the organization disposed of before the day don't count
+      Given the organization has 14 Sailqubes, and disposes of 2 on July 1
+      And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
+      When a planner calculates the P&L
+      Then the planner is warned that July 13 has 14 Sailqubes out, but the organization has 12
 
   Rule: A planner is warned when a block has too few coaches for its sailors
 

@@ -24,8 +24,8 @@ named as the schema names them, plus:
 
 - `fiscal_year`, the plan year. Fiscal year 2027 ends in calendar year 2027 and starts in the
   organization's `fiscal_year_start_month`.
-- `rib_resource_kind_id`: which resource kind is RIBs. The engine uses those resources' rates to cost
-  each RIB hour.
+- `assets` and `boats`: the asset list, which says how many boats of each class, sailboats and
+  powerboats, the organization has on each day.
 - `plans` and `plan_versions`: the plans being calculated and their copies, so the engine can tell
   which plan each offering is in.
 
@@ -39,7 +39,6 @@ Planners enter each of these in the plans ([docs/planning-schema.md](planning-sc
 - Every pool is divided among all of the Financial Plan's programs' offerings, after non-program's
   net offsets it, so each Program Plan's share of the pools, and the organization's totals, count
   every plan in it.
-- `rib_resource_kind_id` is in that Operations Plan copy's `plan_rates`.
 - The catalog is read as it is now. A saved Financial Plan doesn't copy it, so recalculating an old
   one uses today's catalog.
 
@@ -54,7 +53,7 @@ It returns:
 - `organization`: the organization's year. See [The organization's totals](#the-organizations-totals).
 - `perDay(p)` and `perSailorDay(p)`: an offering's, product's or area's P&L for one day it runs, and
   for one sailor on one day.
-- `activities`: each activity, with its block and its share of the block's staff, RIBs and boats.
+- `activities`: each activity, with its block and its share of the block's staff and boats, the organization's and chartered.
 - `positions`: each salaried position's year. See [Salaried positions](#salaried-positions).
 - `capital`: the planned purchases in rank order. See [Capital](#capital).
 - `warnings`: what breaks a limit, and anything the engine had to skip or couldn't price. See
@@ -82,7 +81,7 @@ Plan Writers can read them.
 ## Order
 
 1. **Activities.** The plan year's activities, with their paid time and time on the water.
-2. **Blocks.** The engine costs each block's staff, RIBs, boats and resources, and checks them against
+2. **Blocks.** The engine costs each block's staff and boats, and checks them against
    the program settings and the fleet.
 3. **Revenue**, with COGS and the charges set as a share of revenue.
 4. **Lines.** Budget lines, capital items, labor lines and salaried positions. Costs on a product or area are divided among
@@ -95,11 +94,16 @@ Plan Writers can read them.
 
 ### The plan year
 
-- All of an offering's revenue and costs go in the plan year it starts in, even if it runs into the
-  next year.
-- Each staff level, salaried position, resource and boat rate has one rate for the year.
-- Each cost the engine calculates (coach wages, salaries, payroll tax, RIBs, boat maintenance,
-  resources, travel and COGS) is recorded in the account set for it in
+- All of an offering's revenue and costs go in its plan's year, whatever its dates. A winter
+  offering from December to March sits whole in one plan, normally the year most of its sessions
+  fall in ([cyc-seattle/platform#252](https://github.com/cyc-seattle/platform/issues/252)). The
+  organization books on a cash basis, so the books may record its fees and wages a year apart from
+  the plan; budget-against-actuals tracking deals with that, not the plan.
+- The engine checks coaches and boats only across the blocks of one Financial Plan, so a block in
+  late December of one plan and a block in January of the next aren't checked against each other.
+- Each staff level, salaried position and boat class has one rate for the year.
+- Each cost the engine calculates (coach wages, salaries, payroll tax, coach boats (`ribs`), boat maintenance,
+  boat charters (`resources`), travel and COGS) is recorded in the account set for it in
   `organization_cost_accounts`. If no account is set, the engine leaves that cost out and shows a
   warning.
 
@@ -117,7 +121,7 @@ Plan Writers can read them.
 
 ### Blocks
 
-The engine costs only what each block is given. It never works out how many coaches, RIBs or boats an
+The engine costs only what each block is given. It never works out how many coaches or boats an
 activity needs: the planner, or their AI, decides that from the program settings and the rules, and
 writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)).
 
@@ -130,19 +134,22 @@ writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seatt
   the span of its activities that use boats.
 - Each of its costs is split among its offerings by their enrollment, each offering counted once, or
   evenly if none has any. An offering with several activities in the block splits its share among
-  them. `activities` gives each activity its share of the block's staff, RIBs and boats.
+  them. `activities` gives each activity its share of the block's staff and boats, the organization's and chartered.
 - Staff at a level cost `count` × paid hours × the level's `hourly_rate_cents`. Volunteers cost
   nothing.
 - A salaried position on a block with `pay` `salary`, the default, is charged its paid hours at the
   salary's hourly equivalent (see [Salaried positions](#salaried-positions)). With `hourly`, it's paid
   by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`. With no rate of its own,
   those hours cost nothing, and the engine warns.
-- A resource costs `quantity × (hours × (cost_per_hour + fuel_per_hour + maintenance_per_hour) +
-cost_per_day)`. Its hours are its row's `hours` if set; otherwise a RIB's are the block's time on the
-  water, and any other resource's are its paid time. A RIB is a resource of the `rib_resource_kind_id`
-  kind. One `excluded_from_mtdc`, such as a rental, stays out of MTDC.
 - The organization's boats cost `count` × time on the water × their class's
-  `maintenance_per_boat_hour_cents`. Boats sailors bring (`sailor_owned`) cost nothing.
+  (`fuel_per_hour_cents` + `maintenance_per_boat_hour_cents`), booked to the class's `account_id`,
+  such as Coach boats for RIBs, or else to boat maintenance. Boats sailors bring (`sailor_owned`)
+  cost nothing.
+- Chartered boats cost their class's `charter_per_day_cents` once a day: for the most of the class
+  chartered at once that day, shared among the blocks that charter them by how many each does. A
+  RIB chartered for a morning block and an afternoon one is one day. A charter is a rental, so it's
+  left out of MTDC, and it's booked to boat charters (`resources`). With no charter rate, it costs
+  nothing, and the engine warns (`no_charter_rate`).
 - A trip costs each coach's airfare, plus `nights` × the year's lodging rate for each coach, plus
   `miles` × the year's mileage rate once. Its coaches are the staff on the block of its busiest
   travel day. With none, it charges only the miles, and the engine warns. Sailors' own travel isn't
@@ -166,17 +173,20 @@ Allocation warnings:
 
 - `unallocated_activity`: an activity, other than a travel day, in no block, or in a block with no
   staff.
-- `over_inventory_boats`: more of the organization's boats of one class out at once on a date than its
-  `plan_boat_rates.quantity`. Boats sailors bring don't count. Blocks are out from their first
-  activity's start to their last one's end; one with no times is out all day.
-- `over_inventory_resource`: the same for a resource with a `quantity`, such as RIBs.
+- `over_inventory_boats`: more of the organization's boats of one class out at once on a date than
+  the boats of that class, sail or power, it has that day: those on the asset list acquired on or
+  before it, or with no acquired date, and not yet disposed of. Boats it charters, or sailors bring,
+  don't count. Blocks are out
+  from their first activity's start to their last one's end; one with no times is out all day.
+- Results saved before boats were counted by class may also have `over_inventory_resource`, for
+  RIBs and other equipment.
 - `over_capacity`: more sailors in a block than its staff, or its boats, can safely take. Each
   program's sailors count against its own `sailors_per_coach`, in its `plan_programs` row: the block
   needs Σ (each program's sailors ÷ its sailors per coach) coaches. Every coach on the block counts,
   at any staff level, and so does a salaried position: the ratio is required, and a program's
   `staff_level_key` is for planning and cost, not a hard rule (cyc-seattle/sail-team#82). The block is
-  over when it needs more coaches than it has. Qualifications aren't checked (#208). Its boats take Σ (boats, the organization's and the sailors' own, × the
-  class's `sailors_per_boat`). A block whose activities don't use boats has no boat limit.
+  over when it needs more coaches than it has. Qualifications aren't checked (#208). Its boats take Σ (boats, the organization's, chartered and the sailors'
+  own, × the class's `max_capacity`); a coach boat's class takes 0. A block whose activities don't use boats has no boat limit.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
 - `closed_date`: an activity, other than a travel day, on a closed day.
 
@@ -184,10 +194,11 @@ Data warnings about blocks:
 
 - `no_program_settings`: a program in a block with no staff level or sailors per coach. Its sailors
   aren't checked against the staff.
-- `no_sailors_per_boat`: a block's boat class with no `sailors_per_boat`. Its boats take no sailors.
-- `no_fleet_quantity`: a block's boat class with no `plan_boat_rates.quantity`. Its boats aren't
-  checked against the fleet.
-- `no_hourly_rate`, `trip_without_staff`, `unknown_block`, `unknown_staff_level`, `unknown_resource`,
+- `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors.
+- `no_charter_rate`: a block's chartered boats, whose class has no `charter_per_day_cents`.
+  Results saved before it was renamed call it `no_sailors_per_boat`, and may also have
+  `no_fleet_quantity`, which the engine no longer gives.
+- `no_hourly_rate`, `trip_without_staff`, `unknown_block`, `unknown_staff_level`,
   and `block_date_mismatch`, an activity in a block on another date.
 
 ### Revenue
@@ -276,7 +287,7 @@ salaries and wages, fringe benefits, materials and supplies, services, travel, a
 of each subaward. It leaves out equipment, capital spending, rent and rentals, participant support,
 scholarships and fellowships, tuition remission, patient care, and each subaward over $50,000.
 
-- A budget line or resource with `excluded_from_mtdc` set is left out. Set it for any cost the rule
+- A budget line with `excluded_from_mtdc` set is left out, and so is a boat charter. Set it for any cost the rule
   leaves out. Equipment means an item that costs $10,000 or more and lasts more than a year; anything
   cheaper is a supply, and counts.
 - Every other cost of the offering's own counts, including COGS and payroll tax.
@@ -331,8 +342,9 @@ A saved plan version keeps the functions it was calculated with.
 Each line's `line_name` says what it is:
 
 - revenue is "Revenue", COGS "Cost of goods sold", and a revenue charge its own name
-- coaches' wages are "Coach wages", RIBs "RIBs", and boats "Boat maintenance: <boat class>"
-- a resource, a trip, a budget line or a labor line has its own name
+- coaches' wages are "Coach wages", the organization's boats "Boats: <boat class>", and charters
+  "Boat charters: <boat class>"
+- a trip, a budget line or a labor line has its own name
 - a salaried position's hours are "<position>: coaching" or "<position>: management", and the rest
   of its salary "<position>: rest of salary"
 - payroll tax is "Payroll tax"

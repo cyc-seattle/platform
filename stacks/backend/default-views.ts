@@ -62,18 +62,26 @@ export const defaultViews: DefaultView[] = [
 
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
-  { collection: "boat_classes", sort: ["name"], fields: ["name", "sailors_per_boat", "footprint_sq_ft"] },
+  {
+    collection: "boat_classes",
+    sort: ["name"],
+    fields: ["name", "max_capacity", "footprint_sq_ft", "account_id"],
+  },
+  {
+    collection: "assets",
+    sort: ["kind", "name"],
+    fields: ["kind", "name", "make", "model", "identifier", "value_cents", "acquired_on", "disposed_on"],
+  },
   {
     collection: "boats",
     sort: ["boat_class_id.name", "sail_number"],
-    fields: ["boat_class_id", "sail_number", "name", "hull_number", "value_cents", "retired_on"],
+    fields: ["boat_class_id", "sail_number", "asset_id"],
   },
   { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
   { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },
   { collection: "programs", sort: ["name"], fields: ["name", "product_id", "color"] },
   { collection: "catalog_offerings", sort: ["program_id.name", "name"], fields: ["program_id", "name"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
-  { collection: "resource_kinds", sort: ["name"], fields: ["name"] },
   {
     collection: "organization_cost_accounts",
     sort: ["organization_id.name", "cost_type"],
@@ -169,14 +177,9 @@ export const defaultViews: DefaultView[] = [
     fields: ["block_id", "count", "pay", "version_id"],
   },
   {
-    collection: "plan_block_resources",
-    sort: ["block_id.date", "block_id.name"],
-    fields: ["block_id", "quantity", "hours", "version_id"],
-  },
-  {
     collection: "plan_block_boats",
     sort: ["block_id.date", "block_id.name"],
-    fields: ["block_id", "boat_class_id", "count", "sailor_owned", "version_id"],
+    fields: ["block_id", "boat_class_id", "count", "chartered", "sailor_owned", "version_id"],
   },
   {
     collection: "plan_labor_lines",
@@ -219,14 +222,15 @@ export const defaultViews: DefaultView[] = [
     fields: ["position_id", "program_area_id", "product_id", "kind", "hours", "version_id"],
   },
   {
-    collection: "plan_resources",
-    sort: ["version_id.plan_id.name", "name"],
-    fields: ["name", "version_id", "resource_kind_id", "quantity"],
-  },
-  {
     collection: "plan_boat_rates",
     sort: ["version_id.plan_id.name", "boat_class_id.name"],
-    fields: ["boat_class_id", "version_id", "maintenance_per_boat_hour_cents"],
+    fields: [
+      "boat_class_id",
+      "version_id",
+      "fuel_per_hour_cents",
+      "maintenance_per_boat_hour_cents",
+      "charter_per_day_cents",
+    ],
   },
   { collection: "plan_pools", sort: ["version_id.plan_id.name", "name"], fields: ["name", "version_id"] },
   {
@@ -238,6 +242,11 @@ export const defaultViews: DefaultView[] = [
     collection: "plan_bonus_owner_products",
     sort: ["bonus_owner_id.role_name", "product_id.name"],
     fields: ["bonus_owner_id", "product_id", "version_id"],
+  },
+  {
+    collection: "plan_terms",
+    sort: ["version_id.plan_id.name", "starts_on"],
+    fields: ["name", "starts_on", "ends_on", "version_id"],
   },
   {
     collection: "plan_closed_dates",

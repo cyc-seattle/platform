@@ -73,9 +73,15 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     qualification_id: row["qualifications"],
     covers_id: await fresh("qualifications"),
   }),
-  boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, sailors_per_boat: 1 }),
-  resource_kinds: async () => ({ id: randomUUID(), name: `Resource ${key("resource")}` }),
-  boats: async () => ({ id: randomUUID(), boat_class_id: row["boat_classes"], sail_number: key("sail") }),
+  boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, max_capacity: 1 }),
+  // A boat is the subtype of an asset of kind `sailboat` or `powerboat`, and each has its own.
+  assets: async () => ({ id: randomUUID(), kind: "other", name: `Trailer ${key("asset")}` }),
+  boats: async () => ({
+    id: randomUUID(),
+    asset_id: (await adminCreate("assets", await newRow("assets", { kind: "sailboat" }))).id,
+    boat_class_id: row["boat_classes"],
+    sail_number: key("sail"),
+  }),
   // A program is the subtype of a product of kind `program`, and each has its own.
   catalog_offerings: async () => ({
     id: randomUUID(),
@@ -343,18 +349,6 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       staff_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
       count: 2,
     }),
-  plan_resources: async (fixed) =>
-    versioned(fixed, {
-      resource_kind_id: row["resource_kinds"],
-      name: `Resource ${key("resource")}`,
-      cost_per_hour_cents: 1_000,
-    }),
-  plan_block_resources: async (fixed) =>
-    versioned(fixed, {
-      block_id: sameVersionId("plan_activity_blocks", fixed),
-      resource_key: sameVersion("plan_resources", fixed)?.["key"] ?? randomUUID(),
-      quantity: 1,
-    }),
   plan_block_boats: async (fixed) =>
     versioned(fixed, {
       block_id: sameVersionId("plan_activity_blocks", fixed),
@@ -454,9 +448,9 @@ export const changes: Record<string, () => Row> = {
   program_areas: () => ({ name: `Program area ${key("area")}` }),
   qualifications: () => ({ name: `Qualification ${key("qualification")}` }),
   qualification_covers: () => ({ covers_id: row["qualifications"] }),
-  boat_classes: () => ({ sailors_per_boat: 2 }),
-  resource_kinds: () => ({ name: `Resource ${key("resource")}` }),
-  boats: () => ({ name: `Boat ${runId}` }),
+  boat_classes: () => ({ max_capacity: 2 }),
+  assets: () => ({ name: `Asset ${runId}` }),
+  boats: () => ({ sail_number: key("sail") }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
   organizations: () => ({ short_name: "Changed" }),
@@ -502,11 +496,9 @@ export const changes: Record<string, () => Row> = {
   plan_programs: () => ({ sailors_per_coach: 8 }),
   plan_activity_blocks: () => ({ name: `Block ${key("block")}` }),
   plan_block_staff: () => ({ count: 3 }),
-  plan_block_resources: () => ({ quantity: 2 }),
   plan_block_boats: () => ({ count: 5 }),
   plan_trips: () => ({ nights: 3 }),
   plan_activities: () => ({ end_time: "13:00:00" }),
-  plan_resources: () => ({ cost_per_hour_cents: 1_100 }),
   plan_labor_lines: () => ({ hours: 12 }),
   plan_budget_lines: () => ({ amount_cents: 11_000 }),
   plan_capital_items: () => ({ amount_cents: 2_100_000 }),
@@ -548,8 +540,8 @@ async function createRows(): Promise<void> {
     ["qualifications", () => ({})],
     ["qualification_covers", () => ({})],
     ["boat_classes", () => ({})],
+    ["assets", () => ({})],
     ["boats", () => ({})],
-    ["resource_kinds", () => ({})],
     ["organizations", () => ({})],
     ["venues", () => ({})],
     ["programs", () => ({})],
@@ -625,8 +617,6 @@ export const PLAN_ROWS = [
   "plan_activity_blocks",
   "plan_activities",
   "plan_block_staff",
-  "plan_resources",
-  "plan_block_resources",
   "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
