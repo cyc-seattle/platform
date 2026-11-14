@@ -1433,7 +1433,7 @@ Step("the Financial Plan's warnings say that the practice on August 2, in its Pr
     .toEqual([{ version_set_member_id: member!["id"], date: AUGUST_2, category: "allocation" }]);
 });
 
-// Who plans: program directors and the finance committee, and the date a Financial Plan is active from.
+// What a Plan Writer and a Plan Admin can do, and the date a Financial Plan is active from.
 const ONE_PER_DATE = "Another Financial Plan for the year is already active from that date.";
 const IN_FORCE_NOT_ARCHIVED = "The plan in force can't be archived";
 const BONUS_IN_OPERATIONS = "A bonus goes in the Operations Plan.";

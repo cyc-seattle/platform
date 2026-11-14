@@ -156,7 +156,7 @@ function versionedIn(plans: string[], schemas: LoadedSchema[]): string[] {
 
 /**
  * The collections only an Operations Plan uses: the rules every program area plans within, which only
- * a Plan Approver changes (cyc-seattle/platform#251). Every other plan row is in a Program Plan, or
+ * a Plan Admin changes (cyc-seattle/platform#251). Every other plan row is in a Program Plan, or
  * in either kind.
  */
 export const OPERATIONS_ONLY = [
@@ -298,7 +298,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       rules: [...readCatalog, readUserNames, ...plans.map((collection) => ({ collection, action: "read" as const }))],
     },
     // The saved-versions hook keeps a saved version from changing, for every user (docs/planning-schema.md).
-    // Program directors: their own programs, within the Operations Plan's rules.
+    // Programs, within the Operations Plan's rules.
     {
       key: "plan-writer",
       name: "Plan Writer",
@@ -330,10 +330,10 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
           ),
       ],
     },
-    // The finance committee, who also have Plan Writer: the rules, and which Financial Plan is in force.
+    // Given with Plan Writer: the rules, and which Financial Plan is in force.
     {
-      key: "plan-approver",
-      name: "Plan Approver",
+      key: "plan-admin",
+      name: "Plan Admin",
       icon: "approval",
       description:
         "Changes the Operations Plan in a draft, saves a Financial Plan, makes one active from a date, and archives one. Sees every plan, the catalog, and users' names.",
