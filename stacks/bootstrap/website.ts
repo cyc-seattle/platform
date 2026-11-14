@@ -98,13 +98,6 @@ const environments: WebsiteEnvironment[] = [
   { name: "publish", mainOnly: true, approval: false, directusTokenSecret: directusTokenSecrets.prod },
 ];
 
-// A reviewer team needs access to the repository.
-new github.TeamRepository("csc-website-maintainers", {
-  teamId: maintainers.id,
-  repository: cscWebsite.name,
-  permission: "pull",
-});
-
 // The repo predates immutable OIDC subjects, so its tokens name it, like isthmia's.
 const prefix = subjectPrefix("csc-website");
 

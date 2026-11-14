@@ -192,6 +192,42 @@ describe("Actions workflow permissions", () => {
   });
 });
 
+describe("merging to main", () => {
+  const merges = (repo: string) =>
+    ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === `${repo}-merges`)?.inputs;
+  const grant = (repo: string, team: string) => byName(`${repo}-${team}`)?.inputs;
+
+  it("is only for org admins and maintainers", () => {
+    expect(merges("example")).toMatchObject({
+      target: "branch",
+      enforcement: "active",
+      conditions: { refName: { includes: ["~DEFAULT_BRANCH"] } },
+      rules: { update: true },
+      bypassActors: [{ actorType: "OrganizationAdmin" }, { actorType: "Team", bypassMode: "always" }],
+    });
+  });
+
+  it("is a ruleset of its own, so maintainers can't skip the checks", () => {
+    const main = ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "example-main")!;
+    expect(main.inputs.bypassActors).toEqual([{ actorType: "OrganizationAdmin", bypassMode: "always" }]);
+    expect(merges("example")!.rules).toEqual({ update: true });
+  });
+
+  it("gives both teams push on every repository but archived ones", () => {
+    for (const team of ["maintainers", "contributors"]) {
+      expect(grant("example", team)).toMatchObject({ repository: "example", permission: "push" });
+      expect(grant("archived-example", team)).toBeUndefined();
+    }
+    expect(merges("archived-example")).toBeUndefined();
+  });
+
+  it("leaves members with read on every repository", () => {
+    const command = byName("org-member-permissions").inputs.create as string;
+    expect(command).toContain("default_repository_permission=read");
+    expect(command).toContain("members_can_create_repositories=false");
+  });
+});
+
 describe("approving reviews on main", () => {
   const approvals = (repo: string) =>
     ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === `${repo}-main`)!.inputs.rules

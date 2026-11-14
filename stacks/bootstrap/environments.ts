@@ -56,13 +56,6 @@ const repositories = [
 ];
 
 for (const { name: repo, resource, prefix } of repositories) {
-  // A reviewer team needs access to the repository.
-  new github.TeamRepository(`${repo}-maintainers`, {
-    teamId: maintainers.id,
-    repository: resource.name,
-    permission: "pull",
-  });
-
   for (const env of environments) {
     const environment = new github.RepositoryEnvironment(`${repo}-${env.name}`, {
       repository: resource.name,

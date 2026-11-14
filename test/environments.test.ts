@@ -132,9 +132,9 @@ describe("workload identity bindings", () => {
   });
 });
 
-describe("the maintainers team", () => {
-  it("is created with no members", () => {
-    expect(ofType("github:index/team:Team").map((t) => t.inputs.name)).toEqual(["maintainers"]);
+describe("the teams", () => {
+  it("are created with no members", () => {
+    expect(ofType("github:index/team:Team").map((t) => t.inputs.name)).toEqual(["maintainers", "contributors"]);
     expect(ofType("github:index/teamMembers:TeamMembers")).toEqual([]);
     expect(ofType("github:index/teamMembership:TeamMembership")).toEqual([]);
   });
