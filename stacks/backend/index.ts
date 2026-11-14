@@ -25,6 +25,7 @@ import {
   groupPolicies,
   groupPoliciesConfig,
   queryGuardConfig,
+  sailTeamPolicy,
   savedVersionsConfig,
   WEBSITE_BUILD,
   websiteBuildRules,
@@ -109,6 +110,7 @@ const app = deployDirectus(
       ...teamPolicies,
       { name: "Crew", rules: crewRules },
       { name: WEBSITE_BUILD, rules: websiteBuild },
+      sailTeamPolicy,
       ...grantable,
     ]),
     groupPolicies: groupPoliciesConfig(grantable),
@@ -548,6 +550,9 @@ for (const rule of websiteBuild) {
 for (const policy of familyPolicies) {
   declarePolicy(`crm-community-${policy.key}`, policy, [communityRoleId, teamRoleId, crewRoleId, staffRoleId]);
 }
+
+// Everyone who signs in reads Sail Team's links and announcements.
+declarePolicy("sail-team-read", sailTeamPolicy, [communityRoleId, teamRoleId, crewRoleId, staffRoleId]);
 
 // Team's own policies. Crew reads every row these do.
 for (const policy of teamPolicies) {
