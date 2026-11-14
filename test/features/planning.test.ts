@@ -1495,4 +1495,58 @@ Step("the Financial Plan's warnings say that the practice on August 2, in its Pr
     .toEqual([{ version_set_member_id: member!["id"], date: AUGUST_2, category: "allocation" }]);
 });
 
+// Plan roles and in-force dates (cyc-seattle/platform#251), which the next platform PR builds: until
+// then, each of these steps fails.
+parameter("shift", [
+  "left out of the split of shared costs",
+  "charged to the shared costs",
+  "charged to the organization",
+  "for capital",
+]);
+for (const text of [
+  'a Financial Plan for next year named "Budget", active from July 1',
+  'one named "Fall re-plan", active from September 1',
+  '"Budget" is in force on August 31',
+  '"Fall re-plan" is in force on September 1',
+  "a finance committee member",
+  'a Financial Plan for this year named "Budget", in force today',
+  'a draft Financial Plan for this year named "Spring re-plan"',
+  'they make "Spring re-plan" active from next month',
+  '"Budget" is still in force today',
+  '"Spring re-plan" is in force from next month',
+  "a program director",
+  "a draft Financial Plan in force today, with an offering at $1,000 a sailor",
+  "they change the offering's price to $1,200 a sailor",
+  "the draft is still in force, and its P&L has the offering at $1,200 a sailor",
+  "a draft Financial Plan in force today",
+  "they save it",
+  "it's saved, and still in force",
+  "a saved Financial Plan active from September 1",
+  "they change its date to August 1",
+  "it's in force from August 1",
+  'they make "Fall re-plan" active from July 1',
+  "they're told that another Financial Plan for the year is active from that date",
+  'they try to archive "Budget"',
+  "they're told that the plan in force can't be archived",
+  'a Financial Plan for this year named "Budget", active from last month',
+  'one named "Re-plan", in force today',
+  'they archive "Budget"',
+  '"Budget" is archived',
+  "they can change any Program Plan in the new Financial Plan",
+  "they can't change its Operations Plan",
+  "they can't save it, make it active, or archive it",
+  "they can change its Operations Plan",
+  "they can save it, make it active, and archive it",
+  "they add a bonus to one of its Program Plans",
+  "they're told that bonuses go in the Operations Plan",
+  "a draft Financial Plan whose Program Plan has a line {shift}",
+  "the planner is warned that the line moves a cost off the area's programs",
+  "a draft Financial Plan whose Operations Plan has a line left out of the split of shared costs",
+  "the planner isn't warned about the line",
+]) {
+  Step(text, () => {
+    throw new Error("Not built yet: plan roles and in-force dates");
+  });
+}
+
 describeAccessFeature("planning.feature");
