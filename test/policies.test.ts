@@ -181,6 +181,7 @@ const plans = [
   "plan_bonus_owners",
   "plan_bonus_owner_products",
   "plan_closed_dates",
+  "plan_terms",
   "plan_results",
   "plan_result_lines",
   "plan_result_pnl",

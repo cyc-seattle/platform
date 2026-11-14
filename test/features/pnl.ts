@@ -67,6 +67,7 @@ const VERSION_ROWS = [
   "plan_bonus_owners",
   "plan_bonus_owner_products",
   "plan_closed_dates",
+  "plan_terms",
 ] as const;
 
 /** The revenue and expense accounts the examples book to, by what they're for. */

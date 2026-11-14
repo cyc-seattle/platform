@@ -302,7 +302,7 @@ erDiagram
         uuid key "stable"
         uuid product_id FK
         string name
-        string season_term
+        uuid term_key "operations key, or none"
         date starts_on
         date ends_on
         int capacity
@@ -375,6 +375,8 @@ erDiagram
 
 All of an offering's revenue and costs go in its plan's year, and its dates may run past either end of that year, as a winter program's do ([cyc-seattle/platform#252](https://github.com/cyc-seattle/platform/issues/252)). Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
 
+An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
+
 Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 
 Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, and its `rules`. Like the Program Plan's own `rules` and the Operations Plan's, a program's rules are the planner's words for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan copy, they're versioned, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
@@ -397,6 +399,7 @@ erDiagram
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     plan_versions ||--o{ plan_closed_dates : contains
+    plan_versions ||--o{ plan_terms : contains
     plan_versions ||--o{ plan_capital_items : contains
     accounts ||--o{ plan_capital_items : "booked to"
     boat_classes ||--o{ plan_boat_rates : "rate for"
@@ -462,6 +465,12 @@ erDiagram
         date date
         string name
     }
+    plan_terms {
+        uuid key "stable"
+        string name "such as Summer 2027"
+        date starts_on
+        date ends_on
+    }
     plan_capital_items {
         string name
         int amount_cents
@@ -491,6 +500,8 @@ A pool is a group of shared costs that no single offering owns, such as general 
 A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before the pools (`basis`), if that net is above zero. A bonus on one program area's products can be in that area's plan instead, with its own `plan_bonus_owner_products`; the engine ignores, with a warning, any product from another area. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay.
 
 `plan_capital_items` is the ranked list of what the organization means to buy, such as a coach boat, with the most needed first. Planners drag the rows into order in the Data Studio. Each is capital on the organization, and the engine says how far down the list the year's money goes.
+
+`plan_terms` lists the planning periods, such as Summer 2027, each with its first and last day. A Program Plan's offering names one by its key, `term_key`, or none. Terms are in the Operations Plan, so every Program Plan shares them. A term's dates don't limit its offerings' dates. A plan saved before terms (cyc-seattle/platform#251) has none, and its offerings lost their free-text `season_term`; the migration made a term in each draft's Operations Plan for each text its offerings used.
 
 `plan_closed_dates` lists the days the organization is closed, such as Labor Day. Agents read them when they write activities, and the engine warns about an activity on one.
 

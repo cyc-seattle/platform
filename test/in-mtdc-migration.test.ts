@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { up } from "../stacks/backend/migrations/cyc0014-in-mtdc.cjs";
+import { up } from "../stacks/backend/migrations/cyc0015-in-mtdc.cjs";
 
 const migrate = (db: PGlite) => up({ raw: (sql: string) => db.exec(sql) });
 

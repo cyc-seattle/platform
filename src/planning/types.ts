@@ -131,7 +131,8 @@ export type ActivityKind = "practice" | "regatta" | "clinic" | "travel";
 export interface PlanOffering extends Versioned {
   product_id: Id;
   name: string;
-  season_term: string | null;
+  /** A `plan_terms` key in the Operations Plan, or none. */
+  term_key: Id | null;
   starts_on: DateString;
   ends_on: DateString;
   capacity: number | null;
@@ -332,6 +333,13 @@ export interface PlanClosedDate extends Versioned {
   name: string;
 }
 
+/** A planning period in the Operations Plan, such as Summer 2027, which an offering can be in. */
+export interface PlanTerm extends Versioned {
+  name: string;
+  starts_on: DateString;
+  ends_on: DateString;
+}
+
 /** The catalog plus every row of the plan versions being calculated. */
 export interface PlanData {
   /** The plan year. Fiscal year N ends in calendar year N. */
@@ -374,6 +382,7 @@ export interface PlanData {
   plan_bonus_owner_products: PlanBonusOwnerProduct[];
   plan_closed_dates?: PlanClosedDate[];
   plan_capital_items?: PlanCapitalItem[];
+  plan_terms?: PlanTerm[];
 }
 
 // Output

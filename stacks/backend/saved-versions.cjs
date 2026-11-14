@@ -600,6 +600,7 @@ async function installTriggers(config, db) {
     .map(([table]) => table);
   if (missing.length > 0) return { missing, installed: false };
   await seedSaved(db);
+  await seedTerms(db);
   const status = await triggerStatus(config, db);
   const hash = fingerprint(config);
   if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
@@ -629,6 +630,44 @@ async function seedSaved(db) {
   );
   await db.exec(`ALTER TABLE ${SETS} ENABLE TRIGGER USER`);
   await db.exec(`DROP TABLE ${SAVED_SEED}`);
+}
+
+/** Where the offering terms migration (cyc0014) lists each draft offering's old season text. */
+const TERMS_SEED = "cyc_seed_terms";
+
+/**
+ * Makes the terms the offering terms migration listed, once the schema apply has made `plan_terms`
+ * and `plan_offerings.term_key`, then drops the list. Each draft Financial Plan's Operations Plan
+ * gets one term for each text, whatever its case, named as typed, from the earliest start of its
+ * offerings to the latest end, and each offering is put in its term.
+ */
+async function seedTerms(db) {
+  const [{ seed }] = await db.query(
+    `SELECT to_regclass('${TERMS_SEED}') IS NOT NULL AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'plan_offerings' AND column_name = 'term_key'
+    ) AS seed`,
+  );
+  if (!seed) return;
+  await db.exec(
+    `CREATE TEMPORARY TABLE cyc_new_terms ON COMMIT DROP AS
+      SELECT gen_random_uuid() AS id, gen_random_uuid() AS key, seed.operations_version_id AS version_id,
+          min(seed.name) AS name, lower(seed.name) AS folded, min(o.starts_on) AS starts_on, max(o.ends_on) AS ends_on
+        FROM ${TERMS_SEED} seed JOIN plan_offerings o ON o.id = seed.offering_id
+        GROUP BY seed.operations_version_id, lower(seed.name)`,
+  );
+  await db.exec(
+    `INSERT INTO plan_terms (id, key, version_id, name, starts_on, ends_on)
+      SELECT id, key, version_id, name, starts_on, ends_on FROM cyc_new_terms`,
+  );
+  await db.exec(
+    `UPDATE plan_offerings o SET term_key = term.key
+      FROM ${TERMS_SEED} seed JOIN cyc_new_terms term
+        ON term.version_id = seed.operations_version_id AND term.folded = lower(seed.name)
+      WHERE o.id = seed.offering_id`,
+  );
+  await db.exec("DROP TABLE cyc_new_terms");
+  await db.exec(`DROP TABLE ${TERMS_SEED}`);
 }
 
 /** Where the Financial Plans migration (cyc0002) lists the saved Financial Plans to mark active. */
