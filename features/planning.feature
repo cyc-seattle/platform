@@ -2,35 +2,33 @@ Feature: Plans
   A Financial Plan is the organization's plan for one year. It holds one Operations Plan and a
   Program Plan for any of the organization's program areas, and the P&L they make together. A
   Program Plan covers one program area: what it offers and when, the prices, the schedule, who works
-  it, and the budget. The area's directors plan it. The Operations Plan covers what the program
+  it, and the budget. Plan Writers plan it. The Operations Plan covers what the program
   areas share, such as the office, the boats, and the year's rates. It also plans the products that
   belong to no program area: merchandise, storage, and charters. It also holds each program area's
   storage rent, such as the dinghy float, which is still charged to the area.
 
   A Financial Plan is worked on as a whole. It starts as a draft, and planners can change any of
-  its plans while it's a draft. When it's ready, the finance committee saves it, and all of its plans are saved
+  its plans while it's a draft. When it's ready, a Plan Admin saves it, and all of its plans are saved
   together, with their P&L. A saved Financial Plan never changes, apart from its name, its note, and its date, so
   the organization can always look back at what it agreed to. To change the plan after that, a planner starts a new Financial
   Plan from an earlier one, its parent, and the new one begins as a copy of it. A year can have
   several drafts at once, so planners can weigh options side by side, such as two drafts started
   from the same Financial Plan, one with two coaches and one with three. Each Financial Plan has a
   name, and a note that says what it was for, such as "Reviewed with the board". Planners are the
-  people with the Plan Reader, Plan Writer, or Plan Approver policy, which they get from their groups.
+  people with the Plan Reader, Plan Writer, or Plan Admin policy, which they get from their groups.
 
-  Two groups plan. The finance committee sets the rules and decides which plan is in force. Program
-  directors plan their programs within those rules. A program director has the Plan Writer policy:
-  they can start a draft Financial Plan, and change any Program Plan in any draft, for every program
-  area. A finance committee member has the Plan Writer and Plan Approver policies. Plan Approver lets
-  them change the Operations Plan in a draft, save a Financial Plan, make one active, and archive
-  one. The Operations Plan holds the rules everyone plans within, such as wages, rates, and shared
-  costs, so a program director can see it but can't change it.
+  A Plan Writer can start a draft Financial Plan, and change any Program Plan in any draft, for
+  every program area. A Plan Admin also sets the rules everyone plans within: they can change the
+  Operations Plan in a draft, such as wages, rates, terms, and shared costs. They also save a
+  Financial Plan, make one active, and archive one. A Plan Writer can see the Operations Plan but
+  can't change it. Which people have which policy is up to their groups.
 
-  The finance committee makes a Financial Plan active from a date. The plan in force on a day is the
+  A Plan Admin makes a Financial Plan active from a date. The plan in force on a day is the
   active one for that year with the latest date on or before that day, and it stays in force until
   the next one's date. So a re-plan for the fall can take over on September 1, and a plan can be
-  made active ahead of time. A draft can be active: program directors keep changing it while it's
-  in force, and its P&L keeps up. When the board approves it, the committee saves it, and it stays
-  in force. The committee can change any plan's date, earlier or later, to fix a mistake. The plan in
+  made active ahead of time. A draft can be active: Plan Writers keep changing it while it's
+  in force, and its P&L keeps up. When the board approves it, a Plan Admin saves it, and it stays
+  in force. A Plan Admin can change any plan's date, earlier or later, to fix a mistake. The plan in
   force can't be archived.
 
   Each offering in a plan is of a catalog offering: a named offering of a program, such as "J-Pod ·
@@ -85,9 +83,9 @@ Feature: Plans
 
   A planner is also warned about each Program Plan line that moves a cost off the area's programs:
   a line left out of the split of shared costs, a line charged to the shared costs or to the
-  organization, or a line for capital. The finance committee looks over these before it makes a
-  plan active. Lines in the Operations Plan never get these warnings, because the Operations Plan is
-  the committee's.
+  organization, or a line for capital. A Plan Admin looks over these before they make a
+  plan active. Lines in the Operations Plan never get these warnings, because only a Plan Admin
+  changes the Operations Plan.
 
   A planner can ask their AI to fill in the blocks. It works in a new draft Financial Plan, started
   from the one the planner names. It tells the planner what it changed and which warnings are left,
@@ -101,7 +99,7 @@ Feature: Plans
   each salaried position is paid per year. A salaried coach can also be paid by the hour for
   coaching, on top of their salary, at their own hourly rate. Bonus rates set the bonus a director
   earns on the products they run: a share of those products' net, the money they make after their
-  costs. Every bonus is in the Operations Plan, which the finance committee sets. Anyone who can
+  costs. Every bonus is in the Operations Plan, which a Plan Admin sets. Anyone who can
   see plans sees all of these. To change something means to add, edit, or delete it.
 
   Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
@@ -200,7 +198,7 @@ Feature: Plans
       And "Fall re-plan" is in force on September 1
 
     Example: A plan made active ahead of time isn't in force yet
-      Given a finance committee member
+      Given a user with the Plan Writer and Plan Admin policies
       And a Financial Plan for this year named "Budget", in force today
       And a draft Financial Plan for this year named "Spring re-plan"
       When they make "Spring re-plan" active from next month
@@ -208,31 +206,31 @@ Feature: Plans
       And "Spring re-plan" is in force from next month
 
   @pending
-  Rule: A draft can be active, and program directors keep changing it while it's in force
+  Rule: A draft can be active, and Plan Writers keep changing it while it's in force
 
-    Example: A program director changes the draft in force
-      Given a program director
+    Example: A Plan Writer changes the draft in force
+      Given a user with the Plan Writer policy
       And a draft Financial Plan in force today, with an offering at $1,000 a sailor
       When they change the offering's price to $1,200 a sailor
       Then the draft is still in force, and its P&L has the offering at $1,200 a sailor
 
     Example: Saving the draft in force keeps it in force
-      Given a finance committee member
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan in force today
       When they save it
       Then it's saved, and still in force
 
   @pending
-  Rule: The finance committee can change any plan's date
+  Rule: A Plan Admin can change any plan's date
 
     Example: Moving a saved plan's date earlier
-      Given a finance committee member
+      Given a user with the Plan Writer and Plan Admin policies
       And a saved Financial Plan active from September 1
       When they change its date to August 1
       Then it's in force from August 1
 
     Example: Two Financial Plans for a year can't be active from the same date
-      Given a finance committee member
+      Given a user with the Plan Writer and Plan Admin policies
       And a Financial Plan for next year named "Budget", active from July 1
       And a draft Financial Plan for next year named "Fall re-plan"
       When they make "Fall re-plan" active from July 1
@@ -242,38 +240,38 @@ Feature: Plans
   Rule: The plan in force can't be archived
 
     Example: Archiving the plan in force
-      Given a finance committee member
+      Given a user with the Plan Writer and Plan Admin policies
       And a Financial Plan for this year named "Budget", in force today
       When they try to archive "Budget"
       Then they're told that the plan in force can't be archived
 
     Example: Archiving a plan another has taken over from
-      Given a finance committee member
+      Given a user with the Plan Writer and Plan Admin policies
       And a Financial Plan for this year named "Budget", active from last month
       And one named "Re-plan", in force today
       When they archive "Budget"
       Then "Budget" is archived
 
   @pending
-  Rule: A program director can start a draft and change any Program Plan in it, but not the Operations Plan
+  Rule: A Plan Writer can start a draft and change any Program Plan in it, but not the Operations Plan
 
-    Example: A program director starts a draft and changes another area's Program Plan
-      Given a program director
+    Example: A Plan Writer starts a draft and changes another area's Program Plan
+      Given a user with the Plan Writer policy
       And a saved Financial Plan named "Budget"
       When they start a new Financial Plan from "Budget"
       Then they can change any Program Plan in the new Financial Plan
       But they can't change its Operations Plan
 
-    Example: A program director can't save a Financial Plan, make one active, or archive one
-      Given a program director
+    Example: A Plan Writer can't save a Financial Plan, make one active, or archive one
+      Given a user with the Plan Writer policy
       And a draft Financial Plan
       Then they can't save it, make it active, or archive it
 
   @pending
-  Rule: A finance committee member can change the Operations Plan in a draft, and save, make active, and archive a Financial Plan
+  Rule: A Plan Admin can change the Operations Plan in a draft, and save, make active, and archive a Financial Plan
 
-    Example: A finance committee member changes the Operations Plan
-      Given a finance committee member
+    Example: A Plan Admin changes the Operations Plan
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan
       Then they can change its Operations Plan
       And they can save it, make it active, and archive it
