@@ -1,17 +1,16 @@
 import type { Context, WarningScope } from "./context.ts";
 import type { ScheduledActivity } from "./activities.ts";
 import type {
+  Asset,
   ComputedActivity,
   CostType,
   DateString,
   Id,
   PlanActivityBlock,
   PlanBlockBoats,
-  PlanBlockResource,
   PlanBlockStaff,
   PlanOffering,
   PlanProgram,
-  PlanResource,
 } from "./types.ts";
 
 /** Hours a salaried position coached, by offering key, for the salaried rule. */
@@ -49,7 +48,6 @@ interface Block {
   paid_minutes: number;
   on_water_minutes: number;
   staff: PlanBlockStaff[];
-  resources: PlanBlockResource[];
   boats: PlanBlockBoats[];
   /** Each member's share of the block's costs, by its offering's sailors. */
   shares: Map<ScheduledActivity, number>;
@@ -120,7 +118,6 @@ export class Staffing {
   private blocks(scheduled: ScheduledActivity[]): Map<Id, Block> {
     const { data } = this.ctx;
     const staff = groupBy(data.plan_block_staff, (r) => r.block_id);
-    const resources = groupBy(data.plan_block_resources, (r) => r.block_id);
     const boats = groupBy(data.plan_block_boats, (r) => r.block_id);
     const rows = new Map(data.plan_activity_blocks.map((b) => [b.id, b]));
     const members = new Map<Id, ScheduledActivity[]>();
@@ -174,7 +171,6 @@ export class Staffing {
           Math.max(0, ...list.map((a) => a.stored.putaway_minutes ?? 0)),
         on_water_minutes: set.length > 0 ? Math.max(...set) : sailingMinutes,
         staff: staff.get(id) ?? [],
-        resources: resources.get(id) ?? [],
         boats: boats.get(id) ?? [],
         shares: new Map(list.map((a) => [a, share(a)])),
       });
@@ -253,17 +249,18 @@ export class Staffing {
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     let seats = 0;
     for (const b of block.boats) {
-      const perBoat = classes.get(b.boat_class_id)?.sailors_per_boat;
-      if (perBoat == null || perBoat <= 0) {
+      // A coach boat's class takes 0, without a warning.
+      const perBoat = classes.get(b.boat_class_id)?.max_capacity;
+      if (perBoat == null) {
         this.warnOnce(
-          "no_sailors_per_boat",
-          `${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no sailors per boat. Add it to check that the boats hold every sailor`,
+          "no_max_capacity",
+          `${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no max capacity. Add it to check that the boats hold every sailor`,
           b.boat_class_id,
           scope,
         );
         continue;
       }
-      seats += (b.count + (b.sailor_owned ?? 0)) * perBoat;
+      seats += (b.count + (b.chartered ?? 0) + (b.sailor_owned ?? 0)) * perBoat;
     }
     if (sailors > seats) {
       ctx.warn(
@@ -277,27 +274,105 @@ export class Staffing {
     }
   }
 
+  /** Books a cost on a block, split among its activities by their offerings' sailors. */
+  private book(
+    block: Block,
+    account: Id | undefined,
+    amount: number,
+    line: string,
+    name: string,
+    explanation: string,
+    mtdcShare = 1,
+    wages = false,
+  ): void {
+    if (amount === 0 || account === undefined) return;
+    for (const [a, share] of block.shares) {
+      this.ctx.book({
+        cost_center_type: "offering",
+        cost_center_key: a.offering.key,
+        account_id: account,
+        function: this.ctx.functionFor(account, null, "offering"),
+        amount: amount * share,
+        line_key: `${line}:${a.offering.key}`,
+        line_name: name,
+        explanation,
+        mtdc_share: mtdcShare,
+        wages,
+      });
+    }
+  }
+
   /**
-   * Warns when the organization's boats of one class, or a resource such as RIBs, are given to more
-   * blocks at once on a date than it has. Boats sailors bring don't count.
+   * Charges each boat class's charter rate once a day, for the most of its boats chartered at once
+   * that day, shared among the blocks that charter them by how many each does. A charter is a rental,
+   * so it's left out of MTDC (2 CFR 200.1).
+   */
+  private bookCharters(blocks: Block[]): void {
+    const { ctx } = this;
+    const rates = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r]));
+    const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
+    for (const list of groupBy(blocks, (b) => b.row.date).values()) {
+      const chartered = list.flatMap((block) =>
+        block.boats.flatMap((b) => ((b.chartered ?? 0) > 0 ? [{ block, id: b.boat_class_id, n: b.chartered! }] : [])),
+      );
+      for (const [id, uses] of groupBy(chartered, (c) => c.id)) {
+        const name = classes.get(id)?.name ?? id;
+        const rate = rates.get(id)?.charter_per_day_cents;
+        if (rate == null) {
+          for (const { block } of uses) {
+            this.warnOnce(
+              "no_charter_rate",
+              `${block.row.name} charters ${pluralOf(name)}, but the Operations Plan has no charter rate for them, so they cost nothing`,
+              id,
+              { version_id: block.row.version_id, date: block.row.date },
+            );
+          }
+          continue;
+        }
+        const day = mostAtOnce(uses).total * rate;
+        const total = sum(uses.map((u) => u.n));
+        for (const { block, n } of uses) {
+          this.book(
+            block,
+            ctx.costAccount("resources"),
+            (day * n) / total,
+            `charters:${id}`,
+            `Boat charters: ${name}`,
+            "The most boats of the class chartered at once that day × the class's charter rate",
+            0,
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Warns when more of the organization's boats of one class are given to blocks at once on a date
+   * than it has that day on the asset list. Boats it charters, or sailors bring, don't count.
    */
   private checkInventory(blocks: Block[]): void {
     const { ctx } = this;
     const dates = groupBy(blocks, (b) => b.row.date);
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
-    const fleet = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r.quantity]));
-    const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
+    const assets = new Map(ctx.data.assets.map((a) => [a.id, a]));
+    const boats = ctx.data.boats.flatMap((b) => {
+      const asset = assets.get(b.asset_id);
+      return asset === undefined ? [] : [{ asset, boat_class_id: b.boat_class_id }];
+    });
     const organization = ctx.data.organization.name;
     for (const [date, list] of dates) {
-      const check = (code: string, what: string, have: number | null | undefined, used: (b: Block) => number) => {
-        if (have == null) return;
+      const has = (a: Asset) =>
+        (a.acquired_on == null || a.acquired_on <= date) && (a.disposed_on == null || date < a.disposed_on);
+      const check = (code: string, what: string, have: number, used: (b: Block) => number) => {
         const out = list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : []));
         const peak = mostAtOnce(out);
         if (peak.total <= have) return;
+        const only = have === 0 ? "none" : `only ${have}`;
+        const count = countOf(peak.total, what);
         const message =
           peak.at.length === 1
-            ? `${countOf(peak.total, what)} out at once for ${offeringsOf(peak.at[0]!.block)}, but ${organization} has only ${have}`
-            : `${countOf(peak.total, what)} out at once, but ${organization} has only ${have}: ${listOf(peak.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`;
+            ? `${count} out at once for ${offeringsOf(peak.at[0]!.block)}, but ${organization} has ${only}`
+            : `${count} out at once, but ${organization} has ${only}: ${listOf(peak.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`;
         for (const version of new Set(peak.at.map(({ block }) => block.row.version_id))) {
           ctx.warn(code, message, what, {
             version_id: version,
@@ -307,25 +382,9 @@ export class Staffing {
       };
       const classIds = new Set(list.flatMap((b) => b.boats.filter((x) => x.count > 0).map((x) => x.boat_class_id)));
       for (const id of classIds) {
-        if (fleet.get(id) == null) {
-          for (const b of list.filter((x) => x.boats.some((y) => y.boat_class_id === id && y.count > 0))) {
-            this.warnOnce(
-              "no_fleet_quantity",
-              `The Operations Plan doesn't say how many ${pluralOf(classes.get(id)?.name ?? id)} ${organization} has. Add it to check that there are enough`,
-              id,
-              { version_id: b.row.version_id, date },
-            );
-          }
-        }
-        check("over_inventory_boats", classes.get(id)?.name ?? id, fleet.get(id), (b) =>
+        const have = boats.filter((b) => b.boat_class_id === id && has(b.asset)).length;
+        check("over_inventory_boats", classes.get(id)?.name ?? id, have, (b) =>
           sum(b.boats.filter((x) => x.boat_class_id === id).map((x) => x.count)),
-        );
-      }
-      const resourceKeys = new Set(list.flatMap((b) => b.resources.map((x) => x.resource_key)));
-      for (const key of resourceKeys) {
-        const resource = resources.get(key);
-        check("over_inventory_resource", resource?.name ?? key, resource?.quantity, (b) =>
-          sum(b.resources.filter((x) => x.resource_key === key).map((x) => x.quantity)),
         );
       }
     }
@@ -368,7 +427,7 @@ export class Staffing {
     return result;
   }
 
-  /** Costs every block's staff, RIBs, boats and resources, and checks them against the limits. */
+  /** Costs every block's staff and boats, and checks them against the limits. */
   run(scheduled: ScheduledActivity[]): {
     activities: ComputedActivity[];
     coaching: SalariedCoaching[];
@@ -386,44 +445,17 @@ export class Staffing {
     const coaching: SalariedCoaching[] = [];
     const levels = new Map(ctx.data.plan_staff_levels.map((l) => [l.key, l]));
     const positions = new Map(ctx.data.plan_salaried_positions.map((p) => [p.key, p]));
-    const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
     const boatClasses = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const boatRates = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r]));
-    const ribKind = ctx.data.rib_resource_kind_id;
-    const given = new Map<ScheduledActivity, { coaches: number; ribs: number; boats: number }>();
+    const given = new Map<ScheduledActivity, { coaches: number; boats: number }>();
 
     for (const block of byDate(blocks)) {
       const scope = { version_id: block.row.version_id, date: block.row.date };
       const paidHours = block.paid_minutes / 60;
       const waterHours = block.on_water_minutes / 60;
 
-      // Each cost is split among the block's activities by their offerings' sailors.
-      const book = (
-        type: CostType,
-        amount: number,
-        line: string,
-        name: string,
-        explanation: string,
-        mtdcShare = 1,
-      ): void => {
-        if (amount === 0) return;
-        const account = ctx.costAccount(type);
-        if (account === undefined) return;
-        for (const [a, share] of block.shares) {
-          ctx.book({
-            cost_center_type: "offering",
-            cost_center_key: a.offering.key,
-            account_id: account,
-            function: ctx.functionFor(account, null, "offering"),
-            amount: amount * share,
-            line_key: `${line}:${a.offering.key}`,
-            line_name: name,
-            explanation,
-            mtdc_share: mtdcShare,
-            wages: type === "coach_wages",
-          });
-        }
-      };
+      const book = (type: CostType, amount: number, line: string, name: string, explanation: string): void =>
+        this.book(block, ctx.costAccount(type), amount, line, name, explanation, 1, type === "coach_wages");
 
       let wages = 0;
       for (const s of block.staff) {
@@ -478,50 +510,28 @@ export class Staffing {
       }
       book("coach_wages", wages, "coach_wages", "Coach wages", "Staff × paid hours × each one's hourly rate");
 
-      let ribs = 0;
-      for (const use of block.resources) {
-        const resource = resources.get(use.resource_key);
-        if (resource === undefined) {
-          this.warnOnce(
-            "unknown_resource",
-            `${block.row.name} uses resource ${use.resource_key}, which isn't in the plan`,
-            use.resource_key,
-            scope,
-          );
-          continue;
-        }
-        const rib = ribKind != null && resource.resource_kind_id === ribKind;
-        if (rib) ribs += use.quantity;
-        const hours = use.hours ?? (rib ? waterHours : paidHours);
-        const cost = use.quantity * (hours * hourlyCost(resource) + (resource.cost_per_day_cents ?? 0));
-        book(
-          rib ? "ribs" : "resources",
-          cost,
-          rib ? "ribs" : `resource:${resource.key}`,
-          rib ? "RIBs" : resource.name,
-          `${resource.name}: quantity × hours × hourly cost, plus a day rate`,
-          resource.excluded_from_mtdc ? 0 : 1,
-        );
-      }
-
       for (const b of block.boats) {
         const rate = boatRates.get(b.boat_class_id);
         if (rate === undefined || b.count <= 0 || waterHours <= 0) continue;
-        book(
-          "boat_maintenance",
-          b.count * waterHours * rate.maintenance_per_boat_hour_cents,
+        const boatClass = boatClasses.get(b.boat_class_id);
+        this.book(
+          block,
+          boatClass?.account_id ?? ctx.costAccount("boat_maintenance"),
+          b.count * waterHours * (rate.maintenance_per_boat_hour_cents + (rate.fuel_per_hour_cents ?? 0)),
           `boats:${b.boat_class_id}`,
-          `Boat maintenance: ${boatClasses.get(b.boat_class_id)?.name ?? "boats"}`,
-          "The organization's boats × on-water hours × the class's maintenance rate",
+          `Boats: ${boatClass?.name ?? "boats"}`,
+          "The organization's boats × on-water hours × the class's fuel and upkeep",
         );
       }
 
       const coaches = sum(block.staff.map((s) => s.count));
-      const boats = sum(block.boats.map((b) => b.count));
+      const boats = sum(block.boats.map((b) => b.count + (b.chartered ?? 0)));
       for (const [a, share] of block.shares) {
-        given.set(a, { coaches: coaches * share, ribs: ribs * share, boats: boats * share });
+        given.set(a, { coaches: coaches * share, boats: boats * share });
       }
     }
+
+    this.bookCharters(byDate(blocks));
 
     this.bookTrips(blocks, scheduled);
 
@@ -539,7 +549,6 @@ export class Staffing {
         on_water_minutes: a.on_water_minutes,
         uses_boats: a.uses_boats,
         coaches: given.get(a)?.coaches ?? 0,
-        ribs: given.get(a)?.ribs ?? 0,
         boats: given.get(a)?.boats ?? 0,
         block_id: blocks.has(a.stored.block_id ?? "") ? a.stored.block_id : null,
       })),
@@ -667,10 +676,6 @@ function extraCoachMinutes(list: Block[]): number {
     last = at;
   }
   return minutes;
-}
-
-function hourlyCost(r: PlanResource): number {
-  return (r.cost_per_hour_cents ?? 0) + (r.fuel_per_hour_cents ?? 0) + (r.maintenance_per_hour_cents ?? 0);
 }
 
 export function round2(n: number): number {

@@ -6,9 +6,8 @@ Feature: The catalog
   team. A program has details of its own, such as its Google group, and its catalog offerings: the
   offerings it runs, by name, such as "J-Pod · fall practices", which plans and Clubspot's sign-ups
   both point to. The catalog also lists the revenue accounts
-  the club's money is booked to, the qualifications a coach can hold, the boat classes the club
-  sails, such as Opti or 420, and the kinds of equipment programs share, such as coach boats and
-  trailers.
+  the club's money is booked to, the qualifications a coach can hold, and the boat classes, such as
+  Opti, 420, or RIB for a coach boat.
 
   The catalog also lists the program areas. A program area is one part of the club's programs, such
   as Summer or Singlehanded, and is what the club reports to the IRS as one of its program
