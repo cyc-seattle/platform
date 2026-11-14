@@ -66,13 +66,29 @@ export interface QualificationCover {
 export interface BoatClass {
   id: Id;
   name: string;
-  sailors_per_boat: number | null;
+  /** The most sailors one boat can safely take. */
+  max_capacity: number | null;
   footprint_sq_ft: number | null;
+  /** Where its own boats' fuel and upkeep are booked; empty for the boat maintenance cost type's. */
+  account_id?: Id | null;
 }
 
-export interface ResourceKind {
+/** Something the organization owns: a sailboat, a powerboat, a motor, or other equipment. */
+export interface Asset {
   id: Id;
-  name: string;
+  kind: "sailboat" | "powerboat" | "motor" | "other";
+  name: string | null;
+  /** The day the organization got it, or expects to; empty counts it from the start. */
+  acquired_on: DateString | null;
+  /** The day it stopped being the organization's; empty while it still is. */
+  disposed_on: DateString | null;
+}
+
+/** A sailboat or powerboat asset's class. */
+export interface Boat {
+  id: Id;
+  asset_id: Id;
+  boat_class_id: Id;
 }
 
 export interface Organization {
@@ -165,7 +181,7 @@ export interface PlanActivity extends Versioned {
   block_id: Id | null;
 }
 
-/** Activities on one date that share their staff, RIBs and boats. */
+/** Activities on one date that share their staff and boats. */
 export interface PlanActivityBlock extends Versioned {
   date: DateString;
   name: string;
@@ -183,22 +199,13 @@ export interface PlanBlockStaff extends Versioned {
   pay: "salary" | "hourly" | null;
 }
 
-/** A resource on a block, such as RIBs. */
-export interface PlanBlockResource extends Versioned {
-  block_id: Id;
-  /** A `plan_resources` key. */
-  resource_key: Id;
-  quantity: number;
-  /** Hours each is used; empty for the block's time on the water (RIBs) or its paid time (the rest). */
-  hours: number | null;
-}
-
-/** Boats of one class on a block: the organization's, and the ones sailors bring. */
+/** Boats of one class on a block: the organization's, the ones it charters, and the ones sailors bring. */
 export interface PlanBlockBoats extends Versioned {
   block_id: Id;
   boat_class_id: Id;
   count: number;
   sailor_owned: number | null;
+  chartered?: number | null;
 }
 
 export interface PlanLaborLine extends Versioned {
@@ -221,8 +228,8 @@ export interface PlanBudgetLine extends Versioned {
   cost_center_key: Id | null;
   amount_cents: number;
   fiscal_year: number;
-  /** Set for a cost 2 CFR 200.1 leaves out of MTDC, such as equipment or participant support. */
-  excluded_from_mtdc: boolean;
+  /** Whether it counts toward MTDC; cleared for a cost 2 CFR 200.1 leaves out, such as equipment or participant support. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -275,26 +282,18 @@ export interface PlanSalariedBooking extends Versioned {
   hours: number;
 }
 
-export interface PlanResource extends Versioned {
-  resource_kind_id: Id;
-  name: string;
-  quantity: number | null;
-  cost_per_hour_cents: number | null;
-  cost_per_day_cents: number | null;
-  fuel_per_hour_cents: number | null;
-  maintenance_per_hour_cents: number | null;
-  /** Set for a rental, whose cost leaves MTDC. */
-  excluded_from_mtdc: boolean;
-}
-
+/** A boat class's rates for the year. */
 export interface PlanBoatRate extends Versioned {
   boat_class_id: Id;
+  /** Upkeep for each hour one of the organization's boats of the class is on the water. */
   maintenance_per_boat_hour_cents: number;
-  /** How many boats of the class the organization has. */
-  quantity: number | null;
+  /** Fuel for each hour one is on the water. */
+  fuel_per_hour_cents?: number | null;
+  /** What one costs to charter for a day. */
+  charter_per_day_cents?: number | null;
 }
 
-/** A group of shared costs, such as G&A, divided among all of the plan year's offerings by MTDC. */
+/** A group of shared costs, such as G&A, divided among all of the plan's offerings by MTDC. */
 export interface PlanPool extends Versioned {
   name: string;
 }
@@ -323,7 +322,8 @@ export interface PlanRevenueCharge extends Versioned {
   product_kinds: ProductKind[] | null;
   /** A revenue account adds revenue; an expense account adds a cost. */
   account_id: Id;
-  excluded_from_mtdc: boolean;
+  /** Whether it counts toward MTDC; cleared for one 2 CFR 200.1 leaves out, such as scholarships. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -346,8 +346,6 @@ export interface PlanData {
   fiscal_year: number;
   organization: Organization;
   organization_cost_accounts: OrganizationCostAccount[];
-  /** The resource kind whose `plan_resources` price RIB hours. */
-  rib_resource_kind_id: Id | null;
 
   products: Product[];
   program_areas: ProgramArea[];
@@ -355,7 +353,9 @@ export interface PlanData {
   qualifications: Qualification[];
   qualification_covers: QualificationCover[];
   boat_classes: BoatClass[];
-  resource_kinds: ResourceKind[];
+  /** The asset list, with its boats, which the engine counts by class on each day. */
+  assets: Asset[];
+  boats: Boat[];
 
   /** The plans and versions being calculated, so the engine can tell which plan each offering is in. */
   plans: Plan[];
@@ -367,7 +367,6 @@ export interface PlanData {
   plan_activities: PlanActivity[];
   plan_activity_blocks: PlanActivityBlock[];
   plan_block_staff: PlanBlockStaff[];
-  plan_block_resources: PlanBlockResource[];
   plan_block_boats: PlanBlockBoats[];
   plan_labor_lines: PlanLaborLine[];
   plan_budget_lines: PlanBudgetLine[];
@@ -377,7 +376,6 @@ export interface PlanData {
   plan_staff_levels: PlanStaffLevel[];
   plan_salaried_positions: PlanSalariedPosition[];
   plan_salaried_bookings: PlanSalariedBooking[];
-  plan_resources: PlanResource[];
   plan_boat_rates: PlanBoatRate[];
   plan_pools: PlanPool[];
   plan_bonus_owners: PlanBonusOwner[];
@@ -412,9 +410,12 @@ export interface Totals {
 
 /** One offering's P&L for the plan year, or a product's or program area's, which adds up its offerings. */
 export interface Pnl extends Totals {
-  level: "offering" | "product" | "program_area";
+  /** `program_area_term` is a program area's offerings in one term, or in none. */
+  level: "offering" | "product" | "program_area" | "program_area_term";
   /** An offering key, a product id, or a program area id. */
   key: Id;
+  /** A `program_area_term`'s `plan_terms` key, null for its offerings in no term. Only that level has one. */
+  term_key?: Id | null;
   /** Each account's total, revenue and expense alike. */
   by_account: { account_id: Id; amount_cents: number }[];
   mtdc_cents: number;
@@ -437,9 +438,8 @@ export interface ComputedActivity {
   paid_minutes: number;
   on_water_minutes: number;
   uses_boats: boolean;
-  /** Its share of its block's staff, RIBs and boats, by its sailors. */
+  /** Its share of its block's staff and boats, the organization's and chartered, by its sailors. */
   coaches: number;
-  ribs: number;
   boats: number;
   block_id: Id | null;
 }
@@ -515,10 +515,27 @@ export interface PositionSummary {
   double_booked_dates: number;
 }
 
+/** A bonus owner's bonus for one term, or on its offerings in no term for the year. */
+export interface BonusSummary {
+  bonus_owner_key: Id;
+  role_name: string;
+  position_key: Id | null;
+  /** The program area of all the owner's products, or null when they're in more than one. */
+  program_area_id: Id | null;
+  /** A `plan_terms` key, or null for its offerings in no term. */
+  term_key: Id | null;
+  bonus_rate: number;
+  /** The net the bonus is figured on, which can be below zero. */
+  net_cents: number;
+  bonus_cents: number;
+}
+
 export interface EngineOutput {
   lines: CostLine[];
-  /** Each offering's P&L, then each product's, then each program area's. */
+  /** Each offering's P&L, then each product's, then each program area's, then each area's terms. */
   pnl: Pnl[];
+  /** Each bonus owner's bonus in each term it has offerings in, then in no term. */
+  bonuses: BonusSummary[];
   organization: OrganizationTotals;
   activities: ComputedActivity[];
   /** Each salaried position's pay for the year. */

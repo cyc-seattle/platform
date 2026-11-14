@@ -19,6 +19,9 @@ _.path = ["{{config_root}}/node_modules/.bin"]
 GOOGLE_APPLICATION_CREDENTIALS = "{{ get_env(name='GOOGLE_APPLICATION_CREDENTIALS', default=exec(command='dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\"') ~ '/.gcloud/application_default_credentials.json') }}"
 GCP_PROJECT = "cyc-admin-scripts"
 CLOUDSDK_CORE_PROJECT = "{{ env.GCP_PROJECT }}"
+# The workplace's gcloud login, so the gcloud CLI uses it in worktrees outside the workplace too.
+# Actions has only the default configuration.
+CLOUDSDK_ACTIVE_CONFIG_NAME = "{% if get_env(name='GITHUB_ACTIONS', default='') == '' %}isthmia{% else %}default{% endif %}"
 PULUMI_STACK = "{{ get_env(name='PULUMI_STACK', default='prod') }}"
 # Each stack's state lives in its own environment's bucket, from stacks/bootstrap/state.ts.
 PULUMI_BACKEND_URL = "gs://{{ env.GCP_PROJECT }}-pulumi-{{ env.PULUMI_STACK }}"

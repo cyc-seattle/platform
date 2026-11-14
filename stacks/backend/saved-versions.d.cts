@@ -53,12 +53,19 @@ export function databaseError(error: unknown): unknown;
 
 /**
  * Installs the triggers, unless the same ones are on every table. `missing` lists the tables that
- * lack a column they need, and then it installs none.
+ * lack a column they need, and then it installs none. `changed` lists the drafts whose coach boats
+ * it moved into RIBs, whose results are stale.
  */
 export function installTriggers(
   config: SavedVersionsConfig,
   db: Database,
-): Promise<{ missing: string[]; installed: boolean }>;
+): Promise<{ missing: string[]; installed: boolean; changed?: string[] }>;
+
+/** Moves each draft's coach boats into RIB boat rates and block boats, once they exist. Returns the drafts it changed. */
+export function seedCoachBoats(db: Database): Promise<string[]>;
+
+/** Books the powerboat classes' upkeep to the coach boats account, once boat classes have one. Returns every draft. */
+export function seedPowerboatAccounts(db: Database): Promise<string[]>;
 
 export interface TriggerStatus {
   /** The installed triggers' {@link fingerprint}, or null when there are none. */

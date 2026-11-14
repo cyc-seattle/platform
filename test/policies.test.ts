@@ -11,6 +11,7 @@ import {
   groupPoliciesConfig,
   OPERATIONS_ONLY,
   queryGuardConfig,
+  sailTeamPolicy,
   savedVersionsConfig,
   WEBSITE_BUILD,
   WEBSITE_FILE_FIELDS,
@@ -39,12 +40,14 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, and Plan policies", () => {
+  it("are the CRM, Medical, Catalog, Plan, and Sail Team writer policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
+      "Announcement Writer",
       "CRM Reader",
       "CRM Writer",
       "Catalog Reader",
       "Catalog Writer",
+      "Link Writer",
       "Medical Reader",
       "Medical Writer",
       "Plan Admin",
@@ -113,6 +116,34 @@ describe("the policies a group can give", () => {
   });
 });
 
+describe("Sail Team's links and announcements", () => {
+  it("are read whole by everyone who signs in", () => {
+    expect(sailTeamPolicy.rules).toEqual([
+      { collection: "links", action: "read" },
+      { collection: "announcements", action: "read" },
+    ]);
+  });
+
+  it("are changed only by their own writer, who can't set a link's preview", () => {
+    for (const [name, collection] of [
+      ["Link Writer", "links"],
+      ["Announcement Writer", "announcements"],
+    ] as const) {
+      expect(new Set(named(name).rules.map((rule) => rule.collection))).toEqual(new Set([collection]));
+      expect(new Set(named(name).rules.map((rule) => rule.action))).toEqual(
+        new Set(["create", "read", "update", "delete"]),
+      );
+    }
+    for (const rule of named("Link Writer").rules.filter(({ action }) => action === "create" || action === "update")) {
+      expect(rule.fields).toEqual(["id", "title", "url", "note", "sort"]);
+    }
+    for (const policy of policies.filter(({ name }) => name !== "Link Writer" && name !== "Announcement Writer")) {
+      expect(policy.rules.map((rule) => rule.collection)).not.toContain("links");
+      expect(policy.rules.map((rule) => rule.collection)).not.toContain("announcements");
+    }
+  });
+});
+
 describe("the Catalog policies", () => {
   const catalog = [
     "products",
@@ -121,8 +152,8 @@ describe("the Catalog policies", () => {
     "qualifications",
     "qualification_covers",
     "boat_classes",
+    "assets",
     "boats",
-    "resource_kinds",
     "programs",
     "catalog_offerings",
     "organization_cost_accounts",
@@ -170,7 +201,6 @@ const plans = [
   "plan_activities",
   "plan_activity_blocks",
   "plan_block_staff",
-  "plan_block_resources",
   "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
@@ -180,7 +210,6 @@ const plans = [
   "plan_staff_levels",
   "plan_salaried_positions",
   "plan_salaried_bookings",
-  "plan_resources",
   "plan_boat_rates",
   "plan_pools",
   "plan_bonus_owners",
@@ -191,6 +220,7 @@ const plans = [
   "plan_result_lines",
   "plan_result_pnl",
   "plan_result_positions",
+  "plan_result_bonuses",
   "plan_result_capital",
   "plan_result_warnings",
   "version_sets",
@@ -324,7 +354,6 @@ describe("savedVersionsConfig", () => {
       plan_trips: { offering_id: "plan_offerings" },
       plan_activities: { offering_id: "plan_offerings", trip_id: "plan_trips", block_id: "plan_activity_blocks" },
       plan_block_staff: { block_id: "plan_activity_blocks" },
-      plan_block_resources: { block_id: "plan_activity_blocks" },
       plan_block_boats: { block_id: "plan_activity_blocks" },
       plan_salaried_positions: { remainder_pool_id: "plan_pools" },
       plan_salaried_bookings: { position_id: "plan_salaried_positions" },

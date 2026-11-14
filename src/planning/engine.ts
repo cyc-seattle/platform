@@ -8,6 +8,7 @@ import { bookPayrollTax } from "./payroll.ts";
 import { allocatePools } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
+import { compareTerms, offeringTerms, type OfferingTerms } from "./terms.ts";
 import { enrollmentOf, round2, Staffing, type DoubleBooked, type SalariedCoaching } from "./staffing.ts";
 import type {
   CostLine,
@@ -28,6 +29,7 @@ export function computePlan(data: PlanData): EngineOutput {
   const ctx = new Context(data);
   for (const o of data.plan_offerings) ctx.enrollment.set(o.id, enrollmentOf(o));
   checkAreas(ctx);
+  const terms = offeringTerms(ctx);
 
   const { activities, coaching, doubleBooked } = new Staffing(ctx).run(scheduleActivities(ctx));
   countDays(ctx, activities);
@@ -41,18 +43,24 @@ export function computePlan(data: PlanData): EngineOutput {
   booker.flush();
   bookPayrollTax(ctx);
 
-  const mtdcByOffering = new Map(ctx.fyOfferings().map((o) => [o.key, mtdc(ctx, o.key)]));
+  const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.key, mtdc(ctx, o.key)]));
   allocatePools(ctx);
-  const bonuses = bookBonuses(ctx);
+  const bonuses = bookBonuses(ctx, terms);
+  const bonusByPosition = new Map<Id, number>();
+  for (const b of bonuses) {
+    if (b.position_key == null) continue;
+    bonusByPosition.set(b.position_key, (bonusByPosition.get(b.position_key) ?? 0) + b.bonus_cents);
+  }
 
   const lines = sumLines(ctx);
   const organization = organizationTotals(ctx, lines);
   return {
     lines,
-    pnl: summarize(ctx, lines, mtdcByOffering),
+    pnl: summarize(ctx, lines, mtdcByOffering, terms),
     organization,
     activities,
-    positions: summarizePositions(ctx, coaching, charged, bonuses, doubleBooked),
+    positions: summarizePositions(ctx, coaching, charged, bonusByPosition, doubleBooked),
+    bonuses,
     capital: rankCapital(ctx, lines, organization),
     warnings: ctx.warnings,
   };
@@ -64,7 +72,7 @@ export function computePlan(data: PlanData): EngineOutput {
  * products in no area. The catalog stays live, so the database can't check these.
  */
 function checkAreas(ctx: Context): void {
-  for (const offering of ctx.fyOfferings()) {
+  for (const offering of ctx.data.plan_offerings) {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) continue;
     if (product.kind === "program" && product.program_area_id == null) {
@@ -197,8 +205,8 @@ function sumLines(ctx: Context): CostLine[] {
     .filter((l) => l.amount_cents !== 0);
 }
 
-/** Each plan-year offering's P&L, then each product's, then each program area's. */
-function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, number>): Pnl[] {
+/** Each plan-year offering's P&L, then each product's, then each program area's, then each area's terms. */
+function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, number>, terms: OfferingTerms): Pnl[] {
   const pnl = (
     level: Pnl["level"],
     key: Id,
@@ -228,7 +236,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
     };
   };
 
-  const offerings = ctx.fyOfferings().sort((a, b) => a.key.localeCompare(b.key));
+  const offerings = [...ctx.data.plan_offerings].sort((a, b) => a.key.localeCompare(b.key));
   const offeringPnl = offerings.map((o) => {
     const enrollment = ctx.enrollment.get(o.id) ?? 0;
     const days = ctx.days.get(o.key) ?? 0;
@@ -271,33 +279,46 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
   }
   for (const l of lines)
     if (l.cost_center_type === "program_area" && l.cost_center_key !== null) areaIds.add(l.cost_center_key);
-  const areaPnl = [...areaIds].sort().map((id) => {
+  const areaPnl: Pnl[] = [];
+  const termPnl: Pnl[] = [];
+  for (const id of [...areaIds].sort()) {
     const own = offeringPnl.filter((s) => {
       const product = ctx.offeringsByKey.get(s.key)?.product_id;
       return product !== undefined && ctx.products.get(product)?.program_area_id === id;
     });
-    const keys = new Set(own.map((s) => s.key));
     const products = new Set(own.map((s) => ctx.offeringsByKey.get(s.key)?.product_id));
-    const add = (field: "mtdc_cents" | "enrollment" | "days" | "sailor_days"): number =>
-      own.reduce((t, s) => t + s[field], 0);
-    return pnl(
-      "program_area",
-      id,
-      lines.filter(
-        (l) =>
-          (l.cost_center_type === "offering" && l.cost_center_key !== null && keys.has(l.cost_center_key)) ||
-          (l.cost_center_type === "product" && products.has(l.cost_center_key ?? undefined)) ||
-          (l.cost_center_type === "program_area" && l.cost_center_key === id),
-      ),
-      {
-        mtdc_cents: add("mtdc_cents"),
-        enrollment: add("enrollment"),
-        days: add("days"),
-        sailor_days: add("sailor_days"),
-      },
-    );
-  });
-  return [...offeringPnl, ...productPnl, ...areaPnl];
+    // Costs left on the area or a product, because it had no offerings to divide them among, are in no term.
+    const rollup = (level: Pnl["level"], offerings: Pnl[], leftovers: boolean): Pnl => {
+      const keys = new Set(offerings.map((s) => s.key));
+      const add = (field: "mtdc_cents" | "enrollment" | "days" | "sailor_days"): number =>
+        offerings.reduce((t, s) => t + s[field], 0);
+      return pnl(
+        level,
+        id,
+        lines.filter(
+          (l) =>
+            (l.cost_center_type === "offering" && l.cost_center_key !== null && keys.has(l.cost_center_key)) ||
+            (leftovers && l.cost_center_type === "product" && products.has(l.cost_center_key ?? undefined)) ||
+            (leftovers && l.cost_center_type === "program_area" && l.cost_center_key === id),
+        ),
+        {
+          mtdc_cents: add("mtdc_cents"),
+          enrollment: add("enrollment"),
+          days: add("days"),
+          sailor_days: add("sailor_days"),
+        },
+      );
+    };
+    areaPnl.push(rollup("program_area", own, true));
+    const termOf = (s: Pnl) => terms.get(s.key) ?? null;
+    const areaTerms = [...new Map(own.map((s) => [termOf(s)?.key, termOf(s)])).values()].filter((t) => t !== null);
+    for (const term of [...areaTerms.sort(compareTerms), null]) {
+      const inTerm = own.filter((s) => termOf(s)?.key === term?.key);
+      const row = { ...rollup("program_area_term", inTerm, term === null), term_key: term?.key ?? null };
+      if (inTerm.length > 0 || row.by_account.length > 0) termPnl.push(row);
+    }
+  }
+  return [...offeringPnl, ...productPnl, ...areaPnl, ...termPnl];
 }
 
 function divide(totals: Totals, by: number): Totals | null {

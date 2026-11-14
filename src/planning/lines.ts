@@ -126,7 +126,7 @@ export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
       line_key: `budget:${line.key}`,
       line_name: line.name,
       explanation: line.name,
-      mtdc_share: line.excluded_from_mtdc ? 0 : 1,
+      mtdc_share: line.in_mtdc ? 1 : 0,
     });
   }
 }

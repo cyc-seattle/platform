@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { SEED, up } from "../stacks/backend/migrations/cyc0015-effective-dates.cjs";
+import { SEED, up } from "../stacks/backend/migrations/cyc0016-effective-dates.cjs";
 
 // The migration from an active status to a date each Financial Plan is active from, in a real
 // Postgres (PGlite), with a trigger that refuses taking a plan out of active, like the
