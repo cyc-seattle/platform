@@ -228,8 +228,8 @@ export interface PlanBudgetLine extends Versioned {
   cost_center_key: Id | null;
   amount_cents: number;
   fiscal_year: number;
-  /** Set for a cost 2 CFR 200.1 leaves out of MTDC, such as equipment or participant support. */
-  excluded_from_mtdc: boolean;
+  /** Whether it counts toward MTDC; cleared for a cost 2 CFR 200.1 leaves out, such as equipment or participant support. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -322,7 +322,8 @@ export interface PlanRevenueCharge extends Versioned {
   product_kinds: ProductKind[] | null;
   /** A revenue account adds revenue; an expense account adds a cost. */
   account_id: Id;
-  excluded_from_mtdc: boolean;
+  /** Whether it counts toward MTDC; cleared for one 2 CFR 200.1 leaves out, such as scholarships. */
+  in_mtdc: boolean;
   note: string | null;
 }
 

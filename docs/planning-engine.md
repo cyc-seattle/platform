@@ -69,8 +69,8 @@ An AI working over Directus's MCP server can change a draft's rows but can't run
 doesn't need to. Change the draft's inputs, wait about a second, then read the draft's
 `plan_results` and `plan_result_*` rows, filtered on its `version_set_id`. `plan_results.calculated_at`
 says when they were worked out, so a time before the last change means they aren't in yet. A draft
-with no `plan_results` row is still being worked out, or the engine failed on it. Plan Readers and
-Plan Writers can read them.
+with no `plan_results` row is still being worked out, or the engine failed on it. Anyone with a
+Plan policy can read them.
 
 ## Terms
 
@@ -248,7 +248,7 @@ Data warnings about blocks:
   account on the offering. A charge on a revenue account adds revenue, such as the card fees families
   pay. One on an expense account adds a cost, such as scholarships or the card company's fees.
   Charges are figured on revenue before any other charge.
-- A charge counts toward MTDC unless it's `excluded_from_mtdc`.
+- A charge counts toward MTDC when it's `in_mtdc`, the default.
 
 ### Budget and labor lines
 
@@ -282,6 +282,11 @@ The engine warns about:
 - a program with no program area, or another kind of product with one
 - an offering in an area plan whose product is in another area, and an offering in the Operations
   Plan whose product is in an area
+- a line in a Program Plan that moves a cost off the area's programs (`cost_off_programs`): one left
+  out of MTDC, one charged to a pool or to the organization, or capital charged to the organization
+  (capital charged anywhere else has `capital_off_org`). A Plan Admin looks these over
+  before making a plan active (cyc-seattle/platform#251). The Operations Plan's lines never get
+  one, and the engine costs the line as it's given.
 
 ### Salaried positions
 
@@ -323,7 +328,7 @@ salaries and wages, fringe benefits, materials and supplies, services, travel, a
 of each subaward. It leaves out equipment, capital spending, rent and rentals, participant support,
 scholarships and fellowships, tuition remission, patient care, and each subaward over $50,000.
 
-- A budget line with `excluded_from_mtdc` set is left out, and so is a boat charter. Set it for any cost the rule
+- A budget line with `in_mtdc` cleared is left out, and so is a boat charter. Clear it for any cost the rule
   leaves out. Equipment means an item that costs $10,000 or more and lasts more than a year; anything
   cheaper is a supply, and counts.
 - Every other cost of the offering's own counts, including COGS and payroll tax.

@@ -4014,18 +4014,18 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_budget_lines
-    field: excluded_from_mtdc
+    field: in_mtdc
     type: boolean
     meta:
       collection: plan_budget_lines
       conditions: null
       display: null
       display_options: null
-      field: excluded_from_mtdc
+      field: in_mtdc
       group: null
       hidden: false
       interface: boolean
-      note: Set for a cost left out of modified total direct costs (MTDC), such as equipment.
+      note: "Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment."
       options: null
       readonly: false
       required: false
@@ -4034,15 +4034,15 @@ fields:
       special: null
       translations:
         - language: en-US
-          translation: Left out of MTDC
+          translation: MTDC
       validation: null
       validation_message: null
       width: full
     schema:
-      name: excluded_from_mtdc
+      name: in_mtdc
       table: plan_budget_lines
       data_type: boolean
-      default_value: false
+      default_value: true
       max_length: null
       numeric_precision: null
       numeric_scale: null
@@ -4790,18 +4790,18 @@ fields:
       foreign_key_table: accounts
       foreign_key_column: id
   - collection: plan_revenue_charges
-    field: excluded_from_mtdc
+    field: in_mtdc
     type: boolean
     meta:
       collection: plan_revenue_charges
       conditions: null
       display: null
       display_options: null
-      field: excluded_from_mtdc
+      field: in_mtdc
       group: null
       hidden: false
       interface: boolean
-      note: "Set for a charge 2 CFR 200.1 leaves out of MTDC, such as scholarships."
+      note: "Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships."
       options: null
       readonly: false
       required: false
@@ -4810,15 +4810,15 @@ fields:
       special: null
       translations:
         - language: en-US
-          translation: Left out of MTDC
+          translation: MTDC
       validation: null
       validation_message: null
       width: full
     schema:
-      name: excluded_from_mtdc
+      name: in_mtdc
       table: plan_revenue_charges
       data_type: boolean
-      default_value: false
+      default_value: true
       max_length: null
       numeric_precision: null
       numeric_scale: null
@@ -11428,21 +11428,17 @@ fields:
             value: draft
           - text: Saved
             value: saved
-          - text: Active
-            value: active
       field: status
       group: null
       hidden: false
       interface: select-dropdown
-      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name and note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved.
+      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name, its note, the date it's active from, and whether it's archived.
       options:
         choices:
           - text: Draft
             value: draft
           - text: Saved
             value: saved
-          - text: Active
-            value: active
       readonly: false
       required: true
       searchable: true
@@ -11454,8 +11450,7 @@ fields:
           _in:
             - draft
             - saved
-            - active
-      validation_message: "Must be one of: draft, saved, active."
+      validation_message: "Must be one of: draft, saved."
       width: full
     schema:
       name: status
@@ -11643,6 +11638,48 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: version_sets
+    field: effective_from
+    type: date
+    meta:
+      collection: version_sets
+      conditions: null
+      display: null
+      display_options: null
+      field: effective_from
+      group: null
+      hidden: false
+      interface: datetime
+      note: The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations:
+        - language: en-US
+          translation: Active from
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: effective_from
+      table: version_sets
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: version_sets
     field: archived_at
     type: timestamp
     meta:
@@ -11654,7 +11691,7 @@ fields:
       group: null
       hidden: false
       interface: datetime
-      note: Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. An active Financial Plan can't be archived.
+      note: Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived.
       options: null
       readonly: false
       required: false

@@ -280,6 +280,7 @@ fields:
               - Link Writer
               - Medical Reader
               - Medical Writer
+              - Plan Admin
               - Plan Reader
               - Plan Writer
         template: "{{policy_id.name}}"

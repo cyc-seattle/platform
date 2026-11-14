@@ -151,6 +151,10 @@ Step("a user with the {role} role and the {policy} policy", (_, role: string, po
   setThey(actor({ role, policies: [policy] })),
 );
 Step("{service}'s service account", (_, service: string) => setThey(actor({ service })));
+// A Plan Admin also has Plan Writer, as planning.feature describes them.
+Step("a user with the Plan Writer and Plan Admin policies", () =>
+  setThey(actor({ policies: ["Plan Writer", "Plan Admin"] })),
+);
 
 const ACTIONS = ["create", "read", "update", "delete"] as const;
 type Action = (typeof ACTIONS)[number];

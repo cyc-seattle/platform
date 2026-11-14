@@ -208,7 +208,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_revenue_charges",
     sort: ["version_id.plan_id.name", "name"],
-    fields: ["name", "rate", "product_kinds", "account_id", "excluded_from_mtdc", "version_id"],
+    fields: ["name", "rate", "product_kinds", "account_id", "in_mtdc", "version_id"],
   },
   {
     collection: "plan_staff_levels",
@@ -305,7 +305,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "version_sets",
     sort: ["-fiscal_year", "status", "-saved_at"],
-    fields: ["name", "fiscal_year", "status", "parent_id", "saved_at", "message"],
+    fields: ["name", "fiscal_year", "status", "effective_from", "parent_id", "saved_at", "message"],
   },
   {
     collection: "version_set_members",

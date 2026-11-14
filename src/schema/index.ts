@@ -733,8 +733,8 @@ export interface PlanBudgetLines {
   /** In cents: 12500 is $125.00. */
   amount_cents: number;
   fiscal_year: number;
-  /** Set for a cost left out of modified total direct costs (MTDC), such as equipment. */
-  excluded_from_mtdc: boolean;
+  /** Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -1036,8 +1036,8 @@ export interface PlanRevenueCharges {
   product_kinds: ("program" | "charter" | "storage_lease" | "merchandise" | "event_hosting" | "other")[] | null;
   /** A revenue account adds revenue, such as card fees families pay. An expense account adds a cost. */
   account_id: string | Accounts;
-  /** Set for a charge 2 CFR 200.1 leaves out of MTDC, such as scholarships. */
-  excluded_from_mtdc: boolean;
+  /** Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -1336,8 +1336,8 @@ export interface VersionSets {
   name: string;
   /** What it was for, such as "Reviewed with the board". You can change it after it's saved. */
   message: string | null;
-  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name and note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved. */
-  status: "draft" | "saved" | "active";
+  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name, its note, the date it's active from, and whether it's archived. */
+  status: "draft" | "saved";
   /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
   parent_id: string | VersionSets | null;
   /** Set when the Financial Plan is saved. */
@@ -1346,7 +1346,9 @@ export interface VersionSets {
   saved_at: string | null;
   /** The version of the planning engine that calculated its numbers. */
   platform_version: string | null;
-  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. An active Financial Plan can't be archived. */
+  /** The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date. */
+  effective_from: string | null;
+  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived. */
   archived_at: string | null;
   /** Each plan in the Financial Plan. Add or remove one only while it's a draft. */
   members: (string | VersionSetMembers)[];

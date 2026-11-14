@@ -29,6 +29,7 @@ export const policyNames = [
   "Catalog Writer",
   "Plan Reader",
   "Plan Writer",
+  "Plan Admin",
   "Link Writer",
   "Announcement Writer",
 ];
