@@ -118,11 +118,11 @@ anywhere else. Then tell the planner the draft's name, and that they can:
 
 - read its warnings and its program area pages in sail-team, and compare it with the plan it started
   from;
-- keep it, and ask the finance committee to save it, or make it active from a date, if it's the one
+- keep it, and ask a Plan Admin to save it, or make it active from a date, if it's the one
   to run;
 - delete it, or tell you what to change.
 
-Deleting is the planner's, and saving and making active the finance committee's. Don't do them
+Deleting is the planner's, and saving and making active a Plan Admin's. Don't do them
 yourself.
 
 ## Check it

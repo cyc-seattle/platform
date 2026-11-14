@@ -225,15 +225,15 @@ A plan is for one organization and one plan year (`fiscal_year`). A Program Plan
 
 A plan copy's `rules` hold what the planner wants that the plan's numbers don't capture, in their own words, such as "every Monday, Wednesday and Friday, except on school holidays, from 4pm until dusk". Their AI reads them when it fills in the plan. The engine never does. Like every input, they're saved with the Financial Plan and never change after.
 
-A Financial Plan is for one organization and year, and holds one Operations Plan copy and at most one Program Plan copy for each program area, each in no other Financial Plan. A year can have several drafts at once, to weigh options. A planner starts one by adding a `version_sets` row in the Data Studio, which calls them Financial Plans. Given a `parent_id`, a Financial Plan for the same organization and year, the `saved-versions` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. A Plan Approver can also add a plan's draft copy to it by hand, as a `version_set_members` row, and take one out. Members change only while the Financial Plan is a draft. Its organization, year, and parent never change.
+A Financial Plan is for one organization and year, and holds one Operations Plan copy and at most one Program Plan copy for each program area, each in no other Financial Plan. A year can have several drafts at once, to weigh options. A planner starts one by adding a `version_sets` row in the Data Studio, which calls them Financial Plans. Given a `parent_id`, a Financial Plan for the same organization and year, the `saved-versions` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. A Plan Admin can also add a plan's draft copy to it by hand, as a `version_set_members` row, and take one out. Members change only while the Financial Plan is a draft. Its organization, year, and parent never change.
 
-A Plan Approver saves a Financial Plan by setting its `status` to `saved`. Saving it saves every plan copy in it, in the same statement, so they're saved together, and the database refuses it without an Operations Plan. A plan copy is never saved on its own. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. It stamps the same on each plan copy. Then it works out the results again ([A Financial Plan's results](#a-financial-plans-results)). A saved Financial Plan never changes, apart from its `name`, its note (`message`), such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan copy of the same Financial Plan.
+A Plan Admin saves a Financial Plan by setting its `status` to `saved`. Saving it saves every plan copy in it, in the same statement, so they're saved together, and the database refuses it without an Operations Plan. A plan copy is never saved on its own. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. It stamps the same on each plan copy. Then it works out the results again ([A Financial Plan's results](#a-financial-plans-results)). A saved Financial Plan never changes, apart from its `name`, its note (`message`), such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan copy of the same Financial Plan.
 
 A saved Financial Plan doesn't copy the catalog. Recalculating an old one uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
 
-A Plan Approver makes a Financial Plan active by giving it an `effective_from` date (cyc-seattle/platform#251). The plan in force on a day is the one for its organization and year with the latest date on or before it, until the next one's date, and `planInForce` in `@cyc-seattle/platform/planning` finds it. A draft can be active: directors keep changing it while it's in force, and its results keep up. Saving it stops it changing, and it stays in force. A Plan Approver can change or clear any Financial Plan's date, a saved one's included. No two for an organization's year share a date, which the trigger checks and a partial unique index on `version_sets` backs. An active Financial Plan can't be deleted until its date is cleared. Directus's revisions record who changed a date, and when. Today is the database's date, in UTC.
+A Plan Admin makes a Financial Plan active by giving it an `effective_from` date (cyc-seattle/platform#251). The plan in force on a day is the one for its organization and year with the latest date on or before it, until the next one's date, and `planInForce` in `@cyc-seattle/platform/planning` finds it. A draft can be active: directors keep changing it while it's in force, and its results keep up. Saving it stops it changing, and it stays in force. A Plan Admin can change or clear any Financial Plan's date, a saved one's included. No two for an organization's year share a date, which the trigger checks and a partial unique index on `version_sets` backs. An active Financial Plan can't be deleted until its date is cleared. Directus's revisions record who changed a date, and when. Today is the database's date, in UTC.
 
-A Plan Approver archives a Financial Plan, a draft or a saved one, by setting `archived_at`, which hides it from Planning's list, and clears it to bring the plan back. Archiving changes nothing else, so a saved one can be archived too. The plan in force can't be archived, nor can one active from a later date, and an archived one can't be given a date (cyc-seattle/sail-team#82).
+A Plan Admin archives a Financial Plan, a draft or a saved one, by setting `archived_at`, which hides it from Planning's list, and clears it to bring the plan back. Archiving changes nothing else, so a saved one can be archived too. The plan in force can't be archived, nor can one active from a later date, and an archived one can't be given a date (cyc-seattle/sail-team#82).
 
 #### A saved Financial Plan never changes
 
@@ -298,7 +298,7 @@ erDiagram
         uuid key "stable"
         uuid product_id FK
         string name
-        string season_term
+        uuid term_key "operations key, or none"
         date starts_on
         date ends_on
         int capacity
@@ -376,6 +376,8 @@ erDiagram
 
 All of an offering's revenue and costs go in the plan year it starts in, even if it runs into the next year. Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
 
+An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
+
 Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 
 Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, and its `rules`. Like the Program Plan's own `rules` and the Operations Plan's, a program's rules are the planner's words for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan copy, they're versioned, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
@@ -399,6 +401,7 @@ erDiagram
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     plan_versions ||--o{ plan_closed_dates : contains
+    plan_versions ||--o{ plan_terms : contains
     plan_versions ||--o{ plan_capital_items : contains
     accounts ||--o{ plan_capital_items : "booked to"
     resource_kinds ||--o{ plan_resources : "kind of"
@@ -476,6 +479,12 @@ erDiagram
         date date
         string name
     }
+    plan_terms {
+        uuid key "stable"
+        string name "such as Summer 2027"
+        date starts_on
+        date ends_on
+    }
     plan_capital_items {
         string name
         int amount_cents
@@ -505,6 +514,8 @@ A pool is a group of shared costs that no single offering owns, such as general 
 A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before the pools (`basis`), if that net is above zero. Every bonus is in the Operations Plan, which the database enforces. A plan saved before that can still hold one in a Program Plan, whose products from another area the engine ignores, with a warning. Starting a Financial Plan from such a plan moves its bonuses, with their products, into the new Operations Plan copy. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay.
 
 `plan_capital_items` is the ranked list of what the organization means to buy, such as a coach boat, with the most needed first. Planners drag the rows into order in the Data Studio. Each is capital on the organization, and the engine says how far down the list the year's money goes.
+
+`plan_terms` lists the planning periods, such as Summer 2027, each with its first and last day. A Program Plan's offering names one by its key, `term_key`, or none. Terms are in the Operations Plan, so every Program Plan shares them. A term's dates don't limit its offerings' dates. A plan saved before terms (cyc-seattle/platform#251) has none, and its offerings lost their free-text `season_term`; the migration made a term in each draft's Operations Plan for each text its offerings used.
 
 `plan_closed_dates` lists the days the organization is closed, such as Labor Day. Agents read them when they write activities, and the engine warns about an activity on one.
 

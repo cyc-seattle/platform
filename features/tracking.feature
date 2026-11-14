@@ -3,7 +3,7 @@ Feature: Tracking the year
   registered, and how much money has come in, for each offering they planned. Tracking covers one
   program area for one year, with no terms or seasons, because not every program has them.
 
-  Tracking compares against the plan in force: the Financial Plan the finance committee made active
+  Tracking compares against the plan in force: the Financial Plan a Plan Admin made active
   from the latest date on or before the day. There can be several Financial Plans for a year, and a
   new one can start from any of them, so the newest isn't always the one being run.
 
@@ -23,7 +23,7 @@ Feature: Tracking the year
   several Clubspot offerings with one payment. Tracking then splits that payment among them by their
   planned prices.
 
-  Planners are the people with the Plan Reader, Plan Writer, or Plan Approver policy. Every figure here is made up.
+  Planners are the people with the Plan Reader, Plan Writer, or Plan Admin policy. Every figure here is made up.
 
   @pending
   Rule: A planner links each Clubspot offering to a catalog offering by hand

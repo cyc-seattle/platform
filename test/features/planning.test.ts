@@ -1089,6 +1089,33 @@ Step("{string} still has the offering at {money} a sailor", async (_, _name: str
   expect(await one("plan_offerings", offering!["id"], "price_cents")).toEqual({ price_cents: cents(money) });
 });
 
+// An offering's term, one of the Operations Plan's.
+let term: string | undefined;
+onEachScenario(() => {
+  term = undefined;
+});
+async function draftWithTerm(name: string, inTerm: boolean): Promise<void> {
+  term = await p.operationsRow("plan_terms", { name, starts_on: `${PLAN_YEAR}-06-01`, ends_on: `${PLAN_YEAR}-08-31` });
+  offering = (await programWithOffering(100_000, inTerm ? { term_key: term } : {})).offering;
+  financialPlan = await p.draftSet();
+}
+Step("a draft Financial Plan whose Operations Plan has a term named {string}, with an offering", (_, name: string) =>
+  draftWithTerm(name, false),
+);
+Step("a draft Financial Plan whose offering is in a term", () => draftWithTerm(`Summer ${PLAN_YEAR}`, true));
+Step("they put the offering in {string}", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: term }));
+});
+Step("they take the offering out of its term", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: null }));
+});
+Step("the offering is in {string}", async () => {
+  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: term });
+});
+Step("the offering is in no term", async () => {
+  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: null });
+});
+
 // An offering's activities, in a Financial Plan started from it.
 let practice: Item | undefined;
 onEachScenario(() => {
@@ -1433,7 +1460,7 @@ Step("the Financial Plan's warnings say that the practice on August 2, in its Pr
     .toEqual([{ version_set_member_id: member!["id"], date: AUGUST_2, category: "allocation" }]);
 });
 
-// Who plans: program directors and the finance committee, and the date a Financial Plan is active from.
+// What a Plan Writer and a Plan Admin can do, and the date a Financial Plan is active from.
 const ONE_PER_DATE = "Another Financial Plan for the year is already active from that date.";
 const IN_FORCE_NOT_ARCHIVED = "The plan in force can't be archived";
 const BONUS_IN_OPERATIONS = "A bonus goes in the Operations Plan.";

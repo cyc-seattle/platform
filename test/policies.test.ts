@@ -47,7 +47,7 @@ describe("the policies a group can give", () => {
       "Catalog Writer",
       "Medical Reader",
       "Medical Writer",
-      "Plan Approver",
+      "Plan Admin",
       "Plan Reader",
       "Plan Writer",
     ]);
@@ -69,7 +69,7 @@ describe("the policies a group can give", () => {
   });
 
   it("are coarse: no row filters but the planners' by kind of plan, and no field lists but a person's writable fields and CRM Writer's two hand-set ones", () => {
-    const planners = ["Plan Writer", "Plan Approver"];
+    const planners = ["Plan Writer", "Plan Admin"];
     for (const rule of policies.filter(({ name }) => !planners.includes(name)).flatMap((policy) => policy.rules)) {
       expect(rule.permissions).toBeUndefined();
     }
@@ -186,6 +186,7 @@ const plans = [
   "plan_bonus_owners",
   "plan_bonus_owner_products",
   "plan_closed_dates",
+  "plan_terms",
   "plan_results",
   "plan_result_lines",
   "plan_result_pnl",
@@ -201,7 +202,7 @@ describe("the Plan policies", () => {
   const catalog = collections("Catalog Reader", "read");
 
   it("let each see every plan and the catalog, with no field held back", () => {
-    for (const name of ["Plan Reader", "Plan Writer", "Plan Approver"]) {
+    for (const name of ["Plan Reader", "Plan Writer", "Plan Admin"]) {
       const rules = named(name).rules.filter((rule) => rule.collection !== "directus_users");
       expect(
         [...new Set(rules.filter((rule) => rule.action === "read").map((rule) => rule.collection))].sort(),
@@ -211,7 +212,7 @@ describe("the Plan policies", () => {
   });
 
   it("let each see users' first and last names, and nothing else of theirs", () => {
-    for (const name of ["Plan Reader", "Plan Writer", "Plan Approver"]) {
+    for (const name of ["Plan Reader", "Plan Writer", "Plan Admin"]) {
       expect(named(name).rules.filter((rule) => rule.collection === "directus_users")).toEqual([
         { collection: "directus_users", action: "read", fields: ["id", "first_name", "last_name"] },
       ]);
@@ -268,24 +269,24 @@ describe("the Plan policies", () => {
     ]);
   });
 
-  it("let a Plan Approver change the Operations Plan's rows, which plans a Financial Plan holds, and when it's in force", () => {
+  it("let a Plan Admin change the Operations Plan's rows, which plans a Financial Plan holds, and when it's in force", () => {
     for (const action of ["create", "update", "delete"]) {
-      const rules = writes("Plan Approver").filter((rule) => rule.action === action && rows.includes(rule.collection));
+      const rules = writes("Plan Admin").filter((rule) => rule.action === action && rows.includes(rule.collection));
       expect(rules.map((rule) => rule.collection).sort()).toEqual([...rows].sort());
       expect(rules.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("operations")))).toBe(
         true,
       );
       for (const collection of ["plans", "plan_versions", "version_set_members"]) {
-        expect(collections("Plan Approver", action).has(collection), `${action} ${collection}`).toBe(true);
+        expect(collections("Plan Admin", action).has(collection), `${action} ${collection}`).toBe(true);
       }
     }
-    expect(writes("Plan Approver").filter((rule) => rule.collection === "version_sets")).toEqual([
+    expect(writes("Plan Admin").filter((rule) => rule.collection === "version_sets")).toEqual([
       { collection: "version_sets", action: "update", fields: ["status", "effective_from", "archived_at"] },
     ]);
   });
 
   it("let no planner write a Financial Plan's results", () => {
-    for (const name of ["Plan Writer", "Plan Approver"]) {
+    for (const name of ["Plan Writer", "Plan Admin"]) {
       expect(writes(name).filter((rule) => results.includes(rule.collection))).toEqual([]);
     }
   });

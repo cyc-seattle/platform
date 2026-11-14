@@ -651,7 +651,7 @@ export const PLAN_ROWS = [
 ];
 
 /**
- * The rows only an Operations Plan holds, which only a Plan Approver changes. The tests' own list, so
+ * The rows only an Operations Plan holds, which only a Plan Admin changes. The tests' own list, so
  * a mistake in the stack's isn't copied into the test that should catch it.
  */
 export const OPERATIONS_PLAN_ROWS = [

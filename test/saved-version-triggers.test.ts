@@ -882,6 +882,46 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
     expect(rows).toEqual([]);
   });
 
+  it("makes the terms the migration listed, puts each draft offering in its own, and drops the list", async () => {
+    const db = await database(config(false));
+    const { draftSet, draft, draftOffering, operationsPlan, product } = await plans(db, 2704);
+    const w = writer(db);
+    // The draft started from the saved one, with a draft Operations Plan of its own.
+    const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
+    await w.insert("version_set_members", { version_set_id: draftSet, version_id: operations });
+    const second = await w.insert("plan_offerings", {
+      version_id: draft,
+      key: randomUUID(),
+      product_id: product,
+      name: "Week 2",
+      starts_on: "2704-07-01",
+      ends_on: "2704-08-15",
+    });
+    await db.query("UPDATE plan_offerings SET starts_on = '2704-06-15', ends_on = '2704-06-30' WHERE id = $1", [
+      draftOffering,
+    ]);
+    await db.exec("CREATE TABLE cyc_seed_terms (offering_id uuid PRIMARY KEY, operations_version_id uuid, name text)");
+    await db.query("INSERT INTO cyc_seed_terms VALUES ($1, $3, 'Summer 2704'), ($2, $3, 'summer 2704')", [
+      draftOffering,
+      second,
+      operations,
+    ]);
+    await db.transaction((tx) => installTriggers(config(false), connect(tx)));
+    const { rows: terms } = await db.query<Values>(
+      "SELECT key, name, starts_on::text AS starts_on, ends_on::text AS ends_on FROM plan_terms WHERE version_id = $1",
+      [operations],
+    );
+    expect(terms).toEqual([
+      { key: expect.any(String), name: "Summer 2704", starts_on: "2704-06-15", ends_on: "2704-08-15" },
+    ]);
+    const { rows: offerings } = await db.query<Values>(
+      "SELECT DISTINCT term_key FROM plan_offerings WHERE id = ANY($1::uuid[])",
+      [[draftOffering, second]],
+    );
+    expect(offerings).toEqual([{ term_key: terms[0]!["key"] }]);
+    expect((await db.query("SELECT to_regclass('cyc_seed_terms') AS seed")).rows).toEqual([{ seed: null }]);
+  });
+
   it("drops the unique indexes plans once had", async () => {
     const db = await PGlite.create();
     for (const statement of tables()) await db.exec(statement);

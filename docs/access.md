@@ -82,17 +82,16 @@ can give, attached to no role:
 | Catalog Writer | Changes the catalog, and reads the directory                                                                         |
 | Plan Reader    | Reads every plan, wages and bonus rates included, the catalog, and users' names                                      |
 | Plan Writer    | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does      |
-| Plan Approver  | Changes the Operations Plan in a draft, and a Financial Plan's plans; saves, dates, and archives one. Reads the same |
+| Plan Admin     | Changes the Operations Plan in a draft, and a Financial Plan's plans; saves, dates, and archives one. Reads the same |
 
 They're coarse: whole collections, with no row filters and no hidden fields, but for users: a Plan
 policy reads only each user's first and last name, so a saved Financial Plan names who saved it.
-And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). The
-finance committee's group gives Plan Writer and Plan Approver, and program directors' gives Plan
-Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
+And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
+Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `version_id.plan_id.kind`, and none of the collections only an Operations Plan uses
-(`OPERATIONS_ONLY`), such as rates, staff levels, pools, and bonuses. On a Financial Plan it sets
-only the name, note, and parent. A Plan Approver changes a row only in an Operations Plan, and a
-Financial Plan's status, the date it's active from, and whether it's archived. Every director reads
+(`OPERATIONS_ONLY`), such as rates, staff levels, pools, terms, and bonuses. On a Financial Plan it sets
+only the name, note, and parent. A Plan Admin changes a row only in an Operations Plan, and a
+Financial Plan's status, the date it's active from, and whether it's archived. Every Plan Writer reads
 and writes every program area: there's no per-area access. A
 saved plan version never changes, even for an admin, so the `saved-versions` hook enforces that
 rather than a policy (`docs/planning-schema.md`). A Medical policy is given with a CRM policy.
