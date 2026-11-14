@@ -278,7 +278,7 @@ export class PnlPlan {
       account_id: await this.account(account),
       amount_cents: amount,
       fiscal_year: PLAN_YEAR,
-      excluded_from_mtdc: false,
+      in_mtdc: true,
       ...center,
       ...extra,
     });
@@ -307,7 +307,7 @@ export class PnlPlan {
       rate,
       product_kinds: kinds,
       account_id: await this.account(account),
-      excluded_from_mtdc: excluded,
+      in_mtdc: !excluded,
     });
   }
 

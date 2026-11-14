@@ -45,7 +45,7 @@ describe("program areas", () => {
         cost_center_type: "program_area",
         cost_center_key: summer.id,
         amount_cents: 300_000,
-        excluded_from_mtdc: true,
+        in_mtdc: false,
       }),
     );
     const out = computePlan(data);

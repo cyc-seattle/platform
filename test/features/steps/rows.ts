@@ -371,7 +371,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       cost_center_type: "org",
       amount_cents: 10_000,
       fiscal_year: 2027,
-      excluded_from_mtdc: false,
+      in_mtdc: true,
     }),
   plan_capital_items: async (fixed) =>
     versioned(fixed, {
@@ -392,7 +392,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       rate: 0.02,
       product_kinds: ["program"],
       account_id: row["accounts"],
-      excluded_from_mtdc: true,
+      in_mtdc: false,
     }),
   plan_salaried_positions: async (fixed) =>
     versioned(fixed, {
