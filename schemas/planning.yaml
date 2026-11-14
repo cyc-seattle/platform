@@ -4014,18 +4014,18 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_budget_lines
-    field: excluded_from_mtdc
+    field: in_mtdc
     type: boolean
     meta:
       collection: plan_budget_lines
       conditions: null
       display: null
       display_options: null
-      field: excluded_from_mtdc
+      field: in_mtdc
       group: null
       hidden: false
       interface: boolean
-      note: Set for a cost left out of modified total direct costs (MTDC), such as equipment.
+      note: "Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment."
       options: null
       readonly: false
       required: false
@@ -4034,15 +4034,15 @@ fields:
       special: null
       translations:
         - language: en-US
-          translation: Left out of MTDC
+          translation: MTDC
       validation: null
       validation_message: null
       width: full
     schema:
-      name: excluded_from_mtdc
+      name: in_mtdc
       table: plan_budget_lines
       data_type: boolean
-      default_value: false
+      default_value: true
       max_length: null
       numeric_precision: null
       numeric_scale: null
@@ -4790,18 +4790,18 @@ fields:
       foreign_key_table: accounts
       foreign_key_column: id
   - collection: plan_revenue_charges
-    field: excluded_from_mtdc
+    field: in_mtdc
     type: boolean
     meta:
       collection: plan_revenue_charges
       conditions: null
       display: null
       display_options: null
-      field: excluded_from_mtdc
+      field: in_mtdc
       group: null
       hidden: false
       interface: boolean
-      note: "Set for a charge 2 CFR 200.1 leaves out of MTDC, such as scholarships."
+      note: "Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships."
       options: null
       readonly: false
       required: false
@@ -4810,15 +4810,15 @@ fields:
       special: null
       translations:
         - language: en-US
-          translation: Left out of MTDC
+          translation: MTDC
       validation: null
       validation_message: null
       width: full
     schema:
-      name: excluded_from_mtdc
+      name: in_mtdc
       table: plan_revenue_charges
       data_type: boolean
-      default_value: false
+      default_value: true
       max_length: null
       numeric_precision: null
       numeric_scale: null

@@ -208,7 +208,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_revenue_charges",
     sort: ["version_id.plan_id.name", "name"],
-    fields: ["name", "rate", "product_kinds", "account_id", "excluded_from_mtdc", "version_id"],
+    fields: ["name", "rate", "product_kinds", "account_id", "in_mtdc", "version_id"],
   },
   {
     collection: "plan_staff_levels",
