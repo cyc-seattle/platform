@@ -39,10 +39,12 @@ jobs:
           echo "projects=$projects" | tee -a "$GITHUB_OUTPUT"
         env:
           BASE: ${{ github.event.merge_group.base_sha }}
+  # Starts alongside CI, not after it, to save CI's minutes on every batch. `ci / ci` is a required
+  # check, so a batch whose CI fails still can't merge.
   dev:
-    needs: [ci, changes]
+    needs: changes
     if: >-
-      !cancelled() && needs.ci.result == 'success' && (
+      !cancelled() && (
         (github.event_name == 'merge_group' && needs.changes.outputs.projects != '') ||
         (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
       )
