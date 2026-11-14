@@ -101,20 +101,20 @@ deployer needs first.
 authenticates with Workload Identity Federation and stores no credentials. Each job runs in a
 GitHub environment that holds its identity and state bucket:
 
-| Event                      | Jobs, in order                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------- |
-| Pull request               | `ci`                                                                                           |
-| Merge queue                | `ci`, then `dev`: `mise run deploy` as `deploy-dev`, then `mise run integration`; `dev-passed` |
-| Push to `main`             | `prod-preview`, then `prod`, which waits for the `maintainers` approval                        |
-| Run by hand, from a branch | `ci`, then `dev`                                                                               |
-| Run by hand, from `main`   | `prod-preview`, then `prod`                                                                    |
+| Event                      | Jobs, in order                                                          |
+| -------------------------- | ----------------------------------------------------------------------- |
+| Pull request               | `ci`                                                                    |
+| Merge queue                | `ci`, then `dev`: `mise run deploy` as `deploy-dev`; `dev-passed`       |
+| Push to `main`             | `prod-preview`, then `prod`, which waits for the `maintainers` approval |
+| Run by hand, from a branch | `ci`, then `dev`                                                        |
+| Run by hand, from `main`   | `prod-preview`, then `prod`                                             |
 
-Dev is shared, so only the merge queue deploys to it (#69, #80). PRs queued together deploy and
-test as one batch: each queued PR's run skips dev when a newer PR is queued behind it, and the newest
-tests them all. The queue requires `dev-passed`, so a batch merges only once its dev deploy and the
-integration tests pass, and `main` gets the exact commit the queue tested, in one push. If the
-newest PR fails, the queue drops it and the rest of the batch deploys without it. A queued PR of only docs or CI skips `dev`. To try a
-branch on dev before queueing it, run `gh workflow run pull-request.yml --ref <branch>`.
+Dev is shared, so only the merge queue deploys to it (#69, #80). PRs queued together deploy as
+one batch: each queued PR's run skips dev when a newer PR is queued behind it, and the newest
+deploys them all. The queue requires `dev-passed`, so a batch merges only once its dev deploy passes, and `main` gets the exact commit the queue tested, in one push. If the
+newest PR fails, the queue drops it and the rest of the batch deploys without it. A queued PR of only docs or CI skips `dev`. The queue
+doesn't run the integration tests (#161); a run by hand does. To try a
+branch on dev and test it before queueing it, run `gh workflow run pull-request.yml --ref <branch>`.
 
 `prod-preview` runs `mise run preview` as `deploy-runner` and writes the diff to the job summary.
 `prod` runs `mise run deploy` on the same commit once approved. It runs only when the preview shows
