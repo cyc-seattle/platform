@@ -566,6 +566,8 @@ erDiagram
         int enrollment
         int days
         int sailor_days
+        int allocation_holds
+        int breakeven_enrollment
         uuid term_key "for program_area_term; null is no term"
         string term_name
         date term_starts_on
