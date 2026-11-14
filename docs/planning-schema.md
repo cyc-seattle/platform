@@ -296,7 +296,7 @@ erDiagram
         uuid key "stable"
         uuid product_id FK
         string name
-        string season_term
+        string season_term "winter|spring|summer|fall, or none"
         date starts_on
         date ends_on
         int capacity
@@ -373,6 +373,8 @@ erDiagram
 ```
 
 All of an offering's revenue and costs go in the plan year it starts in, even if it runs into the next year. Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
+
+An offering's `season_term` is winter, spring, summer, or fall, or empty for an offering with no season, such as Adult Learn to Sail. A plan saved before the list (cyc-seattle/platform#251) can still hold free text, which `seasonOf` reads as none.
 
 Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 

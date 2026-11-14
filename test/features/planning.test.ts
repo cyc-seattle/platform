@@ -1104,6 +1104,37 @@ Step("{string} still has the offering at {money} a sailor", async (_, _name: str
   expect(await one("plan_offerings", offering!["id"], "price_cents")).toEqual({ price_cents: cents(money) });
 });
 
+// An offering's season.
+for (const [text, season] of [
+  ["a draft Financial Plan with an offering", null],
+  ["a draft Financial Plan with an offering in the summer", "summer"],
+] as const) {
+  Step(text, async () => {
+    offering = (await programWithOffering(100_000, { season_term: season })).offering;
+    financialPlan = await p.draftSet();
+  });
+}
+Step("they set the offering's season to {word}", async (_, season: string) => {
+  await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { season_term: season });
+});
+Step("they set the offering's season to {string}", async (_, season: string) => {
+  await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { season_term: season });
+});
+Step("they set the offering to no season", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { season_term: null }));
+});
+Step("the offering runs in the {word}", async (_, season: string) => {
+  expectOk(attempt);
+  expect(await one("plan_offerings", offering!["id"], "season_term")).toEqual({ season_term: season });
+});
+Step("the offering runs in no season", async () => {
+  expect(await one("plan_offerings", offering!["id"], "season_term")).toEqual({ season_term: null });
+});
+Step("they're told that the season must be winter, spring, summer, or fall", () => {
+  expect(attempt?.status, JSON.stringify(attempt?.body)).toBe(400);
+  expect(attempt?.body.errors?.[0]?.message).toContain("season");
+});
+
 // An offering's activities, in a Financial Plan started from it.
 let practice: Item | undefined;
 onEachScenario(() => {

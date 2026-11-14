@@ -1757,23 +1757,52 @@ fields:
     meta:
       collection: plan_offerings
       conditions: null
-      display: null
-      display_options: null
+      display: labels
+      display_options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
       field: season_term
       group: null
       hidden: false
-      interface: input
-      note: null
-      options: null
+      interface: select-dropdown
+      note: The season it runs in. Leave it empty for one with no season, such as Adult Learn to Sail.
+      options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
       readonly: false
       required: false
       searchable: true
       sort: 6
       special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
+      translations:
+        - language: en-US
+          translation: Season
+      validation:
+        _or:
+          - season_term:
+              _null: true
+          - season_term:
+              _in:
+                - winter
+                - spring
+                - summer
+                - fall
+      validation_message: "Must be one of: winter, spring, summer, fall, or empty."
+      width: half
     schema:
       name: season_term
       table: plan_offerings
