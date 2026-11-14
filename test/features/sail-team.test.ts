@@ -1,10 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
-import { describeAccessFeature, onEachScenario, pattern, Step, theirSession } from "./steps/index.ts";
+import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
 import { admin, created, itemPath, row, runId, runRows } from "./steps/rows.ts";
 import { eventually } from "./steps/logins.ts";
-
-pattern("url", /https:\/\/\S+/);
 
 let linkId: string | undefined;
 let refused: { status: number; body: unknown } | undefined;
@@ -13,9 +11,10 @@ onEachScenario(() => {
   refused = undefined;
 });
 
-Step("they add a link to {url}", async (_, url: string) => {
+// vitest-cucumber's own {url} gives a URL, which adds a trailing slash.
+Step("they add a link to {url}", async (_, url: URL) => {
   linkId = randomUUID();
-  const link = { id: linkId, title: `Link ${runId}`, url };
+  const link = { id: linkId, title: `Link ${runId}`, url: url.href };
   const { status, body } = await (await theirSession()).request("POST", "/items/links", link);
   if (status < 300) {
     created.push({ collection: "links", id: linkId });
