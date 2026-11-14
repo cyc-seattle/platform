@@ -60,6 +60,10 @@ export const defaultViews: DefaultView[] = [
   },
   { collection: "clubspot_promoted_fields", sort: ["target_field"], fields: ["target_field", "labels"] },
 
+  // Sail Team
+  { collection: "links", sort: ["sort", "title"], fields: ["title", "url", "note"] },
+  { collection: "announcements", sort: ["-published_on"], fields: ["published_on", "title"] },
+
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
   {
