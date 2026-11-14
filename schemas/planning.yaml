@@ -366,32 +366,6 @@ collections:
       versioning: false
     schema:
       name: plan_salaried_bookings
-  - collection: plan_resources
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_resources
-      color: null
-      display_template: "{{name}}"
-      group: Planning
-      hidden: false
-      icon: directions_boat
-      item_duplication_fields: null
-      note: Equipment programs share, such as coach boats, and what an hour or a day of it costs.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_resources
   - collection: plan_boat_rates
     meta:
       accountability: all
@@ -864,32 +838,6 @@ collections:
       versioning: false
     schema:
       name: plan_block_staff
-  - collection: plan_block_resources
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_block_resources
-      color: null
-      display_template: "{{block_id.date}} {{block_id.name}}: {{quantity}}"
-      group: Planning
-      hidden: false
-      icon: construction
-      item_duplication_fields: null
-      note: RIBs and other equipment a block uses.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_block_resources
   - collection: plan_block_boats
     meta:
       accountability: all
@@ -5173,50 +5121,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_rates
-    field: rib_resource_kind_id
-    type: uuid
-    meta:
-      collection: plan_rates
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: rib_resource_kind_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The kind of resource whose cost prices coach boat (RIB) hours.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 8
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Coach boat kind
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: rib_resource_kind_id
-      table: plan_rates
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: resource_kinds
-      foreign_key_column: id
   - collection: plan_staff_levels
     field: id
     type: uuid
@@ -6202,466 +6106,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_resources
-    field: id
-    type: uuid
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The version this row belongs to.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan copy
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_resources
-    field: key
-    type: uuid
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: resource_kind_id
-    type: uuid
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: resource_kind_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Resource kind
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: resource_kind_id
-      table: plan_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: resource_kinds
-      foreign_key_column: id
-  - collection: plan_resources
-    field: name
-    type: string
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: name
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: name
-      table: plan_resources
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: quantity
-    type: integer
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: quantity
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: quantity
-      table: plan_resources
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: cost_per_hour_cents
-    type: integer
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: cents-as-dollars
-      display_options: null
-      field: cost_per_hour_cents
-      group: null
-      hidden: false
-      interface: input
-      note: "In cents: 12500 is $125.00."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 7
-      special: null
-      translations:
-        - language: en-US
-          translation: Cost per hour
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: cost_per_hour_cents
-      table: plan_resources
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: cost_per_day_cents
-    type: integer
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: cents-as-dollars
-      display_options: null
-      field: cost_per_day_cents
-      group: null
-      hidden: false
-      interface: input
-      note: "In cents: 12500 is $125.00."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 8
-      special: null
-      translations:
-        - language: en-US
-          translation: Cost per day
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: cost_per_day_cents
-      table: plan_resources
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: fuel_per_hour_cents
-    type: integer
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: cents-as-dollars
-      display_options: null
-      field: fuel_per_hour_cents
-      group: null
-      hidden: false
-      interface: input
-      note: "In cents: 12500 is $125.00."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 9
-      special: null
-      translations:
-        - language: en-US
-          translation: Fuel per hour
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fuel_per_hour_cents
-      table: plan_resources
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: maintenance_per_hour_cents
-    type: integer
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: cents-as-dollars
-      display_options: null
-      field: maintenance_per_hour_cents
-      group: null
-      hidden: false
-      interface: input
-      note: "In cents: 12500 is $125.00."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 10
-      special: null
-      translations:
-        - language: en-US
-          translation: Maintenance per hour
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: maintenance_per_hour_cents
-      table: plan_resources
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: 32
-      numeric_scale: 0
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_resources
-    field: excluded_from_mtdc
-    type: boolean
-    meta:
-      collection: plan_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: excluded_from_mtdc
-      group: null
-      hidden: false
-      interface: boolean
-      note: Set for a rental, whose cost is left out of modified total direct costs (MTDC).
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 11
-      special: null
-      translations:
-        - language: en-US
-          translation: Left out of MTDC
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: excluded_from_mtdc
-      table: plan_resources
-      data_type: boolean
-      default_value: false
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_boat_rates
     field: id
     type: uuid
@@ -6844,7 +6288,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "In cents: 12500 is $125.00."
+      note: "Upkeep for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: true
@@ -6853,7 +6297,7 @@ fields:
       special: null
       translations:
         - language: en-US
-          translation: Maintenance per boat hour
+          translation: Upkeep per hour
       validation: null
       validation_message: null
       width: full
@@ -6875,30 +6319,74 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_boat_rates
-    field: quantity
+    field: fuel_per_hour_cents
     type: integer
     meta:
       collection: plan_boat_rates
       conditions: null
-      display: null
+      display: cents-as-dollars
       display_options: null
-      field: quantity
+      field: fuel_per_hour_cents
       group: null
       hidden: false
       interface: input
-      note: How many boats of the class the organization has.
+      note: "Fuel for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 6
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Fuel per hour
       validation: null
       validation_message: null
       width: full
     schema:
-      name: quantity
+      name: fuel_per_hour_cents
+      table: plan_boat_rates
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_boat_rates
+    field: charter_per_day_cents
+    type: integer
+    meta:
+      collection: plan_boat_rates
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: charter_per_day_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What one boat of the class costs to charter for a day. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Charter per day
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: charter_per_day_cents
       table: plan_boat_rates
       data_type: integer
       default_value: null
@@ -13184,296 +12672,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_block_resources
-    field: id
-    type: uuid
-    meta:
-      collection: plan_block_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_block_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_block_resources
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_block_resources
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The version this row belongs to.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan copy
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_block_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_block_resources
-    field: key
-    type: uuid
-    meta:
-      collection: plan_block_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_block_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_block_resources
-    field: block_id
-    type: uuid
-    meta:
-      collection: plan_block_resources
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{date}}: {{name}}"
-      field: block_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Block
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: block_id
-      table: plan_block_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_activity_blocks
-      foreign_key_column: id
-  - collection: plan_block_resources
-    field: resource_key
-    type: uuid
-    meta:
-      collection: plan_block_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: resource_key
-      group: null
-      hidden: false
-      interface: input
-      note: "The resource it uses: copy the Key from a resource in the Operations Plan."
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: resource_key
-      table: plan_block_resources
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_block_resources
-    field: quantity
-    type: decimal
-    meta:
-      collection: plan_block_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: quantity
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: quantity
-      table: plan_block_resources
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_block_resources
-    field: hours
-    type: decimal
-    meta:
-      collection: plan_block_resources
-      conditions: null
-      display: null
-      display_options: null
-      field: hours
-      group: null
-      hidden: false
-      interface: input
-      note: Hours each is used. Leave it empty for the block's time on the water (RIBs) or its paid time (other equipment).
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 7
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: hours
-      table: plan_block_resources
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_block_boats
     field: id
     type: uuid
@@ -13753,6 +12951,46 @@ fields:
       width: full
     schema:
       name: sailor_owned
+      table: plan_block_boats
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_block_boats
+    field: chartered
+    type: integer
+    meta:
+      collection: plan_block_boats
+      conditions: null
+      display: null
+      display_options: null
+      field: chartered
+      group: null
+      hidden: false
+      interface: input
+      note: How many boats of the class the block charters. They cost the class's charter rate for each day, and don't count against the organization's.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: chartered
       table: plan_block_boats
       data_type: integer
       default_value: null
@@ -14147,27 +13385,6 @@ relations:
       constraint_name: plan_rates_version_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: plan_rates
-    field: rib_resource_kind_id
-    related_collection: resource_kinds
-    meta:
-      junction_field: null
-      many_collection: plan_rates
-      many_field: rib_resource_kind_id
-      one_allowed_collections: null
-      one_collection: resource_kinds
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_rates
-      column: rib_resource_kind_id
-      foreign_key_table: resource_kinds
-      foreign_key_column: id
-      constraint_name: plan_rates_rib_resource_kind_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
   - collection: plan_staff_levels
     field: version_id
     related_collection: plan_versions
@@ -14313,48 +13530,6 @@ relations:
       foreign_key_table: program_areas
       foreign_key_column: id
       constraint_name: plan_salaried_bookings_program_area_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_resources
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_resources
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_resources
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_resources_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_resources
-    field: resource_kind_id
-    related_collection: resource_kinds
-    meta:
-      junction_field: null
-      many_collection: plan_resources
-      many_field: resource_kind_id
-      one_allowed_collections: null
-      one_collection: resource_kinds
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_resources
-      column: resource_kind_id
-      foreign_key_table: resource_kinds
-      foreign_key_column: id
-      constraint_name: plan_resources_resource_kind_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_boat_rates
@@ -15008,27 +14183,6 @@ relations:
       constraint_name: plan_block_staff_version_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: plan_block_resources
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_block_resources
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_block_resources
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_block_resources_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
   - collection: plan_block_boats
     field: version_id
     related_collection: plan_versions
@@ -15090,27 +14244,6 @@ relations:
       foreign_key_table: plan_activity_blocks
       foreign_key_column: id
       constraint_name: plan_block_staff_block_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_block_resources
-    field: block_id
-    related_collection: plan_activity_blocks
-    meta:
-      junction_field: null
-      many_collection: plan_block_resources
-      many_field: block_id
-      one_allowed_collections: null
-      one_collection: plan_activity_blocks
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_block_resources
-      column: block_id
-      foreign_key_table: plan_activity_blocks
-      foreign_key_column: id
-      constraint_name: plan_block_resources_block_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_block_boats
