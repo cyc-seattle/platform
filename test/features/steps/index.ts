@@ -550,12 +550,26 @@ export interface Shard {
   count: number;
 }
 
+let fileShard: Shard | undefined;
+
+/**
+ * Sets the shard for a feature whose steps file calls describeAccessFeature without one. A shard file
+ * calls it, then imports the steps file, so a long feature splits without editing its steps.
+ */
+export function shardFeature(shard: Shard): void {
+  fileShard = shard;
+}
+
 /**
  * Describes a feature on the shared steps, plus any scenario's own, declaring every scenario,
  * pending ones included, so a typo in a pending scenario's step fails the run too. Deletes the run's
  * rows and users after. Given a shard, it runs only that shard's Rules.
  */
-export function describeAccessFeature(name: string, ownSteps: Record<string, ScenarioSteps> = {}, shard?: Shard): void {
+export function describeAccessFeature(
+  name: string,
+  ownSteps: Record<string, ScenarioSteps> = {},
+  shard = fileShard,
+): void {
   const parsed = feature(name);
   // vitest runs files in parallel but a file's scenarios in turn, so a long feature splits by Rule.
   if (shard) {

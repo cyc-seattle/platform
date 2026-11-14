@@ -1,8 +1,10 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
     include: ["test/features/**/*.test.ts"],
+    // planning.test.ts holds the planning steps, and planning-N.test.ts each run a share of its Rules.
+    exclude: [...configDefaults.exclude, "test/features/planning.test.ts"],
     // The steps wait on dev, not the runner's CPU, so every file runs at once and the run takes as
     // long as its longest file. vitest's default is one fewer than the runner's 4 cores.
     maxWorkers: 16,
