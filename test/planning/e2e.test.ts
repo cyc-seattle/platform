@@ -154,10 +154,11 @@ function realisticPlan(): PlanData {
     count,
     sailor_owned,
   });
+  // Each block is given what a full program would use, and costs what its expected sailors use.
   const fallGiven = {
-    staff: [staff(instructor2.key, 3)],
+    staff: [staff(instructor2.key, 4)],
     resources: [ribs(2)],
-    boats: [boats("opti", 7, 2), boats("420", 4, 1)],
+    boats: [boats("opti", 12, 2), boats("420", 4, 1)],
   };
   const fallPractices = practice(fall, [2, 4], "16:00", "18:30", { on_water_minutes: 120 });
   const regattas = ["2026-10-17", "2026-10-18"].map((date) =>
@@ -219,7 +220,7 @@ function realisticPlan(): PlanData {
     ...campDays.map((a) =>
       block(
         [a],
-        { staff: [staff(instructor1.key, 4)], resources: [ribs(2)], boats: [boats("opti", 27)] },
+        { staff: [staff(instructor1.key, 4)], resources: [ribs(2)], boats: [boats("opti", 30)] },
         { name: "Camp" },
       ),
     ),
@@ -472,6 +473,14 @@ describe("a realistic plan, end to end", () => {
     expect(perDay(pnlOf(out, "merch-year-key"))).toBeNull();
   });
 
+  it("gives the most sailors each offering's blocks take, and whether it pays for itself", () => {
+    expect(pnlOf(out, "racing-fall-key")).toMatchObject({ max_enrollment: 24, allocation_holds: 24 });
+    expect(pnlOf(out, "camp-week-1-key")).toMatchObject({ max_enrollment: 30, allocation_holds: 30 });
+    // Every program loses money before fundraising, even when full.
+    expect(pnlOf(out, "racing-fall-key").breakeven_enrollment).toBeNull();
+    expect(pnlOf(out, "summer-camp", "product")).toMatchObject({ allocation_holds: null, breakeven_enrollment: null });
+  });
+
   it("adds a product's offerings up into its P&L", () => {
     const camp = pnlOf(out, "summer-camp", "product");
     const weeks = ["camp-week-1-key", "camp-week-2-key"].map((k) => pnlOf(out, k));
@@ -500,8 +509,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 948624,
-          "net": -588624,
+          "expenses": 948539,
+          "net": -588539,
           "revenue": 360000,
         },
         "Charters": {
@@ -525,13 +534,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 5592752,
-          "net": -3324752,
+          "expenses": 5592287,
+          "net": -3324287,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 11982956,
-          "net": -8792956,
+          "expenses": 11984004,
+          "net": -8794004,
           "revenue": 3190000,
         },
       }

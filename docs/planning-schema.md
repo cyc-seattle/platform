@@ -561,6 +561,8 @@ erDiagram
         int enrollment
         int days
         int sailor_days
+        int allocation_holds
+        int breakeven_enrollment
     }
     plan_result_positions {
         uuid version_set_id FK

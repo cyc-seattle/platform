@@ -393,7 +393,7 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
 parameter("level", ["Level 1 Instructor", "Level 2 Instructor"]);
-parameter("boats", ["Sailqubes", "Optis"]);
+parameter("boats", ["Sailqubes", "Optis", "FJs"]);
 parameter("staff", ["one coach", "two coaches"]);
 /** "4pm" or "noon" as `HH:MM`. */
 function clock(time: string): string {
@@ -471,12 +471,15 @@ interface Given {
   resources?: Row[];
   boats?: Row[];
 }
-/** An offering of `program`, or of a new program, with `sailors` sailors. */
-async function offeringOf(program: string | undefined, sailors: number): Promise<Item> {
+/** An offering of `program`, or of a new program, with `sailors` sailors expected. */
+async function offeringOf(program: string | undefined, sailors: number, extra: Row = {}, price = 0): Promise<Item> {
   const area = await theArea();
   const product = program === undefined ? await p.product("program", area) : await programNamed(program);
-  return p.offering(p.areaVersion(area), product, 0, sailors);
+  return p.offering(p.areaVersion(area), product, price, sailors, 0, extra);
 }
+/** An offering of `program` for up to `max` sailors, expecting `expected`. */
+const upTo = (program: string | undefined, max: string, expected = max, price = 0) =>
+  offeringOf(program, Number(expected), { capacity: Number(max) }, price);
 /** A block on `date` holding a practice of each offering at `times`, given `given`. Returns the block. */
 async function blockOf(offerings: Item[], times: string, given: Given, date = JUNE, name = "A block"): Promise<string> {
   const version = offerings[0]!["version_id"] as string;
@@ -603,6 +606,36 @@ Step("one practices from {times} and the other from {times}", async (_, one: str
   await p.activities(offerings[0]!, [JUNE], ...span(one), { block_id: block });
   await p.activities(offerings[1]!, [JUNE], ...span(other), { block_id: block });
 });
+Step(
+  "a {program} offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} coaches paid {money} an hour",
+  async (_, program: string, max: string, expected: string, times: string, count: string, money: string) => {
+    await blockOf([await upTo(program, max, expected)], times, await coachesPaid(count, money));
+  },
+);
+Step(
+  "a {program} offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block the director coaches with a coach paid {money} an hour",
+  async (_, program: string, max: string, expected: string, times: string, money: string) => {
+    await blockOf([await upTo(program, max, expected)], times, {
+      staff: [{ position_key: position, count: 1 }, await staffAt("Coach", 1, cents(money))],
+    });
+  },
+);
+Step(
+  "an offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} of the organization's {boats}",
+  async (_, max: string, expected: string, times: string, count: string, boats: string) => {
+    await blockOf([await upTo(undefined, max, expected)], times, {
+      boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }],
+    });
+  },
+);
+Step(
+  "an offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} RIBs",
+  async (_, max: string, expected: string, times: string, count: string) => {
+    await blockOf([await upTo(undefined, max, expected)], times, {
+      resources: [{ resource_key: await theRibs(), quantity: Number(count) }],
+    });
+  },
+);
 Step("the first offering pays {money} of coaches' wages", async (_, money: string) => {
   expect(await wagesOf(p.offerings[0]!)).toBe(cents(money));
 });
@@ -827,19 +860,98 @@ Step(
     });
   },
 );
-// A block's warning starts with its offerings' names, then says what it has.
+Step(
+  "a {program} offering for up to {count} sailors that expects {count}, in a block with one coach and enough boats for {count}",
+  async (_, program: string, max: string, expected: string, boats: string) => {
+    await blockOf([await upTo(program, max, expected)], MORNING, {
+      staff: [await staffAt("Coach", 1)],
+      boats: await enoughBoats(Number(boats)),
+    });
+  },
+);
+Step(
+  "a {program} offering for up to {count} sailors, in a block with {count} coaches and {count} {boats}",
+  async (_, program: string, max: string, coaches: string, count: string, boats: string) => {
+    await blockOf([await upTo(program, max)], MORNING, {
+      staff: [await staffAt("Coach", Number(coaches))],
+      boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }],
+    });
+  },
+);
+Step(
+  "a block for up to {count} Guppies and up to {count} Minnows, with three coaches and boats for {count} sailors",
+  async (_, guppies: string, minnows: string, sailors: string) => {
+    const offerings = [await upTo("Guppies", guppies), await upTo("Minnows", minnows)];
+    await blockOf(offerings, MORNING, {
+      staff: [await staffAt("Coach", 3)],
+      boats: await enoughBoats(Number(sailors)),
+    });
+  },
+);
+// A block's warning starts with its offerings' names, then says what it's for.
 const overCapacity = (limit: "coach" | "boats") =>
   p.out.warnings.filter((w) => w.code === "over_capacity" && w.message.includes(limit));
-const saysBlockHas = (limit: "coach" | "boats", text: string) =>
-  expect(overCapacity(limit).map((w) => w.message.replace(/^.+? ha(s|ve) /, ""))).toContain(text);
+const saysBlockIs = (limit: "coach" | "boats", text: string) =>
+  expect(overCapacity(limit).map((w) => w.message.replace(/^.+? (is|are) for /, ""))).toContain(text);
 Step(
-  "the planner is warned that the block has {count} sailors, but enough coaches for only {count}",
-  (_, sailors: string, can: string) => saysBlockHas("coach", `${sailors} sailors, but enough coaches for only ${can}`),
+  "the planner is warned that the block is for up to {count} sailors, but has enough coaches for only {count}",
+  (_, sailors: string, can: string) =>
+    saysBlockIs("coach", `up to ${sailors} sailors, but has enough coaches for only ${can}`),
 );
 Step(
-  "the planner is warned that the block has {count} sailors, but the boats hold only {count}",
-  (_, sailors: string, can: string) => saysBlockHas("boats", `${sailors} sailors, but the boats hold only ${can}`),
+  "the planner is warned that the block is for up to {count} sailors, but the boats hold only {count}",
+  (_, sailors: string, can: string) => saysBlockIs("boats", `up to ${sailors} sailors, but the boats hold only ${can}`),
 );
+const pnlOf = (offering: Item) => p.out.pnl.find((x) => x.level === "offering" && x.key === offering["key"]);
+const offeringOfProgram = (program: string) => p.offerings.find((o) => o["product_id"] === programs[program])!;
+Step("the offering's block can take {count} sailors", (_, sailors: string) => {
+  expect(pnlOf(p.offerings[0]!)?.allocation_holds).toBe(Number(sailors));
+});
+Step("the {program} offering's block can take {count} sailors", (_, program: string, sailors: string) => {
+  expect(pnlOf(offeringOfProgram(program))?.allocation_holds).toBe(Number(sailors));
+});
+
+// The fewest sailors at which an offering pays for itself.
+Step(
+  "an offering for up to {count} sailors at {money} a sailor, with {money} of its own costs",
+  async (_, max: string, price: string, costs: string) => {
+    const offering = await upTo(undefined, max, max, cents(price));
+    await p.line(
+      offering["version_id"] as string,
+      "costs",
+      { cost_center_type: "offering", cost_center_key: offering["key"] },
+      cents(costs),
+    );
+  },
+);
+Step(
+  "a {program} offering for up to {count} sailors at {money} a sailor, with {money} of its own costs and a practice from {times} in a block with {count} coaches paid {money} an hour",
+  async (
+    _,
+    program: string,
+    max: string,
+    price: string,
+    costs: string,
+    times: string,
+    count: string,
+    money: string,
+  ) => {
+    const offering = await upTo(program, max, max, cents(price));
+    await p.line(
+      offering["version_id"] as string,
+      "costs",
+      { cost_center_type: "offering", cost_center_key: offering["key"] },
+      cents(costs),
+    );
+    await blockOf([offering], times, await coachesPaid(count, money));
+  },
+);
+Step("the offering pays for itself at {count} sailors", (_, sailors: string) => {
+  expect(pnlOf(p.offerings[0]!)?.breakeven_enrollment).toBe(Number(sailors));
+});
+Step("the offering doesn't pay for itself, even when it's full", () => {
+  expect(pnlOf(p.offerings[0]!)?.breakeven_enrollment).toBeNull();
+});
 Step("the planner is warned that the block has too few coaches", () => {
   expect(overCapacity("coach")).not.toEqual([]);
 });

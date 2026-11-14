@@ -51,6 +51,8 @@ It returns:
   See [Line names](#line-names).
 - `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
   area's, which add up their offerings. Each also has its MTDC, enrollment, days and sailor-days.
+  An offering's also has its `max_enrollment`, `allocation_holds` and `breakeven_enrollment`. See
+  [A full program](#a-full-program).
 - `organization`: the organization's year. See [The organization's totals](#the-organizations-totals).
 - `perDay(p)` and `perSailorDay(p)`: an offering's, product's or area's P&L for one day it runs, and
   for one sailor on one day.
@@ -117,12 +119,17 @@ Plan Writers can read them.
 
 ### Blocks
 
-The engine costs only what each block is given. It never works out how many coaches, RIBs or boats an
-activity needs: the planner, or their AI, decides that from the program settings and the rules, and
-writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)).
+The engine never works out how many coaches, RIBs or boats an activity needs: the planner, or their
+AI, decides that from the program settings and the rules, and writes it on the blocks
+([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block is given
+what its offerings would use if they filled, and costs what their expected sailors use
+([cyc-seattle/platform#250](https://github.com/cyc-seattle/platform/issues/250)).
 
-- Enrollment is a whole number of kids: `target_enrollment` if set, otherwise `capacity × fill_rate`
-  rounded. Kids who join or leave partway through aren't counted.
+- Enrollment, the sailors expected, is a whole number of kids: `target_enrollment` if set, otherwise
+  `capacity × fill_rate` rounded. Kids who join or leave partway through aren't counted. Revenue and
+  every cost use it.
+- An offering's most sailors, its max enrollment, is its `capacity`, or its enrollment when it has
+  none. The checks use it.
 - A block's paid time runs from its first activity's start to its last one's end, plus the longest
   setup and the longest put-away among them. A block with an activity that has no times has no paid
   time.
@@ -131,22 +138,47 @@ writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seatt
 - Each of its costs is split among its offerings by their enrollment, each offering counted once, or
   evenly if none has any. An offering with several activities in the block splits its share among
   them. `activities` gives each activity its share of the block's staff, RIBs and boats.
-- Staff at a level cost `count` × paid hours × the level's `hourly_rate_cents`. Volunteers cost
-  nothing.
+- A block pays the coaches its expected sailors need: ⌈Σ (each program's enrollment ÷ its
+  `sailors_per_coach`)⌉, but never more than it's given. Salaried positions with `pay` `salary` are
+  always paid, so only the other staff are cut: each of their rows is paid `count` × (coaches needed −
+  salaried ones) ÷ (the other staff given), from 0 to 1. A block with a program that has no sailors
+  per coach pays all its staff.
+- Staff at a level cost `count` × that share × paid hours × the level's `hourly_rate_cents`.
+  Volunteers cost nothing.
 - A salaried position on a block with `pay` `salary`, the default, is charged its paid hours at the
   salary's hourly equivalent (see [Salaried positions](#salaried-positions)). With `hourly`, it's paid
-  by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`. With no rate of its own,
+  by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`, and cut like the other
+  staff. With no rate of its own,
   those hours cost nothing, and the engine warns.
 - A resource costs `quantity × (hours × (cost_per_hour + fuel_per_hour + maintenance_per_hour) +
 cost_per_day)`. Its hours are its row's `hours` if set; otherwise a RIB's are the block's time on the
   water, and any other resource's are its paid time. A RIB is a resource of the `rib_resource_kind_id`
   kind. One `excluded_from_mtdc`, such as a rental, stays out of MTDC.
-- The organization's boats cost `count` × time on the water × their class's
-  `maintenance_per_boat_hour_cents`. Boats sailors bring (`sailor_owned`) cost nothing.
+- A block's fill is Σ its offerings' enrollment ÷ Σ their max enrollment, at most 1, or 1 when they
+  have no max. A RIB's quantity is costed as ⌈`quantity` × fill⌉; other resources are costed as given.
+- The organization's boats cost ⌈`count` × fill⌉ × time on the water × their class's
+  `maintenance_per_boat_hour_cents`: a block given 8 FJs for 16 sailors that expects 10 costs 5. Boats
+  sailors bring (`sailor_owned`) cost nothing.
 - A trip costs each coach's airfare, plus `nights` × the year's lodging rate for each coach, plus
-  `miles` × the year's mileage rate once. Its coaches are the staff on the block of its busiest
-  travel day. With none, it charges only the miles, and the engine warns. Sailors' own travel isn't
-  charged.
+  `miles` × the year's mileage rate once. Its coaches are the ones its block pays on its busiest
+  travel day. With no staff there, it charges only the miles, and the engine warns. Sailors' own
+  travel isn't charged.
+
+### A full program
+
+- An offering's `allocation_holds` is the most sailors its blocks can take: on each of its blocks,
+  other than travel, with every other offering in the block at its max, the fewer of
+  ⌊(the block's coaches − the others' Σ max ÷ sailors per coach) × its own sailors per coach⌋ and the
+  block's seats − the others' Σ max, at least 0. It's the fewest over its blocks. A limit that can't be
+  worked out, such as a program with no settings or a block whose activities don't use boats, is left
+  out; with none, it's null. It can be more than the max enrollment.
+- Its `breakeven_enrollment` is the fewest sailors, from 1 up to its `capacity`, at which its net after
+  shared costs is zero or more, with its share of shared costs as planned. The engine recalculates
+  only the offering's slice: it, its activities, trips and own lines, and its blocks with the
+  activities that share them. Its net at n sailors is the slice's net at n, plus its planned net less
+  the slice's net at its enrollment, so pools, bonuses and anything else outside the slice stay as
+  planned. Each number is tried in turn, since coaches and boats cost in steps. It's null when the
+  offering doesn't cover its costs even when full, or has no `capacity`.
 
 ### Warnings
 
@@ -157,7 +189,7 @@ a closed day; the rest are `data`, a row that's missing or wrong. The engine sti
 given.
 
 A message says only what's wrong, in plain words, since the warning already gives its plan and date:
-"Guppies Week 2 and Opti Camp Week 2 have 23 sailors, but enough coaches for only 17", or
+"Guppies Week 2 and Opti Camp Week 2 are for up to 23 sailors, but have enough coaches for only 17", or
 "9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
 offerings. Messages follow the `ui-copy` skill from
 [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
@@ -170,8 +202,9 @@ Allocation warnings:
   `plan_boat_rates.quantity`. Boats sailors bring don't count. Blocks are out from their first
   activity's start to their last one's end; one with no times is out all day.
 - `over_inventory_resource`: the same for a resource with a `quantity`, such as RIBs.
-- `over_capacity`: more sailors in a block than its staff, or its boats, can safely take. Each
-  program's sailors count against its own `sailors_per_coach`, in its `plan_programs` row: the block
+- `over_capacity`: more sailors in a block, with every offering at its max enrollment, than its
+  staff, or its boats, can safely take. Each program's sailors count against its own
+  `sailors_per_coach`, in its `plan_programs` row: the block
   needs Σ (each program's sailors ÷ its sailors per coach) coaches. Every coach on the block counts,
   at any staff level, and so does a salaried position: the ratio is required, and a program's
   `staff_level_key` is for planning and cost, not a hard rule (cyc-seattle/sail-team#82). The block is

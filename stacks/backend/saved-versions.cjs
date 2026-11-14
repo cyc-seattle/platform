@@ -770,6 +770,8 @@ function resultRows(data, out, operations) {
       enrollment: p.enrollment,
       days: p.days,
       sailor_days: p.sailor_days,
+      allocation_holds: p.allocation_holds,
+      breakeven_enrollment: p.breakeven_enrollment,
     })),
     plan_result_positions: out.positions.map((p) => ({
       position_key: p.position_key,
