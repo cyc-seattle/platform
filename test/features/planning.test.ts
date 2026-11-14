@@ -340,6 +340,7 @@ Step("its programs make {money} after their costs and shared costs", (_, money: 
 Step("the director's bonus is {money}", (_, money: string) => {
   expect(bonusTotal()).toBe(cents(money));
 });
+
 // Bonuses by term.
 const byNet = async (term: string | null, net: number) => {
   const extra = { term_key: await termKey(term) };
