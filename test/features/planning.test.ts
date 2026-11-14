@@ -80,7 +80,7 @@ Step("{money} of storage charged to the program area", async (_, money: string) 
     { cost_center_type: "program_area", cost_center_key: area },
     cents(money),
     {
-      excluded_from_mtdc: true,
+      in_mtdc: false,
     },
   );
 });
@@ -93,6 +93,66 @@ Step("its costs include the {money} of storage", async (_, money: string) => {
   const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
   expect(pnl?.by_account.find((a) => a.account_id === storage)?.amount_cents).toBe(cents(money));
 });
+// A program area's P&L for each term, one of the Operations Plan's, made the first time a step names it. The
+// features say "no term" for an offering in none.
+let terms = new Map<string, string>();
+onEachScenario(() => {
+  terms = new Map();
+});
+/** Summer comes before fall, so the terms are in the order the features list them. */
+const TERM_DATES: Record<string, [string, string]> = { Summer: ["06-01", "08-31"], Fall: ["09-01", "11-30"] };
+async function termKey(name: string | null): Promise<string | null> {
+  if (name === null || name === "no term") return null;
+  if (!terms.has(name)) {
+    const [starts, ends] = TERM_DATES[name.split(" ")[0]!] ?? ["01-01", "12-31"];
+    const key = await p.operationsRow("plan_terms", {
+      name,
+      starts_on: `${PLAN_YEAR}-${starts}`,
+      ends_on: `${PLAN_YEAR}-${ends}`,
+    });
+    terms.set(name, key);
+  }
+  return terms.get(name)!;
+}
+const termNamed = (key: string | null | undefined) =>
+  key == null ? "no term" : ([...terms].find(([, k]) => k === key)?.[0] ?? key);
+const areaTerm = async (name: string) => {
+  const key = await termKey(name);
+  return p.out.pnl.find((x) => x.level === "program_area_term" && x.key === p.areas[0] && x.term_key === key);
+};
+async function termOffering(term: string | null, price: number, costs = 0): Promise<Item> {
+  const area = p.areas[0] ?? (await p.area());
+  const extra = { term_key: await termKey(term) };
+  return p.offering(p.areaVersion(area), await p.product("program", area), price, 1, costs, extra);
+}
+Step("a program area with an offering in {string} that takes in {money}", (_, term: string, money: string) =>
+  termOffering(term, cents(money)),
+);
+Step("an offering in {string} that takes in {money}", (_, term: string, money: string) =>
+  termOffering(term, cents(money)),
+);
+Step("an offering in no term that takes in {money}", (_, money: string) => termOffering(null, cents(money)));
+Step("the program area's P&L for each term is:", (_, table: { term: string; "takes in": string }[]) => {
+  const rows = p.out.pnl.filter((x) => x.level === "program_area_term" && x.key === p.areas[0]);
+  expect(rows.map((r) => ({ term: termNamed(r.term_key), "takes in": r.revenue_cents }))).toEqual(
+    table.map((r) => ({ term: r.term, "takes in": cents(r["takes in"]) })),
+  );
+});
+Step(
+  "a program area with an offering in {string} and one in {string}, with the same direct costs",
+  async (_, first: string, second: string) => {
+    await termOffering(first, 0, 100_000);
+    await termOffering(second, 0, 100_000);
+  },
+);
+Step(
+  "the program area's P&L for {string} includes {money} of the office costs",
+  async (_, term: string, money: string) => {
+    const office = await p.account("office");
+    expect((await areaTerm(term))?.by_account.find((a) => a.account_id === office)?.amount_cents).toBe(cents(money));
+  },
+);
+
 Step("a program area with two offerings, the first with twice the direct costs of the second", () =>
   twoOfferings(10_000, [200_000, 100_000]),
 );
@@ -280,6 +340,43 @@ Step("its programs make {money} after their costs and shared costs", (_, money: 
 Step("the director's bonus is {money}", (_, money: string) => {
   expect(bonusTotal()).toBe(cents(money));
 });
+// Bonuses by term.
+const byNet = async (term: string | null, net: number) => {
+  const extra = { term_key: await termKey(term) };
+  return net < 0 ? bonusProgram(0, -net, extra) : bonusProgram(net, 0, extra);
+};
+Step(
+  "its programs make {money} in {string} and lose {money} in {string}",
+  async (_, made: string, first: string, lost: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, -cents(lost));
+  },
+);
+Step(
+  "its programs make {money} in {string} and {money} in no term",
+  async (_, made: string, term: string, none: string) => {
+    await byNet(term, cents(made));
+    await byNet(null, cents(none));
+  },
+);
+Step(
+  "its programs make {money} in {string} and {money} in {string}",
+  async (_, made: string, first: string, more: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, cents(more));
+  },
+);
+Step("the director's bonus for each term is:", (_, table: { term: string; net: string; bonus: string }[]) => {
+  const mine = p.out.bonuses.filter((b) => b.program_area_id === earner!.area);
+  expect(mine.map((b) => ({ term: termNamed(b.term_key), net: b.net_cents, bonus: b.bonus_cents }))).toEqual(
+    table.map((r) => ({ term: r.term, net: cents(r.net), bonus: cents(r.bonus) })),
+  );
+});
+Step("the program area's P&L for {string} includes {money} of bonus", async (_, term: string, money: string) => {
+  const bonus = await p.account("bonus");
+  expect((await areaTerm(term))?.by_account.find((a) => a.account_id === bonus)?.amount_cents).toBe(cents(money));
+});
+
 const COUNTED: Record<string, Row> = {
   "after shared costs": { basis: "after_shared_costs" },
   "before shared costs": { basis: "before_shared_costs" },
@@ -379,8 +476,9 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
 parameter("level", ["Level 1 Instructor", "Level 2 Instructor"]);
-parameter("boats", ["Sailqubes", "Optis"]);
+parameter("boats", ["Sailqubes", "Optis", "RIBs"]);
 parameter("staff", ["one coach", "two coaches"]);
+parameter("day", ["July 1", "August 1"]);
 /** "4pm" or "noon" as `HH:MM`. */
 function clock(time: string): string {
   if (time === "noon") return "12:00";
@@ -393,21 +491,20 @@ const JUNE = `${PLAN_YEAR}-06-01`;
 const JULY_13 = `${PLAN_YEAR}-07-13`;
 const AUGUST_2 = `${PLAN_YEAR}-08-02`;
 const MORNING = "9am to noon";
+const DAYS: Record<string, string> = { "July 1": `${PLAN_YEAR}-07-01`, "August 1": `${PLAN_YEAR}-08-01` };
 const juneDays = (n: number) =>
   Array.from({ length: n }, (_, i) => `${PLAN_YEAR}-06-${String(i + 1).padStart(2, "0")}`);
 
-/** The scenario's programs, staff levels, boat classes and RIBs, by the names the steps use. */
+/** The scenario's programs, staff levels and boat classes, by the names the steps use. */
 let programs: Record<string, string> = {};
 let levels: Record<string, Item> = {};
 let classes: Record<string, string> = {};
-let ribs: string | undefined;
 /** Offerings that share a block whose activities a later step adds, and the block. */
 let pending: { offerings: Item[]; block: string } | undefined;
 onEachScenario(() => {
   programs = {};
   levels = {};
   classes = {};
-  ribs = undefined;
   pending = undefined;
 });
 
@@ -429,23 +526,22 @@ async function level(name: string, rate = 2000): Promise<Item> {
   });
   return levels[name];
 }
+/** A boat class by its plural name. RIBs are coach boats: they take no sailors, and book to coach boats. */
 async function boatClass(name: string, sailors = name === "Optis" ? 1 : 2): Promise<string> {
-  classes[name] ??= await p.boatClass(name, sailors);
+  classes[name] ??=
+    name === "RIBs"
+      ? await p.boatClass(name, 0, { account_id: await p.account("ribs") })
+      : await p.boatClass(name, sailors);
   return classes[name];
 }
-/** The Operations Plan's RIBs, which cost `rate` cents an hour on the water, with `quantity` of them. */
-async function theRibs(fields: Row = {}): Promise<string> {
-  if (ribs === undefined) {
-    ribs = await p.operationsRow("plan_resources", {
-      resource_kind_id: await p.rib(),
-      name: "RIBs",
-      cost_per_hour_cents: 0,
-      excluded_from_mtdc: false,
-      ...fields,
-    });
-  }
-  return ribs;
-}
+const kindOf = (boats: string) => (boats === "RIBs" ? "powerboat" : "sailboat");
+/** A class's boat rate in the Operations Plan, with `fields` such as its fuel. */
+const boatRate = async (boats: string, fields: Row) =>
+  p.operationsRow("plan_boat_rates", {
+    boat_class_id: await boatClass(boats),
+    maintenance_per_boat_hour_cents: 0,
+    ...fields,
+  });
 const staffAt = async (name: string, count: number, rate?: number) => ({
   staff_level_key: (await level(name, rate))["key"],
   count,
@@ -454,7 +550,6 @@ const staffAt = async (name: string, count: number, rate?: number) => ({
 /** What a block is given. */
 interface Given {
   staff?: Row[];
-  resources?: Row[];
   boats?: Row[];
 }
 /** An offering of `program`, or of a new program, with `sailors` sailors. */
@@ -468,12 +563,11 @@ async function blockOf(offerings: Item[], times: string, given: Given, date = JU
   const version = offerings[0]!["version_id"] as string;
   const block = await p.block(version, date, name);
   for (const o of offerings) {
-    // A practice with boats or RIBs is on the water.
-    const sails = (given.boats ?? []).length > 0 || (given.resources ?? []).length > 0;
+    // A practice with boats is on the water.
+    const sails = (given.boats ?? []).length > 0;
     await p.activities(o, [date], ...span(times), { block_id: block, uses_boats: sails });
   }
   for (const s of given.staff ?? []) await p.given("plan_block_staff", version, block, s);
-  for (const r of given.resources ?? []) await p.given("plan_block_resources", version, block, r);
   for (const b of given.boats ?? []) await p.given("plan_block_boats", version, block, b);
   return block;
 }
@@ -521,25 +615,58 @@ Step(
 for (const text of ["{boats} take {count} sailor each", "{boats} take {count} sailors each"]) {
   Step(text, (_, boats: string, sailors: string) => boatClass(boats, Number(sailors)));
 }
-Step("{boats} that cost {money} an hour on the water in upkeep", async (_, boats: string, money: string) => {
-  await p.operationsRow("plan_boat_rates", {
-    boat_class_id: await boatClass(boats),
-    maintenance_per_boat_hour_cents: cents(money),
-  });
-});
-Step("RIBs that cost {money} an hour on the water", (_, money: string) =>
-  theRibs({ cost_per_hour_cents: cents(money) }),
+Step("{boats} that cost {money} an hour on the water in upkeep", (_, boats: string, money: string) =>
+  boatRate(boats, { maintenance_per_boat_hour_cents: cents(money) }),
 );
-Step("the Operations Plan says the organization has {count} {boats}", async (_, count: string, boats: string) => {
-  await p.operationsRow("plan_boat_rates", {
-    boat_class_id: await boatClass(boats),
-    maintenance_per_boat_hour_cents: 0,
-    quantity: Number(count),
-  });
-});
-Step("the Operations Plan says the organization has {count} RIBs", (_, count: string) =>
-  theRibs({ quantity: Number(count) }),
+Step(
+  "{boats} that cost {money} an hour in fuel and {money} an hour in upkeep",
+  (_, boats: string, fuel: string, upkeep: string) =>
+    boatRate(boats, { fuel_per_hour_cents: cents(fuel), maintenance_per_boat_hour_cents: cents(upkeep) }),
 );
+Step("{boats} that charter for {money} a day", (_, boats: string, money: string) =>
+  boatRate(boats, { charter_per_day_cents: cents(money) }),
+);
+Step("the organization has {count} {boats}", async (_, count: string, boats: string) => {
+  await p.boats(await boatClass(boats), Number(count), kindOf(boats));
+});
+Step(
+  "the organization has {count} {boats}, and gets {count} more on {day}",
+  async (_, count: string, boats: string, more: string, day: string) => {
+    await p.boats(await boatClass(boats), Number(count), kindOf(boats));
+    await p.boats(await boatClass(boats), Number(more), kindOf(boats), { acquired_on: DAYS[day] });
+  },
+);
+Step(
+  "the organization has {count} {boats}, and disposes of {count} on {day}",
+  async (_, count: string, boats: string, gone: string, day: string) => {
+    await p.boats(await boatClass(boats), Number(count) - Number(gone), kindOf(boats));
+    await p.boats(await boatClass(boats), Number(gone), kindOf(boats), { disposed_on: DAYS[day] });
+  },
+);
+
+// Defined below `times`, which a step needs before it can use it. The plan is for PLAN_YEAR, 2027, and
+// the winter starts the December before it.
+let winter: Item | undefined;
+Step(
+  "a winter offering in the 2027 plan, from December 2026 to March 2027, that takes in {money}",
+  async (_, money: string) => {
+    const area = await p.area();
+    winter = await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1, 0, {
+      starts_on: `${PLAN_YEAR - 1}-12-07`,
+      ends_on: `${PLAN_YEAR}-03-28`,
+    });
+  },
+);
+Step(
+  "a practice on December 7, 2026 from {times}, in a block with {count} coaches paid {money} an hour",
+  async (_, times: string, count: string, money: string) => {
+    await blockOf([winter!], times, await coachesPaid(count, money), `${PLAN_YEAR - 1}-12-07`);
+  },
+);
+Step("the offering takes in {money}", (_, money: string) => {
+  const pnl = p.out.pnl.find((x) => x.level === "offering" && x.key === first());
+  expect(pnl?.revenue_cents).toBe(cents(money));
+});
 
 // What the P&L costs.
 Step(
@@ -549,10 +676,10 @@ Step(
   },
 );
 Step(
-  "an offering with a practice from {times}, in a block with {count} RIBs",
-  async (_, times: string, count: string) => {
+  "an offering with a practice from {times}, in a block with {count} of the organization's {boats}",
+  async (_, times: string, count: string, boats: string) => {
     await blockOf([await offeringOf(undefined, 1)], times, {
-      resources: [{ resource_key: await theRibs(), quantity: Number(count) }],
+      boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }],
     });
   },
 );
@@ -598,7 +725,7 @@ Step("the second offering pays {money} of coaches' wages", async (_, money: stri
 Step("the two offerings pay {money} of coaches' wages between them", async (_, money: string) => {
   expect((await wagesOf(p.offerings[0]!)) + (await wagesOf(p.offerings[1]!))).toBe(cents(money));
 });
-Step("the offering pays {money} for RIBs", async (_, money: string) => {
+Step("the offering pays {money} for coach boats", async (_, money: string) => {
   expect(p.total(onOffering(first(), await p.account("ribs")))).toBe(cents(money));
 });
 Step("the offering pays {money} of boat upkeep", async (_, money: string) => {
@@ -742,29 +869,51 @@ Step(
 Step("the planner isn't warned about {boats}", () => {
   expect(p.warned("over_inventory_boats")).toBe(false);
 });
-Step("two blocks on the morning of July 13, with {count} RIBs and {count} RIBs", async (_, n: string, m: string) => {
-  const rib = await theRibs();
-  await blockOf(
-    [await offeringOf(undefined, 1)],
-    MORNING,
-    { resources: [{ resource_key: rib, quantity: Number(n) }] },
-    JULY_13,
-  );
-  await blockOf(
-    [await offeringOf(undefined, 1)],
-    MORNING,
-    { resources: [{ resource_key: rib, quantity: Number(m) }] },
-    JULY_13,
-  );
-});
 Step(
-  "the planner is warned that July 13 has {count} RIBs out, but the organization has {count}",
-  (_, out: string, have: string) => {
-    const found = warning("over_inventory_resource");
-    expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    expect(found?.message).toMatch(new RegExp(`^${out} RIBs out at once.*, but .+ has only ${have}`));
+  "two blocks on the morning of July 13, with {count} {boats} and {count} {boats}",
+  async (_, n: string, boats: string, m: string) => {
+    for (const count of [n, m]) {
+      await blockOf(
+        [await offeringOf(undefined, 1)],
+        MORNING,
+        { boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }] },
+        JULY_13,
+      );
+    }
   },
 );
+Step(
+  "a block on the morning of July 13 with {count} of the organization's {boats} and {count} chartered {boats}",
+  async (_, own: string, boats: string, chartered: string) => {
+    await blockOf(
+      [await offeringOf(undefined, 1)],
+      MORNING,
+      { boats: [{ boat_class_id: await boatClass(boats), count: Number(own), chartered: Number(chartered) }] },
+      JULY_13,
+    );
+  },
+);
+Step(
+  "a block with {count} chartered RIB on the morning of July 13, and another with {count} that afternoon",
+  async (_, morning: string, afternoon: string) => {
+    for (const [times, n] of [
+      [MORNING, morning],
+      ["1pm to 4pm", afternoon],
+    ] as const) {
+      await blockOf(
+        [await offeringOf(undefined, 1)],
+        times,
+        { boats: [{ boat_class_id: await boatClass("RIBs"), count: 0, chartered: Number(n) }] },
+        JULY_13,
+      );
+    }
+  },
+);
+Step("the two offerings pay {money} for boat charters between them", async (_, money: string) => {
+  const charters = await p.account("boatCharters");
+  const paid = (o: Item) => p.total(onOffering(o["key"] as string, charters));
+  expect(paid(p.offerings[0]!) + paid(p.offerings[1]!)).toBe(cents(money));
+});
 
 // What a block's staff and boats can safely take.
 Step(
@@ -1225,6 +1374,31 @@ Step("the Financial Plan's P&L shows that the offering takes in {money}", async 
   };
   await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
 });
+Step(
+  "a draft Financial Plan that pays a director {percent} of an offering in {string} that takes in {money}",
+  async (_, percent: string, term: string, money: string) => {
+    await directorWithBonus(share(percent));
+    offering = await bonusProgram(cents(money), 0, { term_key: await termKey(term) });
+    financialPlan = await p.draftSet();
+  },
+);
+Step(
+  "the Financial Plan's P&L shows that the program area takes in {money} in {string}",
+  async (_, money: string, term: string) => {
+    const { pnl } = await financialPlanResults(financialPlan!);
+    const row = pnl.find(
+      (r) => r["level"] === "program_area_term" && r["subject_key"] === earner!.area && r["term_name"] === term,
+    );
+    expect(Number(row?.["revenue_cents"])).toBe(cents(money));
+  },
+);
+Step(
+  "the Financial Plan's P&L shows that the director's bonus for {string} is {money}",
+  async (_, term: string, money: string) => {
+    const { bonuses } = await financialPlanResults(financialPlan!);
+    expect(Number(bonuses.find((r) => r["term_name"] === term)?.["bonus_cents"])).toBe(cents(money));
+  },
+);
 Step(
   "a saved Financial Plan named {string} whose offering pays {money} of office costs",
   async (_, name: string, money: string) => {

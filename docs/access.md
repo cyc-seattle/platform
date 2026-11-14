@@ -66,26 +66,31 @@ permissions, plus any shared policies it's given:
 - Crew has its own rules, in `stacks/backend/policies.ts`, plus the Community policy, so a Crew
   member who is a parent sees what any parent sees. It reads every person, contact, contact point,
   medical profile, offering, and registration, but not Clubspot's sign-up answers or payments.
+- Community, Team, Crew, and Staff share Sail Team: read, which reads Sail Team's links and
+  announcements whole (`schemas/sail-team.yaml`).
 - Staff has Crew's policy and the Community policy. Its own policy is empty, for whatever more
   access paid staff are given later.
 
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
 
-| Policy         | Gives                                                                                                                |
-| -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| CRM Reader     | Reads every CRM collection but medical information                                                                   |
-| CRM Writer     | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                 |
-| Medical Reader | Reads every sailor's medical information                                                                             |
-| Medical Writer | Changes every sailor's medical information                                                                           |
-| Catalog Reader | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                     |
-| Catalog Writer | Changes the catalog, and reads the directory                                                                         |
-| Plan Reader    | Reads every plan, wages and bonus rates included, the catalog, and users' names                                      |
-| Plan Writer    | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does      |
-| Plan Admin     | Changes the Operations Plan in a draft, and a Financial Plan's plans; saves, dates, and archives one. Reads the same |
+| Policy              | Gives                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| CRM Reader          | Reads every CRM collection but medical information                                                                   |
+| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                 |
+| Medical Reader      | Reads every sailor's medical information                                                                             |
+| Medical Writer      | Changes every sailor's medical information                                                                           |
+| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                     |
+| Catalog Writer      | Changes the catalog, and reads the directory                                                                         |
+| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                      |
+| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does      |
+| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; saves, dates, and archives one. Reads the same |
+| Link Writer         | Changes Sail Team's links, but not their previews                                                                    |
+| Announcement Writer | Changes Sail Team's announcements                                                                                    |
 
-They're coarse: whole collections, with no row filters and no hidden fields, but for users: a Plan
-policy reads only each user's first and last name, so a saved Financial Plan names who saved it.
+They're coarse: whole collections, with no row filters and no hidden fields, but for users and link
+previews: a Plan policy reads only each user's first and last name, so a saved Financial Plan names
+who saved it, and a Link Writer can't write a link's preview.
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
 Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `version_id.plan_id.kind`, and none of the collections only an Operations Plan uses
@@ -110,6 +115,20 @@ an admin trusts, and the change log is the check.
 To add a policy, add a `PolicyData` to `groupPolicies`, or to the list a role gets. `declarePolicy` in
 `stacks/backend/index.ts` declares it once, with its rules, and attaches it to each role it's given
 to. A role that shares another role's policy gets a `DirectusAccess` link, not a copy.
+
+## Link previews
+
+Each link on Sail Team's Links page shows a card for the page it leads to, the way a social
+network does. Browsers can't read another site's page, so the `link-preview` hook
+(`stacks/backend/link-preview.cjs`) does: after a link is added, or its address saved, it reads the
+page's Open Graph title, description, and picture, or its `<title>` and description when it has none,
+into the link's `preview_*` fields and sets `previewed_at`. It never holds up or fails the save.
+
+Directus reads the page from inside the cluster, so the hook reads only an https page on port 443
+whose host resolves to a public address, checked again on each of at most 3 redirects. It stops
+after 5 seconds or 512 KB, and keeps a picture only at an https address. A page it can't read leaves
+the preview empty and `previewed_at` null, and saving the address again retries. Only the hook writes
+the preview: a Link Writer's rules leave those fields out.
 
 ## Seeing what someone sees
 

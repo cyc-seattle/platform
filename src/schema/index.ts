@@ -3,6 +3,8 @@
 /** Every collection, for `createDirectus<Schema>()`. */
 export interface Schema {
   accounts: Accounts[];
+  announcements: Announcements[];
+  assets: Assets[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
   boats: Boats[];
@@ -27,6 +29,7 @@ export interface Schema {
   group_policies: GroupPolicies[];
   groups: Groups[];
   households: Households[];
+  links: Links[];
   medical_profiles: MedicalProfiles[];
   offerings: Offerings[];
   organization_cost_accounts: OrganizationCostAccounts[];
@@ -35,7 +38,6 @@ export interface Schema {
   plan_activities: PlanActivities[];
   plan_activity_blocks: PlanActivityBlocks[];
   plan_block_boats: PlanBlockBoats[];
-  plan_block_resources: PlanBlockResources[];
   plan_block_staff: PlanBlockStaff[];
   plan_boat_rates: PlanBoatRates[];
   plan_bonus_owner_products: PlanBonusOwnerProducts[];
@@ -48,7 +50,7 @@ export interface Schema {
   plan_pools: PlanPools[];
   plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
-  plan_resources: PlanResources[];
+  plan_result_bonuses: PlanResultBonuses[];
   plan_result_capital: PlanResultCapital[];
   plan_result_lines: PlanResultLines[];
   plan_result_pnl: PlanResultPnl[];
@@ -72,7 +74,6 @@ export interface Schema {
   qualification_covers: QualificationCovers[];
   qualifications: Qualifications[];
   registrations: Registrations[];
-  resource_kinds: ResourceKinds[];
   schools: Schools[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
@@ -119,6 +120,41 @@ export interface Accounts {
   retired: boolean;
 }
 
+/** What Sail Team's home page shows, newest first. */
+export interface Announcements {
+  id: string;
+  title: string;
+  body: string;
+  /** The date the home page shows. Newest comes first. */
+  published_on: string;
+}
+
+/** Each boat, motor and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, motors, and others such as trailers. Planning counts the boats of each class CSC has on each day. */
+export interface Assets {
+  id: string;
+  /** A sailboat or powerboat also needs a row in Boats. Directus can't check that, so keep them matching. */
+  kind: "sailboat" | "powerboat" | "motor" | "other";
+  /** Its name, if it has one, such as Scooter or the van. */
+  name: string | null;
+  /** This asset's boat details, if it is a sailboat or powerboat. */
+  boats: (string | Boats)[];
+  /** Who made it, such as Zodiac or Yamaha. */
+  make: string | null;
+  /** Its model. A boat's model is its boat class, in Boats. */
+  model: string | null;
+  /** The number that identifies it: a boat's hull number (HIN), a vehicle's VIN, or a serial number. */
+  identifier: string | null;
+  /** The state registration number, such as WN 1234 AB, if it has one. */
+  registration_number: string | null;
+  /** Its book value, as in QuickBooks account 1500. In cents: 12500 is $125.00. */
+  value_cents: number | null;
+  /** The day CSC got it, or expects to. Planning counts it from this day; empty counts it from the start. */
+  acquired_on: string | null;
+  /** The day CSC sold, scrapped, or gave it away. Planning stops counting it on this day. Empty while CSC still has it. */
+  disposed_on: string | null;
+  note: string | null;
+}
+
 /** Something a sync noticed but didn't fix. A dismissed finding stays dismissed on later runs. */
 export interface AuditFindings {
   id: string;
@@ -138,29 +174,23 @@ export interface AuditFindings {
 export interface BoatClasses {
   id: string;
   name: string;
-  sailors_per_boat: number;
+  /** The most sailors one boat can safely take, such as 4 in an FJ. 0 for a coach boat. */
+  max_capacity: number;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
+  /** Where the fuel and upkeep of CSC's own boats of the class are booked, such as Coach boats for a RIB. Empty books them to boat maintenance. */
+  account_id: string | Accounts | null;
 }
 
-/** Each boat CSC owns, for planning the year. Sailors' own boats aren't listed here. */
+/** A boat's own details, sail or power: its class and sail number. Sailors' own boats aren't listed here. */
 export interface Boats {
   id: string;
+  /** The asset this boat is. Its kind must be Sailboat or Powerboat. */
+  asset_id: string | Assets;
+  /** Such as Opti, 420, or RIB. */
   boat_class_id: string | BoatClasses;
-  /** The boat's name, if it has one. */
-  name: string | null;
+  /** A sailboat's, if it has one. */
   sail_number: string | null;
-  /** The hull identification number on the transom, if it's known. */
-  hull_number: string | null;
-  /** What the boat is worth. In cents: 12500 is $125.00. */
-  value_cents: number | null;
-  /** The day CSC got the boat. */
-  acquired_on: string | null;
-  /** The day the boat first sailed in a program. */
-  in_service_on: string | null;
-  /** The day CSC stopped using the boat. Empty while it's still in use. */
-  retired_on: string | null;
-  note: string | null;
 }
 
 /** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */
@@ -456,6 +486,25 @@ export interface Households {
   date_created: string | null;
 }
 
+/** The Links page in Sail Team. Drag the rows to change their order. */
+export interface Links {
+  id: string;
+  title: string;
+  /** The page's address, starting with https://. */
+  url: string;
+  /** A line under the title, if it needs one. */
+  note: string | null;
+  sort: number | null;
+  /** The page's own title, read from the page when the link is saved. */
+  preview_title: string | null;
+  /** The page's own summary, read from the page when the link is saved. */
+  preview_description: string | null;
+  /** The address of the page's own picture, read from the page when the link is saved. */
+  preview_image: string | null;
+  /** When the page was last read. Empty if it couldn't be read: save the link again to retry. */
+  previewed_at: string | null;
+}
+
 /** A person's medical information, kept apart from People so only some staff see it. */
 export interface MedicalProfiles {
   id: string;
@@ -602,21 +651,8 @@ export interface PlanBlockBoats {
   count: number;
   /** How many boats sailors bring. They cost nothing and don't count against the organization's. */
   sailor_owned: number | null;
-}
-
-/** RIBs and other equipment a block uses. */
-export interface PlanBlockResources {
-  id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
-  key: string;
-  block_id: string | PlanActivityBlocks;
-  /** The resource it uses: copy the Key from a resource in the Operations Plan. */
-  resource_key: string;
-  quantity: string;
-  /** Hours each is used. Leave it empty for the block's time on the water (RIBs) or its paid time (other equipment). */
-  hours: string | null;
+  /** How many boats of the class the block charters. They cost the class's charter rate for each day, and don't count against the organization's. */
+  chartered: number | null;
 }
 
 /** Who coaches a block: a number of staff at one staff level, or a salaried position. */
@@ -645,10 +681,12 @@ export interface PlanBoatRates {
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
   boat_class_id: string | BoatClasses;
-  /** In cents: 12500 is $125.00. */
+  /** Upkeep for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00. */
   maintenance_per_boat_hour_cents: number;
-  /** How many boats of the class the organization has. */
-  quantity: number | null;
+  /** Fuel for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00. */
+  fuel_per_hour_cents: number | null;
+  /** What one boat of the class costs to charter for a day. In cents: 12500 is $125.00. */
+  charter_per_day_cents: number | null;
 }
 
 /** The products a bonus owner owns. */
@@ -695,8 +733,8 @@ export interface PlanBudgetLines {
   /** In cents: 12500 is $125.00. */
   amount_cents: number;
   fiscal_year: number;
-  /** Set for a cost left out of modified total direct costs (MTDC), such as equipment. */
-  excluded_from_mtdc: boolean;
+  /** Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -817,30 +855,30 @@ export interface PlanRates {
   lodging_per_night_cents: number | null;
   /** In cents: 12500 is $125.00. */
   mileage_rate_cents: number | null;
-  /** The kind of resource whose cost prices coach boat (RIB) hours. */
-  rib_resource_kind_id: string | ResourceKinds | null;
 }
 
-/** Equipment programs share, such as coach boats, and what an hour or a day of it costs. */
-export interface PlanResources {
+/** Each bonus in a Financial Plan, for each term, and for the offerings in no term on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+export interface PlanResultBonuses {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
-  key: string;
-  resource_kind_id: string | ResourceKinds;
+  /** The bonus's role, such as Director. */
   name: string;
-  quantity: number | null;
-  /** In cents: 12500 is $125.00. */
-  cost_per_hour_cents: number | null;
-  /** In cents: 12500 is $125.00. */
-  cost_per_day_cents: number | null;
-  /** In cents: 12500 is $125.00. */
-  fuel_per_hour_cents: number | null;
-  /** In cents: 12500 is $125.00. */
-  maintenance_per_hour_cents: number | null;
-  /** Set for a rental, whose cost is left out of modified total direct costs (MTDC). */
-  excluded_from_mtdc: boolean;
+  term_key: string | null;
+  /** The term it's paid on. Empty for the offerings in no term, such as Adult Learn to Sail, whose bonus is worked out on the year. */
+  term_name: string | null;
+  /** The term's first day, which puts the terms in order. */
+  term_starts_on: string | null;
+  /** A share of the net. 0.05 means 5%. */
+  bonus_rate: string;
+  /** The net of its products in the term, which the bonus is figured on. In cents: 12500 is $125.00. */
+  net_cents: number;
+  /** Its rate × the net, or nothing when the net is a loss. In cents: 12500 is $125.00. */
+  bonus_cents: number;
+  bonus_owner_key: string;
+  program_area_key: string | null;
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
+  /** The plan in the Financial Plan that pays the bonus. */
+  version_set_member_id: string | VersionSetMembers | null;
 }
 
 /** The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
@@ -884,7 +922,7 @@ export interface PlanResultLines {
 /** A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultPnl {
   id: string;
-  level: "offering" | "product" | "program_area";
+  level: "offering" | "product" | "program_area" | "program_area_term";
   subject_key: string;
   name: string;
   /** In cents: 12500 is $125.00. */
@@ -902,6 +940,11 @@ export interface PlanResultPnl {
   version_set_id: string | VersionSets;
   /** The plan in the Financial Plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
+  term_key: string | null;
+  /** For a program area by term, the term. Empty for its offerings in no term, such as Adult Learn to Sail. */
+  term_name: string | null;
+  /** The term's first day, which puts the terms in order. */
+  term_starts_on: string | null;
 }
 
 /** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
@@ -989,8 +1032,8 @@ export interface PlanRevenueCharges {
   product_kinds: ("program" | "charter" | "storage_lease" | "merchandise" | "event_hosting" | "other")[] | null;
   /** A revenue account adds revenue, such as card fees families pay. An expense account adds a cost. */
   account_id: string | Accounts;
-  /** Set for a charge 2 CFR 200.1 leaves out of MTDC, such as scholarships. */
-  excluded_from_mtdc: boolean;
+  /** Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -1201,12 +1244,6 @@ export interface Registrations {
   offering_id: string | Offerings;
   status: "confirmed" | "waitlist" | "cancelled";
   clubspot_entry_id: string | ClubspotRegistrationEntries;
-}
-
-/** A kind of shared resource, such as RIB or trailer. */
-export interface ResourceKinds {
-  id: string;
-  name: string;
 }
 
 /** The schools a sailor can sail for, which families pick from. A school's other names match what families typed on their Clubspot forms. */
