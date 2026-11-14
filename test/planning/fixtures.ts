@@ -2,7 +2,9 @@
 import type {
   Account,
   CostLine,
+  DateString,
   EngineOutput,
+  Id,
   PlanActivity,
   PlanActivityBlock,
   PlanBlockBoats,
@@ -75,6 +77,25 @@ export const A = {
   cardFees: "acct-card-fees",
 } as const;
 
+/**
+ * `count` boats on the asset list, of a boat class or powerboats, with the dates the organization got
+ * and disposed of them, as the rows `PlanData` takes.
+ */
+export function assetList(
+  boats: { count: number; boat_class_id?: Id; acquired_on?: DateString; disposed_on?: DateString }[],
+): Pick<PlanData, "assets" | "sailboats"> {
+  const list: Pick<PlanData, "assets" | "sailboats"> = { assets: [], sailboats: [] };
+  for (const { count, boat_class_id, acquired_on = null, disposed_on = null } of boats) {
+    for (let i = 0; i < count; i++) {
+      const id = `boat-${list.assets.length + 1}`;
+      const kind = boat_class_id === undefined ? "powerboat" : "sailboat";
+      list.assets.push({ id, kind, name: null, acquired_on, disposed_on });
+      if (boat_class_id !== undefined) list.sailboats.push({ id, asset_id: id, boat_class_id });
+    }
+  }
+  return list;
+}
+
 export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
   return {
     fiscal_year: 2027,
@@ -91,7 +112,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
         ["cogs", A.cogs],
       ] as const
     ).map(([cost_type, account_id]) => ({ id: `cost-${cost_type}`, organization_id: "org", cost_type, account_id })),
-    rib_resource_kind_id: "kind-rib",
     products: [],
     program_areas: [],
     accounts: [
@@ -117,6 +137,8 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     qualification_covers: [],
     boat_classes: [],
     resource_kinds: [{ id: "kind-rib", name: "RIB" }],
+    assets: [],
+    sailboats: [],
     plans: [],
     plan_versions: [],
     plan_programs: [],

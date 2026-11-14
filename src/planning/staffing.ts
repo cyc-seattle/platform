@@ -1,6 +1,7 @@
 import type { Context, WarningScope } from "./context.ts";
 import type { ScheduledActivity } from "./activities.ts";
 import type {
+  Asset,
   ComputedActivity,
   CostType,
   DateString,
@@ -253,11 +254,11 @@ export class Staffing {
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     let seats = 0;
     for (const b of block.boats) {
-      const perBoat = classes.get(b.boat_class_id)?.sailors_per_boat;
+      const perBoat = classes.get(b.boat_class_id)?.max_capacity;
       if (perBoat == null || perBoat <= 0) {
         this.warnOnce(
-          "no_sailors_per_boat",
-          `${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no sailors per boat. Add it to check that the boats hold every sailor`,
+          "no_max_capacity",
+          `${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no max capacity. Add it to check that the boats hold every sailor`,
           b.boat_class_id,
           scope,
         );
@@ -278,26 +279,33 @@ export class Staffing {
   }
 
   /**
-   * Warns when the organization's boats of one class, or a resource such as RIBs, are given to more
-   * blocks at once on a date than it has. Boats sailors bring don't count.
+   * Warns when more of the organization's sailboats of one class, or its powerboats, are given to
+   * blocks at once on a date than it has that day on the asset list. Boats sailors bring don't count.
    */
   private checkInventory(blocks: Block[]): void {
     const { ctx } = this;
     const dates = groupBy(blocks, (b) => b.row.date);
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
-    const fleet = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r.quantity]));
-    const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
+    const assets = new Map(ctx.data.assets.map((a) => [a.id, a]));
+    const sailboats = ctx.data.sailboats.flatMap((s) => {
+      const asset = assets.get(s.asset_id);
+      return asset === undefined ? [] : [{ asset, boat_class_id: s.boat_class_id }];
+    });
+    const powerboats = ctx.data.assets.filter((a) => a.kind === "powerboat");
     const organization = ctx.data.organization.name;
     for (const [date, list] of dates) {
-      const check = (code: string, what: string, have: number | null | undefined, used: (b: Block) => number) => {
-        if (have == null) return;
+      const has = (a: Asset) =>
+        (a.acquired_on == null || a.acquired_on <= date) && (a.disposed_on == null || date < a.disposed_on);
+      const check = (code: string, what: string, have: number, used: (b: Block) => number, plural = pluralOf(what)) => {
         const out = list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : []));
         const peak = mostAtOnce(out);
         if (peak.total <= have) return;
+        const only = have === 0 ? "none" : `only ${have}`;
+        const count = `${peak.total} ${peak.total === 1 ? what : plural}`;
         const message =
           peak.at.length === 1
-            ? `${countOf(peak.total, what)} out at once for ${offeringsOf(peak.at[0]!.block)}, but ${organization} has only ${have}`
-            : `${countOf(peak.total, what)} out at once, but ${organization} has only ${have}: ${listOf(peak.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`;
+            ? `${count} out at once for ${offeringsOf(peak.at[0]!.block)}, but ${organization} has ${only}`
+            : `${count} out at once, but ${organization} has ${only}: ${listOf(peak.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`;
         for (const version of new Set(peak.at.map(({ block }) => block.row.version_id))) {
           ctx.warn(code, message, what, {
             version_id: version,
@@ -307,27 +315,12 @@ export class Staffing {
       };
       const classIds = new Set(list.flatMap((b) => b.boats.filter((x) => x.count > 0).map((x) => x.boat_class_id)));
       for (const id of classIds) {
-        if (fleet.get(id) == null) {
-          for (const b of list.filter((x) => x.boats.some((y) => y.boat_class_id === id && y.count > 0))) {
-            this.warnOnce(
-              "no_fleet_quantity",
-              `The Operations Plan doesn't say how many ${pluralOf(classes.get(id)?.name ?? id)} ${organization} has. Add it to check that there are enough`,
-              id,
-              { version_id: b.row.version_id, date },
-            );
-          }
-        }
-        check("over_inventory_boats", classes.get(id)?.name ?? id, fleet.get(id), (b) =>
+        const have = sailboats.filter((s) => s.boat_class_id === id && has(s.asset)).length;
+        check("over_inventory_boats", classes.get(id)?.name ?? id, have, (b) =>
           sum(b.boats.filter((x) => x.boat_class_id === id).map((x) => x.count)),
         );
       }
-      const resourceKeys = new Set(list.flatMap((b) => b.resources.map((x) => x.resource_key)));
-      for (const key of resourceKeys) {
-        const resource = resources.get(key);
-        check("over_inventory_resource", resource?.name ?? key, resource?.quantity, (b) =>
-          sum(b.resources.filter((x) => x.resource_key === key).map((x) => x.quantity)),
-        );
-      }
+      check("over_inventory_powerboats", "powerboat", powerboats.filter(has).length, (b) => b.row.powerboats ?? 0);
     }
   }
 
@@ -368,7 +361,7 @@ export class Staffing {
     return result;
   }
 
-  /** Costs every block's staff, RIBs, boats and resources, and checks them against the limits. */
+  /** Costs every block's staff, powerboats, boats and resources, and checks them against the limits. */
   run(scheduled: ScheduledActivity[]): {
     activities: ComputedActivity[];
     coaching: SalariedCoaching[];
@@ -389,7 +382,6 @@ export class Staffing {
     const resources = new Map(ctx.data.plan_resources.map((r) => [r.key, r]));
     const boatClasses = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const boatRates = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r]));
-    const ribKind = ctx.data.rib_resource_kind_id;
     const given = new Map<ScheduledActivity, { coaches: number; ribs: number; boats: number }>();
 
     for (const block of byDate(blocks)) {
@@ -478,7 +470,26 @@ export class Staffing {
       }
       book("coach_wages", wages, "coach_wages", "Coach wages", "Staff × paid hours × each one's hourly rate");
 
-      let ribs = 0;
+      const powerboats = block.row.powerboats ?? 0;
+      if (powerboats > 0 && waterHours > 0) {
+        const rate = ctx.rates?.powerboat_per_hour_cents;
+        if (rate == null) {
+          this.warnOnce(
+            "no_powerboat_rate",
+            "The Operations Plan has no hourly cost for powerboats, so they cost nothing. Add it to cost them",
+            "powerboat_per_hour_cents",
+            scope,
+          );
+        }
+        book(
+          "ribs",
+          powerboats * waterHours * (rate ?? 0),
+          "ribs",
+          "Powerboats",
+          "Powerboats × on-water hours × the hourly cost, fuel included",
+        );
+      }
+
       for (const use of block.resources) {
         const resource = resources.get(use.resource_key);
         if (resource === undefined) {
@@ -490,15 +501,13 @@ export class Staffing {
           );
           continue;
         }
-        const rib = ribKind != null && resource.resource_kind_id === ribKind;
-        if (rib) ribs += use.quantity;
-        const hours = use.hours ?? (rib ? waterHours : paidHours);
+        const hours = use.hours ?? paidHours;
         const cost = use.quantity * (hours * hourlyCost(resource) + (resource.cost_per_day_cents ?? 0));
         book(
-          rib ? "ribs" : "resources",
+          "resources",
           cost,
-          rib ? "ribs" : `resource:${resource.key}`,
-          rib ? "RIBs" : resource.name,
+          `resource:${resource.key}`,
+          resource.name,
           `${resource.name}: quantity × hours × hourly cost, plus a day rate`,
           resource.excluded_from_mtdc ? 0 : 1,
         );
@@ -519,7 +528,7 @@ export class Staffing {
       const coaches = sum(block.staff.map((s) => s.count));
       const boats = sum(block.boats.map((b) => b.count));
       for (const [a, share] of block.shares) {
-        given.set(a, { coaches: coaches * share, ribs: ribs * share, boats: boats * share });
+        given.set(a, { coaches: coaches * share, ribs: powerboats * share, boats: boats * share });
       }
     }
 

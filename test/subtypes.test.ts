@@ -41,6 +41,13 @@ const subtypes = [
     foreignKey: "product_id",
     alias: "programs",
   },
+  {
+    base: "assets",
+    kind: "sailboat",
+    subtype: "sailboats",
+    foreignKey: "asset_id",
+    alias: "sailboats",
+  },
 ];
 
 function findField(collection: string, field: string): Field {

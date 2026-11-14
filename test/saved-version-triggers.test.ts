@@ -148,7 +148,6 @@ async function plans(db: PGlite, year = 2027) {
   const organization = await w.insert("organizations", { name: "Test club", kind: "own", fiscal_year_start_month: 10 });
   const area = await w.insert("program_areas", { name: "Test area" });
   const product = await w.insert("products", { name: "Test product", kind: "program", program_area_id: area });
-  const kind = await w.insert("resource_kinds", { name: "Safety boat" });
   const operationsPlan = await w.insert("plans", {
     kind: "operations",
     organization_id: organization,
@@ -169,7 +168,7 @@ async function plans(db: PGlite, year = 2027) {
     status: "draft",
   });
   const operations = await w.insert("plan_versions", { plan_id: operationsPlan, status: "draft" });
-  await w.insert("plan_rates", { version_id: operations, key: randomUUID(), rib_resource_kind_id: kind });
+  await w.insert("plan_rates", { version_id: operations, key: randomUUID() });
   const saved = await w.insert("plan_versions", { plan_id: plan, status: "draft" });
   const offering = async (version: string) =>
     w.insert("plan_offerings", { version_id: version, key: randomUUID(), product_id: product, name: "Offering" });
@@ -797,14 +796,15 @@ describe("installing the saved-versions triggers", { timeout: 30_000 }, () => {
   it("skips the install when the triggers it would install are already there", async () => {
     const db = await database(config(false));
     const again = () => db.transaction((tx) => installTriggers(config(false), connect(tx)));
-    expect(await again()).toEqual({ missing: [], installed: false });
+    expect(await again()).toEqual({ missing: [], installed: false, changed: [] });
     // A table a schema apply made again has lost its trigger.
     await db.exec(`DROP TRIGGER cyc_saved_versions ON plan_trips`);
-    expect(await again()).toEqual({ missing: [], installed: true });
+    expect(await again()).toEqual({ missing: [], installed: true, changed: [] });
     // So has a config that changed, such as dev's flag.
     expect(await db.transaction((tx) => installTriggers(config(true), connect(tx)))).toEqual({
       missing: [],
       installed: true,
+      changed: [],
     });
   });
 

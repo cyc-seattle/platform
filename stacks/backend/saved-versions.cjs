@@ -604,12 +604,12 @@ async function installTriggers(config, db) {
   const hash = fingerprint(config);
   if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
     await seedActiveMarks(db);
-    return { missing: [], installed: false };
+    return { missing: [], installed: false, changed: await seedPowerboats(db) };
   }
   for (const statement of triggerStatements(config)) await db.exec(statement);
   await db.exec(`COMMENT ON FUNCTION cyc_saved_versions_row() IS ${literal(hash)}`);
   await seedActiveMarks(db);
-  return { missing: [], installed: true };
+  return { missing: [], installed: true, changed: await seedPowerboats(db) };
 }
 
 /** Where the Financial Plans migration (cyc0002) lists the club plans, each saved when it was added. */
@@ -654,6 +654,65 @@ async function seedActiveMarks(db) {
   await db.exec(`DROP TABLE ${SEED}`);
 }
 
+/** Where the asset list migration (cyc0013) lists each plan copy's coach-boat resource kind. */
+const POWERBOAT_SEED = "cyc_seed_powerboats";
+
+/**
+ * Moves each draft's coach boats, the owned resources of its copy's coach-boat kind, into its
+ * blocks' `powerboats`, once the schema apply has added it. Their highest hourly cost, fuel and
+ * upkeep included, becomes the powerboat rate, and their day rate is dropped. Saved Financial Plans
+ * keep theirs, since they never change. Returns the drafts it changed, whose results are now stale.
+ */
+async function seedPowerboats(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${POWERBOAT_SEED}') IS NOT NULL AS seed`);
+  if (!seed) return [];
+  const [{ ready }] = await db.query(
+    `SELECT count(*) = 2 AS ready FROM information_schema.columns WHERE table_schema = current_schema()
+      AND ((table_name = 'plan_activity_blocks' AND column_name = 'powerboats')
+        OR (table_name = 'plan_rates' AND column_name = 'powerboat_per_hour_cents'))`,
+  );
+  if (!ready) return [];
+  await db.exec(
+    `CREATE TEMP TABLE cyc_powerboat_keys ON COMMIT DROP AS
+      SELECT m.version_set_id AS set_id, r.version_id AS operations, r.key
+        FROM ${POWERBOAT_SEED} seed
+        JOIN plan_resources r ON r.version_id = seed.version_id AND r.resource_kind_id = seed.resource_kind_id
+          AND NOT r.excluded_from_mtdc
+        JOIN ${MEMBERS} m ON m.version_id = seed.version_id
+        JOIN ${SETS} s ON s.id = m.version_set_id AND s.status = 'draft'`,
+  );
+  await db.exec(
+    `UPDATE plan_activity_blocks b SET powerboats = coalesce(b.powerboats, 0) + used.n
+      FROM (
+        SELECT br.block_id, sum(br.quantity) AS n FROM plan_block_resources br
+          JOIN ${MEMBERS} m ON m.version_id = br.version_id
+          JOIN cyc_powerboat_keys k ON k.set_id = m.version_set_id AND k.key = br.resource_key
+          GROUP BY br.block_id
+      ) used
+      WHERE b.id = used.block_id`,
+  );
+  await db.exec(
+    `DELETE FROM plan_block_resources br USING ${MEMBERS} m, cyc_powerboat_keys k
+      WHERE m.version_id = br.version_id AND k.set_id = m.version_set_id AND k.key = br.resource_key`,
+  );
+  await db.exec(
+    `UPDATE plan_rates rt SET powerboat_per_hour_cents = cost.rate
+      FROM (
+        SELECT r.version_id, max(coalesce(r.cost_per_hour_cents, 0) + coalesce(r.fuel_per_hour_cents, 0)
+          + coalesce(r.maintenance_per_hour_cents, 0)) AS rate
+          FROM plan_resources r JOIN cyc_powerboat_keys k ON k.operations = r.version_id AND k.key = r.key
+          GROUP BY r.version_id
+      ) cost
+      WHERE rt.version_id = cost.version_id AND rt.powerboat_per_hour_cents IS NULL`,
+  );
+  await db.exec(
+    "DELETE FROM plan_resources r USING cyc_powerboat_keys k WHERE r.version_id = k.operations AND r.key = k.key",
+  );
+  const changed = (await db.query("SELECT DISTINCT set_id FROM cyc_powerboat_keys")).map((row) => row.set_id);
+  await db.exec(`DROP TABLE ${POWERBOAT_SEED}`);
+  return changed;
+}
+
 // The catalog the engine reads as it is now.
 const CATALOG = [
   "products",
@@ -663,6 +722,8 @@ const CATALOG = [
   "qualification_covers",
   "boat_classes",
   "resource_kinds",
+  "assets",
+  "sailboats",
 ];
 
 /** A `date` as `YYYY-MM-DD`, whether the driver gives a string, or a `Date` at UTC or local midnight. */
@@ -704,7 +765,6 @@ async function loadPlan(config, db, set, operations, ids) {
     )
     .select("id", "kind", "program_area_id");
   const [organization] = await read("organizations", (q) => q.where("id", set.organization_id));
-  const rates = data.plan_rates.find((r) => r.version_id === operations);
   return {
     ...data,
     fiscal_year: set.fiscal_year,
@@ -712,7 +772,6 @@ async function loadPlan(config, db, set, operations, ids) {
     organization_cost_accounts: await read("organization_cost_accounts", (q) =>
       q.where("organization_id", set.organization_id),
     ),
-    rib_resource_kind_id: rates?.rib_resource_kind_id ?? null,
     plans,
     plan_versions: versions,
   };
@@ -1080,11 +1139,17 @@ function register({ filter, action, init }, { env, database, logger }) {
   });
   const install = async () => {
     try {
-      const { missing, installed } = await database.transaction((trx) => installTriggers(config, connect(trx)));
+      const {
+        missing,
+        installed,
+        changed = [],
+      } = await database.transaction((trx) => installTriggers(config, connect(trx)));
       if (missing.length > 0) {
         logger.warn(`saved-versions: no triggers yet, since these tables lack columns: ${missing.join(", ")}`);
         return;
       }
+      // Moved by SQL, which skips Directus's actions.
+      drafts.mark(changed);
       if (installed)
         logger.info(`saved-versions: installed the triggers on ${triggered(config).length} planning tables`);
     } catch (error) {
@@ -1296,6 +1361,7 @@ module.exports.draftsChangedBy = draftsChangedBy;
 module.exports.draftQueue = draftQueue;
 module.exports.copyParent = copyParent;
 module.exports.copyOrder = copyOrder;
+module.exports.seedPowerboats = seedPowerboats;
 module.exports.REFUSED = REFUSED;
 module.exports.RESULTS_BY_SAVE = RESULTS_BY_SAVE;
 module.exports.SET_STAYS = SET_STAYS;

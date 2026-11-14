@@ -114,8 +114,8 @@ const sets: Record<string, Target[]> = {
   "revenue accounts": plain("accounts"),
   // The directory, as directory.feature defines it.
   "the directory": plain("organizations", "venues"),
-  // CSC's boats, as boats.feature defines them.
-  "the boat list": plain("boats"),
+  // CSC's boats and equipment, as assets.feature defines them.
+  "the asset list": plain("assets", "sailboats"),
   plans: [...plain("plans", "version_sets", "version_set_members"), ...versions("draft", "saved")],
   groups: plain("groups", "group_members", "group_policies"),
   // Everything website.feature calls the website, with the lists that link its parts.

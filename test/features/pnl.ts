@@ -130,7 +130,8 @@ export class PnlPlan {
   readonly offerings: Item[] = [];
   readonly lines: Record<string, Item> = {};
   readonly boatClasses: string[] = [];
-  private ribKind: string | undefined;
+  /** The organization's boats and equipment this scenario added to the asset list. */
+  readonly assets: string[] = [];
   private poolId: string | undefined;
   output: EngineOutput | undefined;
 
@@ -381,7 +382,7 @@ export class PnlPlan {
   }
 
   /** A block in `version` on `date`. Returns its id. */
-  async block(version: string, date: string, name = "A block"): Promise<string> {
+  async block(version: string, date: string, name = "A block", fields: Row = {}): Promise<string> {
     return (
       await adminCreate("plan_activity_blocks", {
         id: randomUUID(),
@@ -389,6 +390,7 @@ export class PnlPlan {
         key: randomUUID(),
         date,
         name,
+        ...fields,
       })
     ).id;
   }
@@ -409,24 +411,34 @@ export class PnlPlan {
     });
   }
 
-  /** A boat class in the catalog, taking `sailors` sailors a boat. Returns its id. */
+  /** A boat class in the catalog, whose boats take at most `sailors` sailors. Returns its id. */
   async boatClass(name: string, sailors: number | null): Promise<string> {
     const boat = await adminCreate("boat_classes", {
       id: randomUUID(),
       name: `${name} ${key("boat")}`,
-      sailors_per_boat: sailors,
+      max_capacity: sailors,
     });
     this.boatClasses.push(boat.id);
     return boat.id;
   }
 
-  /** The resource kind the Operations Plan's rates call RIBs. */
-  async rib(): Promise<string> {
-    if (this.ribKind === undefined) {
-      this.ribKind = (await adminCreate("resource_kinds", { id: randomUUID(), name: `RIB ${key("kind")}` })).id;
-      await this.operationsRow("plan_rates", { rib_resource_kind_id: this.ribKind });
+  /** Adds `count` sailboats of a boat class to the asset list, with `dates` such as `acquired_on`. */
+  async sailboats(boatClass: string, count: number, dates: Row = {}): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      const asset = await this.asset("sailboat", dates);
+      await adminCreate("sailboats", { id: randomUUID(), asset_id: asset, boat_class_id: boatClass });
     }
-    return this.ribKind;
+  }
+
+  /** Adds `count` powerboats to the asset list, with `dates` such as `acquired_on`. */
+  async powerboats(count: number, dates: Row = {}): Promise<void> {
+    for (let i = 0; i < count; i++) await this.asset("powerboat", dates);
+  }
+
+  private async asset(kind: "sailboat" | "powerboat", dates: Row): Promise<string> {
+    const asset = await adminCreate("assets", { id: randomUUID(), kind, name: `Boat ${key("boat")}`, ...dates });
+    this.assets.push(asset.id);
+    return asset.id;
   }
 
   /**
@@ -486,7 +498,6 @@ export class PnlPlan {
       organization_cost_accounts: await read("organization_cost_accounts", {
         organization_id: { _eq: this.organizationId },
       }),
-      rib_resource_kind_id: this.ribKind ?? null,
       products: await read("products", { id: anyOf(this.products) }),
       program_areas: await read("program_areas", { id: anyOf(this.areas) }),
       accounts: await read("accounts", { id: { _in: Object.values(this.accounts) } }),
@@ -494,6 +505,8 @@ export class PnlPlan {
       qualifications: [],
       qualification_covers: [],
       boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
+      assets: await read("assets", { id: anyOf(this.assets) }),
+      sailboats: await read("sailboats", { asset_id: anyOf(this.assets) }),
       resource_kinds: [],
       plans: await read("plans", { id: { _in: plans } }),
       plan_versions: await read("plan_versions", { id: { _in: versions } }),
