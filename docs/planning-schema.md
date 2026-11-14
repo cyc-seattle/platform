@@ -368,7 +368,7 @@ erDiagram
         uuid cost_center_key
         int amount_cents
         int fiscal_year
-        boolean excluded_from_mtdc
+        boolean in_mtdc "true unless 2 CFR 200.1 leaves it out"
         string note
     }
 ```
@@ -385,7 +385,7 @@ A block, in `plan_activity_blocks`, is one or more activities on one date that s
 
 A program area's plan holds only offerings of that area's programs, and the engine warns about any other.
 
-A budget line counts in its `fiscal_year`. Capital belongs in the Operations Plan's ranked `plan_capital_items`. A budget line on an asset account is capital too, and is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). `excluded_from_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest.
+A budget line counts in its `fiscal_year`. Capital belongs in the Operations Plan's ranked `plan_capital_items`. A budget line on an asset account is capital too, and is the organization's: fundraising pays for it, so it never reaches an area or an offering, and the engine moves it to the organization with a warning. A cost on a product or a program area is divided among its offerings by MTDC (modified total direct costs: an offering's own costs, less a few kinds a federal grant rule leaves out). Clearing `in_mtdc` leaves a cost out of MTDC, as [2 CFR 200.1](https://www.ecfr.gov/current/title-2/section-200.1) does for equipment, rent, participant support and the rest.
 
 `plan_labor_lines` hold labor not tied to an activity, such as head-instructor weeks, training and boat-maintenance labor, priced at a staff level.
 
@@ -451,7 +451,7 @@ erDiagram
         decimal rate "share of each offering's revenue"
         json product_kinds
         uuid account_id FK "revenue adds revenue, expense a cost"
-        boolean excluded_from_mtdc
+        boolean in_mtdc "true unless 2 CFR 200.1 leaves it out"
         string note
     }
     plan_bonus_owners {
@@ -489,7 +489,7 @@ erDiagram
 
 The plans don't say how many boats the organization has: the [asset list](#catalog) does, the same for every plan. The engine warns when the blocks give out more of the organization's boats of a class at once than it has that day; chartered boats don't count.
 
-`plan_revenue_charges` lists the charges set as a share of revenue, such as scholarships, the program buffer, B&O tax, and card fees. Each applies to every offering of the product kinds it names, at its rate × the offering's revenue. A charge on a revenue account adds revenue, such as the card fees families pay; on an expense account, it adds a cost. `excluded_from_mtdc` leaves it out of MTDC, as for scholarships, which are participant support.
+`plan_revenue_charges` lists the charges set as a share of revenue, such as scholarships, the program buffer, B&O tax, and card fees. Each applies to every offering of the product kinds it names, at its rate × the offering's revenue. A charge on a revenue account adds revenue, such as the card fees families pay; on an expense account, it adds a cost. Clearing `in_mtdc` leaves it out of MTDC, as for scholarships, which are participant support.
 
 The Operations Plan also holds the offerings of products in no area: merchandise, storage and charters.
 

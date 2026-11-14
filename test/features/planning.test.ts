@@ -79,7 +79,7 @@ Step("{money} of storage charged to the program area", async (_, money: string) 
     { cost_center_type: "program_area", cost_center_key: area },
     cents(money),
     {
-      excluded_from_mtdc: true,
+      in_mtdc: false,
     },
   );
 });

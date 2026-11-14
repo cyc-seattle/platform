@@ -335,7 +335,7 @@ function realisticPlan(): PlanData {
         name: "New RIB",
         account_id: A.equipment,
         amount_cents: 2_500_000,
-        excluded_from_mtdc: true,
+        in_mtdc: false,
       }),
       budgetLine({
         ...v("depreciation"),
@@ -350,7 +350,7 @@ function realisticPlan(): PlanData {
         name: "Camp scholarships",
         account_id: A.scholarships,
         amount_cents: 400_000,
-        excluded_from_mtdc: true,
+        in_mtdc: false,
         cost_center_type: "offering",
         cost_center_key: campWeeks[0]!.key,
       }),

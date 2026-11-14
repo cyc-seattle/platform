@@ -53,7 +53,7 @@ describe("budget lines", () => {
       budgetLine({
         account_id: A.equipment,
         amount_cents: 2_400_000,
-        excluded_from_mtdc: true,
+        in_mtdc: false,
         cost_center_type: "offering",
         cost_center_key: spring.key,
       }),
@@ -83,7 +83,7 @@ describe("budget lines", () => {
         amount_cents: 90_000,
         cost_center_type: "offering",
         cost_center_key: summer.key,
-        excluded_from_mtdc: true,
+        in_mtdc: false,
       }),
       budgetLine({ amount_cents: 8000, cost_center_type: "product", cost_center_key: p.id }),
     ];
