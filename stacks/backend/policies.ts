@@ -132,6 +132,21 @@ export function websiteBuildRules(schemas: LoadedSchema[]): PermissionRuleInput[
   ];
 }
 
+/** What Sail Team shows everyone who signs in: its links and its announcements. */
+export const SAIL_TEAM = ["links", "announcements"];
+
+/** Fields only the link-preview hook writes, which it reads from the linked page. */
+export const LINK_PREVIEW_FIELDS = ["preview_title", "preview_description", "preview_image", "previewed_at"];
+
+/** Sail Team's links and announcements, which everyone who signs in reads (docs/access.md). */
+export const sailTeamPolicy: PolicyData = {
+  key: "sail-team",
+  name: "Sail Team: read",
+  icon: "campaign",
+  description: "The links and announcements Sail Team shows everyone who signs in.",
+  rules: SAIL_TEAM.map((collection) => ({ collection, action: "read" })),
+};
+
 /** The plans' collections: every one in the planning schema. */
 export function planCollections(schemas: LoadedSchema[]): string[] {
   const planning = schemas.find(({ name }) => name === "planning")?.schema;
@@ -278,6 +293,31 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
           ).map((action) => ({ collection, action })),
         ),
       ],
+    },
+    {
+      key: "link-writer",
+      name: "Link Writer",
+      icon: "add_link",
+      description: "Changes the links on Sail Team's Links page.",
+      rules: (["create", "read", "update", "delete"] as const).map((action) =>
+        action === "create" || action === "update"
+          ? {
+              collection: "links",
+              action,
+              fields: fieldsIn(schemas, "links").filter((field) => !LINK_PREVIEW_FIELDS.includes(field)),
+            }
+          : { collection: "links", action },
+      ),
+    },
+    {
+      key: "announcement-writer",
+      name: "Announcement Writer",
+      icon: "campaign",
+      description: "Changes the announcements on Sail Team's home page.",
+      rules: (["create", "read", "update", "delete"] as const).map((action) => ({
+        collection: "announcements",
+        action,
+      })),
     },
   ];
 }
