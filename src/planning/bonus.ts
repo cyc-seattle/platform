@@ -144,7 +144,7 @@ function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Bas
     return base;
   };
   const owned = new Set<Id>();
-  for (const o of ctx.fyOfferings()) {
+  for (const o of ctx.data.plan_offerings) {
     if (!products.has(o.product_id)) continue;
     owned.add(o.key);
     baseFor(terms.get(o.key) ?? null).offeringKeys.push(o.key);

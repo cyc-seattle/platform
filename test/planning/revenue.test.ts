@@ -22,12 +22,12 @@ describe("revenue", () => {
     expect(total(out, { line: "revenue" })).toBe(11 * 50_000);
   });
 
-  it("counts an offering whole in the plan year it starts in", () => {
+  it("counts an offering whole in its plan, whatever its dates", () => {
     const { data } = setup({ starts_on: "2027-11-01", ends_on: "2028-02-29" });
     expect(total(computePlan(data), { line: "revenue" })).toBe(500_000);
     data.plan_offerings[0]!.starts_on = "2026-11-01";
     data.plan_offerings[0]!.ends_on = "2027-02-28";
-    expect(computePlan(data).lines).toEqual([]);
+    expect(total(computePlan(data), { line: "revenue" })).toBe(500_000);
   });
 
   it("books COGS as a share of revenue", () => {

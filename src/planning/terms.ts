@@ -1,17 +1,17 @@
 import type { Context } from "./context.ts";
 import type { Id, PlanTerm } from "./types.ts";
 
-/** Each plan-year offering's term, by offering key, in no particular order. Null for an offering in none. */
+/** Each offering's term, by offering key, in no particular order. Null for an offering in none. */
 export type OfferingTerms = Map<Id, PlanTerm | null>;
 
 /**
- * Finds each plan-year offering's term in the plan's terms. An offering whose term isn't there, such as one deleted
+ * Finds each offering's term in the plan's terms. An offering whose term isn't there, such as one deleted
  * from the Operations Plan, is in none, with a warning.
  */
 export function offeringTerms(ctx: Context): OfferingTerms {
   const terms = new Map((ctx.data.plan_terms ?? []).map((t) => [t.key, t]));
   const byOffering: OfferingTerms = new Map();
-  for (const o of ctx.fyOfferings()) {
+  for (const o of ctx.data.plan_offerings) {
     const term = o.term_key == null ? null : (terms.get(o.term_key) ?? null);
     if (o.term_key != null && term === null) {
       ctx.warn(

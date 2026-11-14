@@ -372,7 +372,9 @@ erDiagram
     }
 ```
 
-All of an offering's revenue and costs go in the plan year it starts in, even if it runs into the next year. Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
+All of an offering's revenue and costs go in its plan's year, and its dates may run past either end of that year, as a winter program's do ([cyc-seattle/platform#252](https://github.com/cyc-seattle/platform/issues/252)). Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
+
+An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
 
 An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
 
