@@ -102,12 +102,7 @@ function baseOf(ctx: Context, owner: PlanBonusOwner): Base {
     products.add(row.product_id);
   }
 
-  const offeringKeys = new Set(
-    ctx
-      .fyOfferings()
-      .filter((o) => products.has(o.product_id))
-      .map((o) => o.key),
-  );
+  const offeringKeys = new Set(ctx.data.plan_offerings.filter((o) => products.has(o.product_id)).map((o) => o.key));
   const afterPools = (owner.basis ?? "after_shared_costs") === "after_shared_costs";
   let net = 0;
   for (const e of ctx.entries) {

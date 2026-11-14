@@ -1,4 +1,3 @@
-import { fiscalYearDates, within } from "./dates.ts";
 import type {
   Account,
   AccountFunction,
@@ -70,8 +69,6 @@ export type EntryInput = Omit<Entry, "stage" | "mtdc_share" | "wages"> &
 
 /** Lookups over the input, and the entries recorded so far, shared by every step. */
 export class Context {
-  /** The plan year's first and last days. */
-  readonly fy: { from: DateString; to: DateString };
   readonly entries: Entry[] = [];
   readonly warnings: EngineWarning[] = [];
 
@@ -93,7 +90,6 @@ export class Context {
 
   constructor(data: PlanData) {
     this.data = data;
-    this.fy = fiscalYearDates(data.fiscal_year, data.organization.fiscal_year_start_month);
     this.accounts = new Map(data.accounts.map((a) => [a.id, a]));
     this.products = new Map(data.products.map((p) => [p.id, p]));
     this.areas = new Map(data.program_areas.map((a) => [a.id, a]));
@@ -191,15 +187,5 @@ export class Context {
       );
     }
     return area.revenue_account_id;
-  }
-
-  /** Whether the offering counts in the plan year: it does, whole, in the year it starts. */
-  inYear(offering: PlanOffering): boolean {
-    return within(offering.starts_on, this.fy.from, this.fy.to);
-  }
-
-  /** The plan year's offerings. */
-  fyOfferings(): PlanOffering[] {
-    return this.data.plan_offerings.filter((o) => this.inYear(o));
   }
 }

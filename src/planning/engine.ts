@@ -41,7 +41,7 @@ export function computePlan(data: PlanData): EngineOutput {
   booker.flush();
   bookPayrollTax(ctx);
 
-  const mtdcByOffering = new Map(ctx.fyOfferings().map((o) => [o.key, mtdc(ctx, o.key)]));
+  const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.key, mtdc(ctx, o.key)]));
   allocatePools(ctx);
   const bonuses = bookBonuses(ctx);
 
@@ -64,7 +64,7 @@ export function computePlan(data: PlanData): EngineOutput {
  * products in no area. The catalog stays live, so the database can't check these.
  */
 function checkAreas(ctx: Context): void {
-  for (const offering of ctx.fyOfferings()) {
+  for (const offering of ctx.data.plan_offerings) {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) continue;
     if (product.kind === "program" && product.program_area_id == null) {
@@ -228,7 +228,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
     };
   };
 
-  const offerings = ctx.fyOfferings().sort((a, b) => a.key.localeCompare(b.key));
+  const offerings = [...ctx.data.plan_offerings].sort((a, b) => a.key.localeCompare(b.key));
   const offeringPnl = offerings.map((o) => {
     const enrollment = ctx.enrollment.get(o.id) ?? 0;
     const days = ctx.days.get(o.key) ?? 0;
