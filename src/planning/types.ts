@@ -414,6 +414,19 @@ export interface Pnl extends Totals {
   days: number;
   /** Enrollment × days. */
   sailor_days: number;
+  /** The most sailors an offering takes: its `capacity`, or else its enrollment. Null for a product or area. */
+  max_enrollment: number | null;
+  /**
+   * The most sailors an offering's blocks can take, with every other offering in them full. Null when
+   * it's in no block that limits it, and for a product or area.
+   */
+  allocation_holds: number | null;
+  /**
+   * The fewest sailors, from 1 up to its capacity, at which an offering's net after shared costs is
+   * zero or more, with its share of shared costs as planned. Null when it isn't, even when full, when
+   * it has no capacity, and for a product or area.
+   */
+  breakeven_enrollment: number | null;
 }
 
 /** An activity with the staffing the engine gave it. */

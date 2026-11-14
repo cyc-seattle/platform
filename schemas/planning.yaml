@@ -9364,6 +9364,90 @@ fields:
       has_auto_increment: false
       foreign_key_table: version_set_members
       foreign_key_column: id
+  - collection: plan_result_pnl
+    field: allocation_holds
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: allocation_holds
+      group: null
+      hidden: false
+      interface: input
+      note: "The most sailors an offering's blocks can take, with every other offering in them full. Empty for a product or program area."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 16
+      special: null
+      translations:
+        - language: en-US
+          translation: Most sailors its blocks take
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: allocation_holds
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: breakeven_enrollment
+    type: integer
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: breakeven_enrollment
+      group: null
+      hidden: false
+      interface: input
+      note: "The fewest sailors, up to its capacity, at which an offering pays for itself, with its share of shared costs as planned. Empty when it doesn't even when full, and for a product or program area."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 17
+      special: null
+      translations:
+        - language: en-US
+          translation: Pays for itself at
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: breakeven_enrollment
+      table: plan_result_pnl
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_result_positions
     field: id
     type: uuid

@@ -47,7 +47,8 @@ From each Program Plan's copy:
 
 - `plan_programs`: each program's `staff_level_key`, `sailors_per_coach` and `rules`.
 - The copy's own `rules`: rules for the program area.
-- `plan_offerings` with their enrollment (`target_enrollment`, or `capacity × fill_rate`),
+- `plan_offerings` with their most sailors (`capacity`, or the expected enrollment when it's empty)
+  and their expected enrollment (`target_enrollment`, or `capacity × fill_rate`),
   `plan_activities` with their dates and times, `plan_trips`, and any blocks already there:
   `plan_activity_blocks`, `plan_block_staff`, `plan_block_resources`, `plan_block_boats`.
 
@@ -57,6 +58,10 @@ Read the rules as a list of what the planner wants. A rule is the planner's own 
 unclear, or two disagree, ask the planner rather than guess.
 
 ## 3. Write the blocks
+
+Allocate for each offering's most sailors, not the number expected: a block holds what a full
+program would use. The P&L costs only what the expected sailors use, so allocating for a full program
+doesn't raise the costs.
 
 For each date, in the part of the plan you're allocating:
 

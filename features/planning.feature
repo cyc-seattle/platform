@@ -57,13 +57,20 @@ Feature: Plans
   their coaches and boats, such as Guppies and Minnows on the morning of July 13. Each block lists
   its staff (the people who coach it), the RIBs and other equipment it uses, and its boats of each
   class: the organization's own, and the ones sailors bring. A block runs from its first activity's start
-  to its last activity's end. The P&L costs only what the blocks are given, and nothing works out
-  how many coaches or boats a program needs. The planner, or their AI, decides that from the
-  program settings and the rules.
+  to its last activity's end. Nothing works out how many coaches or boats a program needs. The
+  planner, or their AI, decides that from the program settings and the rules.
+
+  Each offering has the most sailors it takes, and the number the planner expects to sign up. A
+  block is given what the offering would use if it filled. Coaches are paid by the hour, and a
+  program that doesn't fill isn't fully staffed, so the P&L costs a block at the sailors expected:
+  only the coaches they need, and the boats and RIBs for the share of the program that's expected.
+  It never costs more than the block is given. A salaried coach on a block is always counted.
+  A planner sees two numbers for each offering: the most sailors its block can take, and the fewest
+  sailors at which it pays for itself.
 
   A planner is warned when the blocks break a limit: more of the organization's boats, RIBs, or
-  equipment out at once than it has, too few coaches or boats for a block's sailors, or
-  an activity with no staff. Each warning says which plan and date it's about. Each coach
+  equipment out at once than it has, too few coaches or boats for a block's sailors if every
+  offering in it fills, or an activity with no staff. Each warning says which plan and date it's about. Each coach
   in a block can safely take the program's number of sailors. A program's staff level is what the
   planner aims for, not a hard rule: any coach in the block counts, and so does a salaried coach,
   such as a director. Each boat can take its class's number of sailors, and the boats that
@@ -372,6 +379,42 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays $60 of coaches' wages
 
+  Rule: A block pays only the coaches its expected sailors need
+
+    Scenario Outline: A block given 4 coaches for 20 Guppies
+      Given Guppies have a coach for every 5 sailors
+      And a Guppies offering for up to 20 sailors that expects <expected>, with a practice from 9am to noon, in a block with 4 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays <wages> of coaches' wages
+
+      Examples:
+        | expected | wages |
+        | 10       | $120  |
+        | 11       | $180  |
+        | 20       | $240  |
+
+    Example: A salaried coach on the block is always counted
+      Given Guppies have a coach for every 5 sailors
+      And a salaried director paid $40 an hour
+      And a Guppies offering for up to 10 sailors that expects 5, with a practice from 9am to noon, in a block the director coaches with a coach paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $120 of the director's salary
+      And the offering pays no coaches' wages
+
+  Rule: A block's boats and RIBs cost what the expected share of the program would use
+
+    Example: 8 FJs for 16 sailors, when 10 are expected
+      Given FJs that cost $1 an hour on the water in upkeep
+      And an offering for up to 16 sailors that expects 10, with a practice from 9am to noon, in a block with 8 of the organization's FJs
+      When a planner calculates the P&L
+      Then the offering pays $15 of boat upkeep
+
+    Example: 2 RIBs for 16 sailors, when 5 are expected
+      Given RIBs that cost $10 an hour on the water
+      And an offering for up to 16 sailors that expects 5, with a practice from 9am to noon, in a block with 2 RIBs
+      When a planner calculates the P&L
+      Then the offering pays $30 for RIBs
+
   Rule: The offerings in a block share its costs by their number of sailors
 
     Example: Two offerings share a coach
@@ -510,7 +553,7 @@ Feature: Plans
       Given Guppies have a Level 1 Instructor for every 10 sailors
       And a Guppies block of 14 sailors with one Level 1 Instructor and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but enough coaches for only 10
+      Then the planner is warned that the block is for up to 14 sailors, but has enough coaches for only 10
 
     Example: A coach at another staff level counts
       Given Guppies have a Level 1 Instructor for every 10 sailors
@@ -543,13 +586,56 @@ Feature: Plans
       Given Sailqubes take 2 sailors each
       And a Guppies block of 14 sailors with enough staff and 5 Sailqubes
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but the boats hold only 10
+      Then the planner is warned that the block is for up to 14 sailors, but the boats hold only 10
 
     Example: Boats that sailors bring count
       Given Optis take 1 sailor each
       And a block of 12 sailors with enough staff, 8 of the organization's Optis, and 4 Optis that sailors bring
       When a planner calculates the P&L
       Then the planner isn't warned about the block
+
+  Rule: A block's coaches and boats are checked against the most sailors each offering takes
+
+    Example: Enough coaches for the sailors expected, but not for a full program
+      Given Guppies have a coach for every 10 sailors
+      And a Guppies offering for up to 16 sailors that expects 10, in a block with one coach and enough boats for 16
+      When a planner calculates the P&L
+      Then the planner is warned that the block is for up to 16 sailors, but has enough coaches for only 10
+
+  Rule: A planner sees the most sailors each offering's block can take
+
+    Example: Two coaches for 16 Guppies, but boats for only 12
+      Given Guppies have a coach for every 8 sailors
+      And Sailqubes take 2 sailors each
+      And a Guppies offering for up to 16 sailors, in a block with 2 coaches and 6 Sailqubes
+      When a planner calculates the P&L
+      Then the offering's block can take 12 sailors
+      And the planner is warned that the block is for up to 16 sailors, but the boats hold only 12
+
+    Example: A block shared with another program leaves room for that program's full number
+      Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
+      And a block for up to 10 Guppies and up to 5 Minnows, with three coaches and boats for 40 sailors
+      When a planner calculates the P&L
+      Then the Guppies offering's block can take 20 sailors
+      And the Minnows offering's block can take 10 sailors
+
+  Rule: A planner sees the fewest sailors at which an offering pays for itself
+
+    Example: $500 a sailor against $3,000 of costs
+      Given an offering for up to 16 sailors at $500 a sailor, with $3,000 of its own costs
+      When a planner calculates the P&L
+      Then the offering pays for itself at 6 sailors
+
+    Example: Coaches are paid only for the sailors who sign up
+      Given Guppies have a coach for every 5 sailors
+      And a Guppies offering for up to 10 sailors at $50 a sailor, with $100 of its own costs and a practice from 9am to noon in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays for itself at 4 sailors
+
+    Example: An offering that loses money even when it's full
+      Given an offering for up to 10 sailors at $100 a sailor, with $2,000 of its own costs
+      When a planner calculates the P&L
+      Then the offering doesn't pay for itself, even when it's full
 
   Rule: A planner is warned about an activity with no staff
 

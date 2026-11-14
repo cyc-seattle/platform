@@ -82,8 +82,10 @@ export class Context {
   readonly planOfVersion: Map<Id, Plan>;
   readonly offeringsById: Map<Id, PlanOffering>;
   readonly offeringsByKey: Map<Id, PlanOffering>;
-  /** Enrollment per offering id. */
+  /** Expected enrollment per offering id, which the costs and revenue use. */
   readonly enrollment = new Map<Id, number>();
+  /** The most sailors each offering id takes, which the checks use. */
+  readonly maxEnrollment = new Map<Id, number>();
   /** Days per offering key: the dates it has an activity other than travel. */
   readonly days = new Map<Id, number>();
   readonly rates: PlanRates | undefined;

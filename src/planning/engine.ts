@@ -8,7 +8,14 @@ import { bookPayrollTax } from "./payroll.ts";
 import { allocatePools } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
-import { enrollmentOf, round2, Staffing, type DoubleBooked, type SalariedCoaching } from "./staffing.ts";
+import {
+  enrollmentOf,
+  maxEnrollmentOf,
+  round2,
+  Staffing,
+  type DoubleBooked,
+  type SalariedCoaching,
+} from "./staffing.ts";
 import type {
   CostLine,
   EngineOutput,
@@ -16,6 +23,7 @@ import type {
   OrganizationTotals,
   Pnl,
   PlanData,
+  PlanOffering,
   PositionSummary,
   Totals,
 } from "./types.ts";
@@ -25,11 +33,74 @@ import type {
  * docs/planning-engine.md gives, each reading only what earlier steps recorded.
  */
 export function computePlan(data: PlanData): EngineOutput {
+  const output = calculate(data, new Map());
+  for (const row of output.pnl) {
+    if (row.level !== "offering") continue;
+    const offering = data.plan_offerings.find((o) => o.key === row.key);
+    if (offering !== undefined) row.breakeven_enrollment = breakeven(data, offering, row.net_cents);
+  }
+  return output;
+}
+
+/**
+ * The fewest sailors, from 1 up to the offering's capacity, at which its net after shared costs is
+ * zero or more. Each number is tried in turn, since coaches and boats cost in steps. Recalculating the
+ * whole plan for each would take seconds, so only the offering's own slice is, and whatever lies
+ * outside it, such as its share of shared costs, stays as planned.
+ */
+function breakeven(data: PlanData, offering: PlanOffering, planned: number): number | null {
+  if (offering.capacity == null) return null;
+  const slice = sliceOf(data, offering);
+  const netAt = (n: number) =>
+    calculate(slice, new Map([[offering.id, n]])).pnl.find((p) => p.level === "offering" && p.key === offering.key)
+      ?.net_cents ?? 0;
+  const outside = planned - netAt(enrollmentOf(offering));
+  for (let n = 1; n <= offering.capacity; n++) if (netAt(n) + outside >= 0) return n;
+  return null;
+}
+
+/**
+ * The rows that change with an offering's sailors: it, its activities, trips and lines, and its
+ * blocks with the activities that share them. Pools, bonuses and bookings are left out.
+ */
+function sliceOf(data: PlanData, offering: PlanOffering): PlanData {
+  const own = data.plan_activities.filter((a) => a.offering_id === offering.id);
+  const blockIds = new Set(own.flatMap((a) => (a.block_id == null ? [] : [a.block_id])));
+  const activities = data.plan_activities.filter(
+    (a) => a.offering_id === offering.id || (a.block_id != null && blockIds.has(a.block_id)),
+  );
+  const offeringIds = new Set(activities.map((a) => a.offering_id).concat(offering.id));
+  const inBlocks = <T extends { block_id: Id }>(rows: T[]) => rows.filter((r) => blockIds.has(r.block_id));
+  const onOffering = <T extends { cost_center_type: string; cost_center_key: Id | null }>(rows: T[]) =>
+    rows.filter((r) => r.cost_center_type === "offering" && r.cost_center_key === offering.key);
+  return {
+    ...data,
+    plan_offerings: data.plan_offerings.filter((o) => offeringIds.has(o.id)),
+    plan_activities: activities,
+    plan_trips: data.plan_trips.filter((t) => t.offering_id === offering.id),
+    plan_activity_blocks: data.plan_activity_blocks.filter((b) => blockIds.has(b.id)),
+    plan_block_staff: inBlocks(data.plan_block_staff),
+    plan_block_resources: inBlocks(data.plan_block_resources),
+    plan_block_boats: inBlocks(data.plan_block_boats),
+    plan_labor_lines: onOffering(data.plan_labor_lines),
+    plan_budget_lines: onOffering(data.plan_budget_lines),
+    plan_salaried_bookings: [],
+    plan_pools: [],
+    plan_bonus_owners: [],
+    plan_bonus_owner_products: [],
+  };
+}
+
+/** The plan with each offering's expected sailors, or the number `enrollment` gives it instead. */
+function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
   const ctx = new Context(data);
-  for (const o of data.plan_offerings) ctx.enrollment.set(o.id, enrollmentOf(o));
+  for (const o of data.plan_offerings) {
+    ctx.enrollment.set(o.id, enrollment.get(o.id) ?? enrollmentOf(o));
+    ctx.maxEnrollment.set(o.id, maxEnrollmentOf(o));
+  }
   checkAreas(ctx);
 
-  const { activities, coaching, doubleBooked } = new Staffing(ctx).run(scheduleActivities(ctx));
+  const { activities, coaching, doubleBooked, holds } = new Staffing(ctx).run(scheduleActivities(ctx));
   countDays(ctx, activities);
   bookRevenue(ctx);
 
@@ -49,7 +120,7 @@ export function computePlan(data: PlanData): EngineOutput {
   const organization = organizationTotals(ctx, lines);
   return {
     lines,
-    pnl: summarize(ctx, lines, mtdcByOffering),
+    pnl: summarize(ctx, lines, mtdcByOffering, holds),
     organization,
     activities,
     positions: summarizePositions(ctx, coaching, charged, bonuses, doubleBooked),
@@ -198,12 +269,13 @@ function sumLines(ctx: Context): CostLine[] {
 }
 
 /** Each plan-year offering's P&L, then each product's, then each program area's. */
-function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, number>): Pnl[] {
+function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, number>, holds: Map<Id, number>): Pnl[] {
   const pnl = (
     level: Pnl["level"],
     key: Id,
     own: CostLine[],
     counts: Pick<Pnl, "mtdc_cents" | "enrollment" | "days" | "sailor_days">,
+    limits: Pick<Pnl, "max_enrollment" | "allocation_holds"> = { max_enrollment: null, allocation_holds: null },
   ): Pnl => {
     const byAccount = new Map<Id, number>();
     let revenue = 0;
@@ -225,6 +297,8 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
         .map(([account_id, amount_cents]) => ({ account_id, amount_cents }))
         .sort((a, b) => a.account_id.localeCompare(b.account_id)),
       ...counts,
+      ...limits,
+      breakeven_enrollment: null,
     };
   };
 
@@ -237,6 +311,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
       o.key,
       lines.filter((l) => l.cost_center_type === "offering" && l.cost_center_key === o.key),
       { mtdc_cents: Math.round(mtdcByOffering.get(o.key) ?? 0), enrollment, days, sailor_days: enrollment * days },
+      { max_enrollment: ctx.maxEnrollment.get(o.id) ?? 0, allocation_holds: holds.get(o.id) ?? null },
     );
   });
 

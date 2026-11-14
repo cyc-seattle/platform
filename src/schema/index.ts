@@ -900,6 +900,10 @@ export interface PlanResultPnl {
   version_set_id: string | VersionSets;
   /** The plan in the Financial Plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
+  /** The most sailors an offering's blocks can take, with every other offering in them full. Empty for a product or program area. */
+  allocation_holds: number | null;
+  /** The fewest sailors, up to its capacity, at which an offering pays for itself, with its share of shared costs as planned. Empty when it doesn't even when full, and for a product or program area. */
+  breakeven_enrollment: number | null;
 }
 
 /** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
