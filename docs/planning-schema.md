@@ -518,10 +518,12 @@ erDiagram
     version_sets |o--o{ plan_result_lines : lines
     version_sets |o--o{ plan_result_pnl : "P&L"
     version_sets |o--o{ plan_result_positions : pay
+    version_sets |o--o{ plan_result_bonuses : "bonuses, by season"
     version_sets |o--o{ plan_result_capital : "capital, ranked"
     version_sets |o--o{ plan_result_warnings : warnings
     version_set_members |o--o{ plan_result_lines : "charged in"
     version_set_members |o--o{ plan_result_pnl : "charged in"
+    version_set_members |o--o{ plan_result_bonuses : "paid in"
     version_set_members |o--o{ plan_result_warnings : about
     accounts ||--o{ plan_result_lines : "booked to"
 
@@ -553,7 +555,7 @@ erDiagram
     plan_result_pnl {
         uuid version_set_id FK
         uuid version_set_member_id FK
-        string level "offering|product|program_area"
+        string level "offering|product|program_area|program_area_season"
         uuid subject_key
         string name
         int revenue_cents
@@ -563,6 +565,18 @@ erDiagram
         int enrollment
         int days
         int sailor_days
+        string season "for program_area_season; null is no season"
+    }
+    plan_result_bonuses {
+        uuid version_set_id FK
+        uuid version_set_member_id FK "the plan that pays it"
+        uuid bonus_owner_key
+        string name "the role"
+        string season "null is no season, on the year"
+        decimal bonus_rate
+        int net_cents
+        int bonus_cents
+        uuid program_area_key "null when its products span areas"
     }
     plan_result_positions {
         uuid version_set_id FK
@@ -607,7 +621,7 @@ A draft's results are worked out again after each change to what they come from,
 
 Saving a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the save answers, with the engine whose version it records. Then they never change.
 
-`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, RIBs and share of the shared costs, is one filter. A warning names the member it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
+`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, RIBs and share of the shared costs, is one filter. A warning names the member it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). A program area's P&L by season goes with the area's Program Plan, and a bonus with the plan that pays it. Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
 
 Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, and the Financial Plan has no results yet. They refuse to delete a draft's results without it too, apart from the delete of the draft, or a plan taken out of it, taking its results with it. No result row is ever changed, and a saved one's are never deleted. A Plan Reader or Plan Writer can see them, a draft's the same way as a saved one's. A draft with no `plan_results` row is still being worked out, or the engine failed on it.
 

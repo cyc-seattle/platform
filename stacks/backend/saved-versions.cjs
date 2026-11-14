@@ -731,10 +731,11 @@ function resultRows(data, out, operations) {
   const products = new Map(data.products.map((p) => [p.id, p]));
   const areas = new Map(data.program_areas.map((a) => [a.id, a]));
   const pools = new Map(data.plan_pools.map((p) => [p.key, p]));
+  const owners = new Map(data.plan_bonus_owners.map((o) => [o.key, o.version_id]));
   const ownerOf = (type, key) => {
     if (type === "offering") return offerings.get(key)?.version_id;
     if (type === "product") return areaVersion.get(products.get(key)?.program_area_id) ?? operations;
-    if (type === "program_area") return areaVersion.get(key) ?? operations;
+    if (type === "program_area" || type === "program_area_season") return areaVersion.get(key) ?? operations;
     return operations;
   };
   const nameOf = (type, key) =>
@@ -742,6 +743,7 @@ function resultRows(data, out, operations) {
       offering: () => offerings.get(key)?.name,
       product: () => products.get(key)?.name,
       program_area: () => areas.get(key)?.name,
+      program_area_season: () => areas.get(key)?.name,
       pool: () => pools.get(key)?.name,
     })[type]?.() ?? "Organization";
   const { operating, fundraising } = out.organization;
@@ -770,6 +772,7 @@ function resultRows(data, out, operations) {
       enrollment: p.enrollment,
       days: p.days,
       sailor_days: p.sailor_days,
+      season: p.season ?? null,
     })),
     plan_result_positions: out.positions.map((p) => ({
       position_key: p.position_key,
@@ -786,6 +789,16 @@ function resultRows(data, out, operations) {
       payroll_tax_cents: p.payroll_tax_cents,
       double_booked_hours: p.double_booked_hours,
       double_booked_dates: p.double_booked_dates,
+    })),
+    plan_result_bonuses: out.bonuses.map((b) => ({
+      owner: owners.get(b.bonus_owner_key),
+      name: b.role_name,
+      season: b.season,
+      bonus_rate: b.bonus_rate,
+      net_cents: b.net_cents,
+      bonus_cents: b.bonus_cents,
+      bonus_owner_key: b.bonus_owner_key,
+      program_area_key: b.program_area_id,
     })),
     plan_result_capital: out.capital.map((c) => ({
       rank: c.rank,
@@ -861,6 +874,7 @@ async function calculate(config, db, set, engine) {
     plan_result_lines: all.plan_result_lines.map(owned),
     plan_result_pnl: all.plan_result_pnl.map(owned),
     plan_result_positions: all.plan_result_positions.map(row),
+    plan_result_bonuses: all.plan_result_bonuses.map(owned),
     plan_result_capital: all.plan_result_capital.map(row),
     plan_result_warnings: all.plan_result_warnings.map(owned),
   };

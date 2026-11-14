@@ -600,6 +600,32 @@ collections:
       versioning: false
     schema:
       name: plan_result_pnl
+  - collection: plan_result_bonuses
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_result_bonuses
+      color: null
+      display_template: "{{name}} · {{season}}"
+      group: Planning
+      hidden: false
+      icon: savings
+      item_duplication_fields: null
+      note: Each bonus in a Financial Plan, for each season, and for the offerings in no season on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_result_bonuses
   - collection: plan_result_positions
     meta:
       accountability: all
@@ -8891,6 +8917,8 @@ fields:
             value: product
           - text: Program area
             value: program_area
+          - text: Program area, by season
+            value: program_area_season
       field: level
       group: null
       hidden: false
@@ -8904,6 +8932,8 @@ fields:
             value: product
           - text: Program area
             value: program_area
+          - text: Program area, by season
+            value: program_area_season
       readonly: true
       required: true
       searchable: true
@@ -8916,7 +8946,8 @@ fields:
             - offering
             - product
             - program_area
-      validation_message: "Must be one of: offering, product, program_area."
+            - program_area_season
+      validation_message: "Must be one of: offering, product, program_area, program_area_season."
       width: full
     schema:
       name: level
@@ -9379,6 +9410,519 @@ fields:
     schema:
       name: version_set_member_id
       table: plan_result_pnl
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_set_members
+      foreign_key_column: id
+  - collection: plan_result_pnl
+    field: season
+    type: string
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
+      field: season
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: For a program area by season, the season. Empty for its offerings in no season, such as Adult Learn to Sail.
+      options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
+      readonly: true
+      required: false
+      searchable: true
+      sort: 16
+      special: null
+      translations:
+        - language: en-US
+          translation: Season
+      validation:
+        _or:
+          - season:
+              _null: true
+          - season:
+              _in:
+                - winter
+                - spring
+                - summer
+                - fall
+      validation_message: "Must be one of: winter, spring, summer, fall, or empty."
+      width: full
+    schema:
+      name: season
+      table: plan_result_pnl
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: id
+    type: uuid
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_result_bonuses
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: name
+    type: string
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: The bonus's role, such as Director.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_result_bonuses
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: season
+    type: string
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
+      field: season
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: The season it's paid on. Empty for the offerings in no season, such as Adult Learn to Sail, whose bonus is worked out on the year.
+      options:
+        choices:
+          - text: Winter
+            value: winter
+          - text: Spring
+            value: spring
+          - text: Summer
+            value: summer
+          - text: Fall
+            value: fall
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Season
+      validation:
+        _or:
+          - season:
+              _null: true
+          - season:
+              _in:
+                - winter
+                - spring
+                - summer
+                - fall
+      validation_message: "Must be one of: winter, spring, summer, fall, or empty."
+      width: full
+    schema:
+      name: season
+      table: plan_result_bonuses
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: bonus_rate
+    type: decimal
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: null
+      display_options: null
+      field: bonus_rate
+      group: null
+      hidden: false
+      interface: input
+      note: A share of the net. 0.05 means 5%.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Rate
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: bonus_rate
+      table: plan_result_bonuses
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: net_cents
+    type: integer
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: net_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "The net of its products in the season, which the bonus is figured on. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Net
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: net_cents
+      table: plan_result_bonuses
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: bonus_cents
+    type: integer
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: bonus_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "Its rate × the net, or nothing when the net is a loss. In cents: 12500 is $125.00."
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Bonus
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: bonus_cents
+      table: plan_result_bonuses
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: bonus_owner_key
+    type: uuid
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: null
+      display_options: null
+      field: bonus_owner_key
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: bonus_owner_key
+      table: plan_result_bonuses
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: program_area_key
+    type: uuid
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: null
+      display_options: null
+      field: program_area_key
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_area_key
+      table: plan_result_bonuses
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: version_set_id
+    type: uuid
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: version_set_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The Financial Plan these results are for.
+      options: null
+      readonly: true
+      required: true
+      searchable: true
+      sort: 9
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Financial Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_id
+      table: plan_result_bonuses
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: version_sets
+      foreign_key_column: id
+  - collection: plan_result_bonuses
+    field: version_set_member_id
+    type: uuid
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{plan_id.name}}"
+      field: version_set_member_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The plan in the Financial Plan that pays the bonus.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 10
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: version_set_member_id
+      table: plan_result_bonuses
       data_type: uuid
       default_value: null
       max_length: null
@@ -13861,6 +14405,27 @@ relations:
       constraint_name: plan_result_pnl_version_set_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: plan_result_bonuses
+    field: version_set_id
+    related_collection: version_sets
+    meta:
+      junction_field: null
+      many_collection: plan_result_bonuses
+      many_field: version_set_id
+      one_allowed_collections: null
+      one_collection: version_sets
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_bonuses
+      column: version_set_id
+      foreign_key_table: version_sets
+      foreign_key_column: id
+      constraint_name: plan_result_bonuses_version_set_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
   - collection: plan_result_positions
     field: version_set_id
     related_collection: version_sets
@@ -13964,6 +14529,27 @@ relations:
       foreign_key_table: version_set_members
       foreign_key_column: id
       constraint_name: plan_result_pnl_version_set_member_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_bonuses
+    field: version_set_member_id
+    related_collection: version_set_members
+    meta:
+      junction_field: null
+      many_collection: plan_result_bonuses
+      many_field: version_set_member_id
+      one_allowed_collections: null
+      one_collection: version_set_members
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_bonuses
+      column: version_set_member_id
+      foreign_key_table: version_set_members
+      foreign_key_column: id
+      constraint_name: plan_result_bonuses_version_set_member_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: version_sets

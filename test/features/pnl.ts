@@ -519,7 +519,10 @@ export class PnlPlan {
 }
 
 /** Results, read as a Plan Reader. The hook writes them just after the save answers, so this waits for them. */
-async function resultsWhere(filter: Row, what: string): Promise<{ lines: Row[]; pnl: Row[]; totals: Row }> {
+async function resultsWhere(
+  filter: Row,
+  what: string,
+): Promise<{ lines: Row[]; pnl: Row[]; bonuses: Row[]; totals: Row }> {
   const planner = (await userFor({ policies: ["Plan Reader"] })).session;
   const read = (collection: string) =>
     planner.ok("GET", `/items/${collection}?limit=-1&filter=${encodeURIComponent(JSON.stringify(filter))}`) as Promise<
@@ -528,7 +531,12 @@ async function resultsWhere(filter: Row, what: string): Promise<{ lines: Row[]; 
   for (let tries = 0; tries < 60; tries++) {
     const [totals] = await read("plan_results");
     if (totals !== undefined) {
-      return { totals, lines: await read("plan_result_lines"), pnl: await read("plan_result_pnl") };
+      return {
+        totals,
+        lines: await read("plan_result_lines"),
+        pnl: await read("plan_result_pnl"),
+        bonuses: await read("plan_result_bonuses"),
+      };
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
