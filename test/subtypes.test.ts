@@ -32,45 +32,23 @@ const schema = mergeSchemas(
   })),
 ) as { fields: Field[]; relations: Relation[] };
 
-/**
- * Every subtype collection, per the subtype pattern in AGENTS.md. `kindOf` is the collection that
- * holds `kind`, and `kindPath` the links from the base to it, for a subtype of a subtype.
- */
+/** Every subtype collection, per the subtype pattern in AGENTS.md. */
 const subtypes = [
   {
     base: "products",
-    kinds: ["program"],
-    kindOf: "products",
-    kindPath: [],
+    kind: "program",
     subtype: "programs",
     foreignKey: "product_id",
     alias: "programs",
   },
   {
     base: "assets",
-    kinds: ["sailboat", "powerboat"],
-    kindOf: "assets",
-    kindPath: [],
-    subtype: "boats",
-    foreignKey: "asset_id",
-    alias: "boats",
-  },
-  {
-    base: "boats",
-    kinds: ["sailboat"],
-    kindOf: "assets",
-    kindPath: ["asset_id"],
+    kind: "sailboat",
     subtype: "sailboats",
-    foreignKey: "boat_id",
+    foreignKey: "asset_id",
     alias: "sailboats",
   },
 ];
-
-/** The picker filter for rows whose `kind`, through `path`, is one of `kinds`. */
-function kindFilter(path: string[], kinds: string[]): unknown {
-  const filter = { kind: kinds.length === 1 ? { _eq: kinds[0] } : { _in: kinds } };
-  return path.reduceRight<unknown>((inner, link) => ({ [link]: inner }), filter);
-}
 
 function findField(collection: string, field: string): Field {
   const found = schema.fields.find((f) => f.collection === collection && f.field === field);
@@ -85,19 +63,19 @@ function findRelation(collection: string, field: string): Relation {
 }
 
 describe("subtypes", () => {
-  for (const { base, kinds, kindOf, kindPath, subtype, foreignKey, alias } of subtypes) {
+  for (const { base, kind, subtype, foreignKey, alias } of subtypes) {
     describe(`${subtype} of ${base}`, () => {
-      it(`lists ${kinds.join(" and ")} among ${kindOf}.kind's choices and allowed values`, () => {
-        const field = findField(kindOf, "kind");
-        expect(field.meta.options?.choices?.map((choice) => choice.value)).toEqual(expect.arrayContaining(kinds));
-        expect(field.meta.validation).toMatchObject({ kind: { _in: expect.arrayContaining(kinds) } });
+      it(`lists ${kind} among ${base}.kind's choices and allowed values`, () => {
+        const field = findField(base, "kind");
+        expect(field.meta.options?.choices?.map((choice) => choice.value)).toContain(kind);
+        expect(field.meta.validation).toMatchObject({ kind: { _in: expect.arrayContaining([kind]) } });
       });
 
-      it(`links each ${subtype} row to one ${base} row, and only to one of kind ${kinds.join(" or ")} in the Data Studio`, () => {
+      it(`links each ${subtype} row to one ${base} row, and only to one of kind ${kind} in the Data Studio`, () => {
         const field = findField(subtype, foreignKey);
         expect(field.schema).toMatchObject({ foreign_key_table: base, is_unique: true, is_nullable: false });
         expect(field.meta.required).toBe(true);
-        expect(field.meta.options?.filter).toEqual(kindFilter(kindPath, kinds));
+        expect(field.meta.options?.filter).toEqual({ kind: { _eq: kind } });
       });
 
       it(`blocks deleting a ${base} row that has a ${subtype} row`, () => {
@@ -112,11 +90,8 @@ describe("subtypes", () => {
     });
   }
 
-  it("lists every unique link to a collection with a kind, or to a subtype", () => {
-    const bases = new Set([
-      ...schema.fields.filter((f) => f.field === "kind").map((f) => f.collection),
-      ...subtypes.map(({ subtype }) => subtype),
-    ]);
+  it("lists every unique link to a collection with a kind", () => {
+    const bases = new Set(schema.fields.filter((f) => f.field === "kind").map((f) => f.collection));
     const links = schema.fields
       .filter((f) => f.schema?.is_unique && f.schema.foreign_key_table && bases.has(f.schema.foreign_key_table))
       .map((f) => `${f.collection}.${f.field}`);

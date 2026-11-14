@@ -287,9 +287,8 @@ export class Staffing {
     const dates = groupBy(blocks, (b) => b.row.date);
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const assets = new Map(ctx.data.assets.map((a) => [a.id, a]));
-    const boats = new Map(ctx.data.boats.map((b) => [b.id, b]));
     const sailboats = ctx.data.sailboats.flatMap((s) => {
-      const asset = assets.get(boats.get(s.boat_id)?.asset_id ?? "");
+      const asset = assets.get(s.asset_id);
       return asset === undefined ? [] : [{ asset, boat_class_id: s.boat_class_id }];
     });
     const powerboats = ctx.data.assets.filter((a) => a.kind === "powerboat");

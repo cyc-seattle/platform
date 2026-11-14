@@ -75,15 +75,11 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   }),
   boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, max_capacity: 1 }),
   resource_kinds: async () => ({ id: randomUUID(), name: `Resource ${key("resource")}` }),
-  // A sailboat is the subtype of a boat, which is the subtype of an asset, and each has its own.
+  // A sailboat is the subtype of an asset of kind `sailboat`, and each has its own.
   assets: async () => ({ id: randomUUID(), kind: "other", name: `Trailer ${key("asset")}` }),
-  boats: async () => ({
-    id: randomUUID(),
-    asset_id: (await adminCreate("assets", await newRow("assets", { kind: "sailboat" }))).id,
-  }),
   sailboats: async () => ({
     id: randomUUID(),
-    boat_id: (await adminCreate("boats", await newRow("boats"))).id,
+    asset_id: (await adminCreate("assets", await newRow("assets", { kind: "sailboat" }))).id,
     boat_class_id: row["boat_classes"],
     sail_number: key("sail"),
   }),
@@ -468,7 +464,6 @@ export const changes: Record<string, () => Row> = {
   boat_classes: () => ({ max_capacity: 2 }),
   resource_kinds: () => ({ name: `Resource ${key("resource")}` }),
   assets: () => ({ name: `Asset ${runId}` }),
-  boats: () => ({ hull_number: key("hull") }),
   sailboats: () => ({ sail_number: key("sail") }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
@@ -562,7 +557,6 @@ async function createRows(): Promise<void> {
     ["qualification_covers", () => ({})],
     ["boat_classes", () => ({})],
     ["assets", () => ({})],
-    ["boats", () => ({})],
     ["sailboats", () => ({})],
     ["resource_kinds", () => ({})],
     ["organizations", () => ({})],

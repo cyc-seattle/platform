@@ -3,9 +3,8 @@
 //
 // Planning counts boats from the asset list, not from quantities in the Operations Plan
 // (cyc-seattle/platform#126). The schema apply never deletes or renames, so this:
-// - drops the catalog's old boat list, whose name the new boats collection reuses. Prod's is empty.
-//   It refuses to run while the old list has rows, so none is lost. Its permissions and default
-//   view keep their collection name, and the backend stack rewrites them.
+// - drops the catalog's old boat list, which the asset list replaces, with Directus's records of it.
+//   Prod's is empty. It refuses to run while the old list has rows, so none is lost.
 // - drops plan_boat_rates.quantity and plan_resources.quantity, which saved copies lose too.
 // - renames boat_classes.sailors_per_boat to max_capacity, keeping its values.
 // It's one statement, so Postgres runs it in one transaction. It skips what's already done, so
@@ -29,11 +28,7 @@ DO $migration$
 DECLARE
   used boolean;
 BEGIN
-  -- The old boat list has a boat class; the new boats link to an asset.
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = current_schema() AND table_name = 'boats' AND column_name = 'boat_class_id'
-  ) THEN
+  IF to_regclass('boats') IS NOT NULL THEN
     EXECUTE 'SELECT EXISTS (SELECT 1 FROM boats)' INTO used;
     IF used THEN
       RAISE EXCEPTION 'boats still holds the old boat list. Move its rows into assets, boats and sailboats first.';
@@ -43,6 +38,8 @@ BEGIN
     IF to_regclass('directus_fields') IS NOT NULL THEN
       DELETE FROM directus_relations WHERE many_collection = 'boats' OR one_collection = 'boats';
       DELETE FROM directus_fields WHERE collection = 'boats';
+      DELETE FROM directus_permissions WHERE collection = 'boats';
+      DELETE FROM directus_presets WHERE collection = 'boats';
       DELETE FROM directus_collections WHERE collection = 'boats';
     END IF;
     DROP TABLE boats;

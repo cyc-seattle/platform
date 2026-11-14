@@ -26,7 +26,7 @@ named as the schema names them, plus:
   organization's `fiscal_year_start_month`.
 - `rib_resource_kind_id`: which resource kind is coach boats. The engine uses those resources' rates
   to cost each coach boat hour, and checks them against the powerboats on the asset list.
-- `assets`, `boats` and `sailboats`: the asset list, which says how many boats of each class, and how
+- `assets` and `sailboats`: the asset list, which says how many boats of each class, and how
   many powerboats, the organization has on each day.
 - `plans` and `plan_versions`: the plans being calculated and their copies, so the engine can tell
   which plan each offering is in.

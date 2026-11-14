@@ -127,8 +127,6 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
     whose picker filters on the subtype's `kind`. The foreign key restricts delete, so a base row
     with a subtype row can't be deleted. The base reads it back
     through a one-row O2M alias.
-  - A subtype can have its own subtype, such as `sailboats` of `boats` of `assets`. Its picker
-    filters on the `kind` through its base's link, such as `asset_id.kind`.
   - Directus can't compare fields across collections, so nothing stops a subtype row's base having
     the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
     one there.

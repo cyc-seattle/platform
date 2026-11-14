@@ -425,20 +425,20 @@ export class PnlPlan {
   /** Adds `count` sailboats of a boat class to the asset list, with `dates` such as `acquired_on`. */
   async sailboats(boatClass: string, count: number, dates: Row = {}): Promise<void> {
     for (let i = 0; i < count; i++) {
-      const boat = await this.boat("sailboat", dates);
-      await adminCreate("sailboats", { id: randomUUID(), boat_id: boat, boat_class_id: boatClass });
+      const asset = await this.asset("sailboat", dates);
+      await adminCreate("sailboats", { id: randomUUID(), asset_id: asset, boat_class_id: boatClass });
     }
   }
 
   /** Adds `count` powerboats to the asset list, with `dates` such as `acquired_on`. */
   async powerboats(count: number, dates: Row = {}): Promise<void> {
-    for (let i = 0; i < count; i++) await this.boat("powerboat", dates);
+    for (let i = 0; i < count; i++) await this.asset("powerboat", dates);
   }
 
-  private async boat(kind: "sailboat" | "powerboat", dates: Row): Promise<string> {
+  private async asset(kind: "sailboat" | "powerboat", dates: Row): Promise<string> {
     const asset = await adminCreate("assets", { id: randomUUID(), kind, name: `Boat ${key("boat")}`, ...dates });
     this.assets.push(asset.id);
-    return (await adminCreate("boats", { id: randomUUID(), asset_id: asset.id })).id;
+    return asset.id;
   }
 
   /** The resource kind the Operations Plan's rates call RIBs. */
@@ -516,8 +516,7 @@ export class PnlPlan {
       qualification_covers: [],
       boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
       assets: await read("assets", { id: anyOf(this.assets) }),
-      boats: await read("boats", { asset_id: anyOf(this.assets) }),
-      sailboats: await read("sailboats", { boat_id: { asset_id: anyOf(this.assets) } }),
+      sailboats: await read("sailboats", { asset_id: anyOf(this.assets) }),
       resource_kinds: [],
       plans: await read("plans", { id: { _in: plans } }),
       plan_versions: await read("plan_versions", { id: { _in: versions } }),

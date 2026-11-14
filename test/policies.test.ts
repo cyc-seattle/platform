@@ -119,7 +119,6 @@ describe("the Catalog policies", () => {
     "qualification_covers",
     "boat_classes",
     "assets",
-    "boats",
     "sailboats",
     "resource_kinds",
     "programs",

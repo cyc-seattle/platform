@@ -83,15 +83,14 @@ export const A = {
  */
 export function assetList(
   boats: { count: number; boat_class_id?: Id; acquired_on?: DateString; disposed_on?: DateString }[],
-): Pick<PlanData, "assets" | "boats" | "sailboats"> {
-  const list: Pick<PlanData, "assets" | "boats" | "sailboats"> = { assets: [], boats: [], sailboats: [] };
+): Pick<PlanData, "assets" | "sailboats"> {
+  const list: Pick<PlanData, "assets" | "sailboats"> = { assets: [], sailboats: [] };
   for (const { count, boat_class_id, acquired_on = null, disposed_on = null } of boats) {
     for (let i = 0; i < count; i++) {
       const id = `boat-${list.assets.length + 1}`;
       const kind = boat_class_id === undefined ? "powerboat" : "sailboat";
       list.assets.push({ id, kind, name: null, acquired_on, disposed_on });
-      list.boats.push({ id, asset_id: id });
-      if (boat_class_id !== undefined) list.sailboats.push({ id, boat_id: id, boat_class_id });
+      if (boat_class_id !== undefined) list.sailboats.push({ id, asset_id: id, boat_class_id });
     }
   }
   return list;
@@ -140,7 +139,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     boat_classes: [],
     resource_kinds: [{ id: "kind-rib", name: "RIB" }],
     assets: [],
-    boats: [],
     sailboats: [],
     plans: [],
     plan_versions: [],

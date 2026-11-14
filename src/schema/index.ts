@@ -6,7 +6,6 @@ export interface Schema {
   assets: Assets[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
-  boats: Boats[];
   catalog_offerings: CatalogOfferings[];
   clubspot_camps: ClubspotCamps[];
   clubspot_classes: ClubspotClasses[];
@@ -120,16 +119,24 @@ export interface Accounts {
   retired: boolean;
 }
 
-/** Each boat and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, and others such as trailers. Planning counts the ones CSC has on each day. */
+/** Each boat, motor and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, motors, and others such as trailers. Planning counts the sailboats and powerboats CSC has on each day. */
 export interface Assets {
   id: string;
-  /** A sailboat or powerboat also needs a row in Boats, and a sailboat one in Sailboats. Directus can't check that, so keep them matching. */
-  kind: "sailboat" | "powerboat" | "other";
+  /** A sailboat also needs a row in Sailboats. Directus can't check that, so keep them matching. */
+  kind: "sailboat" | "powerboat" | "motor" | "other";
   /** Its name, if it has one, such as Scooter or the van. */
   name: string | null;
-  /** This asset's boat details, if it is a sailboat or a powerboat. */
-  boats: (string | Boats)[];
-  /** What it's worth. In cents: 12500 is $125.00. */
+  /** This asset's sailboat details, if it is a sailboat. */
+  sailboats: (string | Sailboats)[];
+  /** Who made it, such as Zodiac or Yamaha. */
+  make: string | null;
+  /** Its model. A sailboat's model is its boat class, in Sailboats. */
+  model: string | null;
+  /** The number that identifies it: a boat's hull number (HIN), a vehicle's VIN, or a serial number. */
+  identifier: string | null;
+  /** The state registration number, such as WN 1234 AB, if it has one. */
+  registration_number: string | null;
+  /** Its book value, as in QuickBooks account 1500. In cents: 12500 is $125.00. */
   value_cents: number | null;
   /** The day CSC got it, or expects to. Planning counts it from this day; empty counts it from the start. */
   acquired_on: string | null;
@@ -161,19 +168,6 @@ export interface BoatClasses {
   max_capacity: number;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
-}
-
-/** A boat's own details: its asset is a sailboat or a powerboat. */
-export interface Boats {
-  id: string;
-  /** The asset this boat is. Its kind must be Sailboat or Powerboat. */
-  asset_id: string | Assets;
-  /** This boat's sailboat details, if it is a sailboat. */
-  sailboats: (string | Sailboats)[];
-  /** The hull identification number on the transom, if it's known. */
-  hull_number: string | null;
-  /** The state registration number on the bow, such as WN 1234 AB, if it has one. */
-  registration_number: string | null;
 }
 
 /** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */
@@ -1206,8 +1200,8 @@ export interface ResourceKinds {
 /** A sailboat's own details: its class and sail number. Sailors' own boats aren't listed here. */
 export interface Sailboats {
   id: string;
-  /** The boat this sailboat is. Its asset's kind must be Sailboat. */
-  boat_id: string | Boats;
+  /** The asset this sailboat is. Its kind must be Sailboat. */
+  asset_id: string | Assets;
   boat_class_id: string | BoatClasses;
   sail_number: string | null;
 }

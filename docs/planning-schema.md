@@ -46,8 +46,7 @@ erDiagram
     accounts |o--o{ accounts : "parent, contra"
     products ||--o| programs : "program subtype"
     programs ||--o{ catalog_offerings : "offerings of"
-    assets ||--o| boats : "boat subtype"
-    boats ||--o| sailboats : "sailboat subtype"
+    assets ||--o| sailboats : "sailboat subtype"
     boat_classes ||--o{ sailboats : "class of"
     organizations ||--o{ organization_cost_accounts : "calculated costs go to"
     accounts ||--o{ organization_cost_accounts : "booked to"
@@ -121,22 +120,20 @@ erDiagram
     }
     assets {
         uuid id PK
-        string kind "sailboat|powerboat|other"
+        string kind "sailboat|powerboat|motor|other"
         string name
-        int value_cents
+        string make
+        string model "hidden for a sailboat: its boat class"
+        string identifier "HIN, VIN, or serial number"
+        string registration_number
+        int value_cents "book value, QuickBooks 1500"
         date acquired_on "empty counts from the start"
         date disposed_on "empty while CSC has it"
         text note
     }
-    boats {
-        uuid id PK
-        uuid asset_id FK "unique; a sailboat or powerboat"
-        string hull_number
-        string registration_number
-    }
     sailboats {
         uuid id PK
-        uuid boat_id FK "unique; a sailboat"
+        uuid asset_id FK "unique; a sailboat"
         uuid boat_class_id FK
         string sail_number
     }
@@ -150,7 +147,7 @@ erDiagram
 
 `programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted.
 
-A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, or other, such as a trailer or the van. A sailboat or powerboat has a `boats` row, and a sailboat a `sailboats` row too, with its class, per `AGENTS.md`'s subtype pattern, two levels deep. The engine counts the sailboats of each class, and the powerboats, that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Other assets are listed, not counted. A boat class with sailboats can't be deleted. Catalog Writers change the list, and Catalog Readers and planners see it.
+A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, a motor, or other, such as a trailer or the van. `value_cents` is its book value, as in QuickBooks account 1500. A sailboat also has a `sailboats` row, with its class, per `AGENTS.md`'s subtype pattern; its class is its model, so the Data Studio hides `model` for one. The engine counts the sailboats of each class, and the powerboats, that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Motors and other assets are listed, not counted. A boat class with sailboats can't be deleted. Catalog Writers change the list, and Catalog Readers and planners see it.
 
 ### Directory
 

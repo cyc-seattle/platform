@@ -66,13 +66,12 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "assets",
     sort: ["kind", "name"],
-    fields: ["kind", "name", "value_cents", "acquired_on", "disposed_on"],
+    fields: ["kind", "name", "make", "model", "identifier", "value_cents", "acquired_on", "disposed_on"],
   },
-  { collection: "boats", sort: ["asset_id.name"], fields: ["asset_id", "hull_number", "registration_number"] },
   {
     collection: "sailboats",
     sort: ["boat_class_id.name", "sail_number"],
-    fields: ["boat_class_id", "sail_number", "boat_id"],
+    fields: ["boat_class_id", "sail_number", "asset_id"],
   },
   { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
   { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },

@@ -71,10 +71,10 @@ export interface BoatClass {
   footprint_sq_ft: number | null;
 }
 
-/** Something the organization owns that planning counts: a sailboat, a powerboat, or other equipment. */
+/** Something the organization owns: a sailboat, a powerboat, a motor, or other equipment. */
 export interface Asset {
   id: Id;
-  kind: "sailboat" | "powerboat" | "other";
+  kind: "sailboat" | "powerboat" | "motor" | "other";
   name: string | null;
   /** The day the organization got it, or expects to; empty counts it from the start. */
   acquired_on: DateString | null;
@@ -82,16 +82,10 @@ export interface Asset {
   disposed_on: DateString | null;
 }
 
-/** A sailboat or powerboat asset's boat details. */
-export interface Boat {
-  id: Id;
-  asset_id: Id;
-}
-
-/** A sailboat boat's class. */
+/** A sailboat asset's class. */
 export interface Sailboat {
   id: Id;
-  boat_id: Id;
+  asset_id: Id;
   boat_class_id: Id;
 }
 
@@ -370,9 +364,8 @@ export interface PlanData {
   qualification_covers: QualificationCover[];
   boat_classes: BoatClass[];
   resource_kinds: ResourceKind[];
-  /** The asset list, with its boats and sailboats, which the engine counts on each day. */
+  /** The asset list, with its sailboats, which the engine counts on each day. */
   assets: Asset[];
-  boats: Boat[];
   sailboats: Sailboat[];
 
   /** The plans and versions being calculated, so the engine can tell which plan each offering is in. */

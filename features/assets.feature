@@ -1,13 +1,14 @@
 Feature: CSC's boats and equipment
-  The asset list is everything CSC owns that planning counts: sailboats, such as Optis and 420s,
-  powerboats, such as the coach boats, and other things, such as trailers and the van. Each can have
-  a name, what it's worth, the date CSC got it, and the date CSC disposed of it. One with no
-  disposed date is still CSC's. A boat, sail or power, can have a hull number and a registration
-  number. A sailboat has a boat class from the catalog, such as Opti or 420, and can have a sail
-  number. Sailors' own boats aren't on the list.
+  The asset list is the boats and equipment CSC owns: sailboats, such as Optis and 420s, powerboats,
+  such as the coach boats, motors, and other things, such as trailers and the van. Each can have a
+  name, a make and model, the number that identifies it (a boat's hull number, a vehicle's VIN, or a
+  serial number), a registration number, its book value, the date CSC got it, and the date CSC
+  disposed of it. One with no disposed date is still CSC's. A sailboat has a boat class from the
+  catalog, such as Opti or 420, which is its model, and can have a sail number. Sailors' own boats
+  aren't on the list.
 
-  Planning counts what's on the list on each day: CSC has a boat from the day it got it until the
-  day it disposed of it, and one with no date CSC got it counts from the start. A boat CSC plans to
+  Planning counts the sailboats and powerboats on each day: CSC has a boat from the day it got it
+  until the day it disposed of it, and one with no date CSC got it counts from the start. A boat CSC plans to
   buy goes on the list with the date it's expected, so it counts from then in every plan.
 
   The asset list is part of the catalog, so the same people keep it: admins, and people with the

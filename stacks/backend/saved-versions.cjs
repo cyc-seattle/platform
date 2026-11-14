@@ -664,7 +664,6 @@ const CATALOG = [
   "boat_classes",
   "resource_kinds",
   "assets",
-  "boats",
   "sailboats",
 ];
 

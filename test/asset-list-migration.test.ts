@@ -29,6 +29,7 @@ async function before() {
       id serial PRIMARY KEY, many_collection varchar(64), many_field varchar(64), one_collection varchar(64)
     );
     CREATE TABLE directus_permissions (id serial PRIMARY KEY, collection varchar(64));
+    CREATE TABLE directus_presets (id serial PRIMARY KEY, collection varchar(64));
     CREATE TABLE boat_classes (id uuid PRIMARY KEY, name text, sailors_per_boat integer NOT NULL);
     CREATE TABLE boats (id uuid PRIMARY KEY, boat_class_id uuid REFERENCES boat_classes (id), sail_number text);
     CREATE TABLE plan_boat_rates (id uuid PRIMARY KEY, maintenance_per_boat_hour_cents integer, quantity integer);
@@ -41,7 +42,8 @@ async function before() {
       ('plan_resources', 'quantity'), ('plan_resources', 'name');
     INSERT INTO directus_relations (many_collection, many_field, one_collection) VALUES
       ('boats', 'boat_class_id', 'boat_classes');
-    INSERT INTO directus_permissions (collection) VALUES ('boats');
+    INSERT INTO directus_permissions (collection) VALUES ('boats'), ('boat_classes');
+    INSERT INTO directus_presets (collection) VALUES ('boats');
   `);
   return db;
 }
@@ -71,9 +73,10 @@ describe("the asset list migration", { timeout: 30_000 }, () => {
     ]);
     const { rows: relations } = await db.query("SELECT many_field FROM directus_relations");
     expect(relations).toEqual([]);
-    // The backend stack rewrites the new boats' permissions under the same name.
     const { rows: permissions } = await db.query("SELECT collection FROM directus_permissions");
-    expect(permissions).toEqual([{ collection: "boats" }]);
+    expect(permissions).toEqual([{ collection: "boat_classes" }]);
+    const { rows: presets } = await db.query("SELECT collection FROM directus_presets");
+    expect(presets).toEqual([]);
   });
 
   it("refuses to drop an old boat list that has rows, and changes nothing", async () => {
@@ -85,12 +88,7 @@ describe("the asset list migration", { timeout: 30_000 }, () => {
     expect(await columns(db, "plan_resources")).toEqual(["id", "name", "quantity"]);
   });
 
-  it("leaves the new boats alone, and does nothing on a new database", async () => {
-    const db = await PGlite.create();
-    await db.exec("CREATE TABLE boats (id uuid PRIMARY KEY, asset_id uuid, hull_number text)");
-    await db.exec("INSERT INTO boats VALUES (gen_random_uuid(), gen_random_uuid(), 'H1')");
-    await migrate(db);
-    expect(await columns(db, "boats")).toEqual(["asset_id", "hull_number", "id"]);
+  it("does nothing on a new database", async () => {
     await expect(migrate(await PGlite.create())).resolves.toBeUndefined();
   });
 });
