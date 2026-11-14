@@ -181,3 +181,50 @@ describe("line names", () => {
     expect(names).toContain("G&A share: Director: rest of salary");
   });
 });
+
+describe("lines that move a cost off a program area's programs", () => {
+  /** `line` in a program area's plan (v1), or the Operations Plan (v2). */
+  function planWith(line: Parameters<typeof budgetLine>[0], version = "v1") {
+    const data = emptyPlan({
+      plans: [
+        { id: "area-plan", kind: "program_area", program_area_id: "area" },
+        { id: "operations", kind: "operations", program_area_id: null },
+      ],
+      plan_versions: [
+        { id: "v1", plan_id: "area-plan" },
+        { id: "v2", plan_id: "operations" },
+      ],
+      plan_pools: [pool({ key: "ga", version_id: "v2" })],
+      plan_budget_lines: [budgetLine({ name: "Storage", version_id: version, ...line })],
+    });
+    data.accounts.push({ ...data.accounts[0]!, id: "acct-boat", number: "1500", name: "Boats", type: "asset" });
+    return data;
+  }
+  const shifts = (data: ReturnType<typeof planWith>) =>
+    computePlan(data)
+      .warnings.filter((w) => w.code === "cost_off_programs")
+      .map((w) => ({ message: w.message, version_id: w.version_id }));
+
+  it("warns about a Program Plan line left out of the split, or charged to the shared costs or the organization", () => {
+    expect(shifts(planWith({ cost_center_type: "org", excluded_from_mtdc: true }))).toEqual([
+      { message: "Storage is charged to A club, not to this area's programs", version_id: "v1" },
+      {
+        message: "Storage is left out of the split of shared costs, so the other program areas pay more of them",
+        version_id: "v1",
+      },
+    ]);
+    expect(shifts(planWith({ cost_center_type: "pool", cost_center_key: "ga" }))).toEqual([
+      { message: "Storage is charged to shared costs, which every program area pays", version_id: "v1" },
+    ]);
+  });
+
+  it("warns about capital in a Program Plan", () => {
+    expect(shifts(planWith({ cost_center_type: "org", account_id: "acct-boat" }))).toEqual([
+      { message: "Storage is capital, so A club pays for it, not this area's programs", version_id: "v1" },
+    ]);
+  });
+
+  it("never warns about the Operations Plan's lines", () => {
+    expect(shifts(planWith({ cost_center_type: "org", excluded_from_mtdc: true }, "v2"))).toEqual([]);
+  });
+});

@@ -1,6 +1,6 @@
 import type { Context, EntryInput } from "./context.ts";
 import { spreadWeights } from "./measures.ts";
-import type { CostCenterType, Id } from "./types.ts";
+import type { CostCenterType, Id, PlanBudgetLine } from "./types.ts";
 
 /**
  * Records amounts on their cost centers. Amounts on an offering, a pool or the organization are
@@ -74,6 +74,32 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
 }
 
 /**
+ * Warns about a Program Plan line that moves a cost off its area's programs, for the finance
+ * committee to look over before it makes the plan active (cyc-seattle/platform#251). The Operations
+ * Plan is the committee's own, so its lines never get these. Capital charged anywhere but the
+ * organization already has its own warning, `capital_off_org`.
+ */
+function warnCostShift(
+  ctx: Context,
+  line: Pick<PlanBudgetLine, "version_id" | "key" | "name" | "cost_center_type" | "account_id"> & {
+    excluded_from_mtdc?: boolean;
+  },
+): void {
+  if (ctx.planOfVersion.get(line.version_id)?.kind !== "program_area") return;
+  const warn = (message: string) => ctx.warn("cost_off_programs", message, line.key, { version_id: line.version_id });
+  const org = ctx.data.organization.name;
+  const capital = ctx.accountType(line.account_id) === "asset";
+  if (capital && line.cost_center_type === "org") {
+    warn(`${line.name} is capital, so ${org} pays for it, not this area's programs`);
+  } else if (line.cost_center_type === "org") warn(`${line.name} is charged to ${org}, not to this area's programs`);
+  else if (line.cost_center_type === "pool")
+    warn(`${line.name} is charged to shared costs, which every program area pays`);
+  if (line.excluded_from_mtdc) {
+    warn(`${line.name} is left out of the split of shared costs, so the other program areas pay more of them`);
+  }
+}
+
+/**
  * Records the plan year's `plan_budget_lines`. Capital, a line on an asset account, is the
  * organization's: fundraising pays for it, so it never reaches a program area or an offering.
  */
@@ -83,6 +109,7 @@ export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
     if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_key, line.key)) continue;
     const capital = ctx.accountType(line.account_id) === "asset";
     const onOrg = line.cost_center_type === "org" || capital;
+    warnCostShift(ctx, line);
     if (capital && line.cost_center_type !== "org") {
       ctx.warn(
         "capital_off_org",
@@ -109,6 +136,7 @@ export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
   const levels = new Map(ctx.data.plan_staff_levels.map((l) => [l.key, l]));
   for (const line of ctx.data.plan_labor_lines) {
     if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_key, line.key)) continue;
+    warnCostShift(ctx, line);
     const level = levels.get(line.staff_level_key);
     if (level === undefined) {
       ctx.warn(

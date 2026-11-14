@@ -1630,23 +1630,38 @@ Step("they add a bonus to one of its Program Plans", async () => {
 });
 Step("they're told that bonuses go in the Operations Plan", () => expectTold(BONUS_IN_OPERATIONS));
 
-// The warnings for lines that move a cost, which the next platform PR builds: until then, each of
-// these steps fails.
-parameter("shift", [
-  "left out of the split of shared costs",
-  "charged to the shared costs",
-  "charged to the organization",
-  "for capital",
-]);
-for (const text of [
-  "a draft Financial Plan whose Program Plan has a line {shift}",
-  "the planner is warned that the line moves a cost off the area's programs",
-  "a draft Financial Plan whose Operations Plan has a line left out of the split of shared costs",
-  "the planner isn't warned about the line",
-]) {
-  Step(text, () => {
-    throw new Error("Not built yet: warnings for lines that move a cost");
-  });
-}
+// A Program Plan line that moves a cost off the area's programs, for the finance committee to look over.
+const SHIFTS: Record<string, (area: string) => Promise<Row>> = {
+  "left out of the split of shared costs": async (area) => ({
+    cost_center_type: "program_area",
+    cost_center_key: area,
+    excluded_from_mtdc: true,
+  }),
+  "charged to the shared costs": async () => ({ cost_center_type: "pool", cost_center_key: await p.pool() }),
+  "charged to the organization": async () => ({ cost_center_type: "org", cost_center_key: null }),
+  "for capital": async () => ({ cost_center_type: "org", cost_center_key: null }),
+};
+parameter("shift", Object.keys(SHIFTS));
+Step("a draft Financial Plan whose Program Plan has a line {shift}", async (_, shift: string) => {
+  const area = await p.area();
+  const account = shift === "for capital" ? "coachBoats" : "storage";
+  await p.line(p.areaVersion(area), account, await SHIFTS[shift]!(area), 100_000);
+});
+Step("the planner is warned that the line moves a cost off the area's programs", () => {
+  expect(p.warned("cost_off_programs")).toBe(true);
+});
+Step("a draft Financial Plan whose Operations Plan has a line left out of the split of shared costs", async () => {
+  await p.area();
+  await p.line(
+    await p.operationsVersion(),
+    "storage",
+    { cost_center_type: "pool", cost_center_key: await p.pool() },
+    100_000,
+    { excluded_from_mtdc: true },
+  );
+});
+Step("the planner isn't warned about the line", () => {
+  expect(p.warned("cost_off_programs")).toBe(false);
+});
 
 describeAccessFeature("planning.feature");

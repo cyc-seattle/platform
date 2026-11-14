@@ -274,7 +274,6 @@ Feature: Plans
       When they add a bonus to one of its Program Plans
       Then they're told that bonuses go in the Operations Plan
 
-  @pending
   Rule: A planner is warned about a Program Plan line that moves a cost off the area's programs
 
     Scenario Outline: A Program Plan line that moves a cost

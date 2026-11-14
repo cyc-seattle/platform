@@ -496,7 +496,7 @@ The fleet is the `quantity` of each resource, such as RIBs, and of each boat cla
 
 `plan_revenue_charges` lists the charges set as a share of revenue, such as scholarships, the program buffer, B&O tax, and card fees. Each applies to every offering of the product kinds it names, at its rate × the offering's revenue. A charge on a revenue account adds revenue, such as the card fees families pay; on an expense account, it adds a cost. `excluded_from_mtdc` leaves it out of MTDC, as for scholarships, which are participant support.
 
-The Operations Plan also holds the offerings of products in no area: merchandise, storage and charters.
+The Operations Plan also holds the offerings of products in no area: merchandise, storage and charters. It also holds each program area's storage rent, such as the dinghy float, as a line charged to the area and booked to the Storage account under 7350 Occupancy/Rent, which sail-team's Storage tab reads (cyc-seattle/platform#251). `mise run move-storage`, run once by hand in each stack, moved each draft's storage lines and bonuses there from its Program Plans; saved plans keep theirs.
 
 A salaried booking names a product, or a program area whose offerings share it by MTDC.
 
