@@ -147,9 +147,8 @@ function realisticPlan(): PlanData {
     paid_hours_per_year: null,
   });
 
-  // What the planner, or their AI, gives each block: staff, RIBs and boats.
+  // What the planner, or their AI, gives each block: staff, powerboats, equipment and boats.
   const staff = (level: string, count: number) => ({ staff_level_key: level, count });
-  const ribs = (quantity: number, resource_key = "rib-small-key") => ({ resource_key, quantity });
   const boats = (boat_class_id: string, count: number, sailor_owned: number | null = null) => ({
     boat_class_id,
     count,
@@ -157,7 +156,6 @@ function realisticPlan(): PlanData {
   });
   const fallGiven = {
     staff: [staff(instructor2.key, 3)],
-    resources: [ribs(2)],
     boats: [boats("opti", 7, 2), boats("420", 4, 1)],
   };
   const fallPractices = practice(fall, [2, 4], "16:00", "18:30", { on_water_minutes: 120 });
@@ -193,9 +191,13 @@ function realisticPlan(): PlanData {
     ...campDays,
   ];
   const allocations = blocks(
-    ...fallPractices.map((a) => block([a], fallGiven, { name: "Fall racing" })),
+    ...fallPractices.map((a) => block([a], fallGiven, { name: "Fall racing", powerboats: 2 })),
     ...regattas.map((a) =>
-      block([a], { ...fallGiven, resources: [ribs(1, "rib-large-key"), ribs(1)] }, { name: "Regatta" }),
+      block(
+        [a],
+        { ...fallGiven, resources: [{ resource_key: "rib-large-key", quantity: 1 }] },
+        { name: "Regatta", powerboats: 1 },
+      ),
     ),
     ...travelDays.map((a) => block([a], { staff: [staff(instructor2.key, 3)] }, { name: "Travel" })),
     // Spring racing and development share their coaches, with the director among them.
@@ -204,25 +206,20 @@ function realisticPlan(): PlanData {
         [a, devPractices.find((d) => d.date === a.date)!],
         {
           staff: [{ position_key: director.key, count: 1 }, staff(instructor2.key, 3)],
-          resources: [ribs(2)],
           boats: [boats("opti", 11, 2), boats("420", 3, 1)],
         },
-        { name: "Spring youth" },
+        { name: "Spring youth", powerboats: 2 },
       ),
     ),
     ...ltsPractices.map((a) =>
       block(
         [a],
-        { staff: [staff(instructor1.key, 2)], resources: [ribs(1)], boats: [boats("keelboat", 2)] },
-        { name: "Adult" },
+        { staff: [staff(instructor1.key, 2)], boats: [boats("keelboat", 2)] },
+        { name: "Adult", powerboats: 1 },
       ),
     ),
     ...campDays.map((a) =>
-      block(
-        [a],
-        { staff: [staff(instructor1.key, 4)], resources: [ribs(2)], boats: [boats("opti", 27)] },
-        { name: "Camp" },
-      ),
+      block([a], { staff: [staff(instructor1.key, 4)], boats: [boats("opti", 27)] }, { name: "Camp", powerboats: 2 }),
     ),
   );
 
@@ -265,6 +262,7 @@ function realisticPlan(): PlanData {
         payroll_tax_rate: 0.0765,
         lodging_per_night_cents: 15_000,
         mileage_rate_cents: 67,
+        powerboat_per_hour_cents: 750,
       }),
     ],
     plan_revenue_charges: [
@@ -289,19 +287,9 @@ function realisticPlan(): PlanData {
     ],
     plan_resources: [
       {
-        ...v("rib-small"),
-        resource_kind_id: "kind-rib",
-        name: "Small RIB",
-        cost_per_hour_cents: 0,
-        cost_per_day_cents: 200,
-        fuel_per_hour_cents: 600,
-        maintenance_per_hour_cents: 150,
-        excluded_from_mtdc: false,
-      },
-      {
         ...v("rib-large"),
         resource_kind_id: "kind-rib",
-        name: "Large RIB",
+        name: "Rented RIB",
         cost_per_hour_cents: 0,
         cost_per_day_cents: 300,
         fuel_per_hour_cents: 1200,
@@ -505,8 +493,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 948624,
-          "net": -588624,
+          "expenses": 945013,
+          "net": -585013,
           "revenue": 360000,
         },
         "Charters": {
@@ -530,13 +518,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 5592752,
-          "net": -3324752,
+          "expenses": 5597994,
+          "net": -3329994,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 11982956,
-          "net": -8792956,
+          "expenses": 11963615,
+          "net": -8773615,
           "revenue": 3190000,
         },
       }

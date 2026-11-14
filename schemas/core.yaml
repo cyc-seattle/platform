@@ -2728,7 +2728,7 @@ fields:
             value: salaries
           - text: Payroll tax
             value: payroll_tax
-          - text: Coach boats (RIBs)
+          - text: Powerboats
             value: ribs
           - text: Boat maintenance
             value: boat_maintenance
@@ -2753,7 +2753,7 @@ fields:
             value: salaries
           - text: Payroll tax
             value: payroll_tax
-          - text: Coach boats (RIBs)
+          - text: Powerboats
             value: ribs
           - text: Boat maintenance
             value: boat_maintenance

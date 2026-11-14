@@ -594,6 +594,8 @@ export interface PlanActivityBlocks {
   date: string;
   /** Such as Guppies and Minnows, morning. */
   name: string;
+  /** How many of CSC's powerboats the block uses, such as coach boats. Empty for none. */
+  powerboats: number | null;
 }
 
 /** Boats of one class a block sails: the organization's, and the ones sailors bring. */
@@ -821,8 +823,8 @@ export interface PlanRates {
   lodging_per_night_cents: number | null;
   /** In cents: 12500 is $125.00. */
   mileage_rate_cents: number | null;
-  /** The kind of resource whose cost prices coach boat hours. Blocks are checked against the powerboats in the asset list. */
-  rib_resource_kind_id: string | ResourceKinds | null;
+  /** What one powerboat costs an hour on the water, fuel included. In cents: 12500 is $125.00. */
+  powerboat_per_hour_cents: number | null;
 }
 
 /** Equipment programs share, such as coach boats, and what an hour or a day of it costs. */

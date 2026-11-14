@@ -331,6 +331,7 @@ erDiagram
     plan_activity_blocks {
         date date
         string name
+        int powerboats "the organization's, such as coach boats"
     }
     plan_block_staff {
         uuid block_id FK
@@ -387,7 +388,7 @@ Each activity is a dated row. The planner enters them, or a tool such as a sched
 
 Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, and its `rules`. Like the Program Plan's own `rules` and the Operations Plan's, a program's rules are the planner's words for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan copy, they're versioned, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
 
-A block, in `plan_activity_blocks`, is one or more activities on one date that share their staff and boats, such as Guppies and Minnows on the morning of July 13. Each activity is in at most one block, through `block_id`. A block's rows say what it's given: `plan_block_staff`, a number at a staff level or one salaried position, paid out of the salary or by the hour; `plan_block_resources`, coach boats and other equipment; and `plan_block_boats`, the organization's boats of a class and the ones sailors bring. The planner, or their AI, writes them. Nothing derives them, and nothing records which rule made them. Every foreign key restricts delete, so a block's rows, and its activities' `block_id`, go before the block does.
+A block, in `plan_activity_blocks`, is one or more activities on one date that share their staff and boats, such as Guppies and Minnows on the morning of July 13. Each activity is in at most one block, through `block_id`. A block's rows say what it's given: `plan_block_staff`, a number at a staff level or one salaried position, paid out of the salary or by the hour; `powerboats`, how many of the organization's powerboats, such as coach boats; `plan_block_resources`, other equipment, such as a rented coach boat; and `plan_block_boats`, the organization's boats of a class and the ones sailors bring. The planner, or their AI, writes them. Nothing derives them, and nothing records which rule made them. Every foreign key restricts delete, so a block's rows, and its activities' `block_id`, go before the block does.
 
 A program area's plan holds only offerings of that area's programs, and the engine warns about any other.
 
@@ -409,7 +410,6 @@ erDiagram
     plan_versions ||--o{ plan_capital_items : contains
     accounts ||--o{ plan_capital_items : "booked to"
     resource_kinds ||--o{ plan_resources : "kind of"
-    resource_kinds |o--o{ plan_rates : "coach boat kind"
     boat_classes ||--o{ plan_boat_rates : "rate for"
     plan_salaried_positions ||--o{ plan_salaried_bookings : "management hours"
     products |o--o{ plan_salaried_bookings : "booked to"
@@ -424,7 +424,7 @@ erDiagram
         decimal payroll_tax_rate "share of wages"
         int lodging_per_night_cents
         int mileage_rate_cents
-        uuid rib_resource_kind_id FK "which resource kind is coach boats"
+        int powerboat_per_hour_cents "one powerboat on the water, fuel included"
     }
     plan_staff_levels {
         string name
@@ -497,7 +497,7 @@ erDiagram
 
 `plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position, resource and boat rate also has one rate for the year, so each has a single row.
 
-The plans don't say how many boats the organization has: the [asset list](#catalog) does, the same for every plan. The engine warns when the blocks give out more of a boat class, or more coach boats, at once than the organization has that day.
+The plans don't say how many boats the organization has: the [asset list](#catalog) does, the same for every plan. The engine warns when the blocks give out more of a boat class, or more powerboats, at once than the organization has that day.
 
 `plan_revenue_charges` lists the charges set as a share of revenue, such as scholarships, the program buffer, B&O tax, and card fees. Each applies to every offering of the product kinds it names, at its rate × the offering's revenue. A charge on a revenue account adds revenue, such as the card fees families pay; on an expense account, it adds a cost. `excluded_from_mtdc` leaves it out of MTDC, as for scholarships, which are participant support.
 
@@ -612,7 +612,7 @@ A draft's results are worked out again after each change to what they come from,
 
 Saving a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the save answers, with the engine whose version it records. Then they never change.
 
-`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, coach boats and share of the shared costs, is one filter. A warning names the member it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
+`plan_results` holds the organization's totals. Each line and P&L row names, in `version_set_member_id`, the member that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, powerboats and share of the shared costs, is one filter. A warning names the member it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays saved with no results, and the hook logs why. An admin can fill them in with `POST /saved-versions/results/<Financial Plan id>`. If copying a parent fails, `POST /saved-versions/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
 
 Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, and the Financial Plan has no results yet. They refuse to delete a draft's results without it too, apart from the delete of the draft, or a plan taken out of it, taking its results with it. No result row is ever changed, and a saved one's are never deleted. A Plan Reader or Plan Writer can see them, a draft's the same way as a saved one's. A draft with no `plan_results` row is still being worked out, or the engine failed on it.
 

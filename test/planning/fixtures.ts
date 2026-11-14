@@ -112,7 +112,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
         ["cogs", A.cogs],
       ] as const
     ).map(([cost_type, account_id]) => ({ id: `cost-${cost_type}`, organization_id: "org", cost_type, account_id })),
-    rib_resource_kind_id: "kind-rib",
     products: [],
     program_areas: [],
     accounts: [

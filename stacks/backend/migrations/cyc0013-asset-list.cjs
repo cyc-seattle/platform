@@ -7,6 +7,9 @@
 //   Prod's is empty. It refuses to run while the old list has rows, so none is lost.
 // - drops plan_boat_rates.quantity and plan_resources.quantity, which saved copies lose too.
 // - renames boat_classes.sailors_per_boat to max_capacity, keeping its values.
+// - drops plan_rates.rib_resource_kind_id: blocks now count powerboats, at one hourly rate. It first
+//   lists each copy's coach-boat kind in cyc_seed_powerboats, so the saved-versions hook can move
+//   drafts' coach boats into their blocks' powerboats once the schema apply has added them.
 // It's one statement, so Postgres runs it in one transaction. It skips what's already done, so
 // it's safe to run again and does nothing on a new database.
 
@@ -49,6 +52,20 @@ BEGIN
     DELETE FROM directus_fields WHERE (collection, field) IN (${pairs.join(", ")});
   END IF;
 ${drops.join("\n")}
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'plan_rates' AND column_name = 'rib_resource_kind_id'
+  ) THEN
+    CREATE TABLE IF NOT EXISTS cyc_seed_powerboats AS
+      SELECT version_id, rib_resource_kind_id AS resource_kind_id FROM plan_rates
+        WHERE rib_resource_kind_id IS NOT NULL;
+    IF to_regclass('directus_fields') IS NOT NULL THEN
+      DELETE FROM directus_relations WHERE many_collection = 'plan_rates' AND many_field = 'rib_resource_kind_id';
+      DELETE FROM directus_fields WHERE collection = 'plan_rates' AND field = 'rib_resource_kind_id';
+    END IF;
+    ALTER TABLE plan_rates DROP COLUMN rib_resource_kind_id;
+  END IF;
 
   IF EXISTS (
     SELECT 1 FROM information_schema.columns

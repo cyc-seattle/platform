@@ -1,6 +1,6 @@
 ---
 name: allocate-plan
-description: Fill in a Financial Plan's blocks with their staff, coach boats and boats, in a new draft, following the program settings and the planner's rules, then fix what the engine warns about. Use when a planner asks to allocate, staff, or re-allocate a plan or part of one, such as "allocate the 2027 plan" or "re-allocate Summer weeks 3 to 5".
+description: Fill in a Financial Plan's blocks with their staff, powerboats and boats, in a new draft, following the program settings and the planner's rules, then fix what the engine warns about. Use when a planner asks to allocate, staff, or re-allocate a plan or part of one, such as "allocate the 2027 plan" or "re-allocate Summer weeks 3 to 5".
 ---
 
 # Allocate a Financial Plan
@@ -36,12 +36,11 @@ From the Operations Plan's copy:
 
 - `plan_staff_levels`: each level's `key`, name and pay.
 - `plan_salaried_positions`: each position's `key`, name and `hourly_coaching_rate_cents`.
-- `plan_resources`: each resource's `key`, name and kind. The resource kind in
-  `plan_rates.rib_resource_kind_id` is coach boats.
+- `plan_resources`: each piece of equipment's `key`, name and kind, such as a rented coach boat.
 - Each boat class's `max_capacity` from `boat_classes`.
 
 From the catalog's asset list, how many boats the organization has on each day: the `sailboats` of
-each class, and the `assets` of kind `powerboat` for coach boats. Each counts from its asset's
+each class, and the `assets` of kind `powerboat`, such as the coach boats. Each counts from its asset's
 `acquired_on`, or from the start when it's empty, until its `disposed_on`.
 
 - `plan_closed_dates`.
@@ -78,8 +77,9 @@ For each date, in the part of the plan you're allocating:
    `staff_level_key` with a `count`, or one salaried position's `position_key` with `count` 1 and
    `pay` `salary` or `hourly`. A rule says who coaches what; a salaried position can't be on two
    blocks at once.
-3. **Give it coach boats and other equipment**, in `plan_block_resources`, by the rules, such as one
-   coach boat for every two coaches. Leave `hours` empty unless a rule says otherwise.
+3. **Give it powerboats**, in the block's `powerboats`, by the rules, such as one coach boat for
+   every two coaches. Give it other equipment, such as a rented coach boat, in
+   `plan_block_resources`, leaving `hours` empty unless a rule says otherwise.
 4. **Give it boats**, in `plan_block_boats`: the organization's boats of each class in `count`, and
    the boats sailors bring in `sailor_owned`, such as "about a third bring their own Optis". Enough
    seats means Σ (boats × the class's `max_capacity`) is at least the block's sailors. A block

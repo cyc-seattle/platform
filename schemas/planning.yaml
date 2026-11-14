@@ -5120,40 +5120,38 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_rates
-    field: rib_resource_kind_id
-    type: uuid
+    field: powerboat_per_hour_cents
+    type: integer
     meta:
       collection: plan_rates
       conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: rib_resource_kind_id
+      display: cents-as-dollars
+      display_options: null
+      field: powerboat_per_hour_cents
       group: null
       hidden: false
-      interface: select-dropdown-m2o
-      note: The kind of resource whose cost prices coach boat hours. Blocks are checked against the powerboats in the asset list.
+      interface: input
+      note: "What one powerboat costs an hour on the water, fuel included. In cents: 12500 is $125.00."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 8
-      special:
-        - m2o
+      special: null
       translations:
         - language: en-US
-          translation: Coach boat kind
+          translation: Powerboat cost per hour
       validation: null
       validation_message: null
       width: full
     schema:
-      name: rib_resource_kind_id
+      name: powerboat_per_hour_cents
       table: plan_rates
-      data_type: uuid
+      data_type: integer
       default_value: null
       max_length: null
-      numeric_precision: null
-      numeric_scale: null
+      numeric_precision: 32
+      numeric_scale: 0
       is_nullable: true
       is_unique: false
       is_indexed: false
@@ -5161,8 +5159,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: resource_kinds
-      foreign_key_column: id
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_staff_levels
     field: id
     type: uuid
@@ -11832,6 +11830,48 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_activity_blocks
+    field: powerboats
+    type: integer
+    meta:
+      collection: plan_activity_blocks
+      conditions: null
+      display: null
+      display_options: null
+      field: powerboats
+      group: null
+      hidden: false
+      interface: input
+      note: How many of CSC's powerboats the block uses, such as coach boats. Empty for none.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Powerboats
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: powerboats
+      table: plan_activity_blocks
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_block_staff
     field: id
     type: uuid
@@ -13141,27 +13181,6 @@ relations:
       foreign_key_table: plan_versions
       foreign_key_column: id
       constraint_name: plan_rates_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_rates
-    field: rib_resource_kind_id
-    related_collection: resource_kinds
-    meta:
-      junction_field: null
-      many_collection: plan_rates
-      many_field: rib_resource_kind_id
-      one_allowed_collections: null
-      one_collection: resource_kinds
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_rates
-      column: rib_resource_kind_id
-      foreign_key_table: resource_kinds
-      foreign_key_column: id
-      constraint_name: plan_rates_rib_resource_kind_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_staff_levels

@@ -183,10 +183,12 @@ export interface PlanActivity extends Versioned {
   block_id: Id | null;
 }
 
-/** Activities on one date that share their staff, coach boats and boats. */
+/** Activities on one date that share their staff, powerboats and boats. */
 export interface PlanActivityBlock extends Versioned {
   date: DateString;
   name: string;
+  /** How many of the organization's powerboats it uses, such as coach boats. */
+  powerboats?: number | null;
 }
 
 /** Staff on a block: a number at one staff level, or a salaried position. */
@@ -201,13 +203,13 @@ export interface PlanBlockStaff extends Versioned {
   pay: "salary" | "hourly" | null;
 }
 
-/** A resource on a block, such as coach boats. */
+/** Equipment on a block, such as a rented coach boat or a trailer. */
 export interface PlanBlockResource extends Versioned {
   block_id: Id;
   /** A `plan_resources` key. */
   resource_key: Id;
   quantity: number;
-  /** Hours each is used; empty for the block's time on the water (coach boats) or its paid time (the rest). */
+  /** Hours each is used; empty for the block's paid time. */
   hours: number | null;
 }
 
@@ -265,6 +267,8 @@ export interface PlanRates extends Versioned {
   payroll_tax_rate: number | null;
   lodging_per_night_cents: number | null;
   mileage_rate_cents: number | null;
+  /** What one powerboat costs an hour on the water, fuel included. */
+  powerboat_per_hour_cents?: number | null;
 }
 
 export interface PlanStaffLevel extends Versioned {
@@ -354,8 +358,6 @@ export interface PlanData {
   fiscal_year: number;
   organization: Organization;
   organization_cost_accounts: OrganizationCostAccount[];
-  /** The resource kind whose `plan_resources` price coach boat hours, and are checked against the powerboats. */
-  rib_resource_kind_id: Id | null;
 
   products: Product[];
   program_areas: ProgramArea[];
@@ -447,7 +449,7 @@ export interface ComputedActivity {
   paid_minutes: number;
   on_water_minutes: number;
   uses_boats: boolean;
-  /** Its share of its block's staff, coach boats and boats, by its sailors. */
+  /** Its share of its block's staff, powerboats (`ribs`) and boats, by its sailors. */
   coaches: number;
   ribs: number;
   boats: number;

@@ -412,18 +412,16 @@ const DAYS: Record<string, string> = { "July 1": `${PLAN_YEAR}-07-01`, "August 1
 const juneDays = (n: number) =>
   Array.from({ length: n }, (_, i) => `${PLAN_YEAR}-06-${String(i + 1).padStart(2, "0")}`);
 
-/** The scenario's programs, staff levels, boat classes and coach boats, by the names the steps use. */
+/** The scenario's programs, staff levels and boat classes, by the names the steps use. */
 let programs: Record<string, string> = {};
 let levels: Record<string, Item> = {};
 let classes: Record<string, string> = {};
-let coachBoats: string | undefined;
 /** Offerings that share a block whose activities a later step adds, and the block. */
 let pending: { offerings: Item[]; block: string } | undefined;
 onEachScenario(() => {
   programs = {};
   levels = {};
   classes = {};
-  coachBoats = undefined;
   pending = undefined;
 });
 
@@ -449,19 +447,6 @@ async function boatClass(name: string, sailors = name === "Optis" ? 1 : 2): Prom
   classes[name] ??= await p.boatClass(name, sailors);
   return classes[name];
 }
-/** The Operations Plan's coach boats, with `fields` such as what they cost an hour on the water. */
-async function theCoachBoats(fields: Row = {}): Promise<string> {
-  if (coachBoats === undefined) {
-    coachBoats = await p.operationsRow("plan_resources", {
-      resource_kind_id: await p.rib(),
-      name: "Coach boats",
-      cost_per_hour_cents: 0,
-      excluded_from_mtdc: false,
-      ...fields,
-    });
-  }
-  return coachBoats;
-}
 const staffAt = async (name: string, count: number, rate?: number) => ({
   staff_level_key: (await level(name, rate))["key"],
   count,
@@ -470,6 +455,7 @@ const staffAt = async (name: string, count: number, rate?: number) => ({
 /** What a block is given. */
 interface Given {
   staff?: Row[];
+  powerboats?: number;
   resources?: Row[];
   boats?: Row[];
 }
@@ -482,10 +468,10 @@ async function offeringOf(program: string | undefined, sailors: number): Promise
 /** A block on `date` holding a practice of each offering at `times`, given `given`. Returns the block. */
 async function blockOf(offerings: Item[], times: string, given: Given, date = JUNE, name = "A block"): Promise<string> {
   const version = offerings[0]!["version_id"] as string;
-  const block = await p.block(version, date, name);
+  const block = await p.block(version, date, name, { powerboats: given.powerboats ?? null });
   for (const o of offerings) {
-    // A practice with boats or RIBs is on the water.
-    const sails = (given.boats ?? []).length > 0 || (given.resources ?? []).length > 0;
+    // A practice with boats or powerboats is on the water.
+    const sails = (given.boats ?? []).length > 0 || (given.powerboats ?? 0) > 0;
     await p.activities(o, [date], ...span(times), { block_id: block, uses_boats: sails });
   }
   for (const s of given.staff ?? []) await p.given("plan_block_staff", version, block, s);
@@ -543,8 +529,8 @@ Step("{boats} that cost {money} an hour on the water in upkeep", async (_, boats
     maintenance_per_boat_hour_cents: cents(money),
   });
 });
-Step("coach boats that cost {money} an hour on the water", (_, money: string) =>
-  theCoachBoats({ cost_per_hour_cents: cents(money) }),
+Step("powerboats that cost {money} an hour on the water, fuel included", (_, money: string) =>
+  p.operationsRow("plan_rates", { powerboat_per_hour_cents: cents(money) }),
 );
 Step("the organization has {count} {boats}", async (_, count: string, boats: string) => {
   await p.sailboats(await boatClass(boats), Number(count));
@@ -563,8 +549,7 @@ Step(
     await p.sailboats(await boatClass(boats), Number(gone), { disposed_on: DAYS[day] });
   },
 );
-Step("the organization has {count} coach boats", async (_, count: string) => {
-  await theCoachBoats();
+Step("the organization has {count} powerboats", async (_, count: string) => {
   await p.powerboats(Number(count));
 });
 
@@ -576,10 +561,10 @@ Step(
   },
 );
 Step(
-  "an offering with a practice from {times}, in a block with {count} coach boats",
+  "an offering with a practice from {times}, in a block with {count} powerboats",
   async (_, times: string, count: string) => {
     await blockOf([await offeringOf(undefined, 1)], times, {
-      resources: [{ resource_key: await theCoachBoats(), quantity: Number(count) }],
+      powerboats: Number(count),
     });
   },
 );
@@ -625,7 +610,7 @@ Step("the second offering pays {money} of coaches' wages", async (_, money: stri
 Step("the two offerings pay {money} of coaches' wages between them", async (_, money: string) => {
   expect((await wagesOf(p.offerings[0]!)) + (await wagesOf(p.offerings[1]!))).toBe(cents(money));
 });
-Step("the offering pays {money} for coach boats", async (_, money: string) => {
+Step("the offering pays {money} for powerboats", async (_, money: string) => {
   expect(p.total(onOffering(first(), await p.account("ribs")))).toBe(cents(money));
 });
 Step("the offering pays {money} of boat upkeep", async (_, money: string) => {
@@ -770,29 +755,18 @@ Step("the planner isn't warned about {boats}", () => {
   expect(p.warned("over_inventory_boats")).toBe(false);
 });
 Step(
-  "two blocks on the morning of July 13, with {count} coach boats and {count} coach boats",
+  "two blocks on the morning of July 13, with {count} powerboats and {count} powerboats",
   async (_, n: string, m: string) => {
-    const rib = await theCoachBoats();
-    await blockOf(
-      [await offeringOf(undefined, 1)],
-      MORNING,
-      { resources: [{ resource_key: rib, quantity: Number(n) }] },
-      JULY_13,
-    );
-    await blockOf(
-      [await offeringOf(undefined, 1)],
-      MORNING,
-      { resources: [{ resource_key: rib, quantity: Number(m) }] },
-      JULY_13,
-    );
+    await blockOf([await offeringOf(undefined, 1)], MORNING, { powerboats: Number(n) }, JULY_13);
+    await blockOf([await offeringOf(undefined, 1)], MORNING, { powerboats: Number(m) }, JULY_13);
   },
 );
 Step(
-  "the planner is warned that July 13 has {count} coach boats out, but the organization has {count}",
+  "the planner is warned that July 13 has {count} powerboats out, but the organization has {count}",
   (_, out: string, have: string) => {
-    const found = warning("over_inventory_resource");
+    const found = warning("over_inventory_powerboats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    expect(found?.message).toMatch(new RegExp(`^${out} coach boats out at once.*, but .+ has only ${have}`));
+    expect(found?.message).toMatch(new RegExp(`^${out} powerboats out at once.*, but .+ has only ${have}`));
   },
 );
 
