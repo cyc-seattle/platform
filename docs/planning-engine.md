@@ -237,8 +237,8 @@ The engine warns about:
   Plan whose product is in an area
 - a line in a Program Plan that moves a cost off the area's programs (`cost_off_programs`): one left
   out of MTDC, one charged to a pool or to the organization, or capital charged to the organization
-  (capital charged anywhere else has `capital_off_org`). The finance committee looks these over
-  before it makes a plan active (cyc-seattle/platform#251). The Operations Plan's lines never get
+  (capital charged anywhere else has `capital_off_org`). A Plan Admin looks these over
+  before making a plan active (cyc-seattle/platform#251). The Operations Plan's lines never get
   one, and the engine costs the line as it's given.
 
 ### Salaried positions

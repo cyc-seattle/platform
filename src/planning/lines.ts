@@ -74,9 +74,9 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
 }
 
 /**
- * Warns about a Program Plan line that moves a cost off its area's programs, for the finance
- * committee to look over before it makes the plan active (cyc-seattle/platform#251). The Operations
- * Plan is the committee's own, so its lines never get these. Capital charged anywhere but the
+ * Warns about a Program Plan line that moves a cost off its area's programs, for a Plan Admin to
+ * look over before making the plan active (cyc-seattle/platform#251). Only a Plan Admin changes the
+ * Operations Plan, so its lines never get these. Capital charged anywhere but the
  * organization already has its own warning, `capital_off_org`.
  */
 function warnCostShift(

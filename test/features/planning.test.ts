@@ -1657,7 +1657,7 @@ Step("they add a bonus to one of its Program Plans", async () => {
 });
 Step("they're told that bonuses go in the Operations Plan", () => expectTold(BONUS_IN_OPERATIONS));
 
-// A Program Plan line that moves a cost off the area's programs, for the finance committee to look over.
+// A Program Plan line that moves a cost off the area's programs, for a Plan Admin to look over.
 const SHIFTS: Record<string, (area: string) => Promise<Row>> = {
   "left out of the split of shared costs": async (area) => ({
     cost_center_type: "program_area",
