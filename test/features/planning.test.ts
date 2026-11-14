@@ -393,8 +393,9 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
 parameter("level", ["Level 1 Instructor", "Level 2 Instructor"]);
-parameter("boats", ["Sailqubes", "Optis", "FJs"]);
+parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs"]);
 parameter("staff", ["one coach", "two coaches"]);
+parameter("day", ["July 1", "August 1"]);
 /** "4pm" or "noon" as `HH:MM`. */
 function clock(time: string): string {
   if (time === "noon") return "12:00";
@@ -407,21 +408,20 @@ const JUNE = `${PLAN_YEAR}-06-01`;
 const JULY_13 = `${PLAN_YEAR}-07-13`;
 const AUGUST_2 = `${PLAN_YEAR}-08-02`;
 const MORNING = "9am to noon";
+const DAYS: Record<string, string> = { "July 1": `${PLAN_YEAR}-07-01`, "August 1": `${PLAN_YEAR}-08-01` };
 const juneDays = (n: number) =>
   Array.from({ length: n }, (_, i) => `${PLAN_YEAR}-06-${String(i + 1).padStart(2, "0")}`);
 
-/** The scenario's programs, staff levels, boat classes and RIBs, by the names the steps use. */
+/** The scenario's programs, staff levels and boat classes, by the names the steps use. */
 let programs: Record<string, string> = {};
 let levels: Record<string, Item> = {};
 let classes: Record<string, string> = {};
-let ribs: string | undefined;
 /** Offerings that share a block whose activities a later step adds, and the block. */
 let pending: { offerings: Item[]; block: string } | undefined;
 onEachScenario(() => {
   programs = {};
   levels = {};
   classes = {};
-  ribs = undefined;
   pending = undefined;
 });
 
@@ -443,23 +443,22 @@ async function level(name: string, rate = 2000): Promise<Item> {
   });
   return levels[name];
 }
+/** A boat class by its plural name. RIBs are coach boats: they take no sailors, and book to coach boats. */
 async function boatClass(name: string, sailors = name === "Optis" ? 1 : 2): Promise<string> {
-  classes[name] ??= await p.boatClass(name, sailors);
+  classes[name] ??=
+    name === "RIBs"
+      ? await p.boatClass(name, 0, { account_id: await p.account("ribs") })
+      : await p.boatClass(name, sailors);
   return classes[name];
 }
-/** The Operations Plan's RIBs, which cost `rate` cents an hour on the water, with `quantity` of them. */
-async function theRibs(fields: Row = {}): Promise<string> {
-  if (ribs === undefined) {
-    ribs = await p.operationsRow("plan_resources", {
-      resource_kind_id: await p.rib(),
-      name: "RIBs",
-      cost_per_hour_cents: 0,
-      excluded_from_mtdc: false,
-      ...fields,
-    });
-  }
-  return ribs;
-}
+const kindOf = (boats: string) => (boats === "RIBs" ? "powerboat" : "sailboat");
+/** A class's boat rate in the Operations Plan, with `fields` such as its fuel. */
+const boatRate = async (boats: string, fields: Row) =>
+  p.operationsRow("plan_boat_rates", {
+    boat_class_id: await boatClass(boats),
+    maintenance_per_boat_hour_cents: 0,
+    ...fields,
+  });
 const staffAt = async (name: string, count: number, rate?: number) => ({
   staff_level_key: (await level(name, rate))["key"],
   count,
@@ -468,7 +467,6 @@ const staffAt = async (name: string, count: number, rate?: number) => ({
 /** What a block is given. */
 interface Given {
   staff?: Row[];
-  resources?: Row[];
   boats?: Row[];
 }
 /** An offering of `program`, or of a new program, with `sailors` sailors expected. */
@@ -485,12 +483,11 @@ async function blockOf(offerings: Item[], times: string, given: Given, date = JU
   const version = offerings[0]!["version_id"] as string;
   const block = await p.block(version, date, name);
   for (const o of offerings) {
-    // A practice with boats or RIBs is on the water.
-    const sails = (given.boats ?? []).length > 0 || (given.resources ?? []).length > 0;
+    // A practice with boats is on the water.
+    const sails = (given.boats ?? []).length > 0;
     await p.activities(o, [date], ...span(times), { block_id: block, uses_boats: sails });
   }
   for (const s of given.staff ?? []) await p.given("plan_block_staff", version, block, s);
-  for (const r of given.resources ?? []) await p.given("plan_block_resources", version, block, r);
   for (const b of given.boats ?? []) await p.given("plan_block_boats", version, block, b);
   return block;
 }
@@ -538,25 +535,58 @@ Step(
 for (const text of ["{boats} take {count} sailor each", "{boats} take {count} sailors each"]) {
   Step(text, (_, boats: string, sailors: string) => boatClass(boats, Number(sailors)));
 }
-Step("{boats} that cost {money} an hour on the water in upkeep", async (_, boats: string, money: string) => {
-  await p.operationsRow("plan_boat_rates", {
-    boat_class_id: await boatClass(boats),
-    maintenance_per_boat_hour_cents: cents(money),
-  });
-});
-Step("RIBs that cost {money} an hour on the water", (_, money: string) =>
-  theRibs({ cost_per_hour_cents: cents(money) }),
+Step("{boats} that cost {money} an hour on the water in upkeep", (_, boats: string, money: string) =>
+  boatRate(boats, { maintenance_per_boat_hour_cents: cents(money) }),
 );
-Step("the Operations Plan says the organization has {count} {boats}", async (_, count: string, boats: string) => {
-  await p.operationsRow("plan_boat_rates", {
-    boat_class_id: await boatClass(boats),
-    maintenance_per_boat_hour_cents: 0,
-    quantity: Number(count),
-  });
-});
-Step("the Operations Plan says the organization has {count} RIBs", (_, count: string) =>
-  theRibs({ quantity: Number(count) }),
+Step(
+  "{boats} that cost {money} an hour in fuel and {money} an hour in upkeep",
+  (_, boats: string, fuel: string, upkeep: string) =>
+    boatRate(boats, { fuel_per_hour_cents: cents(fuel), maintenance_per_boat_hour_cents: cents(upkeep) }),
 );
+Step("{boats} that charter for {money} a day", (_, boats: string, money: string) =>
+  boatRate(boats, { charter_per_day_cents: cents(money) }),
+);
+Step("the organization has {count} {boats}", async (_, count: string, boats: string) => {
+  await p.boats(await boatClass(boats), Number(count), kindOf(boats));
+});
+Step(
+  "the organization has {count} {boats}, and gets {count} more on {day}",
+  async (_, count: string, boats: string, more: string, day: string) => {
+    await p.boats(await boatClass(boats), Number(count), kindOf(boats));
+    await p.boats(await boatClass(boats), Number(more), kindOf(boats), { acquired_on: DAYS[day] });
+  },
+);
+Step(
+  "the organization has {count} {boats}, and disposes of {count} on {day}",
+  async (_, count: string, boats: string, gone: string, day: string) => {
+    await p.boats(await boatClass(boats), Number(count) - Number(gone), kindOf(boats));
+    await p.boats(await boatClass(boats), Number(gone), kindOf(boats), { disposed_on: DAYS[day] });
+  },
+);
+
+// Defined below `times`, which a step needs before it can use it. The plan is for PLAN_YEAR, 2027, and
+// the winter starts the December before it.
+let winter: Item | undefined;
+Step(
+  "a winter offering in the 2027 plan, from December 2026 to March 2027, that takes in {money}",
+  async (_, money: string) => {
+    const area = await p.area();
+    winter = await p.offering(p.areaVersion(area), await p.product("program", area), cents(money), 1, 0, {
+      starts_on: `${PLAN_YEAR - 1}-12-07`,
+      ends_on: `${PLAN_YEAR}-03-28`,
+    });
+  },
+);
+Step(
+  "a practice on December 7, 2026 from {times}, in a block with {count} coaches paid {money} an hour",
+  async (_, times: string, count: string, money: string) => {
+    await blockOf([winter!], times, await coachesPaid(count, money), `${PLAN_YEAR - 1}-12-07`);
+  },
+);
+Step("the offering takes in {money}", (_, money: string) => {
+  const pnl = p.out.pnl.find((x) => x.level === "offering" && x.key === first());
+  expect(pnl?.revenue_cents).toBe(cents(money));
+});
 
 // What the P&L costs.
 Step(
@@ -566,10 +596,10 @@ Step(
   },
 );
 Step(
-  "an offering with a practice from {times}, in a block with {count} RIBs",
-  async (_, times: string, count: string) => {
+  "an offering with a practice from {times}, in a block with {count} of the organization's {boats}",
+  async (_, times: string, count: string, boats: string) => {
     await blockOf([await offeringOf(undefined, 1)], times, {
-      resources: [{ resource_key: await theRibs(), quantity: Number(count) }],
+      boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }],
     });
   },
 );
@@ -629,10 +659,10 @@ Step(
   },
 );
 Step(
-  "an offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} RIBs",
-  async (_, max: string, expected: string, times: string, count: string) => {
+  "an offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} chartered {boats}",
+  async (_, max: string, expected: string, times: string, count: string, boats: string) => {
     await blockOf([await upTo(undefined, max, expected)], times, {
-      resources: [{ resource_key: await theRibs(), quantity: Number(count) }],
+      boats: [{ boat_class_id: await boatClass(boats), count: 0, chartered: Number(count) }],
     });
   },
 );
@@ -645,7 +675,7 @@ Step("the second offering pays {money} of coaches' wages", async (_, money: stri
 Step("the two offerings pay {money} of coaches' wages between them", async (_, money: string) => {
   expect((await wagesOf(p.offerings[0]!)) + (await wagesOf(p.offerings[1]!))).toBe(cents(money));
 });
-Step("the offering pays {money} for RIBs", async (_, money: string) => {
+Step("the offering pays {money} for coach boats", async (_, money: string) => {
   expect(p.total(onOffering(first(), await p.account("ribs")))).toBe(cents(money));
 });
 Step("the offering pays {money} of boat upkeep", async (_, money: string) => {
@@ -789,29 +819,54 @@ Step(
 Step("the planner isn't warned about {boats}", () => {
   expect(p.warned("over_inventory_boats")).toBe(false);
 });
-Step("two blocks on the morning of July 13, with {count} RIBs and {count} RIBs", async (_, n: string, m: string) => {
-  const rib = await theRibs();
-  await blockOf(
-    [await offeringOf(undefined, 1)],
-    MORNING,
-    { resources: [{ resource_key: rib, quantity: Number(n) }] },
-    JULY_13,
-  );
-  await blockOf(
-    [await offeringOf(undefined, 1)],
-    MORNING,
-    { resources: [{ resource_key: rib, quantity: Number(m) }] },
-    JULY_13,
-  );
-});
 Step(
-  "the planner is warned that July 13 has {count} RIBs out, but the organization has {count}",
-  (_, out: string, have: string) => {
-    const found = warning("over_inventory_resource");
-    expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    expect(found?.message).toMatch(new RegExp(`^${out} RIBs out at once.*, but .+ has only ${have}`));
+  "two blocks on the morning of July 13, with {count} {boats} and {count} {boats}",
+  async (_, n: string, boats: string, m: string) => {
+    for (const count of [n, m]) {
+      await blockOf(
+        [await offeringOf(undefined, 1)],
+        MORNING,
+        { boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }] },
+        JULY_13,
+      );
+    }
   },
 );
+Step(
+  "a block on the morning of July 13 with {count} of the organization's {boats} and {count} chartered {boats}",
+  async (_, own: string, boats: string, chartered: string) => {
+    await blockOf(
+      [await offeringOf(undefined, 1)],
+      MORNING,
+      { boats: [{ boat_class_id: await boatClass(boats), count: Number(own), chartered: Number(chartered) }] },
+      JULY_13,
+    );
+  },
+);
+Step(
+  "a block with {count} chartered RIB on the morning of July 13, and another with {count} that afternoon",
+  async (_, morning: string, afternoon: string) => {
+    for (const [times, n] of [
+      [MORNING, morning],
+      ["1pm to 4pm", afternoon],
+    ] as const) {
+      await blockOf(
+        [await offeringOf(undefined, 1)],
+        times,
+        { boats: [{ boat_class_id: await boatClass("RIBs"), count: 0, chartered: Number(n) }] },
+        JULY_13,
+      );
+    }
+  },
+);
+Step("the offering pays {money} for boat charters", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("boatCharters")))).toBe(cents(money));
+});
+Step("the two offerings pay {money} for boat charters between them", async (_, money: string) => {
+  const charters = await p.account("boatCharters");
+  const paid = (o: Item) => p.total(onOffering(o["key"] as string, charters));
+  expect(paid(p.offerings[0]!) + paid(p.offerings[1]!)).toBe(cents(money));
+});
 
 // What a block's staff and boats can safely take.
 Step(
@@ -1214,6 +1269,33 @@ Step("they change the offering's price to {money} a sailor in the new Financial 
 });
 Step("{string} still has the offering at {money} a sailor", async (_, _name: string, money: string) => {
   expect(await one("plan_offerings", offering!["id"], "price_cents")).toEqual({ price_cents: cents(money) });
+});
+
+// An offering's term, one of the Operations Plan's.
+let term: string | undefined;
+onEachScenario(() => {
+  term = undefined;
+});
+async function draftWithTerm(name: string, inTerm: boolean): Promise<void> {
+  term = await p.operationsRow("plan_terms", { name, starts_on: `${PLAN_YEAR}-06-01`, ends_on: `${PLAN_YEAR}-08-31` });
+  offering = (await programWithOffering(100_000, inTerm ? { term_key: term } : {})).offering;
+  financialPlan = await p.draftSet();
+}
+Step("a draft Financial Plan whose Operations Plan has a term named {string}, with an offering", (_, name: string) =>
+  draftWithTerm(name, false),
+);
+Step("a draft Financial Plan whose offering is in a term", () => draftWithTerm(`Summer ${PLAN_YEAR}`, true));
+Step("they put the offering in {string}", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: term }));
+});
+Step("they take the offering out of its term", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: null }));
+});
+Step("the offering is in {string}", async () => {
+  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: term });
+});
+Step("the offering is in no term", async () => {
+  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: null });
 });
 
 // An offering's activities, in a Financial Plan started from it.

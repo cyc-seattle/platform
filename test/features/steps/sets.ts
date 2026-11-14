@@ -105,7 +105,6 @@ const sets: Record<string, Target[]> = {
     "qualifications",
     "qualification_covers",
     "boat_classes",
-    "resource_kinds",
     "programs",
     "catalog_offerings",
   ),
@@ -114,8 +113,8 @@ const sets: Record<string, Target[]> = {
   "revenue accounts": plain("accounts"),
   // The directory, as directory.feature defines it.
   "the directory": plain("organizations", "venues"),
-  // CSC's boats, as boats.feature defines them.
-  "the boat list": plain("boats"),
+  // CSC's boats and equipment, as assets.feature defines them.
+  "the asset list": plain("assets", "boats"),
   plans: [...plain("plans", "version_sets", "version_set_members"), ...versions("draft", "saved")],
   groups: plain("groups", "group_members", "group_policies"),
   // Everything website.feature calls the website, with the lists that link its parts.

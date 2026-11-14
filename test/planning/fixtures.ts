@@ -2,11 +2,12 @@
 import type {
   Account,
   CostLine,
+  DateString,
   EngineOutput,
+  Id,
   PlanActivity,
   PlanActivityBlock,
   PlanBlockBoats,
-  PlanBlockResource,
   PlanBlockStaff,
   PlanBudgetLine,
   PlanData,
@@ -75,6 +76,30 @@ export const A = {
   cardFees: "acct-card-fees",
 } as const;
 
+/**
+ * `count` boats of a class on the asset list, sailboats unless `kind` says powerboat, with the dates
+ * the organization got and disposed of them, as the rows `PlanData` takes.
+ */
+export function assetList(
+  boats: {
+    count: number;
+    boat_class_id: Id;
+    kind?: "sailboat" | "powerboat";
+    acquired_on?: DateString;
+    disposed_on?: DateString;
+  }[],
+): Pick<PlanData, "assets" | "boats"> {
+  const list: Pick<PlanData, "assets" | "boats"> = { assets: [], boats: [] };
+  for (const { count, boat_class_id, kind = "sailboat", acquired_on = null, disposed_on = null } of boats) {
+    for (let i = 0; i < count; i++) {
+      const id = `boat-${list.assets.length + 1}`;
+      list.assets.push({ id, kind, name: null, acquired_on, disposed_on });
+      list.boats.push({ id, asset_id: id, boat_class_id });
+    }
+  }
+  return list;
+}
+
 export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
   return {
     fiscal_year: 2027,
@@ -91,7 +116,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
         ["cogs", A.cogs],
       ] as const
     ).map(([cost_type, account_id]) => ({ id: `cost-${cost_type}`, organization_id: "org", cost_type, account_id })),
-    rib_resource_kind_id: "kind-rib",
     products: [],
     program_areas: [],
     accounts: [
@@ -116,7 +140,8 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     qualifications: [],
     qualification_covers: [],
     boat_classes: [],
-    resource_kinds: [{ id: "kind-rib", name: "RIB" }],
+    assets: [],
+    boats: [],
     plans: [],
     plan_versions: [],
     plan_programs: [],
@@ -125,7 +150,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     plan_activities: [],
     plan_activity_blocks: [],
     plan_block_staff: [],
-    plan_block_resources: [],
     plan_block_boats: [],
     plan_labor_lines: [],
     plan_budget_lines: [],
@@ -134,7 +158,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     plan_staff_levels: [],
     plan_salaried_positions: [],
     plan_salaried_bookings: [],
-    plan_resources: [],
     plan_boat_rates: [],
     plan_pools: [],
     plan_bonus_owners: [],
@@ -176,7 +199,7 @@ export function offering(productId: string, overrides: Partial<PlanOffering> = {
     ...versioned("offering"),
     product_id: productId,
     name: "An offering",
-    season_term: null,
+    term_key: null,
     starts_on: "2027-06-01",
     ends_on: "2027-06-30",
     capacity: null,
@@ -257,10 +280,9 @@ export function program(productId: string, overrides: Partial<PlanProgram> = {})
   };
 }
 
-/** What a block is given: staff, resources such as RIBs, and boats. */
+/** What a block is given: staff, and boats of each class, such as RIBs. */
 export interface Given {
   staff?: Partial<PlanBlockStaff>[];
-  resources?: Partial<PlanBlockResource>[];
   boats?: Partial<PlanBlockBoats>[];
 }
 
@@ -272,7 +294,7 @@ export function block(
   activities: PlanActivity[],
   given: Given = {},
   overrides: Partial<PlanActivityBlock> = {},
-): Pick<PlanData, "plan_activity_blocks" | "plan_block_staff" | "plan_block_resources" | "plan_block_boats"> {
+): Pick<PlanData, "plan_activity_blocks" | "plan_block_staff" | "plan_block_boats"> {
   const row: PlanActivityBlock = {
     ...versioned("block"),
     date: activities[0]?.date ?? "2027-06-01",
@@ -291,14 +313,6 @@ export function block(
       pay: null,
       ...s,
     })),
-    plan_block_resources: (given.resources ?? []).map((r) => ({
-      ...versioned("use"),
-      block_id: row.id,
-      resource_key: "",
-      quantity: 1,
-      hours: null,
-      ...r,
-    })),
     plan_block_boats: (given.boats ?? []).map((b) => ({
       ...versioned("boats"),
       block_id: row.id,
@@ -313,11 +327,10 @@ export function block(
 /** Several blocks' rows, merged. */
 export function blocks(
   ...each: ReturnType<typeof block>[]
-): Pick<PlanData, "plan_activity_blocks" | "plan_block_staff" | "plan_block_resources" | "plan_block_boats"> {
+): Pick<PlanData, "plan_activity_blocks" | "plan_block_staff" | "plan_block_boats"> {
   return {
     plan_activity_blocks: each.flatMap((b) => b.plan_activity_blocks),
     plan_block_staff: each.flatMap((b) => b.plan_block_staff),
-    plan_block_resources: each.flatMap((b) => b.plan_block_resources),
     plan_block_boats: each.flatMap((b) => b.plan_block_boats),
   };
 }

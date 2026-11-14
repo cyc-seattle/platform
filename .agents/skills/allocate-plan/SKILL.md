@@ -1,6 +1,6 @@
 ---
 name: allocate-plan
-description: Fill in a Financial Plan's blocks with their staff, RIBs and boats, in a new draft, following the program settings and the planner's rules, then fix what the engine warns about. Use when a planner asks to allocate, staff, or re-allocate a plan or part of one, such as "allocate the 2027 plan" or "re-allocate Summer weeks 3 to 5".
+description: Fill in a Financial Plan's blocks with their staff and boats, coach boats included, in a new draft, following the program settings and the planner's rules, then fix what the engine warns about. Use when a planner asks to allocate, staff, or re-allocate a plan or part of one, such as "allocate the 2027 plan" or "re-allocate Summer weeks 3 to 5".
 ---
 
 # Allocate a Financial Plan
@@ -36,10 +36,13 @@ From the Operations Plan's copy:
 
 - `plan_staff_levels`: each level's `key`, name and pay.
 - `plan_salaried_positions`: each position's `key`, name and `hourly_coaching_rate_cents`.
-- `plan_resources`: each resource's `key`, name, kind and `quantity`. The resource kind in
-  `plan_rates.rib_resource_kind_id` is RIBs.
-- `plan_boat_rates`: each boat class's `quantity`, how many the organization has. Read each class's
-  `sailors_per_boat` from `boat_classes`.
+- `plan_boat_rates`: which boat classes have a charter rate, for boats the organization doesn't have.
+- Each boat class's `max_capacity` from `boat_classes`. A coach boat's class, such as RIB, takes 0.
+
+From the catalog's asset list, how many boats of each class, sail or power, the organization has on
+each day: the `boats` of that class whose asset counts from its `acquired_on`, or from the start when
+it's empty, until its `disposed_on`.
+
 - `plan_closed_dates`.
 - The copy's own `rules` (`plan_versions.rules`): rules for the whole organization.
 
@@ -50,7 +53,7 @@ From each Program Plan's copy:
 - `plan_offerings` with their most sailors (`capacity`, or the expected enrollment when it's empty)
   and their expected enrollment (`target_enrollment`, or `capacity × fill_rate`),
   `plan_activities` with their dates and times, `plan_trips`, and any blocks already there:
-  `plan_activity_blocks`, `plan_block_staff`, `plan_block_resources`, `plan_block_boats`.
+  `plan_activity_blocks`, `plan_block_staff`, `plan_block_boats`.
 
 Then read the draft's warnings: `plan_result_warnings` filtered on the draft's `version_set_id`.
 
@@ -79,18 +82,19 @@ For each date, in the part of the plan you're allocating:
    `staff_level_key` with a `count`, or one salaried position's `position_key` with `count` 1 and
    `pay` `salary` or `hourly`. A rule says who coaches what; a salaried position can't be on two
    blocks at once.
-3. **Give it RIBs and other equipment**, in `plan_block_resources`, by the rules, such as one RIB
-   for every two coaches. Leave `hours` empty unless a rule says otherwise.
-4. **Give it boats**, in `plan_block_boats`: the organization's boats of each class in `count`, and
-   the boats sailors bring in `sailor_owned`, such as "about a third bring their own Optis". Enough
-   seats means Σ (boats × the class's `sailors_per_boat`) is at least the block's sailors. A block
-   whose activities don't use boats needs none.
+3. **Give it coach boats**, in `plan_block_boats` with their class, such as RIB, by the rules, such
+   as one coach boat for every two coaches.
+4. **Give it boats**, in `plan_block_boats`: the organization's boats of each class in `count`, the
+   ones it charters in `chartered`, and the boats sailors bring in `sailor_owned`, such as "about a
+   third bring their own Optis". Charter only when the rules say so, or the organization has too
+   few that day. Enough seats means Σ (boats × the class's `max_capacity`) is at least the block's
+   sailors. A block whose activities don't use boats needs none.
 
 Each row you write needs a new `id` and `key`, and the copy's `version_id`. A key field such as
 `staff_level_key` takes the `key` of the row in the same Financial Plan's Operations Plan copy, not
 its `id`. Set each activity's `block_id` to its block.
 
-To rewrite a block, delete its `plan_block_staff`, `plan_block_resources` and `plan_block_boats`
+To rewrite a block, delete its `plan_block_staff` and `plan_block_boats`
 rows and clear its activities' `block_id` before you delete the block itself: the database refuses
 to delete a row another one still points at. When you re-allocate part of a plan, rewrite only the
 blocks in that part.

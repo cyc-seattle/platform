@@ -1,4 +1,3 @@
-import { fiscalYearDates, within } from "./dates.ts";
 import type {
   Account,
   AccountFunction,
@@ -19,7 +18,6 @@ import type {
 /** The warnings about what the blocks are given, or when they run. The rest are about the data. */
 const ALLOCATION_WARNINGS = new Set([
   "over_inventory_boats",
-  "over_inventory_resource",
   "over_capacity",
   "unallocated_activity",
   "closed_date",
@@ -31,9 +29,9 @@ const COST_TYPES: Record<CostType, string> = {
   coach_wages: "coach wages",
   salaries: "salaries",
   payroll_tax: "payroll tax",
-  ribs: "RIBs",
+  ribs: "coach boats",
   boat_maintenance: "boat maintenance",
-  resources: "resources",
+  resources: "boat charters",
   travel: "travel",
   cogs: "cost of goods sold",
 };
@@ -59,7 +57,7 @@ export interface Entry {
   line_name: string;
   explanation: string;
   stage: Stage;
-  /** How much of the amount MTDC counts: 0 when excluded, a fraction for a mix of rented and owned RIBs. */
+  /** How much of the amount MTDC counts: 1, or 0 when it leaves MTDC, such as a boat charter. */
   mtdc_share: number;
   /** Whether it's wages, which payroll tax is charged on. */
   wages: boolean;
@@ -70,8 +68,6 @@ export type EntryInput = Omit<Entry, "stage" | "mtdc_share" | "wages"> &
 
 /** Lookups over the input, and the entries recorded so far, shared by every step. */
 export class Context {
-  /** The plan year's first and last days. */
-  readonly fy: { from: DateString; to: DateString };
   readonly entries: Entry[] = [];
   readonly warnings: EngineWarning[] = [];
 
@@ -95,7 +91,6 @@ export class Context {
 
   constructor(data: PlanData) {
     this.data = data;
-    this.fy = fiscalYearDates(data.fiscal_year, data.organization.fiscal_year_start_month);
     this.accounts = new Map(data.accounts.map((a) => [a.id, a]));
     this.products = new Map(data.products.map((p) => [p.id, p]));
     this.areas = new Map(data.program_areas.map((a) => [a.id, a]));
@@ -193,15 +188,5 @@ export class Context {
       );
     }
     return area.revenue_account_id;
-  }
-
-  /** Whether the offering counts in the plan year: it does, whole, in the year it starts. */
-  inYear(offering: PlanOffering): boolean {
-    return within(offering.starts_on, this.fy.from, this.fy.to);
-  }
-
-  /** The plan year's offerings. */
-  fyOfferings(): PlanOffering[] {
-    return this.data.plan_offerings.filter((o) => this.inYear(o));
   }
 }

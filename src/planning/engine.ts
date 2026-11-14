@@ -80,7 +80,6 @@ function sliceOf(data: PlanData, offering: PlanOffering): PlanData {
     plan_trips: data.plan_trips.filter((t) => t.offering_id === offering.id),
     plan_activity_blocks: data.plan_activity_blocks.filter((b) => blockIds.has(b.id)),
     plan_block_staff: inBlocks(data.plan_block_staff),
-    plan_block_resources: inBlocks(data.plan_block_resources),
     plan_block_boats: inBlocks(data.plan_block_boats),
     plan_labor_lines: onOffering(data.plan_labor_lines),
     plan_budget_lines: onOffering(data.plan_budget_lines),
@@ -112,7 +111,7 @@ function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
   booker.flush();
   bookPayrollTax(ctx);
 
-  const mtdcByOffering = new Map(ctx.fyOfferings().map((o) => [o.key, mtdc(ctx, o.key)]));
+  const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.key, mtdc(ctx, o.key)]));
   allocatePools(ctx);
   const bonuses = bookBonuses(ctx);
 
@@ -135,7 +134,7 @@ function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
  * products in no area. The catalog stays live, so the database can't check these.
  */
 function checkAreas(ctx: Context): void {
-  for (const offering of ctx.fyOfferings()) {
+  for (const offering of ctx.data.plan_offerings) {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) continue;
     if (product.kind === "program" && product.program_area_id == null) {
@@ -302,7 +301,7 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
     };
   };
 
-  const offerings = ctx.fyOfferings().sort((a, b) => a.key.localeCompare(b.key));
+  const offerings = [...ctx.data.plan_offerings].sort((a, b) => a.key.localeCompare(b.key));
   const offeringPnl = offerings.map((o) => {
     const enrollment = ctx.enrollment.get(o.id) ?? 0;
     const days = ctx.days.get(o.key) ?? 0;
