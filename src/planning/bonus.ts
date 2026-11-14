@@ -1,38 +1,39 @@
 import type { Context } from "./context.ts";
 import { revenue } from "./measures.ts";
-import { SEASONS, seasonOf, type Season } from "./seasons.ts";
-import type { BonusSummary, Id, PlanBonusOwner } from "./types.ts";
+import { compareTerms, type OfferingTerms } from "./terms.ts";
+import type { BonusSummary, Id, PlanBonusOwner, PlanTerm } from "./types.ts";
 
 interface Base {
+  term: PlanTerm | null;
   net: number;
   offeringKeys: Id[];
 }
 
 /**
- * Records each bonus owner's `bonus_rate` × its products' net in each season, above zero, after the
- * pools or before them. A season's loss doesn't lower another season's bonus. Offerings in no season,
- * and anything not on an offering, make one more base, for the year. Every base is worked out before
- * any bonus is booked, so one bonus never counts in another's base. Each bonus is divided among that
+ * Records each bonus owner's `bonus_rate` × its products' net in each term, above zero, after the
+ * pools or before them. A term's loss doesn't lower another term's bonus. Offerings in no term, and
+ * anything not on an offering, make one more base, for the year. Every base is worked out before any
+ * bonus is booked, so one bonus never counts in another's base. Each bonus is divided among that
  * base's offerings by revenue, with the year's payroll tax on it, and neither is counted in MTDC.
- * Returns each bonus, by owner and season.
+ * Returns each bonus, by owner and term.
  */
-export function bookBonuses(ctx: Context): BonusSummary[] {
-  const bonuses = ctx.data.plan_bonus_owners.map((owner) => ({ owner, bases: basesOf(ctx, owner) }));
+export function bookBonuses(ctx: Context, terms: OfferingTerms): BonusSummary[] {
+  const bonuses = ctx.data.plan_bonus_owners.map((owner) => ({ owner, bases: basesOf(ctx, owner, terms) }));
   const taxRate = ctx.rates?.payroll_tax_rate ?? 0;
   const taxAccount = taxRate > 0 && bonuses.length > 0 ? ctx.costAccount("payroll_tax") : undefined;
   const summaries: BonusSummary[] = [];
 
   for (const { owner, bases } of bonuses) {
     const area = areaOf(ctx, owner);
-    for (const [season, base] of bases) {
+    for (const base of bases) {
       const bonus = owner.bonus_rate * Math.max(0, base.net);
-      const booked = bonus === 0 ? 0 : bookBonus(ctx, owner, season, base, bonus, taxRate, taxAccount);
+      const booked = bonus === 0 ? 0 : bookBonus(ctx, owner, base, bonus, taxRate, taxAccount);
       summaries.push({
         bonus_owner_key: owner.key,
         role_name: owner.role_name,
         position_key: owner.position_key ?? null,
         program_area_id: area,
-        season,
+        term_key: base.term?.key ?? null,
         bonus_rate: owner.bonus_rate,
         net_cents: Math.round(base.net),
         bonus_cents: Math.round(booked),
@@ -42,11 +43,10 @@ export function bookBonuses(ctx: Context): BonusSummary[] {
   return summaries;
 }
 
-/** Books one season's bonus on its offerings, by revenue. Returns what it booked. */
+/** Books one term's bonus on its offerings, by revenue. Returns what it booked. */
 function bookBonus(
   ctx: Context,
   owner: PlanBonusOwner,
-  season: Season | null,
   base: Base,
   bonus: number,
   taxRate: number,
@@ -85,7 +85,7 @@ function bookBonus(
       amount,
       line_key: `bonus:${owner.key}`,
       line_name: `Bonus: ${owner.role_name}`,
-      explanation: `${owner.role_name}: ${owner.bonus_rate} × net of its products ${season === null ? "in no season" : `in the ${season}`}`,
+      explanation: `${owner.role_name}: ${owner.bonus_rate} × net of its products ${base.term === null ? "in no term" : `in ${base.term.name}`}`,
       stage: "bonus",
       mtdc_share: 0,
     });
@@ -117,10 +117,10 @@ function areaOf(ctx: Context, owner: PlanBonusOwner): Id | null {
 }
 
 /**
- * The owner's products' net in each season they run in, with their offerings, in `SEASONS` order and
- * then no season. An area plan's bonus counts only that area's products, and warns about any other.
+ * The owner's products' net in each term they have an offering in, with those offerings, in term
+ * order and then no term. An area plan's bonus counts only that area's products, and warns about any other.
  */
-function basesOf(ctx: Context, owner: PlanBonusOwner): Map<Season | null, Base> {
+function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Base[] {
   const plan = ctx.planOfVersion.get(owner.version_id);
   const products = new Set<Id>();
   for (const row of ctx.data.plan_bonus_owner_products) {
@@ -137,31 +137,30 @@ function basesOf(ctx: Context, owner: PlanBonusOwner): Map<Season | null, Base> 
     products.add(row.product_id);
   }
 
-  const bases = new Map<Season | null, Base>();
-  const baseFor = (season: Season | null): Base => {
-    const base = bases.get(season) ?? { net: 0, offeringKeys: [] };
-    bases.set(season, base);
+  const bases = new Map<Id | null, Base>();
+  const baseFor = (term: PlanTerm | null): Base => {
+    const base = bases.get(term?.key ?? null) ?? { term, net: 0, offeringKeys: [] };
+    bases.set(term?.key ?? null, base);
     return base;
   };
-  const seasons = new Map<Id, Season | null>();
+  const owned = new Set<Id>();
   for (const o of ctx.fyOfferings()) {
     if (!products.has(o.product_id)) continue;
-    seasons.set(o.key, seasonOf(o));
-    baseFor(seasonOf(o)).offeringKeys.push(o.key);
+    owned.add(o.key);
+    baseFor(terms.get(o.key) ?? null).offeringKeys.push(o.key);
   }
   const afterPools = (owner.basis ?? "after_shared_costs") === "after_shared_costs";
   for (const e of ctx.entries) {
     if (e.stage === "bonus" || (!afterPools && e.stage === "pool") || e.cost_center_key == null) continue;
-    let season: Season | null;
-    if (e.cost_center_type === "offering" && seasons.has(e.cost_center_key)) {
-      season = seasons.get(e.cost_center_key) ?? null;
+    let term: PlanTerm | null;
+    if (e.cost_center_type === "offering" && owned.has(e.cost_center_key)) {
+      term = terms.get(e.cost_center_key) ?? null;
     } else if (e.cost_center_type === "product" && products.has(e.cost_center_key)) {
-      season = null;
+      term = null;
     } else continue;
     const type = ctx.accountType(e.account_id);
-    if (type === "revenue") baseFor(season).net += e.amount;
-    else if (type === "expense") baseFor(season).net -= e.amount;
+    if (type === "revenue") baseFor(term).net += e.amount;
+    else if (type === "expense") baseFor(term).net -= e.amount;
   }
-  const order = [...SEASONS, null];
-  return new Map([...bases].sort(([a], [b]) => order.indexOf(a) - order.indexOf(b)));
+  return [...bases.values()].sort((a, b) => compareTerms(a.term, b.term));
 }

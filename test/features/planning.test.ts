@@ -92,33 +92,65 @@ Step("its costs include the {money} of storage", async (_, money: string) => {
   const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
   expect(pnl?.by_account.find((a) => a.account_id === storage)?.amount_cents).toBe(cents(money));
 });
-// A program area's P&L for each season. The features say "no season" for an offering with none.
-const seasonIn = (text: string) => (text === "no season" ? null : text);
-const areaSeason = (season: string | null) =>
-  p.out.pnl.find((x) => x.level === "program_area_season" && x.key === p.areas[0] && x.season === season);
-async function seasonOffering(season: string | null, price: number, costs = 0): Promise<Item> {
-  const area = p.areas[0] ?? (await p.area());
-  return p.offering(p.areaVersion(area), await p.product("program", area), price, 1, costs, { season_term: season });
+// A program area's P&L for each term, one of the Operations Plan's, made the first time a step names it. The
+// features say "no term" for an offering in none.
+let terms = new Map<string, string>();
+onEachScenario(() => {
+  terms = new Map();
+});
+/** Summer comes before fall, so the terms are in the order the features list them. */
+const TERM_DATES: Record<string, [string, string]> = { Summer: ["06-01", "08-31"], Fall: ["09-01", "11-30"] };
+async function termKey(name: string | null): Promise<string | null> {
+  if (name === null || name === "no term") return null;
+  if (!terms.has(name)) {
+    const [starts, ends] = TERM_DATES[name.split(" ")[0]!] ?? ["01-01", "12-31"];
+    const key = await p.operationsRow("plan_terms", {
+      name,
+      starts_on: `${PLAN_YEAR}-${starts}`,
+      ends_on: `${PLAN_YEAR}-${ends}`,
+    });
+    terms.set(name, key);
+  }
+  return terms.get(name)!;
 }
-Step("a program area with a summer offering that takes in {money}", (_, money: string) =>
-  seasonOffering("summer", cents(money)),
+const termNamed = (key: string | null | undefined) =>
+  key == null ? "no term" : ([...terms].find(([, k]) => k === key)?.[0] ?? key);
+const areaTerm = async (name: string) => {
+  const key = await termKey(name);
+  return p.out.pnl.find((x) => x.level === "program_area_term" && x.key === p.areas[0] && x.term_key === key);
+};
+async function termOffering(term: string | null, price: number, costs = 0): Promise<Item> {
+  const area = p.areas[0] ?? (await p.area());
+  const extra = { term_key: await termKey(term) };
+  return p.offering(p.areaVersion(area), await p.product("program", area), price, 1, costs, extra);
+}
+Step("a program area with an offering in {string} that takes in {money}", (_, term: string, money: string) =>
+  termOffering(term, cents(money)),
 );
-Step("a fall offering that takes in {money}", (_, money: string) => seasonOffering("fall", cents(money)));
-Step("an offering in no season that takes in {money}", (_, money: string) => seasonOffering(null, cents(money)));
-Step("the program area's P&L for each season is:", (_, table: { season: string; "takes in": string }[]) => {
-  const rows = p.out.pnl.filter((x) => x.level === "program_area_season" && x.key === p.areas[0]);
-  expect(rows.map((r) => ({ season: r.season ?? "no season", "takes in": r.revenue_cents }))).toEqual(
-    table.map((r) => ({ season: r.season, "takes in": cents(r["takes in"]) })),
+Step("an offering in {string} that takes in {money}", (_, term: string, money: string) =>
+  termOffering(term, cents(money)),
+);
+Step("an offering in no term that takes in {money}", (_, money: string) => termOffering(null, cents(money)));
+Step("the program area's P&L for each term is:", (_, table: { term: string; "takes in": string }[]) => {
+  const rows = p.out.pnl.filter((x) => x.level === "program_area_term" && x.key === p.areas[0]);
+  expect(rows.map((r) => ({ term: termNamed(r.term_key), "takes in": r.revenue_cents }))).toEqual(
+    table.map((r) => ({ term: r.term, "takes in": cents(r["takes in"]) })),
   );
 });
-Step("a program area with a summer offering and a fall offering with the same direct costs", async () => {
-  await seasonOffering("summer", 0, 100_000);
-  await seasonOffering("fall", 0, 100_000);
-});
-Step("the program area's {word} P&L includes {money} of the office costs", async (_, season: string, money: string) => {
-  const office = await p.account("office");
-  expect(areaSeason(season)?.by_account.find((a) => a.account_id === office)?.amount_cents).toBe(cents(money));
-});
+Step(
+  "a program area with an offering in {string} and one in {string}, with the same direct costs",
+  async (_, first: string, second: string) => {
+    await termOffering(first, 0, 100_000);
+    await termOffering(second, 0, 100_000);
+  },
+);
+Step(
+  "the program area's P&L for {string} includes {money} of the office costs",
+  async (_, term: string, money: string) => {
+    const office = await p.account("office");
+    expect((await areaTerm(term))?.by_account.find((a) => a.account_id === office)?.amount_cents).toBe(cents(money));
+  },
+);
 
 Step("a program area with two offerings, the first with twice the direct costs of the second", () =>
   twoOfferings(10_000, [200_000, 100_000]),
@@ -321,33 +353,41 @@ Step("the other area's program doesn't count toward the bonus", () => {
   expect(bonusTotal()).toBe(0);
 });
 
-// Bonuses by season.
-const byNet = async (season: string | null, net: number) =>
-  net < 0 ? bonusProgram(0, -net, { season_term: season }) : bonusProgram(net, 0, { season_term: season });
+// Bonuses by term.
+const byNet = async (term: string | null, net: number) => {
+  const extra = { term_key: await termKey(term) };
+  return net < 0 ? bonusProgram(0, -net, extra) : bonusProgram(net, 0, extra);
+};
 Step(
-  "its programs make {money} in the summer and lose {money} in the fall",
-  async (_, summer: string, fall: string) => {
-    await byNet("summer", cents(summer));
-    await byNet("fall", -cents(fall));
+  "its programs make {money} in {string} and lose {money} in {string}",
+  async (_, made: string, first: string, lost: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, -cents(lost));
   },
 );
-Step("its programs make {money} in the summer and {money} in no season", async (_, summer: string, none: string) => {
-  await byNet("summer", cents(summer));
-  await byNet(null, cents(none));
-});
-Step("its programs make {money} in the summer and {money} in the fall", async (_, summer: string, fall: string) => {
-  await byNet("summer", cents(summer));
-  await byNet("fall", cents(fall));
-});
-Step("the director's bonus for each season is:", (_, table: { season: string; net: string; bonus: string }[]) => {
+Step(
+  "its programs make {money} in {string} and {money} in no term",
+  async (_, made: string, term: string, none: string) => {
+    await byNet(term, cents(made));
+    await byNet(null, cents(none));
+  },
+);
+Step(
+  "its programs make {money} in {string} and {money} in {string}",
+  async (_, made: string, first: string, more: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, cents(more));
+  },
+);
+Step("the director's bonus for each term is:", (_, table: { term: string; net: string; bonus: string }[]) => {
   const mine = p.out.bonuses.filter((b) => b.program_area_id === earner!.area);
-  expect(mine.map((b) => ({ season: b.season, net: b.net_cents, bonus: b.bonus_cents }))).toEqual(
-    table.map((r) => ({ season: seasonIn(r.season), net: cents(r.net), bonus: cents(r.bonus) })),
+  expect(mine.map((b) => ({ term: termNamed(b.term_key), net: b.net_cents, bonus: b.bonus_cents }))).toEqual(
+    table.map((r) => ({ term: r.term, net: cents(r.net), bonus: cents(r.bonus) })),
   );
 });
-Step("the program area's {word} P&L includes {money} of bonus", async (_, season: string, money: string) => {
+Step("the program area's P&L for {string} includes {money} of bonus", async (_, term: string, money: string) => {
   const bonus = await p.account("bonus");
-  expect(areaSeason(season)?.by_account.find((a) => a.account_id === bonus)?.amount_cents).toBe(cents(money));
+  expect((await areaTerm(term))?.by_account.find((a) => a.account_id === bonus)?.amount_cents).toBe(cents(money));
 });
 
 const COUNTED: Record<string, Row> = {
@@ -1328,28 +1368,30 @@ Step("the Financial Plan's P&L shows that the offering takes in {money}", async 
   await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
 });
 Step(
-  "a draft Financial Plan that pays a director {percent} of a summer offering that takes in {money}",
-  async (_, percent: string, money: string) => {
+  "a draft Financial Plan that pays a director {percent} of an offering in {string} that takes in {money}",
+  async (_, percent: string, term: string, money: string) => {
     await directorWithBonus(share(percent));
-    offering = await bonusProgram(cents(money), 0, { season_term: "summer" });
+    offering = await bonusProgram(cents(money), 0, { term_key: await termKey(term) });
     financialPlan = await p.draftSet();
   },
 );
 Step(
-  "the Financial Plan's P&L shows that the program area takes in {money} in the summer",
-  async (_, money: string) => {
+  "the Financial Plan's P&L shows that the program area takes in {money} in {string}",
+  async (_, money: string, term: string) => {
     const { pnl } = await financialPlanResults(financialPlan!);
-    const summer = pnl.find(
-      (r) => r["level"] === "program_area_season" && r["subject_key"] === earner!.area && r["season"] === "summer",
+    const row = pnl.find(
+      (r) => r["level"] === "program_area_term" && r["subject_key"] === earner!.area && r["term_name"] === term,
     );
-    expect(Number(summer?.["revenue_cents"])).toBe(cents(money));
+    expect(Number(row?.["revenue_cents"])).toBe(cents(money));
   },
 );
-Step("the Financial Plan's P&L shows that the director's summer bonus is {money}", async (_, money: string) => {
-  const { bonuses } = await financialPlanResults(financialPlan!);
-  const summer = bonuses.find((r) => r["season"] === "summer");
-  expect(Number(summer?.["bonus_cents"])).toBe(cents(money));
-});
+Step(
+  "the Financial Plan's P&L shows that the director's bonus for {string} is {money}",
+  async (_, term: string, money: string) => {
+    const { bonuses } = await financialPlanResults(financialPlan!);
+    expect(Number(bonuses.find((r) => r["term_name"] === term)?.["bonus_cents"])).toBe(cents(money));
+  },
+);
 Step(
   "a saved Financial Plan named {string} whose offering pays {money} of office costs",
   async (_, name: string, money: string) => {

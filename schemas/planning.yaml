@@ -636,12 +636,12 @@ collections:
       collapse: open
       collection: plan_result_bonuses
       color: null
-      display_template: "{{name}} · {{season}}"
+      display_template: "{{name}} · {{term_name}}"
       group: Planning
       hidden: false
       icon: savings
       item_duplication_fields: null
-      note: Each bonus in a Financial Plan, for each season, and for the offerings in no season on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: Each bonus in a Financial Plan, for each term, and for the offerings in no term on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -9162,8 +9162,8 @@ fields:
             value: product
           - text: Program area
             value: program_area
-          - text: Program area, by season
-            value: program_area_season
+          - text: Program area, by term
+            value: program_area_term
       field: level
       group: null
       hidden: false
@@ -9177,8 +9177,8 @@ fields:
             value: product
           - text: Program area
             value: program_area
-          - text: Program area, by season
-            value: program_area_season
+          - text: Program area, by term
+            value: program_area_term
       readonly: true
       required: true
       searchable: true
@@ -9191,8 +9191,8 @@ fields:
             - offering
             - product
             - program_area
-            - program_area_season
-      validation_message: "Must be one of: offering, product, program_area, program_area_season."
+            - program_area_term
+      validation_message: "Must be one of: offering, product, program_area, program_area_term."
       width: full
     schema:
       name: level
@@ -9670,63 +9670,116 @@ fields:
       foreign_key_table: version_set_members
       foreign_key_column: id
   - collection: plan_result_pnl
-    field: season
-    type: string
+    field: term_key
+    type: uuid
     meta:
       collection: plan_result_pnl
       conditions: null
-      display: labels
-      display_options:
-        choices:
-          - text: Winter
-            value: winter
-          - text: Spring
-            value: spring
-          - text: Summer
-            value: summer
-          - text: Fall
-            value: fall
-      field: season
+      display: null
+      display_options: null
+      field: term_key
       group: null
-      hidden: false
-      interface: select-dropdown
-      note: For a program area by season, the season. Empty for its offerings in no season, such as Adult Learn to Sail.
-      options:
-        choices:
-          - text: Winter
-            value: winter
-          - text: Spring
-            value: spring
-          - text: Summer
-            value: summer
-          - text: Fall
-            value: fall
+      hidden: true
+      interface: input
+      note: null
+      options: null
       readonly: true
       required: false
       searchable: true
       sort: 16
       special: null
-      translations:
-        - language: en-US
-          translation: Season
-      validation:
-        _or:
-          - season:
-              _null: true
-          - season:
-              _in:
-                - winter
-                - spring
-                - summer
-                - fall
-      validation_message: "Must be one of: winter, spring, summer, fall, or empty."
+      translations: null
+      validation: null
+      validation_message: null
       width: full
     schema:
-      name: season
+      name: term_key
+      table: plan_result_pnl
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: term_name
+    type: string
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: term_name
+      group: null
+      hidden: false
+      interface: input
+      note: For a program area by term, the term. Empty for its offerings in no term, such as Adult Learn to Sail.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 17
+      special: null
+      translations:
+        - language: en-US
+          translation: Term
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: term_name
       table: plan_result_pnl
       data_type: character varying
       default_value: null
       max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_pnl
+    field: term_starts_on
+    type: date
+    meta:
+      collection: plan_result_pnl
+      conditions: null
+      display: null
+      display_options: null
+      field: term_starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The term's first day, which puts the terms in order.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 18
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: term_starts_on
+      table: plan_result_pnl
+      data_type: date
+      default_value: null
+      max_length: null
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -9820,63 +9873,116 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_bonuses
-    field: season
-    type: string
+    field: term_key
+    type: uuid
     meta:
       collection: plan_result_bonuses
       conditions: null
-      display: labels
-      display_options:
-        choices:
-          - text: Winter
-            value: winter
-          - text: Spring
-            value: spring
-          - text: Summer
-            value: summer
-          - text: Fall
-            value: fall
-      field: season
+      display: null
+      display_options: null
+      field: term_key
       group: null
-      hidden: false
-      interface: select-dropdown
-      note: The season it's paid on. Empty for the offerings in no season, such as Adult Learn to Sail, whose bonus is worked out on the year.
-      options:
-        choices:
-          - text: Winter
-            value: winter
-          - text: Spring
-            value: spring
-          - text: Summer
-            value: summer
-          - text: Fall
-            value: fall
+      hidden: true
+      interface: input
+      note: null
+      options: null
       readonly: true
       required: false
       searchable: true
       sort: 3
       special: null
-      translations:
-        - language: en-US
-          translation: Season
-      validation:
-        _or:
-          - season:
-              _null: true
-          - season:
-              _in:
-                - winter
-                - spring
-                - summer
-                - fall
-      validation_message: "Must be one of: winter, spring, summer, fall, or empty."
+      translations: null
+      validation: null
+      validation_message: null
       width: full
     schema:
-      name: season
+      name: term_key
+      table: plan_result_bonuses
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: term_name
+    type: string
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: null
+      display_options: null
+      field: term_name
+      group: null
+      hidden: false
+      interface: input
+      note: The term it's paid on. Empty for the offerings in no term, such as Adult Learn to Sail, whose bonus is worked out on the year.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Term
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: term_name
       table: plan_result_bonuses
       data_type: character varying
       default_value: null
       max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_result_bonuses
+    field: term_starts_on
+    type: date
+    meta:
+      collection: plan_result_bonuses
+      conditions: null
+      display: null
+      display_options: null
+      field: term_starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The term's first day, which puts the terms in order.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: term_starts_on
+      table: plan_result_bonuses
+      data_type: date
+      default_value: null
+      max_length: null
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -9942,7 +10048,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "The net of its products in the season, which the bonus is figured on. In cents: 12500 is $125.00."
+      note: "The net of its products in the term, which the bonus is figured on. In cents: 12500 is $125.00."
       options: null
       readonly: true
       required: true

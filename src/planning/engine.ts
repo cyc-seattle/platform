@@ -6,9 +6,9 @@ import { bookBudgetLines, bookLaborLines, CostCenterBooker } from "./lines.ts";
 import { mtdc } from "./measures.ts";
 import { bookPayrollTax } from "./payroll.ts";
 import { allocatePools } from "./pools.ts";
-import { SEASONS, seasonOf } from "./seasons.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
+import { compareTerms, offeringTerms, type OfferingTerms } from "./terms.ts";
 import { enrollmentOf, round2, Staffing, type DoubleBooked, type SalariedCoaching } from "./staffing.ts";
 import type {
   CostLine,
@@ -29,6 +29,7 @@ export function computePlan(data: PlanData): EngineOutput {
   const ctx = new Context(data);
   for (const o of data.plan_offerings) ctx.enrollment.set(o.id, enrollmentOf(o));
   checkAreas(ctx);
+  const terms = offeringTerms(ctx);
 
   const { activities, coaching, doubleBooked } = new Staffing(ctx).run(scheduleActivities(ctx));
   countDays(ctx, activities);
@@ -44,7 +45,7 @@ export function computePlan(data: PlanData): EngineOutput {
 
   const mtdcByOffering = new Map(ctx.fyOfferings().map((o) => [o.key, mtdc(ctx, o.key)]));
   allocatePools(ctx);
-  const bonuses = bookBonuses(ctx);
+  const bonuses = bookBonuses(ctx, terms);
   const bonusByPosition = new Map<Id, number>();
   for (const b of bonuses) {
     if (b.position_key == null) continue;
@@ -55,7 +56,7 @@ export function computePlan(data: PlanData): EngineOutput {
   const organization = organizationTotals(ctx, lines);
   return {
     lines,
-    pnl: summarize(ctx, lines, mtdcByOffering),
+    pnl: summarize(ctx, lines, mtdcByOffering, terms),
     organization,
     activities,
     positions: summarizePositions(ctx, coaching, charged, bonusByPosition, doubleBooked),
@@ -204,8 +205,8 @@ function sumLines(ctx: Context): CostLine[] {
     .filter((l) => l.amount_cents !== 0);
 }
 
-/** Each plan-year offering's P&L, then each product's, then each program area's, then each area's seasons. */
-function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, number>): Pnl[] {
+/** Each plan-year offering's P&L, then each product's, then each program area's, then each area's terms. */
+function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, number>, terms: OfferingTerms): Pnl[] {
   const pnl = (
     level: Pnl["level"],
     key: Id,
@@ -278,16 +279,15 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
   }
   for (const l of lines)
     if (l.cost_center_type === "program_area" && l.cost_center_key !== null) areaIds.add(l.cost_center_key);
-  const order = [...SEASONS, null];
   const areaPnl: Pnl[] = [];
-  const seasonPnl: Pnl[] = [];
+  const termPnl: Pnl[] = [];
   for (const id of [...areaIds].sort()) {
     const own = offeringPnl.filter((s) => {
       const product = ctx.offeringsByKey.get(s.key)?.product_id;
       return product !== undefined && ctx.products.get(product)?.program_area_id === id;
     });
     const products = new Set(own.map((s) => ctx.offeringsByKey.get(s.key)?.product_id));
-    // Costs left on the area or a product, because it had no offerings to divide them among, are in no season.
+    // Costs left on the area or a product, because it had no offerings to divide them among, are in no term.
     const rollup = (level: Pnl["level"], offerings: Pnl[], leftovers: boolean): Pnl => {
       const keys = new Set(offerings.map((s) => s.key));
       const add = (field: "mtdc_cents" | "enrollment" | "days" | "sailor_days"): number =>
@@ -310,14 +310,15 @@ function summarize(ctx: Context, lines: CostLine[], mtdcByOffering: Map<Id, numb
       );
     };
     areaPnl.push(rollup("program_area", own, true));
-    const seasonOfPnl = (s: Pnl) => seasonOf(ctx.offeringsByKey.get(s.key) ?? { season_term: null });
-    for (const season of order) {
-      const inSeason = own.filter((s) => seasonOfPnl(s) === season);
-      const row = { ...rollup("program_area_season", inSeason, season === null), season };
-      if (inSeason.length > 0 || row.by_account.length > 0) seasonPnl.push(row);
+    const termOf = (s: Pnl) => terms.get(s.key) ?? null;
+    const areaTerms = [...new Map(own.map((s) => [termOf(s)?.key, termOf(s)])).values()].filter((t) => t !== null);
+    for (const term of [...areaTerms.sort(compareTerms), null]) {
+      const inTerm = own.filter((s) => termOf(s)?.key === term?.key);
+      const row = { ...rollup("program_area_term", inTerm, term === null), term_key: term?.key ?? null };
+      if (inTerm.length > 0 || row.by_account.length > 0) termPnl.push(row);
     }
   }
-  return [...offeringPnl, ...productPnl, ...areaPnl, ...seasonPnl];
+  return [...offeringPnl, ...productPnl, ...areaPnl, ...termPnl];
 }
 
 function divide(totals: Totals, by: number): Totals | null {

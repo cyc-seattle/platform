@@ -771,10 +771,17 @@ function resultRows(data, out, operations) {
   const areas = new Map(data.program_areas.map((a) => [a.id, a]));
   const pools = new Map(data.plan_pools.map((p) => [p.key, p]));
   const owners = new Map(data.plan_bonus_owners.map((o) => [o.key, o.version_id]));
+  const terms = new Map((data.plan_terms ?? []).map((t) => [t.key, t]));
+  // A saved plan keeps its terms' names and first days, so its results read without its rows.
+  const termOf = (key) => ({
+    term_key: key ?? null,
+    term_name: terms.get(key)?.name ?? null,
+    term_starts_on: terms.get(key)?.starts_on ?? null,
+  });
   const ownerOf = (type, key) => {
     if (type === "offering") return offerings.get(key)?.version_id;
     if (type === "product") return areaVersion.get(products.get(key)?.program_area_id) ?? operations;
-    if (type === "program_area" || type === "program_area_season") return areaVersion.get(key) ?? operations;
+    if (type === "program_area" || type === "program_area_term") return areaVersion.get(key) ?? operations;
     return operations;
   };
   const nameOf = (type, key) =>
@@ -782,7 +789,7 @@ function resultRows(data, out, operations) {
       offering: () => offerings.get(key)?.name,
       product: () => products.get(key)?.name,
       program_area: () => areas.get(key)?.name,
-      program_area_season: () => areas.get(key)?.name,
+      program_area_term: () => areas.get(key)?.name,
       pool: () => pools.get(key)?.name,
     })[type]?.() ?? "Organization";
   const { operating, fundraising } = out.organization;
@@ -811,7 +818,7 @@ function resultRows(data, out, operations) {
       enrollment: p.enrollment,
       days: p.days,
       sailor_days: p.sailor_days,
-      season: p.season ?? null,
+      ...termOf(p.term_key),
     })),
     plan_result_positions: out.positions.map((p) => ({
       position_key: p.position_key,
@@ -832,7 +839,7 @@ function resultRows(data, out, operations) {
     plan_result_bonuses: out.bonuses.map((b) => ({
       owner: owners.get(b.bonus_owner_key),
       name: b.role_name,
-      season: b.season,
+      ...termOf(b.term_key),
       bonus_rate: b.bonus_rate,
       net_cents: b.net_cents,
       bonus_cents: b.bonus_cents,

@@ -39,10 +39,10 @@ Feature: Plans
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
   capital is never charged to a program area.
 
-  CSC pays program bonuses per season, so the P&L also shows each program area's P&L for each
-  season: winter, spring, summer, and fall. Offerings in no season, such as Adult Learn to Sail, are
-  shown on their own, as one more group. A director's bonus is paid on each season's net, and on
-  the net of the offerings in no season for the year.
+  CSC pays program bonuses per term, so the P&L also shows each program area's P&L for each term
+  the Operations Plan lists, such as Summer 2027. Offerings in no term, such as Adult Learn to Sail,
+  are shown on their own, as one more group. A director's bonus is paid on each term's net, and on
+  the net of the offerings in no term for the year.
 
   Each Program Plan sets two numbers for each of its programs: the staff level that coaches it, such
   as Level 1 Instructor, and how many sailors each coach can take. These are the program's
@@ -251,24 +251,24 @@ Feature: Plans
       Then the program area takes in $20,000
       And its costs include the $3,000 of storage
 
-  Rule: A program area's P&L is also shown for each season, with offerings in no season on their own
+  Rule: A program area's P&L is also shown for each term, with offerings in no term on their own
 
-    Example: A program area's P&L for each season
-      Given a program area with a summer offering that takes in $10,000
-      And a fall offering that takes in $4,000
-      And an offering in no season that takes in $2,000
+    Example: A program area's P&L for each term
+      Given a program area with an offering in "Summer 2027" that takes in $10,000
+      And an offering in "Fall 2027" that takes in $4,000
+      And an offering in no term that takes in $2,000
       When a planner calculates the P&L
-      Then the program area's P&L for each season is:
-        | season    | takes in |
-        | summer    | $10,000  |
-        | fall      | $4,000   |
-        | no season | $2,000   |
+      Then the program area's P&L for each term is:
+        | term        | takes in |
+        | Summer 2027 | $10,000  |
+        | Fall 2027   | $4,000   |
+        | no term     | $2,000   |
 
-    Example: Each season pays its share of the shared costs
-      Given a program area with a summer offering and a fall offering with the same direct costs
+    Example: Each term pays its share of the shared costs
+      Given a program area with an offering in "Summer 2027" and one in "Fall 2027", with the same direct costs
       And $1,000 of office costs shared by every offering
       When a planner calculates the P&L
-      Then the program area's summer P&L includes $500 of the office costs
+      Then the program area's P&L for "Summer 2027" includes $500 of the office costs
 
   Rule: A cost charged to a program area is shared among the area's offerings by their direct costs
 
@@ -380,33 +380,33 @@ Feature: Plans
         | after shared costs  | $2,000 |
         | before shared costs | $5,000 |
 
-  Rule: A bonus is paid on each season's net on its own, so a loss in one season doesn't lower another season's bonus
+  Rule: A bonus is paid on each term's net on its own, so a loss in one term doesn't lower another term's bonus
 
-    Example: A director's bonus when the fall loses money
+    Example: A director's bonus when the fall term loses money
       Given a Program Plan that pays its director 10% of its programs' net
-      And its programs make $20,000 in the summer and lose $5,000 in the fall
+      And its programs make $20,000 in "Summer 2027" and lose $5,000 in "Fall 2027"
       When a planner calculates the P&L
       Then the director's bonus is $2,000
-      And the director's bonus for each season is:
-        | season | net      | bonus  |
-        | summer | $20,000  | $2,000 |
-        | fall   | -$5,000  | $0     |
+      And the director's bonus for each term is:
+        | term        | net     | bonus  |
+        | Summer 2027 | $20,000 | $2,000 |
+        | Fall 2027   | -$5,000 | $0     |
 
-    Example: The bonus on offerings in no season is worked out on the year
+    Example: The bonus on offerings in no term is worked out on the year
       Given a Program Plan that pays its director 10% of its programs' net
-      And its programs make $20,000 in the summer and $3,000 in no season
+      And its programs make $20,000 in "Summer 2027" and $3,000 in no term
       When a planner calculates the P&L
-      Then the director's bonus for each season is:
-        | season    | net     | bonus  |
-        | summer    | $20,000 | $2,000 |
-        | no season | $3,000  | $300   |
+      Then the director's bonus for each term is:
+        | term        | net     | bonus  |
+        | Summer 2027 | $20,000 | $2,000 |
+        | no term     | $3,000  | $300   |
 
-    Example: A season's bonus is a cost of that season
+    Example: A term's bonus is a cost of that term
       Given a Program Plan that pays its director 10% of its programs' net
-      And its programs make $20,000 in the summer and $10,000 in the fall
+      And its programs make $20,000 in "Summer 2027" and $10,000 in "Fall 2027"
       When a planner calculates the P&L
-      Then the program area's summer P&L includes $2,000 of bonus
-      And the program area's fall P&L includes $1,000 of bonus
+      Then the program area's P&L for "Summer 2027" includes $2,000 of bonus
+      And the program area's P&L for "Fall 2027" includes $1,000 of bonus
 
   Rule: The organization pays payroll tax on a bonus, as on any wage
 
@@ -674,12 +674,12 @@ Feature: Plans
       When a planner saves a Financial Plan started from "Budget" with $2,000 of office costs
       Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
-    Example: A saved Financial Plan keeps each season's P&L and bonus
+    Example: A saved Financial Plan keeps each term's P&L and bonus
       Given a user with the Plan Writer policy
-      And a draft Financial Plan that pays a director 10% of a summer offering that takes in $10,000
+      And a draft Financial Plan that pays a director 10% of an offering in "Summer 2027" that takes in $10,000
       When they save the Financial Plan
-      Then the Financial Plan's P&L shows that the program area takes in $10,000 in the summer
-      And the Financial Plan's P&L shows that the director's summer bonus is $1,000
+      Then the Financial Plan's P&L shows that the program area takes in $10,000 in "Summer 2027"
+      And the Financial Plan's P&L shows that the director's bonus for "Summer 2027" is $1,000
 
   Rule: Each line of a saved P&L says in plain words what it is
 

@@ -71,17 +71,35 @@ describe("bonus owners", () => {
   });
 });
 
-describe("bonuses by season", () => {
-  // Summer takes in 200000, fall 10000 and loses 50000 on rent, no season takes in 30000.
-  function seasons() {
+describe("bonuses by term", () => {
+  // Fall is listed first, but summer starts first. Summer takes in 200000, fall 10000 and loses 50000 on rent, and the
+  // offering in no term takes in 30000.
+  const fallTerm = {
+    id: "t2",
+    version_id: "ops",
+    key: "fall",
+    name: "Fall 2027",
+    starts_on: "2027-09-01",
+    ends_on: "2027-11-30",
+  };
+  const summerTerm = {
+    ...fallTerm,
+    id: "t1",
+    key: "summer",
+    name: "Summer 2027",
+    starts_on: "2027-06-01",
+    ends_on: "2027-08-31",
+  };
+  function terms() {
     const a = area();
     const p = product({ program_area_id: a.id });
-    const summer = offering(p.id, { season_term: "summer", target_enrollment: 20, price_cents: 10_000 });
-    const fall = offering(p.id, { season_term: "fall", target_enrollment: 1, price_cents: 10_000 });
+    const summer = offering(p.id, { term_key: "summer", target_enrollment: 20, price_cents: 10_000 });
+    const fall = offering(p.id, { term_key: "fall", target_enrollment: 1, price_cents: 10_000 });
     const none = offering(p.id, { target_enrollment: 3, price_cents: 10_000 });
     const data = emptyPlan({
       program_areas: [a],
       products: [p],
+      plan_terms: [fallTerm, summerTerm],
       plan_offerings: [summer, fall, none],
       plan_budget_lines: [
         budgetLine({
@@ -99,10 +117,10 @@ describe("bonuses by season", () => {
     return { a, summer, fall, none, data };
   }
 
-  it("pays each season on its own net, so a season's loss doesn't lower another's bonus", () => {
-    const { a, data } = seasons();
+  it("pays each term on its own net, so a term's loss doesn't lower another's bonus", () => {
+    const { a, data } = terms();
     const out = computePlan(data);
-    expect(out.bonuses.map((b) => [b.season, b.net_cents, b.bonus_cents])).toEqual([
+    expect(out.bonuses.map((b) => [b.term_key, b.net_cents, b.bonus_cents])).toEqual([
       ["summer", 200_000, 20_000],
       ["fall", -50_000, 0],
       [null, 30_000, 3000],
@@ -111,19 +129,19 @@ describe("bonuses by season", () => {
     expect(total(out, { line: "bonus:" })).toBe(23_000);
   });
 
-  it("charges each season's bonus to that season's offerings", () => {
-    const { summer, fall, none, data } = seasons();
+  it("charges each term's bonus to that term's offerings", () => {
+    const { summer, fall, none, data } = terms();
     const out = computePlan(data);
     expect(total(out, { line: "bonus:", cost_center_key: summer.key })).toBe(20_000);
     expect(total(out, { line: "bonus:", cost_center_key: fall.key })).toBe(0);
     expect(total(out, { line: "bonus:", cost_center_key: none.key })).toBe(3000);
   });
 
-  it("gives a program area a P&L for each season, and one for its offerings in no season", () => {
-    const { a, data } = seasons();
+  it("gives a program area a P&L for each term, in date order, and one for its offerings in no term", () => {
+    const { a, data } = terms();
     const out = computePlan(data);
-    const rows = out.pnl.filter((p) => p.level === "program_area_season" && p.key === a.id);
-    expect(rows.map((r) => [r.season, r.revenue_cents, r.net_cents])).toEqual([
+    const rows = out.pnl.filter((p) => p.level === "program_area_term" && p.key === a.id);
+    expect(rows.map((r) => [r.term_key, r.revenue_cents, r.net_cents])).toEqual([
       ["summer", 200_000, 180_000],
       ["fall", 10_000, -50_000],
       [null, 30_000, 27_000],
@@ -132,7 +150,19 @@ describe("bonuses by season", () => {
     expect(rows.reduce((t, r) => t + r.net_cents, 0)).toBe(year.net_cents);
   });
 
-  it("puts a cost left on the program area, with no offerings to divide it among, in no season", () => {
+  it("counts an offering whose term isn't in the plan as in no term, with a warning", () => {
+    const { a, data } = terms();
+    data.plan_terms = [summerTerm];
+    const out = computePlan(data);
+    expect(out.warnings.map((w) => w.code)).toContain("unknown_term");
+    const rows = out.pnl.filter((p) => p.level === "program_area_term" && p.key === a.id);
+    expect(rows.map((r) => [r.term_key, r.revenue_cents])).toEqual([
+      ["summer", 200_000],
+      [null, 40_000],
+    ]);
+  });
+
+  it("puts a cost left on the program area, with no offerings to divide it among, in no term", () => {
     const a = area();
     const out = computePlan(
       emptyPlan({
@@ -147,7 +177,7 @@ describe("bonuses by season", () => {
         ],
       }),
     );
-    const rows = out.pnl.filter((p) => p.level === "program_area_season");
-    expect(rows.map((r) => [r.season, r.expense_cents])).toEqual([[null, 5000]]);
+    const rows = out.pnl.filter((p) => p.level === "program_area_term");
+    expect(rows.map((r) => [r.term_key, r.expense_cents])).toEqual([[null, 5000]]);
   });
 });
