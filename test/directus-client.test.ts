@@ -110,6 +110,7 @@ describe("discoverSchemaFiles", () => {
       "directory",
       "gsuite",
       "planning",
+      "sail-team",
       "sync",
       "website",
     ]);

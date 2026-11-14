@@ -10,6 +10,7 @@ import {
   groupPolicies,
   groupPoliciesConfig,
   queryGuardConfig,
+  sailTeamPolicy,
   savedVersionsConfig,
   WEBSITE_BUILD,
   WEBSITE_FILE_FIELDS,
@@ -38,12 +39,14 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, and Plan policies", () => {
+  it("are the CRM, Medical, Catalog, Plan, and Sail Team writer policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
+      "Announcement Writer",
       "CRM Reader",
       "CRM Writer",
       "Catalog Reader",
       "Catalog Writer",
+      "Link Writer",
       "Medical Reader",
       "Medical Writer",
       "Plan Reader",
@@ -107,6 +110,34 @@ describe("the policies a group can give", () => {
     expect(collections("CRM Writer", "update").has("people")).toBe(true);
     expect(collections("CRM Writer", "update").has("clubspot_registrations")).toBe(false);
     expect(collections("CRM Reader", "read")).toEqual(collections("CRM Writer", "read"));
+  });
+});
+
+describe("Sail Team's links and announcements", () => {
+  it("are read whole by everyone who signs in", () => {
+    expect(sailTeamPolicy.rules).toEqual([
+      { collection: "links", action: "read" },
+      { collection: "announcements", action: "read" },
+    ]);
+  });
+
+  it("are changed only by their own writer, who can't set a link's preview", () => {
+    for (const [name, collection] of [
+      ["Link Writer", "links"],
+      ["Announcement Writer", "announcements"],
+    ] as const) {
+      expect(new Set(named(name).rules.map((rule) => rule.collection))).toEqual(new Set([collection]));
+      expect(new Set(named(name).rules.map((rule) => rule.action))).toEqual(
+        new Set(["create", "read", "update", "delete"]),
+      );
+    }
+    for (const rule of named("Link Writer").rules.filter(({ action }) => action === "create" || action === "update")) {
+      expect(rule.fields).toEqual(["id", "title", "url", "note", "sort"]);
+    }
+    for (const policy of policies.filter(({ name }) => name !== "Link Writer" && name !== "Announcement Writer")) {
+      expect(policy.rules.map((rule) => rule.collection)).not.toContain("links");
+      expect(policy.rules.map((rule) => rule.collection)).not.toContain("announcements");
+    }
   });
 });
 

@@ -3,6 +3,7 @@
 /** Every collection, for `createDirectus<Schema>()`. */
 export interface Schema {
   accounts: Accounts[];
+  announcements: Announcements[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
   boats: Boats[];
@@ -27,6 +28,7 @@ export interface Schema {
   group_policies: GroupPolicies[];
   groups: Groups[];
   households: Households[];
+  links: Links[];
   medical_profiles: MedicalProfiles[];
   offerings: Offerings[];
   organization_cost_accounts: OrganizationCostAccounts[];
@@ -117,6 +119,15 @@ export interface Accounts {
   contra_account_id: string | Accounts | null;
   /** Kept for history, and closed to new lines. */
   retired: boolean;
+}
+
+/** What Sail Team's home page shows, newest first. */
+export interface Announcements {
+  id: string;
+  title: string;
+  body: string;
+  /** The date the home page shows. Newest comes first. */
+  published_on: string;
 }
 
 /** Something a sync noticed but didn't fix. A dismissed finding stays dismissed on later runs. */
@@ -454,6 +465,25 @@ export interface Households {
   /** Whether the household's adults share their email and phone with the teams they're on. Blank means never answered, which counts as not shared. A child's own email and phone are never shared. */
   share_contact: boolean | null;
   date_created: string | null;
+}
+
+/** The Links page in Sail Team. Drag the rows to change their order. */
+export interface Links {
+  id: string;
+  title: string;
+  /** The page's address, starting with https://. */
+  url: string;
+  /** A line under the title, if it needs one. */
+  note: string | null;
+  sort: number | null;
+  /** The page's own title, read from the page when the link is saved. */
+  preview_title: string | null;
+  /** The page's own summary, read from the page when the link is saved. */
+  preview_description: string | null;
+  /** The address of the page's own picture, read from the page when the link is saved. */
+  preview_image: string | null;
+  /** When the page was last read. Empty if it couldn't be read: save the link again to retry. */
+  previewed_at: string | null;
 }
 
 /** A person's medical information, kept apart from People so only some staff see it. */

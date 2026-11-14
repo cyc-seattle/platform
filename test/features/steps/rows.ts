@@ -76,6 +76,13 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, sailors_per_boat: 1 }),
   resource_kinds: async () => ({ id: randomUUID(), name: `Resource ${key("resource")}` }),
   boats: async () => ({ id: randomUUID(), boat_class_id: row["boat_classes"], sail_number: key("sail") }),
+  links: async () => ({ id: randomUUID(), title: `Link ${runId}`, url: "https://csc-website.web.app/" }),
+  announcements: async () => ({
+    id: randomUUID(),
+    title: `Announcement ${runId}`,
+    body: "Something **new** in Sail Team.",
+    published_on: daysFromNow(0),
+  }),
   // A program is the subtype of a product of kind `program`, and each has its own.
   catalog_offerings: async () => ({
     id: randomUUID(),
@@ -457,6 +464,8 @@ export const changes: Record<string, () => Row> = {
   boat_classes: () => ({ sailors_per_boat: 2 }),
   resource_kinds: () => ({ name: `Resource ${key("resource")}` }),
   boats: () => ({ name: `Boat ${runId}` }),
+  links: () => ({ note: `Changed ${runId}` }),
+  announcements: () => ({ title: `Announcement ${runId} (renamed)` }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
   organizations: () => ({ short_name: "Changed" }),
@@ -583,6 +592,8 @@ async function createRows(): Promise<void> {
     ["groups", () => ({})],
     ["group_members", () => ({})],
     ["group_policies", () => ({})],
+    ["links", () => ({})],
+    ["announcements", () => ({})],
   ];
   for (const [collection, fixed] of order) {
     const item = await adminCreate(collection, await newRow(collection, fixed()));

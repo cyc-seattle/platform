@@ -29,6 +29,8 @@ export const policyNames = [
   "Catalog Writer",
   "Plan Reader",
   "Plan Writer",
+  "Link Writer",
+  "Announcement Writer",
 ];
 export const roleNames = ["Community", "Team", "Crew", "Staff", "Admin"];
 export const serviceNames = Object.keys(services);
