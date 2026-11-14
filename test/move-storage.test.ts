@@ -74,7 +74,7 @@ async function financialPlan(db: PGlite, status: "draft" | "saved", accounts: { 
       account_id: accounts.occupancy,
       amount_cents: 500_000,
       fiscal_year: 2027,
-      excluded_from_mtdc: true,
+      in_mtdc: false,
       ...extra,
     });
   const areaLine = await line(program, AREA_LINE, { cost_center_type: "program_area", cost_center_key: area });

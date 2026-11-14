@@ -82,7 +82,7 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
 function warnCostShift(
   ctx: Context,
   line: Pick<PlanBudgetLine, "version_id" | "key" | "name" | "cost_center_type" | "account_id"> & {
-    excluded_from_mtdc?: boolean;
+    in_mtdc?: boolean;
   },
 ): void {
   if (ctx.planOfVersion.get(line.version_id)?.kind !== "program_area") return;
@@ -94,7 +94,7 @@ function warnCostShift(
   } else if (line.cost_center_type === "org") warn(`${line.name} is charged to ${org}, not to this area's programs`);
   else if (line.cost_center_type === "pool")
     warn(`${line.name} is charged to shared costs, which every program area pays`);
-  if (line.excluded_from_mtdc) {
+  if (line.in_mtdc === false) {
     warn(`${line.name} is left out of the split of shared costs, so the other program areas pay more of them`);
   }
 }

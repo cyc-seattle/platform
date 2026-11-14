@@ -206,7 +206,7 @@ describe("lines that move a cost off a program area's programs", () => {
       .map((w) => ({ message: w.message, version_id: w.version_id }));
 
   it("warns about a Program Plan line left out of the split, or charged to the shared costs or the organization", () => {
-    expect(shifts(planWith({ cost_center_type: "org", excluded_from_mtdc: true }))).toEqual([
+    expect(shifts(planWith({ cost_center_type: "org", in_mtdc: false }))).toEqual([
       { message: "Storage is charged to A club, not to this area's programs", version_id: "v1" },
       {
         message: "Storage is left out of the split of shared costs, so the other program areas pay more of them",
@@ -225,6 +225,6 @@ describe("lines that move a cost off a program area's programs", () => {
   });
 
   it("never warns about the Operations Plan's lines", () => {
-    expect(shifts(planWith({ cost_center_type: "org", excluded_from_mtdc: true }, "v2"))).toEqual([]);
+    expect(shifts(planWith({ cost_center_type: "org", in_mtdc: false }, "v2"))).toEqual([]);
   });
 });

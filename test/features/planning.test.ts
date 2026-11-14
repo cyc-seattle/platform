@@ -1836,7 +1836,7 @@ const SHIFTS: Record<string, (area: string) => Promise<Row>> = {
   "left out of the split of shared costs": async (area) => ({
     cost_center_type: "program_area",
     cost_center_key: area,
-    excluded_from_mtdc: true,
+    in_mtdc: false,
   }),
   "charged to the shared costs": async () => ({ cost_center_type: "pool", cost_center_key: await p.pool() }),
   "charged to the organization": async () => ({ cost_center_type: "org", cost_center_key: null }),
@@ -1858,7 +1858,7 @@ Step("a draft Financial Plan whose Operations Plan has a line left out of the sp
     "storage",
     { cost_center_type: "pool", cost_center_key: await p.pool() },
     100_000,
-    { excluded_from_mtdc: true },
+    { in_mtdc: false },
   );
 });
 Step("the planner isn't warned about the line", () => {
