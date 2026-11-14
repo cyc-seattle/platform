@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, type PlanData, type PlanResource } from "../../src/planning/index.ts";
+import { computePlan, type PlanBoatRate, type PlanData } from "../../src/planning/index.ts";
 import {
   A,
   activity,
@@ -20,22 +20,6 @@ import {
 } from "./fixtures.ts";
 
 const codes = (data: PlanData) => computePlan(data).warnings.map((w) => w.code);
-
-function resource(key: string, overrides: Partial<PlanResource> = {}): PlanResource {
-  return {
-    id: key,
-    version_id: "v1",
-    key,
-    resource_kind_id: "kind-rib",
-    name: key,
-    cost_per_hour_cents: null,
-    cost_per_day_cents: null,
-    fuel_per_hour_cents: null,
-    maintenance_per_hour_cents: null,
-    excluded_from_mtdc: false,
-    ...overrides,
-  };
-}
 
 /** One offering of 13 sailors with one practice, 4pm to 6pm, in a block given `given`. */
 function onePractice(given: Given = {}, extra: Partial<PlanData> = {}) {
@@ -168,80 +152,87 @@ describe("staffing", () => {
     expect(total(out, { line: "coach_wages", cost_center_key: y.key })).toBe(2000);
   });
 
-  it("prices a block's powerboats at the hourly rate for its time on the water", () => {
-    const { data, off } = onePractice({}, { plan_rates: [rates({ powerboat_per_hour_cents: 500 })] });
-    data.plan_activity_blocks[0]!.powerboats = 2;
-    const out = computePlan(data);
-    expect(out.activities[0]?.ribs).toBe(2);
-    // 2 powerboats × 2 h × 500¢
-    expect(total(out, { line: "ribs" })).toBe(2000);
-    expect(out.lines.find((l) => l.line_key.startsWith("ribs"))?.line_name).toBe("Powerboats");
-    expect(pnlOf(out, off.key).mtdc_cents).toBe(2000);
-    data.plan_activities[0]!.on_water_minutes = 60;
-    expect(total(computePlan(data), { line: "ribs" })).toBe(1000);
+  /** A class's boat rate for the year. */
+  const boatRate = (boat_class_id: string, fields: Partial<PlanBoatRate> = {}): PlanBoatRate => ({
+    id: `rate-${boat_class_id}`,
+    version_id: "v1",
+    key: `rate-${boat_class_id}`,
+    boat_class_id,
+    maintenance_per_boat_hour_cents: 0,
+    ...fields,
   });
 
-  it("warns when blocks have powerboats but the Operations Plan has no hourly cost for them", () => {
-    const { data } = onePractice();
-    data.plan_activity_blocks[0]!.powerboats = 2;
-    const out = computePlan(data);
-    expect(total(out, { line: "ribs" })).toBe(0);
-    expect(out.warnings.map((w) => w.code)).toContain("no_powerboat_rate");
-  });
-
-  it("leaves rented equipment's cost out of MTDC", () => {
-    const owned = resource("owned", { cost_per_hour_cents: 500 });
-    const rented = resource("rented", { cost_per_hour_cents: 500, excluded_from_mtdc: true });
+  it("charges fuel and upkeep for the organization's boats, and nothing for boats sailors bring", () => {
     const { data, off } = onePractice(
-      {
-        resources: [
-          { resource_key: "owned", quantity: 1 },
-          { resource_key: "rented", quantity: 1 },
-        ],
-      },
-      { plan_resources: [owned, rented] },
-    );
-    const out = computePlan(data);
-    expect(total(out, { line: "resource" })).toBe(2000);
-    expect(pnlOf(out, off.key).mtdc_cents).toBe(1000);
-  });
-
-  it("prices other resources for the block's paid hours, or their own", () => {
-    const crane = resource("crane", {
-      resource_kind_id: "kind-crane",
-      cost_per_hour_cents: 1000,
-      cost_per_day_cents: 500,
-    });
-    const { data, off } = onePractice(
-      { resources: [{ resource_key: "crane", quantity: 2 }] },
-      { plan_resources: [crane] },
-    );
-    // 2 × (2 h × 1000¢ + 500¢)
-    expect(total(computePlan(data), { line: "resource" })).toBe(5000);
-    data.plan_block_resources[0]!.hours = 3;
-    expect(total(computePlan(data), { line: "resource", cost_center_key: off.key })).toBe(7000);
-  });
-
-  it("charges upkeep for the organization's boats, and nothing for boats sailors bring", () => {
-    const { data } = onePractice(
       { boats: [{ boat_class_id: "opti", count: 4, sailor_owned: 3 }] },
       {
         boat_classes: [{ id: "opti", name: "Opti", max_capacity: 1, footprint_sq_ft: null }],
-        plan_boat_rates: [
-          {
-            id: "br",
-            version_id: "v1",
-            key: "br",
-            boat_class_id: "opti",
-            maintenance_per_boat_hour_cents: 50,
-          },
-        ],
+        plan_boat_rates: [boatRate("opti", { maintenance_per_boat_hour_cents: 50, fuel_per_hour_cents: 25 })],
       },
     );
     const out = computePlan(data);
-    // 4 boats × 2 h × 50¢
-    expect(total(out, { line: "boats" })).toBe(400);
+    // 4 boats × 2 h × (50¢ + 25¢)
+    expect(total(out, { line: "boats", account_id: A.boats })).toBe(600);
+    expect(out.lines.find((l) => l.line_key.startsWith("boats"))?.line_name).toBe("Boats: Opti");
+    expect(pnlOf(out, off.key).mtdc_cents).toBe(600);
     expect(out.activities[0]?.boats).toBe(4);
+  });
+
+  it("books a class's fuel and upkeep to its own account, such as coach boats for RIBs", () => {
+    const { data } = onePractice(
+      { boats: [{ boat_class_id: "rib", count: 2 }] },
+      {
+        boat_classes: [{ id: "rib", name: "RIB", max_capacity: 0, footprint_sq_ft: null, account_id: A.ribs }],
+        plan_boat_rates: [boatRate("rib", { maintenance_per_boat_hour_cents: 800, fuel_per_hour_cents: 1500 })],
+      },
+    );
+    // 2 RIBs × 2 h × (800¢ + 1500¢)
+    expect(total(computePlan(data), { line: "boats", account_id: A.ribs })).toBe(9200);
+  });
+
+  describe("charters", () => {
+    /** RIBs chartered by two blocks on July 13, `first` by the morning one and `second` by one at `times`. */
+    function charters(first: number, second: number, times: [string, string], rate: number | null = 15_000) {
+      const p = product();
+      const [x, y] = [offering(p.id, { name: "Guppies" }), offering(p.id, { name: "Minnows" })];
+      const ax = activity(x.id, { date: "2027-07-13", start_time: "09:00", end_time: "12:00" });
+      const ay = activity(y.id, { date: "2027-07-13", start_time: times[0], end_time: times[1] });
+      const given = (n: number) => ({ boats: [{ boat_class_id: "rib", count: 0, chartered: n }] });
+      return emptyPlan({
+        products: [p],
+        plan_offerings: [x, y],
+        plan_activities: [ax, ay],
+        boat_classes: [{ id: "rib", name: "RIB", max_capacity: 0, footprint_sq_ft: null }],
+        plan_boat_rates: [boatRate("rib", { charter_per_day_cents: rate })],
+        ...blocks(block([ax], given(first)), block([ay], given(second))),
+      });
+    }
+
+    it("charges a class's charter rate once a day, for the most chartered at once", () => {
+      const out = computePlan(charters(1, 1, ["13:00", "16:00"]));
+      expect(total(out, { line: "charters", account_id: A.resources })).toBe(15_000);
+      expect(out.lines.find((l) => l.line_key.startsWith("charters"))?.line_name).toBe("Boat charters: RIB");
+      expect(total(computePlan(charters(1, 1, ["10:00", "13:00"])), { line: "charters" })).toBe(30_000);
+    });
+
+    it("shares a day's charters among the blocks by how many each charters", () => {
+      const data = charters(2, 1, ["10:00", "13:00"]);
+      const out = computePlan(data);
+      const [x, y] = data.plan_offerings;
+      expect(total(out, { line: "charters", cost_center_key: x!.key })).toBe(30_000);
+      expect(total(out, { line: "charters", cost_center_key: y!.key })).toBe(15_000);
+    });
+
+    it("leaves charters out of MTDC", () => {
+      const data = charters(1, 0, ["13:00", "16:00"]);
+      expect(pnlOf(computePlan(data), data.plan_offerings[0]!.key).mtdc_cents).toBe(0);
+    });
+
+    it("warns about chartered boats whose class has no charter rate", () => {
+      const out = computePlan(charters(1, 0, ["13:00", "16:00"], null));
+      expect(total(out, { line: "charters" })).toBe(0);
+      expect(out.warnings.map((w) => w.code)).toContain("no_charter_rate");
+    });
   });
 
   describe("salaried staff", () => {
@@ -434,8 +425,8 @@ describe("staffing", () => {
   });
 
   describe("inventory", () => {
-    /** Two blocks on July 13, with `first` and `second` Sailqubes and powerboats, at the given times. */
-    function twoBlocks(first: number, second: number, times: [string, string][], sailorOwned = 0) {
+    /** Two blocks on July 13, with `first` and `second` Sailqubes, at the given times. */
+    function twoBlocks(first: number, second: number, times: [string, string][], sailorOwned = 0, chartered = 0) {
       const p = product();
       const [x, y] = [
         offering(p.id, { name: "Guppies Week 3", target_enrollment: 1 }),
@@ -444,18 +435,15 @@ describe("staffing", () => {
       const ax = activity(x.id, { date: "2027-07-13", start_time: times[0]![0], end_time: times[0]![1] });
       const ay = activity(y.id, { date: "2027-07-13", start_time: times[1]![0], end_time: times[1]![1] });
       const given = (n: number) => ({
-        boats: [{ boat_class_id: "sailqube", count: n, sailor_owned: sailorOwned }],
+        boats: [{ boat_class_id: "sailqube", count: n, sailor_owned: sailorOwned, chartered }],
       });
       return emptyPlan({
         products: [p],
         plan_offerings: [x, y],
         plan_activities: [ax, ay],
         boat_classes: [{ id: "sailqube", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }],
-        ...assetList([{ boat_class_id: "sailqube", count: 12 }, { count: 12 }]),
-        ...blocks(
-          block([ax], given(first), { name: "Guppies", powerboats: first }),
-          block([ay], given(second), { name: "Minnows", powerboats: second }),
-        ),
+        ...assetList([{ boat_class_id: "sailqube", count: 12 }]),
+        ...blocks(block([ax], given(first), { name: "Guppies" }), block([ay], given(second), { name: "Minnows" })),
       });
     }
     const morning: [string, string][] = [
@@ -532,37 +520,23 @@ describe("staffing", () => {
     });
 
     it("says the organization has none of a boat class with no boats that day", () => {
-      const data = Object.assign(twoBlocks(9, 5, morning), assetList([{ count: 12 }]));
+      const data = Object.assign(twoBlocks(9, 5, morning), assetList([{ boat_class_id: "opti", count: 12 }]));
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
         "14 Sailqubes out at once, but A club has none: 9 for Guppies Week 3 and 5 for Minnows Week 3",
       );
     });
 
-    it("warns when more powerboats are out at once than the organization has", () => {
-      const out = computePlan(twoBlocks(9, 5, morning));
-      expect(out.warnings).toContainEqual(
-        expect.objectContaining({
-          code: "over_inventory_powerboats",
-          message: "14 powerboats out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
-        }),
+    it("counts powerboats of a class the same way, such as RIBs", () => {
+      const data = twoBlocks(4, 3, morning);
+      data.boat_classes[0]!.name = "RIB";
+      Object.assign(data, assetList([{ boat_class_id: "sailqube", count: 6, kind: "powerboat" }]));
+      expect(computePlan(data).warnings.map((w) => w.message)).toContain(
+        "7 RIBs out at once, but A club has only 6: 4 for Guppies Week 3 and 3 for Minnows Week 3",
       );
     });
 
-    it("doesn't count equipment against the powerboats", () => {
-      const data = twoBlocks(0, 0, morning);
-      data.plan_resources = [resource("rented")];
-      data.plan_block_resources = [
-        {
-          id: "use",
-          version_id: "v1",
-          key: "use",
-          block_id: data.plan_activity_blocks[0]!.id,
-          resource_key: "rented",
-          quantity: 20,
-          hours: null,
-        },
-      ];
-      expect(codes(data)).not.toContain("over_inventory_powerboats");
+    it("doesn't count chartered boats against the organization's", () => {
+      expect(codes(twoBlocks(6, 6, morning, 0, 4))).not.toContain("over_inventory_boats");
     });
 
     it("counts a block with no times as out all day", () => {

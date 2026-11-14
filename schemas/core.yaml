@@ -19,7 +19,7 @@ collections:
       item_duplication_fields: null
       note: >-
         Each boat, motor and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, motors, and
-        others such as trailers. Planning counts the sailboats and powerboats CSC has on each day.
+        others such as trailers. Planning counts the boats of each class CSC has on each day.
       preview_url: null
       singleton: false
       sort: null
@@ -30,7 +30,7 @@ collections:
       versioning: false
     schema:
       name: assets
-  - collection: sailboats
+  - collection: boats
     meta:
       accountability: all
       archive_app_filter: true
@@ -38,14 +38,14 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: sailboats
+      collection: boats
       color: null
       display_template: "{{boat_class_id.name}} {{sail_number}} {{asset_id.name}}"
       group: Catalog
       hidden: false
       icon: sailing
       item_duplication_fields: null
-      note: "A sailboat's own details: its class and sail number. Sailors' own boats aren't listed here."
+      note: "A boat's own details, sail or power: its class and sail number. Sailors' own boats aren't listed here."
       preview_url: null
       singleton: false
       sort: null
@@ -55,7 +55,7 @@ collections:
       unarchive_value: null
       versioning: false
     schema:
-      name: sailboats
+      name: boats
   - collection: Catalog
     meta:
       accountability: all
@@ -236,32 +236,6 @@ collections:
       versioning: false
     schema:
       name: qualification_covers
-  - collection: resource_kinds
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: resource_kinds
-      color: null
-      display_template: "{{name}}"
-      group: Catalog
-      hidden: false
-      icon: inventory_2
-      item_duplication_fields: null
-      note: A kind of shared resource, such as RIB or trailer.
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations: null
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: resource_kinds
   - collection: programs
     meta:
       accountability: all
@@ -405,7 +379,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown
-      note: A sailboat also needs a row in Sailboats. Directus can't check that, so keep them matching.
+      note: A sailboat or powerboat also needs a row in Boats. Directus can't check that, so keep them matching.
       options:
         choices:
           - text: Sailboat
@@ -489,19 +463,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: assets
-    field: sailboats
+    field: boats
     type: alias
     meta:
       collection: assets
       conditions: null
       display: related-values
       display_options:
-        template: "{{sail_number}}"
-      field: sailboats
+        template: "{{boat_class_id.name}} {{sail_number}}"
+      field: boats
       group: null
       hidden: false
       interface: list-o2m
-      note: This asset's sailboat details, if it is a sailboat.
+      note: This asset's boat details, if it is a sailboat or powerboat.
       options: null
       readonly: false
       required: false
@@ -559,11 +533,13 @@ fields:
     meta:
       collection: assets
       conditions:
-        - name: A sailboat's model is its boat class
+        - name: A boat's model is its boat class
           rule:
             _and:
               - kind:
-                  _eq: sailboat
+                  _in:
+                    - sailboat
+                    - powerboat
           hidden: true
           readonly: false
           required: false
@@ -574,7 +550,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Its model. A sailboat's model is its boat class, in Sailboats.
+      note: Its model. A boat's model is its boat class, in Boats.
       options: null
       readonly: false
       required: false
@@ -850,11 +826,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: sailboats
+  - collection: boats
     field: id
     type: uuid
     meta:
-      collection: sailboats
+      collection: boats
       conditions: null
       display: null
       display_options: null
@@ -876,7 +852,7 @@ fields:
       width: full
     schema:
       name: id
-      table: sailboats
+      table: boats
       data_type: uuid
       default_value: null
       max_length: null
@@ -891,11 +867,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: sailboats
+  - collection: boats
     field: asset_id
     type: uuid
     meta:
-      collection: sailboats
+      collection: boats
       conditions: null
       display: related-values
       display_options:
@@ -904,11 +880,13 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The asset this sailboat is. Its kind must be Sailboat.
+      note: The asset this boat is. Its kind must be Sailboat or Powerboat.
       options:
         filter:
           kind:
-            _eq: sailboat
+            _in:
+              - sailboat
+              - powerboat
       readonly: false
       required: true
       searchable: true
@@ -923,7 +901,7 @@ fields:
       width: full
     schema:
       name: asset_id
-      table: sailboats
+      table: boats
       data_type: uuid
       default_value: null
       max_length: null
@@ -938,11 +916,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: assets
       foreign_key_column: id
-  - collection: sailboats
+  - collection: boats
     field: boat_class_id
     type: uuid
     meta:
-      collection: sailboats
+      collection: boats
       conditions: null
       display: related-values
       display_options:
@@ -951,7 +929,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: Such as Opti, 420, or RIB.
       options: null
       readonly: false
       required: true
@@ -967,7 +945,7 @@ fields:
       width: full
     schema:
       name: boat_class_id
-      table: sailboats
+      table: boats
       data_type: uuid
       default_value: null
       max_length: null
@@ -982,11 +960,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: boat_classes
       foreign_key_column: id
-  - collection: sailboats
+  - collection: boats
     field: sail_number
     type: string
     meta:
-      collection: sailboats
+      collection: boats
       conditions: null
       display: null
       display_options: null
@@ -994,7 +972,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: null
+      note: A sailboat's, if it has one.
       options: null
       readonly: false
       required: false
@@ -1009,7 +987,7 @@ fields:
       width: full
     schema:
       name: sail_number
-      table: sailboats
+      table: boats
       data_type: character varying
       default_value: null
       max_length: 255
@@ -1581,7 +1559,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The most sailors one boat can safely take, such as 4 in an FJ.
+      note: The most sailors one boat can safely take, such as 4 in an FJ. 0 for a coach boat.
       options: null
       readonly: false
       required: true
@@ -1653,6 +1631,53 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: boat_classes
+    field: account_id
+    type: uuid
+    meta:
+      collection: boat_classes
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{number}} {{name}}"
+      field: account_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "Where the fuel and upkeep of CSC's own boats of the class are booked, such as Coach boats for a RIB. Empty books them to boat maintenance."
+      options:
+        filter:
+          type:
+            _eq: expense
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Upkeep account
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: account_id
+      table: boat_classes
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: accounts
+      foreign_key_column: id
   - collection: products
     field: id
     type: uuid
@@ -2096,87 +2121,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: qualifications
       foreign_key_column: id
-  - collection: resource_kinds
-    field: id
-    type: uuid
-    meta:
-      collection: resource_kinds
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: resource_kinds
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: resource_kinds
-    field: name
-    type: string
-    meta:
-      collection: resource_kinds
-      conditions: null
-      display: null
-      display_options: null
-      field: name
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: name
-      table: resource_kinds
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: programs
     field: id
     type: uuid
@@ -2728,11 +2672,11 @@ fields:
             value: salaries
           - text: Payroll tax
             value: payroll_tax
-          - text: Powerboats
+          - text: Coach boats
             value: ribs
           - text: Boat maintenance
             value: boat_maintenance
-          - text: Resources
+          - text: Boat charters
             value: resources
           - text: Travel
             value: travel
@@ -2753,11 +2697,11 @@ fields:
             value: salaries
           - text: Payroll tax
             value: payroll_tax
-          - text: Powerboats
+          - text: Coach boats
             value: ribs
           - text: Boat maintenance
             value: boat_maintenance
-          - text: Resources
+          - text: Boat charters
             value: resources
           - text: Travel
             value: travel
@@ -2971,33 +2915,33 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
 relations:
-  - collection: sailboats
+  - collection: boats
     field: asset_id
     related_collection: assets
     meta:
       junction_field: null
-      many_collection: sailboats
+      many_collection: boats
       many_field: asset_id
       one_allowed_collections: null
       one_collection: assets
       one_collection_field: null
       one_deselect_action: nullify
-      one_field: sailboats
+      one_field: boats
       sort_field: null
     schema:
-      table: sailboats
+      table: boats
       column: asset_id
       foreign_key_table: assets
       foreign_key_column: id
-      constraint_name: sailboats_asset_id_foreign
+      constraint_name: boats_asset_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: sailboats
+  - collection: boats
     field: boat_class_id
     related_collection: boat_classes
     meta:
       junction_field: null
-      many_collection: sailboats
+      many_collection: boats
       many_field: boat_class_id
       one_allowed_collections: null
       one_collection: boat_classes
@@ -3006,11 +2950,11 @@ relations:
       one_field: null
       sort_field: null
     schema:
-      table: sailboats
+      table: boats
       column: boat_class_id
       foreign_key_table: boat_classes
       foreign_key_column: id
-      constraint_name: sailboats_boat_class_id_foreign
+      constraint_name: boats_boat_class_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: accounts
@@ -3074,6 +3018,27 @@ relations:
       foreign_key_table: accounts
       foreign_key_column: id
       constraint_name: products_revenue_account_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: boat_classes
+    field: account_id
+    related_collection: accounts
+    meta:
+      junction_field: null
+      many_collection: boat_classes
+      many_field: account_id
+      one_allowed_collections: null
+      one_collection: accounts
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: boat_classes
+      column: account_id
+      foreign_key_table: accounts
+      foreign_key_column: id
+      constraint_name: boat_classes_account_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL
   - collection: qualification_covers

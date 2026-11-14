@@ -23,7 +23,6 @@ const DECIMALS = new Set([
   "payroll_tax_rate",
   "share",
   "hours",
-  "quantity",
   "fill_rate",
   "sailors_per_coach",
   "cogs_rate",
@@ -54,7 +53,6 @@ const VERSION_ROWS = [
   "plan_activities",
   "plan_activity_blocks",
   "plan_block_staff",
-  "plan_block_resources",
   "plan_block_boats",
   "plan_labor_lines",
   "plan_budget_lines",
@@ -64,7 +62,6 @@ const VERSION_ROWS = [
   "plan_staff_levels",
   "plan_salaried_positions",
   "plan_salaried_bookings",
-  "plan_resources",
   "plan_boat_rates",
   "plan_pools",
   "plan_bonus_owners",
@@ -89,7 +86,8 @@ type AccountName =
   | "payrollTax"
   | "bonus"
   | "ribs"
-  | "boatUpkeep";
+  | "boatUpkeep"
+  | "boatCharters";
 
 const ACCOUNTS: Record<AccountName, { type: string; default_function?: string }> = {
   programs: { type: "revenue" },
@@ -108,6 +106,7 @@ const ACCOUNTS: Record<AccountName, { type: string; default_function?: string }>
   bonus: { type: "expense" },
   ribs: { type: "expense" },
   boatUpkeep: { type: "expense" },
+  boatCharters: { type: "expense" },
 };
 
 /** The costs the engine works out, and the account each goes to. */
@@ -117,6 +116,7 @@ const COST_ACCOUNTS: Record<string, AccountName> = {
   payroll_tax: "payrollTax",
   ribs: "ribs",
   boat_maintenance: "boatUpkeep",
+  resources: "boatCharters",
 };
 
 /** One example's plans: an organization's Operations Plan, and a plan for each program area. */
@@ -397,7 +397,7 @@ export class PnlPlan {
 
   /** A row of what block `block` in `version` is given: its staff, resources, or boats. */
   async given(
-    collection: "plan_block_staff" | "plan_block_resources" | "plan_block_boats",
+    collection: "plan_block_staff" | "plan_block_boats",
     version: string,
     block: string,
     fields: Row,
@@ -411,34 +411,31 @@ export class PnlPlan {
     });
   }
 
-  /** A boat class in the catalog, whose boats take at most `sailors` sailors. Returns its id. */
-  async boatClass(name: string, sailors: number | null): Promise<string> {
+  /**
+   * A boat class in the catalog, whose boats take at most `sailors` sailors, with `fields` such as
+   * its upkeep account. Returns its id.
+   */
+  async boatClass(name: string, sailors: number | null, fields: Row = {}): Promise<string> {
     const boat = await adminCreate("boat_classes", {
       id: randomUUID(),
       name: `${name} ${key("boat")}`,
       max_capacity: sailors,
+      ...fields,
     });
     this.boatClasses.push(boat.id);
     return boat.id;
   }
 
-  /** Adds `count` sailboats of a boat class to the asset list, with `dates` such as `acquired_on`. */
-  async sailboats(boatClass: string, count: number, dates: Row = {}): Promise<void> {
+  /**
+   * Adds `count` boats of a class to the asset list, sailboats or powerboats, with `dates` such as
+   * `acquired_on`.
+   */
+  async boats(boatClass: string, count: number, kind: "sailboat" | "powerboat", dates: Row = {}): Promise<void> {
     for (let i = 0; i < count; i++) {
-      const asset = await this.asset("sailboat", dates);
-      await adminCreate("sailboats", { id: randomUUID(), asset_id: asset, boat_class_id: boatClass });
+      const asset = await adminCreate("assets", { id: randomUUID(), kind, name: `Boat ${key("boat")}`, ...dates });
+      this.assets.push(asset.id);
+      await adminCreate("boats", { id: randomUUID(), asset_id: asset.id, boat_class_id: boatClass });
     }
-  }
-
-  /** Adds `count` powerboats to the asset list, with `dates` such as `acquired_on`. */
-  async powerboats(count: number, dates: Row = {}): Promise<void> {
-    for (let i = 0; i < count; i++) await this.asset("powerboat", dates);
-  }
-
-  private async asset(kind: "sailboat" | "powerboat", dates: Row): Promise<string> {
-    const asset = await adminCreate("assets", { id: randomUUID(), kind, name: `Boat ${key("boat")}`, ...dates });
-    this.assets.push(asset.id);
-    return asset.id;
   }
 
   /**
@@ -506,8 +503,7 @@ export class PnlPlan {
       qualification_covers: [],
       boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
       assets: await read("assets", { id: anyOf(this.assets) }),
-      sailboats: await read("sailboats", { asset_id: anyOf(this.assets) }),
-      resource_kinds: [],
+      boats: await read("boats", { asset_id: anyOf(this.assets) }),
       plans: await read("plans", { id: { _in: plans } }),
       plan_versions: await read("plan_versions", { id: { _in: versions } }),
       ...rows,

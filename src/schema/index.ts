@@ -6,6 +6,7 @@ export interface Schema {
   assets: Assets[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
+  boats: Boats[];
   catalog_offerings: CatalogOfferings[];
   clubspot_camps: ClubspotCamps[];
   clubspot_classes: ClubspotClasses[];
@@ -35,7 +36,6 @@ export interface Schema {
   plan_activities: PlanActivities[];
   plan_activity_blocks: PlanActivityBlocks[];
   plan_block_boats: PlanBlockBoats[];
-  plan_block_resources: PlanBlockResources[];
   plan_block_staff: PlanBlockStaff[];
   plan_boat_rates: PlanBoatRates[];
   plan_bonus_owner_products: PlanBonusOwnerProducts[];
@@ -48,7 +48,6 @@ export interface Schema {
   plan_pools: PlanPools[];
   plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
-  plan_resources: PlanResources[];
   plan_result_capital: PlanResultCapital[];
   plan_result_lines: PlanResultLines[];
   plan_result_pnl: PlanResultPnl[];
@@ -71,8 +70,6 @@ export interface Schema {
   qualification_covers: QualificationCovers[];
   qualifications: Qualifications[];
   registrations: Registrations[];
-  resource_kinds: ResourceKinds[];
-  sailboats: Sailboats[];
   schools: Schools[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
@@ -119,18 +116,18 @@ export interface Accounts {
   retired: boolean;
 }
 
-/** Each boat, motor and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, motors, and others such as trailers. Planning counts the sailboats and powerboats CSC has on each day. */
+/** Each boat, motor and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, motors, and others such as trailers. Planning counts the boats of each class CSC has on each day. */
 export interface Assets {
   id: string;
-  /** A sailboat also needs a row in Sailboats. Directus can't check that, so keep them matching. */
+  /** A sailboat or powerboat also needs a row in Boats. Directus can't check that, so keep them matching. */
   kind: "sailboat" | "powerboat" | "motor" | "other";
   /** Its name, if it has one, such as Scooter or the van. */
   name: string | null;
-  /** This asset's sailboat details, if it is a sailboat. */
-  sailboats: (string | Sailboats)[];
+  /** This asset's boat details, if it is a sailboat or powerboat. */
+  boats: (string | Boats)[];
   /** Who made it, such as Zodiac or Yamaha. */
   make: string | null;
-  /** Its model. A sailboat's model is its boat class, in Sailboats. */
+  /** Its model. A boat's model is its boat class, in Boats. */
   model: string | null;
   /** The number that identifies it: a boat's hull number (HIN), a vehicle's VIN, or a serial number. */
   identifier: string | null;
@@ -164,10 +161,23 @@ export interface AuditFindings {
 export interface BoatClasses {
   id: string;
   name: string;
-  /** The most sailors one boat can safely take, such as 4 in an FJ. */
+  /** The most sailors one boat can safely take, such as 4 in an FJ. 0 for a coach boat. */
   max_capacity: number;
   /** Dry-storage area one boat takes. */
   footprint_sq_ft: string | null;
+  /** Where the fuel and upkeep of CSC's own boats of the class are booked, such as Coach boats for a RIB. Empty books them to boat maintenance. */
+  account_id: string | Accounts | null;
+}
+
+/** A boat's own details, sail or power: its class and sail number. Sailors' own boats aren't listed here. */
+export interface Boats {
+  id: string;
+  /** The asset this boat is. Its kind must be Sailboat or Powerboat. */
+  asset_id: string | Assets;
+  /** Such as Opti, 420, or RIB. */
+  boat_class_id: string | BoatClasses;
+  /** A sailboat's, if it has one. */
+  sail_number: string | null;
 }
 
 /** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */
@@ -594,8 +604,6 @@ export interface PlanActivityBlocks {
   date: string;
   /** Such as Guppies and Minnows, morning. */
   name: string;
-  /** How many of CSC's powerboats the block uses, such as coach boats. Empty for none. */
-  powerboats: number | null;
 }
 
 /** Boats of one class a block sails: the organization's, and the ones sailors bring. */
@@ -611,21 +619,8 @@ export interface PlanBlockBoats {
   count: number;
   /** How many boats sailors bring. They cost nothing and don't count against the organization's. */
   sailor_owned: number | null;
-}
-
-/** RIBs and other equipment a block uses. */
-export interface PlanBlockResources {
-  id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
-  key: string;
-  block_id: string | PlanActivityBlocks;
-  /** The resource it uses: copy the Key from a resource in the Operations Plan. */
-  resource_key: string;
-  quantity: string;
-  /** Hours each is used. Leave it empty for the block's time on the water (RIBs) or its paid time (other equipment). */
-  hours: string | null;
+  /** How many boats of the class the block charters. They cost the class's charter rate for each day, and don't count against the organization's. */
+  chartered: number | null;
 }
 
 /** Who coaches a block: a number of staff at one staff level, or a salaried position. */
@@ -654,8 +649,12 @@ export interface PlanBoatRates {
   /** Stays the same across versions. Copy it where another row asks for this one's Key. */
   key: string;
   boat_class_id: string | BoatClasses;
-  /** In cents: 12500 is $125.00. */
+  /** Upkeep for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00. */
   maintenance_per_boat_hour_cents: number;
+  /** Fuel for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00. */
+  fuel_per_hour_cents: number | null;
+  /** What one boat of the class costs to charter for a day. In cents: 12500 is $125.00. */
+  charter_per_day_cents: number | null;
 }
 
 /** The products a bonus owner owns. */
@@ -823,29 +822,6 @@ export interface PlanRates {
   lodging_per_night_cents: number | null;
   /** In cents: 12500 is $125.00. */
   mileage_rate_cents: number | null;
-  /** What one powerboat costs an hour on the water, fuel included. In cents: 12500 is $125.00. */
-  powerboat_per_hour_cents: number | null;
-}
-
-/** Equipment programs share, such as coach boats, and what an hour or a day of it costs. */
-export interface PlanResources {
-  id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
-  key: string;
-  resource_kind_id: string | ResourceKinds;
-  name: string;
-  /** In cents: 12500 is $125.00. */
-  cost_per_hour_cents: number | null;
-  /** In cents: 12500 is $125.00. */
-  cost_per_day_cents: number | null;
-  /** In cents: 12500 is $125.00. */
-  fuel_per_hour_cents: number | null;
-  /** In cents: 12500 is $125.00. */
-  maintenance_per_hour_cents: number | null;
-  /** Set for a rental, whose cost is left out of modified total direct costs (MTDC). */
-  excluded_from_mtdc: boolean;
 }
 
 /** The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
@@ -1191,21 +1167,6 @@ export interface Registrations {
   offering_id: string | Offerings;
   status: "confirmed" | "waitlist" | "cancelled";
   clubspot_entry_id: string | ClubspotRegistrationEntries;
-}
-
-/** A kind of shared resource, such as RIB or trailer. */
-export interface ResourceKinds {
-  id: string;
-  name: string;
-}
-
-/** A sailboat's own details: its class and sail number. Sailors' own boats aren't listed here. */
-export interface Sailboats {
-  id: string;
-  /** The asset this sailboat is. Its kind must be Sailboat. */
-  asset_id: string | Assets;
-  boat_class_id: string | BoatClasses;
-  sail_number: string | null;
 }
 
 /** The schools a sailor can sail for, which families pick from. A school's other names match what families typed on their Clubspot forms. */

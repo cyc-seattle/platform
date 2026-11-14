@@ -18,7 +18,6 @@ import type {
 /** The warnings about what the blocks are given, or when they run. The rest are about the data. */
 const ALLOCATION_WARNINGS = new Set([
   "over_inventory_boats",
-  "over_inventory_powerboats",
   "over_capacity",
   "unallocated_activity",
   "closed_date",
@@ -30,9 +29,9 @@ const COST_TYPES: Record<CostType, string> = {
   coach_wages: "coach wages",
   salaries: "salaries",
   payroll_tax: "payroll tax",
-  ribs: "powerboats",
+  ribs: "coach boats",
   boat_maintenance: "boat maintenance",
-  resources: "resources",
+  resources: "boat charters",
   travel: "travel",
   cogs: "cost of goods sold",
 };
@@ -58,7 +57,7 @@ export interface Entry {
   line_name: string;
   explanation: string;
   stage: Stage;
-  /** How much of the amount MTDC counts: 0 when excluded, a fraction for a mix of rented and owned equipment. */
+  /** How much of the amount MTDC counts: 1, or 0 when it leaves MTDC, such as a boat charter. */
   mtdc_share: number;
   /** Whether it's wages, which payroll tax is charged on. */
   wages: boolean;

@@ -43,9 +43,9 @@ Feature: Plans
   as Level 1 Instructor, and how many sailors each coach can take. These are the program's
   settings, and two drafts can try different ones. Each boat class says the most sailors one boat
   can safely take. The asset list says which boats the organization has on each day
-  (assets.feature), so every plan counts the same boats. The Operations Plan says what one powerboat,
-  such as a coach boat, costs an hour on the water, fuel included, and what other equipment costs,
-  such as a rented coach boat.
+  (assets.feature), so every plan counts the same boats. The Operations Plan sets each boat class's
+  rates for the year: fuel and upkeep for each hour one of the organization's boats is on the water,
+  and a charter rate for each day one is chartered.
 
   Each plan can also hold the planner's rules: what they want that the plan's numbers don't
   capture, in their own words, for their AI to follow when it fills in the plan. A program has its
@@ -57,14 +57,13 @@ Feature: Plans
 
   The schedule is planned in blocks. A block is one or more activities on one date that share
   their coaches and boats, such as Guppies and Minnows on the morning of July 13. Each block lists
-  its staff (the people who coach it), how many of the organization's powerboats it uses, the other
-  equipment it uses, and its boats of each class: the organization's own, and the ones sailors
-  bring. A block runs from its first activity's start to its last activity's end. The P&L costs
+  its staff (the people who coach it) and its boats of each class, sailboats and powerboats such as
+  coach boats: the organization's own, the ones it charters, and the ones sailors bring. A block runs from its first activity's start to its last activity's end. The P&L costs
   only what the blocks are given, and nothing works out how many coaches or boats a program needs.
   The planner, or their AI, decides that from the program settings and the rules.
 
-  A planner is warned when the blocks break a limit: more of the organization's sailboats or
-  powerboats out at once than it has that day, too few coaches or boats for a block's sailors, or
+  A planner is warned when the blocks break a limit: more of the organization's boats of a class out
+  at once than it has that day, too few coaches or boats for a block's sailors, or
   an activity with no staff. Each warning says which plan and date it's about. Each coach
   in a block can safely take the program's number of sailors. A program's staff level is what the
   planner aims for, not a hard rule: any coach in the block counts, and so does a salaried coach,
@@ -373,7 +372,7 @@ Feature: Plans
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
-  Rule: The P&L costs only the staff, powerboats, and boats each block is given
+  Rule: The P&L costs only the staff and boats each block is given
 
     Example: A block's coaches are paid for its time
       Given an offering with a practice from 9am to noon, in a block with 2 coaches paid $20 an hour
@@ -402,13 +401,21 @@ Feature: Plans
       When a planner calculates the P&L
       Then the two offerings pay $60 of coaches' wages between them
 
-  Rule: A block's powerboats cost the hourly rate, fuel included, for its time on the water
+  Rule: The organization's coach boats cost fuel and upkeep for their time on the water
 
-    Example: Two powerboats for a morning practice
-      Given powerboats that cost $10 an hour on the water, fuel included
-      And an offering with a practice from 9am to noon, in a block with 2 powerboats
+    Example: Two RIBs for a morning practice
+      Given RIBs that cost $6 an hour in fuel and $4 an hour in upkeep
+      And an offering with a practice from 9am to noon, in a block with 2 of the organization's RIBs
       When a planner calculates the P&L
-      Then the offering pays $60 for powerboats
+      Then the offering pays $60 for coach boats
+
+  Rule: A chartered boat costs its class's charter rate for each day it's chartered
+
+    Example: A RIB chartered for a morning and an afternoon costs one day
+      Given RIBs that charter for $150 a day
+      And a block with 1 chartered RIB on the morning of July 13, and another with 1 that afternoon
+      When a planner calculates the P&L
+      Then the two offerings pay $150 for boat charters between them
 
   Rule: The organization's boats cost upkeep for their time on the water, and boats that sailors bring cost nothing
 
@@ -510,6 +517,18 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about Optis
 
+    Example: Chartered boats don't count against the organization's
+      Given the organization has 6 RIBs
+      And a block on the morning of July 13 with 6 of the organization's RIBs and 2 chartered RIBs
+      When a planner calculates the P&L
+      Then the planner isn't warned about RIBs
+
+    Example: 7 RIBs out on a morning when the organization has 6
+      Given the organization has 6 RIBs
+      And two blocks on the morning of July 13, with 4 RIBs and 3 RIBs
+      When a planner calculates the P&L
+      Then the planner is warned that July 13 has 7 RIBs out, but the organization has 6
+
     Example: Boats the organization gets before the day count
       Given the organization has 12 Sailqubes, and gets 2 more on July 1
       And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
@@ -527,14 +546,6 @@ Feature: Plans
       And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 14 Sailqubes out, but the organization has 12
-
-  Rule: A planner is warned when more powerboats are out at once than the organization has that day
-
-    Example: 7 powerboats out on a morning when the organization has 6
-      Given the organization has 6 powerboats
-      And two blocks on the morning of July 13, with 4 powerboats and 3 powerboats
-      When a planner calculates the P&L
-      Then the planner is warned that July 13 has 7 powerboats out, but the organization has 6
 
   Rule: A planner is warned when a block has too few coaches for its sailors
 

@@ -604,12 +604,12 @@ async function installTriggers(config, db) {
   const hash = fingerprint(config);
   if (status.fingerprint === hash && Object.values(status.tables).every(Boolean)) {
     await seedActiveMarks(db);
-    return { missing: [], installed: false, changed: await seedPowerboats(db) };
+    return { missing: [], installed: false, changed: await seedBoats(db) };
   }
   for (const statement of triggerStatements(config)) await db.exec(statement);
   await db.exec(`COMMENT ON FUNCTION cyc_saved_versions_row() IS ${literal(hash)}`);
   await seedActiveMarks(db);
-  return { missing: [], installed: true, changed: await seedPowerboats(db) };
+  return { missing: [], installed: true, changed: await seedBoats(db) };
 }
 
 /** Where the Financial Plans migration (cyc0002) lists the club plans, each saved when it was added. */
@@ -654,63 +654,93 @@ async function seedActiveMarks(db) {
   await db.exec(`DROP TABLE ${SEED}`);
 }
 
-/** Where the asset list migration (cyc0013) lists each plan copy's coach-boat resource kind. */
-const POWERBOAT_SEED = "cyc_seed_powerboats";
+/** Where the asset list migration (cyc0013) lists the powerboat classes it added or found. */
+const POWERBOAT_CLASSES_SEED = "cyc_seed_powerboat_classes";
 
 /**
- * Moves each draft's coach boats, the owned resources of its copy's coach-boat kind, into its
- * blocks' `powerboats`, once the schema apply has added it. Their highest hourly cost, fuel and
- * upkeep included, becomes the powerboat rate, and their day rate is dropped. Saved Financial Plans
- * keep theirs, since they never change. Returns the drafts it changed, whose results are now stale.
+ * Books the powerboat classes' upkeep to the account the organization's coach boats (`ribs`) cost
+ * type uses, once the schema apply has added `boat_classes.account_id`, so coach boats keep their
+ * account. Returns every draft, since the catalog changed.
  */
-async function seedPowerboats(db) {
-  const [{ seed }] = await db.query(`SELECT to_regclass('${POWERBOAT_SEED}') IS NOT NULL AS seed`);
+async function seedPowerboatAccounts(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${POWERBOAT_CLASSES_SEED}') IS NOT NULL AS seed`);
   if (!seed) return [];
   const [{ ready }] = await db.query(
-    `SELECT count(*) = 2 AS ready FROM information_schema.columns WHERE table_schema = current_schema()
-      AND ((table_name = 'plan_activity_blocks' AND column_name = 'powerboats')
-        OR (table_name = 'plan_rates' AND column_name = 'powerboat_per_hour_cents'))`,
+    `SELECT count(*) = 1 AS ready FROM information_schema.columns WHERE table_schema = current_schema()
+      AND table_name = 'boat_classes' AND column_name = 'account_id'`,
   );
   if (!ready) return [];
   await db.exec(
-    `CREATE TEMP TABLE cyc_powerboat_keys ON COMMIT DROP AS
-      SELECT m.version_set_id AS set_id, r.version_id AS operations, r.key
-        FROM ${POWERBOAT_SEED} seed
-        JOIN plan_resources r ON r.version_id = seed.version_id AND r.resource_kind_id = seed.resource_kind_id
-          AND NOT r.excluded_from_mtdc
-        JOIN ${MEMBERS} m ON m.version_id = seed.version_id
-        JOIN ${SETS} s ON s.id = m.version_set_id AND s.status = 'draft'`,
+    `UPDATE boat_classes SET account_id = (
+        SELECT c.account_id FROM organization_cost_accounts c
+          JOIN organizations o ON o.id = c.organization_id AND o.kind = 'own'
+          WHERE c.cost_type = 'ribs' ORDER BY c.account_id LIMIT 1
+      )
+      WHERE id IN (SELECT id FROM ${POWERBOAT_CLASSES_SEED}) AND account_id IS NULL`,
+  );
+  await db.exec(`DROP TABLE ${POWERBOAT_CLASSES_SEED}`);
+  return (await db.query(`SELECT id FROM ${SETS} WHERE status = 'draft'`)).map((row) => row.id);
+}
+
+/** Where the asset list migration (cyc0013) copies drafts' coach boats, and their blocks' uses of them. */
+const COACH_BOATS_SEED = "cyc_seed_coach_boats";
+const COACH_BOAT_USES_SEED = "cyc_seed_coach_boat_uses";
+
+/**
+ * Moves each draft's coach boats into the RIB class, once the schema apply has added the boat rates'
+ * fuel and charter and the blocks' charters. Owned ones become a RIB boat rate, priced at their
+ * highest fuel and upkeep an hour, and each block's own RIBs; rented ones a charter rate, at their day
+ * rate, and each block's chartered RIBs. A day rate on owned ones is dropped. Returns the drafts it
+ * changed, whose results are now stale.
+ */
+async function seedCoachBoats(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${COACH_BOATS_SEED}') IS NOT NULL AS seed`);
+  if (!seed) return [];
+  const [{ ready }] = await db.query(
+    `SELECT count(*) = 3 AS ready FROM information_schema.columns WHERE table_schema = current_schema()
+      AND ((table_name = 'plan_boat_rates' AND column_name IN ('fuel_per_hour_cents', 'charter_per_day_cents'))
+        OR (table_name = 'plan_block_boats' AND column_name = 'chartered'))`,
+  );
+  if (!ready) return [];
+  const [rib] = await db.query("SELECT id FROM boat_classes WHERE lower(name) = 'rib' ORDER BY id LIMIT 1");
+  if (rib === undefined) return [];
+  const klass = literal(rib.id);
+  await db.exec(
+    `INSERT INTO plan_boat_rates (id, version_id, key, boat_class_id, maintenance_per_boat_hour_cents)
+      SELECT gen_random_uuid(), k.version_id, gen_random_uuid(), ${klass}, 0
+        FROM (SELECT DISTINCT version_id FROM ${COACH_BOATS_SEED}) k
+        WHERE NOT EXISTS (
+          SELECT 1 FROM plan_boat_rates r WHERE r.version_id = k.version_id AND r.boat_class_id = ${klass}
+        )`,
   );
   await db.exec(
-    `UPDATE plan_activity_blocks b SET powerboats = coalesce(b.powerboats, 0) + used.n
+    `UPDATE plan_boat_rates r SET
+        maintenance_per_boat_hour_cents = coalesce(nullif(r.maintenance_per_boat_hour_cents, 0), k.upkeep, 0),
+        fuel_per_hour_cents = coalesce(r.fuel_per_hour_cents, k.fuel),
+        charter_per_day_cents = coalesce(r.charter_per_day_cents, k.charter)
       FROM (
-        SELECT br.block_id, sum(br.quantity) AS n FROM plan_block_resources br
-          JOIN ${MEMBERS} m ON m.version_id = br.version_id
-          JOIN cyc_powerboat_keys k ON k.set_id = m.version_set_id AND k.key = br.resource_key
-          GROUP BY br.block_id
-      ) used
-      WHERE b.id = used.block_id`,
+        SELECT version_id,
+          max(upkeep_per_hour_cents) FILTER (WHERE owned) AS upkeep,
+          max(fuel_per_hour_cents) FILTER (WHERE owned) AS fuel,
+          max(cost_per_day_cents) FILTER (WHERE NOT owned) AS charter
+          FROM ${COACH_BOATS_SEED} GROUP BY version_id
+      ) k
+      WHERE r.version_id = k.version_id AND r.boat_class_id = ${klass}`,
   );
   await db.exec(
-    `DELETE FROM plan_block_resources br USING ${MEMBERS} m, cyc_powerboat_keys k
-      WHERE m.version_id = br.version_id AND k.set_id = m.version_set_id AND k.key = br.resource_key`,
+    `INSERT INTO plan_block_boats (id, version_id, key, block_id, boat_class_id, count, chartered)
+      SELECT gen_random_uuid(), u.version_id, gen_random_uuid(), u.block_id, ${klass},
+        coalesce(sum(u.quantity) FILTER (WHERE u.owned), 0), sum(u.quantity) FILTER (WHERE NOT u.owned)
+        FROM ${COACH_BOAT_USES_SEED} u GROUP BY u.version_id, u.block_id`,
   );
-  await db.exec(
-    `UPDATE plan_rates rt SET powerboat_per_hour_cents = cost.rate
-      FROM (
-        SELECT r.version_id, max(coalesce(r.cost_per_hour_cents, 0) + coalesce(r.fuel_per_hour_cents, 0)
-          + coalesce(r.maintenance_per_hour_cents, 0)) AS rate
-          FROM plan_resources r JOIN cyc_powerboat_keys k ON k.operations = r.version_id AND k.key = r.key
-          GROUP BY r.version_id
-      ) cost
-      WHERE rt.version_id = cost.version_id AND rt.powerboat_per_hour_cents IS NULL`,
-  );
-  await db.exec(
-    "DELETE FROM plan_resources r USING cyc_powerboat_keys k WHERE r.version_id = k.operations AND r.key = k.key",
-  );
-  const changed = (await db.query("SELECT DISTINCT set_id FROM cyc_powerboat_keys")).map((row) => row.set_id);
-  await db.exec(`DROP TABLE ${POWERBOAT_SEED}`);
+  const changed = (await db.query(`SELECT DISTINCT set_id FROM ${COACH_BOATS_SEED}`)).map((row) => row.set_id);
+  await db.exec(`DROP TABLE ${COACH_BOAT_USES_SEED}, ${COACH_BOATS_SEED}`);
   return changed;
+}
+
+/** Runs the asset list migration's seeds, and returns the drafts they changed. */
+async function seedBoats(db) {
+  return [...new Set([...(await seedPowerboatAccounts(db)), ...(await seedCoachBoats(db))])];
 }
 
 // The catalog the engine reads as it is now.
@@ -721,9 +751,8 @@ const CATALOG = [
   "qualifications",
   "qualification_covers",
   "boat_classes",
-  "resource_kinds",
   "assets",
-  "sailboats",
+  "boats",
 ];
 
 /** A `date` as `YYYY-MM-DD`, whether the driver gives a string, or a `Date` at UTC or local midnight. */
@@ -1361,7 +1390,8 @@ module.exports.draftsChangedBy = draftsChangedBy;
 module.exports.draftQueue = draftQueue;
 module.exports.copyParent = copyParent;
 module.exports.copyOrder = copyOrder;
-module.exports.seedPowerboats = seedPowerboats;
+module.exports.seedCoachBoats = seedCoachBoats;
+module.exports.seedPowerboatAccounts = seedPowerboatAccounts;
 module.exports.REFUSED = REFUSED;
 module.exports.RESULTS_BY_SAVE = RESULTS_BY_SAVE;
 module.exports.SET_STAYS = SET_STAYS;

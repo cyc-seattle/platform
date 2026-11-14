@@ -393,7 +393,7 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
 parameter("level", ["Level 1 Instructor", "Level 2 Instructor"]);
-parameter("boats", ["Sailqubes", "Optis"]);
+parameter("boats", ["Sailqubes", "Optis", "RIBs"]);
 parameter("staff", ["one coach", "two coaches"]);
 parameter("day", ["July 1", "August 1"]);
 /** "4pm" or "noon" as `HH:MM`. */
@@ -443,10 +443,22 @@ async function level(name: string, rate = 2000): Promise<Item> {
   });
   return levels[name];
 }
+/** A boat class by its plural name. RIBs are coach boats: they take no sailors, and book to coach boats. */
 async function boatClass(name: string, sailors = name === "Optis" ? 1 : 2): Promise<string> {
-  classes[name] ??= await p.boatClass(name, sailors);
+  classes[name] ??=
+    name === "RIBs"
+      ? await p.boatClass(name, 0, { account_id: await p.account("ribs") })
+      : await p.boatClass(name, sailors);
   return classes[name];
 }
+const kindOf = (boats: string) => (boats === "RIBs" ? "powerboat" : "sailboat");
+/** A class's boat rate in the Operations Plan, with `fields` such as its fuel. */
+const boatRate = async (boats: string, fields: Row) =>
+  p.operationsRow("plan_boat_rates", {
+    boat_class_id: await boatClass(boats),
+    maintenance_per_boat_hour_cents: 0,
+    ...fields,
+  });
 const staffAt = async (name: string, count: number, rate?: number) => ({
   staff_level_key: (await level(name, rate))["key"],
   count,
@@ -455,8 +467,6 @@ const staffAt = async (name: string, count: number, rate?: number) => ({
 /** What a block is given. */
 interface Given {
   staff?: Row[];
-  powerboats?: number;
-  resources?: Row[];
   boats?: Row[];
 }
 /** An offering of `program`, or of a new program, with `sailors` sailors. */
@@ -468,14 +478,13 @@ async function offeringOf(program: string | undefined, sailors: number): Promise
 /** A block on `date` holding a practice of each offering at `times`, given `given`. Returns the block. */
 async function blockOf(offerings: Item[], times: string, given: Given, date = JUNE, name = "A block"): Promise<string> {
   const version = offerings[0]!["version_id"] as string;
-  const block = await p.block(version, date, name, { powerboats: given.powerboats ?? null });
+  const block = await p.block(version, date, name);
   for (const o of offerings) {
-    // A practice with boats or powerboats is on the water.
-    const sails = (given.boats ?? []).length > 0 || (given.powerboats ?? 0) > 0;
+    // A practice with boats is on the water.
+    const sails = (given.boats ?? []).length > 0;
     await p.activities(o, [date], ...span(times), { block_id: block, uses_boats: sails });
   }
   for (const s of given.staff ?? []) await p.given("plan_block_staff", version, block, s);
-  for (const r of given.resources ?? []) await p.given("plan_block_resources", version, block, r);
   for (const b of given.boats ?? []) await p.given("plan_block_boats", version, block, b);
   return block;
 }
@@ -523,35 +532,34 @@ Step(
 for (const text of ["{boats} take {count} sailor each", "{boats} take {count} sailors each"]) {
   Step(text, (_, boats: string, sailors: string) => boatClass(boats, Number(sailors)));
 }
-Step("{boats} that cost {money} an hour on the water in upkeep", async (_, boats: string, money: string) => {
-  await p.operationsRow("plan_boat_rates", {
-    boat_class_id: await boatClass(boats),
-    maintenance_per_boat_hour_cents: cents(money),
-  });
-});
-Step("powerboats that cost {money} an hour on the water, fuel included", (_, money: string) =>
-  p.operationsRow("plan_rates", { powerboat_per_hour_cents: cents(money) }),
+Step("{boats} that cost {money} an hour on the water in upkeep", (_, boats: string, money: string) =>
+  boatRate(boats, { maintenance_per_boat_hour_cents: cents(money) }),
+);
+Step(
+  "{boats} that cost {money} an hour in fuel and {money} an hour in upkeep",
+  (_, boats: string, fuel: string, upkeep: string) =>
+    boatRate(boats, { fuel_per_hour_cents: cents(fuel), maintenance_per_boat_hour_cents: cents(upkeep) }),
+);
+Step("{boats} that charter for {money} a day", (_, boats: string, money: string) =>
+  boatRate(boats, { charter_per_day_cents: cents(money) }),
 );
 Step("the organization has {count} {boats}", async (_, count: string, boats: string) => {
-  await p.sailboats(await boatClass(boats), Number(count));
+  await p.boats(await boatClass(boats), Number(count), kindOf(boats));
 });
 Step(
   "the organization has {count} {boats}, and gets {count} more on {day}",
   async (_, count: string, boats: string, more: string, day: string) => {
-    await p.sailboats(await boatClass(boats), Number(count));
-    await p.sailboats(await boatClass(boats), Number(more), { acquired_on: DAYS[day] });
+    await p.boats(await boatClass(boats), Number(count), kindOf(boats));
+    await p.boats(await boatClass(boats), Number(more), kindOf(boats), { acquired_on: DAYS[day] });
   },
 );
 Step(
   "the organization has {count} {boats}, and disposes of {count} on {day}",
   async (_, count: string, boats: string, gone: string, day: string) => {
-    await p.sailboats(await boatClass(boats), Number(count) - Number(gone));
-    await p.sailboats(await boatClass(boats), Number(gone), { disposed_on: DAYS[day] });
+    await p.boats(await boatClass(boats), Number(count) - Number(gone), kindOf(boats));
+    await p.boats(await boatClass(boats), Number(gone), kindOf(boats), { disposed_on: DAYS[day] });
   },
 );
-Step("the organization has {count} powerboats", async (_, count: string) => {
-  await p.powerboats(Number(count));
-});
 
 // Defined below `times`, which a step needs before it can use it. The plan is for PLAN_YEAR, 2027, and
 // the winter starts the December before it.
@@ -585,10 +593,10 @@ Step(
   },
 );
 Step(
-  "an offering with a practice from {times}, in a block with {count} powerboats",
-  async (_, times: string, count: string) => {
+  "an offering with a practice from {times}, in a block with {count} of the organization's {boats}",
+  async (_, times: string, count: string, boats: string) => {
     await blockOf([await offeringOf(undefined, 1)], times, {
-      powerboats: Number(count),
+      boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }],
     });
   },
 );
@@ -634,7 +642,7 @@ Step("the second offering pays {money} of coaches' wages", async (_, money: stri
 Step("the two offerings pay {money} of coaches' wages between them", async (_, money: string) => {
   expect((await wagesOf(p.offerings[0]!)) + (await wagesOf(p.offerings[1]!))).toBe(cents(money));
 });
-Step("the offering pays {money} for powerboats", async (_, money: string) => {
+Step("the offering pays {money} for coach boats", async (_, money: string) => {
   expect(p.total(onOffering(first(), await p.account("ribs")))).toBe(cents(money));
 });
 Step("the offering pays {money} of boat upkeep", async (_, money: string) => {
@@ -779,20 +787,50 @@ Step("the planner isn't warned about {boats}", () => {
   expect(p.warned("over_inventory_boats")).toBe(false);
 });
 Step(
-  "two blocks on the morning of July 13, with {count} powerboats and {count} powerboats",
-  async (_, n: string, m: string) => {
-    await blockOf([await offeringOf(undefined, 1)], MORNING, { powerboats: Number(n) }, JULY_13);
-    await blockOf([await offeringOf(undefined, 1)], MORNING, { powerboats: Number(m) }, JULY_13);
+  "two blocks on the morning of July 13, with {count} {boats} and {count} {boats}",
+  async (_, n: string, boats: string, m: string) => {
+    for (const count of [n, m]) {
+      await blockOf(
+        [await offeringOf(undefined, 1)],
+        MORNING,
+        { boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }] },
+        JULY_13,
+      );
+    }
   },
 );
 Step(
-  "the planner is warned that July 13 has {count} powerboats out, but the organization has {count}",
-  (_, out: string, have: string) => {
-    const found = warning("over_inventory_powerboats");
-    expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    expect(found?.message).toMatch(new RegExp(`^${out} powerboats out at once.*, but .+ has only ${have}`));
+  "a block on the morning of July 13 with {count} of the organization's {boats} and {count} chartered {boats}",
+  async (_, own: string, boats: string, chartered: string) => {
+    await blockOf(
+      [await offeringOf(undefined, 1)],
+      MORNING,
+      { boats: [{ boat_class_id: await boatClass(boats), count: Number(own), chartered: Number(chartered) }] },
+      JULY_13,
+    );
   },
 );
+Step(
+  "a block with {count} chartered RIB on the morning of July 13, and another with {count} that afternoon",
+  async (_, morning: string, afternoon: string) => {
+    for (const [times, n] of [
+      [MORNING, morning],
+      ["1pm to 4pm", afternoon],
+    ] as const) {
+      await blockOf(
+        [await offeringOf(undefined, 1)],
+        times,
+        { boats: [{ boat_class_id: await boatClass("RIBs"), count: 0, chartered: Number(n) }] },
+        JULY_13,
+      );
+    }
+  },
+);
+Step("the two offerings pay {money} for boat charters between them", async (_, money: string) => {
+  const charters = await p.account("boatCharters");
+  const paid = (o: Item) => p.total(onOffering(o["key"] as string, charters));
+  expect(paid(p.offerings[0]!) + paid(p.offerings[1]!)).toBe(cents(money));
+});
 
 // What a block's staff and boats can safely take.
 Step(

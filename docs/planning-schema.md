@@ -46,8 +46,9 @@ erDiagram
     accounts |o--o{ accounts : "parent, contra"
     products ||--o| programs : "program subtype"
     programs ||--o{ catalog_offerings : "offerings of"
-    assets ||--o| sailboats : "sailboat subtype"
-    boat_classes ||--o{ sailboats : "class of"
+    assets ||--o| boats : "boat subtype"
+    boat_classes ||--o{ boats : "class of"
+    accounts |o--o{ boat_classes : "upkeep booked to"
     organizations ||--o{ organization_cost_accounts : "calculated costs go to"
     accounts ||--o{ organization_cost_accounts : "booked to"
 
@@ -111,19 +112,16 @@ erDiagram
     boat_classes {
         uuid id PK
         string name
-        int max_capacity "most sailors one boat safely takes"
+        int max_capacity "most sailors one boat safely takes; 0 for a coach boat"
         decimal footprint_sq_ft
-    }
-    resource_kinds {
-        uuid id PK
-        string name
+        uuid account_id FK "where its upkeep is booked; empty for boat maintenance"
     }
     assets {
         uuid id PK
         string kind "sailboat|powerboat|motor|other"
         string name
         string make
-        string model "hidden for a sailboat: its boat class"
+        string model "hidden for a boat: its boat class"
         string identifier "HIN, VIN, or serial number"
         string registration_number
         int value_cents "book value, QuickBooks 1500"
@@ -131,9 +129,9 @@ erDiagram
         date disposed_on "empty while CSC has it"
         text note
     }
-    sailboats {
+    boats {
         uuid id PK
-        uuid asset_id FK "unique; a sailboat"
+        uuid asset_id FK "unique; a sailboat or powerboat"
         uuid boat_class_id FK
         string sail_number
     }
@@ -147,7 +145,7 @@ erDiagram
 
 `programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted.
 
-A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels, resource kinds and boat rates name no account. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, a motor, or other, such as a trailer or the van. `value_cents` is its book value, as in QuickBooks account 1500. A sailboat also has a `sailboats` row, with its class, per `AGENTS.md`'s subtype pattern; its class is its model, so the Data Studio hides `model` for one. The engine counts the sailboats of each class, and the powerboats, that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Motors and other assets are listed, not counted. A boat class with sailboats can't be deleted. Catalog Writers change the list, and Catalog Readers and planners see it.
+A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels and boat rates name no account; a boat class can name the account its upkeep goes to. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, a motor, or other, such as a trailer or the van. `value_cents` is its book value, as in QuickBooks account 1500. A sailboat or powerboat also has a `boats` row, with its class, such as Opti or RIB, per `AGENTS.md`'s subtype pattern; its class is its model, so the Data Studio hides `model` for one. The engine counts the boats of each class that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Motors and other assets are listed, not counted. A boat class with boats can't be deleted. The powerboat classes, RIB and Support, take 0 sailors, and their `account_id` books their upkeep to Coach boats; a class with none books it to boat maintenance. Catalog Writers change the list, and Catalog Readers and planners see it.
 
 ### Directory
 
@@ -287,7 +285,6 @@ erDiagram
     plan_versions ||--o{ plan_activity_blocks : contains
     plan_activity_blocks |o--o{ plan_activities : holds
     plan_activity_blocks ||--o{ plan_block_staff : "staffed by"
-    plan_activity_blocks ||--o{ plan_block_resources : uses
     plan_activity_blocks ||--o{ plan_block_boats : sails
     boat_classes ||--o{ plan_block_boats : "boat class"
     plan_offerings ||--o{ plan_budget_lines : "direct lines"
@@ -331,7 +328,6 @@ erDiagram
     plan_activity_blocks {
         date date
         string name
-        int powerboats "the organization's, such as coach boats"
     }
     plan_block_staff {
         uuid block_id FK
@@ -340,16 +336,11 @@ erDiagram
         int count
         string pay "salary|hourly, for a position"
     }
-    plan_block_resources {
-        uuid block_id FK
-        uuid resource_key "operations key"
-        decimal quantity
-        decimal hours "empty for the block's own"
-    }
     plan_block_boats {
         uuid block_id FK
         uuid boat_class_id FK
         int count "the organization's"
+        int chartered "costs the charter rate a day"
         int sailor_owned "sailors bring"
     }
     plan_trips {
@@ -388,7 +379,7 @@ Each activity is a dated row. The planner enters them, or a tool such as a sched
 
 Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, and its `rules`. Like the Program Plan's own `rules` and the Operations Plan's, a program's rules are the planner's words for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan copy, they're versioned, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
 
-A block, in `plan_activity_blocks`, is one or more activities on one date that share their staff and boats, such as Guppies and Minnows on the morning of July 13. Each activity is in at most one block, through `block_id`. A block's rows say what it's given: `plan_block_staff`, a number at a staff level or one salaried position, paid out of the salary or by the hour; `powerboats`, how many of the organization's powerboats, such as coach boats; `plan_block_resources`, other equipment, such as a rented coach boat; and `plan_block_boats`, the organization's boats of a class and the ones sailors bring. The planner, or their AI, writes them. Nothing derives them, and nothing records which rule made them. Every foreign key restricts delete, so a block's rows, and its activities' `block_id`, go before the block does.
+A block, in `plan_activity_blocks`, is one or more activities on one date that share their staff and boats, such as Guppies and Minnows on the morning of July 13. Each activity is in at most one block, through `block_id`. A block's rows say what it's given: `plan_block_staff`, a number at a staff level or one salaried position, paid out of the salary or by the hour; and `plan_block_boats`, its boats of a class, sailboats or powerboats such as coach boats: the organization's own, the ones it charters, and the ones sailors bring. The planner, or their AI, writes them. Nothing derives them, and nothing records which rule made them. Every foreign key restricts delete, so a block's rows, and its activities' `block_id`, go before the block does.
 
 A program area's plan holds only offerings of that area's programs, and the engine warns about any other.
 
@@ -403,13 +394,11 @@ erDiagram
     plan_versions ||--o| plan_rates : contains
     plan_versions ||--o{ plan_staff_levels : contains
     plan_versions ||--o{ plan_salaried_positions : contains
-    plan_versions ||--o{ plan_resources : contains
     plan_versions ||--o{ plan_pools : contains
     plan_versions ||--o{ plan_bonus_owners : contains
     plan_versions ||--o{ plan_closed_dates : contains
     plan_versions ||--o{ plan_capital_items : contains
     accounts ||--o{ plan_capital_items : "booked to"
-    resource_kinds ||--o{ plan_resources : "kind of"
     boat_classes ||--o{ plan_boat_rates : "rate for"
     plan_salaried_positions ||--o{ plan_salaried_bookings : "management hours"
     products |o--o{ plan_salaried_bookings : "booked to"
@@ -424,7 +413,6 @@ erDiagram
         decimal payroll_tax_rate "share of wages"
         int lodging_per_night_cents
         int mileage_rate_cents
-        int powerboat_per_hour_cents "one powerboat on the water, fuel included"
     }
     plan_staff_levels {
         string name
@@ -446,18 +434,11 @@ erDiagram
         string kind "management"
         decimal hours
     }
-    plan_resources {
-        uuid resource_kind_id FK
-        string name
-        int cost_per_hour_cents
-        int cost_per_day_cents
-        int fuel_per_hour_cents
-        int maintenance_per_hour_cents
-        boolean excluded_from_mtdc "rentals"
-    }
     plan_boat_rates {
         uuid boat_class_id FK
-        int maintenance_per_boat_hour_cents
+        int fuel_per_hour_cents "each hour one of its boats is on the water"
+        int maintenance_per_boat_hour_cents "upkeep, each hour on the water"
+        int charter_per_day_cents "each day one is chartered"
     }
     plan_pools {
         string name
@@ -495,9 +476,9 @@ erDiagram
     }
 ```
 
-`plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position, resource and boat rate also has one rate for the year, so each has a single row.
+`plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position and boat class also has one rate for the year, so each has a single row. A boat class's rates are its fuel and upkeep for each hour one of the organization's boats is on the water, and what one costs to charter for a day.
 
-The plans don't say how many boats the organization has: the [asset list](#catalog) does, the same for every plan. The engine warns when the blocks give out more of a boat class, or more powerboats, at once than the organization has that day.
+The plans don't say how many boats the organization has: the [asset list](#catalog) does, the same for every plan. The engine warns when the blocks give out more of the organization's boats of a class at once than it has that day; chartered boats don't count.
 
 `plan_revenue_charges` lists the charges set as a share of revenue, such as scholarships, the program buffer, B&O tax, and card fees. Each applies to every offering of the product kinds it names, at its rate × the offering's revenue. A charge on a revenue account adds revenue, such as the card fees families pay; on an expense account, it adds a cost. `excluded_from_mtdc` leaves it out of MTDC, as for scholarships, which are participant support.
 

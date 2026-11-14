@@ -154,9 +154,10 @@ function realisticPlan(): PlanData {
     count,
     sailor_owned,
   });
+  const ribs = (count: number, chartered: number | null = null) => ({ ...boats("rib", count), chartered });
   const fallGiven = {
     staff: [staff(instructor2.key, 3)],
-    boats: [boats("opti", 7, 2), boats("420", 4, 1)],
+    boats: [boats("opti", 7, 2), boats("420", 4, 1), ribs(2)],
   };
   const fallPractices = practice(fall, [2, 4], "16:00", "18:30", { on_water_minutes: 120 });
   const regattas = ["2026-10-17", "2026-10-18"].map((date) =>
@@ -191,13 +192,9 @@ function realisticPlan(): PlanData {
     ...campDays,
   ];
   const allocations = blocks(
-    ...fallPractices.map((a) => block([a], fallGiven, { name: "Fall racing", powerboats: 2 })),
+    ...fallPractices.map((a) => block([a], fallGiven, { name: "Fall racing" })),
     ...regattas.map((a) =>
-      block(
-        [a],
-        { ...fallGiven, resources: [{ resource_key: "rib-large-key", quantity: 1 }] },
-        { name: "Regatta", powerboats: 1 },
-      ),
+      block([a], { ...fallGiven, boats: [boats("opti", 7, 2), boats("420", 4, 1), ribs(1, 1)] }, { name: "Regatta" }),
     ),
     ...travelDays.map((a) => block([a], { staff: [staff(instructor2.key, 3)] }, { name: "Travel" })),
     // Spring racing and development share their coaches, with the director among them.
@@ -206,20 +203,16 @@ function realisticPlan(): PlanData {
         [a, devPractices.find((d) => d.date === a.date)!],
         {
           staff: [{ position_key: director.key, count: 1 }, staff(instructor2.key, 3)],
-          boats: [boats("opti", 11, 2), boats("420", 3, 1)],
+          boats: [boats("opti", 11, 2), boats("420", 3, 1), ribs(2)],
         },
-        { name: "Spring youth", powerboats: 2 },
+        { name: "Spring youth" },
       ),
     ),
     ...ltsPractices.map((a) =>
-      block(
-        [a],
-        { staff: [staff(instructor1.key, 2)], boats: [boats("keelboat", 2)] },
-        { name: "Adult", powerboats: 1 },
-      ),
+      block([a], { staff: [staff(instructor1.key, 2)], boats: [boats("keelboat", 2), ribs(1)] }, { name: "Adult" }),
     ),
     ...campDays.map((a) =>
-      block([a], { staff: [staff(instructor1.key, 4)], boats: [boats("opti", 27)] }, { name: "Camp", powerboats: 2 }),
+      block([a], { staff: [staff(instructor1.key, 4)], boats: [boats("opti", 27), ribs(2)] }, { name: "Camp" }),
     ),
   );
 
@@ -237,12 +230,13 @@ function realisticPlan(): PlanData {
       { id: "opti", name: "Opti", max_capacity: 1, footprint_sq_ft: 40 },
       { id: "420", name: "420", max_capacity: 2, footprint_sq_ft: 90 },
       { id: "keelboat", name: "Keelboat", max_capacity: 4, footprint_sq_ft: 300 },
+      { id: "rib", name: "RIB", max_capacity: 0, footprint_sq_ft: null, account_id: A.ribs },
     ],
     ...assetList([
       { boat_class_id: "opti", count: 30 },
       { boat_class_id: "420", count: 10 },
       { boat_class_id: "keelboat", count: 3 },
-      { count: 4 },
+      { boat_class_id: "rib", count: 4, kind: "powerboat" },
     ]),
     qualifications: [{ id: "q-race", name: "Race coach" }],
     plan_offerings: [fall, spring, development, lts, ...campWeeks, charterYear, storageYear, merchYear],
@@ -262,7 +256,6 @@ function realisticPlan(): PlanData {
         payroll_tax_rate: 0.0765,
         lodging_per_night_cents: 15_000,
         mileage_rate_cents: 67,
-        powerboat_per_hour_cents: 750,
       }),
     ],
     plan_revenue_charges: [
@@ -285,22 +278,17 @@ function realisticPlan(): PlanData {
         hours: 80,
       },
     ],
-    plan_resources: [
-      {
-        ...v("rib-large"),
-        resource_kind_id: "kind-rib",
-        name: "Rented RIB",
-        cost_per_hour_cents: 0,
-        cost_per_day_cents: 300,
-        fuel_per_hour_cents: 1200,
-        maintenance_per_hour_cents: 250,
-        excluded_from_mtdc: true,
-      },
-    ],
     plan_boat_rates: [
       { ...v("rate-opti"), boat_class_id: "opti", maintenance_per_boat_hour_cents: 35 },
       { ...v("rate-420"), boat_class_id: "420", maintenance_per_boat_hour_cents: 60 },
       { ...v("rate-keelboat"), boat_class_id: "keelboat", maintenance_per_boat_hour_cents: 250 },
+      {
+        ...v("rate-rib"),
+        boat_class_id: "rib",
+        maintenance_per_boat_hour_cents: 150,
+        fuel_per_hour_cents: 600,
+        charter_per_day_cents: 30_000,
+      },
     ],
     plan_labor_lines: [
       laborLine(instructor2.key, {
@@ -523,8 +511,8 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 11963615,
-          "net": -8773615,
+          "expenses": 12002715,
+          "net": -8812715,
           "revenue": 3190000,
         },
       }

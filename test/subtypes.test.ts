@@ -32,21 +32,21 @@ const schema = mergeSchemas(
   })),
 ) as { fields: Field[]; relations: Relation[] };
 
-/** Every subtype collection, per the subtype pattern in AGENTS.md. */
+/** Every subtype collection, per the subtype pattern in AGENTS.md, with the base's kinds it's for. */
 const subtypes = [
   {
     base: "products",
-    kind: "program",
+    kinds: ["program"],
     subtype: "programs",
     foreignKey: "product_id",
     alias: "programs",
   },
   {
     base: "assets",
-    kind: "sailboat",
-    subtype: "sailboats",
+    kinds: ["sailboat", "powerboat"],
+    subtype: "boats",
     foreignKey: "asset_id",
-    alias: "sailboats",
+    alias: "boats",
   },
 ];
 
@@ -63,19 +63,20 @@ function findRelation(collection: string, field: string): Relation {
 }
 
 describe("subtypes", () => {
-  for (const { base, kind, subtype, foreignKey, alias } of subtypes) {
+  for (const { base, kinds, subtype, foreignKey, alias } of subtypes) {
+    const kind = kinds.join(" or ");
     describe(`${subtype} of ${base}`, () => {
       it(`lists ${kind} among ${base}.kind's choices and allowed values`, () => {
         const field = findField(base, "kind");
-        expect(field.meta.options?.choices?.map((choice) => choice.value)).toContain(kind);
-        expect(field.meta.validation).toMatchObject({ kind: { _in: expect.arrayContaining([kind]) } });
+        expect(field.meta.options?.choices?.map((choice) => choice.value)).toEqual(expect.arrayContaining(kinds));
+        expect(field.meta.validation).toMatchObject({ kind: { _in: expect.arrayContaining(kinds) } });
       });
 
       it(`links each ${subtype} row to one ${base} row, and only to one of kind ${kind} in the Data Studio`, () => {
         const field = findField(subtype, foreignKey);
         expect(field.schema).toMatchObject({ foreign_key_table: base, is_unique: true, is_nullable: false });
         expect(field.meta.required).toBe(true);
-        expect(field.meta.options?.filter).toEqual({ kind: { _eq: kind } });
+        expect(field.meta.options?.filter).toEqual({ kind: kinds.length === 1 ? { _eq: kinds[0] } : { _in: kinds } });
       });
 
       it(`blocks deleting a ${base} row that has a ${subtype} row`, () => {
