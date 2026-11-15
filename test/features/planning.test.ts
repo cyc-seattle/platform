@@ -429,7 +429,7 @@ Step("a bonus for the director that comes to {money}", async (_, money: string) 
   const area = p.areas[0]!;
   const product = await p.product("program", area);
   await p.offering(p.areaPlan(area), product, cents(money) * 2, 1);
-  await p.bonus(p.areaPlan(area), 0.5, [product], { position_key: position });
+  await p.bonus(await p.operationsPlan(), 0.5, [product], { position_key: position });
 });
 Step("the director's pay for the year is:", (_, table: { pay: string; amount: string }[]) => {
   const pay = p.out.positions.find((x) => x.position_key === position)!;
@@ -1154,13 +1154,14 @@ async function read(collection: string, filter: object, fields = "*"): Promise<R
 const one = async (collection: string, id: unknown, fields = "*"): Promise<Row> =>
   (await admin()).ok("GET", `${itemPath(collection, id)}?fields=${fields}`);
 
-/** A new Financial Plan for the scenario's organization and year, as "they". */
+/** A new Financial Plan for the year, as "they": for `parent`'s organization, or else the scenario's. */
 async function theyStart(name: string, parent?: string): Promise<string> {
   const id = randomUUID();
+  const organization = parent ? (await one("financial_plans", parent, "organization_id"))["organization_id"] : null;
   expectOk(
     await theyWrite("POST", "/items/financial_plans", {
       id,
-      organization_id: await p.organization(),
+      organization_id: organization ?? (await p.organization()),
       fiscal_year: PLAN_YEAR,
       name,
       ...(parent && { parent_id: parent }),
@@ -1433,6 +1434,9 @@ Step("they change the offering to take in {money}", async (_, money: string) => 
   // The offering has one sailor, so its price is what it takes in.
   expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: cents(money) }));
 });
+// A change to the catalog queues every draft on dev to be worked out again, one at a time, so under a
+// whole run's writes a draft's new P&L can take well over a minute.
+const DRAFT_RESULTS = { timeout: 180_000, interval: 1000 };
 Step("they see that the Financial Plan's P&L shows the offering takes in {money}", async (_, money: string) => {
   // Through the items API, as an AI does over Directus's MCP server, which can't run the engine. A
   // draft's P&L is worked out again a moment after each change, so this waits for the new one.
@@ -1446,7 +1450,7 @@ Step("they see that the Financial Plan's P&L shows the offering takes in {money}
     const rows = (body as { data: Row[] }).data;
     return Number(rows.find((r) => r["subject_key"] === offering!["key"])?.["revenue_cents"]);
   };
-  await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
+  await expect.poll(revenue, DRAFT_RESULTS).toBe(cents(money));
 });
 Step("the Financial Plan's P&L shows that the offering takes in {money}", async (_, money: string) => {
   // A draft's P&L is worked out again a moment after each change, so this waits for the new one.
@@ -1455,7 +1459,7 @@ Step("the Financial Plan's P&L shows that the offering takes in {money}", async 
     const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
     return Number(mine?.["revenue_cents"]);
   };
-  await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
+  await expect.poll(revenue, DRAFT_RESULTS).toBe(cents(money));
 });
 Step(
   "a draft Financial Plan that pays a director {percent} of an offering in {string} that takes in {money}",
@@ -1814,7 +1818,7 @@ Step("the draft is still in force, and its P&L has the offering at {money} a sai
     const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
     return Number(mine?.["revenue_cents"]);
   };
-  await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money) * 10);
+  await expect.poll(revenue, DRAFT_RESULTS).toBe(cents(money) * 10);
 });
 Step("they freeze it", async () => {
   await theyWrite("PATCH", itemPath("financial_plans", financialPlan), { status: "frozen" });
@@ -1906,6 +1910,7 @@ Step("they add a bonus to one of its Program Plans", async () => {
     key: randomUUID(),
     role_name: "Director",
     bonus_rate: 0.1,
+    account_id: await p.account("bonus"),
   });
 });
 Step("they're told that bonuses go in the Operations Plan", () => expectTold(BONUS_IN_OPERATIONS));
