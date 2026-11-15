@@ -5,7 +5,7 @@ import { A, budgetLine, emptyPlan, offering, pool, position, product, total } fr
 function booking(positionId: string, productId: string, hours: number) {
   return {
     id: `booking-${positionId}-${productId}`,
-    version_id: "v1",
+    plan_id: "v1",
     key: `booking-${positionId}-${productId}-key`,
     position_id: positionId,
     product_id: productId,

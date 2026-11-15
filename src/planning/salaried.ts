@@ -63,12 +63,17 @@ export function bookSalaries(
           }
           return [
             b.product_id != null
-              ? { cost_center_type: "product" as const, cost_center_key: b.product_id, hours: b.hours, line: b.kind }
+              ? {
+                  cost_center_type: "product" as const,
+                  cost_center_key: b.product_id,
+                  hours: b.hours,
+                  line: "management",
+                }
               : {
                   cost_center_type: "program_area" as const,
                   cost_center_key: b.program_area_id as Id,
                   hours: b.hours,
-                  line: b.kind,
+                  line: "management",
                 },
           ];
         }),

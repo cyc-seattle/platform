@@ -21,7 +21,7 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   them into one snapshot and applies it. `src/schema/index.ts` is their TypeScript types, published
   as `@cyc-seattle/platform/schema` for apps to pass to `@directus/sdk`. It's generated: after a
   schema change, run `mise run schema-types`, and CI fails until you do. The `backend` stack deploys Directus with them, in dev and
-  prod. A schema change is tested on dev in the merge queue, or earlier with a manual deploy.
+  prod. A schema change reaches dev only once it merges to `main`.
 - `src/planning/` is the planning engine, published as `@cyc-seattle/platform/planning` so an app can
   load it without Pulumi. [`docs/planning-engine.md`](https://cyc-seattle.github.io/platform/planning-engine/) gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
@@ -55,21 +55,19 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   a new draft, for a planner to keep or delete. A schema change to planning updates it in the same
   PR. Claude Code reads skills only from `.claude/skills`,
   so link them there once: `mkdir -p .claude && ln -s ../.agents/skills .claude/skills`.
-- PR titles are conventional commits. PRs merge through the merge queue, which squashes them. To keep
-  a branch's history with a merge commit (cyc-seattle/workplace#6), an org admin bypasses the queue,
-  after deploying the branch to dev by hand. Either way, the PR title is the commit's title.
+- PR titles are conventional commits. A maintainer squashes a PR, or merges it with a merge commit to
+  keep a branch's history (cyc-seattle/workplace#6). Either way, the PR title is the commit's title.
 - Never push to `main`.
 
-## Merge queue
+## Branches and merges
 
-- PRs merge through a batched merge queue. A PR's push runs only CI. The dev deploy runs in the
-  queue, one batch at a time, on the one shared dev. The integration tests don't run in the queue
-  (#161); a nightly run tests dev.
+- There's no merge queue (#280). A PR merges once `ci / ci` and `pr-title / pr-title` pass, and only
+  org admins and `maintainers` can merge it. `contributors` push branches and open PRs. Even a
+  maintainer merges by bypassing the rule, with `gh pr merge --squash --admin` once checks pass, so
+  auto-merge never fires.
 - Never force-push. To bring a branch up to date, merge `origin/main` into it.
-- A queued branch can't be pushed until it's dequeued. Take the PR out of the queue first.
-- To try a branch on dev before it's queued, run `gh workflow run pull-request.yml --ref <branch>`.
-  Run it only when no other dev run is going (`gh run list --workflow pull-request.yml`).
-- When a queue run fails, reproduce the failure locally against dev before you push a fix:
+- Dev's environments take only `main`, so a branch can't deploy to dev, by hand or otherwise.
+- When a dev deploy or its tests fail, reproduce the failure locally against dev before you push a fix:
   `PULUMI_STACK=dev mise run integration`, or `PULUMI_STACK=dev mise run preview` for a deploy.
 
 ## Deploys
@@ -145,7 +143,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
     the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
     one there.
 - A change to how the engine calculates a number updates [`docs/planning-engine.md`](https://cyc-seattle.github.io/platform/planning-engine/) in the same PR. A
-  saved plan version records the `@cyc-seattle/platform` version that calculated it, so such a change
+  frozen Financial Plan records the `@cyc-seattle/platform` version that calculated it, so such a change
   must be a `feat:` or `fix:`, which releases a new version.
 
 ## Code style

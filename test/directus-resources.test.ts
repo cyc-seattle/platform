@@ -8,7 +8,7 @@ import {
   directusRoleProvider,
   directusSettingsProvider,
   directusUserProvider,
-  savedVersionsCheckProvider,
+  frozenPlansCheckProvider,
 } from "../src/directus/resources.ts";
 import { describeProviderError, DirectusHttpError } from "../src/directus/client.ts";
 
@@ -307,7 +307,7 @@ describe("DirectusAccess", () => {
   });
 });
 
-describe("SavedVersionsCheck", () => {
+describe("FrozenPlansCheck", () => {
   const inputs = { ...auth, fingerprint: "abc", schemaHash: "def" };
   const ready = { fingerprint: "abc", tables: { plans: true } };
 
@@ -318,10 +318,10 @@ describe("SavedVersionsCheck", () => {
     vi.stubGlobal("fetch", fetchMock);
     const run =
       method === "create"
-        ? savedVersionsCheckProvider.create!(inputs)
-        : savedVersionsCheckProvider.update!("saved-versions", inputs, inputs);
+        ? frozenPlansCheckProvider.create!(inputs)
+        : frozenPlansCheckProvider.update!("frozen-plans", inputs, inputs);
     await expect(run).resolves.toMatchObject({ outs: inputs });
-    expect(fetchMock).toHaveBeenLastCalledWith(`${baseUrl}/saved-versions/status`, expect.anything());
+    expect(fetchMock).toHaveBeenLastCalledWith(`${baseUrl}/frozen-plans/status`, expect.anything());
   });
 
   it("fails the deploy, naming the provider, when a trigger is missing", async () => {
@@ -329,8 +329,8 @@ describe("SavedVersionsCheck", () => {
     stubLogin(fetchMock);
     fetchMock.mockResolvedValue(jsonResponse(200, { ...ready, tables: { plans: false } }));
     vi.stubGlobal("fetch", fetchMock);
-    await expect(savedVersionsCheckProvider.create!({ ...inputs, timeoutMs: 50, intervalMs: 10 })).rejects.toThrow(
-      /SavedVersionsCheck.create failed: .*plans has no trigger/,
+    await expect(frozenPlansCheckProvider.create!({ ...inputs, timeoutMs: 50, intervalMs: 10 })).rejects.toThrow(
+      /FrozenPlansCheck.create failed: .*plans has no trigger/,
     );
   });
 });

@@ -12,7 +12,7 @@ import {
   OPERATIONS_ONLY,
   queryGuardConfig,
   sailTeamPolicy,
-  savedVersionsConfig,
+  frozenPlansConfig,
   WEBSITE_BUILD,
   WEBSITE_FILE_FIELDS,
   websiteBuildRules,
@@ -194,7 +194,6 @@ describe("the Catalog policies", () => {
 
 const plans = [
   "plans",
-  "plan_versions",
   "plan_programs",
   "plan_offerings",
   "plan_trips",
@@ -223,8 +222,7 @@ const plans = [
   "plan_result_bonuses",
   "plan_result_capital",
   "plan_result_warnings",
-  "version_sets",
-  "version_set_members",
+  "financial_plans",
 ];
 const results = plans.filter((collection) => collection.startsWith("plan_result"));
 
@@ -254,10 +252,8 @@ describe("the Plan policies", () => {
   });
 
   const writes = (name: string) => named(name).rules.filter((rule) => rule.action !== "read");
-  const rows = plans.filter(
-    (collection) => !["plans", "plan_versions", "version_sets", "version_set_members", ...results].includes(collection),
-  );
-  const inPlan = (kind: string) => ({ version_id: { plan_id: { kind: { _eq: kind } } } });
+  const rows = plans.filter((collection) => !["plans", "financial_plans", ...results].includes(collection));
+  const inPlan = (kind: string) => ({ plan_id: { kind: { _eq: kind } } });
 
   it("let a Plan Writer change a Program Plan's rows, and none of the Operations Plan's own", () => {
     for (const action of ["create", "update", "delete"]) {
@@ -271,30 +267,27 @@ describe("the Plan policies", () => {
     }
   });
 
-  it("let a Plan Writer start and delete a draft, and name it, but not save it, date it, or archive it", () => {
-    const sets = writes("Plan Writer").filter((rule) => rule.collection === "version_sets");
+  it("let a Plan Writer start and delete a draft, and name it, but not freeze it, date it, or archive it", () => {
+    const sets = writes("Plan Writer").filter((rule) => rule.collection === "financial_plans");
     expect(sets).toEqual([
       {
-        collection: "version_sets",
+        collection: "financial_plans",
         action: "create",
-        fields: ["id", "organization_id", "fiscal_year", "name", "message", "parent_id", "status"],
+        fields: ["id", "organization_id", "fiscal_year", "name", "note", "parent_id", "status"],
       },
       {
-        collection: "version_sets",
+        collection: "financial_plans",
         action: "update",
-        fields: ["organization_id", "fiscal_year", "name", "message", "parent_id"],
+        fields: ["organization_id", "fiscal_year", "name", "note", "parent_id"],
       },
-      { collection: "version_sets", action: "delete", permissions: { status: { _eq: "draft" } } },
+      { collection: "financial_plans", action: "delete", permissions: { status: { _eq: "draft" } } },
     ]);
-    expect(writes("Plan Writer").filter((rule) => ["plans", "version_set_members"].includes(rule.collection))).toEqual(
-      [],
-    );
-    expect(writes("Plan Writer").filter((rule) => rule.collection === "plan_versions")).toEqual([
+    expect(writes("Plan Writer").filter((rule) => rule.collection === "plans")).toEqual([
       {
-        collection: "plan_versions",
+        collection: "plans",
         action: "update",
-        fields: ["message", "rules"],
-        permissions: { plan_id: { kind: { _eq: "program_area" } } },
+        fields: ["notes"],
+        permissions: { kind: { _eq: "program_area" } },
       },
     ]);
   });
@@ -306,12 +299,10 @@ describe("the Plan policies", () => {
       expect(rules.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("operations")))).toBe(
         true,
       );
-      for (const collection of ["plans", "plan_versions", "version_set_members"]) {
-        expect(collections("Plan Admin", action).has(collection), `${action} ${collection}`).toBe(true);
-      }
+      expect(collections("Plan Admin", action).has("plans"), `${action} plans`).toBe(true);
     }
-    expect(writes("Plan Admin").filter((rule) => rule.collection === "version_sets")).toEqual([
-      { collection: "version_sets", action: "update", fields: ["status", "effective_from", "archived_at"] },
+    expect(writes("Plan Admin").filter((rule) => rule.collection === "financial_plans")).toEqual([
+      { collection: "financial_plans", action: "update", fields: ["status", "effective_from", "archived_at"] },
     ]);
   });
 
@@ -333,23 +324,18 @@ describe("the Plan policies", () => {
   });
 });
 
-describe("savedVersionsConfig", () => {
-  it("guards every collection whose rows belong to a plan copy", () => {
-    const { versioned, results: written, deletable } = savedVersionsConfig(schemas, false, "1.0.0");
-    expect(versioned.sort()).toEqual(
-      plans
-        .filter(
-          (collection) =>
-            !["plans", "plan_versions", "version_sets", "version_set_members", ...results].includes(collection),
-        )
-        .sort(),
+describe("frozenPlansConfig", () => {
+  it("guards every collection whose rows belong to a plan", () => {
+    const { rows, results: written, deletable } = frozenPlansConfig(schemas, false, "1.0.0");
+    expect(rows.sort()).toEqual(
+      plans.filter((collection) => !["plans", "financial_plans", ...results].includes(collection)).sort(),
     );
     expect(written.sort()).toEqual([...results].sort());
     expect(deletable).toBe(false);
   });
 
-  it("lists every link from a plan row to another, which must stay in the row's version", () => {
-    const { links } = savedVersionsConfig(schemas, false, "1.0.0");
+  it("lists every link from a plan row to another, which must stay in the row's plan", () => {
+    const { links } = frozenPlansConfig(schemas, false, "1.0.0");
     expect(links).toEqual({
       plan_trips: { offering_id: "plan_offerings" },
       plan_activities: { offering_id: "plan_offerings", trip_id: "plan_trips", block_id: "plan_activity_blocks" },

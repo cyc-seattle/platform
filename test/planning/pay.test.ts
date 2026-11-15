@@ -21,7 +21,7 @@ import {
 function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
   return {
     id: "owner",
-    version_id: "v1",
+    plan_id: "v1",
     key: "owner-key",
     role_name: "Director",
     bonus_rate: 0.5,
@@ -35,7 +35,7 @@ function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
 function owns(productId: string, ownerId = "owner") {
   return {
     id: `bp-${productId}`,
-    version_id: "v1",
+    plan_id: "v1",
     key: `bp-${productId}`,
     bonus_owner_id: ownerId,
     product_id: productId,
@@ -146,11 +146,10 @@ describe("a bonus on an area's plan", () => {
     const data = emptyPlan({
       program_areas: [mine, theirs],
       products: [own, other],
-      plans: [{ id: "plan", kind: "program_area", program_area_id: mine.id }],
-      plan_versions: [{ id: "v1", plan_id: "plan" }],
+      plans: [{ id: "v1", kind: "program_area", program_area_id: mine.id }],
       plan_offerings: [
         offering(own.id, { target_enrollment: 1, price_cents: 100_000 }),
-        offering(other.id, { target_enrollment: 1, price_cents: 900_000, version_id: "v2" }),
+        offering(other.id, { target_enrollment: 1, price_cents: 900_000, plan_id: "v2" }),
       ],
       plan_bonus_owners: [owner()],
       plan_bonus_owner_products: [owns(own.id), owns(other.id)],
@@ -358,7 +357,7 @@ describe("closed dates", () => {
     const data = emptyPlan({
       products: [p],
       plan_offerings: [o],
-      plan_closed_dates: [{ id: "c", version_id: "v1", key: "c", date: "2027-09-06", name: "Labor Day" }],
+      plan_closed_dates: [{ id: "c", plan_id: "v1", key: "c", date: "2027-09-06", name: "Labor Day" }],
       plan_activities: [activity(o.id, { date: "2027-09-06" })],
     });
     expect(computePlan(data).warnings).toContainEqual(
@@ -406,10 +405,9 @@ describe("the review's edge cases", () => {
       emptyPlan({
         program_areas: [area],
         products: [p],
-        plans: [{ id: "plan", kind: "program_area", program_area_id: area.id }],
-        plan_versions: [{ id: "v1", plan_id: "plan" }],
+        plans: [{ id: "v1", kind: "program_area", program_area_id: area.id }],
         plan_offerings: [o],
-        plan_closed_dates: [{ id: "c", version_id: "v1", key: "c", date: "2027-06-01", name: "A day off" }],
+        plan_closed_dates: [{ id: "c", plan_id: "v1", key: "c", date: "2027-06-01", name: "A day off" }],
         plan_activities: [activity(o.id)],
       }),
     );

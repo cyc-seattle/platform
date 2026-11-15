@@ -6,8 +6,8 @@ import ts from "typescript";
 const PLANNING = path.resolve(import.meta.dirname, "../../src/planning");
 
 /**
- * The planning engine as ES modules for the saved-versions hook, which runs it when a version is
- * saved. A ConfigMap's keys can't hold a `/`, so each file is `planning-<name>.mjs`, with its
+ * The planning engine as ES modules for the frozen-plans hook, which runs it when a Financial Plan
+ * changes or is frozen. A ConfigMap's keys can't hold a `/`, so each file is `planning-<name>.mjs`, with its
  * imports renamed to match. The engine imports nothing but itself.
  */
 export function engineFiles(): Record<string, string> {
@@ -26,7 +26,7 @@ export function engineFiles(): Record<string, string> {
 }
 
 /**
- * The engine version a saved version records: the package's version and a hash of the engine's
+ * The engine version a frozen Financial Plan records: the package's version and a hash of the engine's
  * code. A commit would change it on every deploy, and a release is tagged after the deploy ships it.
  */
 export function engineVersion(files: Record<string, string>): string {

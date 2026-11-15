@@ -5,8 +5,8 @@ config:
   backend:directusCpu: 500m
   backend:licensed: true
   backend:mcp: true
-  # Lets the integration tests delete the saved plan versions they make. Never set in prod.
-  backend:savedVersionsDeletable: true
+  # Lets the integration tests delete the frozen Financial Plans they make. Never set in prod.
+  backend:frozenPlansDeletable: true
   backend:directusAdminEmail: master@cyccommunitysailing.org
   backend:directusAdmins:
     - ungood@onetrue.name

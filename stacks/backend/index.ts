@@ -12,7 +12,7 @@ import {
   DirectusPolicy,
   DirectusPreset,
   DirectusSettings,
-  SavedVersionsCheck,
+  FrozenPlansCheck,
 } from "../../src/directus/resources.ts";
 import * as random from "@pulumi/random";
 import * as gcp from "@pulumi/gcp";
@@ -26,7 +26,7 @@ import {
   groupPoliciesConfig,
   queryGuardConfig,
   sailTeamPolicy,
-  savedVersionsConfig,
+  frozenPlansConfig,
   WEBSITE_BUILD,
   websiteBuildRules,
   type PolicyData,
@@ -35,7 +35,7 @@ import { isDev, loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
 import { deployClubspotSync } from "./clubspot-sync.ts";
 import { deployGsuiteSync } from "./gsuite-sync.ts";
-import { fingerprint } from "./saved-versions.cjs";
+import { fingerprint } from "./frozen-plans.cjs";
 import { defaultViews, familyViews } from "./default-views.ts";
 import { engineFiles, engineVersion } from "./engine-files.ts";
 
@@ -93,11 +93,11 @@ const prod = isDev
       baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
     });
 
-// The hook runs the engine when a version is saved, and records which engine it was.
+// The hook runs the engine when a Financial Plan is frozen, and records which engine it was.
 const engine = engineFiles();
-const savedVersions = savedVersionsConfig(
+const frozenPlans = frozenPlansConfig(
   loadedSchemas,
-  config.getBoolean("savedVersionsDeletable") ?? false,
+  config.getBoolean("frozenPlansDeletable") ?? false,
   engineVersion(engine),
 );
 
@@ -114,7 +114,7 @@ const app = deployDirectus(
       ...grantable,
     ]),
     groupPolicies: groupPoliciesConfig(grantable),
-    savedVersions,
+    frozenPlans,
     engine,
   },
   prod?.values,
@@ -159,7 +159,7 @@ function devIdentities(directus: typeof app) {
     externalDomain: config.require("externalDomain"),
     clubspotSyncToken,
     gsuiteSyncToken,
-    // infra generates it, since deploy-dev can only read dev's secrets. csc-website's PR previews read it too.
+    // infra generates it, since deploy-dev can only read dev's secrets.
     websiteBuildToken: pulumi.secret(
       gcp.secretmanager
         .getSecretVersionAccessOutput({ secret: "dev-csc-website-directus-token" })
@@ -241,13 +241,13 @@ for (const [role, roleId] of [
   }
 }
 
-// The hook installs the triggers that keep a saved plan version from changing; this fails the
+// The hook installs the triggers that keep a frozen Financial Plan from changing; this fails the
 // deploy if any planning table lacks one.
-new SavedVersionsCheck(
-  "saved-versions-check",
+new FrozenPlansCheck(
+  "frozen-plans-check",
   {
     ...auth,
-    fingerprint: fingerprint(savedVersions),
+    fingerprint: fingerprint(frozenPlans),
     schemaHash: createHash("sha256").update(JSON.stringify(schema)).digest("hex"),
   },
   { dependsOn: crmSchema },

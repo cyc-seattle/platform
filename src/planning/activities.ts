@@ -26,7 +26,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
   const closed = new Map<string, string>();
   for (const c of ctx.data.plan_closed_dates ?? []) {
     // The closed days are the Operations Plan's, not an area's.
-    if (ctx.planOfVersion.get(c.version_id)?.kind === "program_area") {
+    if (ctx.planOf.get(c.plan_id)?.kind === "program_area") {
       ctx.warn(
         "closed_date_in_area_plan",
         `${c.name} is a closed day in a Program Plan. Only the Operations Plan's closed days count`,
@@ -56,7 +56,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
         `${offering.name}'s ${activity.kind} is on ${closedFor}, when ${ctx.data.organization.name} is closed`,
         activity.key,
         {
-          version_id: activity.version_id,
+          plan_id: activity.plan_id,
           date: activity.date,
         },
       );

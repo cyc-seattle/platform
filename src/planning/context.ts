@@ -36,9 +36,9 @@ const COST_TYPES: Record<CostType, string> = {
   cogs: "cost of goods sold",
 };
 
-/** Where a warning applies: a plan copy, and a date. */
+/** Where a warning applies: a plan, and a date. */
 export interface WarningScope {
-  version_id?: Id;
+  plan_id?: Id;
   date?: DateString;
 }
 
@@ -74,8 +74,8 @@ export class Context {
   readonly accounts: Map<Id, Account>;
   readonly products: Map<Id, Product>;
   readonly areas: Map<Id, ProgramArea>;
-  /** Each version's plan. */
-  readonly planOfVersion: Map<Id, Plan>;
+  /** Each plan, by its id. */
+  readonly planOf: Map<Id, Plan>;
   readonly offeringsById: Map<Id, PlanOffering>;
   readonly offeringsByKey: Map<Id, PlanOffering>;
   /** Expected enrollment per offering id, which the costs and revenue use. */
@@ -94,13 +94,7 @@ export class Context {
     this.accounts = new Map(data.accounts.map((a) => [a.id, a]));
     this.products = new Map(data.products.map((p) => [p.id, p]));
     this.areas = new Map(data.program_areas.map((a) => [a.id, a]));
-    const plans = new Map(data.plans.map((p) => [p.id, p]));
-    this.planOfVersion = new Map(
-      data.plan_versions.flatMap((v) => {
-        const plan = plans.get(v.plan_id);
-        return plan === undefined ? [] : [[v.id, plan] as const];
-      }),
-    );
+    this.planOf = new Map(data.plans.map((p) => [p.id, p]));
     this.offeringsById = new Map(data.plan_offerings.map((o) => [o.id, o]));
     this.offeringsByKey = new Map(data.plan_offerings.map((o) => [o.key, o]));
     this.rates = data.plan_rates[0];
@@ -127,7 +121,7 @@ export class Context {
   }
 
   warn(code: string, message: string, key?: string, scope: WarningScope = {}): void {
-    const same = (w: EngineWarning) => w.code === code && w.message === message && w.version_id === scope.version_id;
+    const same = (w: EngineWarning) => w.code === code && w.message === message && w.plan_id === scope.plan_id;
     if (this.warnings.some(same)) return;
     const category: WarningCategory = ALLOCATION_WARNINGS.has(code) ? "allocation" : "data";
     this.warnings.push({
@@ -135,7 +129,7 @@ export class Context {
       message,
       category,
       ...(key !== undefined && { key }),
-      ...(scope.version_id !== undefined && { version_id: scope.version_id }),
+      ...(scope.plan_id !== undefined && { plan_id: scope.plan_id }),
       ...(scope.date !== undefined && { date: scope.date }),
     });
   }

@@ -8,11 +8,11 @@ export type DateString = string;
 /** A `time`, as `HH:MM` or `HH:MM:SS`. */
 export type TimeString = string;
 
-/** The columns every version-scoped row carries. */
-export interface Versioned {
+/** The columns every row of a plan carries. */
+export interface PlanRow {
   id: Id;
-  version_id: Id;
-  /** Stable across versions; references from other plans use it. */
+  plan_id: Id;
+  /** Stays the same when a Financial Plan is copied; references from other plans use it. */
   key: Id;
 }
 
@@ -118,17 +118,11 @@ export interface Plan {
   program_area_id: Id | null;
 }
 
-/** A plan version. The engine reads only which plan it belongs to. */
-export interface PlanVersion {
-  id: Id;
-  plan_id: Id;
-}
-
 // Program area plan
 
 export type ActivityKind = "practice" | "regatta" | "clinic" | "travel";
 
-export interface PlanOffering extends Versioned {
+export interface PlanOffering extends PlanRow {
   product_id: Id;
   name: string;
   /** A `plan_terms` key in the Operations Plan, or none. */
@@ -137,7 +131,6 @@ export interface PlanOffering extends Versioned {
   ends_on: DateString;
   capacity: number | null;
   target_enrollment: number | null;
-  fill_rate: number | null;
   /** Per kid. */
   price_cents: number | null;
   cogs_rate: number | null;
@@ -145,17 +138,17 @@ export interface PlanOffering extends Versioned {
 }
 
 /** A program's settings in a Program Plan: who coaches it, and how many sailors each coach takes. */
-export interface PlanProgram extends Versioned {
+export interface PlanProgram extends PlanRow {
   /** The program's product. */
   product_id: Id;
   /** A `plan_staff_levels` key. */
   staff_level_key: Id | null;
   sailors_per_coach: number | null;
-  /** The planner's own words, which only their AI reads. */
-  rules: string | null;
+  /** The planner's short notes, which only their AI reads. */
+  notes: string[] | null;
 }
 
-export interface PlanTrip extends Versioned {
+export interface PlanTrip extends PlanRow {
   offering_id: Id;
   name: string;
   nights: number | null;
@@ -165,7 +158,7 @@ export interface PlanTrip extends Versioned {
 }
 
 /** One dated activity, or a travel day, as the planner or a scheduling tool entered it. */
-export interface PlanActivity extends Versioned {
+export interface PlanActivity extends PlanRow {
   offering_id: Id;
   /** The trip a travel day belongs to. */
   trip_id: Id | null;
@@ -182,13 +175,13 @@ export interface PlanActivity extends Versioned {
 }
 
 /** Activities on one date that share their staff and boats. */
-export interface PlanActivityBlock extends Versioned {
+export interface PlanActivityBlock extends PlanRow {
   date: DateString;
   name: string;
 }
 
 /** Staff on a block: a number at one staff level, or a salaried position. */
-export interface PlanBlockStaff extends Versioned {
+export interface PlanBlockStaff extends PlanRow {
   block_id: Id;
   /** A `plan_staff_levels` key, for hourly or volunteer staff. */
   staff_level_key: Id | null;
@@ -200,7 +193,7 @@ export interface PlanBlockStaff extends Versioned {
 }
 
 /** Boats of one class on a block: the organization's, the ones it charters, and the ones sailors bring. */
-export interface PlanBlockBoats extends Versioned {
+export interface PlanBlockBoats extends PlanRow {
   block_id: Id;
   boat_class_id: Id;
   count: number;
@@ -208,7 +201,7 @@ export interface PlanBlockBoats extends Versioned {
   chartered?: number | null;
 }
 
-export interface PlanLaborLine extends Versioned {
+export interface PlanLaborLine extends PlanRow {
   name: string;
   cost_center_type: CostCenterType;
   cost_center_key: Id | null;
@@ -220,7 +213,7 @@ export interface PlanLaborLine extends Versioned {
   note: string | null;
 }
 
-export interface PlanBudgetLine extends Versioned {
+export interface PlanBudgetLine extends PlanRow {
   name: string;
   account_id: Id;
   function: AccountFunction | null;
@@ -237,7 +230,7 @@ export interface PlanBudgetLine extends Versioned {
  * Something lasting the Operations Plan means to buy, ranked by `sort` with the most needed first.
  * Its account is an asset account.
  */
-export interface PlanCapitalItem extends Versioned {
+export interface PlanCapitalItem extends PlanRow {
   name: string;
   amount_cents: number;
   account_id: Id;
@@ -248,21 +241,21 @@ export interface PlanCapitalItem extends Versioned {
 
 // Operations plan
 
-/** The year's rates. An Operations plan version has at most one row. */
-export interface PlanRates extends Versioned {
+/** The year's rates. An Operations Plan has at most one row. */
+export interface PlanRates extends PlanRow {
   /** Employer payroll costs, as a share of wages. */
   payroll_tax_rate: number | null;
   lodging_per_night_cents: number | null;
   mileage_rate_cents: number | null;
 }
 
-export interface PlanStaffLevel extends Versioned {
+export interface PlanStaffLevel extends PlanRow {
   name: string;
   pay_type: "hourly" | "volunteer";
   hourly_rate_cents: number | null;
 }
 
-export interface PlanSalariedPosition extends Versioned {
+export interface PlanSalariedPosition extends PlanRow {
   name: string;
   annual_salary_cents: number;
   paid_hours_per_year: number | null;
@@ -274,16 +267,15 @@ export interface PlanSalariedPosition extends Versioned {
 }
 
 /** Hours charged to a product, or to a program area and shared among its offerings: one of the two. */
-export interface PlanSalariedBooking extends Versioned {
+export interface PlanSalariedBooking extends PlanRow {
   position_id: Id;
   product_id: Id | null;
   program_area_id: Id | null;
-  kind: "management";
   hours: number;
 }
 
 /** A boat class's rates for the year. */
-export interface PlanBoatRate extends Versioned {
+export interface PlanBoatRate extends PlanRow {
   boat_class_id: Id;
   /** Upkeep for each hour one of the organization's boats of the class is on the water. */
   maintenance_per_boat_hour_cents: number;
@@ -294,11 +286,11 @@ export interface PlanBoatRate extends Versioned {
 }
 
 /** A group of shared costs, such as G&A, divided among all of the plan's offerings by MTDC. */
-export interface PlanPool extends Versioned {
+export interface PlanPool extends PlanRow {
   name: string;
 }
 
-export interface PlanBonusOwner extends Versioned {
+export interface PlanBonusOwner extends PlanRow {
   role_name: string;
   bonus_rate: number;
   account_id: Id;
@@ -308,13 +300,13 @@ export interface PlanBonusOwner extends Versioned {
   position_key?: Id | null;
 }
 
-export interface PlanBonusOwnerProduct extends Versioned {
+export interface PlanBonusOwnerProduct extends PlanRow {
   bonus_owner_id: Id;
   product_id: Id;
 }
 
 /** A charge set as a share of each offering's revenue, such as scholarships or card fees. */
-export interface PlanRevenueCharge extends Versioned {
+export interface PlanRevenueCharge extends PlanRow {
   name: string;
   /** A share, such as 0.02 for 2%. */
   rate: number;
@@ -328,19 +320,19 @@ export interface PlanRevenueCharge extends Versioned {
 }
 
 /** A day the organization is closed, such as Labor Day. */
-export interface PlanClosedDate extends Versioned {
+export interface PlanClosedDate extends PlanRow {
   date: DateString;
   name: string;
 }
 
 /** A planning period in the Operations Plan, such as Summer 2027, which an offering can be in. */
-export interface PlanTerm extends Versioned {
+export interface PlanTerm extends PlanRow {
   name: string;
   starts_on: DateString;
   ends_on: DateString;
 }
 
-/** The catalog plus every row of the plan versions being calculated. */
+/** The catalog plus every row of the plans being calculated. */
 export interface PlanData {
   /** The plan year. Fiscal year N ends in calendar year N. */
   fiscal_year: number;
@@ -357,9 +349,8 @@ export interface PlanData {
   assets: Asset[];
   boats: Boat[];
 
-  /** The plans and versions being calculated, so the engine can tell which plan each offering is in. */
+  /** The plans being calculated, so the engine can tell which plan each row is in. */
   plans: Plan[];
-  plan_versions: PlanVersion[];
 
   plan_programs: PlanProgram[];
   plan_offerings: PlanOffering[];
@@ -466,8 +457,8 @@ export interface EngineWarning {
   category: WarningCategory;
   /** The key of the row it's about, when there is one. */
   key?: string;
-  /** The plan copy it's about, when there is one. */
-  version_id?: Id;
+  /** The plan it's about, when there is one. */
+  plan_id?: Id;
   /** The date it's about, when there is one. */
   date?: DateString;
 }

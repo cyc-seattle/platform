@@ -26,7 +26,7 @@ function item(overrides: Partial<PlanCapitalItem> = {}): PlanCapitalItem {
   return {
     id: nextId("capital"),
     key: nextId("capital-key"),
-    version_id: "v-ops",
+    plan_id: "v-ops",
     name: "Coach boat",
     amount_cents: 0,
     account_id: equipment.id,

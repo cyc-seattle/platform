@@ -98,10 +98,9 @@ const extensions = {
     team: "Team",
     teamMonths: 12,
   },
-  savedVersions: {
-    versioned: ["plan_offerings"],
+  frozenPlans: {
+    rows: ["plan_offerings"],
     results: [],
-    setResults: [],
     links: {},
     deletable: false,
     platformVersion: "1.0.0+engine.abc",
@@ -201,13 +200,13 @@ describe("prod's Directus on the cluster", () => {
 describe("prod's saved plan versions", () => {
   it("can't be deleted: the stack refuses the flag that lets dev's tests delete them", async () => {
     const { deployDirectus } = await import("../stacks/backend/cluster.ts");
-    const deletable = { ...extensions, savedVersions: { ...extensions.savedVersions, deletable: true } };
+    const deletable = { ...extensions, frozenPlans: { ...extensions.frozenPlans, deletable: true } };
     await expect(deployDirectus("admin@example.com", true, deletable)).rejects.toThrow(/dev's tests only/);
   });
 
   it("aren't made deletable by prod's config", () => {
     const file = path.join(import.meta.dirname, "../stacks/backend/Pulumi.prod.yaml");
     const { config } = yaml.load(fs.readFileSync(file, "utf8")) as { config: Record<string, unknown> };
-    expect(config["backend:savedVersionsDeletable"]).toBeUndefined();
+    expect(config["backend:frozenPlansDeletable"]).toBeUndefined();
   });
 });
