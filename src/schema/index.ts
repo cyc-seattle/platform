@@ -23,6 +23,7 @@ export interface Schema {
   clubspot_sessions: ClubspotSessions[];
   contact_points: ContactPoints[];
   contacts: Contacts[];
+  financial_plans: FinancialPlans[];
   google_group_memberships: GoogleGroupMemberships[];
   google_groups: GoogleGroups[];
   group_members: GroupMembers[];
@@ -63,7 +64,6 @@ export interface Schema {
   plan_staff_levels: PlanStaffLevels[];
   plan_terms: PlanTerms[];
   plan_trips: PlanTrips[];
-  plan_versions: PlanVersions[];
   plans: Plans[];
   products: Products[];
   program_area_role_assignments: ProgramAreaRoleAssignments[];
@@ -79,8 +79,6 @@ export interface Schema {
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
   venues: Venues[];
-  version_set_members: VersionSetMembers[];
-  version_sets: VersionSets[];
   website_categories: WebsiteCategories[];
   website_categories_faq_topics: WebsiteCategoriesFaqTopics[];
   website_categories_files: WebsiteCategoriesFiles[];
@@ -152,6 +150,7 @@ export interface Assets {
   acquired_on: string | null;
   /** The day CSC sold, scrapped, or gave it away. Planning stops counting it on this day. Empty while CSC still has it. */
   disposed_on: string | null;
+  /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
 }
 
@@ -420,6 +419,37 @@ export interface Contacts {
   relationship_detail: string | null;
 }
 
+/** The organization's plan for a year: an Operations Plan and a Program Plan for any of the program areas. Change it while it's a draft. Freezing it keeps it, and its plans, from changing. Pick a parent when you add one, and its plans are copied in. */
+export interface FinancialPlans {
+  id: string;
+  /** The organization the Financial Plan is for. */
+  organization_id: string | Organizations;
+  /** The year the Financial Plan is for. */
+  fiscal_year: number;
+  /** Such as 2027 budget as adopted. You can change it after it's frozen. */
+  name: string;
+  /** What it's for, such as "Reviewed with the board". Up to 280 characters. Bold, italic, code and links work. You can change it after it's frozen. */
+  note: string | null;
+  /** Set it to frozen to freeze the Financial Plan and its plans. A frozen one never changes, apart from its name, its note, the date it's active from, and whether it's archived. */
+  status: "draft" | "frozen";
+  /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
+  parent_id: string | FinancialPlans | null;
+  /** Set when the Financial Plan is frozen. */
+  frozen_by: string | null;
+  /** Set when the Financial Plan is frozen. */
+  frozen_at: string | null;
+  /** The version of the planning engine that calculated its numbers when it was frozen. */
+  platform_version: string | null;
+  /** The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date. */
+  effective_from: string | null;
+  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived. */
+  archived_at: string | null;
+  /** The organization's P&L. A draft's is worked out again a moment after each change to it. A frozen one's is worked out once, when it's frozen. One with none means working it out failed, and the logs say why. */
+  results: (string | PlanResults)[];
+  /** The plans it holds: one Operations Plan, and at most one Program Plan for each program area. Add or remove one only while it's a draft. */
+  plans: (string | Plans)[];
+}
+
 /** One row for each person the sync has seen in a program's Google Group. Set Removed at to stop the sync adding them back. Delete the row to let the sync add them again. */
 export interface GoogleGroupMemberships {
   id: string;
@@ -607,9 +637,9 @@ export interface People {
 /** One dated activity, such as a practice, a regatta day, or a travel day. */
 export interface PlanActivities {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   offering_id: string | PlanOfferings;
   /** The trip a travel day belongs to. */
@@ -629,9 +659,9 @@ export interface PlanActivities {
 /** Activities on one date that share their staff, RIBs and boats, such as Guppies and Minnows on the morning of July 13. */
 export interface PlanActivityBlocks {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   date: string;
   /** Such as Guppies and Minnows, morning. */
@@ -641,9 +671,9 @@ export interface PlanActivityBlocks {
 /** Boats of one class a block sails: the organization's, and the ones sailors bring. */
 export interface PlanBlockBoats {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   block_id: string | PlanActivityBlocks;
   boat_class_id: string | BoatClasses;
@@ -658,9 +688,9 @@ export interface PlanBlockBoats {
 /** Who coaches a block: a number of staff at one staff level, or a salaried position. */
 export interface PlanBlockStaff {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   block_id: string | PlanActivityBlocks;
   /** For staff at a staff level: copy the Key from a staff level in the Operations Plan. Leave it empty for a salaried position. */
@@ -676,9 +706,9 @@ export interface PlanBlockStaff {
 /** What an hour of sailing costs in maintenance, for each boat class. */
 export interface PlanBoatRates {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   boat_class_id: string | BoatClasses;
   /** Upkeep for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00. */
@@ -692,9 +722,9 @@ export interface PlanBoatRates {
 /** The products a bonus owner owns. */
 export interface PlanBonusOwnerProducts {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   bonus_owner_id: string | PlanBonusOwners;
   product_id: string | Products;
@@ -703,9 +733,9 @@ export interface PlanBonusOwnerProducts {
 /** A role, such as a program area's director, that earns a bonus on the products it owns. */
 export interface PlanBonusOwners {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   role_name: string;
   /** A share of its products' net. 0.05 means 5%. */
@@ -720,9 +750,9 @@ export interface PlanBonusOwners {
 /** A cost or revenue entered as an amount. */
 export interface PlanBudgetLines {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   name: string;
   account_id: string | Accounts;
@@ -735,15 +765,16 @@ export interface PlanBudgetLines {
   fiscal_year: number;
   /** Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment. */
   in_mtdc: boolean;
+  /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
 }
 
 /** Something lasting CSC means to buy, ranked with the most needed first. */
 export interface PlanCapitalItems {
   id: string;
-  /** The version this row belongs to. Capital goes in the Operations Plan's. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   /** What to buy, such as a coach boat. */
   name: string;
@@ -753,7 +784,7 @@ export interface PlanCapitalItems {
   account_id: string | Accounts;
   /** 1 is the most needed. Drag rows in the table to reorder them. */
   sort: number | null;
-  /** Why CSC needs it. */
+  /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
   /** A quote or listing for it, as a web address. */
   link: string | null;
@@ -762,9 +793,9 @@ export interface PlanCapitalItems {
 /** A day the organization is closed, such as Labor Day. The P&L warns about an activity on one. */
 export interface PlanClosedDates {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   date: string;
   /** Why it's closed, such as Labor Day. */
@@ -774,9 +805,9 @@ export interface PlanClosedDates {
 /** Labor not tied to an activity, such as training, priced at a staff level. */
 export interface PlanLaborLines {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   name: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
@@ -787,15 +818,16 @@ export interface PlanLaborLines {
   hours: string;
   account_id: string | Accounts;
   function: "program" | "management" | "fundraising" | null;
+  /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
 }
 
 /** A product sold for a period, such as a season or a week. */
 export interface PlanOfferings {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   product_id: string | Products;
   name: string;
@@ -806,31 +838,30 @@ export interface PlanOfferings {
   capacity: number | null;
   /** Whole kids. Or set Fill rate instead. */
   target_enrollment: number | null;
-  /** A share of capacity, used when Target enrollment is empty. 0.8 means 80%. */
-  fill_rate: string | null;
   /** Per kid. In cents: 12500 is $125.00. */
   price_cents: number | null;
   /** Cost of goods sold, as a share of revenue. 0.1 means 10%. */
   cogs_rate: string | null;
+  /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
 }
 
 /** Shared costs no single offering owns, such as G&A, divided among the year's offerings by MTDC. */
 export interface PlanPools {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   name: string;
 }
 
-/** A program's settings in a Program Plan: the staff level that coaches it, how many sailors each coach can take, and its rules. */
+/** A program's settings in a Program Plan: the staff level that coaches it, how many sailors each coach can take, and its notes. */
 export interface PlanPrograms {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   /** The program. */
   product_id: string | Products;
@@ -838,16 +869,16 @@ export interface PlanPrograms {
   staff_level_key: string | null;
   /** How many sailors one coach at its staff level can safely take. */
   sailors_per_coach: string | null;
-  /** What you want for this program that its numbers don't capture, for your AI to follow. For example: if there are more than 12 Guppies, add a Junior Instructor. */
-  rules: string | null;
+  /** The program's rules, for your AI to follow in each of its offerings. Short notes, one a line, each up to 280 characters. Bold, italic, code and links work. */
+  notes: string[] | null;
 }
 
-/** The year's rates. One row at most in each copy. */
+/** The year's rates. One row at most in each plan. */
 export interface PlanRates {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   /** Employer payroll costs, as a share of wages. 0.1 means 10%. */
   payroll_tax_rate: string | null;
@@ -857,7 +888,7 @@ export interface PlanRates {
   mileage_rate_cents: number | null;
 }
 
-/** Each bonus in a Financial Plan, for each term, and for the offerings in no term on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+/** Each bonus in a Financial Plan, for each term, and for the offerings in no term on the year. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResultBonuses {
   id: string;
   /** The bonus's role, such as Director. */
@@ -876,16 +907,16 @@ export interface PlanResultBonuses {
   bonus_owner_key: string;
   program_area_key: string | null;
   /** The Financial Plan these results are for. */
-  version_set_id: string | VersionSets;
-  /** The plan in the Financial Plan that pays the bonus. */
-  version_set_member_id: string | VersionSetMembers | null;
+  financial_plan_id: string | FinancialPlans;
+  /** The plan it's charged in, or about. */
+  plan_id: string | Plans | null;
 }
 
-/** The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+/** The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResultCapital {
   id: string;
   /** The Financial Plan these results are for. */
-  version_set_id: string | VersionSets;
+  financial_plan_id: string | FinancialPlans;
   /** 1 is the most needed. */
   rank: number | null;
   item_key: string;
@@ -898,7 +929,7 @@ export interface PlanResultCapital {
   funded: boolean | null;
 }
 
-/** Each cost and revenue line in a Financial Plan's P&L. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+/** Each cost and revenue line in a Financial Plan's P&L. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResultLines {
   id: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
@@ -912,14 +943,14 @@ export interface PlanResultLines {
   line: string;
   explanation: string | null;
   /** The Financial Plan these results are for. */
-  version_set_id: string | VersionSets;
-  /** The plan in the Financial Plan that holds what it's charged to. */
-  version_set_member_id: string | VersionSetMembers | null;
+  financial_plan_id: string | FinancialPlans;
+  /** The plan it's charged in, or about. */
+  plan_id: string | Plans | null;
   /** What the line is, in plain words, such as G&A share: Payroll tax. */
   line_name: string | null;
 }
 
-/** A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+/** A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResultPnl {
   id: string;
   level: "offering" | "product" | "program_area" | "program_area_term";
@@ -937,9 +968,9 @@ export interface PlanResultPnl {
   days: number;
   sailor_days: number;
   /** The Financial Plan these results are for. */
-  version_set_id: string | VersionSets;
-  /** The plan in the Financial Plan that holds what it's charged to. */
-  version_set_member_id: string | VersionSetMembers | null;
+  financial_plan_id: string | FinancialPlans;
+  /** The plan it's charged in, or about. */
+  plan_id: string | Plans | null;
   term_key: string | null;
   /** For a program area by term, the term. Empty for its offerings in no term, such as Adult Learn to Sail. */
   term_name: string | null;
@@ -951,7 +982,7 @@ export interface PlanResultPnl {
   breakeven_enrollment: number | null;
 }
 
-/** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+/** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResultPositions {
   id: string;
   position_key: string;
@@ -974,14 +1005,14 @@ export interface PlanResultPositions {
   /** The year's payroll tax on the total pay. In cents: 12500 is $125.00. */
   payroll_tax_cents: number;
   /** The Financial Plan these results are for. */
-  version_set_id: string | VersionSets;
+  financial_plan_id: string | FinancialPlans;
   /** Hours another coach would cover while this position coaches two or more groups at once: for three groups at once, two coaches. */
   double_booked_hours: string | null;
   /** Dates this position coaches two or more groups at once. */
   double_booked_dates: number | null;
 }
 
-/** What a Financial Plan's P&L warns about. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+/** What a Financial Plan's P&L warns about. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResultWarnings {
   id: string;
   /** The kind of warning. */
@@ -989,16 +1020,16 @@ export interface PlanResultWarnings {
   message: string;
   subject_key: string | null;
   /** The Financial Plan these results are for. */
-  version_set_id: string | VersionSets;
-  /** The plan in the Financial Plan it's about. */
-  version_set_member_id: string | VersionSetMembers | null;
+  financial_plan_id: string | FinancialPlans;
+  /** The plan it's charged in, or about. */
+  plan_id: string | Plans | null;
   /** The date it's about. */
   date: string | null;
   /** Allocation: the blocks break a limit, or run on a closed day. Data: a row is missing or wrong. */
   category: "allocation" | "data" | null;
 }
 
-/** A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+/** A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResults {
   id: string;
   calculated_at: string;
@@ -1019,15 +1050,15 @@ export interface PlanResults {
   /** Operating net, plus fundraising net, less capital. In cents: 12500 is $125.00. */
   total_cents: number;
   /** The Financial Plan these results are for. */
-  version_set_id: string | VersionSets;
+  financial_plan_id: string | FinancialPlans;
 }
 
 /** A charge set as a share of each offering's revenue, such as scholarships or card fees. Operations Plan only. */
 export interface PlanRevenueCharges {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   name: string;
   /** The share of each offering's revenue: 0.02 means 2%. */
@@ -1038,31 +1069,31 @@ export interface PlanRevenueCharges {
   account_id: string | Accounts;
   /** Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships. */
   in_mtdc: boolean;
+  /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
 }
 
 /** Hours of a salaried position booked to a product. */
 export interface PlanSalariedBookings {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   position_id: string | PlanSalariedPositions;
   /** The product the hours are for. Set this or the program area, not both. */
   product_id: string | Products | null;
   /** The program area the hours are for, shared among its offerings. Set this or the product, not both. */
   program_area_id: string | ProgramAreas | null;
-  kind: "management";
   hours: string;
 }
 
 /** A salaried position, and where the part of its salary not charged to programs goes. */
 export interface PlanSalariedPositions {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   name: string;
   /** In cents: 12500 is $125.00. */
@@ -1079,9 +1110,9 @@ export interface PlanSalariedPositions {
 /** A level hourly staff are paid at, such as head coach. */
 export interface PlanStaffLevels {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   name: string;
   pay_type: "hourly" | "volunteer";
@@ -1092,9 +1123,9 @@ export interface PlanStaffLevels {
 /** A planning period, such as Summer 2027, with its start and end dates. An offering in a Program Plan can be in one of its Financial Plan's terms. */
 export interface PlanTerms {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   /** What it's called, such as Summer 2027. */
   name: string;
@@ -1107,9 +1138,9 @@ export interface PlanTerms {
 /** A trip an offering travels for, such as an away regatta. */
 export interface PlanTrips {
   id: string;
-  /** The version this row belongs to. */
-  version_id: string | PlanVersions;
-  /** Stays the same across versions. Copy it where another row asks for this one's Key. */
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   offering_id: string | PlanOfferings;
   name: string;
@@ -1119,39 +1150,16 @@ export interface PlanTrips {
   miles: number | null;
 }
 
-/** One plan's copy in one Financial Plan, with every row it holds. It's saved with its Financial Plan, and then never changes. */
-export interface PlanVersions {
-  id: string;
-  plan_id: string | Plans;
-  /** The copy this one was made from, in the Financial Plan this one's started from. */
-  parent_version_id: string | PlanVersions | null;
-  /** Saved with its Financial Plan. A saved copy never changes, even for an admin. */
-  status: "draft" | "saved";
-  /** What changed in this version. */
-  message: string | null;
-  /** Set when its Financial Plan is saved. */
-  saved_by: string | null;
-  /** Set when its Financial Plan is saved. */
-  saved_at: string | null;
-  /** The version of the planning engine that calculated its numbers. Required to save. */
-  platform_version: string | null;
-  /** What you want that the plan's numbers don't capture, for your AI to fill in. For example: every Monday, Wednesday and Friday, except on SPS school holidays, from 4pm until dusk. */
-  rules: string | null;
-}
-
-/** One part of a Financial Plan: a program area's Program Plan, or the Operations Plan. */
+/** One part of a Financial Plan, with every row it holds: a program area's Program Plan, or the Operations Plan. */
 export interface Plans {
   id: string;
+  /** What you want that the plan's numbers don't capture, for your AI to fill in. Short notes, one a line, each up to 280 characters. Bold, italic, code and links work. */
+  notes: string[] | null;
+  /** The Financial Plan it's part of. It can't move to another. */
+  financial_plan_id: string | FinancialPlans;
   kind: "program_area" | "operations";
   /** The program area the plan is for. Empty for the Operations Plan. */
   program_area_id: string | ProgramAreas | null;
-  /** The organization the plan is for. Can't change once the plan has a saved copy. */
-  organization_id: string | Organizations;
-  /** The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved copy. */
-  fiscal_year: number;
-  name: string;
-  /** The plan's copy in each Financial Plan. */
-  versions: (string | PlanVersions)[];
 }
 
 /** A lasting thing the club sells. A program also has a row in Programs. */
@@ -1313,47 +1321,6 @@ export interface Venues {
   address: string | null;
   /** Other names it goes by, such as on a regatta's notice of race. */
   aliases: string[] | null;
-}
-
-/** One plan in a Financial Plan: the copy of the plan it holds. Add or remove one only while the Financial Plan is a draft. */
-export interface VersionSetMembers {
-  id: string;
-  version_set_id: string | VersionSets;
-  /** Filled in from the plan copy. */
-  plan_id: string | Plans | null;
-  /** The plan's copy in this Financial Plan. It's in no other Financial Plan. */
-  version_id: string | PlanVersions;
-}
-
-/** The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Its P&L is worked out again a moment after each change. Saving it saves them all, and then it never changes, apart from its name and note. Pick a parent when you add one, and its plans are copied in. */
-export interface VersionSets {
-  id: string;
-  /** The organization the Financial Plan is for. */
-  organization_id: string | Organizations;
-  /** The year the Financial Plan is for. */
-  fiscal_year: number;
-  /** Such as 2027 budget as adopted. You can change it after it's saved. */
-  name: string;
-  /** What it was for, such as "Reviewed with the board". You can change it after it's saved. */
-  message: string | null;
-  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name, its note, the date it's active from, and whether it's archived. */
-  status: "draft" | "saved";
-  /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
-  parent_id: string | VersionSets | null;
-  /** Set when the Financial Plan is saved. */
-  saved_by: string | null;
-  /** Set when the Financial Plan is saved. */
-  saved_at: string | null;
-  /** The version of the planning engine that calculated its numbers. */
-  platform_version: string | null;
-  /** The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date. */
-  effective_from: string | null;
-  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived. */
-  archived_at: string | null;
-  /** Each plan in the Financial Plan. Add or remove one only while it's a draft. */
-  members: (string | VersionSetMembers)[];
-  /** The organization's P&L. A draft's is worked out again a moment after each change to it. A saved one's is what it showed when it was saved, worked out a moment after. One with none means working it out failed, and the logs say why. An admin can fill in a saved one's. */
-  results: (string | PlanResults)[];
 }
 
 /** Program categories, such as Summer Sailing Camps, each with a page at /program-category/ and its slug. */

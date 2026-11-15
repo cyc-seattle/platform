@@ -16,7 +16,7 @@ import {
   directusRequest,
   DirectusHttpError,
   reconcilePermission,
-  waitForSavedVersions,
+  waitForFrozenPlans,
 } from "../src/directus/client.ts";
 
 // This package's tsconfig has no DOM lib, so the ambient `RequestInit` resolves to an empty
@@ -842,20 +842,20 @@ describe("reconcileUser", () => {
   });
 });
 
-describe("waitForSavedVersions", () => {
+describe("waitForFrozenPlans", () => {
   const status = (overrides: object = {}) => ({
     fingerprint: "abc",
     tables: { plans: true, plan_offerings: true },
     ...overrides,
   });
-  const wait = () => waitForSavedVersions(baseUrl, token, "abc", { timeoutMs: 200, intervalMs: 10 });
+  const wait = () => waitForFrozenPlans(baseUrl, token, "abc", { timeoutMs: 200, intervalMs: 10 });
 
   it("asks the hook, as the admin, and passes once every trigger and index is in place", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, status()));
     vi.stubGlobal("fetch", fetchMock);
     await wait();
     expect(fetchMock).toHaveBeenCalledWith(
-      `${baseUrl}/saved-versions/status`,
+      `${baseUrl}/frozen-plans/status`,
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: `Bearer ${token}` }) }),
     );
   });

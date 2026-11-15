@@ -156,17 +156,18 @@ export function planCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(planning);
 }
 
-/** A Financial Plan's plans, which change only while it's a draft. */
-const MEMBERS = "version_set_members";
+/** Financial Plans, and the plans each holds, which change only while it's a draft. */
+const SETS = "financial_plans";
 const PLANS = "plans";
-const VERSIONS = "plan_versions";
 
 /** What a Plan Writer sets on a Financial Plan: not its status, or the date it's active from. */
-const SET_FIELDS = ["id", "organization_id", "fiscal_year", "name", "message", "parent_id"];
+const SET_FIELDS = ["id", "organization_id", "fiscal_year", "name", "note", "parent_id"];
 
-/** The plans' collections whose rows belong to one plan copy. */
-function versionedIn(plans: string[], schemas: LoadedSchema[]): string[] {
-  return plans.filter((collection) => collection !== MEMBERS && fieldsIn(schemas, collection).includes("version_id"));
+/** The plans' collections whose rows belong to one plan. */
+function rowsIn(plans: string[], schemas: LoadedSchema[]): string[] {
+  return plans.filter(
+    (collection) => !isResultCollection(collection) && fieldsIn(schemas, collection).includes("plan_id"),
+  );
 }
 
 /**
@@ -189,10 +190,10 @@ export const OPERATIONS_ONLY = [
   "plan_terms",
 ];
 
-/** A plan copy's rows, of one kind of plan. */
-const inPlan = (kind: "program_area" | "operations") => ({ version_id: { plan_id: { kind: { _eq: kind } } } });
+/** A plan's rows, of one kind of plan. */
+const inPlan = (kind: "program_area" | "operations") => ({ plan_id: { kind: { _eq: kind } } });
 
-/** A saved Financial Plan's results, which only the saved-versions hook writes, once, when it's saved. */
+/** A Financial Plan's results, which only the frozen-plans hook writes. */
 export function isResultCollection(collection: string): boolean {
   return collection === "plan_results" || collection.startsWith("plan_result_");
 }
@@ -243,7 +244,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const plans = planCollections(schemas);
   const readDirectory = directoryCollections(schemas).map((collection) => ({ collection, action: "read" as const }));
   const readCatalog = [...catalog.map((collection) => ({ collection, action: "read" as const })), ...readDirectory];
-  // So a saved Financial Plan can name who saved it (cyc-seattle/platform#138).
+  // So a frozen Financial Plan can name who froze it (cyc-seattle/platform#138).
   const readUserNames = {
     collection: "directus_users",
     action: "read" as const,
@@ -312,7 +313,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       description: "Sees every plan, wages and bonus rates included, the catalog, and users' names.",
       rules: [...readCatalog, readUserNames, ...plans.map((collection) => ({ collection, action: "read" as const }))],
     },
-    // The saved-versions hook keeps a saved version from changing, for every user (docs/planning-schema.md).
+    // The frozen-plans hook keeps a frozen Financial Plan from changing, for every user (docs/planning-schema.md).
     // Programs, within the Operations Plan's rules.
     {
       key: "plan-writer",
@@ -325,16 +326,11 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         readUserNames,
         ...plans.map((collection) => ({ collection, action: "read" as const })),
         // The hook copies a new draft's plans from its parent, and refuses a status other than draft.
-        { collection: "version_sets", action: "create", fields: [...SET_FIELDS, "status"] },
-        { collection: "version_sets", action: "update", fields: SET_FIELDS.filter((f) => f !== "id") },
-        { collection: "version_sets", action: "delete", permissions: { status: { _eq: "draft" } } },
-        {
-          collection: VERSIONS,
-          action: "update",
-          fields: ["message", "rules"],
-          permissions: { plan_id: { kind: { _eq: "program_area" } } },
-        },
-        ...versionedIn(plans, schemas)
+        { collection: SETS, action: "create", fields: [...SET_FIELDS, "status"] },
+        { collection: SETS, action: "update", fields: SET_FIELDS.filter((f) => f !== "id") },
+        { collection: SETS, action: "delete", permissions: { status: { _eq: "draft" } } },
+        { collection: PLANS, action: "update", fields: ["notes"], permissions: { kind: { _eq: "program_area" } } },
+        ...rowsIn(plans, schemas)
           .filter((collection) => !OPERATIONS_ONLY.includes(collection))
           .flatMap((collection) =>
             (["create", "update", "delete"] as const).map((action) => ({
@@ -351,16 +347,14 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Plan Admin",
       icon: "approval",
       description:
-        "Changes the Operations Plan in a draft, saves a Financial Plan, makes one active from a date, and archives one. Sees every plan, the catalog, and users' names.",
+        "Changes the Operations Plan in a draft, freezes a Financial Plan, makes one active from a date, and archives one. Sees every plan, the catalog, and users' names.",
       rules: [
         ...readCatalog,
         readUserNames,
         ...plans.map((collection) => ({ collection, action: "read" as const })),
-        { collection: "version_sets", action: "update", fields: ["status", "effective_from", "archived_at"] },
-        ...[PLANS, VERSIONS, MEMBERS].flatMap((collection) =>
-          (["create", "update", "delete"] as const).map((action) => ({ collection, action })),
-        ),
-        ...versionedIn(plans, schemas).flatMap((collection) =>
+        { collection: SETS, action: "update", fields: ["status", "effective_from", "archived_at"] },
+        ...(["create", "update", "delete"] as const).map((action) => ({ collection: PLANS, action })),
+        ...rowsIn(plans, schemas).flatMap((collection) =>
           (["create", "update", "delete"] as const).map((action) => ({
             collection,
             action,
@@ -473,28 +467,28 @@ export function groupPoliciesConfig(policies: PolicyData[]): GroupPoliciesConfig
   };
 }
 
-export interface SavedVersionsConfig {
-  /** The collections whose rows belong to one plan version. */
-  versioned: string[];
-  /** The collections that hold a saved Financial Plan's results, which only the hook writes. */
+export interface FrozenPlansConfig {
+  /** The collections whose rows belong to one plan. */
+  rows: string[];
+  /** The collections that hold a Financial Plan's results, which only the hook writes. */
   results: string[];
-  /** The engine version the hook calculates results with, which it records on each saved Financial Plan. */
+  /** The engine version the hook calculates results with, which it records on each frozen Financial Plan. */
   platformVersion: string;
   /** Each table's decimal fields, which the database returns as strings and the engine needs as numbers. */
   decimals: Record<string, string[]>;
-  /** Each of those collections' links to another one's rows, by field, which must be in the same version. */
+  /** Each of those collections' links to another one's rows, by field, which must be in the same plan. */
   links: Record<string, Record<string, string>>;
-  /** Whether the first admin account may delete a saved version, so the tests can clean up. Dev only. */
+  /** Whether the first admin account may delete a frozen Financial Plan, so the tests can clean up. Dev only. */
   deletable: boolean;
 }
 
-/** What ./saved-versions.cjs needs. */
-export function savedVersionsConfig(
+/** What ./frozen-plans.cjs needs. */
+export function frozenPlansConfig(
   schemas: LoadedSchema[],
   deletable: boolean,
   platformVersion: string,
-): SavedVersionsConfig {
-  const versioned = versionedIn(planCollections(schemas), schemas);
+): FrozenPlansConfig {
+  const rows = rowsIn(planCollections(schemas), schemas);
   const relations = schemas.flatMap(
     ({ schema }) =>
       (schema as { relations?: { collection: string; field: string; related_collection: string | null }[] })
@@ -502,7 +496,7 @@ export function savedVersionsConfig(
   );
   const links: Record<string, Record<string, string>> = {};
   for (const { collection, field, related_collection: related } of relations) {
-    if (versioned.includes(collection) && related !== null && versioned.includes(related)) {
+    if (rows.includes(collection) && related !== null && rows.includes(related)) {
       (links[collection] ??= {})[field] = related;
     }
   }
@@ -515,7 +509,7 @@ export function savedVersionsConfig(
     }
   }
   return {
-    versioned,
+    rows,
     results: planCollections(schemas).filter(isResultCollection),
     links,
     deletable,

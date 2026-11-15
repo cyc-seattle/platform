@@ -289,6 +289,18 @@ describe("the Data Studio", () => {
         .map(([, ref]) => ref!)
         .filter((ref) => fieldKeys.has(ref));
       expect(keys, "names a field by its key").toEqual([]);
+      expect(note.length, "is longer than 280 characters").toBeLessThanOrEqual(280);
+    });
+  });
+
+  // A note people write is short, on one line (.agents/skills/schema-review/SKILL.md).
+  describe("keeps a note field short", () => {
+    const noteFields = schema.fields.filter((f) => f.field === "note");
+
+    it.each(noteFields.map((f) => [key(f), f] as const))("%s", (_, f) => {
+      expect(f.type).toBe("string");
+      expect(f.meta.interface).toBe("input");
+      expect((f.schema as { max_length: number | null } | null)?.max_length).toBeLessThanOrEqual(280);
     });
   });
 

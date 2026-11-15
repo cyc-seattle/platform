@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { admin, deleteRows, itemPath, planRows, row } from "./steps/rows.ts";
 
-// A flow's data steps can skip Directus's events, and with them the saved-versions hook's filters.
+// A flow's data steps can skip Directus's events, and with them the frozen-plans hook's filters.
 // The database's triggers refuse the write anyway (docs/planning-schema.md). The deploy applies the
 // schema just before this runs, so it also checks that applying a schema leaves them in place.
 
-const REFUSED = "A saved plan can't be changed. Start a new Financial Plan from the one it's in.";
+const REFUSED = "A frozen plan can't be changed. Start a new Financial Plan from the one it's in.";
 
 let flowId: string | undefined;
 
@@ -21,14 +21,14 @@ afterAll(async () => {
   }
 }, 300_000);
 
-describe("a saved plan version", () => {
-  it("doesn't change when a flow's step changes it with events off, even with full permissions", async () => {
+describe("a frozen plan", () => {
+  it("doesn't change when a flow's step changes one of its rows with events off, even with full permissions", async () => {
     await planRows();
     const session = await admin();
-    const saved = row["plan_versions@saved"]!;
+    const frozen = row["plan_offerings@frozen"]!;
     const flow = await session.ok("POST", "/flows", {
       id: randomUUID(),
-      name: `Saved version test ${saved}`,
+      name: `Frozen plan test ${frozen}`,
       status: "active",
       trigger: "webhook",
       accountability: null,
@@ -38,15 +38,15 @@ describe("a saved plan version", () => {
     const step = await session.ok("POST", "/operations", {
       id: randomUUID(),
       flow: flowId,
-      key: "change_saved_version",
-      name: "Change a saved version",
+      key: "change_frozen_offering",
+      name: "Change a frozen plan's offering",
       type: "item-update",
       position_x: 19,
       position_y: 1,
       options: {
-        collection: "plan_versions",
-        key: [saved],
-        payload: { message: "Changed by a flow." },
+        collection: "plan_offerings",
+        key: [frozen],
+        payload: { note: "Changed by a flow." },
         permissions: "$full",
         emitEvents: false,
       },
@@ -56,7 +56,7 @@ describe("a saved plan version", () => {
     const { status, body } = await session.request("POST", `/flows/trigger/${flowId}`, {});
     expect(status, JSON.stringify(body)).toBe(403);
     expect(body.errors?.[0]?.message).toBe(REFUSED);
-    const now = await session.ok("GET", `${itemPath("plan_versions", saved)}?fields=message`);
-    expect(now.message).not.toBe("Changed by a flow.");
+    const now = await session.ok("GET", `${itemPath("plan_offerings", frozen)}?fields=note`);
+    expect(now.note).not.toBe("Changed by a flow.");
   });
 });

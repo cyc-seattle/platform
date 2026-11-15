@@ -23,8 +23,8 @@ export const admin = () => (adminSession ??= devDirectusAdmin());
 /** Every row this run created, in order, so cleanup can delete them in reverse. */
 export const created: { collection: string; id: unknown }[] = [];
 /**
- * The run's row in each collection, keyed by its collection, or `<collection>@<version>` where a
- * collection has a row in each plan version. The child's, where the row belongs to a person.
+ * The run's row in each collection, keyed by its collection, or `<collection>@<frozen|draft>` where
+ * a collection has a row in the run's frozen and draft Financial Plans. The child's, where the row belongs to a person.
  */
 export const row: Record<string, string> = {};
 /** Each of those rows as the admin created it, with every field. */
@@ -285,44 +285,26 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   // The child, who has no login, so the group gives no one in the run anything.
   group_members: async () => ({ id: randomUUID(), group_id: row["groups"], person_id: row["people"] }),
   group_policies: async () => ({ id: randomUUID(), group_id: row["groups"], policy_id: await crmReaderId() }),
-  // A Financial Plan holds one Program Plan for each area, so each plan gets an area of its own.
-  plans: async (fixed) => {
-    return {
-      id: randomUUID(),
-      kind: "program_area",
-      program_area_id: fixed["kind"] === "operations" ? null : await fresh("program_areas"),
-      organization_id: row["organizations"],
-      fiscal_year: PLAN_YEAR,
-      name: `Plan ${key("plan")}`,
-    };
-  },
-  plan_versions: async () => ({
+  // A Financial Plan holds one Program Plan for each area, so each new plan gets an area of its own.
+  plans: async (fixed) => ({
     id: randomUUID(),
-    plan_id: row["plans"],
-    status: "draft",
-    message: "A test version.",
-    rules: "Practice on Wednesdays.",
+    financial_plan_id: row["financial_plans@draft"],
+    kind: "program_area",
+    program_area_id: fixed["kind"] === "operations" ? null : await fresh("program_areas"),
+    notes: ["Practice on Wednesdays."],
   }),
-  version_sets: async () => ({
+  financial_plans: async () => ({
     id: randomUUID(),
     organization_id: row["organizations"],
     fiscal_year: PLAN_YEAR,
     name: `Financial Plan ${key("set")}`,
     status: "draft",
   }),
-  // A copy is in one Financial Plan, and each holds one Program Plan for an area, so a new member is
-  // a new plan's draft copy.
-  version_set_members: async (fixed) => {
-    if (fixed["version_id"] !== undefined) return { id: randomUUID(), version_set_id: row["version_sets@draft"] };
-    const plan = await adminCreate("plans", await newRow("plans"));
-    const copy = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: plan.id }));
-    return { id: randomUUID(), version_set_id: row["version_sets@draft"], version_id: copy.id };
-  },
-  plan_pools: async (fixed) => versioned(fixed, { name: `Pool ${key("pool")}` }),
+  plan_pools: async (fixed) => inPlan(fixed, { name: `Pool ${key("pool")}` }),
   plan_staff_levels: async (fixed) =>
-    versioned(fixed, { name: `Level ${key("level")}`, pay_type: "hourly", hourly_rate_cents: 2_500 }),
+    inPlan(fixed, { name: `Level ${key("level")}`, pay_type: "hourly", hourly_rate_cents: 2_500 }),
   plan_offerings: async (fixed) =>
-    versioned(fixed, {
+    inPlan(fixed, {
       product_id: row["products"],
       name: `Offering ${key("offering")}`,
       starts_on: "2027-06-01",
@@ -331,48 +313,48 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       price_cents: 50_000,
     }),
   plan_programs: async (fixed) =>
-    versioned(fixed, {
+    inPlan(fixed, {
       product_id: row["products"],
-      staff_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? null,
+      staff_level_key: samePlan("plan_staff_levels", fixed)?.["key"] ?? null,
       sailors_per_coach: 6,
-      rules: "Add a Junior Instructor when there are more than 12 sailors.",
+      notes: ["Add a Junior Instructor when there are more than 12 sailors."],
     }),
-  plan_activity_blocks: async (fixed) => versioned(fixed, { date: "2027-06-02", name: `Block ${key("block")}` }),
+  plan_activity_blocks: async (fixed) => inPlan(fixed, { date: "2027-06-02", name: `Block ${key("block")}` }),
   plan_trips: async (fixed) =>
-    versioned(fixed, { offering_id: sameVersionId("plan_offerings", fixed), name: `Trip ${key("trip")}`, nights: 2 }),
+    inPlan(fixed, { offering_id: samePlanId("plan_offerings", fixed), name: `Trip ${key("trip")}`, nights: 2 }),
   plan_activities: async (fixed) =>
-    versioned(fixed, {
-      offering_id: sameVersionId("plan_offerings", fixed),
+    inPlan(fixed, {
+      offering_id: samePlanId("plan_offerings", fixed),
       date: "2027-06-02",
       start_time: "09:00:00",
       end_time: "12:00:00",
       kind: "practice",
       uses_boats: true,
-      block_id: sameVersionId("plan_activity_blocks", fixed),
+      block_id: samePlanId("plan_activity_blocks", fixed),
     }),
   plan_block_staff: async (fixed) =>
-    versioned(fixed, {
-      block_id: sameVersionId("plan_activity_blocks", fixed),
-      staff_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
+    inPlan(fixed, {
+      block_id: samePlanId("plan_activity_blocks", fixed),
+      staff_level_key: samePlan("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
       count: 2,
     }),
   plan_block_boats: async (fixed) =>
-    versioned(fixed, {
-      block_id: sameVersionId("plan_activity_blocks", fixed),
+    inPlan(fixed, {
+      block_id: samePlanId("plan_activity_blocks", fixed),
       boat_class_id: row["boat_classes"],
       count: 4,
       sailor_owned: 1,
     }),
   plan_labor_lines: async (fixed) =>
-    versioned(fixed, {
+    inPlan(fixed, {
       name: `Training ${key("labor")}`,
       cost_center_type: "org",
-      staff_level_key: sameVersion("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
+      staff_level_key: samePlan("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
       hours: 10,
       account_id: row["accounts"],
     }),
   plan_budget_lines: async (fixed) =>
-    versioned(fixed, {
+    inPlan(fixed, {
       name: `Insurance ${key("budget")}`,
       account_id: row["accounts"],
       cost_center_type: "org",
@@ -381,20 +363,20 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       in_mtdc: true,
     }),
   plan_capital_items: async (fixed) =>
-    versioned(fixed, {
+    inPlan(fixed, {
       name: `Coach boat ${key("capital")}`,
       account_id: row["accounts"],
       amount_cents: 2_000_000,
       sort: 1,
     }),
-  // One row at most in each version, so a new one goes in a draft of its own.
+  // One row at most in each plan, so a new one goes in a plan of its own.
   plan_rates: async (fixed) => ({
     id: randomUUID(),
-    version_id: fixed["version_id"] ?? (await fresh("plan_versions")),
+    plan_id: fixed["plan_id"] ?? (await fresh("plans")),
     payroll_tax_rate: 0.1,
   }),
   plan_revenue_charges: async (fixed) =>
-    versioned(fixed, {
+    inPlan(fixed, {
       name: `Scholarships ${key("charge")}`,
       rate: 0.02,
       product_kinds: ["program"],
@@ -402,53 +384,52 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       in_mtdc: false,
     }),
   plan_salaried_positions: async (fixed) =>
-    versioned(fixed, {
+    inPlan(fixed, {
       name: `Position ${key("position")}`,
       annual_salary_cents: 5_000_000,
-      remainder_pool_id: sameVersionId("plan_pools", fixed),
+      remainder_pool_id: samePlanId("plan_pools", fixed),
     }),
   plan_salaried_bookings: async (fixed) =>
-    versioned(fixed, {
-      position_id: sameVersionId("plan_salaried_positions", fixed),
+    inPlan(fixed, {
+      position_id: samePlanId("plan_salaried_positions", fixed),
       product_id: row["products"],
-      kind: "management",
       hours: 40,
     }),
   plan_boat_rates: async (fixed) =>
-    versioned(fixed, { boat_class_id: row["boat_classes"], maintenance_per_boat_hour_cents: 100, quantity: 12 }),
+    inPlan(fixed, { boat_class_id: row["boat_classes"], maintenance_per_boat_hour_cents: 100 }),
   plan_bonus_owners: async (fixed) =>
-    versioned(fixed, { role_name: `Director ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
+    inPlan(fixed, { role_name: `Director ${key("bonus")}`, bonus_rate: 0.1, account_id: row["accounts"] }),
   plan_bonus_owner_products: async (fixed) =>
-    versioned(fixed, { bonus_owner_id: sameVersionId("plan_bonus_owners", fixed), product_id: row["products"] }),
+    inPlan(fixed, { bonus_owner_id: samePlanId("plan_bonus_owners", fixed), product_id: row["products"] }),
 };
 
-/** The version a new plan row goes in: the one `fixed` names, or the run's draft. */
-function versionOf(fixed: Row): string {
-  return (fixed["version_id"] as string | undefined) ?? row["plan_versions@draft"]!;
+/** The plan a new plan row goes in: the one `fixed` names, or the run's draft Program Plan. */
+function planOf(fixed: Row): string {
+  return (fixed["plan_id"] as string | undefined) ?? row["plans@draft"]!;
 }
 
-function versioned(fixed: Row, data: Row): Row {
-  return { id: randomUUID(), version_id: versionOf(fixed), ...data };
+function inPlan(fixed: Row, data: Row): Row {
+  return { id: randomUUID(), plan_id: planOf(fixed), ...data };
 }
 
-/** Whether each of the run's plan copies is the saved Financial Plan's or the draft's. */
-const versionNames = new Map<string, "saved" | "draft">();
+/** Whether each of the run's plans is in the frozen Financial Plan or the draft. */
+const planStates = new Map<string, "frozen" | "draft">();
 
-/** The run's row in `collection` in the same version as a new row, which it may point at by id. */
-function sameVersionRow(collection: string, fixed: Row): Row | undefined {
-  return fixture[`${collection}@${versionNames.get(versionOf(fixed)) ?? "draft"}`];
+/** The run's row in `collection` in the same Financial Plan as a new row, which it may point at by id. */
+function samePlanRow(collection: string, fixed: Row): Row | undefined {
+  return fixture[`${collection}@${planStates.get(planOf(fixed)) ?? "draft"}`];
 }
 
 /**
- * The same, or the saved one when the draft's copy isn't made yet, for a link by key, which a copy
+ * The same, or the frozen one when the draft's copy isn't made yet, for a link by key, which a copy
  * keeps.
  */
-function sameVersion(collection: string, fixed: Row): Row | undefined {
-  return sameVersionRow(collection, fixed) ?? fixture[`${collection}@saved`];
+function samePlan(collection: string, fixed: Row): Row | undefined {
+  return samePlanRow(collection, fixed) ?? fixture[`${collection}@frozen`];
 }
 
-function sameVersionId(collection: string, fixed: Row): unknown {
-  return sameVersionRow(collection, fixed)?.["id"];
+function samePlanId(collection: string, fixed: Row): unknown {
+  return samePlanRow(collection, fixed)?.["id"];
 }
 
 /** A policy a group may give, for the run's group. */
@@ -504,11 +485,8 @@ export const changes: Record<string, () => Row> = {
   groups: () => ({ description: "Changed." }),
   group_members: () => ({ person_id: row["people"] }),
   group_policies: () => ({ group_id: row["groups"] }),
-  plans: () => ({ name: `Plan ${key("plan")}` }),
-  plan_versions: () => ({ message: "A changed test version." }),
-  version_sets: () => ({ message: "A changed test note." }),
-  // The database fills it in again from the member's copy.
-  version_set_members: () => ({ plan_id: null }),
+  plans: () => ({ notes: ["Practice on Mondays."] }),
+  financial_plans: () => ({ note: "A changed test note." }),
   plan_pools: () => ({ name: `Pool ${key("pool")}` }),
   plan_staff_levels: () => ({ hourly_rate_cents: 2_600 }),
   plan_offerings: () => ({ price_cents: 52_000 }),
@@ -628,7 +606,7 @@ async function createRows(): Promise<void> {
 let rows: Promise<void> | undefined;
 export const runRows = () => (rows ??= createRows());
 
-/** The rows in each plan version, in the order they can be made. */
+/** The rows in each plan, in the order they can be made. */
 export const PLAN_ROWS = [
   "plan_pools",
   "plan_staff_levels",
@@ -672,10 +650,10 @@ export const OPERATIONS_PLAN_ROWS = [
 export const PLAN_YEAR = 2027;
 
 /**
- * The run's year: a saved Financial Plan holding an Operations Plan and a program area's plan, and a
- * draft Financial Plan started from it, holding a draft copy of each. Between them, each copy of
- * the two plans holds a row in every collection a plan has: the Operations Plan's own rows in the
- * Operations Plan, and the rest in the program area's. Only the planning steps need them.
+ * The run's year: a frozen Financial Plan holding an Operations Plan and a program area's plan, and a
+ * draft Financial Plan started from it, holding a copy of each. Between them, each of the two plans
+ * holds a row in every collection a plan has: the Operations Plan's own rows in the Operations Plan,
+ * and the rest in the program area's. Only the planning steps need them.
  */
 async function createPlanRows(): Promise<void> {
   await runRows();
@@ -684,72 +662,58 @@ async function createPlanRows(): Promise<void> {
     row[name] = item.id;
     fixture[name] = item;
   };
-  const operations = await adminCreate("plans", await newRow("plans", { kind: "operations", program_area_id: null }));
-  const operationsCopy = await adminCreate("plan_versions", await newRow("plan_versions", { plan_id: operations.id }));
-  await make("plans", "plans");
-  await make("plan_versions@saved", "plan_versions");
-  await make("plan_versions@draft", "plan_versions", { parent_version_id: row["plan_versions@saved"] });
-  versionNames.set(operationsCopy.id, "saved");
-  versionNames.set(row["plan_versions@saved"]!, "saved");
-  versionNames.set(row["plan_versions@draft"]!, "draft");
+  await make("financial_plans@frozen", "financial_plans", { name: `Budget ${runId}` });
+  const inFrozen = { financial_plan_id: row["financial_plans@frozen"] };
+  await make("plans@frozen-operations", "plans", { ...inFrozen, kind: "operations", program_area_id: null });
+  await make("plans@frozen", "plans", inFrozen);
+  planStates.set(row["plans@frozen-operations"]!, "frozen");
+  planStates.set(row["plans@frozen"]!, "frozen");
   for (const collection of PLAN_ROWS) {
-    if (OPERATIONS_PLAN_ROWS.includes(collection)) {
-      // The draft's copy of the Operations Plan gets its copy of this row.
-      await make(`${collection}@saved`, collection, { version_id: operationsCopy.id });
-      continue;
-    }
-    for (const version of ["saved", "draft"]) {
-      await make(`${collection}@${version}`, collection, { version_id: row[`plan_versions@${version}`] });
-    }
+    const plan = OPERATIONS_PLAN_ROWS.includes(collection) ? "plans@frozen-operations" : "plans@frozen";
+    await make(`${collection}@frozen`, collection, { plan_id: row[plan] });
   }
-  await make("version_sets@saved", "version_sets", { name: `Budget ${runId}` });
-  await adminCreate("version_set_members", {
-    id: randomUUID(),
-    version_set_id: row["version_sets@saved"],
-    version_id: operationsCopy.id,
-  });
-  await make("version_set_members", "version_set_members", {
-    version_set_id: row["version_sets@saved"],
-    version_id: row["plan_versions@saved"],
-  });
   await (
     await admin()
-  ).ok("PATCH", itemPath("version_sets", row["version_sets@saved"]), {
-    status: "saved",
-    message: "Saved by a test.",
+  ).ok("PATCH", itemPath("financial_plans", row["financial_plans@frozen"]), {
+    status: "frozen",
+    note: "Frozen by a test.",
   });
-  await withResults(row["version_sets@saved"]!);
-  await make("version_sets@draft", "version_sets", { name: `Next ${runId}`, parent_id: row["version_sets@saved"] });
-  // The draft started from the saved one gets copies of its plans a moment after. The run's draft
-  // copy goes in too, in place of the copy of the program area's plan.
-  const members = await copied(row["version_sets@draft"]!);
-  await replaceAreaCopy(row["version_sets@draft"]!, row["plans"]!, row["plan_versions@draft"]!);
-  const draftOperations = members.find((m) => m["plan_id"] === operations.id)!["version_id"] as string;
-  row["plan_versions@draft-operations"] = draftOperations;
-  for (const collection of OPERATIONS_PLAN_ROWS) {
+  await withResults(row["financial_plans@frozen"]!);
+  await make("financial_plans@draft", "financial_plans", {
+    name: `Next ${runId}`,
+    parent_id: row["financial_plans@frozen"],
+  });
+  // The draft started from the frozen one gets a copy of each of its plans, with every row, a moment after.
+  const plans = await copied(row["financial_plans@draft"]!);
+  const draftOf = (kind: string) => plans.find((plan) => plan["kind"] === kind)!["id"] as string;
+  row["plans@draft"] = draftOf("program_area");
+  row["plans@draft-operations"] = draftOf("operations");
+  planStates.set(row["plans@draft"], "draft");
+  planStates.set(row["plans@draft-operations"], "draft");
+  for (const collection of PLAN_ROWS) {
+    const plan = OPERATIONS_PLAN_ROWS.includes(collection) ? "plans@draft-operations" : "plans@draft";
     const filter = encodeURIComponent(
-      JSON.stringify({ version_id: { _eq: draftOperations }, key: { _eq: fixture[`${collection}@saved`]!["key"] } }),
+      JSON.stringify({ plan_id: { _eq: row[plan] }, key: { _eq: fixture[`${collection}@frozen`]!["key"] } }),
     );
     const [copy] = await (await admin()).ok("GET", `/items/${collection}?filter=${filter}`);
     row[`${collection}@draft`] = copy.id;
     fixture[`${collection}@draft`] = copy;
   }
-  // Read again for what changed after they were made: saving, results, and copies.
+  // Read again for what changed after they were made: freezing, results, and copies.
   for (const [name, collection] of [
-    ["plans", "plans"],
-    ["plan_versions@saved", "plan_versions"],
-    ["version_sets@saved", "version_sets"],
-    ["version_set_members", "version_set_members"],
+    ["financial_plans@frozen", "financial_plans"],
+    ["plans@frozen", "plans"],
+    ["plans@draft", "plans"],
   ] as const) {
     fixture[name] = await (await admin()).ok("GET", itemPath(collection, row[name]));
   }
-  row["version_sets"] = row["version_sets@saved"]!;
-  fixture["version_sets"] = fixture["version_sets@saved"]!;
+  row["financial_plans"] = row["financial_plans@frozen"]!;
+  fixture["financial_plans"] = fixture["financial_plans@frozen"]!;
 }
 
-/** A saved Financial Plan, once the saved-versions hook has written its results. */
+/** A frozen Financial Plan, once the frozen-plans hook has written its results. */
 export async function withResults(set: string): Promise<void> {
-  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set } }));
+  const filter = encodeURIComponent(JSON.stringify({ financial_plan_id: { _eq: set } }));
   for (let tries = 0; tries < 60; tries++) {
     const [results] = await (await admin()).ok("GET", `/items/plan_results?filter=${filter}&fields=id`);
     if (results !== undefined) return;
@@ -758,36 +722,20 @@ export async function withResults(set: string): Promise<void> {
   throw new Error(`Financial Plan ${set} has no results after a minute.`);
 }
 
-/** A Financial Plan's members, once the saved-versions hook has copied its parent's plans in. */
+/**
+ * A Financial Plan's plans, once the frozen-plans hook has copied its parent's plans in. Deleting the
+ * Financial Plan deletes them, with their rows, so cleanup needn't know them.
+ */
 export async function copied(set: string): Promise<Row[]> {
-  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set } }));
+  const filter = encodeURIComponent(JSON.stringify({ financial_plan_id: { _eq: set } }));
   for (let tries = 0; tries < 60; tries++) {
-    const members: Row[] = await (
+    const plans: Row[] = await (
       await admin()
-    ).ok("GET", `/items/version_set_members?filter=${filter}&fields=id,plan_id,version_id`);
-    if (members.length > 0) {
-      // The hook made the copies, so cleanup needs telling about them.
-      const copies = members.map((m) => m["version_id"]);
-      created.push(...copies.map((id) => ({ collection: "plan_versions", id })));
-      const inCopies = encodeURIComponent(JSON.stringify({ version_id: { _in: copies } }));
-      for (const collection of PLAN_ROWS) {
-        const rows: Row[] = await (
-          await admin()
-        ).ok("GET", `/items/${collection}?filter=${inCopies}&fields=id&limit=-1`);
-        created.push(...rows.map((item) => ({ collection, id: item["id"] })));
-      }
-      return members;
-    }
+    ).ok("GET", `/items/plans?filter=${filter}&fields=id,kind,program_area_id`);
+    if (plans.length > 0) return plans;
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   throw new Error(`Financial Plan ${set} has no plans after a minute.`);
-}
-
-/** Puts `copy` in the Financial Plan in place of its copy of `plan`. */
-async function replaceAreaCopy(set: string, plan: string, copy: string): Promise<void> {
-  const filter = encodeURIComponent(JSON.stringify({ version_set_id: { _eq: set }, plan_id: { _eq: plan } }));
-  const [member] = await (await admin()).ok("GET", `/items/version_set_members?filter=${filter}&fields=id`);
-  await (await admin()).ok("PATCH", itemPath("version_set_members", member.id), { version_id: copy });
 }
 
 let planRowsMade: Promise<void> | undefined;

@@ -68,7 +68,7 @@ describe("staffing", () => {
       expect.objectContaining({
         code: "unallocated_activity",
         category: "allocation",
-        version_id: "v1",
+        plan_id: "v1",
         date: "2027-08-02",
         key: a.key,
         message: "An offering's practice has no staff",
@@ -106,11 +106,11 @@ describe("staffing", () => {
     expect(total(out, { line: "coach_wages" })).toBe(8000);
   });
 
-  it("splits a block's costs among its offerings by their sailors, from capacity × fill_rate if no target", () => {
+  it("splits a block's costs among its offerings by their target sailors", () => {
     const p = product();
     const level = staffLevel({ hourly_rate_cents: 2000 });
     const x = offering(p.id, { target_enrollment: 6 });
-    const y = offering(p.id, { target_enrollment: null, capacity: 10, fill_rate: 0.4 });
+    const y = offering(p.id, { target_enrollment: 4 });
     const [ax, ay] = [
       activity(x.id, { start_time: "09:00", end_time: "12:00" }),
       activity(y.id, { start_time: "09:00", end_time: "12:00" }),
@@ -156,7 +156,7 @@ describe("staffing", () => {
   /** A class's boat rate for the year. */
   const boatRate = (boat_class_id: string, fields: Partial<PlanBoatRate> = {}): PlanBoatRate => ({
     id: `rate-${boat_class_id}`,
-    version_id: "v1",
+    plan_id: "v1",
     key: `rate-${boat_class_id}`,
     boat_class_id,
     maintenance_per_boat_hour_cents: 0,
@@ -461,7 +461,7 @@ describe("staffing", () => {
           code: "over_inventory_boats",
           category: "allocation",
           date: "2027-07-13",
-          version_id: "v1",
+          plan_id: "v1",
           message: "14 Sailqubes out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
         }),
       );
@@ -586,7 +586,7 @@ describe("staffing", () => {
     const out = computePlan(data);
     expect(total(out, { line: "trip" })).toBe(7000);
     expect(out.warnings).toContainEqual(
-      expect.objectContaining({ code: "trip_without_staff", category: "data", version_id: "v1", date: "2027-06-11" }),
+      expect.objectContaining({ code: "trip_without_staff", category: "data", plan_id: "v1", date: "2027-06-11" }),
     );
   });
 
@@ -615,7 +615,7 @@ describe("staffing", () => {
   it("names the plan and the date of a warning about one block's rows", () => {
     const { data } = onePractice({ staff: [{ staff_level_key: "missing" }] });
     expect(computePlan(data).warnings).toContainEqual(
-      expect.objectContaining({ code: "unknown_staff_level", category: "data", version_id: "v1", date: "2027-06-01" }),
+      expect.objectContaining({ code: "unknown_staff_level", category: "data", plan_id: "v1", date: "2027-06-01" }),
     );
   });
 });
@@ -674,7 +674,7 @@ describe("a block given what a full program uses", () => {
   it("costs the boats, own and chartered, that the expected share of the program would use", () => {
     const rate = (boat_class_id: string, fields: Partial<PlanBoatRate>): PlanBoatRate => ({
       id: boat_class_id,
-      version_id: "v1",
+      plan_id: "v1",
       key: boat_class_id,
       boat_class_id,
       maintenance_per_boat_hour_cents: 0,

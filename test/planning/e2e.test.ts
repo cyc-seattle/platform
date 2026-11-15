@@ -24,7 +24,7 @@ import {
   weekly,
 } from "./fixtures.ts";
 
-const v = (id: string) => ({ id, version_id: "v1", key: `${id}-key` });
+const v = (id: string) => ({ id, plan_id: "v1", key: `${id}-key` });
 
 function realisticPlan(): PlanData {
   const youth = area({ id: "youth", name: "Youth" });
@@ -54,7 +54,7 @@ function realisticPlan(): PlanData {
     starts_on: "2026-09-08",
     ends_on: "2026-11-15",
     capacity: 24,
-    fill_rate: 0.75,
+    target_enrollment: 18,
     price_cents: 85_000,
   });
   const spring = offering(racing.id, {
@@ -88,7 +88,7 @@ function realisticPlan(): PlanData {
       starts_on: monday,
       ends_on: `2027-06-${String(Number(monday.slice(8)) + 4).padStart(2, "0")}`,
       capacity: 30,
-      fill_rate: 0.9,
+      target_enrollment: 27,
       price_cents: 42_000,
     }),
   );
@@ -275,7 +275,6 @@ function realisticPlan(): PlanData {
         position_id: director.id,
         product_id: camp.id,
         program_area_id: null,
-        kind: "management",
         hours: 80,
       },
     ],

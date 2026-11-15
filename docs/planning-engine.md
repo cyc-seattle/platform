@@ -7,10 +7,10 @@ tags: [architecture, planning]
 The planning engine calculates a plan's P&L for one year from the plan's rows in
 [the planning schema](planning-schema.md). It's part of `@cyc-seattle/platform`, imported as
 `@cyc-seattle/platform/planning`. It doesn't read from or save to the database: an app or an agent
-loads the rows, calls `computePlan`, and shows the answer. The `saved-versions` hook runs the engine
+loads the rows, calls `computePlan`, and shows the answer. The `frozen-plans` hook runs the engine
 deployed with `backend` and stores each Financial Plan's results
 ([docs/planning-schema.md](planning-schema.md#a-financial-plans-results)): a draft's again after
-each change to it, and a saved one's when it's saved, with which version of the engine calculated
+each change to it, and a frozen one's when it's frozen, with which version of the engine calculated
 them. So an app reads a Financial Plan's P&L from its results, and needn't run the engine itself.
 
 ```ts
@@ -19,27 +19,26 @@ import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/plannin
 const { lines, pnl, organization, activities, positions, warnings } = computePlan(data);
 ```
 
-`data` holds the catalog, the organization, and every row of the plan copies being calculated,
+`data` holds the catalog, the organization, and every row of the plans being calculated,
 named as the schema names them, plus:
 
 - `fiscal_year`, the plan year. Fiscal year 2027 ends in calendar year 2027 and starts in the
   organization's `fiscal_year_start_month`.
 - `assets` and `boats`: the asset list, which says how many boats of each class, sailboats and
   powerboats, the organization has on each day.
-- `plans` and `plan_versions`: the plans being calculated and their copies, so the engine can tell
-  which plan each offering is in.
+- `plans`: the plans being calculated, so the engine can tell which plan each row is in.
 
 Planners enter each of these in the plans ([docs/planning-schema.md](planning-schema.md)):
 
 - `fiscal_year` and the organization are the Financial Plan's own `fiscal_year` and
   `organization_id`.
-- The plan copies are the ones a Financial Plan holds: its Operations Plan and each of its Program
+- The plans are the ones a Financial Plan holds: its Operations Plan and each of its Program
   Plans. A Program Plan's row that names an Operations Plan row by key means the row with that key
-  in that Operations Plan copy.
+  in that Operations Plan.
 - Every pool is divided among all of the Financial Plan's programs' offerings, after non-program's
   net offsets it, so each Program Plan's share of the pools, and the organization's totals, count
   every plan in it.
-- The catalog is read as it is now. A saved Financial Plan doesn't copy it, so recalculating an old
+- The catalog is read as it is now. A frozen Financial Plan doesn't copy it, so recalculating an old
   one uses today's catalog.
 
 It returns:
@@ -67,7 +66,7 @@ It returns:
 
 An AI working over Directus's MCP server can change a draft's rows but can't run the engine. It
 doesn't need to. Change the draft's inputs, wait about a second, then read the draft's
-`plan_results` and `plan_result_*` rows, filtered on its `version_set_id`. `plan_results.calculated_at`
+`plan_results` and `plan_result_*` rows, filtered on its `financial_plan_id`. `plan_results.calculated_at`
 says when they were worked out, so a time before the last change means they aren't in yet. A draft
 with no `plan_results` row is still being worked out, or the engine failed on it. Anyone with a
 Plan policy can read them.
@@ -126,13 +125,13 @@ Plan policy can read them.
 ### Blocks
 
 The engine never works out how many coaches or boats an activity needs: the planner, or their AI,
-decides that from the program settings and the rules, and writes it on the blocks
+decides that from the program settings and the planner's notes, and writes it on the blocks
 ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block is given
 what its offerings would use if they filled, and costs what their expected sailors use
 ([cyc-seattle/platform#250](https://github.com/cyc-seattle/platform/issues/250)).
 
-- Enrollment, the sailors expected, is a whole number of kids: `target_enrollment` if set, otherwise
-  `capacity × fill_rate` rounded. Kids who join or leave partway through aren't counted. Revenue and
+- Enrollment, the sailors expected, is a whole number of kids: `target_enrollment`, or none when it's
+  empty. Kids who join or leave partway through aren't counted. Revenue and
   every cost use it.
 - An offering's most sailors, its max enrollment, is its `capacity`, or its enrollment when it has
   none. The checks use it.
@@ -192,9 +191,8 @@ what its offerings would use if they filled, and costs what their expected sailo
 
 ### Warnings
 
-Each warning has a `code`, a `message`, and a `category`. When it's about one plan copy or one date,
-it names them in `version_id` and `date`. A warning about a row that's given once for each plan
-copy, such as a program with no settings, names the first date it's seen on. `allocation` warnings say the blocks break a limit or run on
+Each warning has a `code`, a `message`, and a `category`. When it's about one plan or one date,
+it names them in `plan_id` and `date`. A warning about a row that's given once for each plan, such as a program with no settings, names the first date it's seen on. `allocation` warnings say the blocks break a limit or run on
 a closed day; the rest are `data`, a row that's missing or wrong. The engine still costs what it's
 given.
 
@@ -213,7 +211,7 @@ Allocation warnings:
   before it, or with no acquired date, and not yet disposed of. Boats it charters, or sailors bring,
   don't count. Blocks are out
   from their first activity's start to their last one's end; one with no times is out all day.
-- Results saved before boats were counted by class may also have `over_inventory_resource`, for
+- Results frozen before boats were counted by class may also have `over_inventory_resource`, for
   RIBs and other equipment.
 - `over_capacity`: more sailors in a block, with every offering at its max enrollment, than its
   staff, or its boats, can safely take. Each program's sailors count against its own
@@ -232,7 +230,7 @@ Data warnings about blocks:
   aren't checked against the staff.
 - `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors.
 - `no_charter_rate`: a block's chartered boats, whose class has no `charter_per_day_cents`.
-  Results saved before it was renamed call it `no_sailors_per_boat`, and may also have
+  Results frozen before it was renamed call it `no_sailors_per_boat`, and may also have
   `no_fleet_quantity`, which the engine no longer gives.
 - `no_hourly_rate`, `trip_without_staff`, `unknown_block`, `unknown_staff_level`,
   and `block_date_mismatch`, an activity in a block on another date.
@@ -394,7 +392,7 @@ Each line's `function` is `program`, `management` or `fundraising`:
 - revenue takes its account's `default_function`, or none
 - a share of a pool keeps the function it had in the pool, so a G&A share stays `management`
 
-A saved plan version keeps the functions it was calculated with.
+A frozen Financial Plan keeps the functions it was calculated with.
 
 ### Line names
 

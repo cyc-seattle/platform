@@ -10,7 +10,7 @@ import { directusFilesBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv } from "./workloads.ts";
-import type { GroupPoliciesConfig, QueryGuardConfig, SavedVersionsConfig } from "./policies.ts";
+import type { GroupPoliciesConfig, QueryGuardConfig, FrozenPlansConfig } from "./policies.ts";
 
 // Directus on the cluster (cyc-seattle/isthmia#231). Its uploaded files are in a bucket infra makes.
 
@@ -47,8 +47,8 @@ function generated(name: string, length: number): pulumi.Output<string> {
 export interface DirectusExtensions {
   queryGuard: QueryGuardConfig;
   groupPolicies: GroupPoliciesConfig;
-  savedVersions: SavedVersionsConfig;
-  /** The planning engine's modules, which the saved-versions hook loads (./engine-files.ts). */
+  frozenPlans: FrozenPlansConfig;
+  /** The planning engine's modules, which the frozen-plans hook loads (./engine-files.ts). */
   engine: Record<string, string>;
 }
 
@@ -63,10 +63,10 @@ export async function deployDirectus(
   extensions: DirectusExtensions,
   existing?: ExistingDirectus,
 ): Promise<DirectusOnCluster> {
-  // Only so dev's tests can clean up the saved plan versions they make (docs/planning-schema.md).
-  if (extensions.savedVersions.deletable && !isDev) {
+  // Only so dev's tests can clean up the frozen Financial Plans they make (docs/planning-schema.md).
+  if (extensions.frozenPlans.deletable && !isDev) {
     throw new Error(
-      "backend: savedVersionsDeletable is for dev's tests only. A saved plan version never changes in prod.",
+      "backend: frozenPlansDeletable is for dev's tests only. A frozen Financial Plan never changes in prod.",
     );
   }
   const config = new pulumi.Config();
@@ -128,7 +128,7 @@ export async function deployDirectus(
   const mounts = [
     hook("community-query-guard", "community-query-guard.cjs", extensions.queryGuard),
     hook("group-policies", "group-policies.cjs", extensions.groupPolicies),
-    hook("saved-versions", "saved-versions.cjs", extensions.savedVersions, extensions.engine),
+    hook("frozen-plans", "frozen-plans.cjs", extensions.frozenPlans, extensions.engine),
     hook("school-choice", "school-choice.cjs", {}),
     hook("link-preview", "link-preview.cjs", {}),
     extension("cents-as-dollars", "display", "cents-display.mjs"),

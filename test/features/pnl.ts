@@ -23,7 +23,6 @@ const DECIMALS = new Set([
   "payroll_tax_rate",
   "share",
   "hours",
-  "fill_rate",
   "sailors_per_coach",
   "cogs_rate",
   "ga_share",
@@ -46,7 +45,7 @@ function numbers<T extends Row>(rows: T[]): T[] {
   );
 }
 
-const VERSION_ROWS = [
+const PLAN_ROWS = [
   "plan_programs",
   "plan_offerings",
   "plan_trips",
@@ -120,12 +119,18 @@ const COST_ACCOUNTS: Record<string, AccountName> = {
   resources: "boatCharters",
 };
 
-/** One example's plans: an organization's Operations Plan, and a plan for each program area. */
+/**
+ * One example's plans: an organization's Operations Plan, and a plan for each program area, in one
+ * draft Financial Plan.
+ */
 export class PnlPlan {
   private organizationId: string | undefined;
   private readonly accounts = {} as Record<AccountName, string>;
-  private operations: { plan: string; version: string } | undefined;
-  private readonly areaPlans = new Map<string, { plan: string; version: string }>();
+  private setId: string | undefined;
+  /** Whether a step has named the Financial Plan, which a scenario does once. */
+  private named = false;
+  private operations: string | undefined;
+  private readonly areaPlans = new Map<string, string>();
   readonly areas: string[] = [];
   readonly products: string[] = [];
   readonly offerings: Item[] = [];
@@ -174,28 +179,39 @@ export class PnlPlan {
     return this.organizationId;
   }
 
-  private async plan(kind: "operations" | "program_area", areaId: string | null) {
-    const plan = await adminCreate("plans", {
-      id: randomUUID(),
-      kind,
-      program_area_id: areaId,
-      organization_id: await this.organization(),
-      fiscal_year: PLAN_YEAR,
-      name: `Plan ${key("plan")}`,
-    });
-    const version = await adminCreate("plan_versions", { id: randomUUID(), plan_id: plan.id, status: "draft" });
-    return { plan: plan.id, version: version.id };
+  /** The draft Financial Plan that holds the example's plans. */
+  async financialPlan(): Promise<string> {
+    this.setId ??= (
+      await adminCreate("financial_plans", {
+        id: randomUUID(),
+        organization_id: await this.organization(),
+        fiscal_year: PLAN_YEAR,
+        name: `Financial Plan ${key("set")}`,
+        status: "draft",
+      })
+    ).id;
+    return this.setId;
   }
 
-  async operationsVersion(): Promise<string> {
+  private async plan(kind: "operations" | "program_area", areaId: string | null): Promise<string> {
+    return (
+      await adminCreate("plans", {
+        id: randomUUID(),
+        financial_plan_id: await this.financialPlan(),
+        kind,
+        program_area_id: areaId,
+      })
+    ).id;
+  }
+
+  async operationsPlan(): Promise<string> {
     this.operations ??= await this.plan("operations", null);
-    return this.operations.version;
+    return this.operations;
   }
 
   /** A new program area, with a plan for this year. Returns the area. */
   async area(): Promise<string> {
-    // The Operations Plan comes first, so cleanup deletes the area plans that name it before it.
-    await this.operationsVersion();
+    await this.operationsPlan();
     const area = await adminCreate("program_areas", {
       id: randomUUID(),
       name: `Program area ${key("area")}`,
@@ -210,19 +226,7 @@ export class PnlPlan {
   areaPlan(area: string): string {
     const plan = this.areaPlans.get(area);
     if (plan === undefined) throw new Error(`No plan for program area ${area}.`);
-    return plan.plan;
-  }
-
-  /** The Operations Plan itself. */
-  async operationsPlan(): Promise<string> {
-    await this.operationsVersion();
-    return this.operations!.plan;
-  }
-
-  areaVersion(area: string): string {
-    const plan = this.areaPlans.get(area);
-    if (plan === undefined) throw new Error(`No plan for program area ${area}.`);
-    return plan.version;
+    return plan;
   }
 
   async product(kind: string, area: string | null): Promise<string> {
@@ -241,9 +245,9 @@ export class PnlPlan {
     return product.id;
   }
 
-  /** An offering of `product` in `version`, with `costs` cents of its own direct costs. */
+  /** An offering of `product` in `plan`, with `costs` cents of its own direct costs. */
   async offering(
-    version: string,
+    plan: string,
     product: string,
     price: number,
     sailors: number,
@@ -252,7 +256,7 @@ export class PnlPlan {
   ): Promise<Item> {
     const offering = await adminCreate("plan_offerings", {
       id: randomUUID(),
-      version_id: version,
+      plan_id: plan,
       key: randomUUID(),
       product_id: product,
       name: `Offering ${key("offering")}`,
@@ -264,16 +268,16 @@ export class PnlPlan {
     });
     this.offerings.push(offering);
     if (costs > 0) {
-      await this.line(version, "costs", { cost_center_type: "offering", cost_center_key: offering["key"] }, costs);
+      await this.line(plan, "costs", { cost_center_type: "offering", cost_center_key: offering["key"] }, costs);
     }
     return offering;
   }
 
   /** A budget line. Directus refuses an empty `function`, so it's left out unless given. */
-  async line(version: string, account: AccountName, center: Row, amount: number, extra: Row = {}): Promise<Item> {
+  async line(plan: string, account: AccountName, center: Row, amount: number, extra: Row = {}): Promise<Item> {
     const line = await adminCreate("plan_budget_lines", {
       id: randomUUID(),
-      version_id: version,
+      plan_id: plan,
       key: randomUUID(),
       name: `${account} ${key("line")}`,
       account_id: await this.account(account),
@@ -291,7 +295,7 @@ export class PnlPlan {
     this.poolId ??= (
       await adminCreate("plan_pools", {
         id: randomUUID(),
-        version_id: await this.operationsVersion(),
+        plan_id: await this.operationsPlan(),
         key: randomUUID(),
         name: "Office",
       })
@@ -302,7 +306,7 @@ export class PnlPlan {
   async charge(name: string, rate: number, account: AccountName, kinds: string[], excluded: boolean): Promise<void> {
     await adminCreate("plan_revenue_charges", {
       id: randomUUID(),
-      version_id: await this.operationsVersion(),
+      plan_id: await this.operationsPlan(),
       key: randomUUID(),
       name,
       rate,
@@ -312,36 +316,36 @@ export class PnlPlan {
     });
   }
 
-  /** A row in the Operations Plan's version, such as a salaried position. Returns its key. */
+  /** A row in the Operations Plan, such as a salaried position. Returns its key. */
   async operationsRow(collection: string, fields: Row): Promise<string> {
     const row = await adminCreate(collection, {
       id: randomUUID(),
-      version_id: await this.operationsVersion(),
+      plan_id: await this.operationsPlan(),
       key: randomUUID(),
       ...fields,
     });
     return row["key"] as string;
   }
 
-  /** A bonus owner in `version` with `rate` of its products' net, owning `products`. Returns its id. */
-  async bonus(version: string, rate: number, products: string[], extra: Row = {}): Promise<string> {
+  /** A bonus owner in `plan` with `rate` of its products' net, owning `products`. Returns its id. */
+  async bonus(plan: string, rate: number, products: string[], extra: Row = {}): Promise<string> {
     const owner = await adminCreate("plan_bonus_owners", {
       id: randomUUID(),
-      version_id: version,
+      plan_id: plan,
       key: randomUUID(),
       role_name: "Director",
       bonus_rate: rate,
       account_id: await this.account("bonus"),
       ...extra,
     });
-    for (const product of products) await this.owns(owner.id, version, product);
+    for (const product of products) await this.owns(owner.id, plan, product);
     return owner.id;
   }
 
-  async owns(owner: string, version: string, product: string): Promise<void> {
+  async owns(owner: string, plan: string, product: string): Promise<void> {
     await adminCreate("plan_bonus_owner_products", {
       id: randomUUID(),
-      version_id: version,
+      plan_id: plan,
       key: randomUUID(),
       bonus_owner_id: owner,
       product_id: product,
@@ -355,7 +359,7 @@ export class PnlPlan {
       made.push(
         await adminCreate("plan_activities", {
           id: randomUUID(),
-          version_id: offering["version_id"],
+          plan_id: offering["plan_id"],
           key: randomUUID(),
           offering_id: offering.id,
           date,
@@ -374,7 +378,7 @@ export class PnlPlan {
   async programSettings(area: string, product: string, fields: Row): Promise<string> {
     const settings = await adminCreate("plan_programs", {
       id: randomUUID(),
-      version_id: this.areaVersion(area),
+      plan_id: this.areaPlan(area),
       key: randomUUID(),
       product_id: product,
       ...fields,
@@ -382,12 +386,12 @@ export class PnlPlan {
     return settings.id;
   }
 
-  /** A block in `version` on `date`. Returns its id. */
-  async block(version: string, date: string, name = "A block", fields: Row = {}): Promise<string> {
+  /** A block in `plan` on `date`. Returns its id. */
+  async block(plan: string, date: string, name = "A block", fields: Row = {}): Promise<string> {
     return (
       await adminCreate("plan_activity_blocks", {
         id: randomUUID(),
-        version_id: version,
+        plan_id: plan,
         key: randomUUID(),
         date,
         name,
@@ -396,16 +400,16 @@ export class PnlPlan {
     ).id;
   }
 
-  /** A row of what block `block` in `version` is given: its staff, resources, or boats. */
+  /** A row of what block `block` in `plan` is given: its staff, resources, or boats. */
   async given(
     collection: "plan_block_staff" | "plan_block_boats",
-    version: string,
+    plan: string,
     block: string,
     fields: Row,
   ): Promise<void> {
     await adminCreate(collection, {
       id: randomUUID(),
-      version_id: version,
+      plan_id: plan,
       key: randomUUID(),
       block_id: block,
       ...fields,
@@ -440,54 +444,47 @@ export class PnlPlan {
   }
 
   /**
-   * A draft Financial Plan for the organization's year, named `name`, holding the Operations Plan's
-   * copy and each program area's, made as the admin. `operations: false` leaves the Operations Plan out.
+   * The draft Financial Plan holding every plan made so far, named `name`. `operations: false` takes
+   * the Operations Plan out.
    */
-  async draftSet(name = `Financial Plan ${key("set")}`, { operations = true } = {}): Promise<string> {
-    const set = await adminCreate("version_sets", {
-      id: randomUUID(),
-      organization_id: await this.organization(),
-      fiscal_year: PLAN_YEAR,
-      name,
-      status: "draft",
-    });
-    const copies = [
-      ...(operations ? [await this.operationsVersion()] : []),
-      ...[...this.areaPlans.values()].map((p) => p.version),
-    ];
-    for (const version of copies) {
-      await adminCreate("version_set_members", { id: randomUUID(), version_set_id: set.id, version_id: version });
+  async draftSet(name?: string, { operations = true } = {}): Promise<string> {
+    if (this.named) throw new Error("The scenario's plans are in one Financial Plan, which is already named.");
+    this.named = true;
+    const set = await this.financialPlan();
+    if (name !== undefined) await (await admin()).ok("PATCH", itemPath("financial_plans", set), { name });
+    if (!operations && this.operations !== undefined) {
+      await (await admin()).ok("DELETE", itemPath("plans", this.operations));
+      this.operations = undefined;
     }
-    return set.id;
+    return set;
   }
 
-  /** Saves a draft Financial Plan, as `session` or the admin. */
-  async save(set: string, session?: DirectusSession): Promise<void> {
-    await (session ?? (await admin())).ok("PATCH", itemPath("version_sets", set), {
-      status: "saved",
-      message: "Saved by a test.",
+  /** Freezes a draft Financial Plan, as `session` or the admin. */
+  async freeze(set: string, session?: DirectusSession): Promise<void> {
+    await (session ?? (await admin())).ok("PATCH", itemPath("financial_plans", set), {
+      status: "frozen",
+      note: "Frozen by a test.",
     });
   }
 
-  /** A saved Financial Plan holding every plan made so far, named `name`. */
-  async savedSet(name?: string): Promise<string> {
+  /** A frozen Financial Plan holding every plan made so far, named `name`. */
+  async frozenSet(name?: string): Promise<string> {
     const set = await this.draftSet(name);
-    await this.save(set);
+    await this.freeze(set);
     return set;
   }
 
   /** Reads every row back as a Plan Reader, and calculates the P&L with the engine. */
   async calculate(): Promise<EngineOutput> {
-    const versions = [await this.operationsVersion(), ...[...this.areaPlans.values()].map((p) => p.version)];
-    const plans = [this.operations!.plan, ...[...this.areaPlans.values()].map((p) => p.plan)];
+    const plans = [await this.operationsPlan(), ...this.areaPlans.values()];
     const planner = (await userFor({ policies: ["Plan Reader"] })).session;
     const read = async (collection: string, filter: object): Promise<Row[]> =>
       numbers(
         await planner.ok("GET", `/items/${collection}?limit=-1&filter=${encodeURIComponent(JSON.stringify(filter))}`),
       );
-    const inVersions = { version_id: { _in: versions } };
+    const inPlans = { plan_id: { _in: plans } };
     const rows = Object.fromEntries(
-      await Promise.all(VERSION_ROWS.map(async (c) => [c, await read(c, inVersions)] as const)),
+      await Promise.all(PLAN_ROWS.map(async (c) => [c, await read(c, inPlans)] as const)),
     );
     const organization = (await read("organizations", { id: { _eq: this.organizationId } }))[0];
     const data = {
@@ -506,7 +503,6 @@ export class PnlPlan {
       assets: await read("assets", { id: anyOf(this.assets) }),
       boats: await read("boats", { asset_id: anyOf(this.assets) }),
       plans: await read("plans", { id: { _in: plans } }),
-      plan_versions: await read("plan_versions", { id: { _in: versions } }),
       ...rows,
     } as unknown as PlanData;
     this.output = computePlan(data);
@@ -528,7 +524,7 @@ export class PnlPlan {
   }
 }
 
-/** Results, read as a Plan Reader. The hook writes them just after the save answers, so this waits for them. */
+/** Results, read as a Plan Reader. The hook writes them just after a change answers, so this waits for them. */
 async function resultsWhere(
   filter: Row,
   what: string,
@@ -553,6 +549,6 @@ async function resultsWhere(
   throw new Error(`${what} has no results after a minute.`);
 }
 
-/** A saved Financial Plan's results. */
+/** A Financial Plan's results. */
 export const financialPlanResults = (set: string) =>
-  resultsWhere({ version_set_id: { _eq: set } }, `Financial Plan ${set}`);
+  resultsWhere({ financial_plan_id: { _eq: set } }, `Financial Plan ${set}`);

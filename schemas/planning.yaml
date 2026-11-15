@@ -36,12 +36,12 @@ collections:
       collapse: open
       collection: plans
       color: null
-      display_template: "{{name}}"
+      display_template: "{{financial_plan_id.name}}: {{kind}} {{program_area_id.name}}"
       group: Planning
       hidden: false
       icon: event_note
       item_duplication_fields: null
-      note: "One part of a Financial Plan: a program area's Program Plan, or the Operations Plan."
+      note: "One part of a Financial Plan, with every row it holds: a program area's Program Plan, or the Operations Plan."
       preview_url: null
       singleton: false
       sort: null
@@ -52,34 +52,6 @@ collections:
       versioning: false
     schema:
       name: plans
-  - collection: plan_versions
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: plan_versions
-      color: null
-      display_template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      group: Planning
-      hidden: false
-      icon: history
-      item_duplication_fields: null
-      note: "One plan's copy in one Financial Plan, with every row it holds. It's saved with its Financial Plan, and then never changes."
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations:
-        - language: en-US
-          translation: Plan copies
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: plan_versions
   - collection: plan_offerings
     meta:
       accountability: all
@@ -251,7 +223,7 @@ collections:
       hidden: false
       icon: percent
       item_duplication_fields: null
-      note: "A charge set as a share of each offering's revenue, such as scholarships or card fees. Operations Plan only."
+      note: A charge set as a share of each offering's revenue, such as scholarships or card fees. Operations Plan only.
       preview_url: null
       singleton: false
       sort: null
@@ -272,12 +244,12 @@ collections:
       collapse: open
       collection: plan_rates
       color: null
-      display_template: Rates for {{version_id.plan_id.name}}
+      display_template: Rates for {{plan_id.financial_plan_id.name}}
       group: Planning
       hidden: false
       icon: percent
       item_duplication_fields: null
-      note: The year's rates. One row at most in each copy.
+      note: The year's rates. One row at most in each plan.
       preview_url: null
       singleton: false
       sort: null
@@ -532,12 +504,12 @@ collections:
       collapse: open
       collection: plan_results
       color: null
-      display_template: "{{version_id.plan_id.name}}{{version_set_id.name}} ({{calculated_at}})"
+      display_template: "{{financial_plan_id.name}} ({{calculated_at}})"
       group: Planning
       hidden: false
       icon: summarize
       item_duplication_fields: null
-      note: A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -563,7 +535,7 @@ collections:
       hidden: false
       icon: receipt_long
       item_duplication_fields: null
-      note: Each cost and revenue line in a Financial Plan's P&L. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: Each cost and revenue line in a Financial Plan's P&L. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -589,7 +561,7 @@ collections:
       hidden: false
       icon: query_stats
       item_duplication_fields: null
-      note: A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -615,7 +587,7 @@ collections:
       hidden: false
       icon: savings
       item_duplication_fields: null
-      note: Each bonus in a Financial Plan, for each term, and for the offerings in no term on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: Each bonus in a Financial Plan, for each term, and for the offerings in no term on the year. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -641,7 +613,7 @@ collections:
       hidden: false
       icon: badge
       item_duplication_fields: null
-      note: Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -667,7 +639,7 @@ collections:
       hidden: false
       icon: format_list_numbered
       item_duplication_fields: null
-      note: The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -693,7 +665,7 @@ collections:
       hidden: false
       icon: warning
       item_duplication_fields: null
-      note: What a Financial Plan's P&L warns about. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change.
+      note: What a Financial Plan's P&L warns about. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change.
       preview_url: null
       singleton: false
       sort: null
@@ -704,7 +676,7 @@ collections:
       versioning: false
     schema:
       name: plan_result_warnings
-  - collection: version_sets
+  - collection: financial_plans
     meta:
       accountability: all
       archive_app_filter: true
@@ -712,54 +684,24 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: version_sets
+      collection: financial_plans
       color: null
       display_template: "{{name}} ({{fiscal_year}}, {{status}})"
       group: Planning
       hidden: false
       icon: workspaces
       item_duplication_fields: null
-      note: "The organization's plan for a year: one Operations Plan, and a Program Plan for any of the program areas, with the P&L they make together. Change its plans while it's a draft. Its P&L is worked out again a moment after each change. Saving it saves them all, and then it never changes, apart from its name and note. Pick a parent when you add one, and its plans are copied in."
+      note: "The organization's plan for a year: an Operations Plan and a Program Plan for any of the program areas. Change it while it's a draft. Freezing it keeps it, and its plans, from changing. Pick a parent when you add one, and its plans are copied in."
       preview_url: null
       singleton: false
       sort: null
       sort_field: null
       status: active
-      translations:
-        - language: en-US
-          translation: Financial Plans
+      translations: null
       unarchive_value: null
       versioning: false
     schema:
-      name: version_sets
-  - collection: version_set_members
-    meta:
-      accountability: all
-      archive_app_filter: true
-      archive_field: null
-      archive_value: null
-      autosave_revision_interval: null
-      collapse: open
-      collection: version_set_members
-      color: null
-      display_template: "{{version_set_id.name}}: {{plan_id.name}}"
-      group: Planning
-      hidden: false
-      icon: list
-      item_duplication_fields: null
-      note: "One plan in a Financial Plan: the copy of the plan it holds. Add or remove one only while the Financial Plan is a draft."
-      preview_url: null
-      singleton: false
-      sort: null
-      sort_field: null
-      status: active
-      translations:
-        - language: en-US
-          translation: Financial Plan plans
-      unarchive_value: null
-      versioning: false
-    schema:
-      name: version_set_members
+      name: financial_plans
   - collection: plan_programs
     meta:
       accountability: all
@@ -775,7 +717,7 @@ collections:
       hidden: false
       icon: school
       item_duplication_fields: null
-      note: "A program's settings in a Program Plan: the staff level that coaches it, how many sailors each coach can take, and its rules."
+      note: "A program's settings in a Program Plan: the staff level that coaches it, how many sailors each coach can take, and its notes."
       preview_url: null
       singleton: false
       sort: null
@@ -907,90 +849,37 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plans
-    field: kind
-    type: string
+    field: notes
+    type: json
     meta:
       collection: plans
       conditions: null
       display: labels
-      display_options:
-        choices:
-          - text: Program area
-            value: program_area
-          - text: Operations
-            value: operations
-      field: kind
+      display_options: null
+      field: notes
       group: null
       hidden: false
-      interface: select-dropdown
-      note: null
+      interface: tags
+      note: What you want that the plan's numbers don't capture, for your AI to fill in. Short notes, one a line, each up to 280 characters. Bold, italic, code and links work.
       options:
-        choices:
-          - text: Program area
-            value: program_area
-          - text: Operations
-            value: operations
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special: null
-      translations: null
-      validation:
-        kind:
-          _in:
-            - program_area
-            - operations
-      validation_message: "Must be one of: program_area, operations."
-      width: full
-    schema:
-      name: kind
-      table: plans
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plans
-    field: program_area_id
-    type: uuid
-    meta:
-      collection: plans
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: program_area_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: "The program area the plan is for. Empty for the Operations Plan."
-      options: null
+        alphabetize: false
+        allowCustom: true
       readonly: false
       required: false
       searchable: true
-      sort: 3
+      sort: 5
       special:
-        - m2o
+        - cast-json
       translations:
         - language: en-US
-          translation: Program area
+          translation: Notes
       validation: null
       validation_message: null
       width: full
     schema:
-      name: program_area_id
+      name: notes
       table: plans
-      data_type: uuid
+      data_type: json
       default_value: null
       max_length: null
       numeric_precision: null
@@ -1002,165 +891,13 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: program_areas
-      foreign_key_column: id
-  - collection: plans
-    field: organization_id
-    type: uuid
-    meta:
-      collection: plans
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: organization_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The organization the plan is for. Can't change once the plan has a saved copy.
-      options:
-        filter:
-          kind:
-            _eq: own
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Organization
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: organization_id
-      table: plans
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: organizations
-      foreign_key_column: id
-  - collection: plans
-    field: fiscal_year
-    type: integer
-    meta:
-      collection: plans
-      conditions: null
-      display: null
-      display_options: null
-      field: fiscal_year
-      group: null
-      hidden: false
-      interface: input
-      note: The plan year. Fiscal year N ends in calendar year N. Can't change once the plan has a saved copy.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fiscal_year
-      table: plans
-      data_type: integer
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plans
-    field: name
-    type: string
-    meta:
-      collection: plans
-      conditions: null
-      display: null
-      display_options: null
-      field: name
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: name
-      table: plans
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plans
-    field: versions
-    type: alias
-    meta:
-      collection: plans
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: versions
-      group: null
-      hidden: false
-      interface: list-o2m
-      note: The plan's copy in each Financial Plan.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 8
-      special:
-        - o2m
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-  - collection: plan_versions
+  - collection: plan_offerings
     field: id
     type: uuid
     meta:
-      collection: plan_versions
+      collection: plan_offerings
       conditions: null
       display: null
       display_options: null
@@ -1182,7 +919,7 @@ fields:
       width: full
     schema:
       name: id
-      table: plan_versions
+      table: plan_offerings
       data_type: uuid
       default_value: null
       max_length: null
@@ -1197,20 +934,20 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: plan_versions
+  - collection: plan_offerings
     field: plan_id
     type: uuid
     meta:
-      collection: plan_versions
+      collection: plan_offerings
       conditions: null
       display: related-values
       display_options:
-        template: "{{name}}"
+        template: "{{kind}} {{program_area_id.name}}"
       field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -1226,7 +963,7 @@ fields:
       width: full
     schema:
       name: plan_id
-      table: plan_versions
+      table: plan_offerings
       data_type: uuid
       default_value: null
       max_length: null
@@ -1241,391 +978,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_versions
-    field: parent_version_id
-    type: uuid
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: parent_version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The copy this one was made from, in the Financial Plan this one's started from.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Copied from
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: parent_version_id
-      table: plan_versions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_versions
-    field: status
-    type: string
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: labels
-      display_options:
-        choices:
-          - text: Draft
-            value: draft
-          - text: Saved
-            value: saved
-      field: status
-      group: null
-      hidden: false
-      interface: select-dropdown
-      note: Saved with its Financial Plan. A saved copy never changes, even for an admin.
-      options:
-        choices:
-          - text: Draft
-            value: draft
-          - text: Saved
-            value: saved
-      readonly: true
-      required: true
-      searchable: true
-      sort: 4
-      special: null
-      translations: null
-      validation:
-        status:
-          _in:
-            - draft
-            - saved
-      validation_message: "Must be one of: draft, saved."
-      width: full
-    schema:
-      name: status
-      table: plan_versions
-      data_type: character varying
-      default_value: draft
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_versions
-    field: message
-    type: text
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: null
-      display_options: null
-      field: message
-      group: null
-      hidden: false
-      interface: input-multiline
-      note: What changed in this version.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: message
-      table: plan_versions
-      data_type: text
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_versions
-    field: saved_by
-    type: uuid
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: null
-      display_options: null
-      field: saved_by
-      group: null
-      hidden: true
-      interface: input
-      note: Set when its Financial Plan is saved.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: saved_by
-      table: plan_versions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_versions
-    field: saved_at
-    type: timestamp
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: null
-      display_options: null
-      field: saved_at
-      group: null
-      hidden: false
-      interface: datetime
-      note: Set when its Financial Plan is saved.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 7
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: saved_at
-      table: plan_versions
-      data_type: timestamp with time zone
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_versions
-    field: platform_version
-    type: string
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: null
-      display_options: null
-      field: platform_version
-      group: null
-      hidden: false
-      interface: input
-      note: The version of the planning engine that calculated its numbers. Required to save.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 8
-      special: null
-      translations:
-        - language: en-US
-          translation: Engine version
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: platform_version
-      table: plan_versions
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_versions
-    field: rules
-    type: text
-    meta:
-      collection: plan_versions
-      conditions: null
-      display: null
-      display_options: null
-      field: rules
-      group: null
-      hidden: false
-      interface: input-multiline
-      note: "What you want that the plan's numbers don't capture, for your AI to fill in. For example: every Monday, Wednesday and Friday, except on SPS school holidays, from 4pm until dusk."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 10
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: rules
-      table: plan_versions
-      data_type: text
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: id
-    type: uuid
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The version this row belongs to.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan copy
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
   - collection: plan_offerings
     field: key
     type: uuid
@@ -1638,7 +990,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -1954,46 +1306,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_offerings
-    field: fill_rate
-    type: decimal
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: fill_rate
-      group: null
-      hidden: false
-      interface: input
-      note: A share of capacity, used when Target enrollment is empty. 0.8 means 80%.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 11
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: fill_rate
-      table: plan_offerings
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
     field: price_cents
     type: integer
     meta:
@@ -2079,7 +1391,7 @@ fields:
       foreign_key_column: null
   - collection: plan_offerings
     field: note
-    type: text
+    type: string
     meta:
       collection: plan_offerings
       conditions: null
@@ -2088,9 +1400,10 @@ fields:
       field: note
       group: null
       hidden: false
-      interface: input-multiline
-      note: null
-      options: null
+      interface: input
+      note: Up to 280 characters. Bold, italic, code and links work.
+      options:
+        trim: true
       readonly: false
       required: false
       searchable: true
@@ -2103,9 +1416,9 @@ fields:
     schema:
       name: note
       table: plan_offerings
-      data_type: text
+      data_type: character varying
       default_value: null
-      max_length: null
+      max_length: 280
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -2159,19 +1472,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_trips
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_trips
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -2181,12 +1494,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_trips
       data_type: uuid
       default_value: null
@@ -2200,7 +1513,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_trips
     field: key
@@ -2214,7 +1527,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -2491,19 +1804,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_activities
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_activities
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -2513,12 +1826,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_activities
       data_type: uuid
       default_value: null
@@ -2532,7 +1845,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_activities
     field: key
@@ -2546,7 +1859,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -3093,19 +2406,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_labor_lines
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_labor_lines
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -3115,12 +2428,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_labor_lines
       data_type: uuid
       default_value: null
@@ -3134,7 +2447,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_labor_lines
     field: key
@@ -3148,7 +2461,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -3298,9 +2611,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: >-
-        Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
-        page's web address. Leave empty for the whole organization.
+      note: "Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization."
       options: null
       readonly: false
       required: false
@@ -3513,7 +2824,7 @@ fields:
       foreign_key_column: null
   - collection: plan_labor_lines
     field: note
-    type: text
+    type: string
     meta:
       collection: plan_labor_lines
       conditions: null
@@ -3522,9 +2833,10 @@ fields:
       field: note
       group: null
       hidden: false
-      interface: input-multiline
-      note: null
-      options: null
+      interface: input
+      note: Up to 280 characters. Bold, italic, code and links work.
+      options:
+        trim: true
       readonly: false
       required: false
       searchable: true
@@ -3537,9 +2849,9 @@ fields:
     schema:
       name: note
       table: plan_labor_lines
-      data_type: text
+      data_type: character varying
       default_value: null
-      max_length: null
+      max_length: 280
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -3593,19 +2905,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_budget_lines
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_budget_lines
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -3615,12 +2927,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_budget_lines
       data_type: uuid
       default_value: null
@@ -3634,7 +2946,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_budget_lines
     field: key
@@ -3648,7 +2960,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -3901,9 +3213,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: >-
-        Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its
-        page's web address. Leave empty for the whole organization.
+      note: "Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization."
       options: null
       readonly: false
       required: false
@@ -4025,7 +3335,7 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: "Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment."
+      note: Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment.
       options: null
       readonly: false
       required: false
@@ -4057,7 +3367,7 @@ fields:
       foreign_key_column: null
   - collection: plan_budget_lines
     field: note
-    type: text
+    type: string
     meta:
       collection: plan_budget_lines
       conditions: null
@@ -4066,9 +3376,10 @@ fields:
       field: note
       group: null
       hidden: false
-      interface: input-multiline
-      note: null
-      options: null
+      interface: input
+      note: Up to 280 characters. Bold, italic, code and links work.
+      options:
+        trim: true
       readonly: false
       required: false
       searchable: true
@@ -4081,9 +3392,9 @@ fields:
     schema:
       name: note
       table: plan_budget_lines
-      data_type: text
+      data_type: character varying
       default_value: null
-      max_length: null
+      max_length: 280
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -4137,19 +3448,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_capital_items
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_capital_items
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to. Capital goes in the Operations Plan's.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -4159,12 +3470,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_capital_items
       data_type: uuid
       default_value: null
@@ -4178,7 +3489,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_capital_items
     field: key
@@ -4192,7 +3503,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -4394,7 +3705,7 @@ fields:
       foreign_key_column: null
   - collection: plan_capital_items
     field: note
-    type: text
+    type: string
     meta:
       collection: plan_capital_items
       conditions: null
@@ -4403,9 +3714,10 @@ fields:
       field: note
       group: null
       hidden: false
-      interface: input-multiline
-      note: Why CSC needs it.
-      options: null
+      interface: input
+      note: Up to 280 characters. Bold, italic, code and links work.
+      options:
+        trim: true
       readonly: false
       required: false
       searchable: true
@@ -4418,9 +3730,9 @@ fields:
     schema:
       name: note
       table: plan_capital_items
-      data_type: text
+      data_type: character varying
       default_value: null
-      max_length: null
+      max_length: 280
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -4514,19 +3826,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_revenue_charges
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_revenue_charges
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -4536,12 +3848,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_revenue_charges
       data_type: uuid
       default_value: null
@@ -4555,7 +3867,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_revenue_charges
     field: key
@@ -4569,7 +3881,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -4702,8 +4014,8 @@ fields:
       field: product_kinds
       group: null
       hidden: false
-      interface: "select-multiple-dropdown"
-      note: "The kinds of product it applies to. Empty applies it to none."
+      interface: select-multiple-dropdown
+      note: The kinds of product it applies to. Empty applies it to none.
       options:
         choices:
           - text: Program
@@ -4758,7 +4070,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: "A revenue account adds revenue, such as card fees families pay. An expense account adds a cost."
+      note: A revenue account adds revenue, such as card fees families pay. An expense account adds a cost.
       options: null
       readonly: false
       required: true
@@ -4801,7 +4113,7 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: "Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships."
+      note: Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships.
       options: null
       readonly: false
       required: false
@@ -4833,7 +4145,7 @@ fields:
       foreign_key_column: null
   - collection: plan_revenue_charges
     field: note
-    type: text
+    type: string
     meta:
       collection: plan_revenue_charges
       conditions: null
@@ -4842,9 +4154,10 @@ fields:
       field: note
       group: null
       hidden: false
-      interface: input-multiline
-      note: null
-      options: null
+      interface: input
+      note: Up to 280 characters. Bold, italic, code and links work.
+      options:
+        trim: true
       readonly: false
       required: false
       searchable: true
@@ -4857,9 +4170,9 @@ fields:
     schema:
       name: note
       table: plan_revenue_charges
-      data_type: text
+      data_type: character varying
       default_value: null
-      max_length: null
+      max_length: 280
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -4913,19 +4226,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_rates
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_rates
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -4935,12 +4248,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_rates
       data_type: uuid
       default_value: null
@@ -4954,7 +4267,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_rates
     field: key
@@ -4968,7 +4281,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -5163,19 +4476,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_staff_levels
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_staff_levels
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -5185,12 +4498,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_staff_levels
       data_type: uuid
       default_value: null
@@ -5204,7 +4517,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_staff_levels
     field: key
@@ -5218,7 +4531,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -5425,19 +4738,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_salaried_positions
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_salaried_positions
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -5447,12 +4760,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_salaried_positions
       data_type: uuid
       default_value: null
@@ -5466,7 +4779,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_salaried_positions
     field: key
@@ -5480,7 +4793,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -5801,19 +5114,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_salaried_bookings
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_salaried_bookings
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -5823,12 +5136,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_salaried_bookings
       data_type: uuid
       default_value: null
@@ -5842,7 +5155,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_salaried_bookings
     field: key
@@ -5856,7 +5169,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -5942,7 +5255,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: "The product the hours are for. Set this or the program area, not both."
+      note: The product the hours are for. Set this or the program area, not both.
       options: null
       readonly: false
       required: false
@@ -5986,7 +5299,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: "The program area the hours are for, shared among its offerings. Set this or the product, not both."
+      note: The program area the hours are for, shared among its offerings. Set this or the product, not both.
       options: null
       readonly: false
       required: false
@@ -6017,55 +5330,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: program_areas
       foreign_key_column: id
-  - collection: plan_salaried_bookings
-    field: kind
-    type: string
-    meta:
-      collection: plan_salaried_bookings
-      conditions: null
-      display: labels
-      display_options:
-        choices:
-          - text: Management
-            value: management
-      field: kind
-      group: null
-      hidden: false
-      interface: select-dropdown
-      note: null
-      options:
-        choices:
-          - text: Management
-            value: management
-      readonly: false
-      required: true
-      searchable: true
-      sort: 6
-      special: null
-      translations: null
-      validation:
-        kind:
-          _in:
-            - management
-      validation_message: "Must be one of: management."
-      width: full
-    schema:
-      name: kind
-      table: plan_salaried_bookings
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_salaried_bookings
     field: hours
     type: decimal
@@ -6148,19 +5412,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_boat_rates
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_boat_rates
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -6170,12 +5434,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_boat_rates
       data_type: uuid
       default_value: null
@@ -6189,7 +5453,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_boat_rates
     field: key
@@ -6203,7 +5467,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -6444,19 +5708,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_pools
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_pools
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -6466,12 +5730,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_pools
       data_type: uuid
       default_value: null
@@ -6485,7 +5749,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_pools
     field: key
@@ -6499,7 +5763,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -6610,19 +5874,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_bonus_owners
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_bonus_owners
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -6632,12 +5896,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_bonus_owners
       data_type: uuid
       default_value: null
@@ -6651,7 +5915,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_bonus_owners
     field: key
@@ -6665,7 +5929,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -6958,19 +6222,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_bonus_owner_products
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_bonus_owner_products
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -6980,12 +6244,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_bonus_owner_products
       data_type: uuid
       default_value: null
@@ -6999,7 +6263,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_bonus_owner_products
     field: key
@@ -7013,7 +6277,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -7172,19 +6436,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_closed_dates
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_closed_dates
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -7194,12 +6458,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_closed_dates
       data_type: uuid
       default_value: null
@@ -7213,7 +6477,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_closed_dates
     field: key
@@ -7227,7 +6491,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -7378,19 +6642,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_terms
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_terms
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -7400,12 +6664,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_terms
       data_type: uuid
       default_value: null
@@ -7419,7 +6683,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_terms
     field: key
@@ -7433,7 +6697,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -8002,7 +7266,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_results
-    field: version_set_id
+    field: financial_plan_id
     type: uuid
     meta:
       collection: plan_results
@@ -8010,7 +7274,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: version_set_id
+      field: financial_plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -8029,7 +7293,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_id
+      name: financial_plan_id
       table: plan_results
       data_type: uuid
       default_value: null
@@ -8043,7 +7307,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
   - collection: plan_result_lines
     field: id
@@ -8465,7 +7729,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_lines
-    field: version_set_id
+    field: financial_plan_id
     type: uuid
     meta:
       collection: plan_result_lines
@@ -8473,7 +7737,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: version_set_id
+      field: financial_plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -8492,7 +7756,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_id
+      name: financial_plan_id
       table: plan_result_lines
       data_type: uuid
       default_value: null
@@ -8506,22 +7770,22 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
   - collection: plan_result_lines
-    field: version_set_member_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_result_lines
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}}"
-      field: version_set_member_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The plan in the Financial Plan that holds what it's charged to.
+      note: The plan it's charged in, or about.
       options: null
       readonly: true
       required: false
@@ -8536,7 +7800,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_member_id
+      name: plan_id
       table: plan_result_lines
       data_type: uuid
       default_value: null
@@ -8550,7 +7814,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_set_members
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_result_lines
     field: line_name
@@ -9070,7 +8334,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_pnl
-    field: version_set_id
+    field: financial_plan_id
     type: uuid
     meta:
       collection: plan_result_pnl
@@ -9078,7 +8342,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: version_set_id
+      field: financial_plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -9097,7 +8361,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_id
+      name: financial_plan_id
       table: plan_result_pnl
       data_type: uuid
       default_value: null
@@ -9111,22 +8375,22 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
   - collection: plan_result_pnl
-    field: version_set_member_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_result_pnl
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}}"
-      field: version_set_member_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The plan in the Financial Plan that holds what it's charged to.
+      note: The plan it's charged in, or about.
       options: null
       readonly: true
       required: false
@@ -9141,7 +8405,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_member_id
+      name: plan_id
       table: plan_result_pnl
       data_type: uuid
       default_value: null
@@ -9155,7 +8419,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_set_members
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_result_pnl
     field: term_key
@@ -9291,7 +8555,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "The most sailors an offering's blocks can take, with every other offering in them full. Empty for a product or program area."
+      note: The most sailors an offering's blocks can take, with every other offering in them full. Empty for a product or program area.
       options: null
       readonly: true
       required: false
@@ -9333,7 +8597,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "The fewest sailors, up to its capacity, at which an offering pays for itself, with its share of shared costs as planned. Empty when it doesn't even when full, and for a product or program area."
+      note: The fewest sailors, up to its capacity, at which an offering pays for itself, with its share of shared costs as planned. Empty when it doesn't even when full, and for a product or program area.
       options: null
       readonly: true
       required: false
@@ -9773,7 +9037,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_bonuses
-    field: version_set_id
+    field: financial_plan_id
     type: uuid
     meta:
       collection: plan_result_bonuses
@@ -9781,7 +9045,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: version_set_id
+      field: financial_plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -9800,7 +9064,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_id
+      name: financial_plan_id
       table: plan_result_bonuses
       data_type: uuid
       default_value: null
@@ -9814,22 +9078,22 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
   - collection: plan_result_bonuses
-    field: version_set_member_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_result_bonuses
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}}"
-      field: version_set_member_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The plan in the Financial Plan that pays the bonus.
+      note: The plan it's charged in, or about.
       options: null
       readonly: true
       required: false
@@ -9844,7 +9108,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_member_id
+      name: plan_id
       table: plan_result_bonuses
       data_type: uuid
       default_value: null
@@ -9858,7 +9122,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_set_members
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_result_positions
     field: id
@@ -10402,7 +9666,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_positions
-    field: version_set_id
+    field: financial_plan_id
     type: uuid
     meta:
       collection: plan_result_positions
@@ -10410,7 +9674,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: version_set_id
+      field: financial_plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -10429,7 +9693,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_id
+      name: financial_plan_id
       table: plan_result_positions
       data_type: uuid
       default_value: null
@@ -10443,7 +9707,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
   - collection: plan_result_positions
     field: double_booked_hours
@@ -10571,7 +9835,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_capital
-    field: version_set_id
+    field: financial_plan_id
     type: uuid
     meta:
       collection: plan_result_capital
@@ -10579,7 +9843,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: version_set_id
+      field: financial_plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -10598,7 +9862,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_id
+      name: financial_plan_id
       table: plan_result_capital
       data_type: uuid
       default_value: null
@@ -10612,7 +9876,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
   - collection: plan_result_capital
     field: rank
@@ -11022,7 +10286,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_warnings
-    field: version_set_id
+    field: financial_plan_id
     type: uuid
     meta:
       collection: plan_result_warnings
@@ -11030,7 +10294,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: version_set_id
+      field: financial_plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -11049,7 +10313,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_id
+      name: financial_plan_id
       table: plan_result_warnings
       data_type: uuid
       default_value: null
@@ -11063,22 +10327,22 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
   - collection: plan_result_warnings
-    field: version_set_member_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_result_warnings
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}}"
-      field: version_set_member_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The plan in the Financial Plan it's about.
+      note: The plan it's charged in, or about.
       options: null
       readonly: true
       required: false
@@ -11093,7 +10357,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: version_set_member_id
+      name: plan_id
       table: plan_result_warnings
       data_type: uuid
       default_value: null
@@ -11107,7 +10371,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_set_members
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_result_warnings
     field: date
@@ -11203,11 +10467,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: id
     type: uuid
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
@@ -11229,7 +10493,7 @@ fields:
       width: full
     schema:
       name: id
-      table: version_sets
+      table: financial_plans
       data_type: uuid
       default_value: null
       max_length: null
@@ -11244,11 +10508,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: organization_id
     type: uuid
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: related-values
       display_options:
@@ -11276,7 +10540,7 @@ fields:
       width: full
     schema:
       name: organization_id
-      table: version_sets
+      table: financial_plans
       data_type: uuid
       default_value: null
       max_length: null
@@ -11291,11 +10555,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: organizations
       foreign_key_column: id
-  - collection: version_sets
+  - collection: financial_plans
     field: fiscal_year
     type: integer
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
@@ -11318,7 +10582,7 @@ fields:
       width: full
     schema:
       name: fiscal_year
-      table: version_sets
+      table: financial_plans
       data_type: integer
       default_value: null
       max_length: null
@@ -11333,11 +10597,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: name
     type: string
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
@@ -11345,7 +10609,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Such as 2027 budget as adopted. You can change it after it's saved.
+      note: Such as 2027 budget as adopted. You can change it after it's frozen.
       options: null
       readonly: false
       required: true
@@ -11358,7 +10622,7 @@ fields:
       width: full
     schema:
       name: name
-      table: version_sets
+      table: financial_plans
       data_type: character varying
       default_value: null
       max_length: 255
@@ -11373,37 +10637,36 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
-    field: message
-    type: text
+  - collection: financial_plans
+    field: note
+    type: string
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
-      field: message
+      field: note
       group: null
       hidden: false
-      interface: input-multiline
-      note: 'What it was for, such as "Reviewed with the board". You can change it after it''s saved.'
-      options: null
+      interface: input
+      note: What it's for, such as "Reviewed with the board". Up to 280 characters. Bold, italic, code and links work. You can change it after it's frozen.
+      options:
+        trim: true
       readonly: false
       required: false
       searchable: true
       sort: 5
       special: null
-      translations:
-        - language: en-US
-          translation: Note
+      translations: null
       validation: null
       validation_message: null
       width: full
     schema:
-      name: message
-      table: version_sets
-      data_type: text
+      name: note
+      table: financial_plans
+      data_type: character varying
       default_value: null
-      max_length: null
+      max_length: 280
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -11415,30 +10678,30 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: status
     type: string
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: labels
       display_options:
         choices:
           - text: Draft
             value: draft
-          - text: Saved
-            value: saved
+          - text: Frozen
+            value: frozen
       field: status
       group: null
       hidden: false
       interface: select-dropdown
-      note: Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name, its note, the date it's active from, and whether it's archived.
+      note: Set it to frozen to freeze the Financial Plan and its plans. A frozen one never changes, apart from its name, its note, the date it's active from, and whether it's archived.
       options:
         choices:
           - text: Draft
             value: draft
-          - text: Saved
-            value: saved
+          - text: Frozen
+            value: frozen
       readonly: false
       required: true
       searchable: true
@@ -11449,12 +10712,12 @@ fields:
         status:
           _in:
             - draft
-            - saved
-      validation_message: "Must be one of: draft, saved."
+            - frozen
+      validation_message: "Must be one of: draft, frozen."
       width: full
     schema:
       name: status
-      table: version_sets
+      table: financial_plans
       data_type: character varying
       default_value: draft
       max_length: 255
@@ -11469,11 +10732,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: parent_id
     type: uuid
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: related-values
       display_options:
@@ -11498,7 +10761,7 @@ fields:
       width: full
     schema:
       name: parent_id
-      table: version_sets
+      table: financial_plans
       data_type: uuid
       default_value: null
       max_length: null
@@ -11511,21 +10774,21 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
-  - collection: version_sets
-    field: saved_by
+  - collection: financial_plans
+    field: frozen_by
     type: uuid
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
-      field: saved_by
+      field: frozen_by
       group: null
       hidden: true
       interface: input
-      note: Set when the Financial Plan is saved.
+      note: Set when the Financial Plan is frozen.
       options: null
       readonly: true
       required: false
@@ -11537,8 +10800,8 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: saved_by
-      table: version_sets
+      name: frozen_by
+      table: financial_plans
       data_type: uuid
       default_value: null
       max_length: null
@@ -11553,19 +10816,19 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
-    field: saved_at
+  - collection: financial_plans
+    field: frozen_at
     type: timestamp
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
-      field: saved_at
+      field: frozen_at
       group: null
       hidden: false
       interface: datetime
-      note: Set when the Financial Plan is saved.
+      note: Set when the Financial Plan is frozen.
       options: null
       readonly: true
       required: false
@@ -11574,13 +10837,13 @@ fields:
       special: null
       translations:
         - language: en-US
-          translation: Saved
+          translation: Frozen
       validation: null
       validation_message: null
       width: full
     schema:
-      name: saved_at
-      table: version_sets
+      name: frozen_at
+      table: financial_plans
       data_type: timestamp with time zone
       default_value: null
       max_length: null
@@ -11595,11 +10858,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: platform_version
     type: string
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
@@ -11607,7 +10870,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The version of the planning engine that calculated its numbers.
+      note: The version of the planning engine that calculated its numbers when it was frozen.
       options: null
       readonly: true
       required: false
@@ -11622,7 +10885,7 @@ fields:
       width: full
     schema:
       name: platform_version
-      table: version_sets
+      table: financial_plans
       data_type: character varying
       default_value: null
       max_length: 255
@@ -11637,11 +10900,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: effective_from
     type: date
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
@@ -11664,7 +10927,7 @@ fields:
       width: half
     schema:
       name: effective_from
-      table: version_sets
+      table: financial_plans
       data_type: date
       default_value: null
       max_length: null
@@ -11679,11 +10942,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
+  - collection: financial_plans
     field: archived_at
     type: timestamp
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: null
       display_options: null
@@ -11706,7 +10969,7 @@ fields:
       width: full
     schema:
       name: archived_at
-      table: version_sets
+      table: financial_plans
       data_type: timestamp with time zone
       default_value: null
       max_length: null
@@ -11721,38 +10984,11 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_sets
-    field: members
-    type: alias
-    meta:
-      collection: version_sets
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}}"
-      field: members
-      group: null
-      hidden: false
-      interface: list-o2m
-      note: Each plan in the Financial Plan. Add or remove one only while it's a draft.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 9
-      special:
-        - o2m
-      translations:
-        - language: en-US
-          translation: Plans
-      validation: null
-      validation_message: null
-      width: full
-  - collection: version_sets
+  - collection: financial_plans
     field: results
     type: alias
     meta:
-      collection: version_sets
+      collection: financial_plans
       conditions: null
       display: related-values
       display_options:
@@ -11761,7 +10997,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: The organization's P&L. A draft's is worked out again a moment after each change to it. A saved one's is what it showed when it was saved, worked out a moment after. One with none means working it out failed, and the logs say why. An admin can fill in a saved one's.
+      note: The organization's P&L. A draft's is worked out again a moment after each change to it. A frozen one's is worked out once, when it's frozen. One with none means working it out failed, and the logs say why.
       options: null
       readonly: true
       required: false
@@ -11773,11 +11009,11 @@ fields:
       validation: null
       validation_message: null
       width: full
-  - collection: version_set_members
+  - collection: plan_programs
     field: id
     type: uuid
     meta:
-      collection: version_set_members
+      collection: plan_programs
       conditions: null
       display: null
       display_options: null
@@ -11799,7 +11035,7 @@ fields:
       width: full
     schema:
       name: id
-      table: version_set_members
+      table: plan_programs
       data_type: uuid
       default_value: null
       max_length: null
@@ -11814,69 +11050,25 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: version_set_members
-    field: version_set_id
+  - collection: plan_programs
+    field: plan_id
     type: uuid
     meta:
-      collection: version_set_members
+      collection: plan_programs
       conditions: null
       display: related-values
       display_options:
-        template: "{{name}}"
-      field: version_set_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
       searchable: true
       sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Financial Plan
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_set_id
-      table: version_set_members
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: version_sets
-      foreign_key_column: id
-  - collection: version_set_members
-    field: plan_id
-    type: uuid
-    meta:
-      collection: version_set_members
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: plan_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: Filled in from the plan copy.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
       special:
         - m2o
       translations:
@@ -11887,13 +11079,13 @@ fields:
       width: full
     schema:
       name: plan_id
-      table: version_set_members
+      table: plan_programs
       data_type: uuid
       default_value: null
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -11901,135 +11093,6 @@ fields:
       generation_expression: null
       has_auto_increment: false
       foreign_key_table: plans
-      foreign_key_column: id
-  - collection: version_set_members
-    field: version_id
-    type: uuid
-    meta:
-      collection: version_set_members
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The plan's copy in this Financial Plan. It's in no other Financial Plan.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan copy
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: version_set_members
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-  - collection: plan_programs
-    field: id
-    type: uuid
-    meta:
-      collection: plan_programs
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: plan_programs
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_programs
-    field: version_id
-    type: uuid
-    meta:
-      collection: plan_programs
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The version this row belongs to.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Plan copy
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: version_id
-      table: plan_programs
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: plan_versions
       foreign_key_column: id
   - collection: plan_programs
     field: key
@@ -12043,7 +11106,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -12200,32 +11263,37 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_programs
-    field: rules
-    type: text
+    field: notes
+    type: json
     meta:
       collection: plan_programs
       conditions: null
-      display: null
+      display: labels
       display_options: null
-      field: rules
+      field: notes
       group: null
       hidden: false
-      interface: input-multiline
-      note: "What you want for this program that its numbers don't capture, for your AI to follow. For example: if there are more than 12 Guppies, add a Junior Instructor."
-      options: null
+      interface: tags
+      note: The program's rules, for your AI to follow in each of its offerings. Short notes, one a line, each up to 280 characters. Bold, italic, code and links work.
+      options:
+        alphabetize: false
+        allowCustom: true
       readonly: false
       required: false
       searchable: true
       sort: 7
-      special: null
-      translations: null
+      special:
+        - cast-json
+      translations:
+        - language: en-US
+          translation: Notes
       validation: null
       validation_message: null
       width: full
     schema:
-      name: rules
+      name: notes
       table: plan_programs
-      data_type: text
+      data_type: json
       default_value: null
       max_length: null
       numeric_precision: null
@@ -12281,19 +11349,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_activity_blocks
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_activity_blocks
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -12303,12 +11371,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_activity_blocks
       data_type: uuid
       default_value: null
@@ -12322,7 +11390,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_activity_blocks
     field: key
@@ -12336,7 +11404,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -12487,19 +11555,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_block_staff
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_block_staff
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -12509,12 +11577,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_block_staff
       data_type: uuid
       default_value: null
@@ -12528,7 +11596,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_block_staff
     field: key
@@ -12542,7 +11610,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -12835,19 +11903,19 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_block_boats
-    field: version_id
+    field: plan_id
     type: uuid
     meta:
       collection: plan_block_boats
       conditions: null
       display: related-values
       display_options:
-        template: "{{plan_id.name}} ({{status}}, {{saved_at}})"
-      field: version_id
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The version this row belongs to.
+      note: The plan this row belongs to.
       options: null
       readonly: false
       required: true
@@ -12857,12 +11925,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Plan copy
+          translation: Plan
       validation: null
       validation_message: null
       width: full
     schema:
-      name: version_id
+      name: plan_id
       table: plan_block_boats
       data_type: uuid
       default_value: null
@@ -12876,7 +11944,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: plan_versions
+      foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_block_boats
     field: key
@@ -12890,7 +11958,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Stays the same across versions. Copy it where another row asks for this one's Key.
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
       options: null
       readonly: true
       required: false
@@ -13127,112 +12195,195 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-relations:
+  - collection: plans
+    field: financial_plan_id
+    type: uuid
+    meta:
+      collection: plans
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: financial_plan_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The Financial Plan it's part of. It can't move to another.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Financial Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: financial_plan_id
+      table: plans
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: financial_plans
+      foreign_key_column: id
+  - collection: plans
+    field: kind
+    type: string
+    meta:
+      collection: plans
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Program area
+            value: program_area
+          - text: Operations
+            value: operations
+      field: kind
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Program area
+            value: program_area
+          - text: Operations
+            value: operations
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation:
+        kind:
+          _in:
+            - program_area
+            - operations
+      validation_message: "Must be one of: program_area, operations."
+      width: full
+    schema:
+      name: kind
+      table: plans
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plans
     field: program_area_id
-    related_collection: program_areas
+    type: uuid
     meta:
-      junction_field: null
-      many_collection: plans
-      many_field: program_area_id
-      one_allowed_collections: null
-      one_collection: program_areas
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
+      collection: plans
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_area_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The program area the plan is for. Empty for the Operations Plan.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program area
+      validation: null
+      validation_message: null
+      width: full
     schema:
+      name: program_area_id
       table: plans
-      column: program_area_id
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
       foreign_key_table: program_areas
       foreign_key_column: id
-      constraint_name: plans_program_area_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plans
-    field: organization_id
-    related_collection: organizations
+  - collection: financial_plans
+    field: plans
+    type: alias
     meta:
-      junction_field: null
-      many_collection: plans
-      many_field: organization_id
-      one_allowed_collections: null
-      one_collection: organizations
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plans
-      column: organization_id
-      foreign_key_table: organizations
-      foreign_key_column: id
-      constraint_name: plans_organization_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_versions
+      collection: financial_plans
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plans
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: "The plans it holds: one Operations Plan, and at most one Program Plan for each program area. Add or remove one only while it's a draft."
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 9
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+relations:
+  - collection: plan_offerings
     field: plan_id
     related_collection: plans
     meta:
       junction_field: null
-      many_collection: plan_versions
+      many_collection: plan_offerings
       many_field: plan_id
       one_allowed_collections: null
       one_collection: plans
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: versions
-      sort_field: null
-    schema:
-      table: plan_versions
-      column: plan_id
-      foreign_key_table: plans
-      foreign_key_column: id
-      constraint_name: plan_versions_plan_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_versions
-    field: parent_version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_versions
-      many_field: parent_version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_versions
-      column: parent_version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: plan_versions_parent_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_offerings
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: plan_offerings
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_offerings
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_offerings_version_id_foreign
+      constraint_name: plan_offerings_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_offerings
     field: product_id
     related_collection: products
@@ -13255,26 +12406,26 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_trips
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_trips
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_trips
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_trips_version_id_foreign
+      constraint_name: plan_trips_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_trips
     field: offering_id
     related_collection: plan_offerings
@@ -13295,28 +12446,28 @@ relations:
       foreign_key_column: id
       constraint_name: plan_trips_offering_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_activities
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_activities
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_activities
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_activities_version_id_foreign
+      constraint_name: plan_activities_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_activities
     field: offering_id
     related_collection: plan_offerings
@@ -13337,7 +12488,7 @@ relations:
       foreign_key_column: id
       constraint_name: plan_activities_offering_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_activities
     field: trip_id
     related_collection: plan_trips
@@ -13358,28 +12509,28 @@ relations:
       foreign_key_column: id
       constraint_name: plan_activities_trip_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_labor_lines
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_labor_lines
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_labor_lines
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_labor_lines_version_id_foreign
+      constraint_name: plan_labor_lines_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_labor_lines
     field: account_id
     related_collection: accounts
@@ -13402,26 +12553,26 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_budget_lines
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_budget_lines
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_budget_lines
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_budget_lines_version_id_foreign
+      constraint_name: plan_budget_lines_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_budget_lines
     field: account_id
     related_collection: accounts
@@ -13444,26 +12595,26 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_capital_items
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_capital_items
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_capital_items
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_capital_items_version_id_foreign
+      constraint_name: plan_capital_items_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_capital_items
     field: account_id
     related_collection: accounts
@@ -13486,68 +12637,68 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_rates
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_rates
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_rates
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_rates_version_id_foreign
+      constraint_name: plan_rates_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_staff_levels
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_staff_levels
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_staff_levels
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_staff_levels_version_id_foreign
+      constraint_name: plan_staff_levels_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_salaried_positions
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_salaried_positions
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_salaried_positions
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_salaried_positions_version_id_foreign
+      constraint_name: plan_salaried_positions_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_salaried_positions
     field: remainder_pool_id
     related_collection: plan_pools
@@ -13568,28 +12719,28 @@ relations:
       foreign_key_column: id
       constraint_name: plan_salaried_positions_remainder_pool_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_salaried_bookings
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_salaried_bookings
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_salaried_bookings
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_salaried_bookings_version_id_foreign
+      constraint_name: plan_salaried_bookings_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_salaried_bookings
     field: position_id
     related_collection: plan_salaried_positions
@@ -13610,7 +12761,7 @@ relations:
       foreign_key_column: id
       constraint_name: plan_salaried_bookings_position_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_salaried_bookings
     field: product_id
     related_collection: products
@@ -13654,26 +12805,26 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_boat_rates
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_boat_rates
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_boat_rates
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_boat_rates_version_id_foreign
+      constraint_name: plan_boat_rates_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_boat_rates
     field: boat_class_id
     related_collection: boat_classes
@@ -13696,47 +12847,47 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_pools
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_pools
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_pools
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_pools_version_id_foreign
+      constraint_name: plan_pools_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_bonus_owners
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_bonus_owners
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_bonus_owners
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_bonus_owners_version_id_foreign
+      constraint_name: plan_bonus_owners_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_bonus_owners
     field: account_id
     related_collection: accounts
@@ -13759,26 +12910,26 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_bonus_owner_products
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_bonus_owner_products
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_bonus_owner_products
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_bonus_owner_products_version_id_foreign
+      constraint_name: plan_bonus_owner_products_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_bonus_owner_products
     field: bonus_owner_id
     related_collection: plan_bonus_owners
@@ -13799,7 +12950,7 @@ relations:
       foreign_key_column: id
       constraint_name: plan_bonus_owner_products_bonus_owner_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_bonus_owner_products
     field: product_id
     related_collection: products
@@ -13822,26 +12973,26 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_revenue_charges
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_revenue_charges
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_revenue_charges
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_revenue_charges_version_id_foreign
+      constraint_name: plan_revenue_charges_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_revenue_charges
     field: account_id
     related_collection: accounts
@@ -13864,47 +13015,47 @@ relations:
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_closed_dates
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_closed_dates
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_closed_dates
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_closed_dates_version_id_foreign
+      constraint_name: plan_closed_dates_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_terms
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_terms
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_terms
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_terms_version_id_foreign
+      constraint_name: plan_terms_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_result_lines
     field: account_id
     related_collection: accounts
@@ -13926,12 +13077,12 @@ relations:
       constraint_name: plan_result_lines_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: version_sets
+  - collection: financial_plans
     field: organization_id
     related_collection: organizations
     meta:
       junction_field: null
-      many_collection: version_sets
+      many_collection: financial_plans
       many_field: organization_id
       one_allowed_collections: null
       one_collection: organizations
@@ -13940,40 +13091,61 @@ relations:
       one_field: null
       sort_field: null
     schema:
-      table: version_sets
+      table: financial_plans
       column: organization_id
       foreign_key_table: organizations
       foreign_key_column: id
-      constraint_name: version_sets_organization_id_foreign
+      constraint_name: financial_plans_organization_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: version_set_members
-    field: version_set_id
-    related_collection: version_sets
+  - collection: plan_results
+    field: financial_plan_id
+    related_collection: financial_plans
     meta:
       junction_field: null
-      many_collection: version_set_members
-      many_field: version_set_id
+      many_collection: plan_results
+      many_field: financial_plan_id
       one_allowed_collections: null
-      one_collection: version_sets
+      one_collection: financial_plans
       one_collection_field: null
       one_deselect_action: nullify
-      one_field: members
+      one_field: results
       sort_field: null
     schema:
-      table: version_set_members
-      column: version_set_id
-      foreign_key_table: version_sets
+      table: plan_results
+      column: financial_plan_id
+      foreign_key_table: financial_plans
       foreign_key_column: id
-      constraint_name: version_set_members_version_set_id_foreign
+      constraint_name: plan_results_financial_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: version_set_members
+  - collection: plan_result_lines
+    field: financial_plan_id
+    related_collection: financial_plans
+    meta:
+      junction_field: null
+      many_collection: plan_result_lines
+      many_field: financial_plan_id
+      one_allowed_collections: null
+      one_collection: financial_plans
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_lines
+      column: financial_plan_id
+      foreign_key_table: financial_plans
+      foreign_key_column: id
+      constraint_name: plan_result_lines_financial_plan_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_lines
     field: plan_id
     related_collection: plans
     meta:
       junction_field: null
-      many_collection: version_set_members
+      many_collection: plan_result_lines
       many_field: plan_id
       one_allowed_collections: null
       one_collection: plans
@@ -13982,349 +13154,286 @@ relations:
       one_field: null
       sort_field: null
     schema:
-      table: version_set_members
+      table: plan_result_lines
       column: plan_id
       foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: version_set_members_plan_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: version_set_members
-    field: version_id
-    related_collection: plan_versions
-    meta:
-      junction_field: null
-      many_collection: version_set_members
-      many_field: version_id
-      one_allowed_collections: null
-      one_collection: plan_versions
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: version_set_members
-      column: version_id
-      foreign_key_table: plan_versions
-      foreign_key_column: id
-      constraint_name: version_set_members_version_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
-  - collection: plan_results
-    field: version_set_id
-    related_collection: version_sets
-    meta:
-      junction_field: null
-      many_collection: plan_results
-      many_field: version_set_id
-      one_allowed_collections: null
-      one_collection: version_sets
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: results
-      sort_field: null
-    schema:
-      table: plan_results
-      column: version_set_id
-      foreign_key_table: version_sets
-      foreign_key_column: id
-      constraint_name: plan_results_version_set_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: plan_result_lines
-    field: version_set_id
-    related_collection: version_sets
-    meta:
-      junction_field: null
-      many_collection: plan_result_lines
-      many_field: version_set_id
-      one_allowed_collections: null
-      one_collection: version_sets
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_lines
-      column: version_set_id
-      foreign_key_table: version_sets
-      foreign_key_column: id
-      constraint_name: plan_result_lines_version_set_id_foreign
+      constraint_name: plan_result_lines_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_result_pnl
-    field: version_set_id
-    related_collection: version_sets
+    field: financial_plan_id
+    related_collection: financial_plans
     meta:
       junction_field: null
       many_collection: plan_result_pnl
-      many_field: version_set_id
+      many_field: financial_plan_id
       one_allowed_collections: null
-      one_collection: version_sets
+      one_collection: financial_plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_result_pnl
-      column: version_set_id
-      foreign_key_table: version_sets
+      column: financial_plan_id
+      foreign_key_table: financial_plans
       foreign_key_column: id
-      constraint_name: plan_result_pnl_version_set_id_foreign
+      constraint_name: plan_result_pnl_financial_plan_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_pnl
+    field: plan_id
+    related_collection: plans
+    meta:
+      junction_field: null
+      many_collection: plan_result_pnl
+      many_field: plan_id
+      one_allowed_collections: null
+      one_collection: plans
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_pnl
+      column: plan_id
+      foreign_key_table: plans
+      foreign_key_column: id
+      constraint_name: plan_result_pnl_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_result_bonuses
-    field: version_set_id
-    related_collection: version_sets
+    field: financial_plan_id
+    related_collection: financial_plans
     meta:
       junction_field: null
       many_collection: plan_result_bonuses
-      many_field: version_set_id
+      many_field: financial_plan_id
       one_allowed_collections: null
-      one_collection: version_sets
+      one_collection: financial_plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_result_bonuses
-      column: version_set_id
-      foreign_key_table: version_sets
+      column: financial_plan_id
+      foreign_key_table: financial_plans
       foreign_key_column: id
-      constraint_name: plan_result_bonuses_version_set_id_foreign
+      constraint_name: plan_result_bonuses_financial_plan_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_result_bonuses
+    field: plan_id
+    related_collection: plans
+    meta:
+      junction_field: null
+      many_collection: plan_result_bonuses
+      many_field: plan_id
+      one_allowed_collections: null
+      one_collection: plans
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_result_bonuses
+      column: plan_id
+      foreign_key_table: plans
+      foreign_key_column: id
+      constraint_name: plan_result_bonuses_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_result_positions
-    field: version_set_id
-    related_collection: version_sets
+    field: financial_plan_id
+    related_collection: financial_plans
     meta:
       junction_field: null
       many_collection: plan_result_positions
-      many_field: version_set_id
+      many_field: financial_plan_id
       one_allowed_collections: null
-      one_collection: version_sets
+      one_collection: financial_plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_result_positions
-      column: version_set_id
-      foreign_key_table: version_sets
+      column: financial_plan_id
+      foreign_key_table: financial_plans
       foreign_key_column: id
-      constraint_name: plan_result_positions_version_set_id_foreign
+      constraint_name: plan_result_positions_financial_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_result_capital
-    field: version_set_id
-    related_collection: version_sets
+    field: financial_plan_id
+    related_collection: financial_plans
     meta:
       junction_field: null
       many_collection: plan_result_capital
-      many_field: version_set_id
+      many_field: financial_plan_id
       one_allowed_collections: null
-      one_collection: version_sets
+      one_collection: financial_plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_result_capital
-      column: version_set_id
-      foreign_key_table: version_sets
+      column: financial_plan_id
+      foreign_key_table: financial_plans
       foreign_key_column: id
-      constraint_name: plan_result_capital_version_set_id_foreign
+      constraint_name: plan_result_capital_financial_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_result_warnings
-    field: version_set_id
-    related_collection: version_sets
+    field: financial_plan_id
+    related_collection: financial_plans
     meta:
       junction_field: null
       many_collection: plan_result_warnings
-      many_field: version_set_id
+      many_field: financial_plan_id
       one_allowed_collections: null
-      one_collection: version_sets
+      one_collection: financial_plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_result_warnings
-      column: version_set_id
-      foreign_key_table: version_sets
+      column: financial_plan_id
+      foreign_key_table: financial_plans
       foreign_key_column: id
-      constraint_name: plan_result_warnings_version_set_id_foreign
+      constraint_name: plan_result_warnings_financial_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: plan_result_lines
-    field: version_set_member_id
-    related_collection: version_set_members
+  - collection: plan_result_warnings
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
-      many_collection: plan_result_lines
-      many_field: version_set_member_id
+      many_collection: plan_result_warnings
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: version_set_members
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: plan_result_lines
-      column: version_set_member_id
-      foreign_key_table: version_set_members
+      table: plan_result_warnings
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_result_lines_version_set_member_id_foreign
+      constraint_name: plan_result_warnings_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
-  - collection: plan_result_pnl
-    field: version_set_member_id
-    related_collection: version_set_members
-    meta:
-      junction_field: null
-      many_collection: plan_result_pnl
-      many_field: version_set_member_id
-      one_allowed_collections: null
-      one_collection: version_set_members
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_pnl
-      column: version_set_member_id
-      foreign_key_table: version_set_members
-      foreign_key_column: id
-      constraint_name: plan_result_pnl_version_set_member_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: plan_result_bonuses
-    field: version_set_member_id
-    related_collection: version_set_members
-    meta:
-      junction_field: null
-      many_collection: plan_result_bonuses
-      many_field: version_set_member_id
-      one_allowed_collections: null
-      one_collection: version_set_members
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: plan_result_bonuses
-      column: version_set_member_id
-      foreign_key_table: version_set_members
-      foreign_key_column: id
-      constraint_name: plan_result_bonuses_version_set_member_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
-  - collection: version_sets
+  - collection: financial_plans
     field: parent_id
-    related_collection: version_sets
+    related_collection: financial_plans
     meta:
       junction_field: null
-      many_collection: version_sets
+      many_collection: financial_plans
       many_field: parent_id
       one_allowed_collections: null
-      one_collection: version_sets
+      one_collection: financial_plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: version_sets
+      table: financial_plans
       column: parent_id
-      foreign_key_table: version_sets
+      foreign_key_table: financial_plans
       foreign_key_column: id
-      constraint_name: version_sets_parent_id_foreign
+      constraint_name: financial_plans_parent_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_programs
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_programs
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_programs
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_programs_version_id_foreign
+      constraint_name: plan_programs_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_activity_blocks
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_activity_blocks
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_activity_blocks
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_activity_blocks_version_id_foreign
+      constraint_name: plan_activity_blocks_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_block_staff
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_block_staff
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_block_staff
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_block_staff_version_id_foreign
+      constraint_name: plan_block_staff_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_block_boats
-    field: version_id
-    related_collection: plan_versions
+    field: plan_id
+    related_collection: plans
     meta:
       junction_field: null
       many_collection: plan_block_boats
-      many_field: version_id
+      many_field: plan_id
       one_allowed_collections: null
-      one_collection: plan_versions
+      one_collection: plans
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_block_boats
-      column: version_id
-      foreign_key_table: plan_versions
+      column: plan_id
+      foreign_key_table: plans
       foreign_key_column: id
-      constraint_name: plan_block_boats_version_id_foreign
+      constraint_name: plan_block_boats_plan_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: CASCADE
   - collection: plan_programs
     field: product_id
     related_collection: products
@@ -14366,7 +13475,7 @@ relations:
       foreign_key_column: id
       constraint_name: plan_block_staff_block_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_block_boats
     field: block_id
     related_collection: plan_activity_blocks
@@ -14387,7 +13496,7 @@ relations:
       foreign_key_column: id
       constraint_name: plan_block_boats_block_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_activities
     field: block_id
     related_collection: plan_activity_blocks
@@ -14408,7 +13517,7 @@ relations:
       foreign_key_column: id
       constraint_name: plan_activities_block_id_foreign
       on_update: NO ACTION
-      on_delete: RESTRICT
+      on_delete: NO ACTION
   - collection: plan_block_boats
     field: boat_class_id
     related_collection: boat_classes
@@ -14430,24 +13539,45 @@ relations:
       constraint_name: plan_block_boats_boat_class_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: plan_result_warnings
-    field: version_set_member_id
-    related_collection: version_set_members
+  - collection: plans
+    field: program_area_id
+    related_collection: program_areas
     meta:
       junction_field: null
-      many_collection: plan_result_warnings
-      many_field: version_set_member_id
+      many_collection: plans
+      many_field: program_area_id
       one_allowed_collections: null
-      one_collection: version_set_members
+      one_collection: program_areas
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
-      table: plan_result_warnings
-      column: version_set_member_id
-      foreign_key_table: version_set_members
+      table: plans
+      column: program_area_id
+      foreign_key_table: program_areas
       foreign_key_column: id
-      constraint_name: plan_result_warnings_version_set_member_id_foreign
+      constraint_name: plans_program_area_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plans
+    field: financial_plan_id
+    related_collection: financial_plans
+    meta:
+      junction_field: null
+      many_collection: plans
+      many_field: financial_plan_id
+      one_allowed_collections: null
+      one_collection: financial_plans
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: plans
+      sort_field: null
+    schema:
+      table: plans
+      column: financial_plan_id
+      foreign_key_table: financial_plans
+      foreign_key_column: id
+      constraint_name: plans_financial_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE

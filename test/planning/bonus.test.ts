@@ -5,7 +5,7 @@ import { A, area, budgetLine, emptyPlan, offering, pnlOf, pool, product, total }
 function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
   return {
     id: "owner",
-    version_id: "v1",
+    plan_id: "v1",
     key: "owner-key",
     role_name: "Director",
     bonus_rate: 0.1,
@@ -27,8 +27,8 @@ function twoProducts(lossCents: number) {
     ],
     plan_bonus_owners: [owner()],
     plan_bonus_owner_products: [
-      { id: "bp1", version_id: "v1", key: "bp1", bonus_owner_id: "owner", product_id: gain.id },
-      { id: "bp2", version_id: "v1", key: "bp2", bonus_owner_id: "owner", product_id: loss.id },
+      { id: "bp1", plan_id: "v1", key: "bp1", bonus_owner_id: "owner", product_id: gain.id },
+      { id: "bp2", plan_id: "v1", key: "bp2", bonus_owner_id: "owner", product_id: loss.id },
     ],
   });
   return { g, l, data };
@@ -76,7 +76,7 @@ describe("bonuses by term", () => {
   // offering in no term takes in 30000.
   const fallTerm = {
     id: "t2",
-    version_id: "ops",
+    plan_id: "ops",
     key: "fall",
     name: "Fall 2027",
     starts_on: "2027-09-01",
@@ -110,9 +110,7 @@ describe("bonuses by term", () => {
         }),
       ],
       plan_bonus_owners: [owner()],
-      plan_bonus_owner_products: [
-        { id: "bp1", version_id: "v1", key: "bp1", bonus_owner_id: "owner", product_id: p.id },
-      ],
+      plan_bonus_owner_products: [{ id: "bp1", plan_id: "v1", key: "bp1", bonus_owner_id: "owner", product_id: p.id }],
     });
     return { a, summer, fall, none, data };
   }

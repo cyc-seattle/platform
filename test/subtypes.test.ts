@@ -93,8 +93,11 @@ describe("subtypes", () => {
 
   it("lists every unique link to a collection with a kind", () => {
     const bases = new Set(schema.fields.filter((f) => f.field === "kind").map((f) => f.collection));
+    // A plan's one row of rates, not a subtype of it.
+    const notSubtypes = ["plan_rates.plan_id"];
     const links = schema.fields
       .filter((f) => f.schema?.is_unique && f.schema.foreign_key_table && bases.has(f.schema.foreign_key_table))
+      .filter((f) => !notSubtypes.includes(`${f.collection}.${f.field}`))
       .map((f) => `${f.collection}.${f.field}`);
     expect(links.sort()).toEqual(subtypes.map(({ subtype, foreignKey }) => `${subtype}.${foreignKey}`).sort());
   });

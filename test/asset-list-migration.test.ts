@@ -1,14 +1,8 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { up } from "../stacks/backend/migrations/cyc0013-asset-list.cjs";
-import { seedCoachBoats, seedPowerboatAccounts } from "../stacks/backend/saved-versions.cjs";
 
 const migrate = (db: PGlite) => up({ raw: (sql: string) => db.exec(sql) });
-
-const connect = (db: Pick<PGlite, "query" | "exec">) => ({
-  query: async (sql: string) => (await db.query<Record<string, unknown>>(sql)).rows,
-  exec: (sql: string) => db.exec(sql),
-});
 
 async function columns(db: PGlite, table: string) {
   const { rows } = await db.query<{ column_name: string }>(
@@ -93,13 +87,6 @@ async function before() {
   return db;
 }
 
-/** What the schema apply adds after the migration, which the seeds wait for. */
-const applied = `
-  ALTER TABLE boat_classes ADD COLUMN account_id text;
-  ALTER TABLE plan_boat_rates ADD COLUMN fuel_per_hour_cents integer, ADD COLUMN charter_per_day_cents integer;
-  ALTER TABLE plan_block_boats ADD COLUMN chartered integer;
-`;
-
 // Starting a PGlite can take longer than the 5s default on a CI runner.
 describe("the asset list migration", { timeout: 30_000 }, () => {
   it("drops the old boat list, the plan's quantities and equipment, and renames max capacity", async () => {
@@ -145,50 +132,5 @@ describe("the asset list migration", { timeout: 30_000 }, () => {
 
   it("does nothing on a new database", async () => {
     await expect(migrate(await PGlite.create())).resolves.toBeUndefined();
-  });
-});
-
-describe("the asset list's seeds", { timeout: 30_000 }, () => {
-  it("wait for the schema apply, then book the powerboat classes to the coach boats account", async () => {
-    const db = await before();
-    await migrate(db);
-    expect(await seedPowerboatAccounts(connect(db))).toEqual([]);
-    await db.exec(applied);
-    await db.exec("UPDATE boat_classes SET account_id = 'acct-other' WHERE name = 'Support'");
-    expect(await seedPowerboatAccounts(connect(db))).toEqual(["draft"]);
-    expect(await rows(db, "SELECT name, account_id FROM boat_classes ORDER BY name")).toEqual([
-      { name: "FJ", account_id: null },
-      { name: "RIB", account_id: "acct-coach-boats" },
-      { name: "Support", account_id: "acct-other" },
-    ]);
-    expect(await seedPowerboatAccounts(connect(db))).toEqual([]);
-  });
-
-  it("move only a draft's coach boats into RIB rates and block boats, owned and chartered", async () => {
-    const db = await before();
-    await migrate(db);
-    expect(await seedCoachBoats(connect(db))).toEqual([]);
-    await db.exec(applied);
-    expect(await db.transaction((tx) => seedCoachBoats(connect(tx)))).toEqual(["draft"]);
-    const [rib] = await rows(db, "SELECT id FROM boat_classes WHERE name = 'RIB'");
-    expect(
-      await rows(
-        db,
-        `SELECT version_id, boat_class_id, maintenance_per_boat_hour_cents, fuel_per_hour_cents, charter_per_day_cents
-          FROM plan_boat_rates`,
-      ),
-    ).toEqual([
-      {
-        version_id: "draft-ops",
-        boat_class_id: (rib as { id: string }).id,
-        maintenance_per_boat_hour_cents: 800,
-        fuel_per_hour_cents: 1500,
-        charter_per_day_cents: 30000,
-      },
-    ]);
-    expect(await rows(db, "SELECT version_id, block_id, count, chartered FROM plan_block_boats")).toEqual([
-      { version_id: "draft-area", block_id: "draft-block", count: 3, chartered: 1 },
-    ]);
-    expect(await seedCoachBoats(connect(db))).toEqual([]);
   });
 });

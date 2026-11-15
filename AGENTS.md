@@ -138,7 +138,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
     the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
     one there.
 - A change to how the engine calculates a number updates `docs/planning-engine.md` in the same PR. A
-  saved plan version records the `@cyc-seattle/platform` version that calculated it, so such a change
+  frozen Financial Plan records the `@cyc-seattle/platform` version that calculated it, so such a change
   must be a `feat:` or `fix:`, which releases a new version.
 
 ## Code style

@@ -74,31 +74,31 @@ permissions, plus any shared policies it's given:
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
 
-| Policy              | Gives                                                                                                                |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| CRM Reader          | Reads every CRM collection but medical information                                                                   |
-| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                 |
-| Medical Reader      | Reads every sailor's medical information                                                                             |
-| Medical Writer      | Changes every sailor's medical information                                                                           |
-| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                     |
-| Catalog Writer      | Changes the catalog, and reads the directory                                                                         |
-| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                      |
-| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does      |
-| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; saves, dates, and archives one. Reads the same |
-| Link Writer         | Changes Sail Team's links, but not their previews                                                                    |
-| Announcement Writer | Changes Sail Team's announcements                                                                                    |
+| Policy              | Gives                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| CRM Reader          | Reads every CRM collection but medical information                                                                     |
+| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                   |
+| Medical Reader      | Reads every sailor's medical information                                                                               |
+| Medical Writer      | Changes every sailor's medical information                                                                             |
+| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                       |
+| Catalog Writer      | Changes the catalog, and reads the directory                                                                           |
+| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                        |
+| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does        |
+| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same |
+| Link Writer         | Changes Sail Team's links, but not their previews                                                                      |
+| Announcement Writer | Changes Sail Team's announcements                                                                                      |
 
 They're coarse: whole collections, with no row filters and no hidden fields, but for users and link
-previews: a Plan policy reads only each user's first and last name, so a saved Financial Plan names
-who saved it, and a Link Writer can't write a link's preview.
+previews: a Plan policy reads only each user's first and last name, so a frozen Financial Plan names
+who froze it, and a Link Writer can't write a link's preview.
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
 Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
-`version_id.plan_id.kind`, and none of the collections only an Operations Plan uses
+`plan_id.kind`, and none of the collections only an Operations Plan uses
 (`OPERATIONS_ONLY`), such as rates, staff levels, pools, terms, and bonuses. On a Financial Plan it sets
-only the name, note, and parent. A Plan Admin changes a row only in an Operations Plan, and a
+only the name, note, and parent, and on a Program Plan only its notes. A Plan Admin changes a row only in an Operations Plan, and a
 Financial Plan's status, the date it's active from, and whether it's archived. Every Plan Writer reads
 and writes every program area: there's no per-area access. A
-saved plan version never changes, even for an admin, so the `saved-versions` hook enforces that
+frozen Financial Plan never changes, even for an admin, so the `frozen-plans` hook enforces that
 rather than a policy (`docs/planning-schema.md`). A Medical policy is given with a CRM policy.
 Programs belong to the catalog, so only a Catalog Writer changes them. A CRM policy reads them, and
 so do Crew and the Google sync, but none of them changes them. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
