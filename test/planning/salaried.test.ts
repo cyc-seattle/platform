@@ -56,7 +56,7 @@ describe("salaried positions", () => {
 
   it("sends the rest to its pool, which splits it over the offerings", () => {
     const p = product();
-    const o = offering(p.id);
+    const o = offering(p.id, { target_enrollment: 1, price_cents: 1000 });
     const admin = pool({ name: "Program admin" });
     const director = position({ annual_salary_cents: 120_000, remainder_pool_id: admin.id });
     const data = emptyPlan({
