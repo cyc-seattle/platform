@@ -19,7 +19,7 @@ permissions:
 jobs:
   ci:
     if: github.ref != 'refs/heads/main'
-    uses: cyc-seattle/.github/.github/workflows/ci.yml@v3.2.0
+    uses: cyc-seattle/.github/.github/workflows/ci.yml@v3.3.0
   # A queued PR that changes only docs or CI deploys nothing. A manual deploy leaves projects empty,
   # so it deploys them all.
   changes:
@@ -39,14 +39,16 @@ jobs:
           echo "projects=$projects" | tee -a "$GITHUB_OUTPUT"
         env:
           BASE: ${{ github.event.merge_group.base_sha }}
+  # Starts alongside CI, not after it, to save CI's minutes on every batch. `ci / ci` is a required
+  # check, so a batch whose CI fails still can't merge.
   dev:
-    needs: [ci, changes]
+    needs: changes
     if: >-
-      !cancelled() && needs.ci.result == 'success' && (
+      !cancelled() && (
         (github.event_name == 'merge_group' && needs.changes.outputs.projects != '') ||
         (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
       )
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.2.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
     permissions:
       id-token: write
       contents: read
@@ -54,7 +56,8 @@ jobs:
       environment: dev
       task: deploy
       projects: ${{ needs.changes.outputs.projects }}
-      integration: true
+      # The queue only deploys, and the nightly run tests dev (#161). A manual deploy still tests.
+      integration: ${{ github.event_name != 'merge_group' }}
   # The check the queue requires, so it waits for dev. A skipped reusable workflow reports under
   # another name, so this job always runs. A PR passes it, and a queued PR passes only if dev passed
   # or had nothing to deploy.
@@ -82,7 +85,7 @@ jobs:
   # main requires a reviewed PR (cyc-seattle/isthmia#215).
   prod-preview:
     if: github.ref == 'refs/heads/main'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.2.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
     permissions:
       id-token: write
       contents: read
@@ -93,7 +96,7 @@ jobs:
   prod:
     needs: prod-preview
     if: needs.prod-preview.outputs.changes == 'true'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.2.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
     permissions:
       id-token: write
       contents: read

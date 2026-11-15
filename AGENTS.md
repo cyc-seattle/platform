@@ -23,14 +23,18 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   schema change, run `mise run schema-types`, and CI fails until you do. The `backend` stack deploys Directus with them, in dev and
   prod. A schema change is tested on dev in the merge queue, or earlier with a manual deploy.
 - `src/planning/` is the planning engine, published as `@cyc-seattle/platform/planning` so an app can
-  load it without Pulumi. `docs/planning-engine.md` gives its rules.
+  load it without Pulumi. [`docs/planning-engine.md`](https://cyc-seattle.github.io/platform/planning-engine/) gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
 - `src/syncs/` holds the two deployed syncs, clubspot-sync and gsuite-sync, and the `runtime/` they
   share, plus calendar-sync, which someone runs by hand.
   `src/model/` holds the CRM and Clubspot row types they use. The published package never reaches
   either (`test/published.test.ts`), so the syncs' dependencies are `devDependencies`. The root
-  `Dockerfile` bundles each sync with esbuild into a one-file image. `docs/syncs.md` describes them.
+  `Dockerfile` bundles each sync with esbuild into a one-file image. [`docs/syncs.md`](https://cyc-seattle.github.io/platform/syncs/) describes them.
+- `docs/` is published as the docs site, <https://cyc-seattle.github.io/platform/>, by `docs-site/`
+  (Astro Starlight) and `.github/workflows/docs.yml`, on every push to `main`. Write each page for
+  GitHub too: no title frontmatter, a first heading for the title, and relative links. A new page
+  goes in a section of `docs-site/astro.config.ts`'s sidebar, and in `docs/README.md`.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`. A feature is living documentation of
   business rules, so write and review one with the `write-feature` skill from
@@ -58,8 +62,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Merge queue
 
-- PRs merge through a batched merge queue. A PR's push runs only CI. The dev deploy and the
-  integration tests run in the queue, one batch at a time, on the one shared dev.
+- PRs merge through a batched merge queue. A PR's push runs only CI. The dev deploy runs in the
+  queue, one batch at a time, on the one shared dev. The integration tests don't run in the queue
+  (#161); a nightly run tests dev.
 - Never force-push. To bring a branch up to date, merge `origin/main` into it.
 - A queued branch can't be pushed until it's dequeued. Take the PR out of the queue first.
 - To try a branch on dev before it's queued, run `gh workflow run pull-request.yml --ref <branch>`.
@@ -71,8 +76,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 - `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
   the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR's push runs
-  only CI. The merge queue deploys the PRs queued together to dev as one batch, and runs the
-  integration tests; the batch merges only if they pass (`dev-passed`, #80). A push to `main` skips dev, which the queue already
+  only CI. The merge queue deploys the PRs queued together to dev as one batch, and the
+  batch merges only if the deploy passes (`dev-passed`, #80). It doesn't run the integration tests (#161). A push to `main` skips dev, which the queue already
   ran on that commit, previews prod, and applies it once a maintainer approves. `prod` is skipped
   when the preview shows no changes.
 - A queued PR that changes only docs, `.agents/` or `.github/` skips the dev deploy and the
@@ -82,6 +87,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   appends each project's `true` or `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip
   a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`, so keep
   those names.
+- `nightly.yml` deploys `main` to dev each night and runs the integration tests, under the same dev
+  lock as the queues. A failed night opens or comments on the `Nightly integration run failed` issue,
+  assigned to the maintainer, and a green night closes it. Run it early with `gh workflow run nightly.yml`.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
   (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.
 - Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
@@ -108,18 +116,21 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Directus's license allows 5 activations, and each one is bound to the database and `PUBLIC_URL`
   (cyc-seattle/isthmia#172). Never drop, recreate, or rename Directus's database, in dev or prod,
   and never change its `PUBLIC_URL`. Ask the maintainer before any change that could activate a
-  new Directus. `docs/backend.md` has the rest.
+  new Directus. [`docs/backend.md`](https://cyc-seattle.github.io/platform/backend/) has the rest.
 
 ## Schemas
 
 - Staff read every collection in the Data Studio. Write and review a schema change with
   [`directus-schema`](.agents/skills/directus-schema/SKILL.md). `test/data-studio.test.ts` checks
   the rules it can from the YAML.
+- Review every schema change, and every proposal for one, with
+  [`schema-review`](.agents/skills/schema-review/SKILL.md), before it's built and before it merges.
+  The maintainer agrees to new fields, links and dropdowns before they're built.
 - The schema apply never renames or deletes a collection. A change it can't make, such as a rename,
   goes in `stacks/backend/migrations/` as a Directus migration, which Directus runs once at start,
   before the apply. It must do nothing when run again or on a new database, and be tested in PGlite.
 - A change to the planning design or its collections updates the ER diagrams in
-  `docs/planning-schema.md` in the same PR.
+  [`docs/planning-schema.md`](https://cyc-seattle.github.io/platform/planning-schema/) in the same PR.
 - A subtype, such as `programs` of `products`, is its own collection (cyc-seattle/isthmia#213 §2):
   - The base holds the shared fields and a `kind`. A kind with no fields of its own gets no
     collection.
@@ -130,7 +141,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   - Directus can't compare fields across collections, so nothing stops a subtype row's base having
     the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
     one there.
-- A change to how the engine calculates a number updates `docs/planning-engine.md` in the same PR. A
+- A change to how the engine calculates a number updates [`docs/planning-engine.md`](https://cyc-seattle.github.io/platform/planning-engine/) in the same PR. A
   saved plan version records the `@cyc-seattle/platform` version that calculated it, so such a change
   must be a `feat:` or `fix:`, which releases a new version.
 

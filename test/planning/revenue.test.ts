@@ -54,7 +54,7 @@ describe("revenue", () => {
 
   it("leaves a charge out of MTDC when it says so", () => {
     const { off: o, data } = setup();
-    data.plan_revenue_charges = [charge({ rate: 0.02, excluded_from_mtdc: true }), charge({ rate: 0.03 })];
+    data.plan_revenue_charges = [charge({ rate: 0.02, in_mtdc: false }), charge({ rate: 0.03 })];
     expect(pnlOf(computePlan(data), o.key).mtdc_cents).toBe(15_000);
   });
 

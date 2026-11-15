@@ -47,9 +47,17 @@ run = "./scripts/check"
 description = "Run unit tests"
 run = "pnpm exec vitest run"
 
+[tasks.docs]
+description = "Build the docs site from docs/ into docs-site/dist, failing on a broken link"
+run = "pnpm --filter @cyc-seattle/platform-docs-site build"
+
+[tasks.docs-dev]
+description = "Serve the docs site locally, rebuilding as docs/ changes"
+run = "pnpm --filter @cyc-seattle/platform-docs-site dev"
+
 [tasks.ci]
 description = "Run all checks and tests"
-depends = ["check", "test"]
+depends = ["check", "test", "docs"]
 
 # bootstrap is applied by a human with project Owner, never by CI (cyc-seattle/isthmia#118).
 [tasks.preview-bootstrap]
@@ -91,6 +99,11 @@ run = "./scripts/reset"
 [tasks.delete-plans]
 description = "Delete every Financial Plan, plan, copy, row and result from $PULUMI_STACK, after asking"
 run = "./scripts/delete-plans"
+
+# By hand only, once in each stack, before the cost-shift warnings reach prod (cyc-seattle/platform#251).
+[tasks.move-storage]
+description = "Move each draft's storage rent and bonuses into its Operations Plan in $PULUMI_STACK, after asking (--dry-run only shows)"
+run = "./scripts/move-storage"
 
 # Before delegating the external domain to Cloud DNS (docs/manual-setup.md): exits 1 on any difference.
 [tasks.compare-dns]

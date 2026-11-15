@@ -9,7 +9,9 @@ import {
   fieldsIn,
   groupPolicies,
   groupPoliciesConfig,
+  OPERATIONS_ONLY,
   queryGuardConfig,
+  sailTeamPolicy,
   savedVersionsConfig,
   WEBSITE_BUILD,
   WEBSITE_FILE_FIELDS,
@@ -38,14 +40,17 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, and Plan policies", () => {
+  it("are the CRM, Medical, Catalog, Plan, and Sail Team writer policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
+      "Announcement Writer",
       "CRM Reader",
       "CRM Writer",
       "Catalog Reader",
       "Catalog Writer",
+      "Link Writer",
       "Medical Reader",
       "Medical Writer",
+      "Plan Admin",
       "Plan Reader",
       "Plan Writer",
     ]);
@@ -66,8 +71,9 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters and no field lists, but a person's writable fields and CRM Writer's two hand-set ones", () => {
-    for (const rule of policies.flatMap((policy) => policy.rules)) {
+  it("are coarse: no row filters but the planners' by kind of plan, and no field lists but a person's writable fields and CRM Writer's two hand-set ones", () => {
+    const planners = ["Plan Writer", "Plan Admin"];
+    for (const rule of policies.filter(({ name }) => !planners.includes(name)).flatMap((policy) => policy.rules)) {
       expect(rule.permissions).toBeUndefined();
     }
     const fielded = named("CRM Writer").rules.filter((rule) => rule.fields && rule.collection !== "people");
@@ -107,6 +113,34 @@ describe("the policies a group can give", () => {
     expect(collections("CRM Writer", "update").has("people")).toBe(true);
     expect(collections("CRM Writer", "update").has("clubspot_registrations")).toBe(false);
     expect(collections("CRM Reader", "read")).toEqual(collections("CRM Writer", "read"));
+  });
+});
+
+describe("Sail Team's links and announcements", () => {
+  it("are read whole by everyone who signs in", () => {
+    expect(sailTeamPolicy.rules).toEqual([
+      { collection: "links", action: "read" },
+      { collection: "announcements", action: "read" },
+    ]);
+  });
+
+  it("are changed only by their own writer, who can't set a link's preview", () => {
+    for (const [name, collection] of [
+      ["Link Writer", "links"],
+      ["Announcement Writer", "announcements"],
+    ] as const) {
+      expect(new Set(named(name).rules.map((rule) => rule.collection))).toEqual(new Set([collection]));
+      expect(new Set(named(name).rules.map((rule) => rule.action))).toEqual(
+        new Set(["create", "read", "update", "delete"]),
+      );
+    }
+    for (const rule of named("Link Writer").rules.filter(({ action }) => action === "create" || action === "update")) {
+      expect(rule.fields).toEqual(["id", "title", "url", "note", "sort"]);
+    }
+    for (const policy of policies.filter(({ name }) => name !== "Link Writer" && name !== "Announcement Writer")) {
+      expect(policy.rules.map((rule) => rule.collection)).not.toContain("links");
+      expect(policy.rules.map((rule) => rule.collection)).not.toContain("announcements");
+    }
   });
 });
 
@@ -186,6 +220,7 @@ const plans = [
   "plan_result_lines",
   "plan_result_pnl",
   "plan_result_positions",
+  "plan_result_bonuses",
   "plan_result_capital",
   "plan_result_warnings",
   "version_sets",
@@ -196,18 +231,18 @@ const results = plans.filter((collection) => collection.startsWith("plan_result"
 describe("the Plan policies", () => {
   const catalog = collections("Catalog Reader", "read");
 
-  it("let both see every plan and the catalog, with no field held back", () => {
-    for (const name of ["Plan Reader", "Plan Writer"]) {
+  it("let each see every plan and the catalog, with no field held back", () => {
+    for (const name of ["Plan Reader", "Plan Writer", "Plan Admin"]) {
       const rules = named(name).rules.filter((rule) => rule.collection !== "directus_users");
       expect(
         [...new Set(rules.filter((rule) => rule.action === "read").map((rule) => rule.collection))].sort(),
       ).toEqual([...plans, ...catalog].sort());
-      expect(rules.every((rule) => rule.fields === undefined)).toBe(true);
+      expect(rules.filter((rule) => rule.action === "read").every((rule) => rule.fields === undefined)).toBe(true);
     }
   });
 
-  it("let both see users' first and last names, and nothing else of theirs", () => {
-    for (const name of ["Plan Reader", "Plan Writer"]) {
+  it("let each see users' first and last names, and nothing else of theirs", () => {
+    for (const name of ["Plan Reader", "Plan Writer", "Plan Admin"]) {
       expect(named(name).rules.filter((rule) => rule.collection === "directus_users")).toEqual([
         { collection: "directus_users", action: "read", fields: ["id", "first_name", "last_name"] },
       ]);
@@ -218,12 +253,76 @@ describe("the Plan policies", () => {
     expect(named("Plan Reader").rules.every((rule) => rule.action === "read")).toBe(true);
   });
 
-  it("let a Plan Writer change plans and Financial Plans, and none of the catalog or the results", () => {
+  const writes = (name: string) => named(name).rules.filter((rule) => rule.action !== "read");
+  const rows = plans.filter(
+    (collection) => !["plans", "plan_versions", "version_sets", "version_set_members", ...results].includes(collection),
+  );
+  const inPlan = (kind: string) => ({ version_id: { plan_id: { kind: { _eq: kind } } } });
+
+  it("let a Plan Writer change a Program Plan's rows, and none of the Operations Plan's own", () => {
     for (const action of ["create", "update", "delete"]) {
-      expect([...collections("Plan Writer", action)].sort()).toEqual(
-        plans.filter((collection) => !results.includes(collection)).sort(),
+      const rules = writes("Plan Writer").filter((rule) => rule.action === action && rows.includes(rule.collection));
+      expect(rules.map((rule) => rule.collection).sort()).toEqual(
+        rows.filter((collection) => !OPERATIONS_ONLY.includes(collection)).sort(),
+      );
+      expect(rules.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("program_area")))).toBe(
+        true,
       );
     }
+  });
+
+  it("let a Plan Writer start and delete a draft, and name it, but not save it, date it, or archive it", () => {
+    const sets = writes("Plan Writer").filter((rule) => rule.collection === "version_sets");
+    expect(sets).toEqual([
+      {
+        collection: "version_sets",
+        action: "create",
+        fields: ["id", "organization_id", "fiscal_year", "name", "message", "parent_id", "status"],
+      },
+      {
+        collection: "version_sets",
+        action: "update",
+        fields: ["organization_id", "fiscal_year", "name", "message", "parent_id"],
+      },
+      { collection: "version_sets", action: "delete", permissions: { status: { _eq: "draft" } } },
+    ]);
+    expect(writes("Plan Writer").filter((rule) => ["plans", "version_set_members"].includes(rule.collection))).toEqual(
+      [],
+    );
+    expect(writes("Plan Writer").filter((rule) => rule.collection === "plan_versions")).toEqual([
+      {
+        collection: "plan_versions",
+        action: "update",
+        fields: ["message", "rules"],
+        permissions: { plan_id: { kind: { _eq: "program_area" } } },
+      },
+    ]);
+  });
+
+  it("let a Plan Admin change the Operations Plan's rows, which plans a Financial Plan holds, and when it's in force", () => {
+    for (const action of ["create", "update", "delete"]) {
+      const rules = writes("Plan Admin").filter((rule) => rule.action === action && rows.includes(rule.collection));
+      expect(rules.map((rule) => rule.collection).sort()).toEqual([...rows].sort());
+      expect(rules.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("operations")))).toBe(
+        true,
+      );
+      for (const collection of ["plans", "plan_versions", "version_set_members"]) {
+        expect(collections("Plan Admin", action).has(collection), `${action} ${collection}`).toBe(true);
+      }
+    }
+    expect(writes("Plan Admin").filter((rule) => rule.collection === "version_sets")).toEqual([
+      { collection: "version_sets", action: "update", fields: ["status", "effective_from", "archived_at"] },
+    ]);
+  });
+
+  it("let no planner write a Financial Plan's results", () => {
+    for (const name of ["Plan Writer", "Plan Admin"]) {
+      expect(writes(name).filter((rule) => results.includes(rule.collection))).toEqual([]);
+    }
+  });
+
+  it("leave none of the Operations Plan's own collections out", () => {
+    expect(OPERATIONS_ONLY.every((collection) => rows.includes(collection))).toBe(true);
   });
 
   it("are the only policies that see plans", () => {

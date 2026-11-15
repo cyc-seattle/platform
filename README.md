@@ -4,6 +4,9 @@ Pulumi stacks for CYC Community Sailing Center's shared Google Cloud platform: t
 app owns. The apps that run on it live in their own repos, such as
 [isthmia](https://github.com/cyc-seattle/isthmia).
 
+The [docs site](https://cyc-seattle.github.io/platform/) publishes [`docs/`](docs) from `main`: how the
+platform is built, its data model, and the planning engine.
+
 ## Stacks
 
 | Stack                           | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Applied by                                                                                                               |
@@ -101,20 +104,20 @@ deployer needs first.
 authenticates with Workload Identity Federation and stores no credentials. Each job runs in a
 GitHub environment that holds its identity and state bucket:
 
-| Event                      | Jobs, in order                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------- |
-| Pull request               | `ci`                                                                                           |
-| Merge queue                | `ci`, then `dev`: `mise run deploy` as `deploy-dev`, then `mise run integration`; `dev-passed` |
-| Push to `main`             | `prod-preview`, then `prod`, which waits for the `maintainers` approval                        |
-| Run by hand, from a branch | `ci`, then `dev`                                                                               |
-| Run by hand, from `main`   | `prod-preview`, then `prod`                                                                    |
+| Event                      | Jobs, in order                                                          |
+| -------------------------- | ----------------------------------------------------------------------- |
+| Pull request               | `ci`                                                                    |
+| Merge queue                | `ci`, then `dev`: `mise run deploy` as `deploy-dev`; `dev-passed`       |
+| Push to `main`             | `prod-preview`, then `prod`, which waits for the `maintainers` approval |
+| Run by hand, from a branch | `ci`, then `dev`                                                        |
+| Run by hand, from `main`   | `prod-preview`, then `prod`                                             |
 
-Dev is shared, so only the merge queue deploys to it (#69, #80). PRs queued together deploy and
-test as one batch: each queued PR's run skips dev when a newer PR is queued behind it, and the newest
-tests them all. The queue requires `dev-passed`, so a batch merges only once its dev deploy and the
-integration tests pass, and `main` gets the exact commit the queue tested, in one push. If the
-newest PR fails, the queue drops it and the rest of the batch deploys without it. A queued PR of only docs or CI skips `dev`. To try a
-branch on dev before queueing it, run `gh workflow run pull-request.yml --ref <branch>`.
+Dev is shared, so only the merge queue deploys to it (#69, #80). PRs queued together deploy as
+one batch: each queued PR's run skips dev when a newer PR is queued behind it, and the newest
+deploys them all. The queue requires `dev-passed`, so a batch merges only once its dev deploy passes, and `main` gets the exact commit the queue tested, in one push. If the
+newest PR fails, the queue drops it and the rest of the batch deploys without it. A queued PR of only docs or CI skips `dev`. The queue
+doesn't run the integration tests (#161); a run by hand does. To try a
+branch on dev and test it before queueing it, run `gh workflow run pull-request.yml --ref <branch>`.
 
 `prod-preview` runs `mise run preview` as `deploy-runner` and writes the diff to the job summary.
 `prod` runs `mise run deploy` on the same commit once approved. It runs only when the preview shows
@@ -164,8 +167,16 @@ login only when it isn't already set, so Actions' credentials win.
 mise run ci
 ```
 
-Runs the type check, Prettier, ESLint, and the unit tests. Tests mock Pulumi with
+Runs the type check, Prettier, ESLint, the unit tests, and the docs site's build. Tests mock Pulumi with
 `pulumi.runtime.setMocks` and never call a live API.
+
+```sh
+mise run docs-dev
+```
+
+Serves the docs site, from `docs-site/`, as you edit `docs/`. A page in `docs/` takes its title from
+its first heading, and a link to another file in the repo goes to GitHub. The build fails on a broken
+link. `.github/workflows/docs.yml` publishes it to GitHub Pages on every push to `main`.
 
 ```sh
 mise run integration

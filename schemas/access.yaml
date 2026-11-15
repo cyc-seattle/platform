@@ -272,12 +272,15 @@ fields:
         filter:
           name:
             _in:
+              - Announcement Writer
               - CRM Reader
               - CRM Writer
               - Catalog Reader
               - Catalog Writer
+              - Link Writer
               - Medical Reader
               - Medical Writer
+              - Plan Admin
               - Plan Reader
               - Plan Writer
         template: "{{policy_id.name}}"

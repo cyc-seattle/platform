@@ -50,6 +50,10 @@ It returns:
   See [Line names](#line-names).
 - `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
   area's, which add up their offerings. Each also has its MTDC, enrollment, days and sailor-days.
+  An offering's also has its `max_enrollment`, `allocation_holds` and `breakeven_enrollment`. See
+  [A full program](#a-full-program).
+  Last come each program area's terms. See [Terms](#terms).
+- `bonuses`: each bonus owner's net and bonus in each term. See [Bonuses](#bonuses).
 - `organization`: the organization's year. See [The organization's totals](#the-organizations-totals).
 - `perDay(p)` and `perSailorDay(p)`: an offering's, product's or area's P&L for one day it runs, and
   for one sailor on one day.
@@ -65,8 +69,8 @@ An AI working over Directus's MCP server can change a draft's rows but can't run
 doesn't need to. Change the draft's inputs, wait about a second, then read the draft's
 `plan_results` and `plan_result_*` rows, filtered on its `version_set_id`. `plan_results.calculated_at`
 says when they were worked out, so a time before the last change means they aren't in yet. A draft
-with no `plan_results` row is still being worked out, or the engine failed on it. Plan Readers and
-Plan Writers can read them.
+with no `plan_results` row is still being worked out, or the engine failed on it. Anyone with a
+Plan policy can read them.
 
 ## Terms
 
@@ -121,12 +125,17 @@ Plan Writers can read them.
 
 ### Blocks
 
-The engine costs only what each block is given. It never works out how many coaches or boats an
-activity needs: the planner, or their AI, decides that from the program settings and the rules, and
-writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)).
+The engine never works out how many coaches or boats an activity needs: the planner, or their AI,
+decides that from the program settings and the rules, and writes it on the blocks
+([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block is given
+what its offerings would use if they filled, and costs what their expected sailors use
+([cyc-seattle/platform#250](https://github.com/cyc-seattle/platform/issues/250)).
 
-- Enrollment is a whole number of kids: `target_enrollment` if set, otherwise `capacity × fill_rate`
-  rounded. Kids who join or leave partway through aren't counted.
+- Enrollment, the sailors expected, is a whole number of kids: `target_enrollment` if set, otherwise
+  `capacity × fill_rate` rounded. Kids who join or leave partway through aren't counted. Revenue and
+  every cost use it.
+- An offering's most sailors, its max enrollment, is its `capacity`, or its enrollment when it has
+  none. The checks use it.
 - A block's paid time runs from its first activity's start to its last one's end, plus the longest
   setup and the longest put-away among them. A block with an activity that has no times has no paid
   time.
@@ -135,25 +144,51 @@ writes it on the blocks ([cyc-seattle/platform#149](https://github.com/cyc-seatt
 - Each of its costs is split among its offerings by their enrollment, each offering counted once, or
   evenly if none has any. An offering with several activities in the block splits its share among
   them. `activities` gives each activity its share of the block's staff and boats, the organization's and chartered.
-- Staff at a level cost `count` × paid hours × the level's `hourly_rate_cents`. Volunteers cost
-  nothing.
+- A block pays the coaches its expected sailors need: ⌈Σ (each program's enrollment ÷ its
+  `sailors_per_coach`)⌉, but never more than it's given. Salaried positions with `pay` `salary` are
+  always paid, so only the other staff are cut: each of their rows is paid `count` × (coaches needed −
+  salaried ones) ÷ (the other staff given), from 0 to 1. A block with a program that has no sailors
+  per coach pays all its staff.
+- Staff at a level cost `count` × that share × paid hours × the level's `hourly_rate_cents`.
+  Volunteers cost nothing.
 - A salaried position on a block with `pay` `salary`, the default, is charged its paid hours at the
   salary's hourly equivalent (see [Salaried positions](#salaried-positions)). With `hourly`, it's paid
-  by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`. With no rate of its own,
+  by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`, and cut like the other
+  staff. With no rate of its own,
   those hours cost nothing, and the engine warns.
-- The organization's boats cost `count` × time on the water × their class's
+- A block's fill is Σ its offerings' enrollment ÷ Σ their max enrollment, at most 1, or 1 when they
+  have no max. Its boats of each class, sail or power, are costed for the expected share of the
+  program: ⌈`count` × fill⌉ of the organization's, and ⌈`chartered` × fill⌉ chartered. A block given
+  8 FJs for 16 sailors that expects 10 costs 5.
+- The organization's boats cost ⌈`count` × fill⌉ × time on the water × their class's
   (`fuel_per_hour_cents` + `maintenance_per_boat_hour_cents`), booked to the class's `account_id`,
   such as Coach boats for RIBs, or else to boat maintenance. Boats sailors bring (`sailor_owned`)
   cost nothing.
 - Chartered boats cost their class's `charter_per_day_cents` once a day: for the most of the class
-  chartered at once that day, shared among the blocks that charter them by how many each does. A
-  RIB chartered for a morning block and an afternoon one is one day. A charter is a rental, so it's
-  left out of MTDC, and it's booked to boat charters (`resources`). With no charter rate, it costs
-  nothing, and the engine warns (`no_charter_rate`).
+  chartered at once that day, each block counting ⌈`chartered` × fill⌉, shared among the blocks that
+  charter them by how many each does. A RIB chartered for a morning block and an afternoon one is
+  one day. A charter is a rental, so it's left out of MTDC, and it's booked to boat charters
+  (`resources`). With no charter rate, it costs nothing, and the engine warns (`no_charter_rate`).
 - A trip costs each coach's airfare, plus `nights` × the year's lodging rate for each coach, plus
-  `miles` × the year's mileage rate once. Its coaches are the staff on the block of its busiest
-  travel day. With none, it charges only the miles, and the engine warns. Sailors' own travel isn't
-  charged.
+  `miles` × the year's mileage rate once. Its coaches are the ones its block pays on its busiest
+  travel day. With no staff there, it charges only the miles, and the engine warns. Sailors' own
+  travel isn't charged.
+
+### A full program
+
+- An offering's `allocation_holds` is the most sailors its blocks can take: on each of its blocks,
+  other than travel, with every other offering in the block at its max, the fewer of
+  ⌊(the block's coaches − the others' Σ max ÷ sailors per coach) × its own sailors per coach⌋ and the
+  block's seats − the others' Σ max, at least 0. It's the fewest over its blocks. A limit that can't be
+  worked out, such as a program with no settings or a block whose activities don't use boats, is left
+  out; with none, it's null. It can be more than the max enrollment.
+- Its `breakeven_enrollment` is the fewest sailors, from 1 up to its `capacity`, at which its net after
+  shared costs is zero or more, with its share of shared costs as planned. The engine recalculates
+  only the offering's slice: it, its activities, trips and own lines, and its blocks with the
+  activities that share them. Its net at n sailors is the slice's net at n, plus its planned net less
+  the slice's net at its enrollment, so pools, bonuses and anything else outside the slice stay as
+  planned. Each number is tried in turn, since coaches and boats cost in steps. It's null when the
+  offering doesn't cover its costs even when full, or has no `capacity`.
 
 ### Warnings
 
@@ -164,7 +199,7 @@ a closed day; the rest are `data`, a row that's missing or wrong. The engine sti
 given.
 
 A message says only what's wrong, in plain words, since the warning already gives its plan and date:
-"Guppies Week 2 and Opti Camp Week 2 have 23 sailors, but enough coaches for only 17", or
+"Guppies Week 2 and Opti Camp Week 2 are for up to 23 sailors, but have enough coaches for only 17", or
 "9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
 offerings. Messages follow the `ui-copy` skill from
 [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
@@ -180,8 +215,9 @@ Allocation warnings:
   from their first activity's start to their last one's end; one with no times is out all day.
 - Results saved before boats were counted by class may also have `over_inventory_resource`, for
   RIBs and other equipment.
-- `over_capacity`: more sailors in a block than its staff, or its boats, can safely take. Each
-  program's sailors count against its own `sailors_per_coach`, in its `plan_programs` row: the block
+- `over_capacity`: more sailors in a block, with every offering at its max enrollment, than its
+  staff, or its boats, can safely take. Each program's sailors count against its own
+  `sailors_per_coach`, in its `plan_programs` row: the block
   needs Σ (each program's sailors ÷ its sailors per coach) coaches. Every coach on the block counts,
   at any staff level, and so does a salaried position: the ratio is required, and a program's
   `staff_level_key` is for planning and cost, not a hard rule (cyc-seattle/sail-team#82). The block is
@@ -212,7 +248,7 @@ Data warnings about blocks:
   account on the offering. A charge on a revenue account adds revenue, such as the card fees families
   pay. One on an expense account adds a cost, such as scholarships or the card company's fees.
   Charges are figured on revenue before any other charge.
-- A charge counts toward MTDC unless it's `excluded_from_mtdc`.
+- A charge counts toward MTDC when it's `in_mtdc`, the default.
 
 ### Budget and labor lines
 
@@ -246,6 +282,11 @@ The engine warns about:
 - a program with no program area, or another kind of product with one
 - an offering in an area plan whose product is in another area, and an offering in the Operations
   Plan whose product is in an area
+- a line in a Program Plan that moves a cost off the area's programs (`cost_off_programs`): one left
+  out of MTDC, one charged to a pool or to the organization, or capital charged to the organization
+  (capital charged anywhere else has `capital_off_org`). A Plan Admin looks these over
+  before making a plan active (cyc-seattle/platform#251). The Operations Plan's lines never get
+  one, and the engine costs the line as it's given.
 
 ### Salaried positions
 
@@ -287,7 +328,7 @@ salaries and wages, fringe benefits, materials and supplies, services, travel, a
 of each subaward. It leaves out equipment, capital spending, rent and rentals, participant support,
 scholarships and fellowships, tuition remission, patient care, and each subaward over $50,000.
 
-- A budget line with `excluded_from_mtdc` set is left out, and so is a boat charter. Set it for any cost the rule
+- A budget line with `in_mtdc` cleared is left out, and so is a boat charter. Clear it for any cost the rule
   leaves out. Equipment means an item that costs $10,000 or more and lasts more than a year; anything
   cheaper is a supply, and counts.
 - Every other cost of the offering's own counts, including COGS and payroll tax.
@@ -310,14 +351,32 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 - If no program's offering has any MTDC, the shared costs stay on the organization's books and the
   engine shows a warning.
 
+### Terms
+
+- An offering's term is the `plan_terms` row its `term_key` names. One the plan doesn't have counts
+  as no term, with a warning.
+- Each program area has a P&L, at level `program_area_term`, for each term it has an offering in,
+  in the order the terms start, and one more, with `term_key` null, for its offerings in no term.
+  Together they add up to the area's P&L.
+- A term's P&L adds up its offerings'. Costs on a product or the area, and the pools, already reach
+  the offerings, so a term has its share of them.
+- A cost left on a product or the area, because it had no offerings that year, is in no term.
+
 ### Bonuses
 
-- A bonus owner earns `bonus_rate` × the net of its products for the year, if it's above zero.
-  `basis` `after_shared_costs`, the default, counts each offering's share of the pools;
+- A bonus is paid per term. In each term its products have an offering in, a bonus owner earns
+  `bonus_rate` × the net of those offerings, if it's above zero. A term's loss doesn't lower
+  another term's bonus.
+- Its products' offerings in no term make one more net, for the year, with anything booked on
+  the products themselves.
+- `basis` `after_shared_costs`, the default, counts each offering's share of the pools;
   `before_shared_costs` doesn't.
 - No bonus counts in any bonus's base.
-- The bonus is divided among its products' offerings by revenue. If none has revenue, they share it
-  evenly; if there are none this year, it's left out. Either way the engine warns.
+- Each term's bonus is divided among that term's offerings by revenue. If none has revenue,
+  they share it evenly; if there are none, it's left out. Either way the engine warns.
+- `bonuses` has a row for each owner and term: the net, which can be below zero, and the bonus.
+  Its `program_area_id` is the area of all the owner's products, or null when they're in more than
+  one.
 - The year's `payroll_tax_rate` × the bonus is booked as payroll tax on the same offerings.
 - Neither the bonus nor its tax counts in MTDC.
 - A bonus owner in a program area's plan counts only that area's products. The engine warns about

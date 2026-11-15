@@ -155,9 +155,10 @@ function realisticPlan(): PlanData {
     sailor_owned,
   });
   const ribs = (count: number, chartered: number | null = null) => ({ ...boats("rib", count), chartered });
+  // Each block is given what a full program would use, and costs what its expected sailors use.
   const fallGiven = {
-    staff: [staff(instructor2.key, 3)],
-    boats: [boats("opti", 7, 2), boats("420", 4, 1), ribs(2)],
+    staff: [staff(instructor2.key, 4)],
+    boats: [boats("opti", 12, 2), boats("420", 4, 1), ribs(2)],
   };
   const fallPractices = practice(fall, [2, 4], "16:00", "18:30", { on_water_minutes: 120 });
   const regattas = ["2026-10-17", "2026-10-18"].map((date) =>
@@ -194,7 +195,7 @@ function realisticPlan(): PlanData {
   const allocations = blocks(
     ...fallPractices.map((a) => block([a], fallGiven, { name: "Fall racing" })),
     ...regattas.map((a) =>
-      block([a], { ...fallGiven, boats: [boats("opti", 7, 2), boats("420", 4, 1), ribs(1, 1)] }, { name: "Regatta" }),
+      block([a], { ...fallGiven, boats: [boats("opti", 12, 2), boats("420", 4, 1), ribs(1, 1)] }, { name: "Regatta" }),
     ),
     ...travelDays.map((a) => block([a], { staff: [staff(instructor2.key, 3)] }, { name: "Travel" })),
     // Spring racing and development share their coaches, with the director among them.
@@ -212,7 +213,7 @@ function realisticPlan(): PlanData {
       block([a], { staff: [staff(instructor1.key, 2)], boats: [boats("keelboat", 2), ribs(1)] }, { name: "Adult" }),
     ),
     ...campDays.map((a) =>
-      block([a], { staff: [staff(instructor1.key, 4)], boats: [boats("opti", 27), ribs(2)] }, { name: "Camp" }),
+      block([a], { staff: [staff(instructor1.key, 4)], boats: [boats("opti", 30), ribs(2)] }, { name: "Camp" }),
     ),
   );
 
@@ -335,7 +336,7 @@ function realisticPlan(): PlanData {
         name: "New RIB",
         account_id: A.equipment,
         amount_cents: 2_500_000,
-        excluded_from_mtdc: true,
+        in_mtdc: false,
       }),
       budgetLine({
         ...v("depreciation"),
@@ -350,7 +351,7 @@ function realisticPlan(): PlanData {
         name: "Camp scholarships",
         account_id: A.scholarships,
         amount_cents: 400_000,
-        excluded_from_mtdc: true,
+        in_mtdc: false,
         cost_center_type: "offering",
         cost_center_key: campWeeks[0]!.key,
       }),
@@ -453,6 +454,14 @@ describe("a realistic plan, end to end", () => {
     expect(perDay(pnlOf(out, "merch-year-key"))).toBeNull();
   });
 
+  it("gives the most sailors each offering's blocks take, and whether it pays for itself", () => {
+    expect(pnlOf(out, "racing-fall-key")).toMatchObject({ max_enrollment: 24, allocation_holds: 24 });
+    expect(pnlOf(out, "camp-week-1-key")).toMatchObject({ max_enrollment: 30, allocation_holds: 30 });
+    // Every program loses money before fundraising, even when full.
+    expect(pnlOf(out, "racing-fall-key").breakeven_enrollment).toBeNull();
+    expect(pnlOf(out, "summer-camp", "product")).toMatchObject({ allocation_holds: null, breakeven_enrollment: null });
+  });
+
   it("adds a product's offerings up into its P&L", () => {
     const camp = pnlOf(out, "summer-camp", "product");
     const weeks = ["camp-week-1-key", "camp-week-2-key"].map((k) => pnlOf(out, k));
@@ -481,8 +490,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 945013,
-          "net": -585013,
+          "expenses": 944928,
+          "net": -584928,
           "revenue": 360000,
         },
         "Charters": {
@@ -506,13 +515,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 5597994,
-          "net": -3329994,
+          "expenses": 5597527,
+          "net": -3329527,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 12002715,
-          "net": -8812715,
+          "expenses": 12003765,
+          "net": -8813765,
           "revenue": 3190000,
         },
       }

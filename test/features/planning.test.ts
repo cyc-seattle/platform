@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
-import type { CostLine } from "../../src/planning/index.ts";
+import { planInForce, type CostLine } from "../../src/planning/index.ts";
 import { cents, financialPlanResults, PnlPlan, share } from "./pnl.ts";
 import { userFor } from "./steps/logins.ts";
 import {
@@ -12,6 +12,7 @@ import {
   change,
   itemPath,
   type Item,
+  OPERATIONS_PLAN_ROWS,
   PLAN_ROWS,
   PLAN_YEAR,
   planRows,
@@ -79,7 +80,7 @@ Step("{money} of storage charged to the program area", async (_, money: string) 
     { cost_center_type: "program_area", cost_center_key: area },
     cents(money),
     {
-      excluded_from_mtdc: true,
+      in_mtdc: false,
     },
   );
 });
@@ -92,6 +93,66 @@ Step("its costs include the {money} of storage", async (_, money: string) => {
   const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
   expect(pnl?.by_account.find((a) => a.account_id === storage)?.amount_cents).toBe(cents(money));
 });
+// A program area's P&L for each term, one of the Operations Plan's, made the first time a step names it. The
+// features say "no term" for an offering in none.
+let terms = new Map<string, string>();
+onEachScenario(() => {
+  terms = new Map();
+});
+/** Summer comes before fall, so the terms are in the order the features list them. */
+const TERM_DATES: Record<string, [string, string]> = { Summer: ["06-01", "08-31"], Fall: ["09-01", "11-30"] };
+async function termKey(name: string | null): Promise<string | null> {
+  if (name === null || name === "no term") return null;
+  if (!terms.has(name)) {
+    const [starts, ends] = TERM_DATES[name.split(" ")[0]!] ?? ["01-01", "12-31"];
+    const key = await p.operationsRow("plan_terms", {
+      name,
+      starts_on: `${PLAN_YEAR}-${starts}`,
+      ends_on: `${PLAN_YEAR}-${ends}`,
+    });
+    terms.set(name, key);
+  }
+  return terms.get(name)!;
+}
+const termNamed = (key: string | null | undefined) =>
+  key == null ? "no term" : ([...terms].find(([, k]) => k === key)?.[0] ?? key);
+const areaTerm = async (name: string) => {
+  const key = await termKey(name);
+  return p.out.pnl.find((x) => x.level === "program_area_term" && x.key === p.areas[0] && x.term_key === key);
+};
+async function termOffering(term: string | null, price: number, costs = 0): Promise<Item> {
+  const area = p.areas[0] ?? (await p.area());
+  const extra = { term_key: await termKey(term) };
+  return p.offering(p.areaVersion(area), await p.product("program", area), price, 1, costs, extra);
+}
+Step("a program area with an offering in {string} that takes in {money}", (_, term: string, money: string) =>
+  termOffering(term, cents(money)),
+);
+Step("an offering in {string} that takes in {money}", (_, term: string, money: string) =>
+  termOffering(term, cents(money)),
+);
+Step("an offering in no term that takes in {money}", (_, money: string) => termOffering(null, cents(money)));
+Step("the program area's P&L for each term is:", (_, table: { term: string; "takes in": string }[]) => {
+  const rows = p.out.pnl.filter((x) => x.level === "program_area_term" && x.key === p.areas[0]);
+  expect(rows.map((r) => ({ term: termNamed(r.term_key), "takes in": r.revenue_cents }))).toEqual(
+    table.map((r) => ({ term: r.term, "takes in": cents(r["takes in"]) })),
+  );
+});
+Step(
+  "a program area with an offering in {string} and one in {string}, with the same direct costs",
+  async (_, first: string, second: string) => {
+    await termOffering(first, 0, 100_000);
+    await termOffering(second, 0, 100_000);
+  },
+);
+Step(
+  "the program area's P&L for {string} includes {money} of the office costs",
+  async (_, term: string, money: string) => {
+    const office = await p.account("office");
+    expect((await areaTerm(term))?.by_account.find((a) => a.account_id === office)?.amount_cents).toBe(cents(money));
+  },
+);
+
 Step("a program area with two offerings, the first with twice the direct costs of the second", () =>
   twoOfferings(10_000, [200_000, 100_000]),
 );
@@ -257,20 +318,20 @@ onEachScenario(() => {
 });
 const bonusTotal = (prefix = "bonus:") => p.total((l) => l.line_key.startsWith(prefix));
 
-/** A director in a new program area's plan, earning `rate` of the net of the products it's given. */
+/** A new program area's director, earning `rate` of the net of the products the Operations Plan gives them. */
 async function directorWithBonus(rate: number, extra: Row = {}): Promise<void> {
   const area = await p.area();
-  const version = p.areaVersion(area);
+  const version = await p.operationsVersion();
   earner = { owner: await p.bonus(version, rate, [], extra), version, area };
 }
-/** A program of the director's area, which the bonus counts, with an offering. */
+/** A program of the director's area, which the bonus counts, with an offering in the area's plan. */
 async function bonusProgram(price: number, costs: number, extra: Row = {}): Promise<Item> {
   const product = await p.product("program", earner!.area);
   await p.owns(earner!.owner, earner!.version, product);
-  return p.offering(earner!.version, product, price, 1, costs, extra);
+  return p.offering(p.areaVersion(earner!.area), product, price, 1, costs, extra);
 }
 
-Step("a Program Plan that pays its director {percent} of its programs' net", (_, percent: string) =>
+Step("the Operations Plan pays a program area's director {percent} of its programs' net", (_, percent: string) =>
   directorWithBonus(share(percent)),
 );
 Step("its programs make {money} after their costs and shared costs", (_, money: string) =>
@@ -279,18 +340,42 @@ Step("its programs make {money} after their costs and shared costs", (_, money: 
 Step("the director's bonus is {money}", (_, money: string) => {
   expect(bonusTotal()).toBe(cents(money));
 });
-Step("a Program Plan that pays its director a bonus on a program from another program area", async () => {
-  await directorWithBonus(0.5);
-  const other = await p.area();
-  const product = await p.product("program", other);
-  await p.offering(p.areaVersion(other), product, 1_000_000, 1);
-  await p.owns(earner!.owner, earner!.version, product);
+
+// Bonuses by term.
+const byNet = async (term: string | null, net: number) => {
+  const extra = { term_key: await termKey(term) };
+  return net < 0 ? bonusProgram(0, -net, extra) : bonusProgram(net, 0, extra);
+};
+Step(
+  "its programs make {money} in {string} and lose {money} in {string}",
+  async (_, made: string, first: string, lost: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, -cents(lost));
+  },
+);
+Step(
+  "its programs make {money} in {string} and {money} in no term",
+  async (_, made: string, term: string, none: string) => {
+    await byNet(term, cents(made));
+    await byNet(null, cents(none));
+  },
+);
+Step(
+  "its programs make {money} in {string} and {money} in {string}",
+  async (_, made: string, first: string, more: string, second: string) => {
+    await byNet(first, cents(made));
+    await byNet(second, cents(more));
+  },
+);
+Step("the director's bonus for each term is:", (_, table: { term: string; net: string; bonus: string }[]) => {
+  const mine = p.out.bonuses.filter((b) => b.program_area_id === earner!.area);
+  expect(mine.map((b) => ({ term: termNamed(b.term_key), net: b.net_cents, bonus: b.bonus_cents }))).toEqual(
+    table.map((r) => ({ term: r.term, net: cents(r.net), bonus: cents(r.bonus) })),
+  );
 });
-Step("the planner is warned that the bonus is on another program area's program", () => {
-  expect(p.warned("bonus_outside_area")).toBe(true);
-});
-Step("the other area's program doesn't count toward the bonus", () => {
-  expect(bonusTotal()).toBe(0);
+Step("the program area's P&L for {string} includes {money} of bonus", async (_, term: string, money: string) => {
+  const bonus = await p.account("bonus");
+  expect((await areaTerm(term))?.by_account.find((a) => a.account_id === bonus)?.amount_cents).toBe(cents(money));
 });
 
 const COUNTED: Record<string, Row> = {
@@ -324,8 +409,7 @@ Step("the organization pays {money} of payroll tax on the bonus", (_, money: str
 });
 Step("a director's bonus, with its payroll tax, on the first offering only", async () => {
   await p.operationsRow("plan_rates", { payroll_tax_rate: 0.1 });
-  const area = p.areas[0]!;
-  await p.bonus(p.areaVersion(area), 0.5, [p.offerings[0]!["product_id"] as string]);
+  await p.bonus(await p.operationsVersion(), 0.5, [p.offerings[0]!["product_id"] as string]);
 });
 
 /** A salaried director in the Operations Plan. */
@@ -393,7 +477,7 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
 parameter("level", ["Level 1 Instructor", "Level 2 Instructor"]);
-parameter("boats", ["Sailqubes", "Optis", "RIBs"]);
+parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs"]);
 parameter("staff", ["one coach", "two coaches"]);
 parameter("day", ["July 1", "August 1"]);
 /** "4pm" or "noon" as `HH:MM`. */
@@ -469,12 +553,15 @@ interface Given {
   staff?: Row[];
   boats?: Row[];
 }
-/** An offering of `program`, or of a new program, with `sailors` sailors. */
-async function offeringOf(program: string | undefined, sailors: number): Promise<Item> {
+/** An offering of `program`, or of a new program, with `sailors` sailors expected. */
+async function offeringOf(program: string | undefined, sailors: number, extra: Row = {}, price = 0): Promise<Item> {
   const area = await theArea();
   const product = program === undefined ? await p.product("program", area) : await programNamed(program);
-  return p.offering(p.areaVersion(area), product, 0, sailors);
+  return p.offering(p.areaVersion(area), product, price, sailors, 0, extra);
 }
+/** An offering of `program` for up to `max` sailors, expecting `expected`. */
+const upTo = (program: string | undefined, max: string, expected = max, price = 0) =>
+  offeringOf(program, Number(expected), { capacity: Number(max) }, price);
 /** A block on `date` holding a practice of each offering at `times`, given `given`. Returns the block. */
 async function blockOf(offerings: Item[], times: string, given: Given, date = JUNE, name = "A block"): Promise<string> {
   const version = offerings[0]!["version_id"] as string;
@@ -633,6 +720,36 @@ Step("one practices from {times} and the other from {times}", async (_, one: str
   await p.activities(offerings[0]!, [JUNE], ...span(one), { block_id: block });
   await p.activities(offerings[1]!, [JUNE], ...span(other), { block_id: block });
 });
+Step(
+  "a {program} offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} coaches paid {money} an hour",
+  async (_, program: string, max: string, expected: string, times: string, count: string, money: string) => {
+    await blockOf([await upTo(program, max, expected)], times, await coachesPaid(count, money));
+  },
+);
+Step(
+  "a {program} offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block the director coaches with a coach paid {money} an hour",
+  async (_, program: string, max: string, expected: string, times: string, money: string) => {
+    await blockOf([await upTo(program, max, expected)], times, {
+      staff: [{ position_key: position, count: 1 }, await staffAt("Coach", 1, cents(money))],
+    });
+  },
+);
+Step(
+  "an offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} of the organization's {boats}",
+  async (_, max: string, expected: string, times: string, count: string, boats: string) => {
+    await blockOf([await upTo(undefined, max, expected)], times, {
+      boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }],
+    });
+  },
+);
+Step(
+  "an offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block with {count} chartered {boats}",
+  async (_, max: string, expected: string, times: string, count: string, boats: string) => {
+    await blockOf([await upTo(undefined, max, expected)], times, {
+      boats: [{ boat_class_id: await boatClass(boats), count: 0, chartered: Number(count) }],
+    });
+  },
+);
 Step("the first offering pays {money} of coaches' wages", async (_, money: string) => {
   expect(await wagesOf(p.offerings[0]!)).toBe(cents(money));
 });
@@ -826,6 +943,9 @@ Step(
     }
   },
 );
+Step("the offering pays {money} for boat charters", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("boatCharters")))).toBe(cents(money));
+});
 Step("the two offerings pay {money} for boat charters between them", async (_, money: string) => {
   const charters = await p.account("boatCharters");
   const paid = (o: Item) => p.total(onOffering(o["key"] as string, charters));
@@ -879,19 +999,98 @@ Step(
     });
   },
 );
-// A block's warning starts with its offerings' names, then says what it has.
+Step(
+  "a {program} offering for up to {count} sailors that expects {count}, in a block with one coach and enough boats for {count}",
+  async (_, program: string, max: string, expected: string, boats: string) => {
+    await blockOf([await upTo(program, max, expected)], MORNING, {
+      staff: [await staffAt("Coach", 1)],
+      boats: await enoughBoats(Number(boats)),
+    });
+  },
+);
+Step(
+  "a {program} offering for up to {count} sailors, in a block with {count} coaches and {count} {boats}",
+  async (_, program: string, max: string, coaches: string, count: string, boats: string) => {
+    await blockOf([await upTo(program, max)], MORNING, {
+      staff: [await staffAt("Coach", Number(coaches))],
+      boats: [{ boat_class_id: await boatClass(boats), count: Number(count) }],
+    });
+  },
+);
+Step(
+  "a block for up to {count} Guppies and up to {count} Minnows, with three coaches and boats for {count} sailors",
+  async (_, guppies: string, minnows: string, sailors: string) => {
+    const offerings = [await upTo("Guppies", guppies), await upTo("Minnows", minnows)];
+    await blockOf(offerings, MORNING, {
+      staff: [await staffAt("Coach", 3)],
+      boats: await enoughBoats(Number(sailors)),
+    });
+  },
+);
+// A block's warning starts with its offerings' names, then says what it's for.
 const overCapacity = (limit: "coach" | "boats") =>
   p.out.warnings.filter((w) => w.code === "over_capacity" && w.message.includes(limit));
-const saysBlockHas = (limit: "coach" | "boats", text: string) =>
-  expect(overCapacity(limit).map((w) => w.message.replace(/^.+? ha(s|ve) /, ""))).toContain(text);
+const saysBlockIs = (limit: "coach" | "boats", text: string) =>
+  expect(overCapacity(limit).map((w) => w.message.replace(/^.+? (is|are) for /, ""))).toContain(text);
 Step(
-  "the planner is warned that the block has {count} sailors, but enough coaches for only {count}",
-  (_, sailors: string, can: string) => saysBlockHas("coach", `${sailors} sailors, but enough coaches for only ${can}`),
+  "the planner is warned that the block is for up to {count} sailors, but has enough coaches for only {count}",
+  (_, sailors: string, can: string) =>
+    saysBlockIs("coach", `up to ${sailors} sailors, but has enough coaches for only ${can}`),
 );
 Step(
-  "the planner is warned that the block has {count} sailors, but the boats hold only {count}",
-  (_, sailors: string, can: string) => saysBlockHas("boats", `${sailors} sailors, but the boats hold only ${can}`),
+  "the planner is warned that the block is for up to {count} sailors, but the boats hold only {count}",
+  (_, sailors: string, can: string) => saysBlockIs("boats", `up to ${sailors} sailors, but the boats hold only ${can}`),
 );
+const pnlOf = (offering: Item) => p.out.pnl.find((x) => x.level === "offering" && x.key === offering["key"]);
+const offeringOfProgram = (program: string) => p.offerings.find((o) => o["product_id"] === programs[program])!;
+Step("the offering's block can take {count} sailors", (_, sailors: string) => {
+  expect(pnlOf(p.offerings[0]!)?.allocation_holds).toBe(Number(sailors));
+});
+Step("the {program} offering's block can take {count} sailors", (_, program: string, sailors: string) => {
+  expect(pnlOf(offeringOfProgram(program))?.allocation_holds).toBe(Number(sailors));
+});
+
+// The fewest sailors at which an offering pays for itself.
+Step(
+  "an offering for up to {count} sailors at {money} a sailor, with {money} of its own costs",
+  async (_, max: string, price: string, costs: string) => {
+    const offering = await upTo(undefined, max, max, cents(price));
+    await p.line(
+      offering["version_id"] as string,
+      "costs",
+      { cost_center_type: "offering", cost_center_key: offering["key"] },
+      cents(costs),
+    );
+  },
+);
+Step(
+  "a {program} offering for up to {count} sailors at {money} a sailor, with {money} of its own costs and a practice from {times} in a block with {count} coaches paid {money} an hour",
+  async (
+    _,
+    program: string,
+    max: string,
+    price: string,
+    costs: string,
+    times: string,
+    count: string,
+    money: string,
+  ) => {
+    const offering = await upTo(program, max, max, cents(price));
+    await p.line(
+      offering["version_id"] as string,
+      "costs",
+      { cost_center_type: "offering", cost_center_key: offering["key"] },
+      cents(costs),
+    );
+    await blockOf([offering], times, await coachesPaid(count, money));
+  },
+);
+Step("the offering pays for itself at {count} sailors", (_, sailors: string) => {
+  expect(pnlOf(p.offerings[0]!)?.breakeven_enrollment).toBe(Number(sailors));
+});
+Step("the offering doesn't pay for itself, even when it's full", () => {
+  expect(pnlOf(p.offerings[0]!)?.breakeven_enrollment).toBeNull();
+});
 Step("the planner is warned that the block has too few coaches", () => {
   expect(overCapacity("coach")).not.toEqual([]);
 });
@@ -929,7 +1128,6 @@ Step("{money} of office costs in a pool named {string}", async (_, money: string
 // Financial Plans: each holds an Operations Plan and Program Plans, saved together.
 const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's saved.";
 const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
-const ONLY_SAVED_ACTIVE = "Only a saved Financial Plan can be marked active.";
 
 /** The Financial Plans a scenario made, by name, and the one it's about. */
 let named: Record<string, string> = {};
@@ -1210,40 +1408,10 @@ Step("its practice on June 6 is the same practice as the one in {string}", async
   expect(activity!["id"]).not.toBe(practice!["id"]);
 });
 
-// The active Financial Plan.
-Step(
-  "two saved Financial Plans for next year, {string} marked active and {string}",
-  async (_, first: string, second: string) => {
-    named[first] = await p.savedSet(first);
-    // A plan copy is in one Financial Plan, so the second starts from the first.
-    named[second] = await adminStart(second, named[first]!);
-    await p.save(named[second]!);
-    await (await admin()).ok("PATCH", itemPath("version_sets", named[first]), { status: "active" });
-  },
-);
-Step("they mark {string} active", async (_, name: string) => {
-  expectOk(await theyWrite("PATCH", itemPath("version_sets", named[name]), { status: "active" }));
-});
-Step("{string} is the active Financial Plan for next year", async (_, name: string) => {
-  const active = await read(
-    "version_sets",
-    { organization_id: { _eq: await p.organization() }, fiscal_year: { _eq: PLAN_YEAR }, status: { _eq: "active" } },
-    "id",
-  );
-  expect(active.map((set) => set["id"])).toEqual([named[name]]);
-});
-Step("{string} is saved, and no longer active", async (_, name: string) => {
-  expect(await one("version_sets", named[name]!, "status")).toEqual({ status: "saved" });
-});
 Step("a draft Financial Plan", async () => {
   await p.area();
   financialPlan = await p.draftSet();
 });
-Step("they try to mark it active", async () => {
-  await theyWrite("PATCH", itemPath("version_sets", financialPlan), { status: "active" });
-});
-Step("they're told that only a saved Financial Plan can be active", () => expectTold(ONLY_SAVED_ACTIVE));
-
 // A saved Financial Plan never changes, apart from its name and note.
 Step("a saved Financial Plan", async () => {
   ({ offering } = await programWithOffering());
@@ -1322,6 +1490,31 @@ Step("the Financial Plan's P&L shows that the offering takes in {money}", async 
   };
   await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money));
 });
+Step(
+  "a draft Financial Plan that pays a director {percent} of an offering in {string} that takes in {money}",
+  async (_, percent: string, term: string, money: string) => {
+    await directorWithBonus(share(percent));
+    offering = await bonusProgram(cents(money), 0, { term_key: await termKey(term) });
+    financialPlan = await p.draftSet();
+  },
+);
+Step(
+  "the Financial Plan's P&L shows that the program area takes in {money} in {string}",
+  async (_, money: string, term: string) => {
+    const { pnl } = await financialPlanResults(financialPlan!);
+    const row = pnl.find(
+      (r) => r["level"] === "program_area_term" && r["subject_key"] === earner!.area && r["term_name"] === term,
+    );
+    expect(Number(row?.["revenue_cents"])).toBe(cents(money));
+  },
+);
+Step(
+  "the Financial Plan's P&L shows that the director's bonus for {string} is {money}",
+  async (_, term: string, money: string) => {
+    const { bonuses } = await financialPlanResults(financialPlan!);
+    expect(Number(bonuses.find((r) => r["term_name"] === term)?.["bonus_cents"])).toBe(cents(money));
+  },
+);
 Step(
   "a saved Financial Plan named {string} whose offering pays {money} of office costs",
   async (_, name: string, money: string) => {
@@ -1405,27 +1598,6 @@ Step("they can't change the Program Plan's rules", async () => {
 
 // Who can do what with a Financial Plan.
 Step("a draft Financial Plan someone else started", () => planRows());
-Step("they can change any of its plans", async () => {
-  await planRows();
-  for (const collection of PLAN_ROWS) {
-    expectOk(await theyWrite("PATCH", itemPath(collection, row[`${collection}@draft`]), change(collection)));
-  }
-  expectOk(await theyWrite("PATCH", itemPath("plan_versions", row["plan_versions@draft"]), { message: "Changed." }));
-});
-Step("they can start a Financial Plan", async () => {
-  await theyStart(`Started ${runId}`);
-});
-Step("they can save a draft Financial Plan", async () => {
-  await p.area();
-  const set = await p.draftSet();
-  expectOk(await theyWrite("PATCH", itemPath("version_sets", set), { status: "saved" }));
-  const me = await (await theirSession()).ok("GET", "/users/me?fields=id");
-  expect(await one("version_sets", set, "status,saved_by")).toEqual({ status: "saved", saved_by: me.id });
-});
-Step("they can mark a saved Financial Plan active", async () => {
-  await planRows();
-  expectOk(await theyWrite("PATCH", itemPath("version_sets", row["version_sets@saved"]), { status: "active" }));
-});
 Step("they can see the Financial Plan and its P&L", async () => {
   await planRows();
   const they = await theirSession();
@@ -1435,7 +1607,7 @@ Step("they can see the Financial Plan and its P&L", async () => {
   expect(status).toBe(200);
   expect(body.data).toHaveLength(1);
 });
-Step("they can't start, save, or mark a Financial Plan active", async () => {
+Step("they can't start, save, or make a Financial Plan active", async () => {
   await planRows();
   expectRefused(
     await theyWrite("POST", "/items/version_sets", {
@@ -1446,7 +1618,11 @@ Step("they can't start, save, or mark a Financial Plan active", async () => {
     }),
   );
   expectRefused(await theyWrite("PATCH", itemPath("version_sets", row["version_sets@draft"]), { status: "saved" }));
-  expectRefused(await theyWrite("PATCH", itemPath("version_sets", row["version_sets@saved"]), { status: "active" }));
+  expectRefused(
+    await theyWrite("PATCH", itemPath("version_sets", row["version_sets@saved"]), {
+      effective_from: `${PLAN_YEAR}-05-01`,
+    }),
+  );
 });
 
 // A program's settings and rules in a Financial Plan started from another.
@@ -1572,6 +1748,237 @@ Step("the Financial Plan's warnings say that the practice on August 2, in its Pr
   await expect
     .poll(warnings, { timeout: 60_000, interval: 1000 })
     .toEqual([{ version_set_member_id: member!["id"], date: AUGUST_2, category: "allocation" }]);
+});
+
+// What a Plan Writer and a Plan Admin can do, and the date a Financial Plan is active from.
+const ONE_PER_DATE = "Another Financial Plan for the year is already active from that date.";
+const IN_FORCE_NOT_ARCHIVED = "The plan in force can't be archived";
+const BONUS_IN_OPERATIONS = "A bonus goes in the Operations Plan.";
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+pattern("when", new RegExp(`(?:${MONTHS.join("|")}) \\d{1,2}|today|next month|last month`));
+/** A day the features name, as `YYYY-MM-DD`: a date in the plan year, or one from the database's today, in UTC. */
+function dayOf(when: string): string {
+  const fromToday = { today: 0, "next month": 30, "last month": -30 }[when];
+  if (fromToday !== undefined) return new Date(Date.now() + fromToday * 86_400_000).toISOString().slice(0, 10);
+  const [month, day] = when.split(" ");
+  return `${PLAN_YEAR}-${String(MONTHS.indexOf(month!) + 1).padStart(2, "0")}-${day!.padStart(2, "0")}`;
+}
+/** The Financial Plan the scenario named first, which later ones start from, since a plan copy is in only one. */
+let firstSet: string | undefined;
+onEachScenario(() => {
+  firstSet = undefined;
+});
+/** A Financial Plan named `name`, the first saved, and each one after started from it, as the admin. */
+async function aFinancialPlan(name: string, { saved = true } = {}): Promise<string> {
+  if (firstSet === undefined) {
+    await p.area();
+    named[name] = saved ? await p.savedSet(name) : await p.draftSet(name);
+    firstSet = named[name];
+  } else {
+    named[name] = await adminStart(name, firstSet);
+  }
+  return named[name]!;
+}
+const activeFrom = async (set: string, when: string) =>
+  (await admin()).ok("PATCH", itemPath("version_sets", set), { effective_from: dayOf(when) });
+/** The scenario's organization's Financial Plan in force on `when`. */
+async function inForce(when: string): Promise<unknown> {
+  const sets = await read(
+    "version_sets",
+    { organization_id: { _eq: await p.organization() }, fiscal_year: { _eq: PLAN_YEAR } },
+    "id,effective_from",
+  );
+  return planInForce(sets as { id: unknown; effective_from: string | null }[], dayOf(when))?.id;
+}
+
+for (const text of ["a Financial Plan named {string}, active from {when}", "one named {string}, active from {when}"]) {
+  Step(text, async (_, name: string, when: string) => activeFrom(await aFinancialPlan(name), when));
+}
+for (const text of ["a Financial Plan named {string}, in force today", "one named {string}, in force today"]) {
+  Step(text, async (_, name: string) => activeFrom(await aFinancialPlan(name), "today"));
+}
+Step("a draft Financial Plan named {string}", async (_, name: string) => {
+  await aFinancialPlan(name, { saved: false });
+});
+Step("{string} is in force on {when}", async (_, name: string, when: string) => {
+  expect(await inForce(when)).toBe(named[name]);
+});
+Step("{string} is still in force today", async (_, name: string) => {
+  expect(await inForce("today")).toBe(named[name]);
+});
+Step("{string} is in force from {when}", async (_, name: string, when: string) => {
+  expect(await one("version_sets", named[name], "effective_from")).toEqual({ effective_from: dayOf(when) });
+  expect(await inForce(when)).toBe(named[name]);
+});
+Step("they make {string} active from {when}", async (_, name: string, when: string) => {
+  await theyWrite("PATCH", itemPath("version_sets", named[name]), { effective_from: dayOf(when) });
+});
+Step("they're told that another Financial Plan for the year is active from that date", () => expectTold(ONE_PER_DATE));
+
+Step("a draft Financial Plan in force today, with an offering at {money} a sailor", async (_, money: string) => {
+  ({ offering } = await programWithOffering(cents(money)));
+  financialPlan = await p.draftSet();
+  await activeFrom(financialPlan, "today");
+});
+Step("a draft Financial Plan in force today", async () => {
+  await p.area();
+  financialPlan = await p.draftSet();
+  await activeFrom(financialPlan, "today");
+});
+Step("they change the offering's price to {money} a sailor", async (_, money: string) => {
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: cents(money) }));
+});
+Step("the draft is still in force, and its P&L has the offering at {money} a sailor", async (_, money: string) => {
+  expect(await inForce("today")).toBe(financialPlan);
+  // A draft's P&L is worked out again a moment after each change. The offering has 10 sailors.
+  const revenue = async () => {
+    const { pnl } = await financialPlanResults(financialPlan!);
+    const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
+    return Number(mine?.["revenue_cents"]);
+  };
+  await expect.poll(revenue, { timeout: 60_000, interval: 1000 }).toBe(cents(money) * 10);
+});
+Step("they save it", async () => {
+  await theyWrite("PATCH", itemPath("version_sets", financialPlan), { status: "saved" });
+});
+Step("it's saved, and still in force", async () => {
+  expectOk(attempt);
+  expect(await one("version_sets", financialPlan, "status")).toEqual({ status: "saved" });
+  expect(await inForce("today")).toBe(financialPlan);
+});
+
+Step("a saved Financial Plan active from {when}", async (_, when: string) => {
+  await p.area();
+  financialPlan = await p.savedSet();
+  await activeFrom(financialPlan, when);
+});
+Step("they change its date to {when}", async (_, when: string) => {
+  await theyWrite("PATCH", itemPath("version_sets", financialPlan), { effective_from: dayOf(when) });
+});
+Step("it's in force from {when}", async (_, when: string) => {
+  expectOk(attempt);
+  expect(await one("version_sets", financialPlan, "effective_from")).toEqual({ effective_from: dayOf(when) });
+});
+
+for (const text of ["they try to archive {string}", "they archive {string}"]) {
+  Step(text, async (_, name: string) => {
+    await theyWrite("PATCH", itemPath("version_sets", named[name]), { archived_at: new Date().toISOString() });
+  });
+}
+Step("they're told that the plan in force can't be archived", () => expectTold(IN_FORCE_NOT_ARCHIVED));
+Step("{string} is archived", async (_, name: string) => {
+  expectOk(attempt);
+  expect((await one("version_sets", named[name], "archived_at"))["archived_at"]).not.toBeNull();
+});
+
+// What each kind of planner can change. The run's draft holds a Program Plan and an Operations Plan.
+const OPERATIONS_ROWS = new Set(OPERATIONS_PLAN_ROWS);
+Step("they can start a Financial Plan from another", async () => {
+  await planRows();
+  started = await theyStart(`Started ${runId}`, row["version_sets@saved"]);
+  expect(await copied(started)).toHaveLength(2);
+});
+Step("they can change its Program Plans", async () => {
+  for (const collection of PLAN_ROWS.filter((c) => !OPERATIONS_ROWS.has(c))) {
+    expectOk(await theyWrite("PATCH", itemPath(collection, row[`${collection}@draft`]), change(collection)));
+  }
+  expectOk(await theyWrite("PATCH", itemPath("plan_versions", row["plan_versions@draft"]), { message: "Changed." }));
+});
+Step("they can't change its Operations Plan", async () => {
+  for (const collection of OPERATIONS_PLAN_ROWS) {
+    expectRefused(await theyWrite("PATCH", itemPath(collection, row[`${collection}@draft`]), change(collection)));
+  }
+  expectRefused(
+    await theyWrite("PATCH", itemPath("plan_versions", row["plan_versions@draft-operations"]), { message: "No." }),
+  );
+});
+Step("they can change its Operations Plan", async () => {
+  for (const collection of OPERATIONS_PLAN_ROWS) {
+    expectOk(await theyWrite("PATCH", itemPath(collection, row[`${collection}@draft`]), change(collection)));
+  }
+  expectOk(
+    await theyWrite("PATCH", itemPath("plan_versions", row["plan_versions@draft-operations"]), { message: "Yes." }),
+  );
+});
+Step("they can't save it, make it active, or archive it", async () => {
+  for (const write of [
+    { status: "saved" },
+    { effective_from: `${PLAN_YEAR}-05-01` },
+    { archived_at: new Date().toISOString() },
+  ]) {
+    expectRefused(await theyWrite("PATCH", itemPath("version_sets", financialPlan), write));
+  }
+  expect(await one("version_sets", financialPlan, "status,effective_from,archived_at")).toEqual({
+    status: "draft",
+    effective_from: null,
+    archived_at: null,
+  });
+});
+Step("they can make it active from a date, and save it", async () => {
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { effective_from: `${PLAN_YEAR}-05-01` }));
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", financialPlan), { status: "saved" }));
+});
+Step("they can archive a Financial Plan that isn't active", async () => {
+  const other = await adminStart(`Not active ${runId}`, financialPlan!);
+  expectOk(await theyWrite("PATCH", itemPath("version_sets", other), { archived_at: new Date().toISOString() }));
+});
+
+Step("they add a bonus to one of its Program Plans", async () => {
+  await theyWrite("POST", "/items/plan_bonus_owners", {
+    id: randomUUID(),
+    version_id: p.areaVersion(p.areas[0]!),
+    key: randomUUID(),
+    role_name: "Director",
+    bonus_rate: 0.1,
+  });
+});
+Step("they're told that bonuses go in the Operations Plan", () => expectTold(BONUS_IN_OPERATIONS));
+
+// A Program Plan line that moves a cost off the area's programs, for a Plan Admin to look over.
+const SHIFTS: Record<string, (area: string) => Promise<Row>> = {
+  "left out of the split of shared costs": async (area) => ({
+    cost_center_type: "program_area",
+    cost_center_key: area,
+    in_mtdc: false,
+  }),
+  "charged to the shared costs": async () => ({ cost_center_type: "pool", cost_center_key: await p.pool() }),
+  "charged to the organization": async () => ({ cost_center_type: "org", cost_center_key: null }),
+  "for capital": async () => ({ cost_center_type: "org", cost_center_key: null }),
+};
+parameter("shift", Object.keys(SHIFTS));
+Step("a draft Financial Plan whose Program Plan has a line {shift}", async (_, shift: string) => {
+  const area = await p.area();
+  const account = shift === "for capital" ? "coachBoats" : "storage";
+  await p.line(p.areaVersion(area), account, await SHIFTS[shift]!(area), 100_000);
+});
+Step("the planner is warned that the line moves a cost off the area's programs", () => {
+  expect(p.warned("cost_off_programs")).toBe(true);
+});
+Step("a draft Financial Plan whose Operations Plan has a line left out of the split of shared costs", async () => {
+  await p.area();
+  await p.line(
+    await p.operationsVersion(),
+    "storage",
+    { cost_center_type: "pool", cost_center_key: await p.pool() },
+    100_000,
+    { in_mtdc: false },
+  );
+});
+Step("the planner isn't warned about the line", () => {
+  expect(p.warned("cost_off_programs")).toBe(false);
 });
 
 describeAccessFeature("planning.feature");

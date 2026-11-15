@@ -270,7 +270,23 @@ export const platform = new StandardRepository("platform", {
   hasProjects: false,
   requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
   mergeQueue: true,
+  // Its docs site, which its docs.yml publishes from main.
+  pages: { buildType: "workflow" },
 });
+
+// GitHub makes this environment when Pages is turned on. Declared so only main can publish.
+const platformPages = new github.RepositoryEnvironment("platform-github-pages", {
+  repository: platform.name,
+  environment: "github-pages",
+  deploymentBranchPolicy: { protectedBranches: false, customBranchPolicies: true },
+  canAdminsBypass: false,
+});
+new github.RepositoryEnvironmentDeploymentPolicy(
+  "platform-github-pages-main",
+  { repository: platform.name, environment: platformPages.environment, branchPattern: "main" },
+  // Pages made this policy when it was turned on (#191).
+  { parent: platformPages, import: "platform:github-pages:66765890" },
+);
 
 // The club's web app at the apex domain, which takes over from isthmia's portal.
 export const sailTeam = new StandardRepository("sail-team", {

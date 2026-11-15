@@ -2,26 +2,38 @@ Feature: Plans
   A Financial Plan is the organization's plan for one year. It holds one Operations Plan and a
   Program Plan for any of the organization's program areas, and the P&L they make together. A
   Program Plan covers one program area: what it offers and when, the prices, the schedule, who works
-  it, and the budget. The area's directors plan it. The Operations Plan covers what the program
+  it, and the budget. Plan Writers plan it. The Operations Plan covers what the program
   areas share, such as the office, the boats, and the year's rates. It also plans the products that
-  belong to no program area: merchandise, storage, and charters.
+  belong to no program area: merchandise, storage, and charters. It also holds each program area's
+  storage rent, such as the dinghy float, which is still charged to the area.
 
   A Financial Plan is worked on as a whole. It starts as a draft, and planners can change any of
-  its plans while it's a draft. When it's ready, a planner saves it, and all of its plans are saved
-  together, with their P&L. A saved Financial Plan never changes, apart from its name and note, so
+  its plans while it's a draft. When it's ready, a Plan Admin saves it, and all of its plans are saved
+  together, with their P&L. A saved Financial Plan never changes, apart from its name, its note, and its date, so
   the organization can always look back at what it agreed to. To change the plan after that, a planner starts a new Financial
   Plan from an earlier one, its parent, and the new one begins as a copy of it. A year can have
   several drafts at once, so planners can weigh options side by side, such as two drafts started
   from the same Financial Plan, one with two coaches and one with three. Each Financial Plan has a
   name, and a note that says what it was for, such as "Reviewed with the board". Planners are the
-  people with the Plan Reader or Plan Writer policy, which they get from their groups.
+  people with the Plan Reader, Plan Writer, or Plan Admin policy, which they get from their groups.
 
-  A planner marks one saved Financial Plan active for its year. That's the plan the organization is
-  running, and what actually happens during the year is compared against it. Marking another one
-  active replaces it, and sets the one before it back to saved. Each Financial Plan's history shows
-  who marked it active, and when. Each offering in a plan is of a catalog offering: a named offering
-  of a program, such as "J-Pod · fall practices", which Clubspot's offerings are linked to as well.
-  So Clubspot's sign-ups find their offering in whichever Financial Plan is active. An offering's
+  A Plan Writer can start a draft Financial Plan, and change any Program Plan in any draft, for
+  every program area. A Plan Admin also sets the rules everyone plans within: they can change the
+  Operations Plan in a draft, such as wages, rates, terms, and shared costs. They also save a
+  Financial Plan, make one active, and archive one. A Plan Writer can see the Operations Plan but
+  can't change it. Which people have which policy is up to their groups.
+
+  A Plan Admin makes a Financial Plan active from a date. The plan in force on a day is the
+  active one for that year with the latest date on or before that day, and it stays in force until
+  the next one's date. So a re-plan for the fall can take over on September 1, and a plan can be
+  made active ahead of time. A draft can be active: Plan Writers keep changing it while it's
+  in force, and its P&L keeps up. When the board approves it, a Plan Admin saves it, and it stays
+  in force. A Plan Admin can change any plan's date, earlier or later, to fix a mistake. The plan in
+  force can't be archived.
+
+  Each offering in a plan is of a catalog offering: a named offering of a program, such as "J-Pod ·
+  fall practices", which Clubspot's offerings are linked to as well. So Clubspot's sign-ups find
+  their offering in whichever Financial Plan is in force. An offering's
   activities, such as practices and regattas, stay the same ones in a Financial Plan started from
   another.
 
@@ -38,6 +50,11 @@ Feature: Plans
   its rate and the kinds of product it applies to. Revenue from programs and other sales pays for
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
   capital is never charged to a program area.
+
+  CSC pays program bonuses per term, so the P&L also shows each program area's P&L for each term
+  the Operations Plan lists, such as Summer 2027. Offerings in no term, such as Adult Learn to Sail,
+  are shown on their own, as one more group. A director's bonus is paid on each term's net, and on
+  the net of the offerings in no term for the year.
 
   Each Program Plan sets two numbers for each of its programs: the staff level that coaches it, such
   as Level 1 Instructor, and how many sailors each coach can take. These are the program's
@@ -58,17 +75,31 @@ Feature: Plans
   The schedule is planned in blocks. A block is one or more activities on one date that share
   their coaches and boats, such as Guppies and Minnows on the morning of July 13. Each block lists
   its staff (the people who coach it) and its boats of each class, sailboats and powerboats such as
-  coach boats: the organization's own, the ones it charters, and the ones sailors bring. A block runs from its first activity's start to its last activity's end. The P&L costs
-  only what the blocks are given, and nothing works out how many coaches or boats a program needs.
-  The planner, or their AI, decides that from the program settings and the rules.
+  coach boats: the organization's own, the ones it charters, and the ones sailors bring. A block runs from its first activity's start to its last activity's end.
+  Nothing works out how many coaches or boats a program needs. The planner, or their AI, decides that
+  from the program settings and the rules.
+
+  Each offering has the most sailors it takes, and the number the planner expects to sign up. A
+  block is given what the offering would use if it filled. Coaches are paid by the hour, and a
+  program that doesn't fill isn't fully staffed, so the P&L costs a block at the sailors expected:
+  only the coaches they need, and the boats for the share of the program that's expected.
+  It never costs more than the block is given. A salaried coach on a block is always counted.
+  A planner sees two numbers for each offering: the most sailors its block can take, and the fewest
+  sailors at which it pays for itself.
 
   A planner is warned when the blocks break a limit: more of the organization's boats of a class out
-  at once than it has that day, too few coaches or boats for a block's sailors, or
-  an activity with no staff. Each warning says which plan and date it's about. Each coach
+  at once than it has that day, too few coaches or boats for a block's sailors if every offering in
+  it fills, or an activity with no staff. Each warning says which plan and date it's about. Each coach
   in a block can safely take the program's number of sailors. A program's staff level is what the
   planner aims for, not a hard rule: any coach in the block counts, and so does a salaried coach,
   such as a director. Each boat can take its class's most sailors, and the boats that
   sailors bring count too.
+
+  A planner is also warned about each Program Plan line that moves a cost off the area's programs:
+  a line left out of the split of shared costs, a line charged to the shared costs or to the
+  organization, or a line for capital. A Plan Admin looks over these before they make a
+  plan active. Lines in the Operations Plan never get these warnings, because only a Plan Admin
+  changes the Operations Plan.
 
   A planner can ask their AI to fill in the blocks. It works in a new draft Financial Plan, started
   from the one the planner names. It tells the planner what it changed and which warnings are left,
@@ -82,19 +113,18 @@ Feature: Plans
   each salaried position is paid per year. A salaried coach can also be paid by the hour for
   coaching, on top of their salary, at their own hourly rate. Bonus rates set the bonus a director
   earns on the products they run: a share of those products' net, the money they make after their
-  costs. A bonus for one program area's products is in that area's Program Plan. A bonus on
-  products from more than one area is in the Operations Plan. Anyone who can see plans sees
-  all of these. To change something means to add, edit, or delete it.
+  costs. Every bonus is in the Operations Plan, which a Plan Admin sets. Anyone who can
+  see plans sees all of these. To change something means to add, edit, or delete it.
 
   Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
 
     Example: A Financial Plan can start with only an Operations Plan
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       When they start a Financial Plan for next year with only an Operations Plan
       Then the Financial Plan is a draft, with the Operations Plan in it
 
     Example: A Financial Plan can't be saved without an Operations Plan
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan with a Program Plan but no Operations Plan
       When they try to save the Financial Plan
       Then they're told that the Financial Plan needs an Operations Plan
@@ -103,7 +133,7 @@ Feature: Plans
   Rule: A Financial Plan holds at most one Program Plan for each program area
 
     Example: A second Program Plan for the same program area
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan with a Program Plan for Youth Racing
       When they try to add another Program Plan for Youth Racing to it
       Then they're told that the Financial Plan already has a Program Plan for Youth Racing
@@ -111,7 +141,7 @@ Feature: Plans
   Rule: Saving a Financial Plan saves all of its plans together
 
     Example: The Operations Plan and both Program Plans are saved with the Financial Plan
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan with an Operations Plan and two Program Plans
       When they save the Financial Plan
       Then the Financial Plan and all three of its plans are saved at the same moment
@@ -171,20 +201,123 @@ Feature: Plans
       When they take the offering out of its term
       Then the offering is in no term
 
-  Rule: A planner marks one saved Financial Plan active for its year
+  Rule: The plan in force on a day is the active one with the latest date on or before it
 
-    Example: Marking another Financial Plan active replaces the active one
+    Example: A re-plan for the fall takes over on its date
+      Given a Financial Plan named "Budget", active from July 1
+      And one named "Fall re-plan", active from September 1
+      Then "Budget" is in force on August 31
+      And "Fall re-plan" is in force on September 1
+
+    Example: A plan made active ahead of time isn't in force yet
+      Given a user with the Plan Writer and Plan Admin policies
+      And a Financial Plan named "Budget", in force today
+      And a draft Financial Plan named "Spring re-plan"
+      When they make "Spring re-plan" active from next month
+      Then "Budget" is still in force today
+      And "Spring re-plan" is in force from next month
+
+  Rule: A draft can be active, and Plan Writers keep changing it while it's in force
+
+    Example: A Plan Writer changes the draft in force
       Given a user with the Plan Writer policy
-      And two saved Financial Plans for next year, "Budget" marked active and "Adopted budget"
-      When they mark "Adopted budget" active
-      Then "Adopted budget" is the active Financial Plan for next year
-      And "Budget" is saved, and no longer active
+      And a draft Financial Plan in force today, with an offering at $1,000 a sailor
+      When they change the offering's price to $1,200 a sailor
+      Then the draft is still in force, and its P&L has the offering at $1,200 a sailor
 
-    Example: A draft can't be marked active
+    Example: Saving the draft in force keeps it in force
+      Given a user with the Plan Writer and Plan Admin policies
+      And a draft Financial Plan in force today
+      When they save it
+      Then it's saved, and still in force
+
+  Rule: A Plan Admin can change any plan's date
+
+    Example: Moving a saved plan's date earlier
+      Given a user with the Plan Writer and Plan Admin policies
+      And a saved Financial Plan active from September 1
+      When they change its date to August 1
+      Then it's in force from August 1
+
+    Example: Two Financial Plans for a year can't be active from the same date
+      Given a user with the Plan Writer and Plan Admin policies
+      And a Financial Plan named "Budget", active from July 1
+      And a draft Financial Plan named "Fall re-plan"
+      When they make "Fall re-plan" active from July 1
+      Then they're told that another Financial Plan for the year is active from that date
+
+  Rule: The plan in force can't be archived
+
+    Example: Archiving the plan in force
+      Given a user with the Plan Writer and Plan Admin policies
+      And a Financial Plan named "Budget", in force today
+      When they try to archive "Budget"
+      Then they're told that the plan in force can't be archived
+
+    Example: Archiving a plan another has taken over from
+      Given a user with the Plan Writer and Plan Admin policies
+      And a Financial Plan named "Budget", active from last month
+      And one named "Re-plan", in force today
+      When they archive "Budget"
+      Then "Budget" is archived
+
+  Rule: A Plan Writer can start a draft and change any Program Plan in it, but not the Operations Plan
+
+    Example: A Plan Writer starts a Financial Plan from another
+      Given a user with the Plan Writer policy
+      Then they can start a Financial Plan from another
+
+    Example: A Plan Writer changes a Program Plan in a draft someone else started
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan someone else started
+      Then they can change its Program Plans
+      But they can't change its Operations Plan
+
+    Example: A Plan Writer can't save a Financial Plan, make one active, or archive one
       Given a user with the Plan Writer policy
       And a draft Financial Plan
-      When they try to mark it active
-      Then they're told that only a saved Financial Plan can be active
+      Then they can't save it, make it active, or archive it
+
+  Rule: A Plan Admin can change the Operations Plan in a draft, and save, make active, and archive a Financial Plan
+
+    Example: A Plan Admin changes the Operations Plan
+      Given a user with the Plan Writer and Plan Admin policies
+      And a draft Financial Plan someone else started
+      Then they can change its Program Plans
+      And they can change its Operations Plan
+
+    Example: A Plan Admin makes a draft active, saves it, and archives another
+      Given a user with the Plan Writer and Plan Admin policies
+      And a draft Financial Plan
+      Then they can make it active from a date, and save it
+      And they can archive a Financial Plan that isn't active
+
+  Rule: Bonuses are set only in the Operations Plan
+
+    Example: A bonus can't go in a Program Plan, even for an admin
+      Given a user with the Admin role
+      And a draft Financial Plan
+      When they add a bonus to one of its Program Plans
+      Then they're told that bonuses go in the Operations Plan
+
+  Rule: A planner is warned about a Program Plan line that moves a cost off the area's programs
+
+    Scenario Outline: A Program Plan line that moves a cost
+      Given a draft Financial Plan whose Program Plan has a line <that>
+      When a planner calculates the P&L
+      Then the planner is warned that the line moves a cost off the area's programs
+
+      Examples:
+        | that                                    |
+        | left out of the split of shared costs   |
+        | charged to the shared costs             |
+        | charged to the organization             |
+        | for capital                             |
+
+    Example: The same line in the Operations Plan
+      Given a draft Financial Plan whose Operations Plan has a line left out of the split of shared costs
+      When a planner calculates the P&L
+      Then the planner isn't warned about the line
 
   Rule: A saved Financial Plan never changes, even for an admin
 
@@ -258,6 +391,25 @@ Feature: Plans
       When a planner calculates the P&L
       Then the program area takes in $20,000
       And its costs include the $3,000 of storage
+
+  Rule: A program area's P&L is also shown for each term, with offerings in no term on their own
+
+    Example: A program area's P&L for each term
+      Given a program area with an offering in "Summer 2027" that takes in $10,000
+      And an offering in "Fall 2027" that takes in $4,000
+      And an offering in no term that takes in $2,000
+      When a planner calculates the P&L
+      Then the program area's P&L for each term is:
+        | term        | takes in |
+        | Summer 2027 | $10,000  |
+        | Fall 2027   | $4,000   |
+        | no term     | $2,000   |
+
+    Example: Each term pays its share of the shared costs
+      Given a program area with an offering in "Summer 2027" and one in "Fall 2027", with the same direct costs
+      And $1,000 of office costs shared by every offering
+      When a planner calculates the P&L
+      Then the program area's P&L for "Summer 2027" includes $500 of the office costs
 
   Rule: A cost charged to a program area is shared among the area's offerings by their direct costs
 
@@ -342,19 +494,13 @@ Feature: Plans
         | capital         | -$20,000 |
         | total           | $15,000  |
 
-  Rule: A Program Plan can pay a director a bonus on that area's programs
+  Rule: The Operations Plan can pay a director a bonus on a program area's programs
 
-    Example: A director's bonus in a Program Plan
-      Given a Program Plan that pays its director 50% of its programs' net
+    Example: A director's bonus on their area's programs
+      Given the Operations Plan pays a program area's director 50% of its programs' net
       And its programs make $10,000 after their costs and shared costs
       When a planner calculates the P&L
       Then the director's bonus is $5,000
-
-    Example: A Program Plan can't pay a bonus on another area's program
-      Given a Program Plan that pays its director a bonus on a program from another program area
-      When a planner calculates the P&L
-      Then the planner is warned that the bonus is on another program area's program
-      And the other area's program doesn't count toward the bonus
 
   Rule: A bonus is figured on the net after shared costs, or before them, as the plan says
 
@@ -368,6 +514,34 @@ Feature: Plans
         | counted             | bonus  |
         | after shared costs  | $2,000 |
         | before shared costs | $5,000 |
+
+  Rule: A bonus is paid on each term's net on its own, so a loss in one term doesn't lower another term's bonus
+
+    Example: A director's bonus when the fall term loses money
+      Given the Operations Plan pays a program area's director 10% of its programs' net
+      And its programs make $20,000 in "Summer 2027" and lose $5,000 in "Fall 2027"
+      When a planner calculates the P&L
+      Then the director's bonus is $2,000
+      And the director's bonus for each term is:
+        | term        | net     | bonus  |
+        | Summer 2027 | $20,000 | $2,000 |
+        | Fall 2027   | -$5,000 | $0     |
+
+    Example: The bonus on offerings in no term is worked out on the year
+      Given the Operations Plan pays a program area's director 10% of its programs' net
+      And its programs make $20,000 in "Summer 2027" and $3,000 in no term
+      When a planner calculates the P&L
+      Then the director's bonus for each term is:
+        | term        | net     | bonus  |
+        | Summer 2027 | $20,000 | $2,000 |
+        | no term     | $3,000  | $300   |
+
+    Example: A term's bonus is a cost of that term
+      Given the Operations Plan pays a program area's director 10% of its programs' net
+      And its programs make $20,000 in "Summer 2027" and $10,000 in "Fall 2027"
+      When a planner calculates the P&L
+      Then the program area's P&L for "Summer 2027" includes $2,000 of bonus
+      And the program area's P&L for "Fall 2027" includes $1,000 of bonus
 
   Rule: The organization pays payroll tax on a bonus, as on any wage
 
@@ -398,6 +572,48 @@ Feature: Plans
       And a Guppies offering of 10 sailors, with a practice from 9am to noon, in a block with 1 coach paid $20 an hour
       When a planner calculates the P&L
       Then the offering pays $60 of coaches' wages
+
+  Rule: A block pays only the coaches its expected sailors need
+
+    Scenario Outline: A block given 4 coaches for 20 Guppies
+      Given Guppies have a coach for every 5 sailors
+      And a Guppies offering for up to 20 sailors that expects <expected>, with a practice from 9am to noon, in a block with 4 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays <wages> of coaches' wages
+
+      Examples:
+        | expected | wages |
+        | 10       | $120  |
+        | 11       | $180  |
+        | 20       | $240  |
+
+    Example: A salaried coach on the block is always counted
+      Given Guppies have a coach for every 5 sailors
+      And a salaried director paid $40 an hour
+      And a Guppies offering for up to 10 sailors that expects 5, with a practice from 9am to noon, in a block the director coaches with a coach paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $120 of the director's salary
+      And the offering pays no coaches' wages
+
+  Rule: A block's boats, its own and chartered, cost what the expected share of the program would use
+
+    Example: 8 FJs for 16 sailors, when 10 are expected
+      Given FJs that cost $1 an hour on the water in upkeep
+      And an offering for up to 16 sailors that expects 10, with a practice from 9am to noon, in a block with 8 of the organization's FJs
+      When a planner calculates the P&L
+      Then the offering pays $15 of boat upkeep
+
+    Example: 2 RIBs for 16 sailors, when 5 are expected
+      Given RIBs that cost $6 an hour in fuel and $4 an hour in upkeep
+      And an offering for up to 16 sailors that expects 5, with a practice from 9am to noon, in a block with 2 of the organization's RIBs
+      When a planner calculates the P&L
+      Then the offering pays $30 for coach boats
+
+    Example: 8 chartered FJs for 16 sailors, when 10 are expected
+      Given FJs that charter for $50 a day
+      And an offering for up to 16 sailors that expects 10, with a practice from 9am to noon, in a block with 8 chartered FJs
+      When a planner calculates the P&L
+      Then the offering pays $250 for boat charters
 
   Rule: The offerings in a block share its costs by their number of sailors
 
@@ -567,7 +783,7 @@ Feature: Plans
       Given Guppies have a Level 1 Instructor for every 10 sailors
       And a Guppies block of 14 sailors with one Level 1 Instructor and enough boats
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but enough coaches for only 10
+      Then the planner is warned that the block is for up to 14 sailors, but has enough coaches for only 10
 
     Example: A coach at another staff level counts
       Given Guppies have a Level 1 Instructor for every 10 sailors
@@ -600,13 +816,56 @@ Feature: Plans
       Given Sailqubes take 2 sailors each
       And a Guppies block of 14 sailors with enough staff and 5 Sailqubes
       When a planner calculates the P&L
-      Then the planner is warned that the block has 14 sailors, but the boats hold only 10
+      Then the planner is warned that the block is for up to 14 sailors, but the boats hold only 10
 
     Example: Boats that sailors bring count
       Given Optis take 1 sailor each
       And a block of 12 sailors with enough staff, 8 of the organization's Optis, and 4 Optis that sailors bring
       When a planner calculates the P&L
       Then the planner isn't warned about the block
+
+  Rule: A block's coaches and boats are checked against the most sailors each offering takes
+
+    Example: Enough coaches for the sailors expected, but not for a full program
+      Given Guppies have a coach for every 10 sailors
+      And a Guppies offering for up to 16 sailors that expects 10, in a block with one coach and enough boats for 16
+      When a planner calculates the P&L
+      Then the planner is warned that the block is for up to 16 sailors, but has enough coaches for only 10
+
+  Rule: A planner sees the most sailors each offering's block can take
+
+    Example: Two coaches for 16 Guppies, but boats for only 12
+      Given Guppies have a coach for every 8 sailors
+      And Sailqubes take 2 sailors each
+      And a Guppies offering for up to 16 sailors, in a block with 2 coaches and 6 Sailqubes
+      When a planner calculates the P&L
+      Then the offering's block can take 12 sailors
+      And the planner is warned that the block is for up to 16 sailors, but the boats hold only 12
+
+    Example: A block shared with another program leaves room for that program's full number
+      Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
+      And a block for up to 10 Guppies and up to 5 Minnows, with three coaches and boats for 40 sailors
+      When a planner calculates the P&L
+      Then the Guppies offering's block can take 20 sailors
+      And the Minnows offering's block can take 10 sailors
+
+  Rule: A planner sees the fewest sailors at which an offering pays for itself
+
+    Example: $500 a sailor against $3,000 of costs
+      Given an offering for up to 16 sailors at $500 a sailor, with $3,000 of its own costs
+      When a planner calculates the P&L
+      Then the offering pays for itself at 6 sailors
+
+    Example: Coaches are paid only for the sailors who sign up
+      Given Guppies have a coach for every 5 sailors
+      And a Guppies offering for up to 10 sailors at $50 a sailor, with $100 of its own costs and a practice from 9am to noon in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays for itself at 4 sailors
+
+    Example: An offering that loses money even when it's full
+      Given an offering for up to 10 sailors at $100 a sailor, with $2,000 of its own costs
+      When a planner calculates the P&L
+      Then the offering doesn't pay for itself, even when it's full
 
   Rule: A planner is warned about an activity with no staff
 
@@ -665,6 +924,13 @@ Feature: Plans
       When a planner saves a Financial Plan started from "Budget" with $2,000 of office costs
       Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
+    Example: A saved Financial Plan keeps each term's P&L and bonus
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan that pays a director 10% of an offering in "Summer 2027" that takes in $10,000
+      When they save the Financial Plan
+      Then the Financial Plan's P&L shows that the program area takes in $10,000 in "Summer 2027"
+      And the Financial Plan's P&L shows that the director's bonus for "Summer 2027" is $1,000
+
   Rule: Each line of a saved P&L says in plain words what it is
 
     Example: An offering's share of the office is named for its pool and its line
@@ -706,7 +972,7 @@ Feature: Plans
   Rule: A planner keeps the draft their AI filled in by saving it, or rejects it by deleting it
 
     Example: A planner saves the draft their AI filled in
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And a saved Financial Plan named "Budget"
       And a draft their AI started from "Budget", with its blocks filled in and a note of what it changed
       When they save the draft
@@ -729,9 +995,10 @@ Feature: Plans
       Then they can see every part of the plan, wages and bonus rates included
 
       Examples:
-        | policy      |
-        | Plan Reader |
-        | Plan Writer |
+        | policy        |
+        | Plan Reader   |
+        | Plan Writer   |
+        | Plan Admin    |
 
   Rule: A Plan Reader can't change plans
 
@@ -739,26 +1006,13 @@ Feature: Plans
       Given a user with the Plan Reader policy
       Then they can't change plans
 
-  Rule: A Plan Writer can change any plan in a draft Financial Plan, even one someone else started
-
-    Example: A Plan Writer changes another planner's Program Plan
-      Given a user with the Plan Writer policy
-      And a draft Financial Plan someone else started
-      Then they can change any of its plans
-
-  Rule: A Plan Writer can start, save, and mark a Financial Plan active, and a Plan Reader can only look at one
-
-    Example: A Plan Writer starts, saves, and marks a Financial Plan active
-      Given a user with the Plan Writer policy
-      Then they can start a Financial Plan
-      And they can save a draft Financial Plan
-      And they can mark a saved Financial Plan active
+  Rule: A Plan Reader can only look at a Financial Plan
 
     Example: A Plan Reader looks at a Financial Plan
       Given a user with the Plan Reader policy
       And a saved Financial Plan
       Then they can see the Financial Plan and its P&L
-      But they can't start, save, or mark a Financial Plan active
+      But they can't start, save, or make a Financial Plan active
 
   Rule: Only admins and planners can see plans
 

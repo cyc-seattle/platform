@@ -1,0 +1,33 @@
+name: nightly
+
+# The merge queue only deploys to dev, so this deploys main there each night and runs the integration
+# tests (#161). A failed night opens an issue, and a green one closes it.
+on:
+  schedule:
+    # 2:17 Pacific in winter and 3:17 in summer, off the hour.
+    - cron: "17 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dev:
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      environment: dev
+      task: deploy
+      integration: true
+  report:
+    needs: dev
+    if: always()
+    uses: cyc-seattle/.github/.github/workflows/nightly-report.yml@v3.3.0
+    permissions:
+      actions: read
+      issues: write
+    with:
+      result: ${{ needs.dev.result }}
+      assignee: ungood
