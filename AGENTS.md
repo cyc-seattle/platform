@@ -119,6 +119,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Staff read every collection in the Data Studio. Write and review a schema change with
   [`directus-schema`](.agents/skills/directus-schema/SKILL.md). `test/data-studio.test.ts` checks
   the rules it can from the YAML.
+- Review every schema change, and every proposal for one, with
+  [`schema-review`](.agents/skills/schema-review/SKILL.md), before it's built and before it merges.
+  The maintainer agrees to new fields, links and dropdowns before they're built.
 - The schema apply never renames or deletes a collection. A change it can't make, such as a rename,
   goes in `stacks/backend/migrations/` as a Directus migration, which Directus runs once at start,
   before the apply. It must do nothing when run again or on a new database, and be tested in PGlite.
