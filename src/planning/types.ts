@@ -272,8 +272,8 @@ export interface PlanRates extends PlanRow {
   mileage_rate_cents: number | null;
 }
 
-/** A staff level's rate for the year. A volunteer's is 0. */
-export interface PlanStaffLevel extends PlanRow {
+/** A staff level's rate for the year. A volunteer's is 0. Found by its level, so it has no key. */
+export interface PlanStaffLevel extends Omit<PlanRow, "key"> {
   staff_level_id: Id;
   hourly_rate_cents: number;
 }

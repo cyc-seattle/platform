@@ -102,13 +102,64 @@ describe("the staff levels migration", { timeout: 30_000 }, () => {
     ]);
   });
 
+  it("maps each of prod's names onto its level, merging the summer head instructor into the head instructor", async () => {
+    const db = await before();
+    const PROD = id(3);
+    const OPS = id(14);
+    const names: [string, string, string, number][] = [
+      ["Volunteer", "volunteer", "Volunteer Coach", 0],
+      ["1 - min wage", "hourly", "Instructor", 1700],
+      ["2 - experienced", "hourly", "Senior Instructor", 2000],
+      ["3 - coach", "hourly", "Coach", 2500],
+      ["4 - head instructor", "hourly", "Head Instructor", 2800],
+      ["5 - senior staff", "hourly", "Head Coach", 3200],
+      ["Summer head instructor (level 4 + 10%)", "hourly", "Head Instructor", 3080],
+      ["G&A hourly labor (level 3 rate)", "hourly", "Office Staff", 2500],
+    ];
+    const row = (n: number) => id(200 + n);
+    await db.exec(`
+      ALTER TABLE plan_staff_levels DISABLE TRIGGER USER;
+      INSERT INTO plans VALUES ('${OPS}', '${PROD}', 'operations');
+      INSERT INTO plan_staff_levels VALUES ${names
+        .map(
+          ([name, pay, , rate], n) =>
+            `('${row(n)}', '${OPS}', '${key(20 + n)}', '${name}', '${pay}', ${pay === "volunteer" ? 1500 : rate})`,
+        )
+        .join(", ")};
+      INSERT INTO plan_labor_lines VALUES ${names.map((_, n) => `('${id(300 + n)}', '${OPS}', '${key(20 + n)}')`).join(", ")};
+      ALTER TABLE plan_staff_levels ENABLE TRIGGER USER;
+    `);
+    await migrate(db);
+    const { rows: lines } = await db.query<{ id: string; level: string }>(
+      `SELECT id, level FROM cyc_seed_staff_level_rows WHERE collection = 'plan_labor_lines' AND id::text LIKE '%0003__' ORDER BY id`,
+    );
+    expect(lines.map((l) => l.level)).toEqual(names.map(([, , level]) => level));
+    const { rows: rates } = await db.query<{ id: string; hourly_rate_cents: number }>(
+      `SELECT id, hourly_rate_cents FROM plan_staff_levels WHERE plan_id = '${OPS}' ORDER BY id`,
+    );
+    // The summer head instructor's row goes; the plan keeps the head instructor's rate.
+    expect(rates).toEqual(
+      names
+        .map(([name, , , rate], n) => ({ id: row(n), hourly_rate_cents: rate, name }))
+        .filter(({ name }) => !name.startsWith("Summer"))
+        .map(({ id, hourly_rate_cents }) => ({ id, hourly_rate_cents })),
+    );
+    const { rows: levels } = await db.query<{ level: string }>(
+      `SELECT level FROM cyc_seed_staff_level_rows WHERE collection = 'plan_staff_levels' AND id::text LIKE '%0002__' ORDER BY id`,
+    );
+    expect(levels.map((l) => l.level)).toEqual(
+      names.filter(([name]) => !name.startsWith("Summer")).map(([, , level]) => level),
+    );
+  });
+
   it("drops the old fields and Directus's records of them, once", async () => {
     const db = await before();
     await migrate(db);
     await migrate(db);
     const { rows: columns } = await db.query(
       `SELECT table_name, column_name FROM information_schema.columns
-        WHERE column_name IN ('name', 'pay_type', 'staff_level_key') AND table_name LIKE 'plan_%'`,
+        WHERE (column_name IN ('name', 'pay_type', 'staff_level_key') AND table_name LIKE 'plan_%')
+          OR (table_name = 'plan_staff_levels' AND column_name = 'key')`,
     );
     expect(columns).toEqual([]);
     const { rows: fields } = await db.query("SELECT collection, field FROM directus_fields");

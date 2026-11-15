@@ -346,7 +346,7 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       await db.exec(`
         ALTER TABLE plan_staff_levels DISABLE TRIGGER USER;
         ALTER TABLE plan_programs DISABLE TRIGGER USER;
-        INSERT INTO plan_staff_levels (id, plan_id, key, hourly_rate_cents) VALUES ('${rate}', '${operations}', gen_random_uuid(), 3000);
+        INSERT INTO plan_staff_levels (id, plan_id, hourly_rate_cents) VALUES ('${rate}', '${operations}', 3000);
         INSERT INTO plan_programs (id, plan_id, key, product_id) VALUES ('${settings}', '${frozen}', gen_random_uuid(), '${product}');
         ALTER TABLE plan_staff_levels ENABLE TRIGGER USER;
         ALTER TABLE plan_programs ENABLE TRIGGER USER;

@@ -545,7 +545,6 @@ async function level(name: string, rate = 2000): Promise<Item> {
     return adminCreate("plan_staff_levels", {
       id: randomUUID(),
       plan_id: await p.operationsPlan(),
-      key: randomUUID(),
       staff_level_id: staffLevel.id,
       hourly_rate_cents: rate,
     });

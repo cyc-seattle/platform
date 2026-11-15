@@ -262,10 +262,11 @@ export function weekly(
 
 /** A staff level's rate in the Operations Plan, for a staff level of its own unless `overrides` names one. */
 export function staffLevel(overrides: Partial<PlanStaffLevel> = {}): PlanStaffLevel {
-  const row = versioned("level");
+  const { id, plan_id } = versioned("level");
   return {
-    ...row,
-    staff_level_id: `staff-level-${row.id}`,
+    id,
+    plan_id,
+    staff_level_id: `staff-level-${id}`,
     hourly_rate_cents: 2000,
     ...overrides,
   };

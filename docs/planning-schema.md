@@ -25,7 +25,7 @@ A Financial Plan holds what planners enter, and the results the [planning engine
 
 ### Diagram conventions
 
-Every row of a plan also has an `id`, a `plan_id` and a `key`. A new row gets a random `key` unless it's given one, and a copy into a new draft keeps it. A `key` should be unique within its plan, but Directus can't make a pair of columns unique, so nothing checks it. The diagrams below leave these out except where they matter.
+Every row of a plan also has an `id`, a `plan_id` and a `key`, apart from a staff level's rate, which is found by its level. A new row gets a random `key` unless it's given one, and a copy into a new draft keeps it. A `key` should be unique within its plan, but Directus can't make a pair of columns unique, so nothing checks it. The diagrams below leave these out except where they matter.
 
 Arrays are shown as `json`.
 

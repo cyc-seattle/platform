@@ -694,8 +694,10 @@ async function createPlanRows(): Promise<void> {
   planStates.set(row["plans@draft-operations"], "draft");
   for (const collection of PLAN_ROWS) {
     const plan = OPERATIONS_PLAN_ROWS.includes(collection) ? "plans@draft-operations" : "plans@draft";
+    // A staff level's rate has no key: the copy is the one for the same level.
+    const same = collection === "plan_staff_levels" ? "staff_level_id" : "key";
     const filter = encodeURIComponent(
-      JSON.stringify({ plan_id: { _eq: row[plan] }, key: { _eq: fixture[`${collection}@frozen`]!["key"] } }),
+      JSON.stringify({ plan_id: { _eq: row[plan] }, [same]: { _eq: fixture[`${collection}@frozen`]![same] } }),
     );
     const [copy] = await (await admin()).ok("GET", `/items/${collection}?filter=${filter}`);
     row[`${collection}@draft`] = copy.id;

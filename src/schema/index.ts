@@ -1118,8 +1118,6 @@ export interface PlanStaffLevels {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   staff_level_id: string | StaffLevels | null;
   /** In cents: 12500 is $125.00. $0 for a volunteer. */
   hourly_rate_cents: number;

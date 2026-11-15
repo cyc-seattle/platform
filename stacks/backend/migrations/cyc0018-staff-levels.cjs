@@ -14,6 +14,8 @@
 // cyc_seed_staff_level_rows, for the frozen-plans hook to add the levels and fill in staff_level_id
 // once the apply has added them. Then it drops the old fields, which the apply never deletes.
 //
+// A plan's level is found by its level now, so its key goes too.
+//
 // It's one statement, so Postgres runs it in one transaction. It does nothing once
 // plan_staff_levels.name is gone, or on a new database.
 
@@ -50,6 +52,7 @@ const levels = LEVELS.map(
 const dropped = [
   ["plan_staff_levels", "name"],
   ["plan_staff_levels", "pay_type"],
+  ["plan_staff_levels", "key"],
   ...USES.map((table) => [table, "staff_level_key"]),
 ];
 const pairs = dropped.map(([table, field]) => `(${literal(table)}, ${literal(field)})`).join(", ");
@@ -118,7 +121,7 @@ BEGIN
     DELETE FROM directus_relations WHERE (many_collection, many_field) IN (${pairs});
     DELETE FROM directus_fields WHERE (collection, field) IN (${pairs});
   END IF;
-  ALTER TABLE plan_staff_levels DROP COLUMN name, DROP COLUMN pay_type;
+  ALTER TABLE plan_staff_levels DROP COLUMN name, DROP COLUMN pay_type, DROP COLUMN key;
   FOREACH t IN ARRAY ARRAY[${USES.map(literal).join(", ")}] LOOP
     EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS staff_level_key', t);
   END LOOP;
