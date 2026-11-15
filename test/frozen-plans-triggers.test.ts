@@ -140,7 +140,6 @@ function writer(db: PGlite) {
   };
 }
 
-const NEEDS_PLATFORM = "Freezing a Financial Plan needs the @cyc-seattle/platform version that calculated it.";
 const ROW_STAYS = "A plan row can't move to another plan. Copy it into that plan instead.";
 const SAME_PLAN = "A plan row can only link to rows in its own plan.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
@@ -188,7 +187,7 @@ async function plans(db: PGlite, year = 2027) {
     rate: 0,
     product_kinds: JSON.stringify(["program", "charter"]),
   });
-  expect(await w.update("financial_plans", set, { status: "frozen", platform_version: "1.4.0" })).toBeUndefined();
+  expect(await w.update("financial_plans", set, { status: "frozen" })).toBeUndefined();
 
   const draftSet = await w.insert("financial_plans", {
     organization_id: organization,
@@ -265,9 +264,7 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       const { draftSet } = await plans(db, 2204);
       await w.insert("plans", { financial_plan_id: draftSet, kind: "operations" });
       expect(await hookWrites(draftSet)).toBeUndefined();
-      expect(
-        await w.update("financial_plans", draftSet, { status: "frozen", platform_version: "1.4.0" }),
-      ).toBeUndefined();
+      expect(await w.update("financial_plans", draftSet, { status: "frozen" })).toBeUndefined();
       for (const table of ["plan_results", "plan_result_warnings"]) {
         const { rows } = await db.query(`SELECT 1 FROM "${table}" WHERE financial_plan_id = $1`, [draftSet]);
         expect(rows, table).toEqual([]);
@@ -513,19 +510,8 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
 
     it("refuse to freeze one without an Operations Plan", async () => {
       const { draftSet } = await plans(db, 2302);
-      expect(await w.update("financial_plans", draftSet, { status: "frozen", platform_version: "1.4.0" })).toEqual(
-        refusal(NEEDS_OPERATIONS),
-      );
+      expect(await w.update("financial_plans", draftSet, { status: "frozen" })).toEqual(refusal(NEEDS_OPERATIONS));
       expect(await w.read("financial_plans", draftSet)).toMatchObject({ status: "draft" });
-    });
-
-    it("refuse to freeze one without a platform version", async () => {
-      const { draftSet } = await plans(db, 2303);
-      for (const platform of [null, "", " "]) {
-        expect(await w.update("financial_plans", draftSet, { status: "frozen", platform_version: platform })).toEqual(
-          refusal(NEEDS_PLATFORM),
-        );
-      }
     });
 
     it("refuse a new one that isn't a draft", async () => {
@@ -544,9 +530,9 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(await w.update("financial_plans", set, { note: "Reviewed with the board" })).toBeUndefined();
       expect(await w.update("financial_plans", set, { name: "Board budget" })).toBeUndefined();
       for (const change of [
-        { platform_version: "9.9.9" },
+        { frozen_at: "2000-01-01T00:00:00Z" },
         { status: "draft" },
-        { note: "Adopted", platform_version: "9.9.9" },
+        { note: "Adopted", frozen_at: "2000-01-01T00:00:00Z" },
       ]) {
         expect(await w.update("financial_plans", set, change), JSON.stringify(change)).toEqual(refusal(SET_STAYS));
       }
@@ -554,7 +540,6 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(await w.read("financial_plans", set)).toMatchObject({
         note: "Reviewed with the board",
         name: "Board budget",
-        platform_version: "1.4.0",
       });
     });
 
@@ -676,7 +661,7 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       const { set } = await plans(db, 2508);
       expect(await w.update("financial_plans", set, { effective_from: "2507-07-01" })).toBeUndefined();
       expect(await w.update("financial_plans", set, { status: "draft" })).toEqual(refusal(SET_STAYS));
-      expect(await w.update("financial_plans", set, { platform_version: "9.9.9" })).toEqual(refusal(SET_STAYS));
+      expect(await w.update("financial_plans", set, { frozen_at: "2000-01-01T00:00:00Z" })).toEqual(refusal(SET_STAYS));
       expect(await w.update("financial_plans", set, { name: "Adopted" })).toBeUndefined();
       expect(await w.remove("financial_plans", set)).toEqual(refusal(SET_STAYS));
     });
@@ -776,7 +761,7 @@ describe("the frozen-plans triggers with dev's flag", { timeout: 30_000 }, () =>
     const w = writer(db);
     const { set, frozen, draftSet, frozenOffering } = await plans(db);
     expect(await w.update("financial_plans", set, { effective_from: "2026-07-01" })).toBeUndefined();
-    expect(await w.update("financial_plans", set, { platform_version: "9.9.9" })).toEqual(refusal(SET_STAYS));
+    expect(await w.update("financial_plans", set, { frozen_at: "2000-01-01T00:00:00Z" })).toEqual(refusal(SET_STAYS));
     expect(await w.update("plan_offerings", frozenOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
     expect(await w.update("plans", frozen, { notes: JSON.stringify(["Changed"]) })).toEqual(refusal(PLANS_FIXED));
     // The draft started from it goes first, since it points at it.

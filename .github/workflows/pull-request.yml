@@ -1,7 +1,7 @@
 name: pull-request
 
 # A PR's push runs only CI. Dev is one shared environment that takes only `main`, so each push to
-# main deploys dev, starts the integration tests, and then previews and deploys prod (#280).
+# main releases, deploys dev, starts the integration tests, and then previews and deploys prod (#280).
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -17,8 +17,17 @@ jobs:
   ci:
     if: github.event_name == 'pull_request'
     uses: cyc-seattle/.github/.github/workflows/ci.yml@v4.0.0
+  # Before the deploys, so the planning engine's stamp names the release that ships it (#305).
+  release:
+    if: github.event_name == 'push'
+    uses: cyc-seattle/.github/.github/workflows/release.yml@v4.0.1
+    permissions:
+      contents: write
+      id-token: write
+  # A failed release still deploys, so it can't hold back a fix. The stamp then names the release before.
   dev:
-    if: github.ref == 'refs/heads/main'
+    needs: release
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
     permissions:
       id-token: write

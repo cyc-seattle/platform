@@ -322,7 +322,7 @@ describe("the Plan policies", () => {
       {
         collection: "financial_plans",
         action: "update",
-        fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at", "platform_version"],
+        fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at"],
       },
     ]);
   });

@@ -80,13 +80,12 @@ describe("the frozen-plans hook", () => {
   });
 
   describe("a draft Financial Plan", () => {
-    it("is frozen with the hook's engine version, stamped with who froze it and when", async () => {
-      const payload = { status: "frozen", platform_version: "1.4.0", frozen_by: "someone-else" };
+    it("is frozen, stamped with who froze it and when", async () => {
+      const payload = { status: "frozen", frozen_by: "someone-else" };
       await expect(
         check({ collection: "financial_plans", event: "update", payload, keys: ["draft"] }),
       ).resolves.toEqual({
         status: "frozen",
-        platform_version: "1.5.0+engine.abc",
         frozen_by: "planner",
         frozen_at: now,
       });

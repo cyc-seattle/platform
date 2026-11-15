@@ -14,6 +14,12 @@ set -euo pipefail
 # first buildx builder it can reach.
 unset DOCKER_HOST
 
+# backend stamps the planning engine with the latest release tag (stacks/backend/engine-files.ts), and
+# Actions checks out one commit with no tags.
+if [[ "$(git rev-parse --is-shallow-repository)" == true ]]; then
+  git fetch --quiet --unshallow --tags origin
+fi
+
 case "$PULUMI_STACK" in
   dev) projects=(smoke backend authentik) ;;
   prod) projects=(infra backend authentik) ;;

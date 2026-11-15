@@ -1406,7 +1406,7 @@ Step("a frozen Financial Plan", async () => {
   financialPlan = await p.frozenSet();
 });
 Step("they can't change the Financial Plan or any of its plans", async () => {
-  expectRefused(await theyWrite("PATCH", itemPath("financial_plans", financialPlan), { platform_version: "0.0.0" }));
+  expectRefused(await theyWrite("PATCH", itemPath("financial_plans", financialPlan), { fiscal_year: 2000 }));
   expectRefused(await theyWrite("PATCH", itemPath("plans", offering!["plan_id"]), { notes: ["Changed."] }));
   expectRefused(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: 1 }));
 });
