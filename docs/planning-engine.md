@@ -45,7 +45,7 @@ It returns:
 
 - `lines`: every cost and revenue line for the year, on its offering, product, program area, pool or
   the organization, by account. Amounts are positive cents, but for the credit when the indirect cost
-  rates recover more than the shared costs (see [Indirect costs](#indirect-costs)); the account's type
+  rates allocate more than the shared costs (see [Indirect costs](#indirect-costs)); the account's type
   says whether it's revenue or expense. Each has a `line_key`, and a `line_name` that says in plain words what it is.
   See [Line names](#line-names).
 - `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
@@ -356,8 +356,8 @@ changes another's indirect costs, or its director's bonus
 - The indirect costs are split over the pools' lines by their size, keeping each line's account and
   function, keyed `pool:<pool key>:<the original line key>`. So a program's P&L shows its indirect
   costs by pool and account.
-- What the rates don't recover of each pooled line stays on the organization's books, keyed
-  `unrecovered:<pool key>:<the original line key>`. When the rates recover more than the shared
+- What the rates leave unallocated of each pooled line stays on the organization's books, keyed
+  `unrecovered:<pool key>:<the original line key>`. When the rates allocate more than the shared
   costs, it's a credit there. Either way the organization's net is the same whatever the rates.
 - Non-program's offerings pay no indirect costs, so their P&L shows their own margin, and it stays
   with the organization.
@@ -424,8 +424,8 @@ Each line's `line_name` says what it is:
 - payroll tax is "Payroll tax"
 - a bonus is "Bonus: <role>", and its tax "Payroll tax on bonus: <role>"
 - an offering's indirect costs are "<pool> share: <the pooled line>", such as "G&A share: Payroll tax"
-- what the rates leave on the organization is "<pool> not recovered: <the pooled line>", or "<pool>
-  over-recovered: <the pooled line>" when they recover more
+- what the rates leave unallocated on the organization is "<pool> unallocated: <the pooled line>", or
+  "<pool> over-allocated: <the pooled line>" when they allocate more
 
 ### The organization's totals
 
@@ -440,7 +440,8 @@ every line:
 It gives operating revenue, expenses and net, then fundraising's, then capital, then the total:
 operating net plus fundraising net, less capital.
 
-Its `indirect` gives the shared costs, what the indirect cost rates recover of them, and what's left
-(below zero when they recover more). Its `full_recovery_rate` is the shared costs ÷ every program's
-offerings' MTDC: the one rate that would recover them all. A Plan Admin sets next year's rates from
+Its `indirect` gives the shared costs (`shared_cents`), what the indirect cost rates allocate of them
+(`recovered_cents`), and what they leave unallocated (`unrecovered_cents`, below zero when
+over-allocated). Its `full_recovery_rate` is the shared costs ÷ every program's offerings' MTDC: the
+one rate that would allocate them all. A Plan Admin sets next year's rates from
 it.

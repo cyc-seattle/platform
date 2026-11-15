@@ -13,7 +13,7 @@ import {
   position,
   product,
   rates,
-  recoverAll,
+  allocateAll,
   staffLevel,
   total,
 } from "./fixtures.ts";
@@ -169,7 +169,7 @@ describe("line names", () => {
         budgetLine({ name: "Office", amount_cents: 1000, cost_center_type: "pool", cost_center_key: ga.key }),
       ],
     });
-    const names = new Set(computePlan(recoverAll(data)).lines.map((l) => l.line_name));
+    const names = new Set(computePlan(allocateAll(data)).lines.map((l) => l.line_name));
     for (const name of [
       "Revenue",
       "Director: coaching",

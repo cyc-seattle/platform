@@ -5,7 +5,7 @@ import { Context } from "./context.ts";
 import { bookBudgetLines, bookLaborLines, CostCenterBooker } from "./lines.ts";
 import { mtdc } from "./measures.ts";
 import { bookPayrollTax } from "./payroll.ts";
-import { indirectCostRates, recoverIndirectCosts, type IndirectCosts } from "./pools.ts";
+import { indirectCostRates, allocateIndirectCosts, type IndirectCosts } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
 import { compareTerms, offeringTerms, type OfferingTerms } from "./terms.ts";
@@ -120,7 +120,7 @@ function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
   bookPayrollTax(ctx);
 
   const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.key, mtdc(ctx, o.key)]));
-  const indirect = recoverIndirectCosts(ctx);
+  const indirect = allocateIndirectCosts(ctx);
   const bonuses = bookBonuses(ctx, terms);
   const bonusByPosition = new Map<Id, number>();
   for (const b of bonuses) {
@@ -242,8 +242,8 @@ function organizationTotals(ctx: Context, lines: CostLine[], indirect: IndirectC
     total_cents: operating.net_cents + fundraising.net_cents - capital,
     indirect: {
       shared_cents: Math.round(indirect.shared),
-      recovered_cents: Math.round(indirect.recovered),
-      unrecovered_cents: Math.round(indirect.shared) - Math.round(indirect.recovered),
+      recovered_cents: Math.round(indirect.allocated),
+      unrecovered_cents: Math.round(indirect.shared) - Math.round(indirect.allocated),
       full_recovery_rate: indirect.full_recovery_rate,
     },
   };

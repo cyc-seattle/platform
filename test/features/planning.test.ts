@@ -255,7 +255,7 @@ Step("no offering pays the office costs", async () => {
 Step("the planner is warned that a program has no indirect cost rate", () => {
   expect(p.warned("no_indirect_cost_rate")).toBe(true);
 });
-Step("the organization's totals show {money} of shared costs not recovered", (_, money: string) => {
+Step("the organization's totals show {money} of unallocated indirect costs", (_, money: string) => {
   expect(p.out.organization.indirect.unrecovered_cents).toBe(cents(money));
 });
 Step("each offering pays {money} of the office costs", async (_, money: string) => {
