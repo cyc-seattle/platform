@@ -42,9 +42,6 @@ export function maxEnrollmentOf(offering: PlanOffering): number {
   return offering.capacity ?? enrollmentOf(offering);
 }
 
-/** `n` rounded up, so a share like 5.0000001 boats stays 5. */
-const ceil = (n: number) => Math.ceil(n - 1e-9);
-
 /** A block with its activities, its times, and what it's given. */
 interface Block {
   row: PlanActivityBlock;
@@ -58,8 +55,6 @@ interface Block {
   boats: PlanBlockBoats[];
   /** Each member's share of the block's costs, by its offering's sailors. */
   shares: Map<ScheduledActivity, number>;
-  /** How full its offerings are expected to be: their expected sailors over their most, at most 1. */
-  fill: number;
 }
 
 function sum(values: Iterable<number>): number {
@@ -170,7 +165,6 @@ export class Staffing {
       const total = sum([...byOffering.values()].map((own) => enrollment(own[0]!)));
       const share = (a: ScheduledActivity) =>
         (total > 0 ? enrollment(a) / total : 1 / byOffering.size) / byOffering.get(a.offering.id)!.length;
-      const most = sum([...byOffering.keys()].map((o) => this.ctx.maxEnrollment.get(o) ?? 0));
       result.set(id, {
         row,
         members: list,
@@ -183,7 +177,6 @@ export class Staffing {
         staff: staff.get(id) ?? [],
         boats: boats.get(id) ?? [],
         shares: new Map(list.map((a) => [a, share(a)])),
-        fill: most > 0 ? Math.min(1, total / most) : 1,
       });
     }
     return result;
@@ -305,26 +298,6 @@ export class Staffing {
     }
   }
 
-  /**
-   * The coaches a block pays for its expected sailors: Σ (each program's sailors ÷ its sailors per
-   * coach), rounded up, but never more than it's given. Salaried coaches on salary are always paid, so
-   * only the others are cut, each staff row by the same share. When a program has no sailors per
-   * coach, the block pays all it's given.
-   */
-  private coachesExpected(block: Block, programs: Map<Id, PlanProgram>): { coaches: number; share: number } {
-    const given = sum(block.staff.map((s) => s.count));
-    const salaried = sum(block.staff.filter((s) => s.position_key != null && s.pay !== "hourly").map((s) => s.count));
-    let load = 0;
-    for (const o of new Map(block.members.map((a) => [a.offering.id, a.offering])).values()) {
-      const perCoach = programs.get(o.product_id)?.sailors_per_coach;
-      if (perCoach == null || perCoach <= 0) return { coaches: given, share: 1 };
-      load += (this.ctx.enrollment.get(o.id) ?? 0) / perCoach;
-    }
-    const others = given - salaried;
-    const kept = Math.min(others, Math.max(0, ceil(load) - salaried));
-    return { coaches: salaried + kept, share: others > 0 ? kept / others : 1 };
-  }
-
   /** Books a cost on a block, split among its activities by their offerings' sailors. */
   private book(
     block: Block,
@@ -364,11 +337,7 @@ export class Staffing {
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     for (const list of groupBy(blocks, (b) => b.row.date).values()) {
       const chartered = list.flatMap((block) =>
-        block.boats.flatMap((b) => {
-          // The boats the expected sailors use, as for its own boats.
-          const n = ceil((b.chartered ?? 0) * block.fill);
-          return n > 0 ? [{ block, id: b.boat_class_id, n }] : [];
-        }),
+        block.boats.flatMap((b) => ((b.chartered ?? 0) > 0 ? [{ block, id: b.boat_class_id, n: b.chartered! }] : [])),
       );
       for (const [id, uses] of groupBy(chartered, (c) => c.id)) {
         const name = classes.get(id)?.name ?? id;
@@ -506,14 +475,11 @@ export class Staffing {
     const boatClasses = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const boatRates = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r]));
     const given = new Map<ScheduledActivity, { coaches: number; boats: number }>();
-    const tripCoaches = new Map<Id, number>();
 
     for (const block of byDate(blocks)) {
       const scope = { plan_id: block.row.plan_id, date: block.row.date };
       const paidHours = block.paid_minutes / 60;
       const waterHours = block.on_water_minutes / 60;
-      const expected = this.coachesExpected(block, programs);
-      tripCoaches.set(block.row.id, expected.coaches);
 
       const book = (type: CostType, amount: number, line: string, name: string, explanation: string): void =>
         this.book(block, ctx.costAccount(type), amount, line, name, explanation, 1, type === "coach_wages");
@@ -524,7 +490,7 @@ export class Staffing {
         if (s.position_key != null) {
           const position = positions.get(s.position_key);
           if (s.pay === "hourly") {
-            const hours = s.count * expected.share * paidHours;
+            const hours = s.count * paidHours;
             const rate = position?.hourly_coaching_rate_cents;
             if (position !== undefined && rate == null) {
               this.warnOnce(
@@ -569,16 +535,10 @@ export class Staffing {
           continue;
         }
         if (level.pay_type !== "volunteer") {
-          wages += s.count * expected.share * paidHours * (level.hourly_rate_cents ?? 0);
+          wages += s.count * paidHours * (level.hourly_rate_cents ?? 0);
         }
       }
-      book(
-        "coach_wages",
-        wages,
-        "coach_wages",
-        "Coach wages",
-        "Coaches the expected sailors need × paid hours × each one's hourly rate",
-      );
+      book("coach_wages", wages, "coach_wages", "Coach wages", "Staff × paid hours × each one's hourly rate");
 
       for (const b of block.boats) {
         const rate = boatRates.get(b.boat_class_id);
@@ -587,12 +547,10 @@ export class Staffing {
         this.book(
           block,
           boatClass?.account_id ?? ctx.costAccount("boat_maintenance"),
-          ceil(b.count * block.fill) *
-            waterHours *
-            (rate.maintenance_per_boat_hour_cents + (rate.fuel_per_hour_cents ?? 0)),
+          b.count * waterHours * (rate.maintenance_per_boat_hour_cents + (rate.fuel_per_hour_cents ?? 0)),
           `boats:${b.boat_class_id}`,
           `Boats: ${boatClass?.name ?? "boats"}`,
-          "The organization's boats the expected sailors use × on-water hours × the class's fuel and upkeep",
+          "The organization's boats × on-water hours × the class's fuel and upkeep",
         );
       }
 
@@ -605,7 +563,7 @@ export class Staffing {
 
     this.bookCharters(byDate(blocks));
 
-    this.bookTrips(blocks, scheduled, tripCoaches);
+    this.bookTrips(blocks, scheduled);
 
     return {
       coaching,
@@ -629,19 +587,18 @@ export class Staffing {
   }
 
   /**
-   * A trip's coaches each fly and stay; the miles are driven once. Its coaches are the ones its
-   * expected sailors need on the block of its busiest travel day.
+   * A trip's coaches each fly and stay; the miles are driven once. Its coaches are the staff on the
+   * block of its busiest travel day.
    */
-  private bookTrips(blocks: Map<Id, Block>, scheduled: ScheduledActivity[], coachesOf: Map<Id, number>): void {
+  private bookTrips(blocks: Map<Id, Block>, scheduled: ScheduledActivity[]): void {
     const { ctx } = this;
     for (const trip of ctx.data.plan_trips) {
       const offering = ctx.offeringsById.get(trip.offering_id);
       if (offering === undefined) continue;
       const travel = (a: ScheduledActivity) => a.kind === "travel" && a.trip?.id === trip.id;
       const staffed = [...blocks.values()].filter((b) => b.members.some(travel));
-      const coaches = Math.max(0, ...staffed.map((b) => coachesOf.get(b.row.id) ?? 0));
-      const given = Math.max(0, ...staffed.map((b) => sum(b.staff.map((s) => s.count))));
-      if (given === 0 && ((trip.airfare_cents ?? 0) > 0 || (trip.nights ?? 0) > 0)) {
+      const coaches = Math.max(0, ...staffed.map((b) => sum(b.staff.map((s) => s.count))));
+      if (coaches === 0 && ((trip.airfare_cents ?? 0) > 0 || (trip.nights ?? 0) > 0)) {
         const first = scheduled
           .filter(travel)
           .map((a) => a.date)

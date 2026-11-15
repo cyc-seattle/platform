@@ -64,8 +64,8 @@ unclear, or two disagree, ask the planner rather than guess.
 ## 3. Write the blocks
 
 Allocate for each offering's most sailors, not the number expected: a block holds what a full
-program would use. The P&L costs only what the expected sailors use, so allocating for a full program
-doesn't raise the costs.
+program would use, so the checks pass with every offering full. The P&L costs every coach and boat a
+block is given, so give a block no more than a full program needs.
 
 For each date, in the part of the plan you're allocating:
 
