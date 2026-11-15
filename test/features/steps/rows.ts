@@ -74,6 +74,13 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     covers_id: await fresh("qualifications"),
   }),
   boat_classes: async () => ({ id: randomUUID(), name: `Boat ${key("boat")}`, max_capacity: 1 }),
+  staff_roles: async () => ({ id: randomUUID(), name: `Role ${key("role")}`, sort: 1 }),
+  staff_levels: async () => ({
+    id: randomUUID(),
+    name: `Level ${key("level")}`,
+    role_id: row["staff_roles"],
+    grade: "standard",
+  }),
   // A boat is the subtype of an asset of kind `sailboat` or `powerboat`, and each has its own.
   assets: async () => ({ id: randomUUID(), kind: "other", name: `Trailer ${key("asset")}` }),
   boats: async () => ({
@@ -301,8 +308,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     status: "draft",
   }),
   plan_pools: async (fixed) => inPlan(fixed, { name: `Pool ${key("pool")}` }),
-  plan_staff_levels: async (fixed) =>
-    inPlan(fixed, { name: `Level ${key("level")}`, pay_type: "hourly", hourly_rate_cents: 2_500 }),
+  plan_staff_levels: async (fixed) => inPlan(fixed, { staff_level_id: row["staff_levels"], hourly_rate_cents: 2_500 }),
   plan_offerings: async (fixed) =>
     inPlan(fixed, {
       product_id: row["products"],
@@ -315,7 +321,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   plan_programs: async (fixed) =>
     inPlan(fixed, {
       product_id: row["products"],
-      staff_level_key: samePlan("plan_staff_levels", fixed)?.["key"] ?? null,
+      staff_level_id: row["staff_levels"],
       sailors_per_coach: 6,
       notes: ["Add a Junior Instructor when there are more than 12 sailors."],
     }),
@@ -335,7 +341,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   plan_block_staff: async (fixed) =>
     inPlan(fixed, {
       block_id: samePlanId("plan_activity_blocks", fixed),
-      staff_level_key: samePlan("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
+      staff_level_id: row["staff_levels"],
       count: 2,
     }),
   plan_block_boats: async (fixed) =>
@@ -349,7 +355,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     inPlan(fixed, {
       name: `Training ${key("labor")}`,
       cost_center_type: "org",
-      staff_level_key: samePlan("plan_staff_levels", fixed)?.["key"] ?? randomUUID(),
+      staff_level_id: row["staff_levels"],
       hours: 10,
       account_id: row["accounts"],
     }),
@@ -420,14 +426,6 @@ function samePlanRow(collection: string, fixed: Row): Row | undefined {
   return fixture[`${collection}@${planStates.get(planOf(fixed)) ?? "draft"}`];
 }
 
-/**
- * The same, or the frozen one when the draft's copy isn't made yet, for a link by key, which a copy
- * keeps.
- */
-function samePlan(collection: string, fixed: Row): Row | undefined {
-  return samePlanRow(collection, fixed) ?? fixture[`${collection}@frozen`];
-}
-
 function samePlanId(collection: string, fixed: Row): unknown {
   return samePlanRow(collection, fixed)?.["id"];
 }
@@ -447,6 +445,8 @@ export const changes: Record<string, () => Row> = {
   qualifications: () => ({ name: `Qualification ${key("qualification")}` }),
   qualification_covers: () => ({ covers_id: row["qualifications"] }),
   boat_classes: () => ({ max_capacity: 2 }),
+  staff_roles: () => ({ name: `Role ${key("role")}` }),
+  staff_levels: () => ({ grade: "senior" }),
   assets: () => ({ name: `Asset ${runId}` }),
   boats: () => ({ sail_number: key("sail") }),
   links: () => ({ note: `Changed ${runId}` }),
@@ -537,6 +537,8 @@ async function createRows(): Promise<void> {
     ["qualifications", () => ({})],
     ["qualification_covers", () => ({})],
     ["boat_classes", () => ({})],
+    ["staff_roles", () => ({})],
+    ["staff_levels", () => ({})],
     ["assets", () => ({})],
     ["boats", () => ({})],
     ["organizations", () => ({})],

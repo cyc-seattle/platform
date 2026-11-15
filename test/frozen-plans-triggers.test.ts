@@ -16,6 +16,7 @@ import {
   fingerprint,
   IN_FORCE_NOT_ARCHIVED,
   installTriggers,
+  seedStaffLevels,
   NEEDS_OPERATIONS,
   ONE_PER_AREA,
   ONE_PER_DATE,
@@ -48,7 +49,7 @@ interface Relation {
   schema?: { on_delete?: string } | null;
 }
 
-const schemas = ["core", "directory", "planning"].map((name) => ({
+const schemas = ["core", "directory", "hr", "planning"].map((name) => ({
   name,
   schema: yaml.load(fs.readFileSync(path.resolve(import.meta.dirname, `../schemas/${name}.yaml`), "utf8")) as {
     fields: Field[];
@@ -336,6 +337,39 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
         expect(tuple!.t_infomask & SHARE).toBe(SHARE);
         await tx.rollback();
       });
+    });
+
+    it("let the staff levels migration's seed point a frozen plan's rows at their levels, once", async () => {
+      const { operations, frozen, product, draftSet } = await plans(db, 2104);
+      // As the migration (cyc0018) leaves them: the rows, with no level yet, and the seed.
+      const [rate, settings] = [randomUUID(), randomUUID()];
+      await db.exec(`
+        ALTER TABLE plan_staff_levels DISABLE TRIGGER USER;
+        ALTER TABLE plan_programs DISABLE TRIGGER USER;
+        INSERT INTO plan_staff_levels (id, plan_id, key, hourly_rate_cents) VALUES ('${rate}', '${operations}', gen_random_uuid(), 3000);
+        INSERT INTO plan_programs (id, plan_id, key, product_id) VALUES ('${settings}', '${frozen}', gen_random_uuid(), '${product}');
+        ALTER TABLE plan_staff_levels ENABLE TRIGGER USER;
+        ALTER TABLE plan_programs ENABLE TRIGGER USER;
+        CREATE TABLE cyc_seed_staff_levels (name text PRIMARY KEY, role text, grade text, role_sort integer);
+        CREATE TABLE cyc_seed_staff_level_rows (collection text, id uuid, level text, PRIMARY KEY (collection, id));
+        INSERT INTO cyc_seed_staff_levels VALUES ('Head Instructor', 'Instructor', 'head', 1), ('Coach', 'Coach', 'standard', 2);
+        INSERT INTO cyc_seed_staff_level_rows VALUES ('plan_staff_levels', '${rate}', 'Head Instructor'),
+          ('plan_programs', '${settings}', 'Head Instructor');
+      `);
+      const seed = () => db.transaction((tx) => seedStaffLevels(connect(tx)));
+      expect(await seed()).toContain(draftSet);
+      expect(await seed()).toEqual([]);
+      const { rows: levels } = await db.query<Values>(
+        `SELECT l.id, l.name, l.grade, r.name AS role, r.sort FROM staff_levels l JOIN staff_roles r ON r.id = l.role_id ORDER BY r.sort`,
+      );
+      expect(levels.map(({ name, grade, role, sort }) => ({ name, grade, role, sort }))).toEqual([
+        { name: "Head Instructor", grade: "head", role: "Instructor", sort: 1 },
+        { name: "Coach", grade: "standard", role: "Coach", sort: 2 },
+      ]);
+      expect((await w.read("plan_staff_levels", rate))?.["staff_level_id"]).toBe(levels[0]!["id"]);
+      expect((await w.read("plan_programs", settings))?.["staff_level_id"]).toBe(levels[0]!["id"]);
+      // The triggers are back on.
+      expect(await w.update("plan_staff_levels", rate, { hourly_rate_cents: 1 })).toEqual(refusal(REFUSED));
     });
 
     it("refuse to move a row to another plan", async () => {

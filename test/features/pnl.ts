@@ -502,6 +502,11 @@ export class PnlPlan {
       boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
       assets: await read("assets", { id: anyOf(this.assets) }),
       boats: await read("boats", { asset_id: anyOf(this.assets) }),
+      // The plans' levels, whose names the engine gives its labor lines. It doesn't sort them.
+      staff_roles: [],
+      staff_levels: await read("staff_levels", {
+        id: anyOf((rows["plan_staff_levels"] ?? []).map((l) => String(l["staff_level_id"]))),
+      }),
       plans: await read("plans", { id: { _in: plans } }),
       ...rows,
     } as unknown as PlanData;

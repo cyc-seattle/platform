@@ -4,7 +4,7 @@ tags: [architecture, planning, directus]
 
 ## Planning: schema
 
-Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, and `schemas/directory.yaml` the organizations it belongs to. `schemas/planning.yaml` declares Financial Plans, the plans they hold, every row a plan holds, and the date each Financial Plan is active from. Baselines and actuals are designed here, but not built yet.
+Entity-relationship diagrams for the program planning and financial model app. `schemas/core.yaml` declares the `core` catalog, `schemas/hr.yaml` the [staff levels](hr-schema.md) in it, and `schemas/directory.yaml` the organizations it belongs to. `schemas/planning.yaml` declares Financial Plans, the plans they hold, every row a plan holds, and the date each Financial Plan is active from. Baselines and actuals are designed here, but not built yet.
 
 A Financial Plan holds what planners enter, and the results the [planning engine](planning-engine.md) calculates from it ([A Financial Plan's results](#a-financial-plans-results)). A draft's are worked out again a moment after each change to it. A frozen one's are worked out when it's frozen, and never change.
 
@@ -263,6 +263,9 @@ erDiagram
     plan_activity_blocks ||--o{ plan_block_staff : "staffed by"
     plan_activity_blocks ||--o{ plan_block_boats : sails
     boat_classes ||--o{ plan_block_boats : "boat class"
+    staff_levels |o--o{ plan_programs : coaches
+    staff_levels |o--o{ plan_block_staff : "staff at"
+    staff_levels |o--o{ plan_labor_lines : "does the work"
     plan_offerings ||--o{ plan_budget_lines : "direct lines"
     plan_offerings ||--o{ plan_labor_lines : "direct labor"
     accounts ||--o{ plan_budget_lines : "booked to"
@@ -270,7 +273,7 @@ erDiagram
 
     plan_programs {
         uuid product_id FK "the program"
-        uuid staff_level_key "operations key"
+        uuid staff_level_id FK
         decimal sailors_per_coach
         json notes "the planner's short notes"
     }
@@ -306,7 +309,7 @@ erDiagram
     }
     plan_block_staff {
         uuid block_id FK
-        uuid staff_level_key "operations key, or"
+        uuid staff_level_id FK "or"
         uuid position_key "operations key"
         int count
         string pay "salary|hourly, for a position"
@@ -329,7 +332,7 @@ erDiagram
         string name
         string cost_center_type "offering|product|program_area|pool|org"
         uuid cost_center_key
-        uuid staff_level_key "operations key"
+        uuid staff_level_id FK
         decimal hours
         uuid account_id FK
         string function
@@ -372,6 +375,7 @@ A budget line counts in its `fiscal_year`. Capital belongs in the Operations Pla
 erDiagram
     plans ||--o| plan_rates : contains
     plans ||--o{ plan_staff_levels : contains
+    staff_levels ||--o{ plan_staff_levels : "rate for"
     plans ||--o{ plan_salaried_positions : contains
     plans ||--o{ plan_pools : contains
     plans ||--o{ plan_bonus_owners : contains
@@ -395,9 +399,8 @@ erDiagram
         int mileage_rate_cents
     }
     plan_staff_levels {
-        string name
-        string pay_type "hourly|volunteer"
-        int hourly_rate_cents
+        uuid staff_level_id FK
+        int hourly_rate_cents "0 for a volunteer"
     }
     plan_salaried_positions {
         string name
@@ -461,7 +464,7 @@ erDiagram
     }
 ```
 
-`plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position and boat class also has one rate for the year, so each has a single row. A boat class's rates are its fuel and upkeep for each hour one of the organization's boats is on the water, and what one costs to charter for a day.
+`plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position and boat class also has one rate for the year, so each has a single row. The staff levels themselves are in the [catalog](hr-schema.md): a `plan_staff_levels` row is one level's hourly rate, $0 for a volunteer, and a Program Plan's program, block staff, or labor line picks its level from the catalog. The engine prices it at the rate in the same Financial Plan's Operations Plan, and warns when there's none. A boat class's rates are its fuel and upkeep for each hour one of the organization's boats is on the water, and what one costs to charter for a day.
 
 The plans don't say how many boats the organization has: the [asset list](#core-catalog) does, the same for every plan. The engine warns when the blocks give out more of the organization's boats of a class at once than it has that day; chartered boats don't count.
 

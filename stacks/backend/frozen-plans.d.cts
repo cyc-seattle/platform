@@ -52,6 +52,12 @@ export function installTriggers(
   db: Database,
 ): Promise<{ missing: string[]; installed: boolean }>;
 
+/**
+ * Adds the roles and levels the staff levels migration (cyc0018) listed, and points each row it
+ * listed at its level, once the schema apply has added them. Returns the drafts it changed.
+ */
+export function seedStaffLevels(db: Database): Promise<string[]>;
+
 export interface TriggerStatus {
   /** The installed triggers' {@link fingerprint}, or null when there are none. */
   fingerprint: string | null;

@@ -25,6 +25,9 @@ named as the schema names them, plus:
 
 - `fiscal_year`, the plan year. Fiscal year 2027 ends in calendar year 2027 and starts in the
   organization's `fiscal_year_start_month`.
+- `staff_roles` and `staff_levels`: the [staff levels](hr-schema.md), whose names the engine gives
+  labor lines. A plan row names its level by `staff_level_id`, and the Operations Plan's
+  `plan_staff_levels` gives each level's rate.
 - `assets` and `boats`: the asset list, which says how many boats of each class, sailboats and
   powerboats, the organization has on each day.
 - `plans`: the plans being calculated, so the engine can tell which plan each row is in.
@@ -210,7 +213,7 @@ Allocation warnings:
   `sailors_per_coach`, in its `plan_programs` row: the block
   needs Σ (each program's sailors ÷ its sailors per coach) coaches. Every coach on the block counts,
   at any staff level, and so does a salaried position: the ratio is required, and a program's
-  `staff_level_key` is for planning and cost, not a hard rule (cyc-seattle/sail-team#82). The block is
+  `staff_level_id` is for planning and cost, not a hard rule (cyc-seattle/sail-team#82). The block is
   over when it needs more coaches than it has. Qualifications aren't checked (#208). Its boats take Σ (boats, the organization's, chartered and the sailors'
   own, × the class's `max_capacity`); a coach boat's class takes 0. A block whose activities don't use boats has no boat limit.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
@@ -224,7 +227,9 @@ Data warnings about blocks:
 - `no_charter_rate`: a block's chartered boats, whose class has no `charter_per_day_cents`.
   Results frozen before it was renamed call it `no_sailors_per_boat`, and may also have
   `no_fleet_quantity`, which the engine no longer gives.
-- `no_hourly_rate`, `trip_without_staff`, `unknown_block`, `unknown_staff_level`,
+- `unknown_staff_level`: a block's staff, or a labor line, at a staff level with no rate in the
+  Operations Plan. They cost nothing.
+- `no_hourly_rate`, `trip_without_staff`, `unknown_block`,
   and `block_date_mismatch`, an activity in a block on another date.
 
 ### Revenue
@@ -243,7 +248,7 @@ Data warnings about blocks:
 ### Budget and labor lines
 
 - A budget line counts only in its `fiscal_year`. Equipment is a cost in the year it's bought.
-- A labor line costs its hours × its staff level's rate, and is a wage.
+- A labor line costs its hours × its staff level's rate, and is a wage. A volunteer's rate is $0.
 - A cost on a product, or on a program area, is divided among its offerings that year by MTDC. If it
   has no offerings that year, the cost stays where it is and the engine shows a warning.
 - A budget line on an asset account is capital. It's the organization's, so a capital line on an

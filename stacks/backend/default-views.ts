@@ -92,6 +92,10 @@ export const defaultViews: DefaultView[] = [
     fields: ["organization_id", "cost_type", "account_id"],
   },
 
+  // HR
+  { collection: "staff_roles", sort: ["sort", "name"], fields: ["name"] },
+  { collection: "staff_levels", sort: ["role_id.sort", "name"], fields: ["name", "role_id", "grade"] },
+
   // Directory
   { collection: "organizations", sort: ["name"], fields: ["name", "short_name", "kind", "website"] },
   { collection: "venues", sort: ["name"], fields: ["name", "organization_id", "address"] },
@@ -157,7 +161,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_programs",
     sort: ["plan_id.financial_plan_id.name", "product_id.name"],
-    fields: ["product_id", "plan_id", "sailors_per_coach"],
+    fields: ["product_id", "plan_id", "staff_level_id", "sailors_per_coach"],
   },
   {
     collection: "plan_trips",
@@ -177,7 +181,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_block_staff",
     sort: ["block_id.date", "block_id.name"],
-    fields: ["block_id", "count", "pay", "plan_id"],
+    fields: ["block_id", "staff_level_id", "count", "pay", "plan_id"],
   },
   {
     collection: "plan_block_boats",
@@ -187,7 +191,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_labor_lines",
     sort: ["plan_id.financial_plan_id.name", "name"],
-    fields: ["name", "plan_id", "cost_center_type", "hours", "account_id"],
+    fields: ["name", "plan_id", "cost_center_type", "staff_level_id", "hours", "account_id"],
   },
   {
     collection: "plan_budget_lines",
@@ -211,8 +215,8 @@ export const defaultViews: DefaultView[] = [
   },
   {
     collection: "plan_staff_levels",
-    sort: ["plan_id.financial_plan_id.name", "name"],
-    fields: ["name", "plan_id", "pay_type", "hourly_rate_cents"],
+    sort: ["plan_id.financial_plan_id.name", "staff_level_id.role_id.sort", "staff_level_id.name"],
+    fields: ["staff_level_id", "plan_id", "hourly_rate_cents"],
   },
   {
     collection: "plan_salaried_positions",

@@ -63,13 +63,15 @@ export function fieldsIn(schemas: LoadedSchema[], collection: string): string[] 
  */
 const ADMIN_ONLY: Record<string, string[]> = { people: ["directus_user_id"] };
 
-/** The catalog's collections: every one in the core schema. */
+/** The catalog's collections: every one in the core and HR schemas. */
 export function catalogCollections(schemas: LoadedSchema[]): string[] {
-  const core = schemas.find(({ name }) => name === "core")?.schema;
-  if (core === undefined) {
-    throw new Error("backend: expected a schemas/core.yaml to find the catalog's collections");
-  }
-  return collectionsInSchema(core);
+  return ["core", "hr"].flatMap((name) => {
+    const schema = schemas.find((loaded) => loaded.name === name)?.schema;
+    if (schema === undefined) {
+      throw new Error(`backend: expected a schemas/${name}.yaml to find the catalog's collections`);
+    }
+    return collectionsInSchema(schema);
+  });
 }
 
 /** The directory's collections: every one in the directory schema. Only an admin changes them. */

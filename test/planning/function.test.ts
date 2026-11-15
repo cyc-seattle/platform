@@ -24,7 +24,7 @@ describe("function", () => {
     data.plan_staff_levels = [level];
     data.plan_rates = [rates({ payroll_tax_rate: 0.1 })];
     data.plan_labor_lines = [
-      laborLine(level.key, { cost_center_type: "offering", cost_center_key: o.key, hours: 100 }),
+      laborLine(level.staff_level_id, { cost_center_type: "offering", cost_center_key: o.key, hours: 100 }),
     ];
     const out = computePlan(data);
     const wage = out.lines.find((l) => l.line_key.startsWith("labor:"));

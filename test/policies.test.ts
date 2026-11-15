@@ -157,6 +157,8 @@ describe("the Catalog policies", () => {
     "programs",
     "catalog_offerings",
     "organization_cost_accounts",
+    "staff_roles",
+    "staff_levels",
   ];
   const directory = ["organizations", "venues"];
 

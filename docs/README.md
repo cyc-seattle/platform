@@ -15,6 +15,7 @@ How CYC's shared Google Cloud platform is built and run, for anyone who works on
 ## Data model
 
 - [CRM: schema and permission model](crm-schema.md)
+- [HR: schema](hr-schema.md): staff roles and levels
 - [Planning: schema](planning-schema.md)
 - [Planning: engine](planning-engine.md): how a plan's numbers are calculated
 

@@ -41,7 +41,7 @@ describe("staffing", () => {
   it("pays a block's staff for its paid hours at their level's rate", () => {
     const level = staffLevel({ hourly_rate_cents: 2500 });
     const { data, off } = onePractice(
-      { staff: [{ staff_level_key: level.key, count: 3 }] },
+      { staff: [{ staff_level_id: level.staff_level_id, count: 3 }] },
       { plan_staff_levels: [level] },
     );
     const out = computePlan(data);
@@ -51,8 +51,11 @@ describe("staffing", () => {
   });
 
   it("pays volunteers nothing", () => {
-    const level = staffLevel({ pay_type: "volunteer" });
-    const { data } = onePractice({ staff: [{ staff_level_key: level.key, count: 2 }] }, { plan_staff_levels: [level] });
+    const level = staffLevel({ hourly_rate_cents: 0 });
+    const { data } = onePractice(
+      { staff: [{ staff_level_id: level.staff_level_id, count: 2 }] },
+      { plan_staff_levels: [level] },
+    );
     const out = computePlan(data);
     expect(total(out, { line: "coach_wages" })).toBe(0);
     expect(out.activities[0]?.coaches).toBe(2);
@@ -99,7 +102,7 @@ describe("staffing", () => {
         plan_offerings: [x, y],
         plan_activities: [ax, ay],
         plan_staff_levels: [level],
-        ...block([ax, ay], { staff: [{ staff_level_key: level.key }] }),
+        ...block([ax, ay], { staff: [{ staff_level_id: level.staff_level_id }] }),
       }),
     );
     // 1 coach × (3 h + 30 min + 30 min) × 2000¢
@@ -121,7 +124,7 @@ describe("staffing", () => {
         plan_offerings: [x, y],
         plan_activities: [ax, ay],
         plan_staff_levels: [level],
-        ...block([ax, ay], { staff: [{ staff_level_key: level.key }] }),
+        ...block([ax, ay], { staff: [{ staff_level_id: level.staff_level_id }] }),
       }),
     );
     expect(total(out, { line: "coach_wages", cost_center_key: x.key })).toBe(3600);
@@ -145,7 +148,7 @@ describe("staffing", () => {
         plan_offerings: [x, y],
         plan_activities: acts,
         plan_staff_levels: [level],
-        ...block(acts, { staff: [{ staff_level_key: level.key }] }),
+        ...block(acts, { staff: [{ staff_level_id: level.staff_level_id }] }),
       }),
     );
     // 1 coach × 2 h × 2000¢, half to each offering.
@@ -300,8 +303,8 @@ describe("staffing", () => {
   });
 
   describe("capacity", () => {
-    const L1 = staffLevel({ name: "Level 1 Instructor" });
-    const L2 = staffLevel({ name: "Level 2 Instructor" });
+    const L1 = staffLevel();
+    const L2 = staffLevel();
     const director = position({ name: "Sailing Director" });
 
     function guppies(sailors: number, given: Given, perCoach = 10) {
@@ -310,7 +313,7 @@ describe("staffing", () => {
       const a = activity(off.id, { uses_boats: false });
       return emptyPlan({
         products: [p],
-        plan_programs: [program(p.id, { staff_level_key: L1.key, sailors_per_coach: perCoach })],
+        plan_programs: [program(p.id, { staff_level_id: L1.staff_level_id, sailors_per_coach: perCoach })],
         plan_offerings: [off],
         plan_activities: [a],
         plan_staff_levels: [L1, L2],
@@ -320,7 +323,7 @@ describe("staffing", () => {
     }
 
     it("warns when a block has more sailors than its coaches are enough for", () => {
-      const out = computePlan(guppies(14, { staff: [{ staff_level_key: L1.key }] }));
+      const out = computePlan(guppies(14, { staff: [{ staff_level_id: L1.staff_level_id }] }));
       expect(out.warnings).toContainEqual(
         expect.objectContaining({
           code: "over_capacity",
@@ -328,12 +331,12 @@ describe("staffing", () => {
           message: "Guppies Week 2 is for up to 14 sailors, but has enough coaches for only 10",
         }),
       );
-      expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
+      expect(codes(guppies(10, { staff: [{ staff_level_id: L1.staff_level_id }] }))).not.toContain("over_capacity");
     });
 
     it("counts a coach at another staff level, since only the ratio is required", () => {
-      expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
-      const out = computePlan(guppies(14, { staff: [{ staff_level_key: L2.key }] }));
+      expect(codes(guppies(10, { staff: [{ staff_level_id: L2.staff_level_id }] }))).not.toContain("over_capacity");
+      const out = computePlan(guppies(14, { staff: [{ staff_level_id: L2.staff_level_id }] }));
       expect(out.warnings.map((w) => w.message)).toContain(
         "Guppies Week 2 is for up to 14 sailors, but has enough coaches for only 10",
       );
@@ -355,8 +358,8 @@ describe("staffing", () => {
         emptyPlan({
           products: [g, m],
           plan_programs: [
-            program(g.id, { staff_level_key: L1.key, sailors_per_coach: 10 }),
-            program(m.id, { staff_level_key: L2.key, sailors_per_coach: 10 }),
+            program(g.id, { staff_level_id: L1.staff_level_id, sailors_per_coach: 10 }),
+            program(m.id, { staff_level_id: L2.staff_level_id, sailors_per_coach: 10 }),
           ],
           plan_offerings: [og, om],
           plan_activities: acts,
@@ -364,10 +367,13 @@ describe("staffing", () => {
           plan_salaried_positions: [director],
           ...block(acts, { staff }),
         });
-      expect(codes(data([{ staff_level_key: L1.key, count: 2 }]))).not.toContain("over_capacity");
-      expect(codes(data([{ staff_level_key: L1.key }, { position_key: director.key }]))).not.toContain("over_capacity");
+      expect(codes(data([{ staff_level_id: L1.staff_level_id, count: 2 }]))).not.toContain("over_capacity");
+      expect(codes(data([{ staff_level_id: L1.staff_level_id }, { position_key: director.key }]))).not.toContain(
+        "over_capacity",
+      );
       expect(
-        computePlan(data([{ staff_level_key: L2.key }])).warnings.find((w) => w.code === "over_capacity")?.message,
+        computePlan(data([{ staff_level_id: L2.staff_level_id }])).warnings.find((w) => w.code === "over_capacity")
+          ?.message,
       ).toMatch(/ are for up to 20 sailors, but have enough coaches for only 10$/);
     });
 
@@ -378,13 +384,13 @@ describe("staffing", () => {
       const data = emptyPlan({
         products: [g, m],
         plan_programs: [
-          program(g.id, { staff_level_key: L1.key, sailors_per_coach: 10 }),
-          program(m.id, { staff_level_key: L1.key, sailors_per_coach: 5 }),
+          program(g.id, { staff_level_id: L1.staff_level_id, sailors_per_coach: 10 }),
+          program(m.id, { staff_level_id: L1.staff_level_id, sailors_per_coach: 5 }),
         ],
         plan_offerings: [og, om],
         plan_activities: acts,
         plan_staff_levels: [L1],
-        ...block(acts, { staff: [{ staff_level_key: L1.key, count: 1 }] }),
+        ...block(acts, { staff: [{ staff_level_id: L1.staff_level_id, count: 1 }] }),
       });
       expect(computePlan(data).warnings.find((w) => w.code === "over_capacity")?.message).toMatch(
         / are for up to 10 sailors, but have enough coaches for only 6$/,
@@ -394,7 +400,7 @@ describe("staffing", () => {
     });
 
     it("warns about a program with no settings, and doesn't check its sailors against staff", () => {
-      const data = guppies(14, { staff: [{ staff_level_key: L1.key }] });
+      const data = guppies(14, { staff: [{ staff_level_id: L1.staff_level_id }] });
       data.plan_programs = [];
       expect(codes(data)).toEqual(expect.arrayContaining(["no_program_settings"]));
       expect(codes(data)).not.toContain("over_capacity");
@@ -402,7 +408,7 @@ describe("staffing", () => {
 
     it("warns when a block has more sailors than its boats hold, counting the boats sailors bring", () => {
       const data = guppies(14, {
-        staff: [{ staff_level_key: L1.key, count: 2 }],
+        staff: [{ staff_level_id: L1.staff_level_id, count: 2 }],
         boats: [{ boat_class_id: "sailqube", count: 5 }],
       });
       data.plan_activities[0]!.uses_boats = true;
@@ -420,7 +426,10 @@ describe("staffing", () => {
     });
 
     it("warns when a class has no max capacity", () => {
-      const data = guppies(1, { staff: [{ staff_level_key: L1.key }], boats: [{ boat_class_id: "x", count: 1 }] });
+      const data = guppies(1, {
+        staff: [{ staff_level_id: L1.staff_level_id }],
+        boats: [{ boat_class_id: "x", count: 1 }],
+      });
       data.plan_activities[0]!.uses_boats = true;
       data.boat_classes = [{ id: "x", name: "X", max_capacity: null, footprint_sq_ft: null }];
       expect(codes(data)).toContain("no_max_capacity");
@@ -574,12 +583,12 @@ describe("staffing", () => {
       plan_activities: [travel],
       plan_staff_levels: [level],
       plan_rates: [rates({ lodging_per_night_cents: 10_000, mileage_rate_cents: 70 })],
-      ...block([travel], { staff: [{ staff_level_key: level.key, count: 2 }] }),
+      ...block([travel], { staff: [{ staff_level_id: level.staff_level_id, count: 2 }] }),
     });
     // 2 × 30000 + 2 × 2 × 10000 + 100 × 70
     expect(total(computePlan(data), { line: "trip", account_id: A.travel })).toBe(107_000);
     // Both coaches travel, though the 4 sailors expected need only one of them, at one to every 4.
-    data.plan_programs = [program(p.id, { staff_level_key: level.key, sailors_per_coach: 4 })];
+    data.plan_programs = [program(p.id, { staff_level_id: level.staff_level_id, sailors_per_coach: 4 })];
     expect(total(computePlan(data), { line: "trip" })).toBe(107_000);
     data.plan_programs = [];
     data.plan_block_staff = [];
@@ -605,15 +614,15 @@ describe("staffing", () => {
       plan_activities: [regatta, travel],
       plan_staff_levels: [level],
       ...blocks(
-        block([regatta], { staff: [{ staff_level_key: level.key, count: 3 }] }),
-        block([travel], { staff: [{ staff_level_key: level.key, count: 1 }] }),
+        block([regatta], { staff: [{ staff_level_id: level.staff_level_id, count: 3 }] }),
+        block([travel], { staff: [{ staff_level_id: level.staff_level_id, count: 1 }] }),
       ),
     });
     expect(total(computePlan(data), { line: "trip" })).toBe(30_000);
   });
 
   it("names the plan and the date of a warning about one block's rows", () => {
-    const { data } = onePractice({ staff: [{ staff_level_key: "missing" }] });
+    const { data } = onePractice({ staff: [{ staff_level_id: "missing" }] });
     expect(computePlan(data).warnings).toContainEqual(
       expect.objectContaining({ code: "unknown_staff_level", category: "data", plan_id: "v1", date: "2027-06-01" }),
     );
@@ -631,7 +640,7 @@ describe("a block costs what it's given and is checked at its most sailors", () 
     const a = activity(off.id);
     const data = emptyPlan({
       products: [p],
-      plan_programs: [program(p.id, { staff_level_key: coach.key, sailors_per_coach: perCoach })],
+      plan_programs: [program(p.id, { staff_level_id: coach.staff_level_id, sailors_per_coach: perCoach })],
       plan_offerings: [off],
       plan_activities: [a],
       plan_staff_levels: [coach],
@@ -644,7 +653,7 @@ describe("a block costs what it's given and is checked at its most sailors", () 
 
   it("pays every coach it's given, however many sailors are expected", () => {
     const wages = (expected: number) => {
-      const { data, off } = full(20, expected, { staff: [{ staff_level_key: coach.key, count: 4 }] });
+      const { data, off } = full(20, expected, { staff: [{ staff_level_id: coach.staff_level_id, count: 4 }] });
       const out = computePlan(data);
       expect(out.activities[0]?.coaches).toBe(4);
       return total(out, { line: "coach_wages", cost_center_key: off.key });
@@ -656,7 +665,7 @@ describe("a block costs what it's given and is checked at its most sailors", () 
 
   it("pays a salaried coach on salary, and the hourly coaches beside them", () => {
     const { data } = full(10, 5, {
-      staff: [{ position_key: director.key }, { staff_level_key: coach.key, count: 1 }],
+      staff: [{ position_key: director.key }, { staff_level_id: coach.staff_level_id, count: 1 }],
     });
     const out = computePlan(data);
     expect(total(out, { line: "coach_wages" })).toBe(4000);
@@ -676,7 +685,7 @@ describe("a block costs what it's given and is checked at its most sailors", () 
       16,
       10,
       {
-        staff: [{ staff_level_key: coach.key, count: 4 }],
+        staff: [{ staff_level_id: coach.staff_level_id, count: 4 }],
         boats: [
           { boat_class_id: "fj", count: 8, chartered: 4 },
           { boat_class_id: "rib", count: 3 },
@@ -704,7 +713,7 @@ describe("a block costs what it's given and is checked at its most sailors", () 
   });
 
   it("checks the coaches and boats against the most sailors the offering takes", () => {
-    const { data } = full(16, 10, { staff: [{ staff_level_key: coach.key, count: 2 }] }, {}, 5);
+    const { data } = full(16, 10, { staff: [{ staff_level_id: coach.staff_level_id, count: 2 }] }, {}, 5);
     expect(computePlan(data).warnings.map((w) => w.message)).toContain(
       "Guppies Week 2 is for up to 16 sailors, but has enough coaches for only 10",
     );
@@ -714,7 +723,7 @@ describe("a block costs what it's given and is checked at its most sailors", () 
     const { data, off } = full(
       16,
       10,
-      { staff: [{ staff_level_key: coach.key, count: 4 }], boats: [{ boat_class_id: "q", count: 6 }] },
+      { staff: [{ staff_level_id: coach.staff_level_id, count: 4 }], boats: [{ boat_class_id: "q", count: 6 }] },
       { boat_classes: [{ id: "q", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }] },
     );
     data.plan_activities[0]!.uses_boats = true;
@@ -732,13 +741,13 @@ describe("a block costs what it's given and is checked at its most sailors", () 
       emptyPlan({
         products: [g, m],
         plan_programs: [
-          program(g.id, { staff_level_key: coach.key, sailors_per_coach: 10 }),
-          program(m.id, { staff_level_key: coach.key, sailors_per_coach: 5 }),
+          program(g.id, { staff_level_id: coach.staff_level_id, sailors_per_coach: 10 }),
+          program(m.id, { staff_level_id: coach.staff_level_id, sailors_per_coach: 5 }),
         ],
         plan_offerings: [og, om],
         plan_activities: acts,
         plan_staff_levels: [coach],
-        ...block(acts, { staff: [{ staff_level_key: coach.key, count: 3 }] }),
+        ...block(acts, { staff: [{ staff_level_id: coach.staff_level_id, count: 3 }] }),
       }),
     );
     expect(pnlOf(out, og.key).allocation_holds).toBe(20);
@@ -755,13 +764,13 @@ describe("a block costs what it's given and is checked at its most sailors", () 
     const out = computePlan(
       emptyPlan({
         products: [p],
-        plan_programs: [program(p.id, { staff_level_key: coach.key, sailors_per_coach: 8 })],
+        plan_programs: [program(p.id, { staff_level_id: coach.staff_level_id, sailors_per_coach: 8 })],
         plan_offerings: [off],
         plan_activities: [a, b],
         plan_staff_levels: [coach],
         ...blocks(
-          block([a], { staff: [{ staff_level_key: coach.key, count: 2 }] }),
-          block([b], { staff: [{ staff_level_key: coach.key, count: 1 }] }),
+          block([a], { staff: [{ staff_level_id: coach.staff_level_id, count: 2 }] }),
+          block([b], { staff: [{ staff_level_id: coach.staff_level_id, count: 1 }] }),
         ),
       }),
     );
@@ -793,7 +802,7 @@ describe("a block costs what it's given and is checked at its most sailors", () 
     });
 
     it("counts every coach the block is given, whoever signs up", () => {
-      const { data, off } = full(10, 10, { staff: [{ staff_level_key: coach.key, count: 2 }] });
+      const { data, off } = full(10, 10, { staff: [{ staff_level_id: coach.staff_level_id, count: 2 }] });
       data.plan_offerings[0]!.price_cents = 2000;
       // Two coaches cost 2 × 2 h × 2000¢ = 8000¢, which 4 sailors pay.
       expect(pnlOf(computePlan(data), off.key).breakeven_enrollment).toBe(4);

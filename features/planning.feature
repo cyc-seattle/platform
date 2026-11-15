@@ -57,7 +57,7 @@ Feature: Plans
   the net of the offerings in no term for the year.
 
   Each Program Plan sets two numbers for each of its programs: the staff level that coaches it, such
-  as Level 1 Instructor, and how many sailors each coach can take. These are the program's
+  as Instructor, and how many sailors each coach can take. These are the program's
   settings, and two drafts can try different ones. Each boat class says the most sailors one boat
   can safely take. The asset list says which boats the organization has on each day
   (assets.feature), so every plan counts the same boats. The Operations Plan sets each boat class's
@@ -108,8 +108,8 @@ Feature: Plans
   The Operations Plan also lists closed days, such as Labor Day, so that no one plans a practice on
   one by mistake.
 
-  Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
-  each salaried position is paid per year. A salaried coach can also be paid by the hour for
+  Plans include wages and bonus rates. Wages are what each staff level in the catalog is paid per
+  hour, $0 for a volunteer, and what each salaried position is paid per year. A salaried coach can also be paid by the hour for
   coaching, on top of their salary, at their own hourly rate. Bonus rates set the bonus a director
   earns on the products they run: a share of those products' net, the money they make after their
   costs. Every bonus is in the Operations Plan, which a Plan Admin sets. Anyone who can
@@ -777,20 +777,20 @@ Feature: Plans
 
   Rule: A planner is warned when a block has too few coaches for its sailors
 
-    Example: One Level 1 Instructor for 14 Guppies
-      Given Guppies have a Level 1 Instructor for every 10 sailors
-      And a Guppies block of 14 sailors with one Level 1 Instructor and enough boats
+    Example: One Senior Instructor for 14 Guppies
+      Given Guppies have a Senior Instructor for every 10 sailors
+      And a Guppies block of 14 sailors with one Senior Instructor and enough boats
       When a planner calculates the P&L
       Then the planner is warned that the block is for up to 14 sailors, but has enough coaches for only 10
 
     Example: A coach at another staff level counts
-      Given Guppies have a Level 1 Instructor for every 10 sailors
-      And a Guppies block of 10 sailors with one Level 2 Instructor and enough boats
+      Given Guppies have a Senior Instructor for every 10 sailors
+      And a Guppies block of 10 sailors with one Head Coach and enough boats
       When a planner calculates the P&L
       Then the planner isn't warned about the block
 
     Example: A salaried director on a block counts as one coach
-      Given Guppies have a Level 1 Instructor for every 10 sailors
+      Given Guppies have a Senior Instructor for every 10 sailors
       And a salaried director paid $30 an hour
       And a Guppies block of 10 sailors that the director coaches, with enough boats
       When a planner calculates the P&L

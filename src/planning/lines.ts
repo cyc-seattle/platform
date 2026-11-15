@@ -133,15 +133,17 @@ export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
 
 /** Records `plan_labor_lines`: hours × the staff level's rate, as wages. */
 export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
-  const levels = new Map(ctx.data.plan_staff_levels.map((l) => [l.key, l]));
+  const rates = new Map(ctx.data.plan_staff_levels.map((l) => [l.staff_level_id, l.hourly_rate_cents]));
+  const names = new Map(ctx.data.staff_levels.map((l) => [l.id, l.name]));
   for (const line of ctx.data.plan_labor_lines) {
     if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_key, line.key)) continue;
     warnCostShift(ctx, line);
-    const level = levels.get(line.staff_level_key);
-    if (level === undefined) {
+    const level = line.staff_level_id;
+    const rate = level == null ? undefined : rates.get(level);
+    if (level == null || rate === undefined) {
       ctx.warn(
         "unknown_staff_level",
-        `Labor line ${line.key} has a staff level that isn't in the Operations Plan, so it's left out`,
+        `Labor line ${line.key} has no staff level with a rate in the Operations Plan, so it's left out`,
         line.key,
       );
       continue;
@@ -151,10 +153,10 @@ export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
       cost_center_key: line.cost_center_type === "org" ? null : line.cost_center_key,
       account_id: line.account_id,
       function: ctx.functionFor(line.account_id, line.function, line.cost_center_type),
-      amount: level.pay_type === "volunteer" ? 0 : line.hours * (level.hourly_rate_cents ?? 0),
+      amount: line.hours * rate,
       line_key: `labor:${line.key}`,
       line_name: line.name,
-      explanation: `${line.name}: hours × ${level.name}'s rate`,
+      explanation: `${line.name}: hours × ${names.get(level) ?? "the staff level"}'s rate`,
       wages: true,
     });
   }
