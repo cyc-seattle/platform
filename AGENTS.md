@@ -62,7 +62,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 ## Branches and merges
 
 - There's no merge queue (#280). A PR merges once `ci / ci` and `pr-title / pr-title` pass, and only
-  org admins and `maintainers` can merge it. `contributors` push branches and open PRs.
+  org admins and `maintainers` can merge it. `contributors` push branches and open PRs. Even a
+  maintainer merges by bypassing the rule, with `gh pr merge --squash --admin` once checks pass, so
+  auto-merge never fires.
 - Never force-push. To bring a branch up to date, merge `origin/main` into it.
 - Dev's environments take only `main`, so a branch can't deploy to dev, by hand or otherwise.
 - When a dev deploy or its tests fail, reproduce the failure locally against dev before you push a fix:
@@ -72,19 +74,22 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 - `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
   the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR's push runs
-  only CI. The merge queue deploys the PRs queued together to dev as one batch, and the
-  batch merges only if the deploy passes (`dev-passed`, #80). It doesn't run the integration tests (#161). A push to `main` skips dev, which the queue already
-  ran on that commit, previews prod, and applies it once a maintainer approves. `prod` is skipped
-  when the preview shows no changes.
-- A queued PR that changes only docs, `.agents/` or `.github/` skips the dev deploy and the
-  integration features (`scripts/changed-projects`), except a change to `pull-request.yml` itself.
+  only CI. Each push to `main` deploys dev, then previews prod and applies it once a maintainer
+  approves. `prod` waits for dev, so a broken deploy stops there, and is skipped when the preview
+  shows no changes.
+- After each dev deploy, `integration.yml` runs the integration tests against dev. One run goes at
+  a time, and a newer one replaces any that's waiting, so pushes during a run are tested together.
+  A waiting deploy goes ahead of a test run. A failure opens or comments on the issue
+  `Integration tests failed on dev`, listing the PRs merged since the last green run, and a green
+  run closes it.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, `backend`,
   then `authentik`, and `prod` is `infra`, `backend`, then `authentik`. `DEPLOY_PROJECTS` narrows the list. Its preview
   appends each project's `true` or `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip
   a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`, so keep
   those names.
 - `nightly.yml` deploys `main` to dev each night and runs the integration tests, under the same dev
-  lock as the queues. A failed night opens or comments on the `Nightly integration run failed` issue,
+  lock as the deploys. It tests platform and sail-team together, so it keeps its own issue: a failed
+  night opens or comments on the `Nightly integration run failed` issue,
   assigned to the maintainer, and a green night closes it. Run it early with `gh workflow run nightly.yml`.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
   (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.

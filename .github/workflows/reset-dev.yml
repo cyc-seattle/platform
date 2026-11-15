@@ -1,7 +1,7 @@
 name: reset-dev
 
-# By hand: empties dev's CRM, reseeds its fakes, and runs both syncs, as deploy-dev. Dispatch from a
-# branch, `gh workflow run reset-dev.yml --ref <branch>`, runs that branch's workflow and scripts/reset.
+# By hand: empties dev's CRM, reseeds its fakes, and runs both syncs, as deploy-dev. Dev takes only
+# main, so it runs main's scripts/reset.
 on:
   workflow_dispatch:
 
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   reset:
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
     permissions:
       id-token: write
       contents: read

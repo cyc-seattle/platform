@@ -1,7 +1,7 @@
 name: docs
 
 # Publishes the docs site to GitHub Pages from main. Kept out of pull-request.yml so it adds nothing to
-# a PR's or the merge queue's time, and nothing requires it. CI builds the site too, so a broken link
+# a PR's or a deploy's time, and nothing requires it. CI builds the site too, so a broken link
 # fails the PR.
 on:
   push:

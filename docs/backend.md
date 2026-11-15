@@ -23,7 +23,7 @@ projects with their resource names unchanged, and their states moved over with `
 Directus's pod use it through Workload Identity, since neither deploy identity may. The bucket is
 private and versioned, and keeps a deleted or replaced file for 30 days.
 
-Dev deploys it for each PR in the merge queue, and a push to `main` deploys prod after `infra`.
+A push to `main` deploys it to dev, and then to prod after `infra`.
 
 ## Outputs
 

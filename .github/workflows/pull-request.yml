@@ -1,16 +1,13 @@
 name: pull-request
 
-# Dev is one shared environment, so only the merge queue deploys to it, a batch at a time, and a PR's
-# push runs only CI (#69, #80). The queue tests the commit that lands on main, so main's push goes
-# straight to prod.
+# A PR's push runs only CI. Dev is one shared environment that takes only `main`, so each push to
+# main deploys dev, starts the integration tests, and then previews and deploys prod (#280).
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  merge_group:
   push:
     branches: [main]
-  # From a branch, `gh workflow run pull-request.yml --ref <branch>` deploys it to dev early. From
-  # main, it retries prod.
+  # Retries main's deploys.
   workflow_dispatch:
 
 permissions:
@@ -18,74 +15,33 @@ permissions:
 
 jobs:
   ci:
-    if: github.ref != 'refs/heads/main'
-    uses: cyc-seattle/.github/.github/workflows/ci.yml@v3.3.0
-  # A queued PR that changes only docs or CI deploys nothing. A manual deploy leaves projects empty,
-  # so it deploys them all.
-  changes:
-    if: github.event_name == 'merge_group'
-    runs-on: ubuntu-latest
-    outputs:
-      projects: ${{ steps.changes.outputs.projects }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # The base is the main commit the queue builds on, which may be more than one commit back.
-      - id: changes
-        # bash adds pipefail. The assignment stops a failure from reading as "deploy nothing".
-        shell: bash
-        run: |
-          git fetch --no-tags --depth=1 origin "$BASE"
-          projects="$(git diff --name-only --no-renames "$BASE" HEAD | scripts/changed-projects)"
-          echo "projects=$projects" | tee -a "$GITHUB_OUTPUT"
-        env:
-          BASE: ${{ github.event.merge_group.base_sha }}
-  # Starts alongside CI, not after it, to save CI's minutes on every batch. `ci / ci` is a required
-  # check, so a batch whose CI fails still can't merge.
+    if: github.event_name == 'pull_request'
+    uses: cyc-seattle/.github/.github/workflows/ci.yml@v3.4.0
   dev:
-    needs: changes
-    if: >-
-      !cancelled() && (
-        (github.event_name == 'merge_group' && needs.changes.outputs.projects != '') ||
-        (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
-      )
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
+    if: github.ref == 'refs/heads/main'
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
     permissions:
       id-token: write
       contents: read
     with:
       environment: dev
       task: deploy
-      projects: ${{ needs.changes.outputs.projects }}
-      # The queue only deploys, and the nightly run tests dev (#161). A manual deploy still tests.
-      integration: ${{ github.event_name != 'merge_group' }}
-  # The check the queue requires, so it waits for dev. A skipped reusable workflow reports under
-  # another name, so this job always runs. A PR passes it, and a queued PR passes only if dev passed
-  # or had nothing to deploy.
-  dev-passed:
-    needs: [changes, dev]
-    if: always()
+  # A run started with GITHUB_TOKEN may start only a workflow_dispatch, so the tests run in a
+  # workflow of their own, which keeps them out of this run.
+  integration:
+    needs: dev
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
-      - shell: bash
-        run: |
-          if [[ "$EVENT" != merge_group || "$DEV" == success ]]; then
-            exit 0
-          elif [[ "$DEV" == skipped && "$CHANGES" == success && -z "$PROJECTS" ]]; then
-            echo "Only docs or CI changed, so dev wasn't deployed."
-          else
-            echo "::error::The dev deploy's result is $DEV, so this PR can't merge. Fix it and queue it again."
-            exit 1
-          fi
+      - run: gh workflow run integration.yml -R "$GITHUB_REPOSITORY" --ref main
         env:
-          EVENT: ${{ github.event_name }}
-          DEV: ${{ needs.dev.result }}
-          CHANGES: ${{ needs.changes.result }}
-          PROJECTS: ${{ needs.changes.outputs.projects }}
+          GH_TOKEN: ${{ github.token }}
   # Runs merged code with prod credentials before anyone approves, which is safe only because
   # main requires a reviewed PR (cyc-seattle/isthmia#215).
   prod-preview:
-    if: github.ref == 'refs/heads/main'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
+    needs: dev
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
     permissions:
       id-token: write
       contents: read
@@ -96,7 +52,7 @@ jobs:
   prod:
     needs: prod-preview
     if: needs.prod-preview.outputs.changes == 'true'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.3.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
     permissions:
       id-token: write
       contents: read
