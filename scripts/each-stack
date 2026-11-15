@@ -20,7 +20,7 @@ case "$PULUMI_STACK" in
   *) echo "No projects deploy to stack '$PULUMI_STACK'." >&2; exit 1 ;;
 esac
 
-# A PR's deploy names the projects it changed (scripts/changed-projects), still in this order.
+# deploy.yml's `projects` input narrows the list, still in this order.
 if [[ -n "${DEPLOY_PROJECTS:-}" ]]; then
   for wanted in $DEPLOY_PROJECTS; do
     [[ " ${projects[*]} " == *" $wanted "* ]] || { echo "'$wanted' doesn't deploy to stack '$PULUMI_STACK'." >&2; exit 1; }
