@@ -8,8 +8,8 @@ Feature: Plans
   storage rent, such as the dinghy float, which is still charged to the area.
 
   A Financial Plan is worked on as a whole. It starts as a draft, and planners can change any of
-  its plans while it's a draft. When it's ready, a Plan Admin saves it, and all of its plans are saved
-  together, with their P&L. A saved Financial Plan never changes, apart from its name, its note, and its date, so
+  its plans while it's a draft. When it's ready, a Plan Admin freezes it, and all of its plans are frozen
+  together, with their P&L. A frozen Financial Plan never changes, apart from its name, its note, and its date, so
   the organization can always look back at what it agreed to. To change the plan after that, a planner starts a new Financial
   Plan from an earlier one, its parent, and the new one begins as a copy of it. A year can have
   several drafts at once, so planners can weigh options side by side, such as two drafts started
@@ -19,7 +19,7 @@ Feature: Plans
 
   A Plan Writer can start a draft Financial Plan, and change any Program Plan in any draft, for
   every program area. A Plan Admin also sets the rules everyone plans within: they can change the
-  Operations Plan in a draft, such as wages, rates, terms, and shared costs. They also save a
+  Operations Plan in a draft, such as wages, rates, terms, and shared costs. They also freeze a
   Financial Plan, make one active, and archive one. A Plan Writer can see the Operations Plan but
   can't change it. Which people have which policy is up to their groups.
 
@@ -27,7 +27,7 @@ Feature: Plans
   active one for that year with the latest date on or before that day, and it stays in force until
   the next one's date. So a re-plan for the fall can take over on September 1, and a plan can be
   made active ahead of time. A draft can be active: Plan Writers keep changing it while it's
-  in force, and its P&L keeps up. When the board approves it, a Plan Admin saves it, and it stays
+  in force, and its P&L keeps up. When the board approves it, a Plan Admin freezes it, and it stays
   in force. A Plan Admin can change any plan's date, earlier or later, to fix a mistake. The plan in
   force can't be archived.
 
@@ -40,8 +40,8 @@ Feature: Plans
   The P&L, the profit and loss for the year, is worked out from a Financial Plan's plans together.
   It shows each offering, each program area, and the organization as a whole. A draft's P&L is
   worked out again a moment after every change to it, whether the change was made in the app, in
-  the Data Studio, or by an AI. A saved Financial Plan keeps the P&L it had when it was saved, and
-  that never changes either. Each line of a saved P&L says in plain words what it is.
+  the Data Studio, or by an AI. A frozen Financial Plan keeps the P&L it had when it was frozen, and
+  that never changes either. Each line of a frozen P&L says in plain words what it is.
   Shared costs are the costs that several offerings share, such as the office. What non-program
   sales make, or lose, comes off the shared costs first, so a good year for charters lowers every
   program's share. The rest is divided among the programs' offerings by their direct costs, counted
@@ -64,20 +64,20 @@ Feature: Plans
   rates for the year: fuel and upkeep for each hour one of the organization's boats is on the water,
   and a charter rate for each day one is chartered.
 
-  Each plan can also hold the planner's rules: what they want that the plan's numbers don't
-  capture, in their own words, for their AI to follow when it fills in the plan. A program has its
-  own rules, such as "if there are more than 12 Guppies, add a Junior Instructor", or "Guppies can
-  sail the Harpoon, up to 10 kids, instead of Sailqubes". A Program Plan's rules cover all of its
-  programs, such as "J-Pod and K-Pod share coaches on Wednesdays". The Operations Plan's rules cover
-  the whole organization, such as "keep one coach boat ashore for repairs on summer weekdays". The P&L
-  never reads the rules.
+  Each plan can also hold the planner's notes: a list of short notes on what they want that the
+  plan's numbers don't capture, for their AI to follow when it fills in the plan. Each note is one
+  line of at most 280 characters. A program has its own notes, such as "if there are more than 12
+  Guppies, add a Junior Instructor", or "Guppies can sail the Harpoon, up to 10 kids, instead of
+  Sailqubes". A Program Plan's notes cover all of its programs, such as "J-Pod and K-Pod share
+  coaches on Wednesdays". The Operations Plan's notes cover the whole organization, such as "keep
+  one coach boat ashore for repairs on summer weekdays". The P&L never reads the notes.
 
   The schedule is planned in blocks. A block is one or more activities on one date that share
   their coaches and boats, such as Guppies and Minnows on the morning of July 13. Each block lists
   its staff (the people who coach it) and its boats of each class, sailboats and powerboats such as
   coach boats: the organization's own, the ones it charters, and the ones sailors bring. A block runs from its first activity's start to its last activity's end.
   Nothing works out how many coaches or boats a program needs. The planner, or their AI, decides that
-  from the program settings and the rules.
+  from the program settings and the notes.
 
   Each offering has the most sailors it takes, and the number the planner expects to sign up. A
   block is given what the offering would use if it filled. Coaches are paid by the hour, and a
@@ -103,8 +103,8 @@ Feature: Plans
 
   A planner can ask their AI to fill in the blocks. It works in a new draft Financial Plan, started
   from the one the planner names. It tells the planner what it changed and which warnings are left,
-  and gives the draft a one-line note, such as "Allocated Summer weeks 3 to 5". If the planner likes
-  the draft, they save it. If not, they delete it.
+  and gives the draft a short note, such as "Allocated Summer weeks 3 to 5". If the planner likes
+  the draft, they freeze it. If not, they delete it.
 
   The Operations Plan also lists closed days, such as Labor Day, so that no one plans a practice on
   one by mistake.
@@ -123,10 +123,10 @@ Feature: Plans
       When they start a Financial Plan for next year with only an Operations Plan
       Then the Financial Plan is a draft, with the Operations Plan in it
 
-    Example: A Financial Plan can't be saved without an Operations Plan
+    Example: A Financial Plan can't be frozen without an Operations Plan
       Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan with a Program Plan but no Operations Plan
-      When they try to save the Financial Plan
+      When they try to freeze the Financial Plan
       Then they're told that the Financial Plan needs an Operations Plan
       And the Financial Plan is still a draft
 
@@ -138,13 +138,13 @@ Feature: Plans
       When they try to add another Program Plan for Youth Racing to it
       Then they're told that the Financial Plan already has a Program Plan for Youth Racing
 
-  Rule: Saving a Financial Plan saves all of its plans together
+  Rule: Freezing a Financial Plan freezes all of its plans together
 
-    Example: The Operations Plan and both Program Plans are saved with the Financial Plan
+    Example: The Operations Plan and both Program Plans are frozen with the Financial Plan
       Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan with an Operations Plan and two Program Plans
-      When they save the Financial Plan
-      Then the Financial Plan and all three of its plans are saved at the same moment
+      When they freeze the Financial Plan
+      Then the Financial Plan is frozen, and none of its three plans can change
 
   Rule: A year can have several draft Financial Plans at once
 
@@ -158,14 +158,14 @@ Feature: Plans
 
     Example: The new Financial Plan has the same offerings and prices
       Given a user with the Plan Writer policy
-      And a saved Financial Plan named "Budget" with an offering at $1,000 a sailor
+      And a frozen Financial Plan named "Budget" with an offering at $1,000 a sailor
       When they start a new Financial Plan from "Budget"
       Then the new Financial Plan has the same offering at $1,000 a sailor
       And its parent is "Budget"
 
     Example: Changing the new Financial Plan doesn't change its parent
       Given a user with the Plan Writer policy
-      And a saved Financial Plan named "Budget" with an offering at $1,000 a sailor
+      And a frozen Financial Plan named "Budget" with an offering at $1,000 a sailor
       And they started a new Financial Plan from "Budget"
       When they change the offering's price to $1,200 a sailor in the new Financial Plan
       Then "Budget" still has the offering at $1,000 a sailor
@@ -174,7 +174,7 @@ Feature: Plans
 
     Example: A new draft tries fewer sailors per coach
       Given a user with the Plan Writer policy
-      And a saved Financial Plan named "Budget" where Guppies have a coach for every 10 sailors
+      And a frozen Financial Plan named "Budget" where Guppies have a coach for every 10 sailors
       And they started a new Financial Plan from "Budget"
       When they change Guppies to a coach for every 8 sailors in the new Financial Plan
       Then "Budget" still has Guppies with a coach for every 10 sailors
@@ -183,7 +183,7 @@ Feature: Plans
 
     Example: A practice is the same practice in the new Financial Plan
       Given a user with the Plan Writer policy
-      And a saved Financial Plan named "Budget" with a practice on June 6
+      And a frozen Financial Plan named "Budget" with a practice on June 6
       When they start a new Financial Plan from "Budget"
       Then its practice on June 6 is the same practice as the one in "Budget"
 
@@ -225,17 +225,17 @@ Feature: Plans
       When they change the offering's price to $1,200 a sailor
       Then the draft is still in force, and its P&L has the offering at $1,200 a sailor
 
-    Example: Saving the draft in force keeps it in force
+    Example: Freezing the draft in force keeps it in force
       Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan in force today
-      When they save it
-      Then it's saved, and still in force
+      When they freeze it
+      Then it's frozen, and still in force
 
   Rule: A Plan Admin can change any plan's date
 
-    Example: Moving a saved plan's date earlier
+    Example: Moving a frozen plan's date earlier
       Given a user with the Plan Writer and Plan Admin policies
-      And a saved Financial Plan active from September 1
+      And a frozen Financial Plan active from September 1
       When they change its date to August 1
       Then it's in force from August 1
 
@@ -273,12 +273,12 @@ Feature: Plans
       Then they can change its Program Plans
       But they can't change its Operations Plan
 
-    Example: A Plan Writer can't save a Financial Plan, make one active, or archive one
+    Example: A Plan Writer can't freeze a Financial Plan, make one active, or archive one
       Given a user with the Plan Writer policy
       And a draft Financial Plan
-      Then they can't save it, make it active, or archive it
+      Then they can't freeze it, make it active, or archive it
 
-  Rule: A Plan Admin can change the Operations Plan in a draft, and save, make active, and archive a Financial Plan
+  Rule: A Plan Admin can change the Operations Plan in a draft, and freeze, make active, and archive a Financial Plan
 
     Example: A Plan Admin changes the Operations Plan
       Given a user with the Plan Writer and Plan Admin policies
@@ -286,10 +286,10 @@ Feature: Plans
       Then they can change its Program Plans
       And they can change its Operations Plan
 
-    Example: A Plan Admin makes a draft active, saves it, and archives another
+    Example: A Plan Admin makes a draft active, freezes it, and archives another
       Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan
-      Then they can make it active from a date, and save it
+      Then they can make it active from a date, and freeze it
       And they can archive a Financial Plan that isn't active
 
   Rule: Bonuses are set only in the Operations Plan
@@ -319,32 +319,32 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned about the line
 
-  Rule: A saved Financial Plan never changes, even for an admin
+  Rule: A frozen Financial Plan never changes, even for an admin
 
-    Example: A Plan Writer can't change a saved Financial Plan
+    Example: A Plan Writer can't change a frozen Financial Plan
       Given a user with the Plan Writer policy
-      And a saved Financial Plan
+      And a frozen Financial Plan
       Then they can't change the Financial Plan or any of its plans
       And they can't turn the Financial Plan back into a draft
       And they can't delete the Financial Plan
 
-    Example: An admin can't change a saved Financial Plan either
+    Example: An admin can't change a frozen Financial Plan either
       Given a user with the Admin role
-      And a saved Financial Plan
+      And a frozen Financial Plan
       Then they can't change the Financial Plan or any of its plans
       And they can't turn the Financial Plan back into a draft
       And they can't delete the Financial Plan
 
-  Rule: A Plan Writer can change a saved Financial Plan's name and note
+  Rule: A Plan Writer can change a frozen Financial Plan's name and note
 
     Example: A plan is noted as reviewed with the board
       Given a user with the Plan Writer policy
-      And a saved Financial Plan
+      And a frozen Financial Plan
       Then they can change its note to "Reviewed with the board"
 
-    Example: A saved plan is renamed after the board adopts it
+    Example: A frozen plan is renamed after the board adopts it
       Given a user with the Plan Writer policy
-      And a saved Financial Plan
+      And a frozen Financial Plan
       Then they can change its name to "2027 budget as adopted"
       And its P&L stays the same
 
@@ -879,12 +879,12 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice on August 2 has no staff
 
-  Rule: A saved Financial Plan keeps its warnings, each with the plan and date it's about
+  Rule: A frozen Financial Plan keeps its warnings, each with the plan and date it's about
 
-    Example: A practice with no staff in a saved Financial Plan
+    Example: A practice with no staff in a frozen Financial Plan
       Given a user with the Plan Writer policy
       And a draft Financial Plan whose Program Plan has a practice on August 2 with no staff
-      When they save the Financial Plan
+      When they freeze the Financial Plan
       Then the Financial Plan's warnings say that the practice on August 2, in its Program Plan, has no staff
 
   Rule: A planner is warned about an activity on a closed day
@@ -911,77 +911,85 @@ Feature: Plans
       When they change the offering to take in $12,000
       Then they see that the Financial Plan's P&L shows the offering takes in $12,000
 
-  Rule: A saved Financial Plan keeps the P&L it had when it was saved
+  Rule: A frozen Financial Plan keeps the P&L it had when it was frozen
 
-    Example: A saved Financial Plan shows the P&L it was saved with
+    Example: A frozen Financial Plan shows the P&L it was frozen with
       Given a user with the Plan Writer policy
       And a draft Financial Plan whose offering takes in $10,000
-      When they save the Financial Plan
+      When they freeze the Financial Plan
       Then the Financial Plan's P&L shows that the offering takes in $10,000
 
     Example: A Financial Plan started from it doesn't change its P&L
-      Given a saved Financial Plan named "Budget" whose offering pays $1,000 of office costs
-      When a planner saves a Financial Plan started from "Budget" with $2,000 of office costs
+      Given a frozen Financial Plan named "Budget" whose offering pays $1,000 of office costs
+      When a planner freezes a Financial Plan started from "Budget" with $2,000 of office costs
       Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
-    Example: A saved Financial Plan keeps each term's P&L and bonus
+    Example: A frozen Financial Plan keeps each term's P&L and bonus
       Given a user with the Plan Writer policy
       And a draft Financial Plan that pays a director 10% of an offering in "Summer 2027" that takes in $10,000
-      When they save the Financial Plan
+      When they freeze the Financial Plan
       Then the Financial Plan's P&L shows that the program area takes in $10,000 in "Summer 2027"
       And the Financial Plan's P&L shows that the director's bonus for "Summer 2027" is $1,000
 
-  Rule: Each line of a saved P&L says in plain words what it is
+  Rule: Each line of a frozen P&L says in plain words what it is
 
     Example: An offering's share of the office is named for its pool and its line
       Given a user with the Plan Writer policy
       And $1,000 of office costs in a pool named "G&A"
       And a draft Financial Plan with one offering that has direct costs
-      When they save the Financial Plan
+      When they freeze the Financial Plan
       Then the Financial Plan's P&L names the offering's share of the office "G&A share: Office"
 
   Rule: No one can write a Financial Plan's P&L by hand, even an admin
 
     Example: A Plan Writer can't write a Financial Plan's P&L
       Given a user with the Plan Writer policy
-      Then they can't change a saved Financial Plan's P&L
+      Then they can't change a frozen Financial Plan's P&L
       And they can't add a P&L to a draft Financial Plan
 
     Example: An admin can't write a Financial Plan's P&L either
       Given a user with the Admin role
-      Then they can't change a saved Financial Plan's P&L
+      Then they can't change a frozen Financial Plan's P&L
       And they can't add a P&L to a draft Financial Plan
 
-  Rule: A Plan Writer can write a plan's rules in a draft Financial Plan, and they never change once it's saved
+  Rule: A Plan Writer can write a plan's notes in a draft Financial Plan, and they never change once it's frozen
 
-    Example: A Plan Writer writes a Program Plan's rules
+    Example: A Plan Writer writes a Program Plan's notes
       Given a user with the Plan Writer policy
       And a draft Financial Plan
-      Then they can write a Program Plan's rules
+      Then they can write a Program Plan's notes
 
-    Example: A Plan Writer writes a program's rules
+    Example: A Plan Writer writes a program's notes
       Given a user with the Plan Writer policy
       And a draft Financial Plan
-      Then they can write the rules for one of a Program Plan's programs
+      Then they can write the notes for one of a Program Plan's programs
 
-    Example: A Plan Writer can't change the rules in a saved Financial Plan
+    Example: A Plan Writer can't change the notes in a frozen Financial Plan
       Given a user with the Plan Writer policy
-      And a saved Financial Plan whose Program Plan has rules
-      Then they can't change the Program Plan's rules
+      And a frozen Financial Plan whose Program Plan has notes
+      Then they can't change the Program Plan's notes
 
-  Rule: A planner keeps the draft their AI filled in by saving it, or rejects it by deleting it
+  Rule: Each of a plan's notes is one short line
 
-    Example: A planner saves the draft their AI filled in
+    Example: A note longer than 280 characters
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan
+      When they try to give a Program Plan a note longer than 280 characters
+      Then they're told that each note is one line of at most 280 characters
+
+  Rule: A planner keeps the draft their AI filled in by freezing it, or rejects it by deleting it
+
+    Example: A planner freezes the draft their AI filled in
       Given a user with the Plan Writer and Plan Admin policies
-      And a saved Financial Plan named "Budget"
+      And a frozen Financial Plan named "Budget"
       And a draft their AI started from "Budget", with its blocks filled in and a note of what it changed
-      When they save the draft
-      Then the draft is saved with its blocks, its note, and its P&L
+      When they freeze the draft
+      Then the draft is frozen with its blocks, its note, and its P&L
       And its parent is "Budget"
 
     Example: Deleting the draft leaves the plan it was started from as it was
       Given a user with the Plan Writer policy
-      And a saved Financial Plan named "Budget" with an offering at $1,000 a sailor
+      And a frozen Financial Plan named "Budget" with an offering at $1,000 a sailor
       And a draft their AI started from "Budget", with its blocks filled in and a note of what it changed
       When they delete the draft
       Then the draft is gone
@@ -1010,9 +1018,9 @@ Feature: Plans
 
     Example: A Plan Reader looks at a Financial Plan
       Given a user with the Plan Reader policy
-      And a saved Financial Plan
+      And a frozen Financial Plan
       Then they can see the Financial Plan and its P&L
-      But they can't start, save, or make a Financial Plan active
+      But they can't start, freeze, or make a Financial Plan active
 
   Rule: Only admins and planners can see plans
 

@@ -15,11 +15,11 @@ describe("revenue", () => {
     expect(total(out, { line: "revenue", account_id: A.programRevenue, cost_center_key: off.key })).toBe(500_000);
   });
 
-  it("rounds enrollment to whole kids", () => {
-    const { off, data } = setup({ target_enrollment: null, capacity: 15, fill_rate: 0.75 });
+  it("counts no kids for an offering with no target enrollment", () => {
+    const { off, data } = setup({ target_enrollment: null, capacity: 15 });
     const out = computePlan(data);
-    expect(pnlOf(out, off.key).enrollment).toBe(11);
-    expect(total(out, { line: "revenue" })).toBe(11 * 50_000);
+    expect(pnlOf(out, off.key).enrollment).toBe(0);
+    expect(total(out, { line: "revenue" })).toBe(0);
   });
 
   it("counts an offering whole in its plan, whatever its dates", () => {

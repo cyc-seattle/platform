@@ -150,7 +150,7 @@ function checkAreas(ctx: Context): void {
     } else if (product.kind !== "program" && product.program_area_id != null) {
       ctx.warn("area_on_non_program", `${product.name} isn't a program but has a program area`, product.id);
     }
-    const plan = ctx.planOfVersion.get(offering.version_id);
+    const plan = ctx.planOf.get(offering.plan_id);
     if (plan === undefined) continue;
     const wrong =
       plan.kind === "operations"

@@ -31,9 +31,9 @@ export function nextId(prefix: string): string {
   return `${prefix}-${counter}`;
 }
 
-function versioned(prefix: string): { id: string; version_id: string; key: string } {
+function versioned(prefix: string): { id: string; plan_id: string; key: string } {
   const id = nextId(prefix);
-  return { id, version_id: "v1", key: `${id}-key` };
+  return { id, plan_id: "v1", key: `${id}-key` };
 }
 
 function account(
@@ -143,7 +143,6 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     assets: [],
     boats: [],
     plans: [],
-    plan_versions: [],
     plan_programs: [],
     plan_offerings: [],
     plan_trips: [],
@@ -204,7 +203,6 @@ export function offering(productId: string, overrides: Partial<PlanOffering> = {
     ends_on: "2027-06-30",
     capacity: null,
     target_enrollment: null,
-    fill_rate: null,
     price_cents: null,
     cogs_rate: null,
     note: null,
@@ -275,7 +273,7 @@ export function program(productId: string, overrides: Partial<PlanProgram> = {})
     product_id: productId,
     staff_level_key: null,
     sailors_per_coach: null,
-    rules: null,
+    notes: null,
     ...overrides,
   };
 }

@@ -58,13 +58,13 @@ export async function waitForReachable(baseUrl: string, timeoutMs = DEFAULT_REAC
   );
 }
 
-/** What the saved-versions hook's `/saved-versions/status` answers (stacks/backend/saved-versions.cjs). */
-export interface SavedVersionsStatus {
+/** What the frozen-plans hook's `/frozen-plans/status` answers (stacks/backend/frozen-plans.cjs). */
+export interface FrozenPlansStatus {
   fingerprint: string | null;
   tables: Record<string, boolean>;
 }
 
-function savedVersionsProblems(status: SavedVersionsStatus, fingerprint: string): string[] {
+function frozenPlansProblems(status: FrozenPlansStatus, fingerprint: string): string[] {
   return [
     ...(status.fingerprint === fingerprint ? [] : ["the installed triggers aren't the ones this deploy installs"]),
     ...Object.entries(status.tables)
@@ -74,11 +74,11 @@ function savedVersionsProblems(status: SavedVersionsStatus, fingerprint: string)
 }
 
 /**
- * Waits until the saved-versions hook reports every planning table's trigger, installed from
+ * Waits until the frozen-plans hook reports every planning table's trigger, installed from
  * `fingerprint`'s config. A restart answers 503, or 404 before the hook
  * loads, and the hook installs a moment after a schema apply, so each of those waits.
  */
-export async function waitForSavedVersions(
+export async function waitForFrozenPlans(
   baseUrl: string,
   token: string,
   fingerprint: string,
@@ -88,17 +88,17 @@ export async function waitForSavedVersions(
   let last = "no answer";
   for (;;) {
     try {
-      const res = await httpFetch(`${baseUrl}/saved-versions/status`, {
+      const res = await httpFetch(`${baseUrl}/frozen-plans/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const problems = savedVersionsProblems((await res.json()) as SavedVersionsStatus, fingerprint);
+        const problems = frozenPlansProblems((await res.json()) as FrozenPlansStatus, fingerprint);
         if (problems.length === 0) return;
         last = problems.join("; ");
       } else if (res.status === 503 || res.status === 404) {
-        last = `GET /saved-versions/status -> ${res.status}`;
+        last = `GET /frozen-plans/status -> ${res.status}`;
       } else {
-        throw new DirectusHttpError(res.status, `GET /saved-versions/status -> ${res.status}: ${await res.text()}`);
+        throw new DirectusHttpError(res.status, `GET /frozen-plans/status -> ${res.status}: ${await res.text()}`);
       }
     } catch (error) {
       if (error instanceof DirectusHttpError) throw error;
@@ -106,7 +106,7 @@ export async function waitForSavedVersions(
     }
     if (Date.now() >= deadline) {
       throw new Error(
-        `The saved-versions triggers aren't all in place after ${timeoutMs}ms: ${last}. Directus's log says why.`,
+        `The frozen-plans triggers aren't all in place after ${timeoutMs}ms: ${last}. Directus's log says why.`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));

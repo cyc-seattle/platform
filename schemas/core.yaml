@@ -788,7 +788,7 @@ fields:
       foreign_key_column: null
   - collection: assets
     field: note
-    type: text
+    type: string
     meta:
       collection: assets
       conditions: null
@@ -797,9 +797,10 @@ fields:
       field: note
       group: null
       hidden: false
-      interface: input-multiline
-      note: null
-      options: null
+      interface: input
+      note: Up to 280 characters. Bold, italic, code and links work.
+      options:
+        trim: true
       readonly: false
       required: false
       searchable: true
@@ -812,9 +813,9 @@ fields:
     schema:
       name: note
       table: assets
-      data_type: text
+      data_type: character varying
       default_value: null
-      max_length: null
+      max_length: 280
       numeric_precision: null
       numeric_scale: null
       is_nullable: true

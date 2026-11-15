@@ -14,7 +14,7 @@ import {
   isNotFound,
   isForbidden,
   describeProviderError,
-  waitForSavedVersions,
+  waitForFrozenPlans,
 } from "./client.ts";
 
 // --- Shared plumbing for the dynamic resources below: all of them talk to Directus's own REST
@@ -113,12 +113,12 @@ export class DirectusSchema extends pulumi.dynamic.Resource {
   }
 }
 
-// --- SavedVersionsCheck: fails the deploy unless the saved-versions hook reports every planning
+// --- FrozenPlansCheck: fails the deploy unless the frozen-plans hook reports every planning
 // table's trigger in place (docs/planning-schema.md). Its inputs change with the schema and the
 // triggers, the only times an install can fail, so an unchanged stack shows no change.
 
-interface SavedVersionsCheckInputs extends DirectusAuthProps {
-  /** The triggers' fingerprint, from ./saved-versions.cjs. */
+interface FrozenPlansCheckInputs extends DirectusAuthProps {
+  /** The triggers' fingerprint, from ./frozen-plans.cjs. */
   fingerprint: string;
   /** A hash of the schema the check follows. */
   schemaHash: string;
@@ -126,42 +126,42 @@ interface SavedVersionsCheckInputs extends DirectusAuthProps {
   intervalMs?: number;
 }
 
-async function checkSavedVersions(inputs: SavedVersionsCheckInputs): Promise<void> {
+async function checkFrozenPlans(inputs: FrozenPlansCheckInputs): Promise<void> {
   await waitForReachable(inputs.baseUrl);
   const token = await login(inputs.baseUrl, inputs.adminEmail, inputs.adminPassword);
-  await waitForSavedVersions(inputs.baseUrl, token, inputs.fingerprint, {
+  await waitForFrozenPlans(inputs.baseUrl, token, inputs.fingerprint, {
     ...(inputs.timeoutMs !== undefined && { timeoutMs: inputs.timeoutMs }),
     ...(inputs.intervalMs !== undefined && { intervalMs: inputs.intervalMs }),
   });
 }
 
-export const savedVersionsCheckProvider: pulumi.dynamic.ResourceProvider = {
-  create: reportErrors("SavedVersionsCheck", "create", async (inputs: SavedVersionsCheckInputs) => {
-    await checkSavedVersions(inputs);
-    return { id: "saved-versions", outs: inputs };
+export const frozenPlansCheckProvider: pulumi.dynamic.ResourceProvider = {
+  create: reportErrors("FrozenPlansCheck", "create", async (inputs: FrozenPlansCheckInputs) => {
+    await checkFrozenPlans(inputs);
+    return { id: "frozen-plans", outs: inputs };
   }),
 
   update: reportErrors(
-    "SavedVersionsCheck",
+    "FrozenPlansCheck",
     "update",
-    async (_id: string, _olds: SavedVersionsCheckInputs, news: SavedVersionsCheckInputs) => {
-      await checkSavedVersions(news);
+    async (_id: string, _olds: FrozenPlansCheckInputs, news: FrozenPlansCheckInputs) => {
+      await checkFrozenPlans(news);
       return { outs: news };
     },
   ),
 
-  delete: reportErrors("SavedVersionsCheck", "delete", async () => {}),
+  delete: reportErrors("FrozenPlansCheck", "delete", async () => {}),
 };
 
-export interface SavedVersionsCheckArgs extends DirectusAuthArgs {
+export interface FrozenPlansCheckArgs extends DirectusAuthArgs {
   fingerprint: pulumi.Input<string>;
   schemaHash: pulumi.Input<string>;
 }
 
-/** Checks that the saved-versions hook's triggers are in place, after the schema it follows applies. */
-export class SavedVersionsCheck extends pulumi.dynamic.Resource {
-  constructor(name: string, args: SavedVersionsCheckArgs, opts?: pulumi.CustomResourceOptions) {
-    super(savedVersionsCheckProvider, name, { ...args }, withSecretOutputs(["adminPassword"], opts));
+/** Checks that the frozen-plans hook's triggers are in place, after the schema it follows applies. */
+export class FrozenPlansCheck extends pulumi.dynamic.Resource {
+  constructor(name: string, args: FrozenPlansCheckArgs, opts?: pulumi.CustomResourceOptions) {
+    super(frozenPlansCheckProvider, name, { ...args }, withSecretOutputs(["adminPassword"], opts));
   }
 }
 

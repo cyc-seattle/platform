@@ -1,4 +1,4 @@
-import type { SavedVersionsConfig } from "./policies.ts";
+import type { FrozenPlansConfig } from "./policies.ts";
 
 export interface Write {
   collection: string;
@@ -10,33 +10,25 @@ export interface Write {
   now: string;
 }
 
-export interface Version {
-  id: string;
-  plan_id: string;
-  status: "draft" | "saved";
-  platform_version?: string | null;
-}
-
 export interface Plan {
   id: string;
+  financial_plan_id: string;
   kind: "program_area" | "operations";
   program_area_id: string | null;
 }
 
 export interface FinancialPlan {
   id: string;
-  status: "draft" | "saved";
+  status: "draft" | "frozen";
   /** When it was archived, or none. */
   archived_at?: string | null;
 }
 
 export interface Lookup {
+  planIds(collection: string, keys: string[]): Promise<string[]>;
   plans(ids: string[]): Promise<Plan[]>;
-  versionIds(collection: string, keys: string[]): Promise<string[]>;
-  versions(ids: string[]): Promise<Version[]>;
   sets(ids: string[]): Promise<FinancialPlan[]>;
-  memberSets(keys: string[]): Promise<string[]>;
-  deletesSaved(user: string | null | undefined): Promise<boolean>;
+  deletesFrozen(user: string | null | undefined): Promise<boolean>;
 }
 
 /** Runs SQL inside the transaction the caller opened. */
@@ -45,27 +37,20 @@ export interface Database {
   exec(sql: string): Promise<unknown>;
 }
 
-/** Throws a 403 for a write that would change a saved Financial Plan; otherwise the payload to write. */
-export function guard(write: Write, config: SavedVersionsConfig, lookup: Lookup): Promise<unknown>;
+/** Throws a 403 for a write that would change a frozen Financial Plan; otherwise the payload to write. */
+export function guard(write: Write, config: FrozenPlansConfig, lookup: Lookup): Promise<unknown>;
 
 /** Directus's error for a database error: a trigger's refusal as a 403 or 400, otherwise as it is. */
 export function databaseError(error: unknown): unknown;
 
 /**
  * Installs the triggers, unless the same ones are on every table. `missing` lists the tables that
- * lack a column they need, and then it installs none. `changed` lists the drafts whose coach boats
- * it moved into RIBs, whose results are stale.
+ * lack a column they need, and then it installs none.
  */
 export function installTriggers(
-  config: SavedVersionsConfig,
+  config: FrozenPlansConfig,
   db: Database,
-): Promise<{ missing: string[]; installed: boolean; changed?: string[] }>;
-
-/** Moves each draft's coach boats into RIB boat rates and block boats, once they exist. Returns the drafts it changed. */
-export function seedCoachBoats(db: Database): Promise<string[]>;
-
-/** Books the powerboat classes' upkeep to the coach boats account, once boat classes have one. Returns every draft. */
-export function seedPowerboatAccounts(db: Database): Promise<string[]>;
+): Promise<{ missing: string[]; installed: boolean }>;
 
 export interface TriggerStatus {
   /** The installed triggers' {@link fingerprint}, or null when there are none. */
@@ -74,14 +59,14 @@ export interface TriggerStatus {
   tables: Record<string, boolean>;
 }
 
-/** What the hook's `/saved-versions/status` endpoint answers. */
-export function triggerStatus(config: SavedVersionsConfig, db: Database): Promise<TriggerStatus>;
+/** What the hook's `/frozen-plans/status` endpoint answers. */
+export function triggerStatus(config: FrozenPlansConfig, db: Database): Promise<TriggerStatus>;
 
 /** A hash of the triggers `config` installs. */
-export function fingerprint(config: SavedVersionsConfig): string;
+export function fingerprint(config: FrozenPlansConfig): string;
 
 /** The statements that install the triggers. */
-export function triggerStatements(config: SavedVersionsConfig): string[];
+export function triggerStatements(config: FrozenPlansConfig): string[];
 
 /** The engine's `computePlan`, as the hook loads it. */
 export interface Engine {
@@ -89,10 +74,10 @@ export interface Engine {
 }
 
 export const REFUSED: string;
-export const RESULTS_BY_SAVE: string;
+export const RESULTS_BY_HOOK: string;
 export const SET_STAYS: string;
-export const MEMBERS_FIXED: string;
-export const SAVED_WITH_SET: string;
+export const PLANS_FIXED: string;
+export const PLAN_STAYS: string;
 export const NEEDS_OPERATIONS: string;
 export const ONE_PER_AREA: string;
 export const ONE_PER_DATE: string;
@@ -100,22 +85,23 @@ export const IN_FORCE_NOT_ARCHIVED: string;
 export const ARCHIVED_NOT_ACTIVE: string;
 export const ACTIVE_STAYS: string;
 export const BONUS_IN_OPERATIONS: string;
+export const SHORT_NOTES: string;
 
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each plan, with every row and its
  * key. `db` is Directus's knex. Returns whether it copied anything.
  */
-export function copyParent(config: SavedVersionsConfig, db: unknown, setId: string): Promise<boolean>;
+export function copyParent(config: FrozenPlansConfig, db: unknown, setId: string): Promise<boolean>;
 
-/** The versioned tables, each after every table it links to. */
-export function copyOrder(config: SavedVersionsConfig): string[];
+/** The plans' row tables, each after every table it links to. */
+export function copyOrder(config: FrozenPlansConfig): string[];
 
 /**
- * Works out a saved Financial Plan's results with the engine, from the plans it holds, and writes
+ * Works out a frozen Financial Plan's results with the engine, from the plans it holds, and writes
  * them, unless it already has them. `db` is Directus's knex. Returns whether it wrote them.
  */
 export function writeSetResults(
-  config: SavedVersionsConfig,
+  config: FrozenPlansConfig,
   db: unknown,
   setId: string,
   engine: Engine,
@@ -126,7 +112,7 @@ export function writeSetResults(
  * it wrote them. If the engine fails, it clears them and throws. `db` is Directus's knex.
  */
 export function writeDraftResults(
-  config: SavedVersionsConfig,
+  config: FrozenPlansConfig,
   db: unknown,
   setId: string,
   engine: Engine,
@@ -134,7 +120,7 @@ export function writeDraftResults(
 
 /** The draft Financial Plans whose results a write to these rows of `collection` changes. */
 export function draftsChangedBy(
-  config: SavedVersionsConfig,
+  config: FrozenPlansConfig,
   db: unknown,
   collection: string,
   keys: string[],

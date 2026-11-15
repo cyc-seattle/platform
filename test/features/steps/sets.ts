@@ -8,18 +8,18 @@ import { PLAN_ROWS, type Row } from "./rows.ts";
 export interface Target {
   collection: string;
   rows: string[];
-  /** Fields a new row takes, so it lands where the step means, such as in a saved version. */
+  /** Fields a new row takes, so it lands where the step means, such as in a frozen plan. */
   fixed?: () => Row;
 }
 
 const plain = (...collections: string[]): Target[] =>
   collections.map((collection) => ({ collection, rows: [collection] }));
 
-// A plan copy, and docs/planning-schema.md's collections that hold rows in one.
-const VERSIONED = ["plan_versions", ...PLAN_ROWS];
+// A plan, and docs/planning-schema.md's collections that hold rows in one.
+const IN_PLANS = ["plans", ...PLAN_ROWS];
 
-const versions = (...names: string[]): Target[] =>
-  VERSIONED.map((collection) => ({ collection, rows: names.map((name) => `${collection}@${name}`) }));
+const inFinancialPlans = (...names: string[]): Target[] =>
+  IN_PLANS.map((collection) => ({ collection, rows: names.map((name) => `${collection}@${name}`) }));
 
 // Clubspot's events and registrations, as clubspot.feature defines them. Camps are Clubspot's
 // container for a program's sessions.
@@ -118,7 +118,7 @@ const sets: Record<string, Target[]> = {
   // As sail-team.feature defines them.
   "Sail Team's links": plain("links"),
   "Sail Team's announcements": plain("announcements"),
-  plans: [...plain("plans", "version_sets", "version_set_members"), ...versions("draft", "saved")],
+  plans: [...plain("financial_plans"), ...inFinancialPlans("draft", "frozen")],
   groups: plain("groups", "group_members", "group_policies"),
   // Everything website.feature calls the website, with the lists that link its parts.
   "the website": plain(

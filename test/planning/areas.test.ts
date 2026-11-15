@@ -85,12 +85,11 @@ describe("program areas", () => {
     data.plan_salaried_bookings = [
       {
         id: "b",
-        version_id: "v1",
+        plan_id: "v1",
         key: "b",
         position_id: director.id,
         product_id: null,
         program_area_id: summer.id,
-        kind: "management",
         hours: 100,
       },
     ];
@@ -107,12 +106,11 @@ describe("program areas", () => {
     data.plan_salaried_bookings = [
       {
         id: "b",
-        version_id: "v1",
+        plan_id: "v1",
         key: "b",
         position_id: director.id,
         product_id: products[0]!.id,
         program_area_id: summer.id,
-        kind: "management",
         hours: 100,
       },
     ];
@@ -124,8 +122,7 @@ describe("program areas", () => {
 
 describe("the plans an offering belongs in", () => {
   function plans(data: PlanData, kind: "program_area" | "operations", areaId: string | null) {
-    data.plans = [{ id: "plan", kind, program_area_id: areaId }];
-    data.plan_versions = [{ id: "v1", plan_id: "plan" }];
+    data.plans = [{ id: "v1", kind, program_area_id: areaId }];
   }
 
   it("warn about a program in another area's plan", () => {

@@ -121,7 +121,7 @@ function areaOf(ctx: Context, owner: PlanBonusOwner): Id | null {
  * order and then no term. An area plan's bonus counts only that area's products, and warns about any other.
  */
 function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Base[] {
-  const plan = ctx.planOfVersion.get(owner.version_id);
+  const plan = ctx.planOf.get(owner.plan_id);
   const products = new Set<Id>();
   for (const row of ctx.data.plan_bonus_owner_products) {
     if (row.bonus_owner_id !== owner.id) continue;

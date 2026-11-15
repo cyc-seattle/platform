@@ -89,10 +89,9 @@ const extensions = {
     team: "Team",
     teamMonths: 12,
   },
-  savedVersions: {
-    versioned: ["plan_offerings"],
+  frozenPlans: {
+    rows: ["plan_offerings"],
     results: [],
-    setResults: [],
     links: {},
     deletable: true,
     platformVersion: "1.0.0+engine.abc",
@@ -160,7 +159,7 @@ describe("Directus's extensions", () => {
   it.each([
     ["community-query-guard", extensions.queryGuard],
     ["group-policies", extensions.groupPolicies],
-    ["saved-versions", extensions.savedVersions],
+    ["frozen-plans", extensions.frozenPlans],
     ["school-choice", {}],
     ["link-preview", {}],
   ])("mounts %s with its config", (name, config) => {

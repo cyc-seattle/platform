@@ -81,12 +81,12 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
  */
 function warnCostShift(
   ctx: Context,
-  line: Pick<PlanBudgetLine, "version_id" | "key" | "name" | "cost_center_type" | "account_id"> & {
+  line: Pick<PlanBudgetLine, "plan_id" | "key" | "name" | "cost_center_type" | "account_id"> & {
     in_mtdc?: boolean;
   },
 ): void {
-  if (ctx.planOfVersion.get(line.version_id)?.kind !== "program_area") return;
-  const warn = (message: string) => ctx.warn("cost_off_programs", message, line.key, { version_id: line.version_id });
+  if (ctx.planOf.get(line.plan_id)?.kind !== "program_area") return;
+  const warn = (message: string) => ctx.warn("cost_off_programs", message, line.key, { plan_id: line.plan_id });
   const org = ctx.data.organization.name;
   const capital = ctx.accountType(line.account_id) === "asset";
   if (capital && line.cost_center_type === "org") {
