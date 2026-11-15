@@ -4,7 +4,7 @@ import { bookCapitalItems, rankCapital } from "./capital.ts";
 import { Context } from "./context.ts";
 import { bookBudgetLines, bookLaborLines, CostCenterBooker } from "./lines.ts";
 import { mtdc } from "./measures.ts";
-import { bookPayrollTax } from "./payroll.ts";
+import { bookPayrollTax, payrollTax } from "./payroll.ts";
 import { indirectCostRates, allocateIndirectCosts, type IndirectCosts } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
@@ -180,7 +180,6 @@ function summarizePositions(
   bonuses: Map<Id, number>,
   doubleBooked: Map<Id, DoubleBooked>,
 ): PositionSummary[] {
-  const taxRate = ctx.rates?.payroll_tax_rate ?? 0;
   const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.key));
   const named = [
     ...coaching.map((c) => c.position_key),
@@ -196,20 +195,23 @@ function summarizePositions(
     const charges = charged.get(position.key);
     const hourlyCents = hourly.reduce((t, c) => t + c.wages, 0);
     const bonus = bonuses.get(position.key) ?? 0;
+    const hourlyHours = hourly.reduce((t, c) => t + c.hours, 0);
     const total = position.annual_salary_cents + hourlyCents + bonus;
+    // The hours behind its pay: its paid hours, and those it coaches by the hour at a rate of its own.
+    const paidHours = (position.paid_hours_per_year ?? 0) + (hourlyCents > 0 ? hourlyHours : 0);
     return {
       position_key: position.key,
       name: position.name,
       salary_cents: position.annual_salary_cents,
       salaried_coaching_hours: charges?.coaching_hours ?? 0,
       salaried_coaching_cents: Math.round(charges?.coaching_cents ?? 0),
-      hourly_coaching_hours: hourly.reduce((t, c) => t + c.hours, 0),
+      hourly_coaching_hours: hourlyHours,
       hourly_coaching_cents: Math.round(hourlyCents),
       booking_hours: charges?.booking_hours ?? 0,
       booking_cents: Math.round(charges?.booking_cents ?? 0),
       bonus_cents: Math.round(bonus),
       total_pay_cents: Math.round(total),
-      payroll_tax_cents: Math.round(total * taxRate),
+      payroll_tax_cents: Math.round(ctx.payrollTaxes.reduce((t, tax) => t + payrollTax(tax, total, paidHours), 0)),
       double_booked_hours: round2(doubleBooked.get(position.key)?.hours ?? 0),
       double_booked_dates: doubleBooked.get(position.key)?.dates ?? 0,
     };

@@ -12,6 +12,7 @@ import {
   fingerprint,
   IN_FORCE_NOT_ARCHIVED,
   installTriggers,
+  seedPayrollTaxes,
   seedStaffLevels,
   NEEDS_OPERATIONS,
   ONE_PER_AREA,
@@ -310,6 +311,29 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect((await w.read("plan_programs", settings))?.["staff_level_id"]).toBe(levels[0]!["id"]);
       // The triggers are back on.
       expect(await w.update("plan_staff_levels", rate, { hourly_rate_cents: 1 })).toEqual(refusal(REFUSED));
+    });
+
+    it("let the payroll taxes migration's seed add a frozen plan's taxes, once", async () => {
+      const { operations, draftSet } = await plans(db, 2106);
+      // As the migration (cyc0019) leaves it.
+      await db.exec(`
+        CREATE TABLE cyc_seed_payroll_taxes (plan_id uuid, name text, wage_share numeric, hourly_cents numeric, sort integer);
+        INSERT INTO cyc_seed_payroll_taxes VALUES ('${operations}', 'Payroll tax', 0.0948, NULL, 1);
+      `);
+      const seed = () => db.transaction((tx) => seedPayrollTaxes(connect(tx)));
+      expect(await seed()).toContain(draftSet);
+      expect(await seed()).toEqual([]);
+      const { rows } = await db.query<Values>(
+        `SELECT id, key, name, wage_share, hourly_cents, sort FROM plan_payroll_taxes WHERE plan_id = '${operations}'`,
+      );
+      expect(rows).toEqual([
+        expect.objectContaining({ name: "Payroll tax", wage_share: "0.0948", hourly_cents: null, sort: 1 }),
+      ]);
+      expect(rows[0]!["key"]).toEqual(expect.any(String));
+      // The triggers are back on.
+      expect(await w.update("plan_payroll_taxes", rows[0]!["id"] as string, { wage_share: 0.1 })).toEqual(
+        refusal(REFUSED),
+      );
     });
 
     it("refuse to move a row to another plan", async () => {

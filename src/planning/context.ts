@@ -8,6 +8,7 @@ import type {
   Id,
   PlanData,
   PlanOffering,
+  PlanPayrollTax,
   Plan,
   PlanRates,
   Product,
@@ -59,12 +60,14 @@ export interface Entry {
   stage: Stage;
   /** How much of the amount MTDC counts: 1, or 0 when it leaves MTDC, such as a boat charter. */
   mtdc_share: number;
-  /** Whether it's wages, which payroll tax is charged on. */
+  /** Whether it's wages, which a payroll tax on wages is charged on. */
   wages: boolean;
+  /** The paid hours behind a wage, which a payroll tax by the hour is charged on. */
+  paid_hours: number;
 }
 
-export type EntryInput = Omit<Entry, "stage" | "mtdc_share" | "wages"> &
-  Partial<Pick<Entry, "stage" | "mtdc_share" | "wages">>;
+export type EntryInput = Omit<Entry, "stage" | "mtdc_share" | "wages" | "paid_hours"> &
+  Partial<Pick<Entry, "stage" | "mtdc_share" | "wages" | "paid_hours">>;
 
 /** Lookups over the input, and the entries recorded so far, shared by every step. */
 export class Context {
@@ -85,6 +88,8 @@ export class Context {
   /** Days per offering key: the dates it has an activity other than travel. */
   readonly days = new Map<Id, number>();
   readonly rates: PlanRates | undefined;
+  /** The year's payroll taxes, each with a share of wages or an amount an hour. */
+  readonly payrollTaxes: PlanPayrollTax[];
   private readonly costAccounts: Map<CostType, Id>;
 
   readonly data: PlanData;
@@ -100,11 +105,25 @@ export class Context {
     this.rates = data.plan_rates[0];
     if (data.plan_rates.length > 1)
       this.warn("many_rates", "The Operations Plan has more than one set of rates. Only the first one counts");
+    this.payrollTaxes = this.checkPayrollTaxes(data.plan_payroll_taxes);
     this.costAccounts = new Map(
       data.organization_cost_accounts
         .filter((c) => c.organization_id === data.organization.id)
         .map((c) => [c.cost_type, c.account_id]),
     );
+  }
+
+  /** The taxes that set exactly one of a share of wages and an amount an hour. */
+  private checkPayrollTaxes(taxes: PlanPayrollTax[]): PlanPayrollTax[] {
+    return taxes.filter((tax) => {
+      if ((tax.wage_share == null) !== (tax.hourly_cents == null)) return true;
+      this.warn(
+        "payroll_tax_basis",
+        `${tax.name} needs a share of wages or an amount an hour, but not both, so it's left out`,
+        tax.key,
+      );
+      return false;
+    });
   }
 
   /** The account the organization records a calculated cost type in. */
@@ -136,7 +155,7 @@ export class Context {
 
   book(entry: EntryInput): void {
     if (entry.amount === 0 || !Number.isFinite(entry.amount)) return;
-    this.entries.push({ stage: "direct", mtdc_share: 1, wages: false, ...entry });
+    this.entries.push({ stage: "direct", mtdc_share: 1, wages: false, paid_hours: 0, ...entry });
   }
 
   /**

@@ -18,6 +18,7 @@ import {
   position,
   product,
   program,
+  payrollTax,
   rates,
   staffLevel,
   trip,
@@ -145,7 +146,7 @@ function realisticPlan(): PlanData {
     ...v("facilities"),
     name: "Facilities Manager",
     annual_salary_cents: 5_200_000,
-    paid_hours_per_year: null,
+    paid_hours_per_year: 2080,
   });
 
   // What the planner, or their AI, gives each block: staff, powerboats, equipment and boats.
@@ -263,10 +264,15 @@ function realisticPlan(): PlanData {
     plan_rates: [
       rates({
         ...v("rates"),
-        payroll_tax_rate: 0.0765,
         lodging_per_night_cents: 15_000,
         mileage_rate_cents: 67,
       }),
+    ],
+    plan_payroll_taxes: [
+      payrollTax({ ...v("social-security"), name: "Social Security", wage_share: 0.062 }),
+      payrollTax({ ...v("medicare"), name: "Medicare", wage_share: 0.0145 }),
+      payrollTax({ ...v("wa-unemployment"), name: "WA unemployment", wage_share: 0.0027 }),
+      payrollTax({ ...v("l-and-i"), name: "L&I", hourly_cents: 45.235 }),
     ],
     plan_revenue_charges: [
       charge({
@@ -420,7 +426,7 @@ describe("a realistic plan, end to end", () => {
     expect(sum(lines, (l) => l.line_key === "cogs:merch-year-key")).toBe(250_000);
   });
 
-  it("charges card fees on revenue and payroll tax on wages", () => {
+  it("charges card fees on revenue, and payroll taxes on wages and paid hours", () => {
     const revenue = sum(lines, (l) => l.line_key.startsWith("revenue:"));
     expect(Math.abs(sum(lines, (l) => l.line_key.startsWith("charge:")) - 0.03 * revenue)).toBeLessThanOrEqual(10);
     expect(sum(lines, (l) => l.account_id === A.payrollTax)).toBeGreaterThan(0.0765 * 12_200_000);
@@ -503,8 +509,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 311193,
-          "net": 48807,
+          "expenses": 315292,
+          "net": 44708,
           "revenue": 360000,
         },
         "Charters": {
@@ -518,7 +524,7 @@ describe("a realistic plan, end to end", () => {
           "revenue": 500000,
         },
         "Organization": {
-          "expenses": 18343015,
+          "expenses": 18561302,
           "net": 0,
           "revenue": 0,
         },
@@ -528,13 +534,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 2187441,
-          "net": 80559,
+          "expenses": 2209100,
+          "net": 58900,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 3896676,
-          "net": -706676,
+          "expenses": 3933533,
+          "net": -743533,
           "revenue": 3190000,
         },
       }

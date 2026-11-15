@@ -384,6 +384,7 @@ A budget line counts in its `fiscal_year`. Capital belongs in the Operations Pla
 ```mermaid
 erDiagram
     plans ||--o| plan_rates : contains
+    plans ||--o{ plan_payroll_taxes : contains
     plans ||--o{ plan_staff_levels : contains
     staff_levels ||--o{ plan_staff_levels : "rate for"
     plans ||--o{ plan_salaried_positions : contains
@@ -404,9 +405,13 @@ erDiagram
     products ||--o{ plan_bonus_owner_products : "owned by"
 
     plan_rates {
-        decimal payroll_tax_rate "share of wages"
         int lodging_per_night_cents
         int mileage_rate_cents
+    }
+    plan_payroll_taxes {
+        string name
+        decimal wage_share "share of wages, or"
+        decimal hourly_cents "per paid hour"
     }
     plan_staff_levels {
         uuid staff_level_id FK
@@ -474,7 +479,7 @@ erDiagram
     }
 ```
 
-`plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position and boat class also has one rate for the year, so each has a single row. The staff levels themselves are in the [catalog](hr-schema.md): a `plan_staff_levels` row is one level's hourly rate, $0 for a volunteer, and a Program Plan's program, block staff, or labor line picks its level from the catalog. The engine prices it at the rate in the same Financial Plan's Operations Plan, and warns when there's none. A boat class's rates are its fuel and upkeep for each hour one of the organization's boats is on the water, and what one costs to charter for a day.
+`plan_rates` holds the year's rates, in at most one row per version. `plan_payroll_taxes` lists each payroll tax, its own line on the P&L: a share of wages, such as Social Security, or an amount for each paid hour, such as L&I. A row sets one of the two. Plan Admins edit them in the Data Studio. Each staff level, salaried position and boat class also has one rate for the year, so each has a single row. The staff levels themselves are in the [catalog](hr-schema.md): a `plan_staff_levels` row is one level's hourly rate, $0 for a volunteer, and a Program Plan's program, block staff, or labor line picks its level from the catalog. The engine prices it at the rate in the same Financial Plan's Operations Plan, and warns when there's none. A boat class's rates are its fuel and upkeep for each hour one of the organization's boats is on the water, and what one costs to charter for a day.
 
 The plans don't say how many boats the organization has: the [asset list](#core-catalog) does, the same for every plan. The engine warns when the blocks give out more of the organization's boats of a class at once than it has that day; chartered boats don't count.
 

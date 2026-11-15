@@ -118,6 +118,14 @@ Feature: Plans
   costs. Every bonus is in the Operations Plan, which a Plan Admin sets. Anyone who can
   see plans sees all of these. To change something means to add, edit, or delete it.
 
+  The Operations Plan also lists the payroll taxes the organization pays on its staff, each the way
+  it's collected, and each its own line on the P&L. Most are a share of wages, such as Social
+  Security, Medicare, and Washington's unemployment tax. L&I, Washington's workers' comp, is an amount
+  for each hour worked: each hour a coach is paid for, and each of a salaried person's paid hours.
+  Volunteers are paid nothing, so their hours cost no L&I, and a bonus pays for no hours, so it costs
+  none either. A tax on wages is charged on every wage, with no yearly cap on each person's wages,
+  such as Social Security's.
+
   Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
 
     Example: A Financial Plan can start with only an Operations Plan
@@ -546,10 +554,11 @@ Feature: Plans
       Then the program area's P&L for "Summer 2027" includes $2,000 of bonus
       And the program area's P&L for "Fall 2027" includes $1,000 of bonus
 
-  Rule: The organization pays payroll tax on a bonus, as on any wage
+  Rule: The organization pays each tax on wages on a bonus, but no L&I, since a bonus pays for no hours
 
-    Example: A bonus costs payroll tax
-      Given payroll tax at 10% of wages
+    Example: A bonus costs the taxes on wages, but no L&I
+      Given a payroll tax of 10% of wages
+      And L&I of $0.50 for each hour worked
       And a director whose bonus is $5,000
       When a planner calculates the P&L
       Then the organization pays $500 of payroll tax on the bonus
@@ -562,6 +571,35 @@ Feature: Plans
       And $1,000 of storage charged to the program area
       When a planner calculates the P&L
       Then each offering pays $500 of the storage
+
+  Rule: Each payroll tax is its own line on the P&L, charged the way it's collected
+
+    Example: A tax on wages is a share of what the coaches are paid
+      Given Social Security of 6.2% of wages
+      And an offering with a practice from 9am to noon, in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $7.44 of Social Security
+
+    Example: L&I is charged for each hour a coach is paid
+      Given L&I of $0.50 for each hour worked
+      And an offering with a practice from 9am to noon, in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $3.00 of L&I
+
+    Example: A volunteer's hours cost no L&I
+      Given L&I of $0.50 for each hour worked
+      And an offering with a practice from 9am to noon, in a block with 2 coaches paid $0 an hour
+      When a planner calculates the P&L
+      Then the offering pays no L&I
+
+  Rule: A salaried person's hours cost L&I where their salary is charged
+
+    Example: An offering pays L&I on its salaried coach's hours
+      Given L&I of $0.50 for each hour worked
+      And a salaried director paid $40 an hour
+      And an offering with 10 practices of 3 hours, each in a block the director coaches
+      When a planner calculates the P&L
+      Then the offering pays $15.00 of L&I
 
   Rule: The P&L costs only the staff and boats each block is given
 

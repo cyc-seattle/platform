@@ -541,6 +541,31 @@ async function seedStaffLevels(db) {
   return (await db.query(`SELECT id FROM ${SETS} WHERE status = 'draft'`)).map((row) => row.id);
 }
 
+/** Where the payroll taxes migration (cyc0019) lists each plan's taxes. */
+const PAYROLL_TAXES_SEED = "cyc_seed_payroll_taxes";
+
+/**
+ * Adds the taxes the payroll taxes migration listed, once the schema apply has made
+ * `plan_payroll_taxes`, inside one transaction the caller opens. A frozen plan's rows are added
+ * too, so its trigger is off for it. Returns every draft, whose results now charge the taxes.
+ */
+async function seedPayrollTaxes(db) {
+  const [{ ready }] = await db.query(
+    `SELECT to_regclass('${PAYROLL_TAXES_SEED}') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns
+      WHERE table_schema = current_schema() AND table_name = 'plan_payroll_taxes' AND column_name = 'hourly_cents') AS ready`,
+  );
+  if (!ready) return [];
+  await db.exec("ALTER TABLE plan_payroll_taxes DISABLE TRIGGER USER");
+  await db.exec(
+    `INSERT INTO plan_payroll_taxes (id, plan_id, key, name, wage_share, hourly_cents, sort)
+      SELECT gen_random_uuid(), s.plan_id, gen_random_uuid(), s.name, s.wage_share, s.hourly_cents, s.sort
+        FROM ${PAYROLL_TAXES_SEED} s JOIN ${PLANS} p ON p.id = s.plan_id`,
+  );
+  await db.exec("ALTER TABLE plan_payroll_taxes ENABLE TRIGGER USER");
+  await db.exec(`DROP TABLE ${PAYROLL_TAXES_SEED}`);
+  return (await db.query(`SELECT id FROM ${SETS} WHERE status = 'draft'`)).map((row) => row.id);
+}
+
 // The catalog the engine reads as it is now.
 const CATALOG = [
   "products",
@@ -986,6 +1011,15 @@ function register({ filter, action, init }, { services, env, database, getSchema
     } catch (error) {
       logger.error(error, "frozen-plans: couldn't move the plans' staff levels into the staff levels list");
     }
+    try {
+      const changed = await database.transaction((trx) => seedPayrollTaxes(connect(trx)));
+      if (changed.length > 0) {
+        logger.info("frozen-plans: added each plan's payroll taxes");
+        drafts.mark(changed);
+      }
+    } catch (error) {
+      logger.error(error, "frozen-plans: couldn't add the plans' payroll taxes");
+    }
   };
   let pending;
   const reinstall = () => {
@@ -1193,6 +1227,7 @@ module.exports.guard = guard;
 module.exports.databaseError = databaseError;
 module.exports.installTriggers = installTriggers;
 module.exports.seedStaffLevels = seedStaffLevels;
+module.exports.seedPayrollTaxes = seedPayrollTaxes;
 module.exports.triggerStatus = triggerStatus;
 module.exports.fingerprint = fingerprint;
 module.exports.triggerStatements = triggerStatements;

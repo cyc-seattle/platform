@@ -57,6 +57,7 @@ export function installTriggers(
  * listed at its level, once the schema apply has added them. Returns the drafts it changed.
  */
 export function seedStaffLevels(db: Database): Promise<string[]>;
+export function seedPayrollTaxes(db: Database): Promise<string[]>;
 
 export interface TriggerStatus {
   /** The installed triggers' {@link fingerprint}, or null when there are none. */

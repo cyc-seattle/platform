@@ -207,7 +207,12 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_rates",
     sort: ["plan_id.financial_plan_id.name"],
-    fields: ["plan_id", "payroll_tax_rate", "lodging_per_night_cents", "mileage_rate_cents"],
+    fields: ["plan_id", "lodging_per_night_cents", "mileage_rate_cents"],
+  },
+  {
+    collection: "plan_payroll_taxes",
+    sort: ["plan_id.financial_plan_id.name", "sort", "name"],
+    fields: ["name", "plan_id", "wage_share", "hourly_cents"],
   },
   {
     collection: "plan_revenue_charges",

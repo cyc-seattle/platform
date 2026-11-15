@@ -51,7 +51,13 @@ export class CostCenterBooker {
         return;
       }
       for (const [key, share] of w) {
-        this.ctx.book({ ...entry, cost_center_type: "offering", cost_center_key: key, amount: entry.amount * share });
+        this.ctx.book({
+          ...entry,
+          cost_center_type: "offering",
+          cost_center_key: key,
+          amount: entry.amount * share,
+          paid_hours: (entry.paid_hours ?? 0) * share,
+        });
       }
     });
   }
@@ -158,6 +164,7 @@ export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
       line_name: line.name,
       explanation: `${line.name}: hours × ${names.get(level) ?? "the staff level"}'s rate`,
       wages: true,
+      paid_hours: rate > 0 ? line.hours : 0,
     });
   }
 }

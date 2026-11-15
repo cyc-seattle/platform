@@ -4,7 +4,13 @@
 // Money is stored as whole cents. Directus's own displays can't divide, so without this a table
 // shows 12500 where staff expect $125.00.
 
-const dollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+// A rate by the hour, such as L&I's, can carry fractions of a cent, so they're kept.
+const dollars = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 6,
+});
 
 /** `12500` as `$125.00`. An empty value is empty, and one that isn't a number comes back as it was. */
 export function formatCents(value) {
@@ -18,7 +24,7 @@ export default {
   name: "Cents as dollars",
   description: "Shows an amount stored in cents as dollars, such as 12500 as $125.00.",
   icon: "attach_money",
-  types: ["integer", "bigInteger"],
+  types: ["integer", "bigInteger", "decimal"],
   options: null,
   handler: formatCents,
   // Vue renders a string a render function returns as text.

@@ -420,9 +420,26 @@ Step(
     await p.indirectCostRate(share(percent));
   },
 );
-Step("payroll tax at {percent} of wages", (_, percent: string) =>
-  p.operationsRow("plan_rates", { payroll_tax_rate: share(percent) }),
+parameter("tax", ["Social Security", "Medicare", "WA unemployment", "L&I"]);
+Step("a payroll tax of {percent} of wages", (_, percent: string) =>
+  p.operationsRow("plan_payroll_taxes", { name: "Payroll tax", wage_share: share(percent) }),
 );
+Step("{tax} of {percent} of wages", (_, tax: string, percent: string) =>
+  p.operationsRow("plan_payroll_taxes", { name: tax, wage_share: share(percent) }),
+);
+Step("{tax} of {money} for each hour worked", (_, tax: string, money: string) =>
+  p.operationsRow("plan_payroll_taxes", { name: tax, hourly_cents: cents(money) }),
+);
+const taxOf = async (tax: string) => {
+  const account = await p.account("payrollTax");
+  return p.total((l) => onOffering(first(), account)(l) && l.line_name === tax);
+};
+Step("the offering pays {money} of {tax}", async (_, money: string, tax: string) => {
+  expect(await taxOf(tax)).toBe(cents(money));
+});
+Step("the offering pays no {tax}", async (_, tax: string) => {
+  expect(await taxOf(tax)).toBe(0);
+});
 Step("a director whose bonus is {money}", async (_, money: string) => {
   await directorWithBonus(0.5);
   await bonusProgram(cents(money) * 2, 0);
@@ -431,7 +448,7 @@ Step("the organization pays {money} of payroll tax on the bonus", (_, money: str
   expect(bonusTotal("bonus_payroll_tax:")).toBe(cents(money));
 });
 Step("a director's bonus, with its payroll tax, on the first offering only", async () => {
-  await p.operationsRow("plan_rates", { payroll_tax_rate: 0.1 });
+  await p.operationsRow("plan_payroll_taxes", { name: "Payroll tax", wage_share: 0.1 });
   await p.bonus(await p.operationsPlan(), 0.5, [p.offerings[0]!["product_id"] as string]);
 });
 

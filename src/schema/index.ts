@@ -48,6 +48,7 @@ export interface Schema {
   plan_closed_dates: PlanClosedDates[];
   plan_labor_lines: PlanLaborLines[];
   plan_offerings: PlanOfferings[];
+  plan_payroll_taxes: PlanPayrollTaxes[];
   plan_pools: PlanPools[];
   plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
@@ -849,6 +850,22 @@ export interface PlanOfferings {
   note: string | null;
 }
 
+/** Each tax the organization pays on its staff this year, such as Social Security or L&I, charged the way it's collected. */
+export interface PlanPayrollTaxes {
+  id: string;
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
+  key: string;
+  /** As it reads on the P&L, such as "Social Security" or "L&I". */
+  name: string;
+  /** For a tax on wages: its share of every wage. 0.062 means 6.2%. Leave it empty for a tax by the hour. */
+  wage_share: string | null;
+  /** For a tax by the hour, such as L&I: the employer's cost for each paid hour, less what staff pay. In cents: 45.235 is $0.45235. Leave it empty for a tax on wages. */
+  hourly_cents: string | null;
+  sort: number | null;
+}
+
 /** Shared costs no single offering owns, such as G&A, divided among the year's offerings by MTDC. */
 export interface PlanPools {
   id: string;
@@ -885,8 +902,6 @@ export interface PlanRates {
   plan_id: string | Plans;
   /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
-  /** Employer payroll costs, as a share of wages. 0.1 means 10%. */
-  payroll_tax_rate: string | null;
   /** In cents: 12500 is $125.00. */
   lodging_per_night_cents: number | null;
   /** In cents: 12500 is $125.00. */

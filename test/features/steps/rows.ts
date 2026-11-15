@@ -379,8 +379,9 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   plan_rates: async (fixed) => ({
     id: randomUUID(),
     plan_id: fixed["plan_id"] ?? (await fresh("plans")),
-    payroll_tax_rate: 0.1,
+    mileage_rate_cents: 70,
   }),
+  plan_payroll_taxes: async (fixed) => inPlan(fixed, { name: `Payroll tax ${key("tax")}`, wage_share: 0.062 }),
   plan_revenue_charges: async (fixed) =>
     inPlan(fixed, {
       name: `Scholarships ${key("charge")}`,
@@ -499,7 +500,8 @@ export const changes: Record<string, () => Row> = {
   plan_labor_lines: () => ({ hours: 12 }),
   plan_budget_lines: () => ({ amount_cents: 11_000 }),
   plan_capital_items: () => ({ amount_cents: 2_100_000 }),
-  plan_rates: () => ({ payroll_tax_rate: 0.11 }),
+  plan_rates: () => ({ mileage_rate_cents: 71 }),
+  plan_payroll_taxes: () => ({ wage_share: 0.0145 }),
   plan_revenue_charges: () => ({ rate: 0.03 }),
   plan_salaried_positions: () => ({ annual_salary_cents: 5_100_000 }),
   plan_salaried_bookings: () => ({ hours: 45 }),
@@ -623,6 +625,7 @@ export const PLAN_ROWS = [
   "plan_budget_lines",
   "plan_capital_items",
   "plan_rates",
+  "plan_payroll_taxes",
   "plan_revenue_charges",
   "plan_salaried_positions",
   "plan_salaried_bookings",
@@ -640,6 +643,7 @@ export const OPERATIONS_PLAN_ROWS = [
   "plan_staff_levels",
   "plan_capital_items",
   "plan_rates",
+  "plan_payroll_taxes",
   "plan_revenue_charges",
   "plan_salaried_positions",
   "plan_salaried_bookings",

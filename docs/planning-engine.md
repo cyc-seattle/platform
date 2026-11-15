@@ -95,9 +95,9 @@ Plan policy can read them.
 3. **Revenue**, with COGS and the charges set as a share of revenue.
 4. **Lines.** Budget lines, capital items, labor lines and salaried positions. Costs on a product or area are divided among
    its offerings last, once every offering's own costs are in.
-5. **Payroll tax** on every wage.
+5. **Payroll taxes** on every wage and paid hour.
 6. **Indirect costs**, each program's rate × its offerings' fees.
-7. **Bonuses**, with their payroll tax.
+7. **Bonuses**, with their taxes on wages.
 
 ## Rules
 
@@ -323,7 +323,8 @@ The engine warns about:
 - its booking hours, and what they charged
 - the bonuses that name it in `position_key`
 - its total pay: salary, hourly wages and bonus
-- the year's payroll tax on that total
+- the year's payroll taxes: each tax on wages on that total, and each tax by the hour on its paid hours
+  per year and its hours coached by the hour
 - its double-booked hours: the hours another coach would need while it's on two or more blocks at
   once. At each moment it's on n blocks, it counts n − 1, so three blocks at once for 3 hours count 6.
   It uses each block's start-to-end time, without setup or put-away. A block with no times adds no
@@ -332,8 +333,21 @@ The engine warns about:
 
 ### Payroll tax
 
-Payroll tax is the year's `payroll_tax_rate` × every wage (hourly coaches, labor lines and salaries),
-charged wherever the wage is.
+The Operations Plan lists each payroll tax in `plan_payroll_taxes`, charged the way it's collected.
+Each is booked as its own line, named for it, wherever the wage is:
+
+- A tax on wages is its `wage_share` × every wage: hourly coaches, labor lines, salaries and bonuses.
+- A tax by the hour, such as Washington's L&I, is its `hourly_cents` × every paid hour: each hour
+  of an hourly coach or a labor line paid more than $0, and a salaried position's
+  `paid_hours_per_year`, split like its salary. A volunteer's hours and a bonus carry none. The
+  engine warns about a salaried position with no paid hours, since none is charged on its salary.
+- A tax that sets both, or neither, is left out, with a warning.
+- No tax stops at a yearly cap on each person's wages, such as Social Security's. The engine charges
+  one L&I rate for every hour, as for one risk class.
+
+A draft gets Social Security (6.2%), Medicare (1.45%), WA unemployment (0.27%) and L&I ($0.45235 an
+hour). A Financial Plan frozen before each tax had its own row has one "Payroll tax", its old rate
+on wages.
 
 ### MTDC
 
@@ -400,7 +414,8 @@ revenue, not costs, because a director's bonus is a share of revenue too.
 - `bonuses` has a row for each owner and term: the net, which can be below zero, and the bonus.
   Its `program_area_id` is the area of all the owner's products, or null when they're in more than
   one.
-- The year's `payroll_tax_rate` × the bonus is booked as payroll tax on the same offerings.
+- Each tax on wages × the bonus is booked on the same offerings. A bonus pays for no hours, so no tax
+  by the hour is charged on it.
 - Neither the bonus nor its tax counts in MTDC.
 - A bonus owner in a program area's plan counts only that area's products. The engine warns about
   any other, and leaves it out.
@@ -430,9 +445,9 @@ Each line's `line_name` says what it is:
 - a trip, a budget line or a labor line has its own name
 - a salaried position's hours are "<position>: coaching" or "<position>: management", and the rest
   of its salary "<position>: rest of salary"
-- payroll tax is "Payroll tax"
-- a bonus is "Bonus: <role>", and its tax "Payroll tax on bonus: <role>"
-- an offering's indirect costs are "<pool> share: <the pooled line>", such as "G&A share: Payroll tax"
+- each payroll tax is its own name, such as "Social Security" or "L&I"
+- a bonus is "Bonus: <role>", and each tax on it "<tax> on bonus: <role>"
+- an offering's indirect costs are "<pool> share: <the pooled line>", such as "G&A share: Medicare"
 - what the rates leave unallocated on the organization is "<pool> unallocated: <the pooled line>", or
   "<pool> over-allocated: <the pooled line>" when they allocate more
 

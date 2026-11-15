@@ -119,6 +119,7 @@ export function bookSalaries(
         line_name: `${position.name}: ${c.line}`,
         explanation: `${position.name}: ${c.line} hours at the salary's hourly equivalent`,
         wages: true,
+        paid_hours: c.hours * scale,
       });
     }
 
@@ -133,6 +134,7 @@ export function bookSalaries(
       line_name: `${position.name}: rest of salary`,
       explanation: `${position.name}: salary not charged to coaching or bookings`,
       wages: true,
+      paid_hours: rate === null ? 0 : (salary - demand * scale) / rate,
     });
   }
   return charged;

@@ -20,7 +20,8 @@ export function share(percent: string): number {
 // Directus returns decimals as strings.
 const DECIMALS = new Set([
   "rate",
-  "payroll_tax_rate",
+  "wage_share",
+  "hourly_cents",
   "share",
   "hours",
   "sailors_per_coach",
@@ -57,6 +58,7 @@ const PLAN_ROWS = [
   "plan_budget_lines",
   "plan_capital_items",
   "plan_rates",
+  "plan_payroll_taxes",
   "plan_revenue_charges",
   "plan_staff_levels",
   "plan_salaried_positions",
