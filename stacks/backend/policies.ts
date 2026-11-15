@@ -352,7 +352,12 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         ...readCatalog,
         readUserNames,
         ...plans.map((collection) => ({ collection, action: "read" as const })),
-        { collection: SETS, action: "update", fields: ["status", "effective_from", "archived_at"] },
+        // Freezing writes the hook's stamps, which Directus checks after the hook adds them. The hook drops any sent.
+        {
+          collection: SETS,
+          action: "update",
+          fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at", "platform_version"],
+        },
         ...(["create", "update", "delete"] as const).map((action) => ({ collection: PLANS, action })),
         ...rowsIn(plans, schemas).flatMap((collection) =>
           (["create", "update", "delete"] as const).map((action) => ({

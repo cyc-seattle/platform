@@ -333,9 +333,13 @@ async function readsEveryDetail(): Promise<void> {
   for (const target of targets("plans")) {
     const { status, body } = await user.request("GET", readQuery(target, "*"));
     expect(status, `${target.collection}: ${JSON.stringify(body)}`).toBe(200);
+    // Against the admin's read, not the fixture, since other scenarios change the draft's rows.
+    const all: Row[] = await (await admin()).ok("GET", readQuery(target, "*"));
     for (const key of target.rows) {
+      const whole = all.find((item) => item["id"] === row[key]);
+      expect(whole, key).toBeDefined();
       const read = body.data.find((item: Row) => item["id"] === row[key]);
-      expect(read, key).toEqual(fixture[key]);
+      expect(read, key).toEqual(whole);
     }
   }
 }

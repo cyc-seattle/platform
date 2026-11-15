@@ -302,7 +302,11 @@ describe("the Plan policies", () => {
       expect(collections("Plan Admin", action).has("plans"), `${action} plans`).toBe(true);
     }
     expect(writes("Plan Admin").filter((rule) => rule.collection === "financial_plans")).toEqual([
-      { collection: "financial_plans", action: "update", fields: ["status", "effective_from", "archived_at"] },
+      {
+        collection: "financial_plans",
+        action: "update",
+        fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at", "platform_version"],
+      },
     ]);
   });
 
