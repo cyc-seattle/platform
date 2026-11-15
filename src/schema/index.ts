@@ -871,6 +871,8 @@ export interface PlanPrograms {
   staff_level_id: string | StaffLevels | null;
   /** How many sailors one coach at its staff level can safely take. */
   sailors_per_coach: string | null;
+  /** A share of the program's MTDC that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it. */
+  indirect_cost_rate: string | null;
   /** The program's rules, for your AI to follow in each of its offerings. Short notes, one a line, each up to 280 characters. Bold, italic, code and links work. */
   notes: string[] | null;
 }

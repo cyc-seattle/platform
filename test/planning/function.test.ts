@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { PlanData } from "../../src/planning/index.ts";
 import { computePlan } from "../../src/planning/index.ts";
-import { A, budgetLine, emptyPlan, laborLine, offering, pool, product, rates, staffLevel } from "./fixtures.ts";
+import {
+  A,
+  budgetLine,
+  emptyPlan,
+  laborLine,
+  offering,
+  pool,
+  product,
+  rates,
+  recoverAll,
+  staffLevel,
+} from "./fixtures.ts";
 
 function defaultTo(data: PlanData, accountId: string, fn: "program" | "management" | "fundraising"): void {
   const account = data.accounts.find((a) => a.id === accountId);
@@ -41,7 +52,7 @@ describe("function", () => {
       budgetLine({ account_id: A.travel, cost_center_type: "offering", cost_center_key: o.key, amount_cents: 1000 }),
       budgetLine({ cost_center_type: "pool", cost_center_key: ga.key, amount_cents: 50_000 }),
     ];
-    const shares = computePlan(data).lines.filter((l) => l.line_key.startsWith("pool:"));
+    const shares = computePlan(recoverAll(data)).lines.filter((l) => l.line_key.startsWith("pool:"));
     expect(shares.length).toBeGreaterThan(0);
     for (const s of shares) {
       expect(s.cost_center_type).toBe("offering");

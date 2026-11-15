@@ -177,6 +177,7 @@ describe("the organization's totals", () => {
       fundraising: { revenue_cents: 3_000_000, expense_cents: 500_000, net_cents: 2_500_000 },
       capital_cents: 2_000_000,
       total_cents: 1_500_000,
+      indirect: { shared_cents: 0, recovered_cents: 0, unrecovered_cents: 0, full_recovery_rate: 0 },
     });
   });
 

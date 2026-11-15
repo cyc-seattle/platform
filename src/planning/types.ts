@@ -165,6 +165,8 @@ export interface PlanProgram extends PlanRow {
   /** The staff level that coaches it. */
   staff_level_id: Id | null;
   sailors_per_coach: number | null;
+  /** The share of its offerings' MTDC they pay toward the shared costs, fixed for the year. */
+  indirect_cost_rate?: number | null;
   /** The planner's short notes, which only their AI reads. */
   notes: string[] | null;
 }
@@ -497,6 +499,19 @@ export interface OrganizationTotals {
   capital_cents: number;
   /** Operating net, plus fundraising net, less capital. */
   total_cents: number;
+  indirect: IndirectTotals;
+}
+
+/** The year's shared costs, and what the programs' indirect cost rates recover of them. */
+export interface IndirectTotals {
+  /** Everything in every pool. */
+  shared_cents: number;
+  /** What the rates charge the programs' offerings. */
+  recovered_cents: number;
+  /** What's left on the organization: shared less recovered. Below zero when the rates recover more. */
+  unrecovered_cents: number;
+  /** The one rate that would recover every shared cost: shared ÷ the programs' MTDC. Null with no MTDC. */
+  full_recovery_rate: number | null;
 }
 
 /**

@@ -42,10 +42,11 @@ Feature: Plans
   worked out again a moment after every change to it, whether the change was made in the app, in
   the Data Studio, or by an AI. A frozen Financial Plan keeps the P&L it had when it was frozen, and
   that never changes either. Each line of a frozen P&L says in plain words what it is.
-  Shared costs are the costs that several offerings share, such as the office. What non-program
-  sales make, or lose, comes off the shared costs first, so a good year for charters lowers every
-  program's share. The rest is divided among the programs' offerings by their direct costs, counted
-  the way federal grant rules count them, so each Program Plan's P&L includes its share of them. Some charges are set as
+  Shared costs are the costs that several offerings share, such as the office. Each program pays
+  toward them at its indirect cost rate, a share of its own direct costs, counted the way federal
+  grant rules count them. A Plan Admin sets each program's rate in the plan, from the year before,
+  and it stays fixed for the year, so one program's year never changes what another pays, or its
+  director's bonus. What the rates don't recover of the shared costs stays with the organization. Some charges are set as
   a share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with
   its rate and the kinds of product it applies to. Revenue from programs and other sales pays for
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
@@ -79,20 +80,22 @@ Feature: Plans
   Nothing works out how many coaches or boats a program needs. The planner, or their AI, decides that
   from the program settings and the notes.
 
-  Each offering has the most sailors it takes, and the number the planner expects to sign up. A
-  block is given what the offering would use if it filled, and the P&L costs every coach and boat
-  it's given, however many sailors sign up: CSC pays a whole coach and RIB for every practice.
+  Each offering has the most sailors it takes, and the number the planner expects to sign up. The
+  P&L costs every coach and boat a block is given, however many sailors sign up: CSC pays a whole
+  coach and RIB for every practice.
   Revenue and the costs per sailor follow the sailors expected.
   A planner sees two numbers for each offering: the most sailors its block can take, and the fewest
   sailors at which it pays for itself.
 
   A planner is warned when the blocks break a limit: more of the organization's boats of a class out
-  at once than it has that day, too few coaches or boats for a block's sailors if every offering in
-  it fills, or an activity with no staff. Each warning says which plan and date it's about. Each coach
-  in a block can safely take the program's number of sailors. A program's staff level is what the
-  planner aims for, not a hard rule: any coach in the block counts, and so does a salaried coach,
-  such as a director. Each boat can take its class's most sailors, and the boats that
-  sailors bring count too.
+  at once than it has that day, too few of its boats of a class for every offering to fill, or an
+  activity with no staff. Each warning says which plan and date it's about. A full program needs
+  sailboats enough for all its sailors, each boat taking its class's most sailors, and a coach boat
+  for each coach: each coach can safely take the program's number of sailors. The boats that
+  sailors bring count, and so do the boats a block charters, since the organization can charter
+  more of a class it doesn't own. The planner isn't warned about coaches, since CSC can always hire
+  more. A program's staff level is what the planner aims for, not a hard rule: any coach in the
+  block counts, and so does a salaried coach, such as a director.
 
   A planner is also warned about each Program Plan line that moves a cost off the area's programs:
   a line left out of the split of shared costs, a line charged to the shared costs or to the
@@ -404,9 +407,10 @@ Feature: Plans
         | Fall 2027   | $4,000   |
         | no term     | $2,000   |
 
-    Example: Each term pays its share of the shared costs
+    Example: Each term pays its own indirect costs
       Given a program area with an offering in "Summer 2027" and one in "Fall 2027", with the same direct costs
       And $1,000 of office costs shared by every offering
+      And every program's indirect cost rate is 50%
       When a planner calculates the P&L
       Then the program area's P&L for "Summer 2027" includes $500 of the office costs
 
@@ -461,6 +465,7 @@ Feature: Plans
       Given two offerings with the same direct costs
       And scholarships on the first offering only, which don't count toward the split
       And $1,000 of office costs shared by every offering
+      And every program's indirect cost rate is 50%
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
@@ -505,7 +510,7 @@ Feature: Plans
 
     Scenario Outline: A director's bonus before and after shared costs
       Given a director who earns 50% of their programs' net <counted>
-      And their programs take in $30,000 and cost $20,000, plus $6,000 of shared costs
+      And their programs take in $30,000 and cost $20,000, with an indirect cost rate of 30%
       When a planner calculates the P&L
       Then the director's bonus is <bonus>
 
@@ -556,6 +561,7 @@ Feature: Plans
       Given two offerings with the same direct costs
       And a director's bonus, with its payroll tax, on the first offering only
       And $1,000 of office costs shared by every offering
+      And every program's indirect cost rate is 50%
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
@@ -775,60 +781,34 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 14 Sailqubes out, but the organization has 12
 
-  Rule: A planner is warned when a block has too few coaches for its sailors
+  Rule: A planner is warned when the organization hasn't enough boats for every offering to fill
 
-    Example: One Senior Instructor for 14 Guppies
-      Given Guppies have a Senior Instructor for every 10 sailors
-      And a Guppies block of 14 sailors with one Senior Instructor and enough boats
-      When a planner calculates the P&L
-      Then the planner is warned that the block is for up to 14 sailors, but has enough coaches for only 10
-
-    Example: A coach at another staff level counts
-      Given Guppies have a Senior Instructor for every 10 sailors
-      And a Guppies block of 10 sailors with one Head Coach and enough boats
-      When a planner calculates the P&L
-      Then the planner isn't warned about the block
-
-    Example: A salaried director on a block counts as one coach
-      Given Guppies have a Senior Instructor for every 10 sailors
-      And a salaried director paid $30 an hour
-      And a Guppies block of 10 sailors that the director coaches, with enough boats
-      When a planner calculates the P&L
-      Then the planner isn't warned about the block
-
-    Example: One coach for 5 Guppies and 5 Minnows is too few
-      Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
-      And a block of 5 Guppies and 5 Minnows, with one coach and enough boats
-      When a planner calculates the P&L
-      Then the planner is warned that the block has too few coaches
-
-    Example: Two coaches for 5 Guppies and 5 Minnows are enough
-      Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
-      And a block of 5 Guppies and 5 Minnows, with two coaches and enough boats
-      When a planner calculates the P&L
-      Then the planner isn't warned about the block
-
-  Rule: A planner is warned when a block's boats can't hold its sailors
-
-    Example: Five Sailqubes for 14 Guppies
+    Example: Sailqubes for 10 Guppies, when 16 can sign up
       Given Sailqubes take 2 sailors each
-      And a Guppies block of 14 sailors with enough staff and 5 Sailqubes
+      And the organization has 6 Sailqubes
+      And a Guppies offering for up to 16 sailors that expects 10, in a block with 5 Sailqubes on the morning of July 13
       When a planner calculates the P&L
-      Then the planner is warned that the block is for up to 14 sailors, but the boats hold only 10
+      Then the planner is warned that on July 13 Guppies needs 8 Sailqubes when it's full, but the organization has 6
 
     Example: Boats that sailors bring count
-      Given Optis take 1 sailor each
-      And a block of 12 sailors with enough staff, 8 of the organization's Optis, and 4 Optis that sailors bring
+      Given Sailqubes take 2 sailors each
+      And the organization has 6 Sailqubes
+      And a Guppies offering for up to 16 sailors that expects 10, in a block on the morning of July 13 with 5 of the organization's Sailqubes and 2 that sailors bring
       When a planner calculates the P&L
-      Then the planner isn't warned about the block
+      Then the planner isn't warned that the organization hasn't enough Sailqubes
 
-  Rule: A block's coaches and boats are checked against the most sailors each offering takes
+    Example: A coach boat for each coach a full program needs
+      Given Guppies have a coach for every 5 sailors
+      And the organization has 8 Sailqubes and 3 RIBs
+      And a Guppies offering for up to 16 sailors that expects 10, in a block with 8 Sailqubes and 2 RIBs on the morning of July 13
+      When a planner calculates the P&L
+      Then the planner is warned that on July 13 Guppies needs 4 RIBs when it's full, but the organization has 3
 
-    Example: Enough coaches for the sailors expected, but not for a full program
+    Example: Too few coaches for a full program isn't a warning
       Given Guppies have a coach for every 10 sailors
       And a Guppies offering for up to 16 sailors that expects 10, in a block with one coach and enough boats for 16
       When a planner calculates the P&L
-      Then the planner is warned that the block is for up to 16 sailors, but has enough coaches for only 10
+      Then the planner isn't warned about the block
 
   Rule: A planner sees the most sailors each offering's block can take
 
@@ -838,7 +818,6 @@ Feature: Plans
       And a Guppies offering for up to 16 sailors, in a block with 2 coaches and 6 Sailqubes
       When a planner calculates the P&L
       Then the offering's block can take 12 sailors
-      And the planner is warned that the block is for up to 16 sailors, but the boats hold only 12
 
     Example: A block shared with another program leaves room for that program's full number
       Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
@@ -893,13 +872,41 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice is on a closed day
 
-  Rule: A Program Plan's P&L counts the other Program Plans in its Financial Plan
+  Rule: Each program pays its indirect cost rate on its own direct costs, and the organization keeps the rest
 
-    Example: The office is split between two Program Plans
+    Example: Two Program Plans pay their rates, and the organization keeps what they don't recover
       Given $1,000 of office costs shared by every offering
       And a draft Financial Plan with two Program Plans whose offerings have the same direct costs
+      And every program's indirect cost rate is 30%
       When a planner calculates the P&L
-      Then each Program Plan's offering pays $500 of the office costs
+      Then each Program Plan's offering pays $300 of the office costs
+      And the organization's totals show $400 of shared costs not recovered
+
+    Example: One program's year doesn't change what another pays
+      Given $1,000 of office costs shared by every offering
+      And a program area with two offerings with the same direct costs
+      And every program's indirect cost rate is 30%
+      When the second offering's direct costs double
+      Then the first offering still pays $300 of the office costs
+
+    Example: A program with no indirect cost rate pays none of the shared costs
+      Given $1,000 of office costs shared by every offering
+      And a program area with two offerings with the same direct costs
+      When a planner calculates the P&L
+      Then no offering pays the office costs
+      And the planner is warned that a program has no indirect cost rate
+
+  Rule: Only a Plan Admin sets a program's indirect cost rate, since a director's bonus counts it
+
+    Example: A Plan Writer can't set a program's indirect cost rate
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan
+      Then they can't set the indirect cost rate of one of a Program Plan's programs
+
+    Example: A Plan Admin sets a program's indirect cost rate
+      Given a user with the Plan Writer and Plan Admin policies
+      And a draft Financial Plan
+      Then they can set the indirect cost rate of one of a Program Plan's programs
 
   Rule: A draft's P&L is up to date after every change to it
 
@@ -919,7 +926,7 @@ Feature: Plans
 
     Example: A Financial Plan started from it doesn't change its P&L
       Given a frozen Financial Plan named "Budget" whose offering pays $1,000 of office costs
-      When a planner freezes a Financial Plan started from "Budget" with $2,000 of office costs
+      When a planner freezes a Financial Plan started from "Budget" with twice the indirect cost rate
       Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
     Example: A frozen Financial Plan keeps each term's P&L and bonus
@@ -935,6 +942,7 @@ Feature: Plans
       Given a user with the Plan Writer and Plan Admin policies
       And $1,000 of office costs in a pool named "G&A"
       And a draft Financial Plan with one offering that has direct costs
+      And every program's indirect cost rate is 10%
       When they freeze the Financial Plan
       Then the Financial Plan's P&L names the offering's share of the office "G&A share: Office"
 

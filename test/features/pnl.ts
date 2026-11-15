@@ -133,6 +133,8 @@ export class PnlPlan {
   private readonly areaPlans = new Map<string, string>();
   readonly areas: string[] = [];
   readonly products: string[] = [];
+  /** Each program's program area. */
+  private readonly programAreas = new Map<string, string>();
   readonly offerings: Item[] = [];
   readonly lines: Record<string, Item> = {};
   readonly boatClasses: string[] = [];
@@ -240,6 +242,7 @@ export class PnlPlan {
     });
     if (kind === "program") {
       await adminCreate("programs", { id: randomUUID(), name: `Program ${runId}`, product_id: product.id });
+      if (area !== null) this.programAreas.set(product.id, area);
     }
     this.products.push(product.id);
     return product.id;
@@ -384,6 +387,13 @@ export class PnlPlan {
       ...fields,
     });
     return settings.id;
+  }
+
+  /** Gives every program so far `rate` as its indirect cost rate, in its area's Program Plan. */
+  async indirectCostRate(rate: number): Promise<void> {
+    for (const [product, area] of this.programAreas) {
+      await this.programSettings(area, product, { indirect_cost_rate: rate });
+    }
   }
 
   /** A block in `plan` on `date`. Returns its id. */

@@ -39,17 +39,17 @@ Planners enter each of these in the plans ([docs/planning-schema.md](planning-sc
 - The plans are the ones a Financial Plan holds: its Operations Plan and each of its Program
   Plans. A Program Plan's row that names an Operations Plan row by key means the row with that key
   in that Operations Plan.
-- Every pool is divided among all of the Financial Plan's programs' offerings, after non-program's
-  net offsets it, so each Program Plan's share of the pools, and the organization's totals, count
-  every plan in it.
+- Each program's indirect cost rate is in its Program Plan's `plan_programs` row, and the shared
+  costs are in the Operations Plan, so the organization's totals count every plan in the Financial Plan.
 - The catalog is read as it is now. A frozen Financial Plan doesn't copy it, so recalculating an old
   one uses today's catalog.
 
 It returns:
 
 - `lines`: every cost and revenue line for the year, on its offering, product, program area, pool or
-  the organization, by account. Amounts are positive cents, but for the credit when non-program
-  loses money (see [Pools](#pools)); the account's type says whether it's revenue or expense. Each has a `line_key`, and a `line_name` that says in plain words what it is.
+  the organization, by account. Amounts are positive cents, but for the credit when the indirect cost
+  rates recover more than the shared costs (see [Indirect costs](#indirect-costs)); the account's type
+  says whether it's revenue or expense. Each has a `line_key`, and a `line_name` that says in plain words what it is.
   See [Line names](#line-names).
 - `pnl`: each offering's revenue, costs by account, and net, then each product's and each program
   area's, which add up their offerings. Each also has its MTDC, enrollment, days and sailor-days.
@@ -78,12 +78,13 @@ Plan policy can read them.
 ## Terms
 
 - **Pool:** a group of shared costs, such as general and administrative (G&A) costs or program
-  admin, that no single offering owns. The engine divides each pool among the programs' offerings.
+  admin, that no single offering owns.
+- **Indirect cost rate:** the share of a program's MTDC it pays toward the shared costs, set for each
+  program in the plan and fixed for the year. A program's indirect costs are its rate × its MTDC.
 - **Non-program:** every offering whose product isn't a program, such as merchandise, storage and
   charters.
 - **MTDC** (modified total direct costs): an offering's own costs, less a few kinds a federal grant
-  rule leaves out. Shared costs are divided among offerings by MTDC: an offering with twice the MTDC
-  takes twice the share.
+  rule leaves out.
 
 ## Order
 
@@ -94,7 +95,7 @@ Plan policy can read them.
 4. **Lines.** Budget lines, capital items, labor lines and salaried positions. Costs on a product or area are divided among
    its offerings last, once every offering's own costs are in.
 5. **Payroll tax** on every wage.
-6. **Pools**, divided among the offerings.
+6. **Indirect costs**, each program's rate × its offerings' MTDC.
 7. **Bonuses**, with their payroll tax.
 
 ## Rules
@@ -130,10 +131,11 @@ Plan policy can read them.
 
 The engine never works out how many coaches or boats an activity needs: the planner, or their AI,
 decides that from the program settings and the planner's notes, and writes it on the blocks
-([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block is given
-what its offerings would use if they filled, and costs everything it's given, however many sailors
-are expected: the checks are what make sure the program could run full
-([cyc-seattle/platform#287](https://github.com/cyc-seattle/platform/issues/287)).
+([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block costs
+everything it's given, however many sailors are expected
+([cyc-seattle/platform#287](https://github.com/cyc-seattle/platform/issues/287)). The checks make
+sure the organization has the boats for every offering to run full; it can always hire more
+coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issues/294)).
 
 - Enrollment, the sailors expected, is a whole number of kids: `target_enrollment`, or none when it's
   empty. Kids who join or leave partway through aren't counted. Revenue and
@@ -173,15 +175,19 @@ are expected: the checks are what make sure the program could run full
 - An offering's `allocation_holds` is the most sailors its blocks can take: on each of its blocks,
   other than travel, with every other offering in the block at its max, the fewer of
   ⌊(the block's coaches − the others' Σ max ÷ sailors per coach) × its own sailors per coach⌋ and the
-  block's seats − the others' Σ max, at least 0. It's the fewest over its blocks. A limit that can't be
+  block's seats − the others' Σ max, at least 0. Each program's sailors count against its own
+  `sailors_per_coach`, in its `plan_programs` row, and every coach on the block counts, at any staff
+  level, and so does a salaried position: a program's `staff_level_id` is for planning and cost,
+  not a hard rule (cyc-seattle/sail-team#82). A block's seats are Σ (boats, the organization's,
+  chartered and the sailors' own, × the class's `max_capacity`); a coach boat's class takes 0. It's the fewest over its blocks. A limit that can't be
   worked out, such as a program with no settings or a block whose activities don't use boats, is left
   out; with none, it's null. It can be more than the max enrollment.
 - Its `breakeven_enrollment` is the fewest sailors, from 1 up to its `capacity`, at which its net after
-  shared costs is zero or more, with its share of shared costs as planned. The engine recalculates
-  only the offering's slice: it, its activities, trips and own lines, and its blocks with the
-  activities that share them. Its net at n sailors is the slice's net at n, plus its planned net less
-  the slice's net at its enrollment, so pools, bonuses and anything else outside the slice stay as
-  planned. Each number is tried in turn, since costs set per sailor can step. It's null when the
+  indirect costs is zero or more. The engine recalculates only the offering's slice: it, its
+  activities, trips and own lines, and its blocks with the activities that share them, less its
+  program's indirect cost rate × the slice's MTDC. Its net at n sailors is the slice's net at n, plus
+  its planned net less the slice's net at its enrollment, so bonuses and anything else outside the
+  slice stay as planned. Each number is tried in turn, since costs set per sailor can step. It's null when the
   offering doesn't cover its costs even when full, or has no `capacity`.
 
 ### Warnings
@@ -192,8 +198,8 @@ a closed day; the rest are `data`, a row that's missing or wrong. The engine sti
 given.
 
 A message says only what's wrong, in plain words, since the warning already gives its plan and date:
-"Guppies Week 2 and Opti Camp Week 2 are for up to 23 sailors, but have enough coaches for only 17", or
-"9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
+"Guppies Week 2 and Opti Camp Week 2 need 12 Sailqubes out at once when they're full, but CSC has
+only 10, so they're 2 short", or "9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
 offerings. Messages follow the `ui-copy` skill from
 [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
 
@@ -208,22 +214,35 @@ Allocation warnings:
   from their first activity's start to their last one's end; one with no times is out all day.
 - Results frozen before boats were counted by class may also have `over_inventory_resource`, for
   RIBs and other equipment.
-- `over_capacity`: more sailors in a block, with every offering at its max enrollment, than its
-  staff, or its boats, can safely take. Each program's sailors count against its own
-  `sailors_per_coach`, in its `plan_programs` row: the block
-  needs Σ (each program's sailors ÷ its sailors per coach) coaches. Every coach on the block counts,
-  at any staff level, and so does a salaried position: the ratio is required, and a program's
-  `staff_level_id` is for planning and cost, not a hard rule (cyc-seattle/sail-team#82). The block is
-  over when it needs more coaches than it has. Qualifications aren't checked (#208). Its boats take Σ (boats, the organization's, chartered and the sailors'
-  own, × the class's `max_capacity`); a coach boat's class takes 0. A block whose activities don't use boats has no boat limit.
+- `short_of_boats`: too few of the organization's boats of one class on a date for every offering
+  to run full, when the boats given aren't already more than it has (`over_inventory_boats`). For
+  each block whose activities use boats, with every offering at its max enrollment:
+  - Its sailboats, the classes with a `max_capacity` above 0, are scaled up until they seat
+    everyone: each class's boats, the organization's and chartered, × (Σ max − the seats in the
+    boats sailors bring) ÷ the seats in the organization's and chartered boats, rounded up. They're
+    never scaled down, and the boats sailors bring stay as given.
+  - It needs a coach boat for each coach a full program needs: Σ (each program's max ÷ its
+    `sailors_per_coach`), rounded up. If that's more than the coach boats it's given, the rest are
+    of the coach boat class it's given most of. A block given no coach boats needs none, and a
+    program with no settings adds no coaches.
+  - Charters stay as given, so the organization's own boats make up the rest.
+
+  The most of a class the blocks need at once on a date, counted as for `over_inventory_boats`, is
+  checked against the boats of that class the organization has that day. A class it has none of
+  that day isn't checked, since it can charter more. Coaches aren't checked: the organization can
+  always hire more. Qualifications aren't checked either (#208).
+
+- Results frozen before cyc-seattle/platform#294 may have `over_capacity`, for a block whose coaches
+  or boats were too few for every offering at its max.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
 - `closed_date`: an activity, other than a travel day, on a closed day.
 
 Data warnings about blocks:
 
 - `no_program_settings`: a program in a block with no staff level or sailors per coach. Its sailors
-  aren't checked against the staff.
-- `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors.
+  need no coach boats.
+- `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors and
+  aren't scaled.
 - `no_charter_rate`: a block's chartered boats, whose class has no `charter_per_day_cents`.
   Results frozen before it was renamed call it `no_sailors_per_boat`, and may also have
   `no_fleet_quantity`, which the engine no longer gives.
@@ -327,24 +346,29 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
   leaves out. Equipment means an item that costs $10,000 or more and lasts more than a year; anything
   cheaper is a supply, and counts.
 - Every other cost of the offering's own counts, including COGS and payroll tax.
-- Shares of pools and bonuses never count.
+- Indirect costs and bonuses never count.
 
-### Pools
+### Indirect costs
 
-- Non-program's net offsets the pools first (cyc-seattle/platform#242). Its net is its offerings'
-  revenue less their own costs, before any bonus. Every pooled amount gives up the same fraction,
-  net ÷ everything in every pool, so each pool is offset in proportion to its size. That part stays
-  on the organization's books, keeping its account and function, keyed
-  `offset:<pool key>:<the original line key>`. A loss works the same way: the fraction is negative,
-  the organization's line is a credit, and the programs share more than the pools hold.
-- If non-program's net is more than everything in every pool, the organization keeps all of them,
-  and the engine warns (`non_program_exceeds_pools`). Non-program keeps the rest as its margin.
-- The rest of every pooled amount is divided among the year's programs' offerings by MTDC, keeping
-  its account. Its line key is `pool:<pool key>:<the original line key>`. Non-program's offerings
-  take no share, so their P&L shows their own margin.
-- Because shared costs never count toward MTDC, the order the pools are divided in doesn't matter.
-- If no program's offering has any MTDC, the shared costs stay on the organization's books and the
-  engine shows a warning.
+Each program pays a fixed rate on its own costs toward the shared costs, so one program's year never
+changes another's indirect costs, or its director's bonus
+([cyc-seattle/platform#296](https://github.com/cyc-seattle/platform/issues/296)).
+
+- The shared costs are everything in every pool.
+- A program's offering's indirect costs are its program's `indirect_cost_rate`, in its
+  `plan_programs` row, × the offering's MTDC. A program with no rate pays none, and the engine warns
+  (`no_indirect_cost_rate`). Only a Plan Admin sets the rate.
+- The indirect costs are split over the pools' lines by their size, keeping each line's account and
+  function, keyed `pool:<pool key>:<the original line key>`. So a program's P&L shows its indirect
+  costs by pool and account.
+- What the rates don't recover of each pooled line stays on the organization's books, keyed
+  `unrecovered:<pool key>:<the original line key>`. When the rates recover more than the shared
+  costs, it's a credit there. Either way the organization's net is the same whatever the rates.
+- Non-program's offerings pay no indirect costs, so their P&L shows their own margin, and it stays
+  with the organization.
+- With no shared costs, no program pays its rate, and the engine warns (`no_shared_costs`).
+- Results calculated before the rates spread the pools by MTDC, after non-program's net offset them;
+  their `offset:` lines are the part non-program's net covered.
 
 ### Terms
 
@@ -353,7 +377,7 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 - Each program area has a P&L, at level `program_area_term`, for each term it has an offering in,
   in the order the terms start, and one more, with `term_key` null, for its offerings in no term.
   Together they add up to the area's P&L.
-- A term's P&L adds up its offerings'. Costs on a product or the area, and the pools, already reach
+- A term's P&L adds up its offerings'. Costs on a product or the area, and indirect costs, already reach
   the offerings, so a term has its share of them.
 - A cost left on a product or the area, because it had no offerings that year, is in no term.
 
@@ -364,7 +388,7 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
   another term's bonus.
 - Its products' offerings in no term make one more net, for the year, with anything booked on
   the products themselves.
-- `basis` `after_shared_costs`, the default, counts each offering's share of the pools;
+- `basis` `after_shared_costs`, the default, counts each offering's indirect costs;
   `before_shared_costs` doesn't.
 - No bonus counts in any bonus's base.
 - Each term's bonus is divided among that term's offerings by revenue. If none has revenue,
@@ -387,7 +411,8 @@ Each line's `function` is `program`, `management` or `fundraising`:
 - any other cost, on a pool or the organization, takes its account's `default_function`, or
   `management` without one
 - revenue takes its account's `default_function`, or none
-- a share of a pool keeps the function it had in the pool, so a G&A share stays `management`
+- indirect costs keep the function of the pooled line they're split over, so a G&A share stays
+  `management`
 
 A frozen Financial Plan keeps the functions it was calculated with.
 
@@ -403,9 +428,9 @@ Each line's `line_name` says what it is:
   of its salary "<position>: rest of salary"
 - payroll tax is "Payroll tax"
 - a bonus is "Bonus: <role>", and its tax "Payroll tax on bonus: <role>"
-- a share of a pool is "<pool> share: <the line it shares>", such as "G&A share: Payroll tax"
-- the part of a pool non-program's net offsets is "<pool> covered by non-program: <the line it
-  shares>"
+- an offering's indirect costs are "<pool> share: <the pooled line>", such as "G&A share: Payroll tax"
+- what the rates leave on the organization is "<pool> not recovered: <the pooled line>", or "<pool>
+  over-recovered: <the pooled line>" when they recover more
 
 ### The organization's totals
 
@@ -419,3 +444,8 @@ every line:
 
 It gives operating revenue, expenses and net, then fundraising's, then capital, then the total:
 operating net plus fundraising net, less capital.
+
+Its `indirect` gives the shared costs, what the indirect cost rates recover of them, and what's left
+(below zero when they recover more). Its `full_recovery_rate` is the shared costs ÷ every program's
+offerings' MTDC: the one rate that would recover them all. A Plan Admin sets next year's rates from
+it.

@@ -11263,6 +11263,46 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_programs
+    field: indirect_cost_rate
+    type: decimal
+    meta:
+      collection: plan_programs
+      conditions: null
+      display: null
+      display_options: null
+      field: indirect_cost_rate
+      group: null
+      hidden: false
+      interface: input
+      note: "A share of the program's MTDC that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: indirect_cost_rate
+      table: plan_programs
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_programs
     field: notes
     type: json
     meta:
@@ -11281,7 +11321,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 7
+      sort: 8
       special:
         - cast-json
       translations:
