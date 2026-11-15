@@ -127,10 +127,11 @@ Plan policy can read them.
 
 The engine never works out how many coaches or boats an activity needs: the planner, or their AI,
 decides that from the program settings and the planner's notes, and writes it on the blocks
-([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block is given
-what its offerings would use if they filled, and costs everything it's given, however many sailors
-are expected: the checks are what make sure the program could run full
-([cyc-seattle/platform#287](https://github.com/cyc-seattle/platform/issues/287)).
+([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block costs
+everything it's given, however many sailors are expected
+([cyc-seattle/platform#287](https://github.com/cyc-seattle/platform/issues/287)). The checks make
+sure the organization has the boats for every offering to run full; it can always hire more
+coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issues/294)).
 
 - Enrollment, the sailors expected, is a whole number of kids: `target_enrollment`, or none when it's
   empty. Kids who join or leave partway through aren't counted. Revenue and
@@ -170,7 +171,11 @@ are expected: the checks are what make sure the program could run full
 - An offering's `allocation_holds` is the most sailors its blocks can take: on each of its blocks,
   other than travel, with every other offering in the block at its max, the fewer of
   ⌊(the block's coaches − the others' Σ max ÷ sailors per coach) × its own sailors per coach⌋ and the
-  block's seats − the others' Σ max, at least 0. It's the fewest over its blocks. A limit that can't be
+  block's seats − the others' Σ max, at least 0. Each program's sailors count against its own
+  `sailors_per_coach`, in its `plan_programs` row, and every coach on the block counts, at any staff
+  level, and so does a salaried position: a program's `staff_level_key` is for planning and cost,
+  not a hard rule (cyc-seattle/sail-team#82). A block's seats are Σ (boats, the organization's,
+  chartered and the sailors' own, × the class's `max_capacity`); a coach boat's class takes 0. It's the fewest over its blocks. A limit that can't be
   worked out, such as a program with no settings or a block whose activities don't use boats, is left
   out; with none, it's null. It can be more than the max enrollment.
 - Its `breakeven_enrollment` is the fewest sailors, from 1 up to its `capacity`, at which its net after
@@ -189,8 +194,8 @@ a closed day; the rest are `data`, a row that's missing or wrong. The engine sti
 given.
 
 A message says only what's wrong, in plain words, since the warning already gives its plan and date:
-"Guppies Week 2 and Opti Camp Week 2 are for up to 23 sailors, but have enough coaches for only 17", or
-"9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
+"Guppies Week 2 and Opti Camp Week 2 need 12 Sailqubes out at once when they're full, but CSC has
+only 10, so they're 2 short", or "9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
 offerings. Messages follow the `ui-copy` skill from
 [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
 
@@ -205,22 +210,35 @@ Allocation warnings:
   from their first activity's start to their last one's end; one with no times is out all day.
 - Results frozen before boats were counted by class may also have `over_inventory_resource`, for
   RIBs and other equipment.
-- `over_capacity`: more sailors in a block, with every offering at its max enrollment, than its
-  staff, or its boats, can safely take. Each program's sailors count against its own
-  `sailors_per_coach`, in its `plan_programs` row: the block
-  needs Σ (each program's sailors ÷ its sailors per coach) coaches. Every coach on the block counts,
-  at any staff level, and so does a salaried position: the ratio is required, and a program's
-  `staff_level_key` is for planning and cost, not a hard rule (cyc-seattle/sail-team#82). The block is
-  over when it needs more coaches than it has. Qualifications aren't checked (#208). Its boats take Σ (boats, the organization's, chartered and the sailors'
-  own, × the class's `max_capacity`); a coach boat's class takes 0. A block whose activities don't use boats has no boat limit.
+- `short_of_boats`: too few of the organization's boats of one class on a date for every offering
+  to run full, when the boats given aren't already more than it has (`over_inventory_boats`). For
+  each block whose activities use boats, with every offering at its max enrollment:
+  - Its sailboats, the classes with a `max_capacity` above 0, are scaled up until they seat
+    everyone: each class's boats, the organization's and chartered, × (Σ max − the seats in the
+    boats sailors bring) ÷ the seats in the organization's and chartered boats, rounded up. They're
+    never scaled down, and the boats sailors bring stay as given.
+  - It needs a coach boat for each coach a full program needs: Σ (each program's max ÷ its
+    `sailors_per_coach`), rounded up. If that's more than the coach boats it's given, the rest are
+    of the coach boat class it's given most of. A block given no coach boats needs none, and a
+    program with no settings adds no coaches.
+  - Charters stay as given, so the organization's own boats make up the rest.
+
+  The most of a class the blocks need at once on a date, counted as for `over_inventory_boats`, is
+  checked against the boats of that class the organization has that day. A class it has none of
+  that day isn't checked, since it can charter more. Coaches aren't checked: the organization can
+  always hire more. Qualifications aren't checked either (#208).
+
+- Results frozen before cyc-seattle/platform#294 may have `over_capacity`, for a block whose coaches
+  or boats were too few for every offering at its max.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
 - `closed_date`: an activity, other than a travel day, on a closed day.
 
 Data warnings about blocks:
 
 - `no_program_settings`: a program in a block with no staff level or sailors per coach. Its sailors
-  aren't checked against the staff.
-- `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors.
+  need no coach boats.
+- `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors and
+  aren't scaled.
 - `no_charter_rate`: a block's chartered boats, whose class has no `charter_per_day_cents`.
   Results frozen before it was renamed call it `no_sailors_per_boat`, and may also have
   `no_fleet_quantity`, which the engine no longer gives.
