@@ -9,7 +9,7 @@ import {
   pool,
   product,
   program,
-  recoverAll,
+  allocateAll,
   total,
   withRate,
 } from "./fixtures.ts";
@@ -73,24 +73,24 @@ describe("indirect costs", () => {
     expect(total(out, { account_id: A.insurance, cost_center_key: small.key })).toBe(5000);
   });
 
-  it("leaves what the rates don't recover on the organization", () => {
+  it("leaves what the rates don't allocate on the organization, unallocated", () => {
     const { big, data } = plan();
     const ga = withPool(data, 12_000);
     const out = computePlan(withRate(data, 0.1));
     expect(total(out, { account_id: A.insurance, cost_center_key: big.key })).toBe(3000);
     const left = out.lines.filter((l) => l.line_key.startsWith(`unrecovered:${ga.key}:budget`));
     expect(left.map((l) => [l.cost_center_type, l.amount_cents, l.line_name])).toEqual([
-      ["org", 8000, "G&A not recovered: A line"],
+      ["org", 8000, "G&A unallocated: A line"],
     ]);
     expect(out.organization.indirect.unrecovered_cents).toBe(8000);
   });
 
-  it("credits the organization with what the rates recover beyond the shared costs", () => {
+  it("credits the organization with what the rates over-allocate", () => {
     const { data } = plan();
     const ga = withPool(data, 12_000);
     const out = computePlan(withRate(data, 0.4));
     const left = out.lines.filter((l) => l.line_key.startsWith(`unrecovered:${ga.key}:budget`));
-    expect(left.map((l) => [l.amount_cents, l.line_name])).toEqual([[-4000, "G&A over-recovered: A line"]]);
+    expect(left.map((l) => [l.amount_cents, l.line_name])).toEqual([[-4000, "G&A over-allocated: A line"]]);
     expect(out.organization.indirect.unrecovered_cents).toBe(-4000);
   });
 
@@ -138,7 +138,7 @@ describe("indirect costs", () => {
     const { big, data } = plan();
     withPool(data, 1_000_000, "First");
     const second = withPool(data, 1000, "Second");
-    expect(total(computePlan(recoverAll(data)), { line: `pool:${second.key}`, cost_center_key: big.key })).toBe(750);
+    expect(total(computePlan(allocateAll(data)), { line: `pool:${second.key}`, cost_center_key: big.key })).toBe(750);
   });
 
   it("warns about a program with no rate, and charges it none", () => {
@@ -157,7 +157,7 @@ describe("indirect costs", () => {
     expect(out.warnings.map((w) => w.code)).toContain("no_shared_costs");
   });
 
-  it("gives no full-recovery rate when no program's offering has MTDC", () => {
+  it("gives no rate that allocates every shared cost when no program's offering has MTDC", () => {
     const ga = pool();
     const data = emptyPlan({
       plan_pools: [ga],

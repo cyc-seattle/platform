@@ -290,10 +290,10 @@ export function withRate(data: PlanData, rate: number): PlanData {
 }
 
 /**
- * Gives every program the one rate that recovers every shared cost, so the programs' offerings share
+ * Gives every program the one rate that allocates every shared cost, so the programs' offerings share
  * them by MTDC.
  */
-export function recoverAll(data: PlanData): PlanData {
+export function allocateAll(data: PlanData): PlanData {
   return withRate(data, computePlan(withRate(data, 0)).organization.indirect.full_recovery_rate ?? 0);
 }
 

@@ -2,13 +2,13 @@ import type { Context, Entry } from "./context.ts";
 import { mtdc } from "./measures.ts";
 import type { Id, PlanData } from "./types.ts";
 
-/** What the year's shared costs are, and how much of them the programs' indirect cost rates recover. */
+/** What the year's shared costs are, and how much of them the programs' indirect cost rates allocate. */
 export interface IndirectCosts {
   /** Everything in every pool. */
   shared: number;
   /** What the rates charge the programs' offerings. */
-  recovered: number;
-  /** The one rate that would recover every shared cost: shared ÷ the programs' MTDC. Null with no MTDC. */
+  allocated: number;
+  /** The one rate that would allocate every shared cost: shared ÷ the programs' MTDC. Null with no MTDC. */
   full_recovery_rate: number | null;
 }
 
@@ -28,9 +28,10 @@ export function indirectCostRates(data: PlanData): Map<Id, number> {
  * Charges each program's offerings its indirect cost rate × their own MTDC, fixed for the year, so one
  * program's year never changes another's charge (cyc-seattle/platform#296). The charge is split over the
  * pools' lines by their size, keeping each line's account and function. What it doesn't cover of each
- * line stays with the organization, or, when the rates recover more, is a credit there.
+ * line stays unallocated with the organization, or, when the rates allocate more, is a credit there. The
+ * `unrecovered:` key predates the words Allocated and Unallocated, and stays so stored results keep it.
  */
-export function recoverIndirectCosts(ctx: Context): IndirectCosts {
+export function allocateIndirectCosts(ctx: Context): IndirectCosts {
   const rates = indirectCostRates(ctx.data);
   const pooled: Entry[] = [];
   const kept: Entry[] = [];
@@ -56,17 +57,17 @@ export function recoverIndirectCosts(ctx: Context): IndirectCosts {
     charges.set(o.key, (rate ?? 0) * base);
   }
   const full_recovery_rate = programMtdc > 0 ? shared / programMtdc : null;
-  let recovered = [...charges.values()].reduce((t, c) => t + c, 0);
-  if (shared === 0 && recovered > 0) {
+  let allocated = [...charges.values()].reduce((t, c) => t + c, 0);
+  if (shared === 0 && allocated > 0) {
     ctx.warn("no_shared_costs", "The Operations Plan has no shared costs, so no program pays its indirect cost rate");
-    recovered = 0;
+    allocated = 0;
   }
 
   const pools = new Map(ctx.data.plan_pools.map((p) => [p.key, p]));
   ctx.entries.splice(0, ctx.entries.length, ...kept);
   for (const e of pooled) {
     const name = pools.get(e.cost_center_key ?? "")?.name ?? "Pool";
-    const part = recovered === 0 ? 0 : e.amount / shared;
+    const part = allocated === 0 ? 0 : e.amount / shared;
     const base = { account_id: e.account_id, function: e.function, stage: "pool" as const, mtdc_share: 0 };
     for (const [key, charge] of charges) {
       ctx.book({
@@ -79,16 +80,16 @@ export function recoverIndirectCosts(ctx: Context): IndirectCosts {
         explanation: `${name}: ${e.explanation}, its part of the program's indirect cost rate × MTDC`,
       });
     }
-    const left = e.amount - recovered * part;
+    const left = e.amount - allocated * part;
     ctx.book({
       ...base,
       cost_center_type: "org",
       cost_center_key: null,
       amount: left,
       line_key: `unrecovered:${e.cost_center_key}:${e.line_key}`,
-      line_name: `${name} ${left >= 0 ? "not recovered" : "over-recovered"}: ${e.line_name}`,
-      explanation: `${name}: ${e.explanation}, less what the indirect cost rates recover`,
+      line_name: `${name} ${left >= 0 ? "unallocated" : "over-allocated"}: ${e.line_name}`,
+      explanation: `${name}: ${e.explanation}, less what the indirect cost rates allocate`,
     });
   }
-  return { shared, recovered, full_recovery_rate };
+  return { shared, allocated, full_recovery_rate };
 }
