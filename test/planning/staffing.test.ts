@@ -299,131 +299,150 @@ describe("staffing", () => {
     });
   });
 
-  describe("capacity", () => {
+  describe("program settings and boat classes", () => {
     const L1 = staffLevel({ name: "Level 1 Instructor" });
-    const L2 = staffLevel({ name: "Level 2 Instructor" });
-    const director = position({ name: "Sailing Director" });
 
-    function guppies(sailors: number, given: Given, perCoach = 10) {
+    function guppies(given: Given) {
       const p = product({ name: "Guppies" });
-      const off = offering(p.id, { name: "Guppies Week 2", target_enrollment: sailors });
-      const a = activity(off.id, { uses_boats: false });
+      const off = offering(p.id, { name: "Guppies Week 2", target_enrollment: 14 });
+      const a = activity(off.id);
       return emptyPlan({
         products: [p],
-        plan_programs: [program(p.id, { staff_level_key: L1.key, sailors_per_coach: perCoach })],
+        plan_programs: [program(p.id, { staff_level_key: L1.key, sailors_per_coach: 10 })],
         plan_offerings: [off],
         plan_activities: [a],
-        plan_staff_levels: [L1, L2],
-        plan_salaried_positions: [director],
+        plan_staff_levels: [L1],
         ...block([a], given, { name: "Guppies" }),
       });
     }
 
-    it("warns when a block has more sailors than its coaches are enough for", () => {
-      const out = computePlan(guppies(14, { staff: [{ staff_level_key: L1.key }] }));
-      expect(out.warnings).toContainEqual(
-        expect.objectContaining({
-          code: "over_capacity",
-          category: "allocation",
-          message: "Guppies Week 2 is for up to 14 sailors, but has enough coaches for only 10",
-        }),
-      );
-      expect(codes(guppies(10, { staff: [{ staff_level_key: L1.key }] }))).not.toContain("over_capacity");
-    });
-
-    it("counts a coach at another staff level, since only the ratio is required", () => {
-      expect(codes(guppies(10, { staff: [{ staff_level_key: L2.key }] }))).not.toContain("over_capacity");
-      const out = computePlan(guppies(14, { staff: [{ staff_level_key: L2.key }] }));
-      expect(out.warnings.map((w) => w.message)).toContain(
-        "Guppies Week 2 is for up to 14 sailors, but has enough coaches for only 10",
-      );
-    });
-
-    it("counts a salaried position on the block as one coach", () => {
-      expect(codes(guppies(10, { staff: [{ position_key: director.key }] }))).not.toContain("over_capacity");
-      const out = computePlan(guppies(14, { staff: [{ position_key: director.key }] }));
-      expect(out.warnings.map((w) => w.message)).toContain(
-        "Guppies Week 2 is for up to 14 sailors, but has enough coaches for only 10",
-      );
-    });
-
-    it("counts every coach on the block toward any of its programs, whatever their level", () => {
-      const [g, m] = [product(), product()];
-      const [og, om] = [offering(g.id, { target_enrollment: 10 }), offering(m.id, { target_enrollment: 10 })];
-      const acts = [activity(og.id, { uses_boats: false }), activity(om.id, { uses_boats: false })];
-      const data = (staff: NonNullable<Given["staff"]>) =>
-        emptyPlan({
-          products: [g, m],
-          plan_programs: [
-            program(g.id, { staff_level_key: L1.key, sailors_per_coach: 10 }),
-            program(m.id, { staff_level_key: L2.key, sailors_per_coach: 10 }),
-          ],
-          plan_offerings: [og, om],
-          plan_activities: acts,
-          plan_staff_levels: [L1, L2],
-          plan_salaried_positions: [director],
-          ...block(acts, { staff }),
-        });
-      expect(codes(data([{ staff_level_key: L1.key, count: 2 }]))).not.toContain("over_capacity");
-      expect(codes(data([{ staff_level_key: L1.key }, { position_key: director.key }]))).not.toContain("over_capacity");
-      expect(
-        computePlan(data([{ staff_level_key: L2.key }])).warnings.find((w) => w.code === "over_capacity")?.message,
-      ).toMatch(/ are for up to 20 sailors, but have enough coaches for only 10$/);
-    });
-
-    it("counts each program's sailors against its own sailors per coach", () => {
-      const [g, m] = [product(), product()];
-      const [og, om] = [offering(g.id, { target_enrollment: 5 }), offering(m.id, { target_enrollment: 5 })];
-      const acts = [activity(og.id, { uses_boats: false }), activity(om.id, { uses_boats: false })];
-      const data = emptyPlan({
-        products: [g, m],
-        plan_programs: [
-          program(g.id, { staff_level_key: L1.key, sailors_per_coach: 10 }),
-          program(m.id, { staff_level_key: L1.key, sailors_per_coach: 5 }),
-        ],
-        plan_offerings: [og, om],
-        plan_activities: acts,
-        plan_staff_levels: [L1],
-        ...block(acts, { staff: [{ staff_level_key: L1.key, count: 1 }] }),
-      });
-      expect(computePlan(data).warnings.find((w) => w.code === "over_capacity")?.message).toMatch(
-        / are for up to 10 sailors, but have enough coaches for only 6$/,
-      );
-      data.plan_block_staff[0]!.count = 2;
-      expect(codes(data)).not.toContain("over_capacity");
-    });
-
-    it("warns about a program with no settings, and doesn't check its sailors against staff", () => {
-      const data = guppies(14, { staff: [{ staff_level_key: L1.key }] });
+    it("warns about a program with no settings", () => {
+      const data = guppies({ staff: [{ staff_level_key: L1.key }] });
       data.plan_programs = [];
-      expect(codes(data)).toEqual(expect.arrayContaining(["no_program_settings"]));
-      expect(codes(data)).not.toContain("over_capacity");
-    });
-
-    it("warns when a block has more sailors than its boats hold, counting the boats sailors bring", () => {
-      const data = guppies(14, {
-        staff: [{ staff_level_key: L1.key, count: 2 }],
-        boats: [{ boat_class_id: "sailqube", count: 5 }],
-      });
-      data.plan_activities[0]!.uses_boats = true;
-      data.boat_classes = [{ id: "sailqube", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }];
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "Guppies Week 2 is for up to 14 sailors, but the boats hold only 10",
+        "Guppies Week 2's program has no staff level or sailors per coach. Add both to check that A club has enough coach boats",
       );
-      data.plan_block_boats[0]!.count = 0;
-      expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "Guppies Week 2 is for up to 14 sailors and has no boats",
-      );
-      data.plan_block_boats[0]!.count = 5;
-      data.plan_block_boats[0]!.sailor_owned = 2;
-      expect(codes(data)).not.toContain("over_capacity");
     });
 
     it("warns when a class has no max capacity", () => {
-      const data = guppies(1, { staff: [{ staff_level_key: L1.key }], boats: [{ boat_class_id: "x", count: 1 }] });
-      data.plan_activities[0]!.uses_boats = true;
+      const data = guppies({ staff: [{ staff_level_key: L1.key }], boats: [{ boat_class_id: "x", count: 1 }] });
       data.boat_classes = [{ id: "x", name: "X", max_capacity: null, footprint_sq_ft: null }];
       expect(codes(data)).toContain("no_max_capacity");
+    });
+  });
+
+  describe("boats for a full program", () => {
+    const L1 = staffLevel({ name: "Level 1 Instructor" });
+    const classes = [
+      { id: "sailqube", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null },
+      { id: "fj", name: "FJ", max_capacity: 2, footprint_sq_ft: null },
+      { id: "rib", name: "RIB", max_capacity: 0, footprint_sq_ft: null },
+    ];
+
+    /** Guppies Week 2, for up to 16 sailors and expecting 10, a coach for every 5, in a block given `given`. */
+    function guppies(given: Given, owned: Parameters<typeof assetList>[0]) {
+      const p = product({ name: "Guppies" });
+      const off = offering(p.id, { name: "Guppies Week 2", capacity: 16, target_enrollment: 10 });
+      const a = activity(off.id, { date: "2027-07-13", start_time: "09:00", end_time: "12:00" });
+      return emptyPlan({
+        products: [p],
+        plan_programs: [program(p.id, { staff_level_key: L1.key, sailors_per_coach: 5 })],
+        plan_offerings: [off],
+        plan_activities: [a],
+        plan_staff_levels: [L1],
+        boat_classes: classes,
+        ...assetList(owned),
+        ...block([a], { staff: [{ staff_level_key: L1.key, count: 2 }], ...given }, { name: "Guppies" }),
+      });
+    }
+    const sailqubes = (count: number) => [{ boat_class_id: "sailqube", count }];
+    const short = (data: PlanData) => computePlan(data).warnings.filter((w) => w.code === "short_of_boats");
+
+    it("warns when the organization hasn't enough sailboats to seat every sailor of a full program", () => {
+      // 5 Sailqubes seat 10; 16 sailors need 8.
+      const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, sailqubes(6));
+      expect(short(data)).toEqual([
+        expect.objectContaining({
+          category: "allocation",
+          date: "2027-07-13",
+          plan_id: "v1",
+          message:
+            "Guppies Week 2 needs 8 Sailqubes out at once when it's full, but A club has only 6, so it's 2 short",
+        }),
+      ]);
+      expect(short(guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, sailqubes(8)))).toEqual([]);
+    });
+
+    it("doesn't warn about coaches, since more can be hired", () => {
+      const data = guppies({ staff: [{ staff_level_key: L1.key, count: 1 }] }, []);
+      expect(computePlan(data).warnings.filter((w) => w.category === "allocation")).toEqual([]);
+    });
+
+    it("keeps the boats sailors bring as they are", () => {
+      // 2 of theirs seat 4, so 5 of the organization's seating 10 need to seat 12: 6.
+      const given = { boats: [{ boat_class_id: "sailqube", count: 5, sailor_owned: 2 }] };
+      expect(short(guppies(given, sailqubes(6)))).toEqual([]);
+      expect(short(guppies(given, sailqubes(5)))[0]?.message).toMatch(/needs 6 Sailqubes/);
+    });
+
+    it("keeps charters as given, so the organization's own boats make up the rest", () => {
+      // 5 seat 10, so 16 sailors need 8, and 2 are chartered.
+      const given = { boats: [{ boat_class_id: "sailqube", count: 3, chartered: 2 }] };
+      expect(short(guppies(given, sailqubes(6)))).toEqual([]);
+      expect(short(guppies(given, sailqubes(5)))[0]?.message).toMatch(
+        /needs 6 Sailqubes .* has only 5, so it's 1 short$/,
+      );
+    });
+
+    it("doesn't warn about a class the organization has none of, since more can be chartered", () => {
+      const data = guppies({ boats: [{ boat_class_id: "fj", count: 0, chartered: 5 }] }, sailqubes(6));
+      expect(codes(data)).not.toContain("short_of_boats");
+    });
+
+    it("needs a coach boat for each coach a full program needs", () => {
+      // 16 sailors at 5 a coach need 4 coaches.
+      const given = {
+        boats: [
+          { boat_class_id: "sailqube", count: 8 },
+          { boat_class_id: "rib", count: 2 },
+        ],
+      };
+      const owned = (ribs: number) => [
+        ...sailqubes(8),
+        { boat_class_id: "rib", count: ribs, kind: "powerboat" as const },
+      ];
+      expect(short(guppies(given, owned(4)))).toEqual([]);
+      expect(short(guppies(given, owned(3))).map((w) => w.message)).toEqual([
+        "Guppies Week 2 needs 4 RIBs out at once when it's full, but A club has only 3, so it's 1 short",
+      ]);
+    });
+
+    it("adds up the blocks out at once, and names their offerings", () => {
+      const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, sailqubes(12));
+      const p = product({ name: "Minnows" });
+      const off = offering(p.id, { name: "Minnows Week 2", capacity: 8, target_enrollment: 4 });
+      const a = activity(off.id, { date: "2027-07-13", start_time: "10:00", end_time: "11:00" });
+      const other = block([a], { boats: [{ boat_class_id: "sailqube", count: 2 }] }, { name: "Minnows" });
+      data.products.push(p);
+      data.plan_offerings.push(off);
+      data.plan_activities.push(a);
+      data.plan_activity_blocks.push(...other.plan_activity_blocks);
+      data.plan_block_boats.push(...other.plan_block_boats);
+      // 8 for Guppies and 4 for Minnows.
+      expect(short(data)).toEqual([]);
+      data.boats.pop();
+      expect(short(data).map((w) => w.message)).toEqual([
+        "Guppies Week 2 and Minnows Week 2 need 12 Sailqubes out at once when they're full, but A club has only 11, so they're 1 short",
+      ]);
+      a.start_time = "13:00";
+      a.end_time = "14:00";
+      expect(short(data)).toEqual([]);
+    });
+
+    it("warns only that too many are out when the boats given are already more than the organization has", () => {
+      const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 7 }] }, sailqubes(6));
+      expect(codes(data)).toContain("over_inventory_boats");
+      expect(codes(data)).not.toContain("short_of_boats");
     });
   });
 
@@ -620,7 +639,7 @@ describe("staffing", () => {
   });
 });
 
-describe("a block costs what it's given and is checked at its most sailors", () => {
+describe("a block costs what it's given", () => {
   const coach = staffLevel({ hourly_rate_cents: 2000 });
   const director = position({ name: "Sailing Director" });
 
@@ -701,13 +720,6 @@ describe("a block costs what it's given and is checked at its most sailors", () 
     // 4 chartered × 5000¢
     expect(total(out, { line: "charters" })).toBe(20_000);
     expect(out.activities[0]).toMatchObject({ boats: 15 });
-  });
-
-  it("checks the coaches and boats against the most sailors the offering takes", () => {
-    const { data } = full(16, 10, { staff: [{ staff_level_key: coach.key, count: 2 }] }, {}, 5);
-    expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-      "Guppies Week 2 is for up to 16 sailors, but has enough coaches for only 10",
-    );
   });
 
   it("gives the most sailors the block can take, by its coaches or its boats", () => {

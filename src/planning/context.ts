@@ -18,7 +18,7 @@ import type {
 /** The warnings about what the blocks are given, or when they run. The rest are about the data. */
 const ALLOCATION_WARNINGS = new Set([
   "over_inventory_boats",
-  "over_capacity",
+  "short_of_boats",
   "unallocated_activity",
   "closed_date",
   "position_double_booked",
