@@ -239,6 +239,25 @@ Step("{money} of office costs shared by every offering", async (_, money: string
     cents(money),
   );
 });
+Step("every program's indirect cost rate is {percent}", (_, percent: string) => p.indirectCostRate(share(percent)));
+Step("the second offering's direct costs double", async () => {
+  const plan = p.areaPlan(p.areas[0]!);
+  await p.line(plan, "costs", { cost_center_type: "offering", cost_center_key: second() }, 100_000);
+  await p.calculate();
+});
+Step("the first offering still pays {money} of the office costs", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("office")))).toBe(cents(money));
+});
+Step("no offering pays the office costs", async () => {
+  const office = await p.account("office");
+  expect(p.total((l) => l.cost_center_type === "offering" && l.account_id === office)).toBe(0);
+});
+Step("the planner is warned that a program has no indirect cost rate", () => {
+  expect(p.warned("no_indirect_cost_rate")).toBe(true);
+});
+Step("the organization's totals show {money} of shared costs not recovered", (_, money: string) => {
+  expect(p.out.organization.indirect.unrecovered_cents).toBe(cents(money));
+});
 Step("each offering pays {money} of the office costs", async (_, money: string) => {
   const office = await p.account("office");
   for (const key of [first(), second()]) expect(p.total(onOffering(key, office))).toBe(cents(money));
@@ -380,15 +399,16 @@ Step("a director who earns {percent} of their programs' net {counted}", (_, perc
   directorWithBonus(share(percent), COUNTED[counted]),
 );
 Step(
-  "their programs take in {money} and cost {money}, plus {money} of shared costs",
-  async (_, revenue: string, costs: string, shared: string) => {
+  "their programs take in {money} and cost {money}, with an indirect cost rate of {percent}",
+  async (_, revenue: string, costs: string, percent: string) => {
     await bonusProgram(cents(revenue), cents(costs));
     await p.line(
       await p.operationsPlan(),
       "office",
       { cost_center_type: "pool", cost_center_key: await p.pool() },
-      cents(shared),
+      cents(costs),
     );
+    await p.indirectCostRate(share(percent));
   },
 );
 Step("payroll tax at {percent} of wages", (_, percent: string) =>
@@ -1485,18 +1505,21 @@ Step(
       { cost_center_type: "pool", cost_center_key: await p.pool() },
       cents(money),
     );
+    // The offering's direct costs are $1,000.
+    await p.indirectCostRate(cents(money) / 100_000);
     named[name] = await p.frozenSet(name);
   },
 );
 Step(
-  "a planner freezes a Financial Plan started from {string} with {money} of office costs",
-  async (_, name: string, money: string) => {
+  "a planner freezes a Financial Plan started from {string} with twice the indirect cost rate",
+  async (_, name: string) => {
     const child = await adminStart(`From ${name} ${runId}`, named[name]!);
-    const [office] = await read("plan_budget_lines", {
-      plan_id: { _in: await plansOf(child) },
-      key: { _eq: p.lines["office"]!["key"] },
+    const [settings] = await read("plan_programs", { plan_id: { _in: await plansOf(child) } });
+    await (
+      await admin()
+    ).ok("PATCH", itemPath("plan_programs", settings!["id"]), {
+      indirect_cost_rate: Number(settings!["indirect_cost_rate"]) * 2,
     });
-    await (await admin()).ok("PATCH", itemPath("plan_budget_lines", office!["id"]), { amount_cents: cents(money) });
     await p.freeze(child);
     await financialPlanResults(child);
   },
@@ -1629,6 +1652,17 @@ Step("they can write the notes for one of a Program Plan's programs", async () =
       notes: ["If there are more than 12 Guppies, add a Junior Instructor."],
     }),
   );
+});
+
+Step("they can't set the indirect cost rate of one of a Program Plan's programs", async () => {
+  const area = p.areas[0]!;
+  const id = await p.programSettings(area, await p.product("program", area), {});
+  expectRefused(await theyWrite("PATCH", itemPath("plan_programs", id), { indirect_cost_rate: 0.1 }));
+});
+Step("they can set the indirect cost rate of one of a Program Plan's programs", async () => {
+  const area = p.areas[0]!;
+  const id = await p.programSettings(area, await p.product("program", area), {});
+  expectOk(await theyWrite("PATCH", itemPath("plan_programs", id), { indirect_cost_rate: 0.1 }));
 });
 
 // A draft the planner's AI filled in, which the planner keeps or deletes.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computePlan, type PlanBonusOwner } from "../../src/planning/index.ts";
-import { A, area, budgetLine, emptyPlan, offering, pnlOf, pool, product, total } from "./fixtures.ts";
+import { A, area, budgetLine, emptyPlan, offering, pnlOf, pool, product, recoverAll, total } from "./fixtures.ts";
 
 function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
   return {
@@ -67,7 +67,7 @@ describe("bonus owners", () => {
       }),
     );
     // 100000 + 1000 − 1200 − 51000
-    expect(total(computePlan(data), { line: "bonus" })).toBe(4880);
+    expect(total(computePlan(recoverAll(data)), { line: "bonus" })).toBe(4880);
   });
 });
 

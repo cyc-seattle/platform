@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { discoverSchemaFiles } from "../src/directus/client.ts";
 import { familyPolicies } from "../stacks/backend/community-rules.ts";
 import {
+  ADMIN_ONLY_FIELDS,
   crewRules,
   fieldsIn,
   groupPolicies,
@@ -267,6 +268,18 @@ describe("the Plan policies", () => {
     }
   });
 
+  it("let only a Plan Admin set a program's indirect cost rate", () => {
+    for (const action of ["create", "update"]) {
+      const rule = writes("Plan Writer").find((r) => r.action === action && r.collection === "plan_programs");
+      expect(rule?.fields).toContain("sailors_per_coach");
+      expect(rule?.fields).not.toContain("indirect_cost_rate");
+    }
+    expect(writes("Plan Admin").find((r) => r.action === "update" && r.collection === "plan_programs")).toEqual({
+      collection: "plan_programs",
+      action: "update",
+    });
+  });
+
   it("let a Plan Writer start and delete a draft, and name it, but not freeze it, date it, or archive it", () => {
     const sets = writes("Plan Writer").filter((rule) => rule.collection === "financial_plans");
     expect(sets).toEqual([
@@ -296,7 +309,8 @@ describe("the Plan policies", () => {
     for (const action of ["create", "update", "delete"]) {
       const rules = writes("Plan Admin").filter((rule) => rule.action === action && rows.includes(rule.collection));
       expect(rules.map((rule) => rule.collection).sort()).toEqual([...rows].sort());
-      expect(rules.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("operations")))).toBe(
+      const scoped = rules.filter((rule) => !(action === "update" && rule.collection in ADMIN_ONLY_FIELDS));
+      expect(scoped.every((rule) => JSON.stringify(rule.permissions) === JSON.stringify(inPlan("operations")))).toBe(
         true,
       );
       expect(collections("Plan Admin", action).has("plans"), `${action} plans`).toBe(true);
