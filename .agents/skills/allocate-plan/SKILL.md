@@ -63,9 +63,11 @@ unclear, or two disagree, ask the planner rather than guess.
 
 ## 3. Write the blocks
 
-Allocate for each offering's most sailors, not the number expected: a block holds what a full
-program would use, so the checks pass with every offering full. The P&L costs every coach and boat a
-block is given, so give a block no more than a full program needs.
+Allocate for the sailors each offering expects (`target_enrollment`), not its most: the P&L costs
+every coach and boat a block is given, so a block holds what CSC expects to pay for. The engine
+checks the full program for you: it warns (`short_of_boats`) when the organization doesn't own
+enough boats of a class for every offering to fill, and never about coaches, since CSC can always
+hire more.
 
 For each date, in the part of the plan you're allocating:
 
@@ -89,7 +91,7 @@ For each date, in the part of the plan you're allocating:
    ones it charters in `chartered`, and the boats sailors bring in `sailor_owned`, such as "about a
    third bring their own Optis". Charter only when the notes say so, or the organization has too
    few that day. Enough seats means Σ (boats × the class's `max_capacity`) is at least the block's
-   sailors. A block whose activities don't use boats needs none.
+   sailors expected. A block whose activities don't use boats needs none.
 
 Each row you write needs a new `id` and `key`, and its plan's `id` as `plan_id`. A key field such as
 `staff_level_key` takes the `key` of the row in the same Financial Plan's Operations Plan, not
@@ -106,9 +108,11 @@ Wait about a second after your last write, then read `plan_results.calculated_at
 it's after your last write, read `plan_result_warnings` again. The hook works out a draft again a
 moment after each change, so a burst of writes costs one run.
 
-Fix each `allocation` warning you can within the notes: add staff, swap a boat class a note allows
-("the Harpoon can take up to 10 instead of Sailqubes"), or split a block in two. Stop when only
-warnings you can't fix are left, such as a date that needs more Sailqubes than the organization has.
+Fix each `allocation` warning you can within the notes: give an activity staff, swap a boat class a
+note allows ("the Harpoon can take up to 10 instead of Sailqubes"), move a block's time so it isn't
+out with another, or split a block in two. Stop when only warnings you can't fix are left, such as a
+date whose full programs need more Sailqubes than the organization has: that one is the planner's
+to decide, by chartering, buying boats, or lowering an offering's most sailors.
 Leave `data` warnings for the planner, apart from saying what they are.
 
 Don't change offerings, prices, activities' dates or times, or anything in the Operations Plan,
