@@ -128,10 +128,10 @@ describe("csc-website's environments", () => {
     ).toEqual(["dev", "prod", "publish"]);
   });
 
-  it("lets dev deploy previews from any branch with no reviewer", () => {
+  it("limits dev's previews to main, with no reviewer", () => {
     expect(env("dev").reviewers).toBeUndefined();
-    expect(env("dev").deploymentBranchPolicy).toBeUndefined();
-    expect(policies("dev")).toEqual([]);
+    expect(env("dev").deploymentBranchPolicy).toEqual({ protectedBranches: false, customBranchPolicies: true });
+    expect(policies("dev")).toEqual(["main"]);
   });
 
   it("limits prod to main, with a maintainer's approval", () => {

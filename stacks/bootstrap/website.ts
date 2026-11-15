@@ -79,23 +79,20 @@ new gcp.projects.IAMMember(
 
 interface WebsiteEnvironment {
   name: string;
-  /** Deploys only from `main`. `dev` takes PR branches. */
-  mainOnly: boolean;
   /** A maintainer must approve before the job starts. */
   approval: boolean;
   directusTokenSecret: string;
 }
 
 // csc-website's workflows call the org's deploy.yml, the only workflow the WIF provider trusts, and
-// its `deploy` task deploys `dev` to a PR's preview channel and the others live. All three assume
-// deploy-website, which IAM can't limit to a channel, so only the branch rules keep `dev` off the
-// live site. A fork's PR gets no OIDC token.
+// its `deploy` task deploys `dev` to a preview channel and the others live. All three assume
+// deploy-website, which IAM can't limit to a channel, so all three deploy only from `main` (#280).
 const environments: WebsiteEnvironment[] = [
-  { name: "dev", mainOnly: false, approval: false, directusTokenSecret: directusTokenSecrets.dev },
+  { name: "dev", approval: false, directusTokenSecret: directusTokenSecrets.dev },
   // Code changes, after a maintainer approves.
-  { name: "prod", mainOnly: true, approval: true, directusTokenSecret: directusTokenSecrets.prod },
+  { name: "prod", approval: true, directusTokenSecret: directusTokenSecrets.prod },
   // Content changes from Directus and the nightly build, with no reviewer.
-  { name: "publish", mainOnly: true, approval: false, directusTokenSecret: directusTokenSecrets.prod },
+  { name: "publish", approval: false, directusTokenSecret: directusTokenSecrets.prod },
 ];
 
 // The repo predates immutable OIDC subjects, so its tokens name it, like isthmia's.
@@ -105,7 +102,7 @@ for (const env of environments) {
   const environment = new github.RepositoryEnvironment(`csc-website-${env.name}`, {
     repository: cscWebsite.name,
     environment: env.name,
-    deploymentBranchPolicy: env.mainOnly ? { protectedBranches: false, customBranchPolicies: true } : undefined,
+    deploymentBranchPolicy: { protectedBranches: false, customBranchPolicies: true },
     reviewers: env.approval ? [{ teams: [maintainers.id.apply(Number)] }] : undefined,
     // One maintainer, so they approve their own deploy.
     preventSelfReview: false,
@@ -113,13 +110,11 @@ for (const env of environments) {
     canAdminsBypass: false,
   });
 
-  if (env.mainOnly) {
-    new github.RepositoryEnvironmentDeploymentPolicy(
-      `csc-website-${env.name}-main`,
-      { repository: cscWebsite.name, environment: environment.environment, branchPattern: "main" },
-      { parent: environment },
-    );
-  }
+  new github.RepositoryEnvironmentDeploymentPolicy(
+    `csc-website-${env.name}-main`,
+    { repository: cscWebsite.name, environment: environment.environment, branchPattern: "main" },
+    { parent: environment },
+  );
 
   const variables = {
     GCP_WORKLOAD_IDENTITY_PROVIDER: provider.name,

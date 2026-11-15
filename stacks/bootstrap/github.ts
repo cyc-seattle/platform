@@ -10,12 +10,6 @@ export type StandardRepositoryArgs = github.RepositoryArgs & {
   requiredChecks: string[];
   /** Approving reviews `main` needs. Org admins bypass it. Defaults to 0. */
   requiredApprovingReviewCount?: number;
-  /**
-   * Merges PRs through a merge queue in batches, so a repo that deploys queued PRs to a shared dev
-   * deploys and tests each batch once (#80). The repo's `deploy.yml` must be v3.2.0 or later. Every required check must also report on `merge_group`, or the
-   * queue waits for it until it times out. Defaults to false.
-   */
-  mergeQueue?: boolean;
 };
 
 // No workflow token may open PRs, org-wide or per repo. Each repo's pin waits on the org policy.
@@ -58,7 +52,7 @@ export const contributors = new github.Team("contributors", {
 export class StandardRepository extends github.Repository {
   constructor(
     plainId: string,
-    { requiredChecks, requiredApprovingReviewCount = 0, mergeQueue = false, ...args }: StandardRepositoryArgs,
+    { requiredChecks, requiredApprovingReviewCount = 0, ...args }: StandardRepositoryArgs,
     opts?: pulumi.CustomResourceOptions,
   ) {
     // GitHub rejects edits to an archived repo, so archived repos keep squash-only merges.
@@ -145,23 +139,6 @@ export class StandardRepository extends github.Repository {
         },
         ...(requiredChecks.length > 0
           ? { requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) } }
-          : {}),
-        // The queue squashes. An org admin bypasses it to keep a branch's history with a merge commit.
-        // Every entry builds, but deploy.yml deploys only the newest, and HEADGREEN merges the batch
-        // when it passes. A dev deploy and its integration tests take about 20 minutes, and a failed
-        // batch retries the PRs ahead of the one that failed, one run at a time.
-        ...(mergeQueue
-          ? {
-              mergeQueue: {
-                mergeMethod: "SQUASH",
-                groupingStrategy: "HEADGREEN",
-                maxEntriesToBuild: 100,
-                minEntriesToMerge: 1,
-                maxEntriesToMerge: 100,
-                minEntriesToMergeWaitMinutes: 0,
-                checkResponseTimeoutMinutes: 120,
-              },
-            }
           : {}),
       },
     });
@@ -268,8 +245,7 @@ export const platform = new StandardRepository("platform", {
     "Pulumi stacks for CYC's shared Google Cloud platform: identities, the network, databases, and the cluster.",
   visibility: "public",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
-  mergeQueue: true,
+  requiredChecks: ["ci / ci", "pr-title / pr-title"],
   // Its docs site, which its docs.yml publishes from main.
   pages: { buildType: "workflow" },
 });
@@ -295,8 +271,7 @@ export const sailTeam = new StandardRepository("sail-team", {
   autoInit: true,
   licenseTemplate: "apache-2.0",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
-  mergeQueue: true,
+  requiredChecks: ["ci / ci", "pr-title / pr-title"],
   // Its Storybook, which its storybook.yml publishes from main.
   pages: { buildType: "workflow" },
 });
