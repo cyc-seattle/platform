@@ -233,12 +233,18 @@ export const platform = new StandardRepository("platform", {
 });
 
 // GitHub makes this environment when Pages is turned on. Declared so only main can publish.
-new github.RepositoryEnvironment("platform-github-pages", {
+const platformPages = new github.RepositoryEnvironment("platform-github-pages", {
   repository: platform.name,
   environment: "github-pages",
   deploymentBranchPolicy: { protectedBranches: false, customBranchPolicies: true },
   canAdminsBypass: false,
 });
+new github.RepositoryEnvironmentDeploymentPolicy(
+  "platform-github-pages-main",
+  { repository: platform.name, environment: platformPages.environment, branchPattern: "main" },
+  // Pages made this policy when it was turned on (#191).
+  { parent: platformPages, import: "platform:github-pages:66765890" },
+);
 
 // The club's web app at the apex domain, which takes over from isthmia's portal.
 export const sailTeam = new StandardRepository("sail-team", {

@@ -206,17 +206,12 @@ describe.each(repos)("%s's environments", (repo) => {
 });
 
 describe.each(repos)("%s's github-pages environment", (repo) => {
-  it("publishes only from main", () => {
+  it("publishes only from main, by the policy Pages made", () => {
     expect(byName(`${repo}-github-pages`).inputs.deploymentBranchPolicy).toEqual({
       protectedBranches: false,
       customBranchPolicies: true,
     });
-  });
-});
-
-describe("sail-team's github-pages environment", () => {
-  it("adopts the main policy Pages made", () => {
-    expect(byName("sail-team-github-pages-main").inputs).toEqual(
+    expect(byName(`${repo}-github-pages-main`).inputs).toEqual(
       expect.objectContaining({ environment: "github-pages", branchPattern: "main" }),
     );
   });
