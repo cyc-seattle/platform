@@ -87,22 +87,21 @@ describe("deploy-website", () => {
     ]);
   });
 
-  it("reads only the two csc-website Directus tokens", () => {
+  it("reads only prod's csc-website Directus token", () => {
     const { condition } = byName("deploy-website-secretmanager.secretAccessor").inputs;
     expect(condition.expression).toBe(
-      'resource.name.startsWith("projects/123456789/secrets/dev-csc-website-directus-token/") || ' +
-        'resource.name.startsWith("projects/123456789/secrets/csc-website-directus-token/")',
+      'resource.name.startsWith("projects/123456789/secrets/csc-website-directus-token/")',
     );
   });
 
-  it("is assumed only by csc-website's three environments", () => {
+  it("is assumed only by csc-website's prod and publish environments", () => {
     const bindings = ofType("gcp:serviceaccount/iAMMember:IAMMember")
       .filter((r) => r.inputs.role === "roles/iam.workloadIdentityUser")
       .map((r) => r.inputs.member)
       .sort();
     const subject = (env: string) =>
       `principal://iam.googleapis.com/${poolName}/subject/repo:cyc-seattle/csc-website:environment:${env}`;
-    expect(bindings).toEqual(["dev", "prod", "publish"].map(subject).sort());
+    expect(bindings).toEqual(["prod", "publish"].map(subject).sort());
   });
 });
 
@@ -119,19 +118,13 @@ describe("csc-website's environments", () => {
         .map((v) => [v.inputs.variableName, v.inputs.value]),
     );
 
-  it("has exactly dev, prod, and publish", () => {
+  it("has exactly prod and publish, with no dev for previews", () => {
     expect(
       ofType("github:index/repositoryEnvironment:RepositoryEnvironment")
         .filter((e) => e.inputs.repository === "csc-website")
         .map((e) => e.inputs.environment)
         .sort(),
-    ).toEqual(["dev", "prod", "publish"]);
-  });
-
-  it("limits dev's previews to main, with no reviewer", () => {
-    expect(env("dev").reviewers).toBeUndefined();
-    expect(env("dev").deploymentBranchPolicy).toEqual({ protectedBranches: false, customBranchPolicies: true });
-    expect(policies("dev")).toEqual(["main"]);
+    ).toEqual(["prod", "publish"]);
   });
 
   it("limits prod to main, with a maintainer's approval", () => {
@@ -146,13 +139,12 @@ describe("csc-website's environments", () => {
   });
 
   it("keeps admins from bypassing any of them", () => {
-    for (const name of ["dev", "prod", "publish"]) {
+    for (const name of ["prod", "publish"]) {
       expect(env(name).canAdminsBypass).toBe(false);
     }
   });
 
   it.each([
-    ["dev", "dev-csc-website-directus-token"],
     ["prod", "csc-website-directus-token"],
     ["publish", "csc-website-directus-token"],
   ])("points %s at deploy-website, the site, and %s", (name, secret) => {
