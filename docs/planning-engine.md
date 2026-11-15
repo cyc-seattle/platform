@@ -127,12 +127,13 @@ Plan policy can read them.
 The engine never works out how many coaches or boats an activity needs: the planner, or their AI,
 decides that from the program settings and the planner's notes, and writes it on the blocks
 ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). A block is given
-what its offerings would use if they filled, and costs what their expected sailors use
-([cyc-seattle/platform#250](https://github.com/cyc-seattle/platform/issues/250)).
+what its offerings would use if they filled, and costs everything it's given, however many sailors
+are expected: the checks are what make sure the program could run full
+([cyc-seattle/platform#287](https://github.com/cyc-seattle/platform/issues/287)).
 
 - Enrollment, the sailors expected, is a whole number of kids: `target_enrollment`, or none when it's
   empty. Kids who join or leave partway through aren't counted. Revenue and
-  every cost use it.
+  every cost set per sailor use it, and it splits a block's costs.
 - An offering's most sailors, its max enrollment, is its `capacity`, or its enrollment when it has
   none. The checks use it.
 - A block's paid time runs from its first activity's start to its last one's end, plus the longest
@@ -143,33 +144,23 @@ what its offerings would use if they filled, and costs what their expected sailo
 - Each of its costs is split among its offerings by their enrollment, each offering counted once, or
   evenly if none has any. An offering with several activities in the block splits its share among
   them. `activities` gives each activity its share of the block's staff and boats, the organization's and chartered.
-- A block pays the coaches its expected sailors need: ⌈Σ (each program's enrollment ÷ its
-  `sailors_per_coach`)⌉, but never more than it's given. Salaried positions with `pay` `salary` are
-  always paid, so only the other staff are cut: each of their rows is paid `count` × (coaches needed −
-  salaried ones) ÷ (the other staff given), from 0 to 1. A block with a program that has no sailors
-  per coach pays all its staff.
-- Staff at a level cost `count` × that share × paid hours × the level's `hourly_rate_cents`.
-  Volunteers cost nothing.
+- Staff at a level cost `count` × paid hours × the level's `hourly_rate_cents`. Volunteers cost
+  nothing.
 - A salaried position on a block with `pay` `salary`, the default, is charged its paid hours at the
   salary's hourly equivalent (see [Salaried positions](#salaried-positions)). With `hourly`, it's paid
-  by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`, and cut like the other
-  staff. With no rate of its own,
+  by the hour, on top of the salary, at its own `hourly_coaching_rate_cents`. With no rate of its own,
   those hours cost nothing, and the engine warns.
-- A block's fill is Σ its offerings' enrollment ÷ Σ their max enrollment, at most 1, or 1 when they
-  have no max. Its boats of each class, sail or power, are costed for the expected share of the
-  program: ⌈`count` × fill⌉ of the organization's, and ⌈`chartered` × fill⌉ chartered. A block given
-  8 FJs for 16 sailors that expects 10 costs 5.
-- The organization's boats cost ⌈`count` × fill⌉ × time on the water × their class's
+- The organization's boats cost `count` × time on the water × their class's
   (`fuel_per_hour_cents` + `maintenance_per_boat_hour_cents`), booked to the class's `account_id`,
   such as Coach boats for RIBs, or else to boat maintenance. Boats sailors bring (`sailor_owned`)
   cost nothing.
 - Chartered boats cost their class's `charter_per_day_cents` once a day: for the most of the class
-  chartered at once that day, each block counting ⌈`chartered` × fill⌉, shared among the blocks that
+  chartered at once that day, shared among the blocks that
   charter them by how many each does. A RIB chartered for a morning block and an afternoon one is
   one day. A charter is a rental, so it's left out of MTDC, and it's booked to boat charters
   (`resources`). With no charter rate, it costs nothing, and the engine warns (`no_charter_rate`).
 - A trip costs each coach's airfare, plus `nights` × the year's lodging rate for each coach, plus
-  `miles` × the year's mileage rate once. Its coaches are the ones its block pays on its busiest
+  `miles` × the year's mileage rate once. Its coaches are the staff on its block on its busiest
   travel day. With no staff there, it charges only the miles, and the engine warns. Sailors' own
   travel isn't charged.
 
@@ -186,7 +177,7 @@ what its offerings would use if they filled, and costs what their expected sailo
   only the offering's slice: it, its activities, trips and own lines, and its blocks with the
   activities that share them. Its net at n sailors is the slice's net at n, plus its planned net less
   the slice's net at its enrollment, so pools, bonuses and anything else outside the slice stay as
-  planned. Each number is tried in turn, since coaches and boats cost in steps. It's null when the
+  planned. Each number is tried in turn, since costs set per sailor can step. It's null when the
   offering doesn't cover its costs even when full, or has no `capacity`.
 
 ### Warnings

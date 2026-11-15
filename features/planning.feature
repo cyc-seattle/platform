@@ -80,10 +80,9 @@ Feature: Plans
   from the program settings and the notes.
 
   Each offering has the most sailors it takes, and the number the planner expects to sign up. A
-  block is given what the offering would use if it filled. Coaches are paid by the hour, and a
-  program that doesn't fill isn't fully staffed, so the P&L costs a block at the sailors expected:
-  only the coaches they need, and the boats for the share of the program that's expected.
-  It never costs more than the block is given. A salaried coach on a block is always counted.
+  block is given what the offering would use if it filled, and the P&L costs every coach and boat
+  it's given, however many sailors sign up: CSC pays a whole coach and RIB for every practice.
+  Revenue and the costs per sailor follow the sailors expected.
   A planner sees two numbers for each offering: the most sailors its block can take, and the fewest
   sailors at which it pays for itself.
 
@@ -573,47 +572,46 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays $60 of coaches' wages
 
-  Rule: A block pays only the coaches its expected sailors need
+  Rule: A block pays every coach it's given, however many sailors are expected
 
     Scenario Outline: A block given 4 coaches for 20 Guppies
       Given Guppies have a coach for every 5 sailors
       And a Guppies offering for up to 20 sailors that expects <expected>, with a practice from 9am to noon, in a block with 4 coaches paid $20 an hour
       When a planner calculates the P&L
-      Then the offering pays <wages> of coaches' wages
+      Then the offering pays $240 of coaches' wages
 
       Examples:
-        | expected | wages |
-        | 10       | $120  |
-        | 11       | $180  |
-        | 20       | $240  |
+        | expected |
+        | 10       |
+        | 20       |
 
-    Example: A salaried coach on the block is always counted
+    Example: A salaried coach and an hourly coach on one block
       Given Guppies have a coach for every 5 sailors
       And a salaried director paid $40 an hour
       And a Guppies offering for up to 10 sailors that expects 5, with a practice from 9am to noon, in a block the director coaches with a coach paid $20 an hour
       When a planner calculates the P&L
       Then the offering pays $120 of the director's salary
-      And the offering pays no coaches' wages
+      And the offering pays $60 of coaches' wages
 
-  Rule: A block's boats, its own and chartered, cost what the expected share of the program would use
+  Rule: A block's boats, its own and chartered, cost what it's given, however many sailors are expected
 
     Example: 8 FJs for 16 sailors, when 10 are expected
       Given FJs that cost $1 an hour on the water in upkeep
       And an offering for up to 16 sailors that expects 10, with a practice from 9am to noon, in a block with 8 of the organization's FJs
       When a planner calculates the P&L
-      Then the offering pays $15 of boat upkeep
+      Then the offering pays $24 of boat upkeep
 
     Example: 2 RIBs for 16 sailors, when 5 are expected
       Given RIBs that cost $6 an hour in fuel and $4 an hour in upkeep
       And an offering for up to 16 sailors that expects 5, with a practice from 9am to noon, in a block with 2 of the organization's RIBs
       When a planner calculates the P&L
-      Then the offering pays $30 for coach boats
+      Then the offering pays $60 for coach boats
 
     Example: 8 chartered FJs for 16 sailors, when 10 are expected
       Given FJs that charter for $50 a day
       And an offering for up to 16 sailors that expects 10, with a practice from 9am to noon, in a block with 8 chartered FJs
       When a planner calculates the P&L
-      Then the offering pays $250 for boat charters
+      Then the offering pays $400 for boat charters
 
   Rule: The offerings in a block share its costs by their number of sailors
 
@@ -856,11 +854,11 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays for itself at 6 sailors
 
-    Example: Coaches are paid only for the sailors who sign up
+    Example: Every coach on the block is paid, however many sailors sign up
       Given Guppies have a coach for every 5 sailors
       And a Guppies offering for up to 10 sailors at $50 a sailor, with $100 of its own costs and a practice from 9am to noon in a block with 2 coaches paid $20 an hour
       When a planner calculates the P&L
-      Then the offering pays for itself at 4 sailors
+      Then the offering pays for itself at 5 sailors
 
     Example: An offering that loses money even when it's full
       Given an offering for up to 10 sailors at $100 a sailor, with $2,000 of its own costs

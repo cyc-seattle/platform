@@ -578,9 +578,9 @@ describe("staffing", () => {
     });
     // 2 × 30000 + 2 × 2 × 10000 + 100 × 70
     expect(total(computePlan(data), { line: "trip", account_id: A.travel })).toBe(107_000);
-    // The 4 sailors expected need only one coach of the two, at one to every 4.
+    // Both coaches travel, though the 4 sailors expected need only one of them, at one to every 4.
     data.plan_programs = [program(p.id, { staff_level_key: level.key, sailors_per_coach: 4 })];
-    expect(total(computePlan(data), { line: "trip" })).toBe(57_000);
+    expect(total(computePlan(data), { line: "trip" })).toBe(107_000);
     data.plan_programs = [];
     data.plan_block_staff = [];
     const out = computePlan(data);
@@ -620,7 +620,7 @@ describe("staffing", () => {
   });
 });
 
-describe("a block given what a full program uses", () => {
+describe("a block costs what it's given and is checked at its most sailors", () => {
   const coach = staffLevel({ hourly_rate_cents: 2000 });
   const director = position({ name: "Sailing Director" });
 
@@ -642,36 +642,28 @@ describe("a block given what a full program uses", () => {
     return { off, data };
   }
 
-  it("pays only the coaches the expected sailors need, rounded up", () => {
+  it("pays every coach it's given, however many sailors are expected", () => {
     const wages = (expected: number) => {
       const { data, off } = full(20, expected, { staff: [{ staff_level_key: coach.key, count: 4 }] });
       const out = computePlan(data);
       expect(out.activities[0]?.coaches).toBe(4);
       return total(out, { line: "coach_wages", cost_center_key: off.key });
     };
-    // Coaches × 2 h × 2000¢
-    expect(wages(10)).toBe(8000);
-    expect(wages(11)).toBe(12_000);
+    // 4 coaches × 2 h × 2000¢
+    expect(wages(5)).toBe(16_000);
     expect(wages(20)).toBe(16_000);
-    expect(wages(30)).toBe(16_000);
   });
 
-  it("always pays a salaried coach on salary, and cuts the others", () => {
+  it("pays a salaried coach on salary, and the hourly coaches beside them", () => {
     const { data } = full(10, 5, {
       staff: [{ position_key: director.key }, { staff_level_key: coach.key, count: 1 }],
     });
     const out = computePlan(data);
-    expect(total(out, { line: "coach_wages" })).toBe(0);
+    expect(total(out, { line: "coach_wages" })).toBe(4000);
     expect(out.positions[0]?.salaried_coaching_hours).toBe(2);
   });
 
-  it("pays all a block is given when a program has no sailors per coach", () => {
-    const { data } = full(20, 5, { staff: [{ staff_level_key: coach.key, count: 4 }] });
-    data.plan_programs = [];
-    expect(total(computePlan(data), { line: "coach_wages" })).toBe(16_000);
-  });
-
-  it("costs the boats, own and chartered, that the expected share of the program would use", () => {
+  it("costs every boat it's given, own and chartered, however many sailors are expected", () => {
     const rate = (boat_class_id: string, fields: Partial<PlanBoatRate>): PlanBoatRate => ({
       id: boat_class_id,
       plan_id: "v1",
@@ -702,12 +694,12 @@ describe("a block given what a full program uses", () => {
       },
     );
     const out = computePlan(data);
-    // ⌈8 × 10/16⌉ = 5 boats × 2 h × 100¢
-    expect(total(out, { line: "boats", account_id: A.boats })).toBe(1000);
-    // ⌈3 × 10/16⌉ = 2 RIBs × 2 h × 1000¢
-    expect(total(out, { line: "boats", account_id: A.ribs })).toBe(4000);
-    // ⌈4 × 10/16⌉ = 3 chartered × 5000¢
-    expect(total(out, { line: "charters" })).toBe(15_000);
+    // 8 boats × 2 h × 100¢
+    expect(total(out, { line: "boats", account_id: A.boats })).toBe(1600);
+    // 3 RIBs × 2 h × 1000¢
+    expect(total(out, { line: "boats", account_id: A.ribs })).toBe(6000);
+    // 4 chartered × 5000¢
+    expect(total(out, { line: "charters" })).toBe(20_000);
     expect(out.activities[0]).toMatchObject({ boats: 15 });
   });
 
@@ -800,15 +792,15 @@ describe("a block given what a full program uses", () => {
       expect(withCosts(null, 50_000, 300_000)).toBeNull();
     });
 
-    it("pays coaches only for the sailors who sign up", () => {
+    it("counts every coach the block is given, whoever signs up", () => {
       const { data, off } = full(10, 10, { staff: [{ staff_level_key: coach.key, count: 2 }] });
       data.plan_offerings[0]!.price_cents = 2000;
-      // One coach costs 2 h × 2000¢ = 4000¢; two sailors pay for the first.
-      expect(pnlOf(computePlan(data), off.key).breakeven_enrollment).toBe(2);
+      // Two coaches cost 2 × 2 h × 2000¢ = 8000¢, which 4 sailors pay.
+      expect(pnlOf(computePlan(data), off.key).breakeven_enrollment).toBe(4);
       data.plan_budget_lines = [
         budgetLine({ cost_center_type: "offering", cost_center_key: off.key, amount_cents: 10_000 }),
       ];
-      // 7 sailors pay 14_000¢ against two coaches' 8000¢ + 10_000¢; 9 pay 18_000¢.
+      // 9 sailors pay 18_000¢ against the coaches' 8000¢ + 10_000¢.
       expect(pnlOf(computePlan(data), off.key).breakeven_enrollment).toBe(9);
     });
   });

@@ -489,8 +489,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 944928,
-          "net": -584928,
+          "expenses": 905016,
+          "net": -545016,
           "revenue": 360000,
         },
         "Charters": {
@@ -514,13 +514,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 5597527,
-          "net": -3329527,
+          "expenses": 5393458,
+          "net": -3125458,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 12003765,
-          "net": -8813765,
+          "expenses": 12494850,
+          "net": -9304850,
           "revenue": 3190000,
         },
       }
