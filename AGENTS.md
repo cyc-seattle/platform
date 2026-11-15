@@ -72,7 +72,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Deploys
 
-- `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
+- `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/release.yml`), through
   the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR's push runs
   only CI. Each push to `main` deploys dev, then previews prod and applies it once a maintainer
   approves. `prod` waits for dev, so a broken deploy stops there, and is skipped when the preview

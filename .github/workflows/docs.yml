@@ -1,6 +1,6 @@
 name: docs
 
-# Publishes the docs site to GitHub Pages from main. Kept out of pull-request.yml so it adds nothing to
+# Publishes the docs site to GitHub Pages from main. Kept out of release.yml so it adds nothing to
 # a PR's or a deploy's time, and nothing requires it. CI builds the site too, so a broken link
 # fails the PR.
 on:

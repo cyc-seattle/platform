@@ -49,7 +49,7 @@ platform is built, its data model, and the planning engine.
   principal, or set `serviceAccountAnnotations` to run as a Google service account.
 - `enableService` enables a Google Cloud API.
 
-`mise run build` builds it into `dist/`, which is all it publishes. `.github/workflows/pull-request.yml`
+`mise run build` builds it into `dist/`, which is all it publishes. `.github/workflows/release.yml`
 releases each merge to `main` with semantic-release, versioned by the conventional commits, before
 it deploys.
 
@@ -101,7 +101,7 @@ deployer needs first.
 
 ### From Actions
 
-`.github/workflows/pull-request.yml` deploys through the org's reusable `deploy.yml`, which
+A PR runs `ci` from `.github/workflows/pull-request.yml`. `.github/workflows/release.yml` releases and deploys through the org's reusable `deploy.yml`, which
 authenticates with Workload Identity Federation and stores no credentials. Each job runs in a
 GitHub environment that holds its identity and state bucket:
 
