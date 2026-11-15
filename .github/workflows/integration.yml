@@ -1,6 +1,6 @@
 name: integration
 
-# Tests dev after each deploy of main, which pull-request.yml starts (#280). A failure opens or
+# Tests dev after each deploy of main, which release.yml starts (#280). A failure opens or
 # comments on one issue, apart from the nightly's, and a green run closes it.
 on:
   workflow_dispatch:
