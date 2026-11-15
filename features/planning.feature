@@ -880,7 +880,7 @@ Feature: Plans
   Rule: A frozen Financial Plan keeps its warnings, each with the plan and date it's about
 
     Example: A practice with no staff in a frozen Financial Plan
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan whose Program Plan has a practice on August 2 with no staff
       When they freeze the Financial Plan
       Then the Financial Plan's warnings say that the practice on August 2, in its Program Plan, has no staff
@@ -912,7 +912,7 @@ Feature: Plans
   Rule: A frozen Financial Plan keeps the P&L it had when it was frozen
 
     Example: A frozen Financial Plan shows the P&L it was frozen with
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan whose offering takes in $10,000
       When they freeze the Financial Plan
       Then the Financial Plan's P&L shows that the offering takes in $10,000
@@ -923,7 +923,7 @@ Feature: Plans
       Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
     Example: A frozen Financial Plan keeps each term's P&L and bonus
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And a draft Financial Plan that pays a director 10% of an offering in "Summer 2027" that takes in $10,000
       When they freeze the Financial Plan
       Then the Financial Plan's P&L shows that the program area takes in $10,000 in "Summer 2027"
@@ -932,7 +932,7 @@ Feature: Plans
   Rule: Each line of a frozen P&L says in plain words what it is
 
     Example: An offering's share of the office is named for its pool and its line
-      Given a user with the Plan Writer policy
+      Given a user with the Plan Writer and Plan Admin policies
       And $1,000 of office costs in a pool named "G&A"
       And a draft Financial Plan with one offering that has direct costs
       When they freeze the Financial Plan
