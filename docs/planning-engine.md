@@ -10,8 +10,9 @@ The planning engine calculates a plan's P&L for one year from the plan's rows in
 loads the rows, calls `computePlan`, and shows the answer. The `frozen-plans` hook runs the engine
 deployed with `backend` and stores each Financial Plan's results
 ([docs/planning-schema.md](planning-schema.md#a-financial-plans-results)): a draft's again after
-each change to it, and a frozen one's when it's frozen, with which version of the engine calculated
-them. So an app reads a Financial Plan's P&L from its results, and needn't run the engine itself.
+each change to it, and a frozen one's when it's frozen. Each records which version of the engine
+calculated it, and a new engine leaves a draft's as they were until it changes or someone asks for
+them again. So an app reads a Financial Plan's P&L from its results, and needn't run the engine itself.
 
 ```ts
 import { computePlan, perDay, perSailorDay } from "@cyc-seattle/platform/planning";

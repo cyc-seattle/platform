@@ -23,6 +23,8 @@ const SETS = "financial_plans";
 
 const REFUSED = "A frozen plan can't be changed. Start a new Financial Plan from the one it's in.";
 const NEEDS_PLATFORM = "Freezing a Financial Plan needs the @cyc-seattle/platform version that calculated it.";
+const NOT_EDITOR = "Only someone who can edit this Financial Plan can do this.";
+const NOT_DRAFT = "Only a draft's numbers can be worked out again.";
 const PLAN_STAYS = "A plan can't move to another Financial Plan.";
 const ROW_STAYS = "A plan row can't move to another plan. Copy it into that plan instead.";
 const SAME_PLAN = "A plan row can only link to rows in its own plan.";
@@ -714,7 +716,7 @@ async function calculate(config, db, set, engine) {
     plan_result_capital: all.plan_result_capital.map(row),
     plan_result_warnings: all.plan_result_warnings.map(owned),
   };
-  return { rows, totals: row(totals) };
+  return { rows, totals: row({ ...totals, platform_version: config.platformVersion }) };
 }
 
 /** Works out a frozen Financial Plan's results and writes them, once. */
@@ -757,6 +759,15 @@ async function writeDraftResults(config, db, setId, engine) {
     await db.transaction((trx) => clearDraft(config, trx, setId)).catch(() => {});
     throw error;
   }
+}
+
+/**
+ * Works out a draft's results again now, if `mayEdit` it. Answers with an HTTP status: 403 if not,
+ * 409 if it isn't a draft, and 200 once they're written.
+ */
+async function workOutAgain(config, db, setId, engine, mayEdit) {
+  if (!(await mayEdit(setId))) return 403;
+  return (await writeDraftResults(config, db, setId, engine)) ? 200 : 409;
 }
 
 /** What a draft's results are worked out from apart from its plans' rows, so a change to it changes every draft's. */
@@ -906,7 +917,7 @@ const DRAFT_MAX_WAIT_MS = 10_000;
 // How long a write's drafts wait for its action, which never comes if the write fails.
 const BEFORE_TTL_MS = 60_000;
 
-function register({ filter, action, init }, { env, database, logger }) {
+function register({ filter, action, init }, { services, env, database, getSchema, logger }) {
   // Written beside this file by `backend`, from ./policies.ts.
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
   const config = require("./config.json");
@@ -1029,6 +1040,33 @@ function register({ filter, action, init }, { env, database, logger }) {
       }
       await handler(req, res);
     };
+    // The engine this Directus works numbers out with, so an app can tell a draft's results are older.
+    app.get("/frozen-plans/engine", (req, res) => {
+      if (!req.accountability?.user) {
+        res.status(401).json({ errors: [{ message: "Sign in to do this." }] });
+        return;
+      }
+      res.json({ platform_version: config.platformVersion });
+    });
+    // Works out a draft's results again now, for anyone who may edit it, such as after a new engine.
+    app.post("/frozen-plans/drafts/:id/results", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const permissions = new services.PermissionsService({
+          accountability: req.accountability,
+          schema: req.schema ?? (await getSchema()),
+          knex: database,
+        });
+        const mayEdit = async (setId) =>
+          (await permissions.getItemPermissions(SETS, setId).catch(() => undefined))?.update.access === true;
+        const status = await workOutAgain(config, database, id, await loadEngine(), mayEdit);
+        if (status === 200) res.json({ written: true });
+        else res.status(status).json({ errors: [{ message: status === 403 ? NOT_EDITOR : NOT_DRAFT }] });
+      } catch (error) {
+        logger.error(error, `frozen-plans: couldn't work out the draft results of ${id}`);
+        res.status(500).json({ errors: [{ message: "Couldn't work out the draft's results." }] });
+      }
+    });
     // Fills in a frozen Financial Plan's results, if writing them failed when it was frozen.
     app.post(
       "/frozen-plans/results/:id",
@@ -1112,6 +1150,7 @@ module.exports.fingerprint = fingerprint;
 module.exports.triggerStatements = triggerStatements;
 module.exports.writeSetResults = writeSetResults;
 module.exports.writeDraftResults = writeDraftResults;
+module.exports.workOutAgain = workOutAgain;
 module.exports.draftsChangedBy = draftsChangedBy;
 module.exports.draftQueue = draftQueue;
 module.exports.copyParent = copyParent;

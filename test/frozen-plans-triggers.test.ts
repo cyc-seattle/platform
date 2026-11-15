@@ -28,6 +28,7 @@ import {
   triggerStatements,
   triggerStatus,
   writeDraftResults,
+  workOutAgain,
   writeSetResults,
 } from "../stacks/backend/frozen-plans.cjs";
 import { computePlan } from "../src/planning/index.ts";
@@ -916,6 +917,31 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     const again = await totals(db, draftSet);
     expect(again).toHaveLength(1);
     expect(again[0]!["id"]).not.toBe(first!["id"]);
+  });
+
+  it("records the engine that worked out each set of results", async () => {
+    const db = await database(config(false));
+    const { draftSet } = await draft(db, 2808);
+    const { set } = await plans(db, 2809);
+    await writeDraftResults(config(false), knexOver(db), draftSet, engine);
+    await writeSetResults(config(false), knexOver(db), set, engine);
+    expect((await totals(db, draftSet))[0]!["platform_version"]).toBe("1.0.0+engine.abc");
+    expect((await totals(db, set))[0]!["platform_version"]).toBe("1.0.0+engine.abc");
+  });
+
+  it("works out a draft's results again on request, only for someone who may edit it", async () => {
+    const db = await database(config(false));
+    const { draftSet } = await draft(db, 2810);
+    const { set } = await plans(db, 2811);
+    const may = async () => true;
+    const mayNot = async () => false;
+    expect(await workOutAgain(config(false), knexOver(db), draftSet, engine, mayNot)).toBe(403);
+    expect(await count(db, "plan_results", draftSet)).toBe(0);
+    expect(await workOutAgain(config(false), knexOver(db), draftSet, engine, may)).toBe(200);
+    expect(await count(db, "plan_results", draftSet)).toBe(1);
+    // A frozen Financial Plan's results never change.
+    expect(await workOutAgain(config(false), knexOver(db), set, engine, may)).toBe(409);
+    expect(await count(db, "plan_results", set)).toBe(0);
   });
 
   it("clears a draft's results when the engine fails, and says why", async () => {
