@@ -48,6 +48,7 @@ erDiagram
     assets ||--o| boats : "boat subtype"
     boat_classes ||--o{ boats : "class of"
     accounts |o--o{ boat_classes : "upkeep booked to"
+    storage_areas |o--o{ assets : "kept in"
     organizations ||--o{ organization_cost_accounts : "calculated costs go to"
     accounts ||--o{ organization_cost_accounts : "booked to"
 
@@ -127,6 +128,14 @@ erDiagram
         date acquired_on "empty counts from the start"
         date disposed_on "empty while CSC has it"
         string note "at most 280 characters"
+        uuid location_id FK "the storage area it's kept in"
+    }
+    storage_areas {
+        uuid id PK
+        string name "unique, such as Docks"
+        decimal area_sq_ft "usable area"
+        string note "at most 280 characters"
+        int sort
     }
     boats {
         uuid id PK
@@ -144,7 +153,7 @@ erDiagram
 
 `programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted.
 
-A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels and boat rates name no account; a boat class can name the account its upkeep goes to. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, a motor, or other, such as a trailer or the van. `value_cents` is its book value, as in QuickBooks account 1500. A sailboat or powerboat also has a `boats` row, with its class, such as Opti or RIB, per `AGENTS.md`'s subtype pattern; its class is its model, so the Data Studio hides `model` for one. The engine counts the boats of each class that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Motors and other assets are listed, not counted. A boat class with boats can't be deleted. The powerboat classes, RIB and Support, take 0 sailors, and their `account_id` books their upkeep to Coach boats; a class with none books it to boat maintenance. Catalog Writers change the list, and Catalog Readers and planners see it.
+A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels and boat rates name no account; a boat class can name the account its upkeep goes to. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, a motor, or other, such as a trailer or the van. `value_cents` is its book value, as in QuickBooks account 1500. A sailboat or powerboat also has a `boats` row, with its class, such as Opti or RIB, per `AGENTS.md`'s subtype pattern; its class is its model, so the Data Studio hides `model` for one. The engine counts the boats of each class that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Motors and other assets are listed, not counted. A boat class with boats can't be deleted. Each asset's `location_id` names the storage area it's kept in, such as Docks, Dry Storage or Yard Arm, which has its usable `area_sq_ft`; Sail Team's Inventory compares what each area holds with it. A storage area with assets can't be deleted. The powerboat classes, RIB and Support, take 0 sailors, and their `account_id` books their upkeep to Coach boats; a class with none books it to boat maintenance. Catalog Writers change the list, and Catalog Readers and planners see it.
 
 ### Directory
 
@@ -475,7 +484,7 @@ The Operations Plan also holds the offerings of products in no area: merchandise
 
 A salaried booking names a product, or a program area whose offerings share it by MTDC.
 
-A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. The programs pay toward the pools at their indirect cost rates, and what the rates don't recover stays with the organization ([Indirect costs](planning-engine.md#indirect-costs)).
+A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. The programs pay toward the pools at their indirect cost rates, and what the rates leave unallocated stays with the organization ([Indirect costs](planning-engine.md#indirect-costs)).
 
 A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before its indirect costs (`basis`), if that net is above zero. Every bonus is in the Operations Plan, which the database enforces. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay.
 

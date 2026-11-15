@@ -14,7 +14,7 @@ import {
   position,
   product,
   rates,
-  recoverAll,
+  allocateAll,
   staffLevel,
   total,
 } from "./fixtures.ts";
@@ -74,7 +74,7 @@ describe("bonus bases", () => {
     data.plan_budget_lines.push(
       budgetLine({ amount_cents: 600_000, cost_center_type: "pool", cost_center_key: ga.key }),
     );
-    return computePlan(recoverAll(data));
+    return computePlan(allocateAll(data));
   }
 
   it("counts the net after shared costs by default", () => {
@@ -132,7 +132,7 @@ describe("payroll tax on a bonus", () => {
         budgetLine({ amount_cents: 100_000, cost_center_type: "pool", cost_center_key: ga.key }),
       ],
     });
-    const out = computePlan(recoverAll(data));
+    const out = computePlan(allocateAll(data));
     expect(pnlOf(out, first.key).mtdc_cents).toBe(pnlOf(out, second.key).mtdc_cents);
     expect(total(out, { line: "pool:", cost_center_key: first.key })).toBe(50_000);
   });

@@ -46,7 +46,7 @@ Feature: Plans
   toward them at its indirect cost rate, a share of its own direct costs, counted the way federal
   grant rules count them. A Plan Admin sets each program's rate in the plan, from the year before,
   and it stays fixed for the year, so one program's year never changes what another pays, or its
-  director's bonus. What the rates don't recover of the shared costs stays with the organization. Some charges are set as
+  director's bonus. What the rates leave unallocated of the shared costs stays with the organization. Some charges are set as
   a share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with
   its rate and the kinds of product it applies to. Revenue from programs and other sales pays for
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
@@ -874,13 +874,13 @@ Feature: Plans
 
   Rule: Each program pays its indirect cost rate on its own direct costs, and the organization keeps the rest
 
-    Example: Two Program Plans pay their rates, and the organization keeps what they don't recover
+    Example: Two Program Plans pay their rates, and the organization keeps what's unallocated
       Given $1,000 of office costs shared by every offering
       And a draft Financial Plan with two Program Plans whose offerings have the same direct costs
       And every program's indirect cost rate is 30%
       When a planner calculates the P&L
       Then each Program Plan's offering pays $300 of the office costs
-      And the organization's totals show $400 of shared costs not recovered
+      And the organization's totals show $400 of unallocated indirect costs
 
     Example: One program's year doesn't change what another pays
       Given $1,000 of office costs shared by every offering

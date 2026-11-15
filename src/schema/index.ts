@@ -77,6 +77,7 @@ export interface Schema {
   schools: Schools[];
   staff_levels: StaffLevels[];
   staff_roles: StaffRoles[];
+  storage_areas: StorageAreas[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
@@ -154,6 +155,8 @@ export interface Assets {
   disposed_on: string | null;
   /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
+  /** The storage area where it's kept. */
+  location_id: string | StorageAreas | null;
 }
 
 /** Something a sync noticed but didn't fix. A dismissed finding stays dismissed on later runs. */
@@ -1286,6 +1289,19 @@ export interface StaffRoles {
   id: string;
   /** Such as Instructor, Coach, or Office. */
   name: string;
+  sort: number | null;
+}
+
+/** Where CSC keeps its assets, such as Docks, Dry Storage or Yard Arm. Drag the rows to change their order. */
+export interface StorageAreas {
+  id: string;
+  name: string;
+  /** Its usable area. */
+  area_sq_ft: string | null;
+  /** The assets kept here. */
+  assets: (string | Assets)[];
+  /** Up to 280 characters. Bold, italic, code and links work. */
+  note: string | null;
   sort: number | null;
 }
 

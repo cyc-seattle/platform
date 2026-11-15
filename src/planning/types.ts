@@ -502,15 +502,15 @@ export interface OrganizationTotals {
   indirect: IndirectTotals;
 }
 
-/** The year's shared costs, and what the programs' indirect cost rates recover of them. */
+/** The year's shared costs, and what the programs' indirect cost rates allocate of them. */
 export interface IndirectTotals {
   /** Everything in every pool. */
   shared_cents: number;
-  /** What the rates charge the programs' offerings. */
+  /** Allocated: what the rates charge the programs' offerings. */
   recovered_cents: number;
-  /** What's left on the organization: shared less recovered. Below zero when the rates recover more. */
+  /** Unallocated: what's left on the organization, shared less allocated. Below zero when over-allocated. */
   unrecovered_cents: number;
-  /** The one rate that would recover every shared cost: shared ÷ the programs' MTDC. Null with no MTDC. */
+  /** The one rate that would allocate every shared cost: shared ÷ the programs' MTDC. Null with no MTDC. */
   full_recovery_rate: number | null;
 }
 
