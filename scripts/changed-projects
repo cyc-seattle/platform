@@ -12,7 +12,7 @@ while IFS= read -r path || [[ -n "$path" ]]; do
   case "$path" in
     # It sets how the deploy itself runs, such as deploy.yml's version.
     .github/workflows/pull-request.yml) deploy=true ;;
-    *.md | docs/* | .agents/* | .github/*) ;;
+    *.md | docs/* | docs-site/* | .agents/* | .github/*) ;;
     *) deploy=true ;;
   esac
 done
