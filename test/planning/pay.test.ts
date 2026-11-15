@@ -181,7 +181,7 @@ describe("a salaried coach on a block", () => {
     );
     const staff = [
       { position_key: coach.key, pay },
-      ...(others > 0 ? [{ staff_level_key: level.key, count: others }] : []),
+      ...(others > 0 ? [{ staff_level_id: level.staff_level_id, count: others }] : []),
     ];
     const data = emptyPlan({
       products: [p],

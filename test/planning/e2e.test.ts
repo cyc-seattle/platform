@@ -42,10 +42,10 @@ function realisticPlan(): PlanData {
   });
   const merch = product({ id: "merch", name: "Merchandise", kind: "merchandise" });
 
-  const instructor1 = staffLevel({ ...v("level-i"), name: "Instructor I", hourly_rate_cents: 2000 });
+  const instructor1 = staffLevel({ ...v("level-i"), staff_level_id: "instructor", hourly_rate_cents: 2000 });
   const instructor2 = staffLevel({
     ...v("level-ii"),
-    name: "Instructor II",
+    staff_level_id: "senior-instructor",
     hourly_rate_cents: 2600,
   });
 
@@ -149,7 +149,7 @@ function realisticPlan(): PlanData {
   });
 
   // What the planner, or their AI, gives each block: staff, powerboats, equipment and boats.
-  const staff = (level: string, count: number) => ({ staff_level_key: level, count });
+  const staff = (level: string, count: number) => ({ staff_level_id: level, count });
   const boats = (boat_class_id: string, count: number, sailor_owned: number | null = null) => ({
     boat_class_id,
     count,
@@ -158,7 +158,7 @@ function realisticPlan(): PlanData {
   const ribs = (count: number, chartered: number | null = null) => ({ ...boats("rib", count), chartered });
   // Each block is given what a full program would use, and costs what its expected sailors use.
   const fallGiven = {
-    staff: [staff(instructor2.key, 4)],
+    staff: [staff(instructor2.staff_level_id, 4)],
     boats: [boats("opti", 12, 2), boats("420", 4, 1), ribs(2)],
   };
   const fallPractices = practice(fall, [2, 4], "16:00", "18:30", { on_water_minutes: 120 });
@@ -198,23 +198,31 @@ function realisticPlan(): PlanData {
     ...regattas.map((a) =>
       block([a], { ...fallGiven, boats: [boats("opti", 12, 2), boats("420", 4, 1), ribs(1, 1)] }, { name: "Regatta" }),
     ),
-    ...travelDays.map((a) => block([a], { staff: [staff(instructor2.key, 3)] }, { name: "Travel" })),
+    ...travelDays.map((a) => block([a], { staff: [staff(instructor2.staff_level_id, 3)] }, { name: "Travel" })),
     // Spring racing and development share their coaches, with the director among them.
     ...springPractices.map((a) =>
       block(
         [a, devPractices.find((d) => d.date === a.date)!],
         {
-          staff: [{ position_key: director.key, count: 1 }, staff(instructor2.key, 3)],
+          staff: [{ position_key: director.key, count: 1 }, staff(instructor2.staff_level_id, 3)],
           boats: [boats("opti", 11, 2), boats("420", 3, 1), ribs(2)],
         },
         { name: "Spring youth" },
       ),
     ),
     ...ltsPractices.map((a) =>
-      block([a], { staff: [staff(instructor1.key, 2)], boats: [boats("keelboat", 2), ribs(1)] }, { name: "Adult" }),
+      block(
+        [a],
+        { staff: [staff(instructor1.staff_level_id, 2)], boats: [boats("keelboat", 2), ribs(1)] },
+        { name: "Adult" },
+      ),
     ),
     ...campDays.map((a) =>
-      block([a], { staff: [staff(instructor1.key, 4)], boats: [boats("opti", 30), ribs(2)] }, { name: "Camp" }),
+      block(
+        [a],
+        { staff: [staff(instructor1.staff_level_id, 4)], boats: [boats("opti", 30), ribs(2)] },
+        { name: "Camp" },
+      ),
     ),
   );
 
@@ -243,9 +251,9 @@ function realisticPlan(): PlanData {
     qualifications: [{ id: "q-race", name: "Race coach" }],
     plan_offerings: [fall, spring, development, lts, ...campWeeks, charterYear, storageYear, merchYear],
     plan_programs: [
-      program(racing.id, { ...v("racing-settings"), staff_level_key: instructor2.key, sailors_per_coach: 6 }),
-      program(camp.id, { ...v("camp-settings"), staff_level_key: instructor1.key, sailors_per_coach: 8 }),
-      program(adult.id, { ...v("adult-settings"), staff_level_key: instructor1.key, sailors_per_coach: 4 }),
+      program(racing.id, { ...v("racing-settings"), staff_level_id: instructor2.staff_level_id, sailors_per_coach: 6 }),
+      program(camp.id, { ...v("camp-settings"), staff_level_id: instructor1.staff_level_id, sailors_per_coach: 8 }),
+      program(adult.id, { ...v("adult-settings"), staff_level_id: instructor1.staff_level_id, sailors_per_coach: 4 }),
     ],
     plan_activities: activities,
     ...allocations,
@@ -267,6 +275,11 @@ function realisticPlan(): PlanData {
         rate: 0.03,
         product_kinds: ["program", "charter", "storage_lease", "merchandise", "event_hosting", "other"],
       }),
+    ],
+    staff_roles: [{ id: "instructor-role", name: "Instructor", sort: 1 }],
+    staff_levels: [
+      { id: "instructor", name: "Instructor", role_id: "instructor-role", grade: "standard" },
+      { id: "senior-instructor", name: "Senior Instructor", role_id: "instructor-role", grade: "senior" },
     ],
     plan_staff_levels: [instructor1, instructor2],
     plan_salaried_positions: [director, facilities],
@@ -292,14 +305,14 @@ function realisticPlan(): PlanData {
       },
     ],
     plan_labor_lines: [
-      laborLine(instructor2.key, {
+      laborLine(instructor2.staff_level_id, {
         ...v("camp-prep"),
         name: "Camp head instructor prep",
         hours: 60,
         cost_center_type: "product",
         cost_center_key: camp.id,
       }),
-      laborLine(instructor1.key, {
+      laborLine(instructor1.staff_level_id, {
         ...v("fleet-maintenance"),
         name: "Fleet maintenance labor",
         hours: 120,

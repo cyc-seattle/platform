@@ -109,6 +109,7 @@ describe("discoverSchemaFiles", () => {
       "crm",
       "directory",
       "gsuite",
+      "hr",
       "planning",
       "sail-team",
       "sync",

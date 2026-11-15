@@ -122,9 +122,27 @@ describe("labor lines", () => {
     const level = staffLevel({ hourly_rate_cents: 2500 });
     data.plan_staff_levels = [level];
     data.plan_labor_lines = [
-      laborLine(level.key, { hours: 40, cost_center_type: "offering", cost_center_key: spring.key }),
+      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_key: spring.key }),
     ];
     expect(total(computePlan(data), { line: "labor", cost_center_key: spring.key })).toBe(100_000);
+  });
+
+  it("names the staff level whose rate prices it", () => {
+    const { data } = twoOfferings();
+    const level = staffLevel({ staff_level_id: "head", hourly_rate_cents: 2500 });
+    data.staff_levels = [{ id: "head", name: "Head Instructor", role_id: "instructor", grade: "head" }];
+    data.plan_staff_levels = [level];
+    data.plan_labor_lines = [laborLine("head", { name: "Training", hours: 4 })];
+    const [line] = computePlan(data).lines.filter((l) => l.line_key.startsWith("labor:"));
+    expect(line?.explanation).toBe("Training: hours × Head Instructor's rate");
+  });
+
+  it("leaves out a line whose staff level has no rate in the Operations Plan, and says so", () => {
+    const { data } = twoOfferings();
+    data.plan_labor_lines = [laborLine("unpriced", { hours: 4 })];
+    const out = computePlan(data);
+    expect(out.lines.filter((l) => l.line_key.startsWith("labor:"))).toEqual([]);
+    expect(out.warnings.map((w) => w.code)).toContain("unknown_staff_level");
   });
 });
 
@@ -134,8 +152,8 @@ describe("payroll tax", () => {
     const level = staffLevel({ hourly_rate_cents: 2500 });
     data.plan_staff_levels = [level];
     data.plan_labor_lines = [
-      laborLine(level.key, { hours: 40, cost_center_type: "offering", cost_center_key: spring.key }),
-      laborLine(level.key, { hours: 10 }),
+      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_key: spring.key }),
+      laborLine(level.staff_level_id, { hours: 10 }),
     ];
     data.plan_budget_lines = [
       budgetLine({ amount_cents: 50_000, cost_center_type: "offering", cost_center_key: spring.key }),

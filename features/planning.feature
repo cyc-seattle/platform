@@ -58,7 +58,7 @@ Feature: Plans
   the net of the offerings in no term for the year.
 
   Each Program Plan sets two numbers for each of its programs: the staff level that coaches it, such
-  as Level 1 Instructor, and how many sailors each coach can take. These are the program's
+  as Instructor, and how many sailors each coach can take. These are the program's
   settings, and two drafts can try different ones. Each boat class says the most sailors one boat
   can safely take. The asset list says which boats the organization has on each day
   (assets.feature), so every plan counts the same boats. The Operations Plan sets each boat class's
@@ -111,8 +111,8 @@ Feature: Plans
   The Operations Plan also lists closed days, such as Labor Day, so that no one plans a practice on
   one by mistake.
 
-  Plans include wages and bonus rates. Wages are what each staff level is paid per hour, and what
-  each salaried position is paid per year. A salaried coach can also be paid by the hour for
+  Plans include wages and bonus rates. Wages are what each staff level in the catalog is paid per
+  hour, $0 for a volunteer, and what each salaried position is paid per year. A salaried coach can also be paid by the hour for
   coaching, on top of their salary, at their own hourly rate. Bonus rates set the bonus a director
   earns on the products they run: a share of those products' net, the money they make after their
   costs. Every bonus is in the Operations Plan, which a Plan Admin sets. Anyone who can

@@ -12,6 +12,7 @@ import {
   change,
   itemPath,
   type Item,
+  key,
   OPERATIONS_PLAN_ROWS,
   PLAN_ROWS,
   PLAN_YEAR,
@@ -512,12 +513,14 @@ const juneDays = (n: number) =>
 /** The scenario's programs, staff levels and boat classes, by the names the steps use. */
 let programs: Record<string, string> = {};
 let levels: Record<string, Item> = {};
+let staffRole: string | undefined;
 let classes: Record<string, string> = {};
 /** Offerings that share a block whose activities a later step adds, and the block. */
 let pending: { offerings: Item[]; block: string } | undefined;
 onEachScenario(() => {
   programs = {};
   levels = {};
+  staffRole = undefined;
   classes = {};
   pending = undefined;
 });
@@ -528,16 +531,24 @@ async function programNamed(name: string): Promise<string> {
   programs[name] ??= await p.product("program", await theArea());
   return programs[name];
 }
-/** A staff level in the Operations Plan, paid `rate` cents an hour. */
+/** A staff level, with its rate in the Operations Plan of `rate` cents an hour. */
 async function level(name: string, rate = 2000): Promise<Item> {
-  levels[name] ??= await adminCreate("plan_staff_levels", {
-    id: randomUUID(),
-    plan_id: await p.operationsPlan(),
-    key: randomUUID(),
-    name,
-    pay_type: "hourly",
-    hourly_rate_cents: rate,
-  });
+  staffRole ??= (await adminCreate("staff_roles", { id: randomUUID(), name: `Role ${key("role")}`, sort: 1 }))["id"];
+  const role = staffRole;
+  levels[name] ??= await (async () => {
+    const staffLevel = await adminCreate("staff_levels", {
+      id: randomUUID(),
+      name: `${name} ${key("level")}`,
+      role_id: role,
+      grade: "standard",
+    });
+    return adminCreate("plan_staff_levels", {
+      id: randomUUID(),
+      plan_id: await p.operationsPlan(),
+      staff_level_id: staffLevel.id,
+      hourly_rate_cents: rate,
+    });
+  })();
   return levels[name];
 }
 /** A boat class by its plural name. RIBs are coach boats: they take no sailors, and book to coach boats. */
@@ -557,7 +568,7 @@ const boatRate = async (boats: string, fields: Row) =>
     ...fields,
   });
 const staffAt = async (name: string, count: number, rate?: number) => ({
-  staff_level_key: (await level(name, rate))["key"],
+  staff_level_id: (await level(name, rate))["staff_level_id"],
   count,
 });
 
@@ -601,20 +612,20 @@ const warning = (code: string) => p.out.warnings.find((w) => w.code === code);
 
 Step("{program} have a coach for every {count} sailors", async (_, program: string, sailors: string) => {
   await p.programSettings(await theArea(), await programNamed(program), {
-    staff_level_key: (await level("Coach"))["key"],
+    staff_level_id: (await level("Coach"))["staff_level_id"],
     sailors_per_coach: Number(sailors),
   });
 });
 Step(
   "Guppies have a coach for every {count} sailors, and Minnows a coach for every {count}",
   async (_, guppies: string, minnows: string) => {
-    const coach = (await level("Coach"))["key"];
+    const coach = (await level("Coach"))["staff_level_id"];
     for (const [program, sailors] of [
       ["Guppies", guppies],
       ["Minnows", minnows],
     ] as const) {
       await p.programSettings(await theArea(), await programNamed(program), {
-        staff_level_key: coach,
+        staff_level_id: coach,
         sailors_per_coach: Number(sailors),
       });
     }
@@ -1621,7 +1632,7 @@ Step(
   "a frozen Financial Plan named {string} where {program} have a coach for every {count} sailors",
   async (_, name: string, program: string, sailors: string) => {
     settings = await p.programSettings(await theArea(), await programNamed(program), {
-      staff_level_key: (await level("Coach"))["key"],
+      staff_level_id: (await level("Coach"))["staff_level_id"],
       sailors_per_coach: Number(sailors),
     });
     named[name] = await p.frozenSet(name);
@@ -1700,7 +1711,7 @@ Step(
           uses_boats: false,
         },
       ],
-      ["plan_block_staff", { id: randomUUID(), block_id: aiBlock, staff_level_key: coach["key"], count: 2 }],
+      ["plan_block_staff", { id: randomUUID(), block_id: aiBlock, staff_level_id: coach["staff_level_id"], count: 2 }],
     ] as const) {
       expectOk(await theyWrite("POST", `/items/${collection}`, { plan_id: copy, key: randomUUID(), ...data }));
     }

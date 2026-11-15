@@ -225,7 +225,7 @@ export class Staffing {
     const perCoach = new Map<Id, number>();
     for (const o of offerings) {
       const settings = programs.get(o.product_id);
-      if (settings?.staff_level_key == null || settings.sailors_per_coach == null || settings.sailors_per_coach <= 0) {
+      if (settings?.staff_level_id == null || settings.sailors_per_coach == null || settings.sailors_per_coach <= 0) {
         if (warns) {
           this.warnOnce(
             "no_program_settings",
@@ -511,7 +511,7 @@ export class Staffing {
     const doubleBooked = this.checkDoubleBooked([...blocks.values()]);
 
     const coaching: SalariedCoaching[] = [];
-    const levels = new Map(ctx.data.plan_staff_levels.map((l) => [l.key, l]));
+    const rates = new Map(ctx.data.plan_staff_levels.map((l) => [l.staff_level_id, l.hourly_rate_cents]));
     const positions = new Map(ctx.data.plan_salaried_positions.map((p) => [p.key, p]));
     const boatClasses = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const boatRates = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r]));
@@ -565,19 +565,17 @@ export class Staffing {
           }
           continue;
         }
-        const level = s.staff_level_key == null ? undefined : levels.get(s.staff_level_key);
-        if (level === undefined) {
+        const rate = s.staff_level_id == null ? undefined : rates.get(s.staff_level_id);
+        if (rate === undefined) {
           this.warnOnce(
             "unknown_staff_level",
-            `${block.row.name} has staff at a staff level that isn't in the Operations Plan, so they cost nothing`,
-            s.staff_level_key ?? s.key,
+            `${block.row.name} has staff at a staff level with no rate in the Operations Plan, so they cost nothing`,
+            s.staff_level_id ?? s.key,
             scope,
           );
           continue;
         }
-        if (level.pay_type !== "volunteer") {
-          wages += s.count * paidHours * (level.hourly_rate_cents ?? 0);
-        }
+        wages += s.count * paidHours * rate;
       }
       book("coach_wages", wages, "coach_wages", "Coach wages", "Staff × paid hours × each one's hourly rate");
 

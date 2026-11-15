@@ -75,6 +75,8 @@ export interface Schema {
   qualifications: Qualifications[];
   registrations: Registrations[];
   schools: Schools[];
+  staff_levels: StaffLevels[];
+  staff_roles: StaffRoles[];
   storage_areas: StorageAreas[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
@@ -696,8 +698,8 @@ export interface PlanBlockStaff {
   /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   block_id: string | PlanActivityBlocks;
-  /** For staff at a staff level: copy the Key from a staff level in the Operations Plan. Leave it empty for a salaried position. */
-  staff_level_key: string | null;
+  /** For staff at a staff level. Leave it empty for a salaried position. */
+  staff_level_id: string | StaffLevels | null;
   /** For a salaried position: copy the Key from a salaried position in the Operations Plan. Leave it empty for staff at a staff level. */
   position_key: string | null;
   /** How many. A salaried position is 1. */
@@ -816,8 +818,8 @@ export interface PlanLaborLines {
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
   /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization. */
   cost_center_key: string | null;
-  /** Who does the work: copy the Key from a staff level in the Operations Plan. */
-  staff_level_key: string;
+  /** Who does the work. */
+  staff_level_id: string | StaffLevels | null;
   hours: string;
   account_id: string | Accounts;
   function: "program" | "management" | "fundraising" | null;
@@ -868,8 +870,8 @@ export interface PlanPrograms {
   key: string;
   /** The program. */
   product_id: string | Products;
-  /** The staff level that coaches it: copy the Key from a staff level in the Operations Plan. */
-  staff_level_key: string | null;
+  /** The staff level that coaches it. */
+  staff_level_id: string | StaffLevels | null;
   /** How many sailors one coach at its staff level can safely take. */
   sailors_per_coach: string | null;
   /** A share of the program's MTDC that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it. */
@@ -1114,17 +1116,14 @@ export interface PlanSalariedPositions {
   hourly_coaching_rate_cents: number | null;
 }
 
-/** A level hourly staff are paid at, such as head coach. */
+/** What each staff level is paid an hour this year, such as a Senior Instructor's rate. */
 export interface PlanStaffLevels {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
-  name: string;
-  pay_type: "hourly" | "volunteer";
-  /** In cents: 12500 is $125.00. */
-  hourly_rate_cents: number | null;
+  staff_level_id: string | StaffLevels | null;
+  /** In cents: 12500 is $125.00. $0 for a volunteer. */
+  hourly_rate_cents: number;
 }
 
 /** A planning period, such as Summer 2027, with its start and end dates. An offering in a Program Plan can be in one of its Financial Plan's terms. */
@@ -1272,6 +1271,25 @@ export interface Schools {
   name: string;
   /** Other ways families write this school on their Clubspot forms. An answer matching the name or one of these, ignoring capitals and punctuation and counting a run of spaces as one, is this school. Anything else is kept as their own words. */
   aliases: string[] | null;
+}
+
+/** A role at a grade, such as Senior Instructor. Each Financial Plan's Operations Plan sets its hourly rate. */
+export interface StaffLevels {
+  id: string;
+  /** Such as Senior Instructor. A standard grade adds no word: Instructor. */
+  name: string;
+  /** Such as Instructor or Coach. */
+  role_id: string | StaffRoles;
+  /** Volunteer and Junior levels are usually unpaid, with a rate of $0. */
+  grade: "volunteer" | "junior" | "standard" | "senior" | "head";
+}
+
+/** A job staff are paid by the hour for, such as Instructor or Coach. Drag the rows to change the order planning lists them in. */
+export interface StaffRoles {
+  id: string;
+  /** Such as Instructor, Coach, or Office. */
+  name: string;
+  sort: number | null;
 }
 
 /** Where CSC keeps its assets, such as Docks, Dry Storage or Yard Arm. Drag the rows to change their order. */

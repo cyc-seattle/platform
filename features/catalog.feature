@@ -7,7 +7,10 @@ Feature: The catalog
   offerings it runs, by name, such as "J-Pod · fall practices", which plans and Clubspot's sign-ups
   both point to. The catalog also lists the revenue accounts
   the club's money is booked to, the qualifications a coach can hold, and the boat classes, such as
-  Opti, 420, or RIB for a coach boat.
+  Opti, 420, or RIB for a coach boat. It lists the staff levels hourly staff are paid at, too. Each
+  is a role, such as Instructor, Coach, or Office, at a grade: Volunteer, Junior, Standard, Senior,
+  or Head, such as Senior Instructor. A standard grade adds no word to the name, so it's just
+  "Instructor". Each Financial Plan sets what each level is paid an hour.
 
   The catalog also lists the program areas. A program area is one part of the club's programs, such
   as Summer or Singlehanded, and is what the club reports to the IRS as one of its program

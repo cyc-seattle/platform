@@ -506,6 +506,48 @@ async function installTriggers(config, db) {
   return { missing: [], installed: true };
 }
 
+/** Where the staff levels migration (cyc0018) lists the levels, and the rows that name one. */
+const STAFF_LEVELS_SEED = "cyc_seed_staff_levels";
+const STAFF_LEVEL_ROWS_SEED = "cyc_seed_staff_level_rows";
+const STAFF_LEVEL_TABLES = ["plan_staff_levels", "plan_programs", "plan_block_staff", "plan_labor_lines"];
+
+/**
+ * Adds the roles and levels the staff levels migration listed, and points each row it listed at its
+ * level, once the schema apply has added `staff_level_id`, inside one transaction the caller opens.
+ * Frozen plans' rows keep their meaning, so their triggers are off for it. Returns every draft, whose
+ * results now name the levels.
+ */
+async function seedStaffLevels(db) {
+  const [{ seed }] = await db.query(`SELECT to_regclass('${STAFF_LEVEL_ROWS_SEED}') IS NOT NULL AS seed`);
+  if (!seed) return [];
+  const [{ ready }] = await db.query(
+    `SELECT count(*) = ${STAFF_LEVEL_TABLES.length + 1} AS ready FROM information_schema.columns
+      WHERE table_schema = current_schema() AND ((table_name IN (${STAFF_LEVEL_TABLES.map(literal).join(", ")})
+        AND column_name = 'staff_level_id') OR (table_name = 'staff_levels' AND column_name = 'grade'))`,
+  );
+  if (!ready) return [];
+  await db.exec(
+    `INSERT INTO staff_roles (id, name, sort)
+      SELECT gen_random_uuid(), s.role, min(s.role_sort) FROM ${STAFF_LEVELS_SEED} s
+        WHERE NOT EXISTS (SELECT 1 FROM staff_roles r WHERE r.name = s.role) GROUP BY s.role`,
+  );
+  await db.exec(
+    `INSERT INTO staff_levels (id, name, role_id, grade)
+      SELECT gen_random_uuid(), s.name, (SELECT r.id FROM staff_roles r WHERE r.name = s.role ORDER BY r.id LIMIT 1), s.grade
+        FROM ${STAFF_LEVELS_SEED} s WHERE NOT EXISTS (SELECT 1 FROM staff_levels l WHERE l.name = s.name)`,
+  );
+  for (const table of STAFF_LEVEL_TABLES) {
+    await db.exec(`ALTER TABLE ${table} DISABLE TRIGGER USER`);
+    await db.exec(
+      `UPDATE ${table} t SET staff_level_id = (SELECT l.id FROM staff_levels l WHERE l.name = s.level ORDER BY l.id LIMIT 1)
+        FROM ${STAFF_LEVEL_ROWS_SEED} s WHERE s.collection = ${literal(table)} AND s.id = t.id`,
+    );
+    await db.exec(`ALTER TABLE ${table} ENABLE TRIGGER USER`);
+  }
+  await db.exec(`DROP TABLE ${STAFF_LEVEL_ROWS_SEED}, ${STAFF_LEVELS_SEED}`);
+  return (await db.query(`SELECT id FROM ${SETS} WHERE status = 'draft'`)).map((row) => row.id);
+}
+
 // The catalog the engine reads as it is now.
 const CATALOG = [
   "products",
@@ -516,6 +558,8 @@ const CATALOG = [
   "boat_classes",
   "assets",
   "boats",
+  "staff_roles",
+  "staff_levels",
 ];
 
 /** A `date` as `YYYY-MM-DD`, whether the driver gives a string, or a `Date` at UTC or local midnight. */
@@ -939,6 +983,16 @@ function register({ filter, action, init }, { services, env, database, getSchema
     } catch (error) {
       logger.error(error, "frozen-plans: couldn't install the triggers. Writes that skip this hook aren't checked.");
     }
+    try {
+      const changed = await database.transaction((trx) => seedStaffLevels(connect(trx)));
+      if (changed.length > 0) {
+        logger.info("frozen-plans: moved the plans' staff levels into the staff levels list");
+        // Moved by SQL, which skips Directus's actions.
+        drafts.mark(changed);
+      }
+    } catch (error) {
+      logger.error(error, "frozen-plans: couldn't move the plans' staff levels into the staff levels list");
+    }
   };
   let pending;
   const reinstall = () => {
@@ -1145,6 +1199,7 @@ module.exports = register;
 module.exports.guard = guard;
 module.exports.databaseError = databaseError;
 module.exports.installTriggers = installTriggers;
+module.exports.seedStaffLevels = seedStaffLevels;
 module.exports.triggerStatus = triggerStatus;
 module.exports.fingerprint = fingerprint;
 module.exports.triggerStatements = triggerStatements;

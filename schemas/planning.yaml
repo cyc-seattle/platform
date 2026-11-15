@@ -270,12 +270,12 @@ collections:
       collapse: open
       collection: plan_staff_levels
       color: null
-      display_template: "{{name}}"
+      display_template: "{{staff_level_id.name}}"
       group: Planning
       hidden: false
       icon: military_tech
       item_duplication_fields: null
-      note: A level hourly staff are paid at, such as head coach.
+      note: What each staff level is paid an hour this year, such as a Senior Instructor's rate.
       preview_url: null
       singleton: false
       sort: null
@@ -2640,45 +2640,49 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_labor_lines
-    field: staff_level_key
+    field: staff_level_id
     type: uuid
     meta:
       collection: plan_labor_lines
       conditions: null
-      display: null
-      display_options: null
-      field: staff_level_key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: staff_level_id
       group: null
       hidden: false
-      interface: input
-      note: "Who does the work: copy the Key from a staff level in the Operations Plan."
+      interface: select-dropdown-m2o
+      note: Who does the work.
       options: null
       readonly: false
       required: true
       searchable: true
       sort: 7
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Staff level
       validation: null
       validation_message: null
       width: full
     schema:
-      name: staff_level_key
+      name: staff_level_id
       table: plan_labor_lines
       data_type: uuid
       default_value: null
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: staff_levels
+      foreign_key_column: id
   - collection: plan_labor_lines
     field: hours
     type: decimal
@@ -4493,7 +4497,7 @@ fields:
       readonly: false
       required: true
       searchable: true
-      sort: 2
+      sort: 1
       special:
         - m2o
       translations:
@@ -4520,140 +4524,49 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_staff_levels
-    field: key
+    field: staff_level_id
     type: uuid
     meta:
       collection: plan_staff_levels
       conditions: null
-      display: null
-      display_options: null
-      field: key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: staff_level_id
       group: null
       hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
+      interface: select-dropdown-m2o
+      note: null
       options: null
-      readonly: true
-      required: false
+      readonly: false
+      required: true
       searchable: true
       sort: 3
       special:
-        - uuid
-      translations: null
+        - m2o
+      translations:
+        - language: en-US
+          translation: Staff level
       validation: null
       validation_message: null
       width: full
     schema:
-      name: key
+      name: staff_level_id
       table: plan_staff_levels
       data_type: uuid
       default_value: null
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_staff_levels
-    field: name
-    type: string
-    meta:
-      collection: plan_staff_levels
-      conditions: null
-      display: null
-      display_options: null
-      field: name
-      group: null
-      hidden: false
-      interface: input
-      note: null
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 4
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: name
-      table: plan_staff_levels
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_staff_levels
-    field: pay_type
-    type: string
-    meta:
-      collection: plan_staff_levels
-      conditions: null
-      display: labels
-      display_options:
-        choices:
-          - text: Hourly
-            value: hourly
-          - text: Volunteer
-            value: volunteer
-      field: pay_type
-      group: null
-      hidden: false
-      interface: select-dropdown
-      note: null
-      options:
-        choices:
-          - text: Hourly
-            value: hourly
-          - text: Volunteer
-            value: volunteer
-      readonly: false
-      required: true
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation:
-        pay_type:
-          _in:
-            - hourly
-            - volunteer
-      validation_message: "Must be one of: hourly, volunteer."
-      width: full
-    schema:
-      name: pay_type
-      table: plan_staff_levels
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: staff_levels
+      foreign_key_column: id
   - collection: plan_staff_levels
     field: hourly_rate_cents
     type: integer
@@ -4666,12 +4579,12 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "In cents: 12500 is $125.00."
+      note: "In cents: 12500 is $125.00. $0 for a volunteer."
       options: null
       readonly: false
-      required: false
+      required: true
       searchable: true
-      sort: 6
+      sort: 4
       special: null
       translations:
         - language: en-US
@@ -4687,7 +4600,7 @@ fields:
       max_length: null
       numeric_precision: 32
       numeric_scale: 0
-      is_nullable: true
+      is_nullable: false
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -11225,30 +11138,34 @@ fields:
       foreign_key_table: products
       foreign_key_column: id
   - collection: plan_programs
-    field: staff_level_key
+    field: staff_level_id
     type: uuid
     meta:
       collection: plan_programs
       conditions: null
-      display: null
-      display_options: null
-      field: staff_level_key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: staff_level_id
       group: null
       hidden: false
-      interface: input
-      note: "The staff level that coaches it: copy the Key from a staff level in the Operations Plan."
+      interface: select-dropdown-m2o
+      note: The staff level that coaches it.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Staff level
       validation: null
       validation_message: null
       width: full
     schema:
-      name: staff_level_key
+      name: staff_level_id
       table: plan_programs
       data_type: uuid
       default_value: null
@@ -11262,8 +11179,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: staff_levels
+      foreign_key_column: id
   - collection: plan_programs
     field: sailors_per_coach
     type: decimal
@@ -11316,7 +11233,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: "A share of the program's MTDC that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it."
+      note: A share of the program's MTDC that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it.
       options: null
       readonly: false
       required: false
@@ -11766,30 +11683,34 @@ fields:
       foreign_key_table: plan_activity_blocks
       foreign_key_column: id
   - collection: plan_block_staff
-    field: staff_level_key
+    field: staff_level_id
     type: uuid
     meta:
       collection: plan_block_staff
       conditions: null
-      display: null
-      display_options: null
-      field: staff_level_key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: staff_level_id
       group: null
       hidden: false
-      interface: input
-      note: "For staff at a staff level: copy the Key from a staff level in the Operations Plan. Leave it empty for a salaried position."
+      interface: select-dropdown-m2o
+      note: For staff at a staff level. Leave it empty for a salaried position.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 5
-      special: null
-      translations: null
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Staff level
       validation: null
       validation_message: null
       width: full
     schema:
-      name: staff_level_key
+      name: staff_level_id
       table: plan_block_staff
       data_type: uuid
       default_value: null
@@ -11803,8 +11724,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: staff_levels
+      foreign_key_column: id
   - collection: plan_block_staff
     field: position_key
     type: uuid
@@ -12760,6 +12681,90 @@ relations:
       constraint_name: plan_staff_levels_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: plan_staff_levels
+    field: staff_level_id
+    related_collection: staff_levels
+    meta:
+      junction_field: null
+      many_collection: plan_staff_levels
+      many_field: staff_level_id
+      one_allowed_collections: null
+      one_collection: staff_levels
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_staff_levels
+      column: staff_level_id
+      foreign_key_table: staff_levels
+      foreign_key_column: id
+      constraint_name: plan_staff_levels_staff_level_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_programs
+    field: staff_level_id
+    related_collection: staff_levels
+    meta:
+      junction_field: null
+      many_collection: plan_programs
+      many_field: staff_level_id
+      one_allowed_collections: null
+      one_collection: staff_levels
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_programs
+      column: staff_level_id
+      foreign_key_table: staff_levels
+      foreign_key_column: id
+      constraint_name: plan_programs_staff_level_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_block_staff
+    field: staff_level_id
+    related_collection: staff_levels
+    meta:
+      junction_field: null
+      many_collection: plan_block_staff
+      many_field: staff_level_id
+      one_allowed_collections: null
+      one_collection: staff_levels
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_staff
+      column: staff_level_id
+      foreign_key_table: staff_levels
+      foreign_key_column: id
+      constraint_name: plan_block_staff_staff_level_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: plan_labor_lines
+    field: staff_level_id
+    related_collection: staff_levels
+    meta:
+      junction_field: null
+      many_collection: plan_labor_lines
+      many_field: staff_level_id
+      one_allowed_collections: null
+      one_collection: staff_levels
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_labor_lines
+      column: staff_level_id
+      foreign_key_table: staff_levels
+      foreign_key_column: id
+      constraint_name: plan_labor_lines_staff_level_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
   - collection: plan_salaried_positions
     field: plan_id
     related_collection: plans

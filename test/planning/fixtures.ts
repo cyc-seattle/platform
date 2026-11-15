@@ -143,6 +143,8 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     boat_classes: [],
     assets: [],
     boats: [],
+    staff_roles: [],
+    staff_levels: [],
     plans: [],
     plan_programs: [],
     plan_offerings: [],
@@ -258,11 +260,13 @@ export function weekly(
   return out;
 }
 
+/** A staff level's rate in the Operations Plan, for a staff level of its own unless `overrides` names one. */
 export function staffLevel(overrides: Partial<PlanStaffLevel> = {}): PlanStaffLevel {
+  const { id, plan_id } = versioned("level");
   return {
-    ...versioned("level"),
-    name: "Coach",
-    pay_type: "hourly",
+    id,
+    plan_id,
+    staff_level_id: `staff-level-${id}`,
     hourly_rate_cents: 2000,
     ...overrides,
   };
@@ -272,7 +276,7 @@ export function program(productId: string, overrides: Partial<PlanProgram> = {})
   return {
     ...versioned("program"),
     product_id: productId,
-    staff_level_key: null,
+    staff_level_id: null,
     sailors_per_coach: null,
     notes: null,
     ...overrides,
@@ -324,7 +328,7 @@ export function block(
     plan_block_staff: (given.staff ?? []).map((s) => ({
       ...versioned("staff"),
       block_id: row.id,
-      staff_level_key: null,
+      staff_level_id: null,
       position_key: null,
       count: 1,
       pay: null,
@@ -368,13 +372,13 @@ export function budgetLine(overrides: Partial<PlanBudgetLine> = {}): PlanBudgetL
   };
 }
 
-export function laborLine(levelKey: string, overrides: Partial<PlanLaborLine> = {}): PlanLaborLine {
+export function laborLine(levelId: string, overrides: Partial<PlanLaborLine> = {}): PlanLaborLine {
   return {
     ...versioned("labor"),
     name: "Labor",
     cost_center_type: "org",
     cost_center_key: null,
-    staff_level_key: levelKey,
+    staff_level_id: levelId,
     hours: 0,
     account_id: A.coachWages,
     function: null,

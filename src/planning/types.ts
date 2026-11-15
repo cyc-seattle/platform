@@ -63,6 +63,27 @@ export interface QualificationCover {
   covers_id: Id;
 }
 
+// HR
+
+/** A staff level's grade, in the order planning lists a role's levels. */
+export type StaffGrade = "volunteer" | "junior" | "standard" | "senior" | "head";
+
+/** A job staff are paid by the hour for, such as Instructor. */
+export interface StaffRole {
+  id: Id;
+  name: string;
+  /** Where planning lists its levels among the roles'. */
+  sort: number | null;
+}
+
+/** A role at a grade, such as Senior Instructor. Each Operations Plan sets its rate. */
+export interface StaffLevel {
+  id: Id;
+  name: string;
+  role_id: Id;
+  grade: StaffGrade;
+}
+
 export interface BoatClass {
   id: Id;
   name: string;
@@ -141,8 +162,8 @@ export interface PlanOffering extends PlanRow {
 export interface PlanProgram extends PlanRow {
   /** The program's product. */
   product_id: Id;
-  /** A `plan_staff_levels` key. */
-  staff_level_key: Id | null;
+  /** The staff level that coaches it. */
+  staff_level_id: Id | null;
   sailors_per_coach: number | null;
   /** The share of its offerings' MTDC they pay toward the shared costs, fixed for the year. */
   indirect_cost_rate?: number | null;
@@ -185,8 +206,8 @@ export interface PlanActivityBlock extends PlanRow {
 /** Staff on a block: a number at one staff level, or a salaried position. */
 export interface PlanBlockStaff extends PlanRow {
   block_id: Id;
-  /** A `plan_staff_levels` key, for hourly or volunteer staff. */
-  staff_level_key: Id | null;
+  /** The staff level of hourly or volunteer staff. */
+  staff_level_id: Id | null;
   /** A `plan_salaried_positions` key. */
   position_key: Id | null;
   count: number;
@@ -207,8 +228,8 @@ export interface PlanLaborLine extends PlanRow {
   name: string;
   cost_center_type: CostCenterType;
   cost_center_key: Id | null;
-  /** A `plan_staff_levels` key. */
-  staff_level_key: Id;
+  /** Who does the work. */
+  staff_level_id: Id | null;
   hours: number;
   account_id: Id;
   function: AccountFunction | null;
@@ -251,10 +272,10 @@ export interface PlanRates extends PlanRow {
   mileage_rate_cents: number | null;
 }
 
-export interface PlanStaffLevel extends PlanRow {
-  name: string;
-  pay_type: "hourly" | "volunteer";
-  hourly_rate_cents: number | null;
+/** A staff level's rate for the year. A volunteer's is 0. Found by its level, so it has no key. */
+export interface PlanStaffLevel extends Omit<PlanRow, "key"> {
+  staff_level_id: Id;
+  hourly_rate_cents: number;
 }
 
 export interface PlanSalariedPosition extends PlanRow {
@@ -350,6 +371,8 @@ export interface PlanData {
   /** The asset list, with its boats, which the engine counts by class on each day. */
   assets: Asset[];
   boats: Boat[];
+  staff_roles: StaffRole[];
+  staff_levels: StaffLevel[];
 
   /** The plans being calculated, so the engine can tell which plan each row is in. */
   plans: Plan[];
