@@ -1290,7 +1290,7 @@ export interface StaffRoles {
   sort: number | null;
 }
 
-/** Where CSC keeps its assets, such as Docks, Dry Storage or Yard Arm. Drag the rows to change their order. */
+/** Where CSC keeps its assets, such as Docks, Dry Storage or Yard Arm. */
 export interface StorageAreas {
   id: string;
   name: string;
@@ -1300,7 +1300,6 @@ export interface StorageAreas {
   assets: (string | Assets)[];
   /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
-  sort: number | null;
 }
 
 /** Which syncs are running now. A sync holds its queue while it runs, so a second run waits its turn. Written by the syncs. */
