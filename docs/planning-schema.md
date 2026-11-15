@@ -135,7 +135,6 @@ erDiagram
         string name "unique, such as Docks"
         decimal area_sq_ft "usable area"
         string note "at most 280 characters"
-        int sort
     }
     boats {
         uuid id PK
