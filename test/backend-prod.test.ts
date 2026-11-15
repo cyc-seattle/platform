@@ -106,6 +106,14 @@ const extensions = {
     platformVersion: "1.0.0+engine.abc",
     decimals: {},
   },
+  websitePublish: {
+    collections: ["website_pages"],
+    folder: "website-folder",
+    repository: "cyc-seattle/csc-website",
+    workflow: "publish.yml",
+    ref: "main",
+    appId: "12345",
+  },
   engine: { "planning-index.mjs": "" },
 };
 
@@ -165,8 +173,14 @@ describe("prod's Directus on the cluster", () => {
     });
   });
 
-  it("reads prod's license key", () => {
-    expect(secretReads).toEqual(["directus-license-key"]);
+  it("reads prod's license key and the website publisher's key", () => {
+    expect([...secretReads].sort()).toEqual(["csc-website-publish-key", "directus-license-key"]);
+  });
+
+  it("gives Directus the key that starts the website's publish workflow", () => {
+    expect(stringData("directus")).toMatchObject({ WEBSITE_PUBLISH_PRIVATE_KEY: "license" });
+    const data = find("kubernetes:core/v1:ConfigMap", "directus-website-publish").inputs["data"];
+    expect(JSON.parse(data["config.json"])).toEqual(extensions.websitePublish);
   });
 
   it("names the existing Community role as the default", () => {

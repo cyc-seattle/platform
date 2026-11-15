@@ -537,3 +537,28 @@ export function frozenPlansConfig(
     decimals,
   };
 }
+
+export interface WebsitePublishConfig {
+  /** The collections whose writes publish the site. */
+  collections: string[];
+  /** The files folder whose writes publish it too. */
+  folder: string;
+  /** The workflow to start: its repository, file, and branch. */
+  repository: string;
+  workflow: string;
+  ref: string;
+  /** The GitHub App the hook signs in as, by App ID or client ID. Without it, the hook does nothing. */
+  appId?: string;
+}
+
+/** What ./website-publish.cjs needs. */
+export function websitePublishConfig(schemas: LoadedSchema[], appId?: string): WebsitePublishConfig {
+  return {
+    collections: websiteCollections(schemas),
+    folder: WEBSITE_FOLDER,
+    repository: "cyc-seattle/csc-website",
+    workflow: "publish.yml",
+    ref: "main",
+    ...(appId !== undefined && { appId }),
+  };
+}

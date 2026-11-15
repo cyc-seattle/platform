@@ -29,6 +29,7 @@ import {
   frozenPlansConfig,
   WEBSITE_BUILD,
   websiteBuildRules,
+  websitePublishConfig,
   type PolicyData,
 } from "./policies.ts";
 import { isDev, loadCluster } from "../../src/app/cluster.ts";
@@ -115,6 +116,8 @@ const app = deployDirectus(
     ]),
     groupPolicies: groupPoliciesConfig(grantable),
     frozenPlans,
+    // Set once the GitHub App exists (docs/manual-setup.md §6). Dev has none, so only prod publishes.
+    websitePublish: websitePublishConfig(loadedSchemas, config.get("websitePublishAppId")),
     engine,
   },
   prod?.values,
