@@ -10,12 +10,6 @@ export type StandardRepositoryArgs = github.RepositoryArgs & {
   requiredChecks: string[];
   /** Approving reviews `main` needs. Org admins bypass it. Defaults to 0. */
   requiredApprovingReviewCount?: number;
-  /**
-   * Merges PRs through a merge queue in batches, so a repo that deploys queued PRs to a shared dev
-   * deploys and tests each batch once (#80). The repo's `deploy.yml` must be v3.2.0 or later. Every required check must also report on `merge_group`, or the
-   * queue waits for it until it times out. Defaults to false.
-   */
-  mergeQueue?: boolean;
 };
 
 // No workflow token may open PRs, org-wide or per repo. Each repo's pin waits on the org policy.
@@ -25,17 +19,40 @@ const orgWorkflowPermissions = new github.ActionsOrganizationWorkflowPermissions
   canApprovePullRequestReviews: false,
 });
 
+// A member gets push only from a team. The provider's OrganizationSettings would put the billing
+// email in this public repo.
+const owner = new pulumi.Config("github").require("owner");
+new local.Command("org-member-permissions", {
+  create: `gh api -X PATCH orgs/${owner} -f default_repository_permission=read -F members_can_create_repositories=false`,
+});
+
+// Members of both teams are set by hand, like Authentik's `staff` group (#212).
+/** Merges to `main`, and approves deploys to prod. */
+export const maintainers = new github.Team("maintainers", {
+  name: "maintainers",
+  description: "Approves deploys to prod.",
+  privacy: "closed",
+});
+
+/** Pushes branches and opens PRs, but can't merge them. */
+export const contributors = new github.Team("contributors", {
+  name: "contributors",
+  description: "Pushes branches and opens PRs, but can't merge them.",
+  privacy: "closed",
+});
+
 /**
  * A GitHub repository with the org's standard settings: squash merges and merge commits, both
  * titled by the PR, auto-merge allowed, branches deleted on merge, no wiki, secret scanning with
  * push protection unless archived, private vulnerability reporting, the standard labels,
  * `protect: true`, and archived rather than deleted on destroy. It also protects `main` and the
- * tags with rulesets. Pass `args` to override a setting for one repository.
+ * tags with rulesets. Unless archived, both teams can push, and only maintainers can merge to `main`.
+ * Pass `args` to override a setting for one repository.
  */
 export class StandardRepository extends github.Repository {
   constructor(
     plainId: string,
-    { requiredChecks, requiredApprovingReviewCount = 0, mergeQueue = false, ...args }: StandardRepositoryArgs,
+    { requiredChecks, requiredApprovingReviewCount = 0, ...args }: StandardRepositoryArgs,
     opts?: pulumi.CustomResourceOptions,
   ) {
     // GitHub rejects edits to an archived repo, so archived repos keep squash-only merges.
@@ -123,23 +140,6 @@ export class StandardRepository extends github.Repository {
         ...(requiredChecks.length > 0
           ? { requiredStatusChecks: { requiredChecks: requiredChecks.map((context) => ({ context })) } }
           : {}),
-        // The queue squashes. An org admin bypasses it to keep a branch's history with a merge commit.
-        // Every entry builds, but deploy.yml deploys only the newest, and HEADGREEN merges the batch
-        // when it passes. A dev deploy and its integration tests take about 20 minutes, and a failed
-        // batch retries the PRs ahead of the one that failed, one run at a time.
-        ...(mergeQueue
-          ? {
-              mergeQueue: {
-                mergeMethod: "SQUASH",
-                groupingStrategy: "HEADGREEN",
-                maxEntriesToBuild: 100,
-                minEntriesToMerge: 1,
-                maxEntriesToMerge: 100,
-                minEntriesToMergeWaitMinutes: 0,
-                checkResponseTimeoutMinutes: 120,
-              },
-            }
-          : {}),
       },
     });
 
@@ -151,15 +151,34 @@ export class StandardRepository extends github.Repository {
       conditions: { refName: { includes: ["~ALL"], excludes: [] } },
       rules: { deletion: true, nonFastForward: true },
     });
+
+    // GitHub rejects edits to an archived repo.
+    if (args.archived) return;
+
+    // Unparented, so the grants environments.ts and website.ts made keep their URNs.
+    for (const [label, team] of [
+      ["maintainers", maintainers],
+      ["contributors", contributors],
+    ] as const) {
+      new github.TeamRepository(`${plainId}-${label}`, { teamId: team.id, repository: this.name, permission: "push" });
+    }
+
+    // Write lets anyone merge, so only these can update `main`. Its own ruleset, so maintainers
+    // don't also skip the checks.
+    new github.RepositoryRuleset(`${plainId}-merges`, {
+      name: "Only maintainers merge to main",
+      repository: this.name,
+      target: "branch",
+      enforcement: "active",
+      conditions: { refName: { includes: ["~DEFAULT_BRANCH"], excludes: [] } },
+      bypassActors: [
+        { actorType: "OrganizationAdmin", bypassMode: "always" },
+        { actorType: "Team", actorId: maintainers.id.apply(Number), bypassMode: "always" },
+      ],
+      rules: { update: true },
+    });
   }
 }
-
-// Members are set by hand, like Authentik's `staff` group (#212). The prod environments' reviewers.
-export const maintainers = new github.Team("maintainers", {
-  name: "maintainers",
-  description: "Approves deploys to prod.",
-  privacy: "closed",
-});
 
 new StandardRepository(".github", {
   description:
@@ -226,8 +245,7 @@ export const platform = new StandardRepository("platform", {
     "Pulumi stacks for CYC's shared Google Cloud platform: identities, the network, databases, and the cluster.",
   visibility: "public",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
-  mergeQueue: true,
+  requiredChecks: ["ci / ci", "pr-title / pr-title"],
   // Its docs site, which its docs.yml publishes from main.
   pages: { buildType: "workflow" },
 });
@@ -253,8 +271,7 @@ export const sailTeam = new StandardRepository("sail-team", {
   autoInit: true,
   licenseTemplate: "apache-2.0",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title", "dev-passed"],
-  mergeQueue: true,
+  requiredChecks: ["ci / ci", "pr-title / pr-title"],
   // Its Storybook, which its storybook.yml publishes from main.
   pages: { buildType: "workflow" },
 });

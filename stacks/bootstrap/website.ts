@@ -29,11 +29,8 @@ export const firebaseProject = new gcp.firebase.Project(
   { provider: firebaseProvider, dependsOn: [firebaseApi, hostingApi], protect: true },
 );
 
-/** The Directus tokens the site's builds read: dev's for PR previews, prod's for live (#150). */
-export const directusTokenSecrets = {
-  dev: "dev-csc-website-directus-token",
-  prod: "csc-website-directus-token",
-};
+/** The Directus token the site's builds read, prod's (#150). */
+const directusTokenSecret = "csc-website-directus-token";
 
 export const deployWebsite = new ServiceAccount(
   "deploy-website",
@@ -57,7 +54,7 @@ for (const role of [
 // Secret Manager names a secret by the project's number, not its ID.
 const projectNumber = gcp.organizations.getProjectOutput({ projectId }).number;
 
-// The secrets may not exist yet, so the grant is project-wide with a condition, not on each secret.
+// The secret may not exist yet, so the grant is project-wide with a condition, not on the secret.
 // The trailing slash matches the secret's versions and no other secret.
 new gcp.projects.IAMMember(
   "deploy-website-secretmanager.secretAccessor",
@@ -66,11 +63,9 @@ new gcp.projects.IAMMember(
     role: "roles/secretmanager.secretAccessor",
     member: deployWebsite.member,
     condition: {
-      title: "Only the csc-website Directus tokens",
-      expression: projectNumber.apply((number) =>
-        Object.values(directusTokenSecrets)
-          .map((secret) => `resource.name.startsWith("projects/${number}/secrets/${secret}/")`)
-          .join(" || "),
+      title: "Only the csc-website Directus token",
+      expression: projectNumber.apply(
+        (number) => `resource.name.startsWith("projects/${number}/secrets/${directusTokenSecret}/")`,
       ),
     },
   },
@@ -79,31 +74,19 @@ new gcp.projects.IAMMember(
 
 interface WebsiteEnvironment {
   name: string;
-  /** Deploys only from `main`. `dev` takes PR branches. */
-  mainOnly: boolean;
   /** A maintainer must approve before the job starts. */
   approval: boolean;
-  directusTokenSecret: string;
 }
 
 // csc-website's workflows call the org's deploy.yml, the only workflow the WIF provider trusts, and
-// its `deploy` task deploys `dev` to a PR's preview channel and the others live. All three assume
-// deploy-website, which IAM can't limit to a channel, so only the branch rules keep `dev` off the
-// live site. A fork's PR gets no OIDC token.
+// its `deploy` task deploys the live site. It has no PR previews (cyc-seattle/csc-website#11), so no
+// `dev`, and both environments deploy only from `main`.
 const environments: WebsiteEnvironment[] = [
-  { name: "dev", mainOnly: false, approval: false, directusTokenSecret: directusTokenSecrets.dev },
   // Code changes, after a maintainer approves.
-  { name: "prod", mainOnly: true, approval: true, directusTokenSecret: directusTokenSecrets.prod },
+  { name: "prod", approval: true },
   // Content changes from Directus and the nightly build, with no reviewer.
-  { name: "publish", mainOnly: true, approval: false, directusTokenSecret: directusTokenSecrets.prod },
+  { name: "publish", approval: false },
 ];
-
-// A reviewer team needs access to the repository.
-new github.TeamRepository("csc-website-maintainers", {
-  teamId: maintainers.id,
-  repository: cscWebsite.name,
-  permission: "pull",
-});
 
 // The repo predates immutable OIDC subjects, so its tokens name it, like isthmia's.
 const prefix = subjectPrefix("csc-website");
@@ -112,7 +95,7 @@ for (const env of environments) {
   const environment = new github.RepositoryEnvironment(`csc-website-${env.name}`, {
     repository: cscWebsite.name,
     environment: env.name,
-    deploymentBranchPolicy: env.mainOnly ? { protectedBranches: false, customBranchPolicies: true } : undefined,
+    deploymentBranchPolicy: { protectedBranches: false, customBranchPolicies: true },
     reviewers: env.approval ? [{ teams: [maintainers.id.apply(Number)] }] : undefined,
     // One maintainer, so they approve their own deploy.
     preventSelfReview: false,
@@ -120,20 +103,18 @@ for (const env of environments) {
     canAdminsBypass: false,
   });
 
-  if (env.mainOnly) {
-    new github.RepositoryEnvironmentDeploymentPolicy(
-      `csc-website-${env.name}-main`,
-      { repository: cscWebsite.name, environment: environment.environment, branchPattern: "main" },
-      { parent: environment },
-    );
-  }
+  new github.RepositoryEnvironmentDeploymentPolicy(
+    `csc-website-${env.name}-main`,
+    { repository: cscWebsite.name, environment: environment.environment, branchPattern: "main" },
+    { parent: environment },
+  );
 
   const variables = {
     GCP_WORKLOAD_IDENTITY_PROVIDER: provider.name,
     GCP_SERVICE_ACCOUNT: deployWebsite.email,
     FIREBASE_PROJECT: firebaseProject.project,
     FIREBASE_SITE: websiteSiteId,
-    DIRECTUS_TOKEN_SECRET: env.directusTokenSecret,
+    DIRECTUS_TOKEN_SECRET: directusTokenSecret,
   };
   for (const [variableName, value] of Object.entries(variables)) {
     new github.ActionsEnvironmentVariable(

@@ -132,9 +132,9 @@ describe("workload identity bindings", () => {
   });
 });
 
-describe("the maintainers team", () => {
-  it("is created with no members", () => {
-    expect(ofType("github:index/team:Team").map((t) => t.inputs.name)).toEqual(["maintainers"]);
+describe("the teams", () => {
+  it("are created with no members", () => {
+    expect(ofType("github:index/team:Team").map((t) => t.inputs.name)).toEqual(["maintainers", "contributors"]);
     expect(ofType("github:index/teamMembers:TeamMembers")).toEqual([]);
     expect(ofType("github:index/teamMembership:TeamMembership")).toEqual([]);
   });
@@ -161,10 +161,10 @@ describe.each(repos)("%s's environments", (repo) => {
     expect(names.sort()).toEqual(["dev", "github-pages", "prod", "prod-preview"]);
   });
 
-  it("lets dev deploy from any branch with no reviewer", () => {
+  it("limits dev to main, with no reviewer", () => {
     expect(env("dev").reviewers).toBeUndefined();
-    expect(env("dev").deploymentBranchPolicy).toBeUndefined();
-    expect(policies("dev")).toEqual([]);
+    expect(env("dev").deploymentBranchPolicy).toEqual({ protectedBranches: false, customBranchPolicies: true });
+    expect(policies("dev")).toEqual([expect.objectContaining({ branchPattern: "main" })]);
   });
 
   it("limits prod-preview to main, with no reviewer", () => {
@@ -184,6 +184,7 @@ describe.each(repos)("%s's environments", (repo) => {
   });
 
   it("keeps admins from bypassing a protected environment", () => {
+    expect(env("dev").canAdminsBypass).toBe(false);
     expect(env("prod").canAdminsBypass).toBe(false);
     expect(env("prod-preview").canAdminsBypass).toBe(false);
   });

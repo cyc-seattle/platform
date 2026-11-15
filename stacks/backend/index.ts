@@ -159,7 +159,7 @@ function devIdentities(directus: typeof app) {
     externalDomain: config.require("externalDomain"),
     clubspotSyncToken,
     gsuiteSyncToken,
-    // infra generates it, since deploy-dev can only read dev's secrets. csc-website's PR previews read it too.
+    // infra generates it, since deploy-dev can only read dev's secrets.
     websiteBuildToken: pulumi.secret(
       gcp.secretmanager
         .getSecretVersionAccessOutput({ secret: "dev-csc-website-directus-token" })

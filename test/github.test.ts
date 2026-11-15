@@ -35,7 +35,6 @@ beforeAll(async () => {
   });
   new StandardRepository("unchecked-example", { description: "Unchecked.", requiredChecks: [] });
   new StandardRepository("archived-example", { description: "Archived.", archived: true, requiredChecks: ["build"] });
-  new StandardRepository("queued-example", { description: "Queued.", requiredChecks: ["build"], mergeQueue: true });
   await new Promise((r) => setImmediate(r));
 });
 
@@ -95,18 +94,8 @@ describe("StandardRepository", () => {
     expect(byName("unchecked-example-main").inputs.rules.requiredStatusChecks).toBeUndefined();
   });
 
-  it("merges through no queue unless asked", () => {
+  it("merges through no queue", () => {
     expect(byName("example-main").inputs.rules.mergeQueue).toBeUndefined();
-  });
-
-  it("squashes queued PRs in batches that merge when the newest passes", () => {
-    expect(byName("queued-example-main").inputs.rules.mergeQueue).toMatchObject({
-      mergeMethod: "SQUASH",
-      groupingStrategy: "HEADGREEN",
-      maxEntriesToBuild: 100,
-      maxEntriesToMerge: 100,
-      minEntriesToMergeWaitMinutes: 0,
-    });
   });
 
   it("blocks tag deletion and moves", () => {
@@ -192,6 +181,42 @@ describe("Actions workflow permissions", () => {
   });
 });
 
+describe("merging to main", () => {
+  const merges = (repo: string) =>
+    ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === `${repo}-merges`)?.inputs;
+  const grant = (repo: string, team: string) => byName(`${repo}-${team}`)?.inputs;
+
+  it("is only for org admins and maintainers", () => {
+    expect(merges("example")).toMatchObject({
+      target: "branch",
+      enforcement: "active",
+      conditions: { refName: { includes: ["~DEFAULT_BRANCH"] } },
+      rules: { update: true },
+      bypassActors: [{ actorType: "OrganizationAdmin" }, { actorType: "Team", bypassMode: "always" }],
+    });
+  });
+
+  it("is a ruleset of its own, so maintainers can't skip the checks", () => {
+    const main = ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "example-main")!;
+    expect(main.inputs.bypassActors).toEqual([{ actorType: "OrganizationAdmin", bypassMode: "always" }]);
+    expect(merges("example")!.rules).toEqual({ update: true });
+  });
+
+  it("gives both teams push on every repository but archived ones", () => {
+    for (const team of ["maintainers", "contributors"]) {
+      expect(grant("example", team)).toMatchObject({ repository: "example", permission: "push" });
+      expect(grant("archived-example", team)).toBeUndefined();
+    }
+    expect(merges("archived-example")).toBeUndefined();
+  });
+
+  it("leaves members with read on every repository", () => {
+    const command = byName("org-member-permissions").inputs.create as string;
+    expect(command).toContain("default_repository_permission=read");
+    expect(command).toContain("members_can_create_repositories=false");
+  });
+});
+
 describe("approving reviews on main", () => {
   const approvals = (repo: string) =>
     ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === `${repo}-main`)!.inputs.rules
@@ -221,10 +246,9 @@ describe("platform", () => {
   const main = () =>
     ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "platform-main")!;
 
-  // The queue needs each required check on its own runs too, or it waits until it times out.
-  it.each(["pull_request", "merge_group"])("requires only checks that a job in a %s workflow reports", (event) => {
+  it("requires only checks that a job in a pull_request workflow reports", () => {
     const jobs = workflows()
-      .filter((w) => event in w.on)
+      .filter((w) => "pull_request" in w.on)
       .flatMap((w) => Object.entries(w.jobs));
     const jobNames = jobs.map(([id, job]) => job.name ?? id);
     // A job that calls a reusable workflow reports `<caller job> / <called job>`.
@@ -239,8 +263,11 @@ describe("platform", () => {
     }
   });
 
-  it("deploys to dev from a merge queue, so the queue requires the deploy", () => {
-    expect(main().inputs.rules.mergeQueue).toBeDefined();
-    expect(main().inputs.rules.requiredStatusChecks.requiredChecks).toContainEqual({ context: "dev-passed" });
+  it("merges once CI and the PR title pass, with no queue and no dev deploy first", () => {
+    expect(main().inputs.rules.mergeQueue).toBeUndefined();
+    expect(main().inputs.rules.requiredStatusChecks.requiredChecks).toEqual([
+      { context: "ci / ci" },
+      { context: "pr-title / pr-title" },
+    ]);
   });
 });

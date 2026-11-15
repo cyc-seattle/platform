@@ -30,7 +30,7 @@ devNamespace.denyMailEgress();
 directusFiles("dev", devNamespace.metadata.name);
 
 // The csc-website build's Directus token for dev (cyc-seattle/platform#150). `backend` gives it to the build's
-// Directus user, and the site's PR previews read it. deploy-dev reads `dev-` secrets but can't write them.
+// Directus user in dev. deploy-dev reads `dev-` secrets but can't write them.
 const cscWebsiteToken = new gcp.secretmanager.Secret("dev-csc-website-directus-token", {
   project: projectId,
   secretId: "dev-csc-website-directus-token",

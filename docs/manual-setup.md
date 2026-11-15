@@ -36,16 +36,19 @@ add the principal, role **Basic → Owner**, then have them accept the emailed i
 Then add the deployer to `bootstrap:humanDeployers` in `stacks/bootstrap/Pulumi.prod.yaml`, and
 apply `bootstrap`. That grants the Pulumi state buckets and keys.
 
-## 3. Who approves prod deploys
+## 3. Who merges and approves prod deploys
 
-The `prod` environment of `isthmia` and `platform` needs an approval from the `maintainers` team,
-which `bootstrap` creates empty (#212). Add each maintainer by hand, or nobody can approve a deploy:
+`bootstrap` creates two teams empty, and their members are added by hand (#212, #280):
+
+- `maintainers` merge to `main` and approve prod deploys. With no member, nothing merges and no
+  deploy is approved.
+- `contributors` push branches and open PRs, but can't merge. Other org members only read.
 
 ```sh
-gh api -X PUT orgs/cyc-seattle/teams/maintainers/memberships/<github-login> -f role=member
+gh api -X PUT orgs/cyc-seattle/teams/<maintainers or contributors>/memberships/<github-login> -f role=member
 ```
 
-- [x] The current maintainer is a member.
+- [x] The current maintainer is a member of `maintainers`.
 
 ## 4. The Workspace SMTP relay admits the cluster
 

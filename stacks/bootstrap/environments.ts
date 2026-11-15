@@ -9,15 +9,14 @@ import { allowEnvironment, provider, subjectPrefix } from "./workload-identity.t
 
 // The GitHub environments a deploy job runs in, and the identity each one assumes (#215). An
 // environment's name is the last part of the token's subject, so the WIF binding and the environment
-// together decide who can deploy where.
+// together decide who can deploy where. Each deploys only from `main`, so a branch can't run a
+// changed workflow with an environment's credentials (#280).
 
 interface Environment {
   name: string;
   account: gcp.serviceaccount.Account;
   accountLabel: string;
   backendUrl: pulumi.Input<string>;
-  /** Deploys only from `main`. `dev` takes PR branches. */
-  mainOnly: boolean;
   /** A maintainer must approve before the job starts. */
   approval: boolean;
 }
@@ -28,7 +27,6 @@ const environments: Environment[] = [
     account: deployDev,
     accountLabel: "deploy-dev",
     backendUrl: stateBackends.dev.url,
-    mainOnly: false,
     approval: false,
   },
   {
@@ -36,7 +34,6 @@ const environments: Environment[] = [
     account: deployRunner,
     accountLabel: "deploy-runner",
     backendUrl: stateBackends.prod.url,
-    mainOnly: true,
     approval: false,
   },
   {
@@ -44,7 +41,6 @@ const environments: Environment[] = [
     account: deployRunner,
     accountLabel: "deploy-runner",
     backendUrl: stateBackends.prod.url,
-    mainOnly: true,
     approval: true,
   },
 ];
@@ -56,18 +52,11 @@ const repositories = [
 ];
 
 for (const { name: repo, resource, prefix } of repositories) {
-  // A reviewer team needs access to the repository.
-  new github.TeamRepository(`${repo}-maintainers`, {
-    teamId: maintainers.id,
-    repository: resource.name,
-    permission: "pull",
-  });
-
   for (const env of environments) {
     const environment = new github.RepositoryEnvironment(`${repo}-${env.name}`, {
       repository: resource.name,
       environment: env.name,
-      deploymentBranchPolicy: env.mainOnly ? { protectedBranches: false, customBranchPolicies: true } : undefined,
+      deploymentBranchPolicy: { protectedBranches: false, customBranchPolicies: true },
       reviewers: env.approval ? [{ teams: [maintainers.id.apply(Number)] }] : undefined,
       // One maintainer, so they approve their own deploy.
       preventSelfReview: false,
@@ -75,13 +64,11 @@ for (const { name: repo, resource, prefix } of repositories) {
       canAdminsBypass: false,
     });
 
-    if (env.mainOnly) {
-      new github.RepositoryEnvironmentDeploymentPolicy(
-        `${repo}-${env.name}-main`,
-        { repository: resource.name, environment: environment.environment, branchPattern: "main" },
-        { parent: environment },
-      );
-    }
+    new github.RepositoryEnvironmentDeploymentPolicy(
+      `${repo}-${env.name}-main`,
+      { repository: resource.name, environment: environment.environment, branchPattern: "main" },
+      { parent: environment },
+    );
 
     const variables = {
       GCP_WORKLOAD_IDENTITY_PROVIDER: provider.name,
