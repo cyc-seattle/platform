@@ -3,6 +3,7 @@ import { computePlan } from "../../src/planning/index.ts";
 import {
   A,
   budgetLine,
+  charge,
   emptyPlan,
   offering,
   pnlOf,
@@ -14,13 +15,13 @@ import {
   withRate,
 } from "./fixtures.ts";
 
-/** Two programs' offerings with 30,000 and 10,000 of MTDC, and a charter that has `charter` revenue and costs. */
+/** Two programs' offerings with 30,000 and 10,000 of fees and costs, and a charter that has `charter` revenue and costs. */
 function plan(charter: { revenue?: number; costs?: number } = {}) {
   const camp = product();
   const racing = product();
   const charters = product({ kind: "charter" });
-  const big = offering(camp.id);
-  const small = offering(racing.id);
+  const big = offering(camp.id, { target_enrollment: 1, price_cents: 30_000 });
+  const small = offering(racing.id, { target_enrollment: 1, price_cents: 10_000 });
   const hire = offering(charters.id);
   const on = (key: string) => ({ cost_center_type: "offering" as const, cost_center_key: key });
   const data = emptyPlan({
@@ -44,7 +45,7 @@ function withPool(data: ReturnType<typeof plan>["data"], amount: number, name = 
 }
 
 describe("indirect costs", () => {
-  it("charges each program's offerings its rate × their own MTDC, over the pools' lines, keeping their accounts", () => {
+  it("charges each program's offerings its rate × their own fees, over the pools' lines, keeping their accounts", () => {
     const { big, small, hire, data } = plan();
     const ga = withPool(data, 12_000);
     const out = computePlan(withRate(data, 0.3));
@@ -157,7 +158,16 @@ describe("indirect costs", () => {
     expect(out.warnings.map((w) => w.code)).toContain("no_shared_costs");
   });
 
-  it("gives no rate that allocates every shared cost when no program's offering has MTDC", () => {
+  it("charges no card fees families pay, only the program's fees", () => {
+    const { big, data } = plan();
+    withPool(data, 12_000);
+    data.plan_revenue_charges.push(charge({ name: "Card fees collected", account_id: A.programRevenue, rate: 0.03 }));
+    const out = computePlan(withRate(data, 0.3));
+    expect(total(out, { account_id: A.insurance, cost_center_key: big.key })).toBe(9000);
+    expect(out.organization.indirect.full_recovery_rate).toBe(0.3);
+  });
+
+  it("gives no rate that allocates every shared cost when no program's offering has fees", () => {
     const ga = pool();
     const data = emptyPlan({
       plan_pools: [ga],

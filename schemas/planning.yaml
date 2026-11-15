@@ -11233,7 +11233,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: A share of the program's MTDC that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it.
+      note: A share of the program's fees that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it.
       options: null
       readonly: false
       required: false

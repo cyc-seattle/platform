@@ -134,7 +134,6 @@ describe("payroll tax on a bonus", () => {
     });
     const out = computePlan(allocateAll(data));
     expect(pnlOf(out, first.key).mtdc_cents).toBe(pnlOf(out, second.key).mtdc_cents);
-    expect(total(out, { line: "pool:", cost_center_key: first.key })).toBe(50_000);
   });
 });
 

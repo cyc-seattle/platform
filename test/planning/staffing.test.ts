@@ -811,7 +811,7 @@ describe("a block costs what it's given", () => {
       expect(withCosts(null, 50_000, 300_000)).toBeNull();
     });
 
-    it("counts the offering's indirect cost rate on its own MTDC, which grows with its sailors", () => {
+    it("counts the offering's indirect cost rate on its own fees, which grow with its sailors", () => {
       const p = product();
       const ga = pool();
       const off = offering(p.id, { capacity: 16, target_enrollment: 1, price_cents: 10_000, cogs_rate: 0.5 });
@@ -819,15 +819,15 @@ describe("a block costs what it's given", () => {
         products: [p],
         plan_offerings: [off],
         plan_pools: [ga],
-        plan_programs: [program(p.id, { indirect_cost_rate: 0.5 })],
+        plan_programs: [program(p.id, { indirect_cost_rate: 0.25 })],
         plan_budget_lines: [
           budgetLine({ cost_center_type: "offering", cost_center_key: off.key, amount_cents: 10_000 }),
           budgetLine({ cost_center_type: "pool", cost_center_key: ga.key, amount_cents: 1_000_000 }),
         ],
       });
-      // Each sailor brings 10_000¢, less 5000¢ of COGS and half that in indirect costs: 2500¢ toward the
-      // 10_000¢ line and its 5000¢ of indirect costs.
-      expect(pnlOf(computePlan(data), off.key).breakeven_enrollment).toBe(6);
+      // Each sailor brings 10_000¢, less 5000¢ of COGS and 2500¢ of indirect costs: 2500¢ toward the
+      // 10_000¢ line.
+      expect(pnlOf(computePlan(data), off.key).breakeven_enrollment).toBe(4);
     });
 
     it("counts every coach the block is given, whoever signs up", () => {
