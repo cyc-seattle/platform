@@ -36,8 +36,15 @@ async function results(db: PGlite, set: string) {
   });
 }
 
-async function prod(): Promise<PGlite> {
+/** The schemas' tables, with the field cyc0023 drops after this runs (cyc-seattle/platform#305). */
+async function lineageDatabase(): Promise<PGlite> {
   const db = await database(config);
+  await db.exec("ALTER TABLE financial_plans ADD COLUMN platform_version varchar(255)");
+  return db;
+}
+
+async function prod(): Promise<PGlite> {
+  const db = await lineageDatabase();
   const organization = randomUUID();
   await db.query("INSERT INTO organizations (id, name, kind) VALUES ($1, 'CSC', 'own')", [organization]);
   await add(db, OLD_DRAFT, organization, null, false);
@@ -123,7 +130,7 @@ describe("the plan lineage migration", { timeout: 30_000 }, () => {
   });
 
   it("does nothing without all three", async () => {
-    const db = await database(config);
+    const db = await lineageDatabase();
     const organization = randomUUID();
     await db.query("INSERT INTO organizations (id, name, kind) VALUES ($1, 'CSC', 'own')", [organization]);
     await add(db, FALL, organization, null);
