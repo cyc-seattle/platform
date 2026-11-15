@@ -179,6 +179,7 @@ function rowsIn(plans: string[], schemas: LoadedSchema[]): string[] {
  */
 export const OPERATIONS_ONLY = [
   "plan_rates",
+  "plan_payroll_taxes",
   "plan_staff_levels",
   "plan_salaried_positions",
   "plan_salaried_bookings",

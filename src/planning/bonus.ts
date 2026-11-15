@@ -1,7 +1,8 @@
 import type { Context } from "./context.ts";
 import { revenue } from "./measures.ts";
+import { payrollTaxBasis } from "./payroll.ts";
 import { compareTerms, type OfferingTerms } from "./terms.ts";
-import type { BonusSummary, Id, PlanBonusOwner, PlanTerm } from "./types.ts";
+import type { BonusSummary, Id, PlanBonusOwner, PlanPayrollTax, PlanTerm } from "./types.ts";
 
 interface Base {
   term: PlanTerm | null;
@@ -14,20 +15,21 @@ interface Base {
  * pools or before them. A term's loss doesn't lower another term's bonus. Offerings in no term, and
  * anything not on an offering, make one more base, for the year. Every base is worked out before any
  * bonus is booked, so one bonus never counts in another's base. Each bonus is divided among that
- * base's offerings by revenue, with the year's payroll tax on it, and neither is counted in MTDC.
+ * base's offerings by revenue, with each payroll tax on wages on it, and neither is counted in MTDC.
+ * A bonus pays for no hours, so no tax by the hour is charged on it.
  * Returns each bonus, by owner and term.
  */
 export function bookBonuses(ctx: Context, terms: OfferingTerms): BonusSummary[] {
   const bonuses = ctx.data.plan_bonus_owners.map((owner) => ({ owner, bases: basesOf(ctx, owner, terms) }));
-  const taxRate = ctx.rates?.payroll_tax_rate ?? 0;
-  const taxAccount = taxRate > 0 && bonuses.length > 0 ? ctx.costAccount("payroll_tax") : undefined;
+  const taxes = ctx.payrollTaxes.filter((t) => t.wage_share != null);
+  const taxAccount = taxes.length > 0 && bonuses.length > 0 ? ctx.costAccount("payroll_tax") : undefined;
   const summaries: BonusSummary[] = [];
 
   for (const { owner, bases } of bonuses) {
     const area = areaOf(ctx, owner);
     for (const base of bases) {
       const bonus = owner.bonus_rate * Math.max(0, base.net);
-      const booked = bonus === 0 ? 0 : bookBonus(ctx, owner, base, bonus, taxRate, taxAccount);
+      const booked = bonus === 0 ? 0 : bookBonus(ctx, owner, base, bonus, taxes, taxAccount);
       summaries.push({
         bonus_owner_key: owner.key,
         role_name: owner.role_name,
@@ -49,7 +51,7 @@ function bookBonus(
   owner: PlanBonusOwner,
   base: Base,
   bonus: number,
-  taxRate: number,
+  taxes: PlanPayrollTax[],
   taxAccount: Id | undefined,
 ): number {
   const weights = new Map<Id, number>();
@@ -90,18 +92,20 @@ function bookBonus(
       mtdc_share: 0,
     });
     if (taxAccount === undefined) continue;
-    ctx.book({
-      cost_center_type: "offering",
-      cost_center_key: key,
-      account_id: taxAccount,
-      function: ctx.functionFor(owner.account_id, null, "offering"),
-      amount: amount * taxRate,
-      line_key: `bonus_payroll_tax:${owner.key}`,
-      line_name: `Payroll tax on bonus: ${owner.role_name}`,
-      explanation: `${taxRate} × ${owner.role_name}'s bonus`,
-      stage: "bonus",
-      mtdc_share: 0,
-    });
+    for (const tax of taxes) {
+      ctx.book({
+        cost_center_type: "offering",
+        cost_center_key: key,
+        account_id: taxAccount,
+        function: ctx.functionFor(owner.account_id, null, "offering"),
+        amount: amount * (tax.wage_share ?? 0),
+        line_key: `bonus_payroll_tax:${owner.key}:${tax.key}`,
+        line_name: `${tax.name} on bonus: ${owner.role_name}`,
+        explanation: `${payrollTaxBasis(tax)} on ${owner.role_name}'s bonus`,
+        stage: "bonus",
+        mtdc_share: 0,
+      });
+    }
   }
   return bonus;
 }

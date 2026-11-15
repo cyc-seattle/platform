@@ -14,6 +14,7 @@ import type {
   PlanData,
   PlanLaborLine,
   PlanOffering,
+  PlanPayrollTax,
   PlanPool,
   PlanProgram,
   PlanRates,
@@ -156,6 +157,7 @@ export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
     plan_labor_lines: [],
     plan_budget_lines: [],
     plan_rates: [],
+    plan_payroll_taxes: [],
     plan_revenue_charges: [],
     plan_staff_levels: [],
     plan_salaried_positions: [],
@@ -406,9 +408,21 @@ export function pool(overrides: Partial<PlanPool> = {}): PlanPool {
 export function rates(overrides: Partial<PlanRates> = {}): PlanRates {
   return {
     ...versioned("rates"),
-    payroll_tax_rate: null,
     lodging_per_night_cents: null,
     mileage_rate_cents: null,
+    ...overrides,
+  };
+}
+
+/** A payroll tax, a share of wages unless it sets `hourly_cents`. */
+export function payrollTax(overrides: Partial<PlanPayrollTax> = {}): PlanPayrollTax {
+  const hourly = overrides.hourly_cents != null;
+  return {
+    ...versioned("tax"),
+    name: "Payroll tax",
+    wage_share: hourly ? null : 0.1,
+    hourly_cents: null,
+    sort: null,
     ...overrides,
   };
 }

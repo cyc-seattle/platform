@@ -18,6 +18,7 @@ import {
   position,
   product,
   program,
+  payrollTax,
   rates,
   staffLevel,
   trip,
@@ -263,10 +264,13 @@ function realisticPlan(): PlanData {
     plan_rates: [
       rates({
         ...v("rates"),
-        payroll_tax_rate: 0.0765,
         lodging_per_night_cents: 15_000,
         mileage_rate_cents: 67,
       }),
+    ],
+    plan_payroll_taxes: [
+      payrollTax({ ...v("social-security"), name: "Social Security", wage_share: 0.062 }),
+      payrollTax({ ...v("medicare"), name: "Medicare", wage_share: 0.0145 }),
     ],
     plan_revenue_charges: [
       charge({
@@ -503,8 +507,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 276493,
-          "net": 83507,
+          "expenses": 276490,
+          "net": 83510,
           "revenue": 360000,
         },
         "Charters": {
@@ -518,7 +522,7 @@ describe("a realistic plan, end to end", () => {
           "revenue": 500000,
         },
         "Organization": {
-          "expenses": 18677312,
+          "expenses": 18677313,
           "net": 0,
           "revenue": 0,
         },
@@ -528,13 +532,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 1925548,
-          "net": 342452,
+          "expenses": 1925551,
+          "net": 342449,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 3858972,
-          "net": -668972,
+          "expenses": 3858971,
+          "net": -668971,
           "revenue": 3190000,
         },
       }

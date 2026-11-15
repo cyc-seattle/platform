@@ -3,7 +3,6 @@ import type { ScheduledActivity } from "./activities.ts";
 import type {
   Asset,
   ComputedActivity,
-  CostType,
   DateString,
   Id,
   PlanActivityBlock,
@@ -333,6 +332,7 @@ export class Staffing {
     explanation: string,
     mtdcShare = 1,
     wages = false,
+    paidHours = 0,
   ): void {
     if (amount === 0 || account === undefined) return;
     for (const [a, share] of block.shares) {
@@ -347,6 +347,7 @@ export class Staffing {
         explanation,
         mtdc_share: mtdcShare,
         wages,
+        paid_hours: paidHours * share,
       });
     }
   }
@@ -522,10 +523,9 @@ export class Staffing {
       const paidHours = block.paid_minutes / 60;
       const waterHours = block.on_water_minutes / 60;
 
-      const book = (type: CostType, amount: number, line: string, name: string, explanation: string): void =>
-        this.book(block, ctx.costAccount(type), amount, line, name, explanation, 1, type === "coach_wages");
-
       let wages = 0;
+      // The hours paid at more than $0, which a payroll tax by the hour is charged on.
+      let paid = 0;
       for (const s of block.staff) {
         if (s.count <= 0) continue;
         if (s.position_key != null) {
@@ -542,6 +542,7 @@ export class Staffing {
               );
             }
             wages += hours * (rate ?? 0);
+            if ((rate ?? 0) > 0) paid += hours;
             for (const [a, share] of block.shares) {
               coaching.push({
                 position_key: s.position_key,
@@ -576,8 +577,19 @@ export class Staffing {
           continue;
         }
         wages += s.count * paidHours * rate;
+        if (rate > 0) paid += s.count * paidHours;
       }
-      book("coach_wages", wages, "coach_wages", "Coach wages", "Staff × paid hours × each one's hourly rate");
+      this.book(
+        block,
+        ctx.costAccount("coach_wages"),
+        wages,
+        "coach_wages",
+        "Coach wages",
+        "Staff × paid hours × each one's hourly rate",
+        1,
+        true,
+        paid,
+      );
 
       for (const b of block.boats) {
         const rate = boatRates.get(b.boat_class_id);

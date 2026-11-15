@@ -260,6 +260,32 @@ collections:
       versioning: false
     schema:
       name: plan_rates
+  - collection: plan_payroll_taxes
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: plan_payroll_taxes
+      color: null
+      display_template: "{{name}}"
+      group: Planning
+      hidden: false
+      icon: account_balance
+      item_duplication_fields: null
+      note: Each tax the organization pays on its staff this year, such as Social Security or L&I, charged the way it's collected.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: plan_payroll_taxes
   - collection: plan_staff_levels
     meta:
       accountability: all
@@ -4315,46 +4341,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_rates
-    field: payroll_tax_rate
-    type: decimal
-    meta:
-      collection: plan_rates
-      conditions: null
-      display: null
-      display_options: null
-      field: payroll_tax_rate
-      group: null
-      hidden: false
-      interface: input
-      note: Employer payroll costs, as a share of wages. 0.1 means 10%.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 4
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: payroll_tax_rate
-      table: plan_rates
-      data_type: numeric
-      default_value: null
-      max_length: null
-      numeric_precision: 12
-      numeric_scale: 4
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_rates
     field: lodging_per_night_cents
     type: integer
     meta:
@@ -4424,6 +4410,296 @@ fields:
     schema:
       name: mileage_rate_cents
       table: plan_rates
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_payroll_taxes
+    field: id
+    type: uuid
+    meta:
+      collection: plan_payroll_taxes
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: plan_payroll_taxes
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_payroll_taxes
+    field: plan_id
+    type: uuid
+    meta:
+      collection: plan_payroll_taxes
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{kind}} {{program_area_id.name}}"
+      field: plan_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The plan this row belongs to.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Plan
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: plan_id
+      table: plan_payroll_taxes
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: plans
+      foreign_key_column: id
+  - collection: plan_payroll_taxes
+    field: key
+    type: uuid
+    meta:
+      collection: plan_payroll_taxes
+      conditions: null
+      display: null
+      display_options: null
+      field: key
+      group: null
+      hidden: false
+      interface: input
+      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: key
+      table: plan_payroll_taxes
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_payroll_taxes
+    field: name
+    type: string
+    meta:
+      collection: plan_payroll_taxes
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: As it reads on the P&L, such as "Social Security" or "L&I".
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: plan_payroll_taxes
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_payroll_taxes
+    field: wage_share
+    type: decimal
+    meta:
+      collection: plan_payroll_taxes
+      conditions: null
+      display: null
+      display_options: null
+      field: wage_share
+      group: null
+      hidden: false
+      interface: input
+      note: "For a tax on wages: its share of every wage. 0.062 means 6.2%. Leave it empty for a tax by the hour."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Share of wages
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: wage_share
+      table: plan_payroll_taxes
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 6
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_payroll_taxes
+    field: hourly_cents
+    type: decimal
+    meta:
+      collection: plan_payroll_taxes
+      conditions: null
+      display: null
+      display_options: null
+      field: hourly_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "For a tax by the hour, such as L&I: the employer's cost for each paid hour, less what staff pay. In cents: 45.235 is $0.45235. Leave it empty for a tax on wages."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Per paid hour
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hourly_cents
+      table: plan_payroll_taxes
+      data_type: numeric
+      default_value: null
+      max_length: null
+      numeric_precision: 12
+      numeric_scale: 4
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_payroll_taxes
+    field: sort
+    type: integer
+    meta:
+      collection: plan_payroll_taxes
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: plan_payroll_taxes
       data_type: integer
       default_value: null
       max_length: null
@@ -12658,6 +12934,27 @@ relations:
       foreign_key_table: plans
       foreign_key_column: id
       constraint_name: plan_rates_plan_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: plan_payroll_taxes
+    field: plan_id
+    related_collection: plans
+    meta:
+      junction_field: null
+      many_collection: plan_payroll_taxes
+      many_field: plan_id
+      one_allowed_collections: null
+      one_collection: plans
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_payroll_taxes
+      column: plan_id
+      foreign_key_table: plans
+      foreign_key_column: id
+      constraint_name: plan_payroll_taxes_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_staff_levels

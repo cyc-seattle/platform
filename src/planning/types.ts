@@ -266,10 +266,21 @@ export interface PlanCapitalItem extends PlanRow {
 
 /** The year's rates. An Operations Plan has at most one row. */
 export interface PlanRates extends PlanRow {
-  /** Employer payroll costs, as a share of wages. */
-  payroll_tax_rate: number | null;
   lodging_per_night_cents: number | null;
   mileage_rate_cents: number | null;
+}
+
+/**
+ * One tax the employer pays on its staff, charged the way it's collected: a share of wages, or an
+ * amount for each paid hour, such as Washington's L&I. A row sets one of the two.
+ */
+export interface PlanPayrollTax extends PlanRow {
+  name: string;
+  /** A share of every wage, such as 0.062 for Social Security. */
+  wage_share: number | null;
+  /** The employer's cost for each paid hour, in cents, which can be fractional. */
+  hourly_cents: number | null;
+  sort: number | null;
 }
 
 /** A staff level's rate for the year. A volunteer's is 0. Found by its level, so it has no key. */
@@ -388,6 +399,7 @@ export interface PlanData {
   plan_budget_lines: PlanBudgetLine[];
 
   plan_rates: PlanRates[];
+  plan_payroll_taxes: PlanPayrollTax[];
   plan_revenue_charges: PlanRevenueCharge[];
   plan_staff_levels: PlanStaffLevel[];
   plan_salaried_positions: PlanSalariedPosition[];
@@ -549,7 +561,7 @@ export interface PositionSummary {
   bonus_cents: number;
   /** Salary, hourly wages and bonus. */
   total_pay_cents: number;
-  /** The year's payroll tax on its total pay. */
+  /** The year's payroll taxes on its total pay and paid hours. */
   payroll_tax_cents: number;
   /** Hours another coach would need while it's on two or more groups at once: n − 1 for n groups. */
   double_booked_hours: number;

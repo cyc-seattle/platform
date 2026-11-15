@@ -12,7 +12,7 @@ import {
   pool,
   position,
   product,
-  rates,
+  payrollTax,
   recoverAll,
   staffLevel,
   total,
@@ -158,7 +158,7 @@ describe("payroll tax", () => {
     data.plan_budget_lines = [
       budgetLine({ amount_cents: 50_000, cost_center_type: "offering", cost_center_key: spring.key }),
     ];
-    data.plan_rates = [rates({ payroll_tax_rate: 0.1 })];
+    data.plan_payroll_taxes = [payrollTax()];
     const out = computePlan(data);
     expect(total(out, { line: "payroll_tax", account_id: A.payrollTax, cost_center_key: spring.key })).toBe(10_000);
     expect(total(out, { line: "payroll_tax", cost_center_type: "org" })).toBe(2500);
@@ -182,7 +182,7 @@ describe("line names", () => {
       plan_staff_levels: [level],
       plan_salaried_positions: [director],
       plan_pools: [ga],
-      plan_rates: [rates({ payroll_tax_rate: 0.1 })],
+      plan_payroll_taxes: [payrollTax()],
       plan_budget_lines: [
         budgetLine({ name: "Office", amount_cents: 1000, cost_center_type: "pool", cost_center_key: ga.key }),
       ],

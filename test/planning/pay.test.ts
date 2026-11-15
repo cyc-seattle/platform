@@ -13,7 +13,7 @@ import {
   pool,
   position,
   product,
-  rates,
+  payrollTax,
   recoverAll,
   staffLevel,
   total,
@@ -101,10 +101,22 @@ describe("payroll tax on a bonus", () => {
   it("is the year's rate on the bonus, on the same offerings", () => {
     const data = programs([{ revenue: 1_000_000, cost: 0 }], {
       plan_bonus_owners: [owner()],
-      plan_rates: [rates({ payroll_tax_rate: 0.1 })],
+      plan_payroll_taxes: [payrollTax()],
     });
     const out = computePlan(data);
     expect(total(out, { line: "bonus_payroll_tax:owner-key", account_id: A.payrollTax })).toBe(50_000);
+  });
+
+  it("charges each tax on wages as its own line, and no tax by the hour, since a bonus pays for no hours", () => {
+    const data = programs([{ revenue: 1_000_000, cost: 0 }], {
+      plan_bonus_owners: [owner({ role_name: "Director" })],
+      plan_payroll_taxes: [
+        payrollTax({ name: "Social Security", wage_share: 0.062 }),
+        payrollTax({ name: "L&I", hourly_cents: 50 }),
+      ],
+    });
+    const lines = computePlan(data).lines.filter((l) => l.line_key.startsWith("bonus_payroll_tax:"));
+    expect(lines.map((l) => [l.line_name, l.amount_cents])).toEqual([["Social Security on bonus: Director", 31_000]]);
   });
 
   it("doesn't count toward MTDC", () => {
@@ -117,7 +129,7 @@ describe("payroll tax on a bonus", () => {
       products: [p, q],
       plan_offerings: [first, second],
       plan_pools: [ga],
-      plan_rates: [rates({ payroll_tax_rate: 0.1 })],
+      plan_payroll_taxes: [payrollTax()],
       plan_bonus_owners: [owner()],
       plan_bonus_owner_products: [owns(p.id)],
       plan_budget_lines: [
@@ -224,7 +236,7 @@ describe("a salaried coach on a block", () => {
   });
 
   it("adds up a position's salary, hourly coaching and bonus", () => {
-    const { coach, data } = coached("hourly", { extra: { plan_rates: [rates({ payroll_tax_rate: 0.1 })] } });
+    const { coach, data } = coached("hourly", { extra: { plan_payroll_taxes: [payrollTax()] } });
     data.plan_bonus_owners = [owner({ position_key: coach.key, bonus_rate: 0.1 })];
     data.plan_bonus_owner_products = [owns(data.products[0]!.id)];
     const out = computePlan(data);

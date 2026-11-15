@@ -9,7 +9,7 @@ import {
   offering,
   pool,
   product,
-  rates,
+  payrollTax,
   recoverAll,
   staffLevel,
 } from "./fixtures.ts";
@@ -33,13 +33,13 @@ describe("function", () => {
     defaultTo(data, A.payrollTax, "management");
     const level = staffLevel();
     data.plan_staff_levels = [level];
-    data.plan_rates = [rates({ payroll_tax_rate: 0.1 })];
+    data.plan_payroll_taxes = [payrollTax()];
     data.plan_labor_lines = [
       laborLine(level.staff_level_id, { cost_center_type: "offering", cost_center_key: o.key, hours: 100 }),
     ];
     const out = computePlan(data);
     const wage = out.lines.find((l) => l.line_key.startsWith("labor:"));
-    const tax = out.lines.find((l) => l.line_key === "payroll_tax");
+    const tax = out.lines.find((l) => l.line_key.startsWith("payroll_tax:"));
     expect(wage?.function).toBe("program");
     expect(tax?.function).toBe("program");
   });
