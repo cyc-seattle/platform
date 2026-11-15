@@ -83,6 +83,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   appends each project's `true` or `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip
   a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`, so keep
   those names.
+- `nightly.yml` deploys `main` to dev each night and runs the integration tests, under the same dev
+  lock as the queues. A failed night opens or comments on the `Nightly integration run failed` issue,
+  assigned to the maintainer, and a green night closes it. Run it early with `gh workflow run nightly.yml`.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
   (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.
 - Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
