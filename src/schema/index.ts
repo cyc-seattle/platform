@@ -75,6 +75,7 @@ export interface Schema {
   qualifications: Qualifications[];
   registrations: Registrations[];
   schools: Schools[];
+  storage_areas: StorageAreas[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
@@ -152,6 +153,8 @@ export interface Assets {
   disposed_on: string | null;
   /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
+  /** The storage area where it's kept. */
+  location_id: string | StorageAreas | null;
 }
 
 /** Something a sync noticed but didn't fix. A dismissed finding stays dismissed on later runs. */
@@ -1269,6 +1272,19 @@ export interface Schools {
   name: string;
   /** Other ways families write this school on their Clubspot forms. An answer matching the name or one of these, ignoring capitals and punctuation and counting a run of spaces as one, is this school. Anything else is kept as their own words. */
   aliases: string[] | null;
+}
+
+/** Where CSC keeps its assets, such as Docks, Dry Storage or Yard Arm. Drag the rows to change their order. */
+export interface StorageAreas {
+  id: string;
+  name: string;
+  /** Its usable area. */
+  area_sq_ft: string | null;
+  /** The assets kept here. */
+  assets: (string | Assets)[];
+  /** Up to 280 characters. Bold, italic, code and links work. */
+  note: string | null;
+  sort: number | null;
 }
 
 /** Which syncs are running now. A sync holds its queue while it runs, so a second run waits its turn. Written by the syncs. */
