@@ -66,7 +66,7 @@ export function bookRevenue(ctx: Context): void {
         `charge:${charge.key}`,
         charge.name,
         `${charge.name}: ${charge.rate} × revenue`,
-        charge.excluded_from_mtdc ? 0 : 1,
+        charge.in_mtdc ? 1 : 0,
       );
     }
   }

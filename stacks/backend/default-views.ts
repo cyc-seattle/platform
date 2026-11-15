@@ -60,6 +60,10 @@ export const defaultViews: DefaultView[] = [
   },
   { collection: "clubspot_promoted_fields", sort: ["target_field"], fields: ["target_field", "labels"] },
 
+  // Sail Team
+  { collection: "links", sort: ["sort", "title"], fields: ["title", "url", "note"] },
+  { collection: "announcements", sort: ["-published_on"], fields: ["published_on", "title"] },
+
   // Catalog
   { collection: "accounts", sort: ["number"], fields: ["number", "name", "type", "parent_id"] },
   {
@@ -204,7 +208,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_revenue_charges",
     sort: ["version_id.plan_id.name", "name"],
-    fields: ["name", "rate", "product_kinds", "account_id", "excluded_from_mtdc", "version_id"],
+    fields: ["name", "rate", "product_kinds", "account_id", "in_mtdc", "version_id"],
   },
   {
     collection: "plan_staff_levels",
@@ -267,7 +271,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "plan_result_pnl",
     sort: ["version_set_id.name", "level", "name"],
-    fields: ["name", "level", "revenue_cents", "expense_cents", "net_cents", "version_set_id"],
+    fields: ["name", "level", "term_name", "revenue_cents", "expense_cents", "net_cents", "version_set_id"],
   },
   {
     collection: "plan_result_positions",
@@ -283,6 +287,11 @@ export const defaultViews: DefaultView[] = [
     ],
   },
   {
+    collection: "plan_result_bonuses",
+    sort: ["version_set_id.name", "name", "term_starts_on"],
+    fields: ["name", "term_name", "net_cents", "bonus_cents", "version_set_id"],
+  },
+  {
     collection: "plan_result_capital",
     sort: ["version_set_id.name", "rank"],
     fields: ["rank", "name", "amount_cents", "running_cents", "funded", "version_set_id"],
@@ -296,7 +305,7 @@ export const defaultViews: DefaultView[] = [
   {
     collection: "version_sets",
     sort: ["-fiscal_year", "status", "-saved_at"],
-    fields: ["name", "fiscal_year", "status", "parent_id", "saved_at", "message"],
+    fields: ["name", "fiscal_year", "status", "effective_from", "parent_id", "saved_at", "message"],
   },
   {
     collection: "version_set_members",

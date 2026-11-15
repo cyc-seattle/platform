@@ -3,6 +3,7 @@
 /** Every collection, for `createDirectus<Schema>()`. */
 export interface Schema {
   accounts: Accounts[];
+  announcements: Announcements[];
   assets: Assets[];
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
@@ -28,6 +29,7 @@ export interface Schema {
   group_policies: GroupPolicies[];
   groups: Groups[];
   households: Households[];
+  links: Links[];
   medical_profiles: MedicalProfiles[];
   offerings: Offerings[];
   organization_cost_accounts: OrganizationCostAccounts[];
@@ -48,6 +50,7 @@ export interface Schema {
   plan_pools: PlanPools[];
   plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
+  plan_result_bonuses: PlanResultBonuses[];
   plan_result_capital: PlanResultCapital[];
   plan_result_lines: PlanResultLines[];
   plan_result_pnl: PlanResultPnl[];
@@ -115,6 +118,15 @@ export interface Accounts {
   contra_account_id: string | Accounts | null;
   /** Kept for history, and closed to new lines. */
   retired: boolean;
+}
+
+/** What Sail Team's home page shows, newest first. */
+export interface Announcements {
+  id: string;
+  title: string;
+  body: string;
+  /** The date the home page shows. Newest comes first. */
+  published_on: string;
 }
 
 /** Each boat, motor and piece of equipment CSC owns: sailboats, powerboats such as the coach boats, motors, and others such as trailers. Planning counts the boats of each class CSC has on each day. */
@@ -474,6 +486,25 @@ export interface Households {
   date_created: string | null;
 }
 
+/** The Links page in Sail Team. Drag the rows to change their order. */
+export interface Links {
+  id: string;
+  title: string;
+  /** The page's address, starting with https://. */
+  url: string;
+  /** A line under the title, if it needs one. */
+  note: string | null;
+  sort: number | null;
+  /** The page's own title, read from the page when the link is saved. */
+  preview_title: string | null;
+  /** The page's own summary, read from the page when the link is saved. */
+  preview_description: string | null;
+  /** The address of the page's own picture, read from the page when the link is saved. */
+  preview_image: string | null;
+  /** When the page was last read. Empty if it couldn't be read: save the link again to retry. */
+  previewed_at: string | null;
+}
+
 /** A person's medical information, kept apart from People so only some staff see it. */
 export interface MedicalProfiles {
   id: string;
@@ -702,8 +733,8 @@ export interface PlanBudgetLines {
   /** In cents: 12500 is $125.00. */
   amount_cents: number;
   fiscal_year: number;
-  /** Set for a cost left out of modified total direct costs (MTDC), such as equipment. */
-  excluded_from_mtdc: boolean;
+  /** Counts toward modified total direct costs (MTDC). Clear it for a cost 2 CFR 200.1 leaves out, such as equipment. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -826,6 +857,30 @@ export interface PlanRates {
   mileage_rate_cents: number | null;
 }
 
+/** Each bonus in a Financial Plan, for each term, and for the offerings in no term on the year. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
+export interface PlanResultBonuses {
+  id: string;
+  /** The bonus's role, such as Director. */
+  name: string;
+  term_key: string | null;
+  /** The term it's paid on. Empty for the offerings in no term, such as Adult Learn to Sail, whose bonus is worked out on the year. */
+  term_name: string | null;
+  /** The term's first day, which puts the terms in order. */
+  term_starts_on: string | null;
+  /** A share of the net. 0.05 means 5%. */
+  bonus_rate: string;
+  /** The net of its products in the term, which the bonus is figured on. In cents: 12500 is $125.00. */
+  net_cents: number;
+  /** Its rate × the net, or nothing when the net is a loss. In cents: 12500 is $125.00. */
+  bonus_cents: number;
+  bonus_owner_key: string;
+  program_area_key: string | null;
+  /** The Financial Plan these results are for. */
+  version_set_id: string | VersionSets;
+  /** The plan in the Financial Plan that pays the bonus. */
+  version_set_member_id: string | VersionSetMembers | null;
+}
+
 /** The capital list in rank order, in a Financial Plan, with what the year's money covers. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultCapital {
   id: string;
@@ -867,7 +922,7 @@ export interface PlanResultLines {
 /** A Financial Plan's P&L for each offering, product, and program area. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
 export interface PlanResultPnl {
   id: string;
-  level: "offering" | "product" | "program_area";
+  level: "offering" | "product" | "program_area" | "program_area_term";
   subject_key: string;
   name: string;
   /** In cents: 12500 is $125.00. */
@@ -885,6 +940,15 @@ export interface PlanResultPnl {
   version_set_id: string | VersionSets;
   /** The plan in the Financial Plan that holds what it's charged to. */
   version_set_member_id: string | VersionSetMembers | null;
+  term_key: string | null;
+  /** For a program area by term, the term. Empty for its offerings in no term, such as Adult Learn to Sail. */
+  term_name: string | null;
+  /** The term's first day, which puts the terms in order. */
+  term_starts_on: string | null;
+  /** The most sailors an offering's blocks can take, with every other offering in them full. Empty for a product or program area. */
+  allocation_holds: number | null;
+  /** The fewest sailors, up to its capacity, at which an offering pays for itself, with its share of shared costs as planned. Empty when it doesn't even when full, and for a product or program area. */
+  breakeven_enrollment: number | null;
 }
 
 /** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a saved one's when it's saved, and then never change. */
@@ -972,8 +1036,8 @@ export interface PlanRevenueCharges {
   product_kinds: ("program" | "charter" | "storage_lease" | "merchandise" | "event_hosting" | "other")[] | null;
   /** A revenue account adds revenue, such as card fees families pay. An expense account adds a cost. */
   account_id: string | Accounts;
-  /** Set for a charge 2 CFR 200.1 leaves out of MTDC, such as scholarships. */
-  excluded_from_mtdc: boolean;
+  /** Counts toward MTDC. Clear it for a charge 2 CFR 200.1 leaves out, such as scholarships. */
+  in_mtdc: boolean;
   note: string | null;
 }
 
@@ -1272,8 +1336,8 @@ export interface VersionSets {
   name: string;
   /** What it was for, such as "Reviewed with the board". You can change it after it's saved. */
   message: string | null;
-  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name and note. Set a saved one to active to make it the one its organization runs for the year, which sets the one active before it back to saved. */
-  status: "draft" | "saved" | "active";
+  /** Set it to saved to save the Financial Plan and all its plans. A saved Financial Plan never changes, apart from its name, its note, the date it's active from, and whether it's archived. */
+  status: "draft" | "saved";
   /** The Financial Plan this one started as a copy of. Pick it when you add this one, and its plans are copied in. */
   parent_id: string | VersionSets | null;
   /** Set when the Financial Plan is saved. */
@@ -1282,7 +1346,9 @@ export interface VersionSets {
   saved_at: string | null;
   /** The version of the planning engine that calculated its numbers. */
   platform_version: string | null;
-  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. An active Financial Plan can't be archived. */
+  /** The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date. */
+  effective_from: string | null;
+  /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived. */
   archived_at: string | null;
   /** Each plan in the Financial Plan. Add or remove one only while it's a draft. */
   members: (string | VersionSetMembers)[];

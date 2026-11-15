@@ -82,6 +82,13 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     boat_class_id: row["boat_classes"],
     sail_number: key("sail"),
   }),
+  links: async () => ({ id: randomUUID(), title: `Link ${runId}`, url: "https://csc-website.web.app/" }),
+  announcements: async () => ({
+    id: randomUUID(),
+    title: `Announcement ${runId}`,
+    body: "Something **new** in Sail Team.",
+    published_on: daysFromNow(0),
+  }),
   // A program is the subtype of a product of kind `program`, and each has its own.
   catalog_offerings: async () => ({
     id: randomUUID(),
@@ -371,7 +378,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       cost_center_type: "org",
       amount_cents: 10_000,
       fiscal_year: 2027,
-      excluded_from_mtdc: false,
+      in_mtdc: true,
     }),
   plan_capital_items: async (fixed) =>
     versioned(fixed, {
@@ -392,7 +399,7 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
       rate: 0.02,
       product_kinds: ["program"],
       account_id: row["accounts"],
-      excluded_from_mtdc: true,
+      in_mtdc: false,
     }),
   plan_salaried_positions: async (fixed) =>
     versioned(fixed, {
@@ -424,14 +431,24 @@ function versioned(fixed: Row, data: Row): Row {
   return { id: randomUUID(), version_id: versionOf(fixed), ...data };
 }
 
-/** The run's row in `collection` in the same version as a new row, which it may point at. */
+/** Whether each of the run's plan copies is the saved Financial Plan's or the draft's. */
+const versionNames = new Map<string, "saved" | "draft">();
+
+/** The run's row in `collection` in the same version as a new row, which it may point at by id. */
+function sameVersionRow(collection: string, fixed: Row): Row | undefined {
+  return fixture[`${collection}@${versionNames.get(versionOf(fixed)) ?? "draft"}`];
+}
+
+/**
+ * The same, or the saved one when the draft's copy isn't made yet, for a link by key, which a copy
+ * keeps.
+ */
 function sameVersion(collection: string, fixed: Row): Row | undefined {
-  const name = versionOf(fixed) === row["plan_versions@saved"] ? "saved" : "draft";
-  return fixture[`${collection}@${name}`];
+  return sameVersionRow(collection, fixed) ?? fixture[`${collection}@saved`];
 }
 
 function sameVersionId(collection: string, fixed: Row): unknown {
-  return sameVersion(collection, fixed)?.["id"];
+  return sameVersionRow(collection, fixed)?.["id"];
 }
 
 /** A policy a group may give, for the run's group. */
@@ -451,6 +468,8 @@ export const changes: Record<string, () => Row> = {
   boat_classes: () => ({ max_capacity: 2 }),
   assets: () => ({ name: `Asset ${runId}` }),
   boats: () => ({ sail_number: key("sail") }),
+  links: () => ({ note: `Changed ${runId}` }),
+  announcements: () => ({ title: `Announcement ${runId} (renamed)` }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
   catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
   organizations: () => ({ short_name: "Changed" }),
@@ -575,6 +594,8 @@ async function createRows(): Promise<void> {
     ["groups", () => ({})],
     ["group_members", () => ({})],
     ["group_policies", () => ({})],
+    ["links", () => ({})],
+    ["announcements", () => ({})],
   ];
   for (const [collection, fixed] of order) {
     const item = await adminCreate(collection, await newRow(collection, fixed()));
@@ -630,13 +651,31 @@ export const PLAN_ROWS = [
   "plan_bonus_owner_products",
 ];
 
+/**
+ * The rows only an Operations Plan holds, which only a Plan Admin changes. The tests' own list, so
+ * a mistake in the stack's isn't copied into the test that should catch it.
+ */
+export const OPERATIONS_PLAN_ROWS = [
+  "plan_pools",
+  "plan_staff_levels",
+  "plan_capital_items",
+  "plan_rates",
+  "plan_revenue_charges",
+  "plan_salaried_positions",
+  "plan_salaried_bookings",
+  "plan_boat_rates",
+  "plan_bonus_owners",
+  "plan_bonus_owner_products",
+];
+
 /** The year of every plan a test makes, for the run's own organization. */
 export const PLAN_YEAR = 2027;
 
 /**
- * The run's year: a saved Financial Plan, the active one, holding an Operations Plan and a program
- * area's plan, and a draft Financial Plan holding a draft copy of that plan. Each copy of the program
- * area's plan holds a row in every collection a plan has. Only the planning steps need them.
+ * The run's year: a saved Financial Plan holding an Operations Plan and a program area's plan, and a
+ * draft Financial Plan started from it, holding a draft copy of each. Between them, each copy of
+ * the two plans holds a row in every collection a plan has: the Operations Plan's own rows in the
+ * Operations Plan, and the rest in the program area's. Only the planning steps need them.
  */
 async function createPlanRows(): Promise<void> {
   await runRows();
@@ -650,8 +689,16 @@ async function createPlanRows(): Promise<void> {
   await make("plans", "plans");
   await make("plan_versions@saved", "plan_versions");
   await make("plan_versions@draft", "plan_versions", { parent_version_id: row["plan_versions@saved"] });
-  for (const version of ["saved", "draft"]) {
-    for (const collection of PLAN_ROWS) {
+  versionNames.set(operationsCopy.id, "saved");
+  versionNames.set(row["plan_versions@saved"]!, "saved");
+  versionNames.set(row["plan_versions@draft"]!, "draft");
+  for (const collection of PLAN_ROWS) {
+    if (OPERATIONS_PLAN_ROWS.includes(collection)) {
+      // The draft's copy of the Operations Plan gets its copy of this row.
+      await make(`${collection}@saved`, collection, { version_id: operationsCopy.id });
+      continue;
+    }
+    for (const version of ["saved", "draft"]) {
       await make(`${collection}@${version}`, collection, { version_id: row[`plan_versions@${version}`] });
     }
   }
@@ -675,8 +722,18 @@ async function createPlanRows(): Promise<void> {
   await make("version_sets@draft", "version_sets", { name: `Next ${runId}`, parent_id: row["version_sets@saved"] });
   // The draft started from the saved one gets copies of its plans a moment after. The run's draft
   // copy goes in too, in place of the copy of the program area's plan.
-  await copied(row["version_sets@draft"]!);
+  const members = await copied(row["version_sets@draft"]!);
   await replaceAreaCopy(row["version_sets@draft"]!, row["plans"]!, row["plan_versions@draft"]!);
+  const draftOperations = members.find((m) => m["plan_id"] === operations.id)!["version_id"] as string;
+  row["plan_versions@draft-operations"] = draftOperations;
+  for (const collection of OPERATIONS_PLAN_ROWS) {
+    const filter = encodeURIComponent(
+      JSON.stringify({ version_id: { _eq: draftOperations }, key: { _eq: fixture[`${collection}@saved`]!["key"] } }),
+    );
+    const [copy] = await (await admin()).ok("GET", `/items/${collection}?filter=${filter}`);
+    row[`${collection}@draft`] = copy.id;
+    fixture[`${collection}@draft`] = copy;
+  }
   // Read again for what changed after they were made: saving, results, and copies.
   for (const [name, collection] of [
     ["plans", "plans"],

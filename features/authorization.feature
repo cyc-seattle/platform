@@ -13,7 +13,7 @@ Feature: Roles and groups
   signed up for it. A sailor is on a team from when they sign up for it until 12 months after their
   last time on it ends, and a sailor's parents are on the team with them.
 
-  Anything more than a role gives comes from groups. A group, such as the Finance Committee, gives
+  Anything more than a role gives comes from groups. A group gives
   its members one or more policies. A policy is a named set of permissions. For example, CRM Writer lets someone add, edit, and delete people
   and their details. An admin manages the groups in the Data Studio: who is in each one, and which
   policies each one gives. To change something means to add, edit, or delete it.

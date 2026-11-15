@@ -58,8 +58,9 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Merge queue
 
-- PRs merge through a batched merge queue. A PR's push runs only CI. The dev deploy and the
-  integration tests run in the queue, one batch at a time, on the one shared dev.
+- PRs merge through a batched merge queue. A PR's push runs only CI. The dev deploy runs in the
+  queue, one batch at a time, on the one shared dev. The integration tests don't run in the queue
+  (#161); a nightly run tests dev.
 - Never force-push. To bring a branch up to date, merge `origin/main` into it.
 - A queued branch can't be pushed until it's dequeued. Take the PR out of the queue first.
 - To try a branch on dev before it's queued, run `gh workflow run pull-request.yml --ref <branch>`.
@@ -71,8 +72,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 - `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/pull-request.yml`), through
   the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR's push runs
-  only CI. The merge queue deploys the PRs queued together to dev as one batch, and runs the
-  integration tests; the batch merges only if they pass (`dev-passed`, #80). A push to `main` skips dev, which the queue already
+  only CI. The merge queue deploys the PRs queued together to dev as one batch, and the
+  batch merges only if the deploy passes (`dev-passed`, #80). It doesn't run the integration tests (#161). A push to `main` skips dev, which the queue already
   ran on that commit, previews prod, and applies it once a maintainer approves. `prod` is skipped
   when the preview shows no changes.
 - A queued PR that changes only docs, `.agents/` or `.github/` skips the dev deploy and the

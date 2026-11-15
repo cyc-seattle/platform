@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Moves each draft Financial Plan's storage rent and bonuses from its Program Plans into its
+# Operations Plan, and books storage to the Storage account, once, by hand (cyc-seattle/platform#251).
+# No deploy runs it. Run it in dev, then in prod, before the cost-shift warnings reach prod, once the
+# maintainer has confirmed. It shows what it would move, then asks you to type the stack's name at
+# the terminal, so nothing can run it unattended. With --dry-run, it only shows.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+stack="${PULUMI_STACK:?Set PULUMI_STACK to dev or prod}"
+
+# shellcheck source=scripts/cluster-sql
+source scripts/cluster-sql
+connect "$stack"
+
+echo "What would move in ${stack}'s draft Financial Plans:"
+sql directus "$(cat scripts/move-storage-preview.sql)"
+if [[ "${1:-}" == "--dry-run" ]]; then
+  exit 0
+fi
+
+read -r -p "Type ${stack} to move them: " answer </dev/tty
+if [[ "$answer" != "$stack" ]]; then
+  echo "Nothing moved." >&2
+  exit 1
+fi
+
+sql directus "$(cat scripts/move-storage.sql)"
+echo "Moved. Each draft's P&L is worked out again at its next change."

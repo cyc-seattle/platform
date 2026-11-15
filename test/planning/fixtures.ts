@@ -188,7 +188,7 @@ export function charge(overrides: Partial<PlanRevenueCharge> = {}): PlanRevenueC
     rate: 0,
     product_kinds: ["program"],
     account_id: A.cardFees,
-    excluded_from_mtdc: false,
+    in_mtdc: true,
     note: null,
     ...overrides,
   };
@@ -345,7 +345,7 @@ export function budgetLine(overrides: Partial<PlanBudgetLine> = {}): PlanBudgetL
     cost_center_key: null,
     amount_cents: 0,
     fiscal_year: 2027,
-    excluded_from_mtdc: false,
+    in_mtdc: true,
     note: null,
     ...overrides,
   };
