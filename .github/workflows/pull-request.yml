@@ -16,10 +16,10 @@ permissions:
 jobs:
   ci:
     if: github.event_name == 'pull_request'
-    uses: cyc-seattle/.github/.github/workflows/ci.yml@v3.4.0
+    uses: cyc-seattle/.github/.github/workflows/ci.yml@v4.0.0
   dev:
     if: github.ref == 'refs/heads/main'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
     permissions:
       id-token: write
       contents: read
@@ -41,7 +41,7 @@ jobs:
   # main requires a reviewed PR (cyc-seattle/isthmia#215).
   prod-preview:
     needs: dev
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
     permissions:
       id-token: write
       contents: read
@@ -52,7 +52,7 @@ jobs:
   prod:
     needs: prod-preview
     if: needs.prod-preview.outputs.changes == 'true'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
     permissions:
       id-token: write
       contents: read

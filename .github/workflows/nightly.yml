@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   dev:
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v3.4.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
     permissions:
       id-token: write
       contents: read
@@ -24,7 +24,7 @@ jobs:
   report:
     needs: dev
     if: always()
-    uses: cyc-seattle/.github/.github/workflows/nightly-report.yml@v3.4.0
+    uses: cyc-seattle/.github/.github/workflows/nightly-report.yml@v4.0.0
     permissions:
       actions: read
       issues: write
