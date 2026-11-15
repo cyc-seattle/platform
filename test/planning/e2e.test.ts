@@ -8,8 +8,8 @@ import {
   assetList,
   block,
   blocks,
-  charge,
   budgetLine,
+  charge,
   emptyPlan,
   laborLine,
   offering,
@@ -22,6 +22,7 @@ import {
   staffLevel,
   trip,
   weekly,
+  withRate,
 } from "./fixtures.ts";
 
 const v = (id: string) => ({ id, plan_id: "v1", key: `${id}-key` });
@@ -375,7 +376,7 @@ function sum(lines: CostLine[], test: (l: CostLine) => boolean): number {
 }
 
 describe("a realistic plan, end to end", () => {
-  const data = realisticPlan();
+  const data = withRate(realisticPlan(), 0.25);
   const out = computePlan(data);
   const { lines } = out;
   const offeringsOf = (productId: string) =>
@@ -489,8 +490,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 905016,
-          "net": -545016,
+          "expenses": 276493,
+          "net": 83507,
           "revenue": 360000,
         },
         "Charters": {
@@ -504,7 +505,7 @@ describe("a realistic plan, end to end", () => {
           "revenue": 500000,
         },
         "Organization": {
-          "expenses": 5945001,
+          "expenses": 18677312,
           "net": 0,
           "revenue": 0,
         },
@@ -514,13 +515,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 5393458,
-          "net": -3125458,
+          "expenses": 1925548,
+          "net": 342452,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 12494850,
-          "net": -9304850,
+          "expenses": 3858972,
+          "net": -668972,
           "revenue": 3190000,
         },
       }

@@ -1,4 +1,5 @@
 // Small invented fixtures. Every figure here is made up.
+import { computePlan } from "../../src/planning/index.ts";
 import type {
   Account,
   CostLine,
@@ -276,6 +277,24 @@ export function program(productId: string, overrides: Partial<PlanProgram> = {})
     notes: null,
     ...overrides,
   };
+}
+
+/** Gives every program in the plan `rate` as its indirect cost rate, adding a settings row where it has none. */
+export function withRate(data: PlanData, rate: number): PlanData {
+  for (const p of data.products.filter((p) => p.kind === "program")) {
+    const row = data.plan_programs.find((r) => r.product_id === p.id);
+    if (row) row.indirect_cost_rate = rate;
+    else data.plan_programs.push(program(p.id, { indirect_cost_rate: rate }));
+  }
+  return data;
+}
+
+/**
+ * Gives every program the one rate that recovers every shared cost, so the programs' offerings share
+ * them by MTDC.
+ */
+export function recoverAll(data: PlanData): PlanData {
+  return withRate(data, computePlan(withRate(data, 0)).organization.indirect.full_recovery_rate ?? 0);
 }
 
 /** What a block is given: staff, and boats of each class, such as RIBs. */

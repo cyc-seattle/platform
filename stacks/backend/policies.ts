@@ -190,6 +190,12 @@ export const OPERATIONS_ONLY = [
   "plan_terms",
 ];
 
+/**
+ * Fields in a Program Plan only a Plan Admin sets. A program's indirect cost rate counts in its
+ * director's bonus, so its planner doesn't set it (cyc-seattle/platform#296).
+ */
+export const ADMIN_ONLY_FIELDS: Record<string, string[]> = { plan_programs: ["indirect_cost_rate"] };
+
 /** A plan's rows, of one kind of plan. */
 const inPlan = (kind: "program_area" | "operations") => ({ plan_id: { kind: { _eq: kind } } });
 
@@ -333,11 +339,15 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         ...rowsIn(plans, schemas)
           .filter((collection) => !OPERATIONS_ONLY.includes(collection))
           .flatMap((collection) =>
-            (["create", "update", "delete"] as const).map((action) => ({
-              collection,
-              action,
-              permissions: inPlan("program_area"),
-            })),
+            (["create", "update", "delete"] as const).map((action) => {
+              const withheld = action === "delete" ? undefined : ADMIN_ONLY_FIELDS[collection];
+              return {
+                collection,
+                action,
+                permissions: inPlan("program_area"),
+                ...(withheld && { fields: fieldsIn(schemas, collection).filter((f) => !withheld.includes(f)) }),
+              };
+            }),
           ),
       ],
     },
@@ -359,12 +369,14 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
           fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at", "platform_version"],
         },
         ...(["create", "update", "delete"] as const).map((action) => ({ collection: PLANS, action })),
+        // A Program Plan's admin-only fields too. Directus keeps one rule per collection and action, so
+        // such a collection's update covers every plan; Plan Writer already changes the rest.
         ...rowsIn(plans, schemas).flatMap((collection) =>
-          (["create", "update", "delete"] as const).map((action) => ({
-            collection,
-            action,
-            permissions: inPlan("operations"),
-          })),
+          (["create", "update", "delete"] as const).map((action) =>
+            action === "update" && collection in ADMIN_ONLY_FIELDS
+              ? { collection, action }
+              : { collection, action, permissions: inPlan("operations") },
+          ),
         ),
       ],
     },

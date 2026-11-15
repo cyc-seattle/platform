@@ -5,7 +5,7 @@ import { Context } from "./context.ts";
 import { bookBudgetLines, bookLaborLines, CostCenterBooker } from "./lines.ts";
 import { mtdc } from "./measures.ts";
 import { bookPayrollTax } from "./payroll.ts";
-import { allocatePools } from "./pools.ts";
+import { indirectCostRates, recoverIndirectCosts, type IndirectCosts } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
 import { compareTerms, offeringTerms, type OfferingTerms } from "./terms.ts";
@@ -35,10 +35,13 @@ import type {
  */
 export function computePlan(data: PlanData): EngineOutput {
   const output = calculate(data, new Map());
+  const rates = indirectCostRates(data);
   for (const row of output.pnl) {
     if (row.level !== "offering") continue;
     const offering = data.plan_offerings.find((o) => o.key === row.key);
-    if (offering !== undefined) row.breakeven_enrollment = breakeven(data, offering, row.net_cents);
+    if (offering === undefined) continue;
+    const rate = output.organization.indirect.recovered_cents === 0 ? 0 : (rates.get(offering.product_id) ?? 0);
+    row.breakeven_enrollment = breakeven(data, offering, row.net_cents, rate);
   }
   return output;
 }
@@ -46,15 +49,18 @@ export function computePlan(data: PlanData): EngineOutput {
 /**
  * The fewest sailors, from 1 up to the offering's capacity, at which its net after shared costs is
  * zero or more. Each number is tried in turn, since coaches and boats cost in steps. Recalculating the
- * whole plan for each would take seconds, so only the offering's own slice is, and whatever lies
- * outside it, such as its share of shared costs, stays as planned.
+ * whole plan for each would take seconds, so only the offering's own slice is, with its indirect cost
+ * rate on the slice's MTDC, and whatever lies outside it, such as its bonus, stays as planned.
  */
-function breakeven(data: PlanData, offering: PlanOffering, planned: number): number | null {
+function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate: number): number | null {
   if (offering.capacity == null) return null;
   const slice = sliceOf(data, offering);
-  const netAt = (n: number) =>
-    calculate(slice, new Map([[offering.id, n]])).pnl.find((p) => p.level === "offering" && p.key === offering.key)
-      ?.net_cents ?? 0;
+  const netAt = (n: number) => {
+    const row = calculate(slice, new Map([[offering.id, n]])).pnl.find(
+      (p) => p.level === "offering" && p.key === offering.key,
+    );
+    return row === undefined ? 0 : row.net_cents - rate * Math.max(0, row.mtdc_cents);
+  };
   const outside = planned - netAt(enrollmentOf(offering));
   for (let n = 1; n <= offering.capacity; n++) if (netAt(n) + outside >= 0) return n;
   return null;
@@ -114,7 +120,7 @@ function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
   bookPayrollTax(ctx);
 
   const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.key, mtdc(ctx, o.key)]));
-  allocatePools(ctx);
+  const indirect = recoverIndirectCosts(ctx);
   const bonuses = bookBonuses(ctx, terms);
   const bonusByPosition = new Map<Id, number>();
   for (const b of bonuses) {
@@ -123,7 +129,7 @@ function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
   }
 
   const lines = sumLines(ctx);
-  const organization = organizationTotals(ctx, lines);
+  const organization = organizationTotals(ctx, lines, indirect);
   return {
     lines,
     pnl: summarize(ctx, lines, mtdcByOffering, holds, terms),
@@ -214,7 +220,7 @@ function summarizePositions(
  * The organization's year from every line. Capital is any line on an asset account; fundraising is
  * revenue and expense whose function is `fundraising`; everything else is operating.
  */
-function organizationTotals(ctx: Context, lines: CostLine[]): OrganizationTotals {
+function organizationTotals(ctx: Context, lines: CostLine[], indirect: IndirectCosts): OrganizationTotals {
   const operating = { revenue_cents: 0, expense_cents: 0, net_cents: 0 };
   const fundraising = { revenue_cents: 0, expense_cents: 0, net_cents: 0 };
   let capital = 0;
@@ -234,6 +240,12 @@ function organizationTotals(ctx: Context, lines: CostLine[]): OrganizationTotals
     fundraising,
     capital_cents: capital,
     total_cents: operating.net_cents + fundraising.net_cents - capital,
+    indirect: {
+      shared_cents: Math.round(indirect.shared),
+      recovered_cents: Math.round(indirect.recovered),
+      unrecovered_cents: Math.round(indirect.shared) - Math.round(indirect.recovered),
+      full_recovery_rate: indirect.full_recovery_rate,
+    },
   };
 }
 
@@ -256,7 +268,8 @@ function sumLines(ctx: Context): CostLine[] {
     line.exact += e.amount;
     lines.set(id, line);
   }
-  // Rounding each line key's running total across cost centers keeps its total to the cent.
+  // Rounding each line key's running total across cost centers keeps its total to the cent. A pooled line's
+  // shares and what's left of it on the organization round as one.
   const carried = new Map<string, number>();
   return [...lines.values()]
     .sort(
@@ -267,7 +280,7 @@ function sumLines(ctx: Context): CostLine[] {
         a.cost_center_type.localeCompare(b.cost_center_type),
     )
     .map(({ exact, ...line }) => {
-      const id = [line.account_id, line.function, line.line_key].join("|");
+      const id = [line.account_id, line.function, line.line_key.replace(/^unrecovered:/, "pool:")].join("|");
       const before = carried.get(id) ?? 0;
       carried.set(id, before + exact);
       return { ...line, amount_cents: Math.round(before + exact) - Math.round(before) };

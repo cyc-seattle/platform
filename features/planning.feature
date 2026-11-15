@@ -42,10 +42,11 @@ Feature: Plans
   worked out again a moment after every change to it, whether the change was made in the app, in
   the Data Studio, or by an AI. A frozen Financial Plan keeps the P&L it had when it was frozen, and
   that never changes either. Each line of a frozen P&L says in plain words what it is.
-  Shared costs are the costs that several offerings share, such as the office. What non-program
-  sales make, or lose, comes off the shared costs first, so a good year for charters lowers every
-  program's share. The rest is divided among the programs' offerings by their direct costs, counted
-  the way federal grant rules count them, so each Program Plan's P&L includes its share of them. Some charges are set as
+  Shared costs are the costs that several offerings share, such as the office. Each program pays
+  toward them at its indirect cost rate, a share of its own direct costs, counted the way federal
+  grant rules count them. A Plan Admin sets each program's rate in the plan, from the year before,
+  and it stays fixed for the year, so one program's year never changes what another pays, or its
+  director's bonus. What the rates don't recover of the shared costs stays with the organization. Some charges are set as
   a share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with
   its rate and the kinds of product it applies to. Revenue from programs and other sales pays for
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
@@ -404,9 +405,10 @@ Feature: Plans
         | Fall 2027   | $4,000   |
         | no term     | $2,000   |
 
-    Example: Each term pays its share of the shared costs
+    Example: Each term pays its own indirect costs
       Given a program area with an offering in "Summer 2027" and one in "Fall 2027", with the same direct costs
       And $1,000 of office costs shared by every offering
+      And every program's indirect cost rate is 50%
       When a planner calculates the P&L
       Then the program area's P&L for "Summer 2027" includes $500 of the office costs
 
@@ -461,6 +463,7 @@ Feature: Plans
       Given two offerings with the same direct costs
       And scholarships on the first offering only, which don't count toward the split
       And $1,000 of office costs shared by every offering
+      And every program's indirect cost rate is 50%
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
@@ -505,7 +508,7 @@ Feature: Plans
 
     Scenario Outline: A director's bonus before and after shared costs
       Given a director who earns 50% of their programs' net <counted>
-      And their programs take in $30,000 and cost $20,000, plus $6,000 of shared costs
+      And their programs take in $30,000 and cost $20,000, with an indirect cost rate of 30%
       When a planner calculates the P&L
       Then the director's bonus is <bonus>
 
@@ -556,6 +559,7 @@ Feature: Plans
       Given two offerings with the same direct costs
       And a director's bonus, with its payroll tax, on the first offering only
       And $1,000 of office costs shared by every offering
+      And every program's indirect cost rate is 50%
       When a planner calculates the P&L
       Then each offering pays $500 of the office costs
 
@@ -893,13 +897,41 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice is on a closed day
 
-  Rule: A Program Plan's P&L counts the other Program Plans in its Financial Plan
+  Rule: Each program pays its indirect cost rate on its own direct costs, and the organization keeps the rest
 
-    Example: The office is split between two Program Plans
+    Example: Two Program Plans pay their rates, and the organization keeps what they don't recover
       Given $1,000 of office costs shared by every offering
       And a draft Financial Plan with two Program Plans whose offerings have the same direct costs
+      And every program's indirect cost rate is 30%
       When a planner calculates the P&L
-      Then each Program Plan's offering pays $500 of the office costs
+      Then each Program Plan's offering pays $300 of the office costs
+      And the organization's totals show $400 of shared costs not recovered
+
+    Example: One program's year doesn't change what another pays
+      Given $1,000 of office costs shared by every offering
+      And a program area with two offerings with the same direct costs
+      And every program's indirect cost rate is 30%
+      When the second offering's direct costs double
+      Then the first offering still pays $300 of the office costs
+
+    Example: A program with no indirect cost rate pays none of the shared costs
+      Given $1,000 of office costs shared by every offering
+      And a program area with two offerings with the same direct costs
+      When a planner calculates the P&L
+      Then no offering pays the office costs
+      And the planner is warned that a program has no indirect cost rate
+
+  Rule: Only a Plan Admin sets a program's indirect cost rate, since a director's bonus counts it
+
+    Example: A Plan Writer can't set a program's indirect cost rate
+      Given a user with the Plan Writer policy
+      And a draft Financial Plan
+      Then they can't set the indirect cost rate of one of a Program Plan's programs
+
+    Example: A Plan Admin sets a program's indirect cost rate
+      Given a user with the Plan Writer and Plan Admin policies
+      And a draft Financial Plan
+      Then they can set the indirect cost rate of one of a Program Plan's programs
 
   Rule: A draft's P&L is up to date after every change to it
 
@@ -919,7 +951,7 @@ Feature: Plans
 
     Example: A Financial Plan started from it doesn't change its P&L
       Given a frozen Financial Plan named "Budget" whose offering pays $1,000 of office costs
-      When a planner freezes a Financial Plan started from "Budget" with $2,000 of office costs
+      When a planner freezes a Financial Plan started from "Budget" with twice the indirect cost rate
       Then the P&L of "Budget" still shows that the offering pays $1,000 of office costs
 
     Example: A frozen Financial Plan keeps each term's P&L and bonus
@@ -935,6 +967,7 @@ Feature: Plans
       Given a user with the Plan Writer and Plan Admin policies
       And $1,000 of office costs in a pool named "G&A"
       And a draft Financial Plan with one offering that has direct costs
+      And every program's indirect cost rate is 10%
       When they freeze the Financial Plan
       Then the Financial Plan's P&L names the offering's share of the office "G&A share: Office"
 
