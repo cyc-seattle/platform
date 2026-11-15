@@ -13,3 +13,6 @@ CLAUDE.md
 
 # The committed SDKs' build output (scripts/gen-sdks)
 generated/*/bin/
+
+# Astro's generated types (docs-site)
+.astro/

@@ -1,0 +1,46 @@
+name: docs
+
+# Publishes the docs site to GitHub Pages from main. Kept out of pull-request.yml so it adds nothing to
+# a PR's or the merge queue's time, and nothing requires it. CI builds the site too, so a broken link
+# fails the PR.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          # The build needs neither gcloud nor Pulumi.
+          install_args: node pnpm
+      # Only the site: the root's install builds the Authentik SDK.
+      - run: pnpm install --frozen-lockfile --filter @cyc-seattle/platform-docs-site
+      - run: mise run docs
+        env:
+          MISE_TASK_RUN_AUTO_INSTALL: "false"
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs-site/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

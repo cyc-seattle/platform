@@ -9,11 +9,12 @@ function changedProjects(...paths: string[]): string {
 }
 
 describe("changed-projects", () => {
-  it("deploys nothing for docs, agent skills, and CI", () => {
+  it("deploys nothing for docs, the docs site, agent skills, and CI", () => {
     expect(
       changedProjects(
         "docs/backend.md",
         "README.md",
+        "docs-site/astro.config.ts",
         ".agents/skills/directus-schema/SKILL.md",
         ".github/workflows/release.yml",
       ),

@@ -153,13 +153,12 @@ describe.each(repos)("%s's environments", (repo) => {
         .map((v) => [v.inputs.variableName, v.inputs.value]),
     );
 
-  // sail-team also publishes its Storybook to Pages.
-  it("has exactly dev, prod-preview, and prod, and github-pages for sail-team", () => {
+  // Each also publishes a site to Pages: platform its docs, sail-team its Storybook.
+  it("has exactly dev, github-pages, prod-preview, and prod", () => {
     const names = ofType("github:index/repositoryEnvironment:RepositoryEnvironment")
       .filter((e) => e.inputs.repository === repo)
       .map((e) => e.inputs.environment);
-    const pages = repo === "sail-team" ? ["github-pages"] : [];
-    expect(names.sort()).toEqual(["dev", ...pages, "prod", "prod-preview"]);
+    expect(names.sort()).toEqual(["dev", "github-pages", "prod", "prod-preview"]);
   });
 
   it("lets dev deploy from any branch with no reviewer", () => {
@@ -206,12 +205,17 @@ describe.each(repos)("%s's environments", (repo) => {
   });
 });
 
-describe("sail-team's github-pages environment", () => {
+describe.each(repos)("%s's github-pages environment", (repo) => {
   it("publishes only from main", () => {
-    expect(byName("sail-team-github-pages").inputs.deploymentBranchPolicy).toEqual({
+    expect(byName(`${repo}-github-pages`).inputs.deploymentBranchPolicy).toEqual({
       protectedBranches: false,
       customBranchPolicies: true,
     });
+  });
+});
+
+describe("sail-team's github-pages environment", () => {
+  it("adopts the main policy Pages made", () => {
     expect(byName("sail-team-github-pages-main").inputs).toEqual(
       expect.objectContaining({ environment: "github-pages", branchPattern: "main" }),
     );
