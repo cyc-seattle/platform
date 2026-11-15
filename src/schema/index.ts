@@ -1033,6 +1033,8 @@ export interface PlanResultWarnings {
 export interface PlanResults {
   id: string;
   calculated_at: string;
+  /** The version of the planning engine that worked these numbers out. */
+  platform_version: string | null;
   /** In cents: 12500 is $125.00. */
   operating_revenue_cents: number;
   /** In cents: 12500 is $125.00. */

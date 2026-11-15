@@ -503,6 +503,7 @@ erDiagram
     plan_results {
         uuid financial_plan_id FK "unique"
         timestamp calculated_at
+        string platform_version "the engine that worked them out"
         int operating_revenue_cents
         int operating_expense_cents
         int operating_net_cents
@@ -597,6 +598,8 @@ erDiagram
 The `frozen-plans` hook runs the engine on the plans a Financial Plan holds and writes its results. Since a Financial Plan holds every plan it counts, each offering's share of the pools is right.
 
 A draft's results are worked out again after each change to what they come from, wherever it was made: the app, the Data Studio, or MCP. That's one of its plans, a row in one, or the catalog and organization the engine reads, which changes every draft's. Directus runs the hook's actions after it commits a write. The hook waits until a draft's writes have stopped for a second, or 10 seconds after the first, so a burst of them, such as an agent's over MCP, costs one run. It runs one draft at a time, on Directus's main thread. It replaces the draft's results in one transaction, under the locks a freeze takes, so readers see the old results or the new, never a mix. If that fails, it clears them, so no stale numbers look current, and logs why. When Directus starts, it works out the results of every draft that has none. A write that skips Directus's actions, such as SQL, leaves a draft's results as they were until its next change; `calculated_at` says when they were worked out.
+
+A new engine doesn't work out a draft's results again (cyc-seattle/platform#284). Each `plan_results` row records, in `platform_version`, the engine that worked it out, and `GET /frozen-plans/engine` answers any signed-in user with the engine Directus runs now. A draft whose results came from another engine, or from before results recorded one, shows that in Sail Team. Anyone who may edit the Financial Plan can have them worked out again with `POST /frozen-plans/drafts/<Financial Plan id>/results`, which answers once they're written. It refuses a frozen one.
 
 Freezing a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the freeze answers, with the engine whose version it records. Then they never change.
 

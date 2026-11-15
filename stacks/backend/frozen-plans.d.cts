@@ -118,6 +118,18 @@ export function writeDraftResults(
   engine: Engine,
 ): Promise<boolean>;
 
+/**
+ * Works out a draft's results again now, for a user who `mayEdit` it. Answers with an HTTP status:
+ * 403 if they may not, 409 if it isn't a draft, and 200 once they're written.
+ */
+export function workOutAgain(
+  config: FrozenPlansConfig,
+  db: unknown,
+  setId: string,
+  engine: Engine,
+  mayEdit: (setId: string) => Promise<boolean>,
+): Promise<200 | 403 | 409>;
+
 /** The draft Financial Plans whose results a write to these rows of `collection` changes. */
 export function draftsChangedBy(
   config: FrozenPlansConfig,

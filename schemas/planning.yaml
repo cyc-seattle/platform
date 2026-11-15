@@ -6930,6 +6930,48 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_results
+    field: platform_version
+    type: string
+    meta:
+      collection: plan_results
+      conditions: null
+      display: null
+      display_options: null
+      field: platform_version
+      group: null
+      hidden: false
+      interface: input
+      note: The version of the planning engine that worked these numbers out.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 14
+      special: null
+      translations:
+        - language: en-US
+          translation: Engine version
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: platform_version
+      table: plan_results
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: plan_results
     field: operating_revenue_cents
     type: integer
     meta:
