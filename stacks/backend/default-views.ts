@@ -76,6 +76,7 @@ export const defaultViews: DefaultView[] = [
     sort: ["kind", "name"],
     fields: ["kind", "name", "make", "model", "identifier", "value_cents", "acquired_on", "disposed_on"],
   },
+  { collection: "storage_areas", sort: ["sort", "name"], fields: ["name", "area_sq_ft", "note"] },
   {
     collection: "boats",
     sort: ["boat_class_id.name", "sail_number"],

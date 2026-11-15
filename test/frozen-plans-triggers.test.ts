@@ -1,11 +1,7 @@
 import { randomUUID } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import { PGlite, type Transaction } from "@electric-sql/pglite";
-import { pageinspect } from "@electric-sql/pglite/contrib/pageinspect";
-import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
-import { frozenPlansConfig, type FrozenPlansConfig } from "../stacks/backend/policies.ts";
+import { frozenPlansConfig } from "../stacks/backend/policies.ts";
 import {
   ACTIVE_STAYS,
   ARCHIVED_NOT_ACTIVE,
@@ -16,6 +12,7 @@ import {
   fingerprint,
   IN_FORCE_NOT_ARCHIVED,
   installTriggers,
+  seedPayrollTaxes,
   seedStaffLevels,
   NEEDS_OPERATIONS,
   ONE_PER_AREA,
@@ -33,63 +30,10 @@ import {
   writeSetResults,
 } from "../stacks/backend/frozen-plans.cjs";
 import { computePlan } from "../src/planning/index.ts";
+import { connect, database, schemas, tables } from "./planning-database.ts";
 
 // The frozen-plans hook's triggers, in a real Postgres (PGlite), on tables made from the schemas:
 // the only guard on a path that skips Directus's filters, such as a flow's data steps.
-
-interface Field {
-  collection: string;
-  field: string;
-  schema?: { data_type: string; is_primary_key: boolean };
-}
-interface Relation {
-  collection: string;
-  field: string;
-  related_collection: string | null;
-  schema?: { on_delete?: string } | null;
-}
-
-const schemas = ["core", "directory", "hr", "planning"].map((name) => ({
-  name,
-  schema: yaml.load(fs.readFileSync(path.resolve(import.meta.dirname, `../schemas/${name}.yaml`), "utf8")) as {
-    fields: Field[];
-    relations: Relation[];
-  },
-}));
-
-/** The tables, keys, and foreign keys the schemas declare. Only a primary key is required. */
-function tables(): string[] {
-  const fields = schemas.flatMap(({ schema }) => schema.fields).filter((field) => field.schema);
-  const names = [...new Set(fields.map((field) => field.collection))];
-  const create = names.map((table) => {
-    const columns = fields
-      .filter((field) => field.collection === table)
-      .map(({ field, schema }) => `"${field}" ${schema!.data_type}${schema!.is_primary_key ? " PRIMARY KEY" : ""}`);
-    return `CREATE TABLE "${table}" (${columns.join(", ")})`;
-  });
-  const keys = schemas
-    .flatMap(({ schema }) => schema.relations)
-    .filter(({ related_collection: related }) => related !== null && names.includes(related))
-    .map(
-      ({ collection, field, related_collection: related, schema }) =>
-        `ALTER TABLE "${collection}" ADD FOREIGN KEY ("${field}") REFERENCES "${related}" (id) ON DELETE ${schema?.on_delete ?? "RESTRICT"}`,
-    );
-  return [...create, ...keys];
-}
-
-async function database(config: FrozenPlansConfig): Promise<PGlite> {
-  const db = await PGlite.create({ extensions: { pageinspect } });
-  await db.exec("CREATE EXTENSION pageinspect");
-  for (const statement of tables()) await db.exec(statement);
-  const { missing } = await db.transaction((tx) => installTriggers(config, connect(tx)));
-  expect(missing).toEqual([]);
-  return db;
-}
-
-const connect = (tx: Transaction) => ({
-  query: async (sql: string) => (await tx.query<Record<string, unknown>>(sql)).rows,
-  exec: (sql: string) => tx.exec(sql),
-});
 
 const config = (deletable: boolean) => frozenPlansConfig(schemas, deletable, "1.0.0+engine.abc");
 
@@ -140,7 +84,6 @@ function writer(db: PGlite) {
   };
 }
 
-const NEEDS_PLATFORM = "Freezing a Financial Plan needs the @cyc-seattle/platform version that calculated it.";
 const ROW_STAYS = "A plan row can't move to another plan. Copy it into that plan instead.";
 const SAME_PLAN = "A plan row can only link to rows in its own plan.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
@@ -188,7 +131,7 @@ async function plans(db: PGlite, year = 2027) {
     rate: 0,
     product_kinds: JSON.stringify(["program", "charter"]),
   });
-  expect(await w.update("financial_plans", set, { status: "frozen", platform_version: "1.4.0" })).toBeUndefined();
+  expect(await w.update("financial_plans", set, { status: "frozen" })).toBeUndefined();
 
   const draftSet = await w.insert("financial_plans", {
     organization_id: organization,
@@ -265,9 +208,7 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       const { draftSet } = await plans(db, 2204);
       await w.insert("plans", { financial_plan_id: draftSet, kind: "operations" });
       expect(await hookWrites(draftSet)).toBeUndefined();
-      expect(
-        await w.update("financial_plans", draftSet, { status: "frozen", platform_version: "1.4.0" }),
-      ).toBeUndefined();
+      expect(await w.update("financial_plans", draftSet, { status: "frozen" })).toBeUndefined();
       for (const table of ["plan_results", "plan_result_warnings"]) {
         const { rows } = await db.query(`SELECT 1 FROM "${table}" WHERE financial_plan_id = $1`, [draftSet]);
         expect(rows, table).toEqual([]);
@@ -370,6 +311,29 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect((await w.read("plan_programs", settings))?.["staff_level_id"]).toBe(levels[0]!["id"]);
       // The triggers are back on.
       expect(await w.update("plan_staff_levels", rate, { hourly_rate_cents: 1 })).toEqual(refusal(REFUSED));
+    });
+
+    it("let the payroll taxes migration's seed add a frozen plan's taxes, once", async () => {
+      const { operations, draftSet } = await plans(db, 2106);
+      // As the migration (cyc0019) leaves it.
+      await db.exec(`
+        CREATE TABLE cyc_seed_payroll_taxes (plan_id uuid, name text, wage_share numeric, hourly_cents numeric, sort integer);
+        INSERT INTO cyc_seed_payroll_taxes VALUES ('${operations}', 'Payroll tax', 0.0948, NULL, 1);
+      `);
+      const seed = () => db.transaction((tx) => seedPayrollTaxes(connect(tx)));
+      expect(await seed()).toContain(draftSet);
+      expect(await seed()).toEqual([]);
+      const { rows } = await db.query<Values>(
+        `SELECT id, key, name, wage_share, hourly_cents, sort FROM plan_payroll_taxes WHERE plan_id = '${operations}'`,
+      );
+      expect(rows).toEqual([
+        expect.objectContaining({ name: "Payroll tax", wage_share: "0.0948", hourly_cents: null, sort: 1 }),
+      ]);
+      expect(rows[0]!["key"]).toEqual(expect.any(String));
+      // The triggers are back on.
+      expect(await w.update("plan_payroll_taxes", rows[0]!["id"] as string, { wage_share: 0.1 })).toEqual(
+        refusal(REFUSED),
+      );
     });
 
     it("refuse to move a row to another plan", async () => {
@@ -513,19 +477,8 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
 
     it("refuse to freeze one without an Operations Plan", async () => {
       const { draftSet } = await plans(db, 2302);
-      expect(await w.update("financial_plans", draftSet, { status: "frozen", platform_version: "1.4.0" })).toEqual(
-        refusal(NEEDS_OPERATIONS),
-      );
+      expect(await w.update("financial_plans", draftSet, { status: "frozen" })).toEqual(refusal(NEEDS_OPERATIONS));
       expect(await w.read("financial_plans", draftSet)).toMatchObject({ status: "draft" });
-    });
-
-    it("refuse to freeze one without a platform version", async () => {
-      const { draftSet } = await plans(db, 2303);
-      for (const platform of [null, "", " "]) {
-        expect(await w.update("financial_plans", draftSet, { status: "frozen", platform_version: platform })).toEqual(
-          refusal(NEEDS_PLATFORM),
-        );
-      }
     });
 
     it("refuse a new one that isn't a draft", async () => {
@@ -544,9 +497,9 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(await w.update("financial_plans", set, { note: "Reviewed with the board" })).toBeUndefined();
       expect(await w.update("financial_plans", set, { name: "Board budget" })).toBeUndefined();
       for (const change of [
-        { platform_version: "9.9.9" },
+        { frozen_at: "2000-01-01T00:00:00Z" },
         { status: "draft" },
-        { note: "Adopted", platform_version: "9.9.9" },
+        { note: "Adopted", frozen_at: "2000-01-01T00:00:00Z" },
       ]) {
         expect(await w.update("financial_plans", set, change), JSON.stringify(change)).toEqual(refusal(SET_STAYS));
       }
@@ -554,7 +507,6 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(await w.read("financial_plans", set)).toMatchObject({
         note: "Reviewed with the board",
         name: "Board budget",
-        platform_version: "1.4.0",
       });
     });
 
@@ -676,7 +628,7 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       const { set } = await plans(db, 2508);
       expect(await w.update("financial_plans", set, { effective_from: "2507-07-01" })).toBeUndefined();
       expect(await w.update("financial_plans", set, { status: "draft" })).toEqual(refusal(SET_STAYS));
-      expect(await w.update("financial_plans", set, { platform_version: "9.9.9" })).toEqual(refusal(SET_STAYS));
+      expect(await w.update("financial_plans", set, { frozen_at: "2000-01-01T00:00:00Z" })).toEqual(refusal(SET_STAYS));
       expect(await w.update("financial_plans", set, { name: "Adopted" })).toBeUndefined();
       expect(await w.remove("financial_plans", set)).toEqual(refusal(SET_STAYS));
     });
@@ -776,7 +728,7 @@ describe("the frozen-plans triggers with dev's flag", { timeout: 30_000 }, () =>
     const w = writer(db);
     const { set, frozen, draftSet, frozenOffering } = await plans(db);
     expect(await w.update("financial_plans", set, { effective_from: "2026-07-01" })).toBeUndefined();
-    expect(await w.update("financial_plans", set, { platform_version: "9.9.9" })).toEqual(refusal(SET_STAYS));
+    expect(await w.update("financial_plans", set, { frozen_at: "2000-01-01T00:00:00Z" })).toEqual(refusal(SET_STAYS));
     expect(await w.update("plan_offerings", frozenOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
     expect(await w.update("plans", frozen, { notes: JSON.stringify(["Changed"]) })).toEqual(refusal(PLANS_FIXED));
     // The draft started from it goes first, since it points at it.

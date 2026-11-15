@@ -154,6 +154,7 @@ describe("the Catalog policies", () => {
     "qualification_covers",
     "boat_classes",
     "assets",
+    "storage_areas",
     "boats",
     "programs",
     "catalog_offerings",
@@ -209,6 +210,7 @@ const plans = [
   "plan_capital_items",
   "plan_revenue_charges",
   "plan_rates",
+  "plan_payroll_taxes",
   "plan_staff_levels",
   "plan_salaried_positions",
   "plan_salaried_bookings",
@@ -321,7 +323,7 @@ describe("the Plan policies", () => {
       {
         collection: "financial_plans",
         action: "update",
-        fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at", "platform_version"],
+        fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at"],
       },
     ]);
   });

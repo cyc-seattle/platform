@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computePlan } from "../../src/planning/index.ts";
-import { A, budgetLine, emptyPlan, offering, pool, position, product, recoverAll, total } from "./fixtures.ts";
+import { A, budgetLine, emptyPlan, offering, pool, position, product, allocateAll, total } from "./fixtures.ts";
 
 function booking(positionId: string, productId: string, hours: number) {
   return {
@@ -56,7 +56,7 @@ describe("salaried positions", () => {
 
   it("sends the rest to its pool, which splits it over the offerings", () => {
     const p = product();
-    const o = offering(p.id);
+    const o = offering(p.id, { target_enrollment: 1, price_cents: 1000 });
     const admin = pool({ name: "Program admin" });
     const director = position({ annual_salary_cents: 120_000, remainder_pool_id: admin.id });
     const data = emptyPlan({
@@ -66,7 +66,7 @@ describe("salaried positions", () => {
       plan_salaried_positions: [director],
       plan_budget_lines: [budgetLine({ amount_cents: 1000, cost_center_type: "offering", cost_center_key: o.key })],
     });
-    const out = computePlan(recoverAll(data));
+    const out = computePlan(allocateAll(data));
     expect(total(out, { account_id: A.salaries, cost_center_key: o.key })).toBe(120_000);
     expect(total(out, { cost_center_type: "pool" })).toBe(0);
   });

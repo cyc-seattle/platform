@@ -5,7 +5,7 @@ import { Context } from "./context.ts";
 import { bookBudgetLines, bookLaborLines, CostCenterBooker } from "./lines.ts";
 import { mtdc } from "./measures.ts";
 import { bookPayrollTax, payrollTax } from "./payroll.ts";
-import { indirectCostRates, recoverIndirectCosts, type IndirectCosts } from "./pools.ts";
+import { indirectCostRates, allocateIndirectCosts, type IndirectCosts } from "./pools.ts";
 import { bookRevenue, countDays } from "./revenue.ts";
 import { bookSalaries, type PositionCharges } from "./salaried.ts";
 import { compareTerms, offeringTerms, type OfferingTerms } from "./terms.ts";
@@ -50,7 +50,7 @@ export function computePlan(data: PlanData): EngineOutput {
  * The fewest sailors, from 1 up to the offering's capacity, at which its net after shared costs is
  * zero or more. Each number is tried in turn, since coaches and boats cost in steps. Recalculating the
  * whole plan for each would take seconds, so only the offering's own slice is, with its indirect cost
- * rate on the slice's MTDC, and whatever lies outside it, such as its bonus, stays as planned.
+ * rate on its fees at that number, and whatever lies outside it, such as its bonus, stays as planned.
  */
 function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate: number): number | null {
   if (offering.capacity == null) return null;
@@ -59,7 +59,7 @@ function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate
     const row = calculate(slice, new Map([[offering.id, n]])).pnl.find(
       (p) => p.level === "offering" && p.key === offering.key,
     );
-    return row === undefined ? 0 : row.net_cents - rate * Math.max(0, row.mtdc_cents);
+    return row === undefined ? 0 : row.net_cents - rate * Math.max(0, (offering.price_cents ?? 0) * n);
   };
   const outside = planned - netAt(enrollmentOf(offering));
   for (let n = 1; n <= offering.capacity; n++) if (netAt(n) + outside >= 0) return n;
@@ -120,7 +120,7 @@ function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
   bookPayrollTax(ctx);
 
   const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.key, mtdc(ctx, o.key)]));
-  const indirect = recoverIndirectCosts(ctx);
+  const indirect = allocateIndirectCosts(ctx);
   const bonuses = bookBonuses(ctx, terms);
   const bonusByPosition = new Map<Id, number>();
   for (const b of bonuses) {
@@ -244,8 +244,8 @@ function organizationTotals(ctx: Context, lines: CostLine[], indirect: IndirectC
     total_cents: operating.net_cents + fundraising.net_cents - capital,
     indirect: {
       shared_cents: Math.round(indirect.shared),
-      recovered_cents: Math.round(indirect.recovered),
-      unrecovered_cents: Math.round(indirect.shared) - Math.round(indirect.recovered),
+      recovered_cents: Math.round(indirect.allocated),
+      unrecovered_cents: Math.round(indirect.shared) - Math.round(indirect.allocated),
       full_recovery_rate: indirect.full_recovery_rate,
     },
   };

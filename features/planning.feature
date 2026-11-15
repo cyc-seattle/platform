@@ -43,10 +43,10 @@ Feature: Plans
   the Data Studio, or by an AI. A frozen Financial Plan keeps the P&L it had when it was frozen, and
   that never changes either. Each line of a frozen P&L says in plain words what it is.
   Shared costs are the costs that several offerings share, such as the office. Each program pays
-  toward them at its indirect cost rate, a share of its own direct costs, counted the way federal
-  grant rules count them. A Plan Admin sets each program's rate in the plan, from the year before,
+  toward them at its indirect cost rate, a share of its program fees, not counting the card fees
+  families pay on top. A director's bonus is a share of revenue too, so the two line up. A Plan Admin sets each program's rate in the plan, from the year before,
   and it stays fixed for the year, so one program's year never changes what another pays, or its
-  director's bonus. What the rates don't recover of the shared costs stays with the organization. Some charges are set as
+  director's bonus. What the rates leave unallocated of the shared costs stays with the organization. Some charges are set as
   a share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with
   its rate and the kinds of product it applies to. Revenue from programs and other sales pays for
   the organization's running costs. Fundraising pays for capital, such as a new coach boat, so
@@ -117,6 +117,14 @@ Feature: Plans
   earns on the products they run: a share of those products' net, the money they make after their
   costs. Every bonus is in the Operations Plan, which a Plan Admin sets. Anyone who can
   see plans sees all of these. To change something means to add, edit, or delete it.
+
+  The Operations Plan also lists the payroll taxes the organization pays on its staff, each the way
+  it's collected, and each its own line on the P&L. Most are a share of wages, such as Social
+  Security, Medicare, and Washington's unemployment tax. L&I, Washington's workers' comp, is an amount
+  for each hour worked: each hour a coach is paid for, and each of a salaried person's paid hours.
+  Volunteers are paid nothing, so their hours cost no L&I, and a bonus pays for no hours, so it costs
+  none either. A tax on wages is charged on every wage, with no yearly cap on each person's wages,
+  such as Social Security's.
 
   Rule: A Financial Plan holds one Operations Plan, and a Program Plan for any of the program areas
 
@@ -408,7 +416,7 @@ Feature: Plans
         | no term     | $2,000   |
 
     Example: Each term pays its own indirect costs
-      Given a program area with an offering in "Summer 2027" and one in "Fall 2027", with the same direct costs
+      Given a program area with an offering in "Summer 2027" and one in "Fall 2027", each taking in $1,000
       And $1,000 of office costs shared by every offering
       And every program's indirect cost rate is 50%
       When a planner calculates the P&L
@@ -459,15 +467,14 @@ Feature: Plans
       Then the offering takes in $300 of card fees from families
       And the offering pays $300 of card fees
 
-  Rule: A charge set as a share of revenue counts toward the split of shared costs only if the Operations Plan says so
+  Rule: A charge set as a share of revenue counts toward the split of a program area's costs only if the Operations Plan says so
 
-    Example: Scholarships don't change an offering's share of the office
+    Example: Scholarships don't change an offering's share of the storage
       Given two offerings with the same direct costs
       And scholarships on the first offering only, which don't count toward the split
-      And $1,000 of office costs shared by every offering
-      And every program's indirect cost rate is 50%
+      And $1,000 of storage charged to the program area
       When a planner calculates the P&L
-      Then each offering pays $500 of the office costs
+      Then each offering pays $500 of the storage
 
   Rule: Capital is never charged to a program area or an offering
 
@@ -510,7 +517,7 @@ Feature: Plans
 
     Scenario Outline: A director's bonus before and after shared costs
       Given a director who earns 50% of their programs' net <counted>
-      And their programs take in $30,000 and cost $20,000, with an indirect cost rate of 30%
+      And their programs take in $30,000 and cost $20,000, with an indirect cost rate of 20%
       When a planner calculates the P&L
       Then the director's bonus is <bonus>
 
@@ -547,23 +554,52 @@ Feature: Plans
       Then the program area's P&L for "Summer 2027" includes $2,000 of bonus
       And the program area's P&L for "Fall 2027" includes $1,000 of bonus
 
-  Rule: The organization pays payroll tax on a bonus, as on any wage
+  Rule: The organization pays each tax on wages on a bonus, but no L&I, since a bonus pays for no hours
 
-    Example: A bonus costs payroll tax
-      Given payroll tax at 10% of wages
+    Example: A bonus costs the taxes on wages, but no L&I
+      Given a payroll tax of 10% of wages
+      And L&I of $0.50 for each hour worked
       And a director whose bonus is $5,000
       When a planner calculates the P&L
       Then the organization pays $500 of payroll tax on the bonus
 
-  Rule: A bonus and its payroll tax don't count toward the split of shared costs
+  Rule: A bonus and its payroll tax don't count toward the split of a program area's costs
 
-    Example: A director's bonus doesn't change an offering's share of the office
+    Example: A director's bonus doesn't change an offering's share of the storage
       Given two offerings with the same direct costs
       And a director's bonus, with its payroll tax, on the first offering only
-      And $1,000 of office costs shared by every offering
-      And every program's indirect cost rate is 50%
+      And $1,000 of storage charged to the program area
       When a planner calculates the P&L
-      Then each offering pays $500 of the office costs
+      Then each offering pays $500 of the storage
+
+  Rule: Each payroll tax is its own line on the P&L, charged the way it's collected
+
+    Example: A tax on wages is a share of what the coaches are paid
+      Given Social Security of 6.2% of wages
+      And an offering with a practice from 9am to noon, in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $7.44 of Social Security
+
+    Example: L&I is charged for each hour a coach is paid
+      Given L&I of $0.50 for each hour worked
+      And an offering with a practice from 9am to noon, in a block with 2 coaches paid $20 an hour
+      When a planner calculates the P&L
+      Then the offering pays $3.00 of L&I
+
+    Example: A volunteer's hours cost no L&I
+      Given L&I of $0.50 for each hour worked
+      And an offering with a practice from 9am to noon, in a block with 2 coaches paid $0 an hour
+      When a planner calculates the P&L
+      Then the offering pays no L&I
+
+  Rule: A salaried person's hours cost L&I where their salary is charged
+
+    Example: An offering pays L&I on its salaried coach's hours
+      Given L&I of $0.50 for each hour worked
+      And a salaried director paid $40 an hour
+      And an offering with 10 practices of 3 hours, each in a block the director coaches
+      When a planner calculates the P&L
+      Then the offering pays $15.00 of L&I
 
   Rule: The P&L costs only the staff and boats each block is given
 
@@ -833,6 +869,13 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays for itself at 6 sailors
 
+    Example: Its indirect costs grow with the fees its sailors pay
+      Given $1,000 of office costs shared by every offering
+      And an offering for up to 16 sailors at $500 a sailor, with $2,000 of its own costs
+      And every program's indirect cost rate is 20%
+      When a planner calculates the P&L
+      Then the offering pays for itself at 5 sailors
+
     Example: Every coach on the block is paid, however many sailors sign up
       Given Guppies have a coach for every 5 sailors
       And a Guppies offering for up to 10 sailors at $50 a sailor, with $100 of its own costs and a practice from 9am to noon in a block with 2 coaches paid $20 an hour
@@ -872,22 +915,36 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice is on a closed day
 
-  Rule: Each program pays its indirect cost rate on its own direct costs, and the organization keeps the rest
+  Rule: Each program pays its indirect cost rate on its program fees, and the organization keeps the rest
 
-    Example: Two Program Plans pay their rates, and the organization keeps what they don't recover
+    Example: Two Program Plans pay their rates, and the organization keeps what's unallocated
       Given $1,000 of office costs shared by every offering
-      And a draft Financial Plan with two Program Plans whose offerings have the same direct costs
+      And a draft Financial Plan with two Program Plans whose offerings each take in $1,000
       And every program's indirect cost rate is 30%
       When a planner calculates the P&L
       Then each Program Plan's offering pays $300 of the office costs
-      And the organization's totals show $400 of shared costs not recovered
+      And the organization's totals show $400 of unallocated indirect costs
+
+    Example: The card fees families pay don't count toward a program's indirect costs
+      Given $1,000 of office costs shared by every offering
+      And the Operations Plan collects card fees from families at 3% of revenue
+      And an offering of a program that takes in $10,000
+      And every program's indirect cost rate is 10%
+      When a planner calculates the P&L
+      Then the offering pays $1,000 of the office costs
 
     Example: One program's year doesn't change what another pays
       Given $1,000 of office costs shared by every offering
-      And a program area with two offerings with the same direct costs
+      And a program area with two offerings that each take in $1,000
       And every program's indirect cost rate is 30%
-      When the second offering's direct costs double
+      When the second offering takes in twice as much
       Then the first offering still pays $300 of the office costs
+
+    Example: The full rate is the shared costs over every program's fees
+      Given $1,000 of office costs shared by every offering
+      And a program area with two offerings that each take in $2,000
+      When a planner calculates the P&L
+      Then the full rate, which would allocate every shared cost, is 25%
 
     Example: A program with no indirect cost rate pays none of the shared costs
       Given $1,000 of office costs shared by every offering
@@ -941,7 +998,7 @@ Feature: Plans
     Example: An offering's share of the office is named for its pool and its line
       Given a user with the Plan Writer and Plan Admin policies
       And $1,000 of office costs in a pool named "G&A"
-      And a draft Financial Plan with one offering that has direct costs
+      And a draft Financial Plan whose offering takes in $10,000
       And every program's indirect cost rate is 10%
       When they freeze the Financial Plan
       Then the Financial Plan's P&L names the offering's share of the office "G&A share: Office"

@@ -48,6 +48,7 @@ export interface Schema {
   plan_closed_dates: PlanClosedDates[];
   plan_labor_lines: PlanLaborLines[];
   plan_offerings: PlanOfferings[];
+  plan_payroll_taxes: PlanPayrollTaxes[];
   plan_pools: PlanPools[];
   plan_programs: PlanPrograms[];
   plan_rates: PlanRates[];
@@ -77,6 +78,7 @@ export interface Schema {
   schools: Schools[];
   staff_levels: StaffLevels[];
   staff_roles: StaffRoles[];
+  storage_areas: StorageAreas[];
   sync_leases: SyncLeases[];
   sync_runs: SyncRuns[];
   sync_tasks: SyncTasks[];
@@ -154,6 +156,8 @@ export interface Assets {
   disposed_on: string | null;
   /** Up to 280 characters. Bold, italic, code and links work. */
   note: string | null;
+  /** The storage area where it's kept. */
+  location_id: string | StorageAreas | null;
 }
 
 /** Something a sync noticed but didn't fix. A dismissed finding stays dismissed on later runs. */
@@ -440,8 +444,6 @@ export interface FinancialPlans {
   frozen_by: string | null;
   /** Set when the Financial Plan is frozen. */
   frozen_at: string | null;
-  /** The version of the planning engine that calculated its numbers when it was frozen. */
-  platform_version: string | null;
   /** The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date. */
   effective_from: string | null;
   /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived. */
@@ -848,6 +850,22 @@ export interface PlanOfferings {
   note: string | null;
 }
 
+/** Each tax the organization pays on its staff this year, such as Social Security or L&I, charged the way it's collected. */
+export interface PlanPayrollTaxes {
+  id: string;
+  /** The plan this row belongs to. */
+  plan_id: string | Plans;
+  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
+  key: string;
+  /** As it reads on the P&L, such as "Social Security" or "L&I". */
+  name: string;
+  /** For a tax on wages: its share of every wage. 0.062 means 6.2%. Leave it empty for a tax by the hour. */
+  wage_share: string | null;
+  /** For a tax by the hour, such as L&I: the employer's cost for each paid hour, less what staff pay. In cents: 45.235 is $0.45235. Leave it empty for a tax on wages. */
+  hourly_cents: string | null;
+  sort: number | null;
+}
+
 /** Shared costs no single offering owns, such as G&A, divided among the year's offerings by MTDC. */
 export interface PlanPools {
   id: string;
@@ -871,7 +889,7 @@ export interface PlanPrograms {
   staff_level_id: string | StaffLevels | null;
   /** How many sailors one coach at its staff level can safely take. */
   sailors_per_coach: string | null;
-  /** A share of the program's MTDC that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it. */
+  /** A share of the program's fees that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it. */
   indirect_cost_rate: string | null;
   /** The program's rules, for your AI to follow in each of its offerings. Short notes, one a line, each up to 280 characters. Bold, italic, code and links work. */
   notes: string[] | null;
@@ -884,8 +902,6 @@ export interface PlanRates {
   plan_id: string | Plans;
   /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
-  /** Employer payroll costs, as a share of wages. 0.1 means 10%. */
-  payroll_tax_rate: string | null;
   /** In cents: 12500 is $125.00. */
   lodging_per_night_cents: number | null;
   /** In cents: 12500 is $125.00. */
@@ -1286,6 +1302,19 @@ export interface StaffRoles {
   id: string;
   /** Such as Instructor, Coach, or Office. */
   name: string;
+  sort: number | null;
+}
+
+/** Where CSC keeps its assets, such as Docks, Dry Storage or Yard Arm. Drag the rows to change their order. */
+export interface StorageAreas {
+  id: string;
+  name: string;
+  /** Its usable area. */
+  area_sq_ft: string | null;
+  /** The assets kept here. */
+  assets: (string | Assets)[];
+  /** Up to 280 characters. Bold, italic, code and links work. */
+  note: string | null;
   sort: number | null;
 }
 

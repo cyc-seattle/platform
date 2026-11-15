@@ -134,10 +134,10 @@ Step("the program area's P&L for each term is:", (_, table: { term: string; "tak
   );
 });
 Step(
-  "a program area with an offering in {string} and one in {string}, with the same direct costs",
-  async (_, first: string, second: string) => {
-    await termOffering(first, 0, 100_000);
-    await termOffering(second, 0, 100_000);
+  "a program area with an offering in {string} and one in {string}, each taking in {money}",
+  async (_, first: string, second: string, money: string) => {
+    await termOffering(first, cents(money));
+    await termOffering(second, cents(money));
   },
 );
 Step(
@@ -156,6 +156,10 @@ Step("the first offering pays {money} of the storage", async (_, money: string) 
 });
 Step("the second offering pays {money} of the storage", async (_, money: string) => {
   expect(p.total(onOffering(second(), await p.account("storage")))).toBe(cents(money));
+});
+Step("each offering pays {money} of the storage", async (_, money: string) => {
+  const storage = await p.account("storage");
+  for (const key of [first(), second()]) expect(p.total(onOffering(key, storage))).toBe(cents(money));
 });
 Step("a program area with two offerings with the same direct costs", () => twoOfferings(10_000, [100_000, 100_000]));
 Step(
@@ -241,9 +245,11 @@ Step("{money} of office costs shared by every offering", async (_, money: string
   );
 });
 Step("every program's indirect cost rate is {percent}", (_, percent: string) => p.indirectCostRate(share(percent)));
-Step("the second offering's direct costs double", async () => {
-  const plan = p.areaPlan(p.areas[0]!);
-  await p.line(plan, "costs", { cost_center_type: "offering", cost_center_key: second() }, 100_000);
+Step("the second offering takes in twice as much", async () => {
+  const offering = p.offerings[1]!;
+  await (
+    await admin()
+  ).ok("PATCH", itemPath("plan_offerings", offering["id"]), { price_cents: Number(offering["price_cents"]) * 2 });
   await p.calculate();
 });
 Step("the first offering still pays {money} of the office costs", async (_, money: string) => {
@@ -256,12 +262,14 @@ Step("no offering pays the office costs", async () => {
 Step("the planner is warned that a program has no indirect cost rate", () => {
   expect(p.warned("no_indirect_cost_rate")).toBe(true);
 });
-Step("the organization's totals show {money} of shared costs not recovered", (_, money: string) => {
-  expect(p.out.organization.indirect.unrecovered_cents).toBe(cents(money));
+Step("the offering pays {money} of the office costs", async (_, money: string) => {
+  expect(p.total(onOffering(first(), await p.account("office")))).toBe(cents(money));
 });
-Step("each offering pays {money} of the office costs", async (_, money: string) => {
-  const office = await p.account("office");
-  for (const key of [first(), second()]) expect(p.total(onOffering(key, office))).toBe(cents(money));
+Step("the full rate, which would allocate every shared cost, is {percent}", (_, percent: string) => {
+  expect(p.out.organization.indirect.full_recovery_rate).toBe(share(percent));
+});
+Step("the organization's totals show {money} of unallocated indirect costs", (_, money: string) => {
+  expect(p.out.organization.indirect.unrecovered_cents).toBe(cents(money));
 });
 
 Step("the Operations Plan buys a {money} coach boat", async (_, money: string) => {
@@ -412,9 +420,26 @@ Step(
     await p.indirectCostRate(share(percent));
   },
 );
-Step("payroll tax at {percent} of wages", (_, percent: string) =>
-  p.operationsRow("plan_rates", { payroll_tax_rate: share(percent) }),
+parameter("tax", ["Social Security", "Medicare", "WA unemployment", "L&I"]);
+Step("a payroll tax of {percent} of wages", (_, percent: string) =>
+  p.operationsRow("plan_payroll_taxes", { name: "Payroll tax", wage_share: share(percent) }),
 );
+Step("{tax} of {percent} of wages", (_, tax: string, percent: string) =>
+  p.operationsRow("plan_payroll_taxes", { name: tax, wage_share: share(percent) }),
+);
+Step("{tax} of {money} for each hour worked", (_, tax: string, money: string) =>
+  p.operationsRow("plan_payroll_taxes", { name: tax, hourly_cents: cents(money) }),
+);
+const taxOf = async (tax: string) => {
+  const account = await p.account("payrollTax");
+  return p.total((l) => onOffering(first(), account)(l) && l.line_name === tax);
+};
+Step("the offering pays {money} of {tax}", async (_, money: string, tax: string) => {
+  expect(await taxOf(tax)).toBe(cents(money));
+});
+Step("the offering pays no {tax}", async (_, tax: string) => {
+  expect(await taxOf(tax)).toBe(0);
+});
 Step("a director whose bonus is {money}", async (_, money: string) => {
   await directorWithBonus(0.5);
   await bonusProgram(cents(money) * 2, 0);
@@ -423,7 +448,7 @@ Step("the organization pays {money} of payroll tax on the bonus", (_, money: str
   expect(bonusTotal("bonus_payroll_tax:")).toBe(cents(money));
 });
 Step("a director's bonus, with its payroll tax, on the first offering only", async () => {
-  await p.operationsRow("plan_rates", { payroll_tax_rate: 0.1 });
+  await p.operationsRow("plan_payroll_taxes", { name: "Payroll tax", wage_share: 0.1 });
   await p.bonus(await p.operationsPlan(), 0.5, [p.offerings[0]!["product_id"] as string]);
 });
 
@@ -1406,7 +1431,7 @@ Step("a frozen Financial Plan", async () => {
   financialPlan = await p.frozenSet();
 });
 Step("they can't change the Financial Plan or any of its plans", async () => {
-  expectRefused(await theyWrite("PATCH", itemPath("financial_plans", financialPlan), { platform_version: "0.0.0" }));
+  expectRefused(await theyWrite("PATCH", itemPath("financial_plans", financialPlan), { fiscal_year: 2000 }));
   expectRefused(await theyWrite("PATCH", itemPath("plans", offering!["plan_id"]), { notes: ["Changed."] }));
   expectRefused(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: 1 }));
 });
@@ -1434,9 +1459,10 @@ Step("its P&L stays the same", async () => {
 });
 
 // A Financial Plan's P&L.
-Step("a draft Financial Plan with two Program Plans whose offerings have the same direct costs", async () => {
-  await programWithOffering(0);
-  await programWithOffering(0);
+Step("a draft Financial Plan with two Program Plans whose offerings each take in {money}", async (_, money: string) => {
+  // Each offering has 10 sailors.
+  await programWithOffering(cents(money) / 10);
+  await programWithOffering(cents(money) / 10);
   financialPlan = await p.draftSet();
 });
 Step("each Program Plan's offering pays {money} of the office costs", async (_, money: string) => {
@@ -1509,14 +1535,14 @@ Step(
 Step(
   "a frozen Financial Plan named {string} whose offering pays {money} of office costs",
   async (_, name: string, money: string) => {
-    ({ offering } = await programWithOffering(0));
+    ({ offering } = await programWithOffering(10_000));
     await p.line(
       await p.operationsPlan(),
       "office",
       { cost_center_type: "pool", cost_center_key: await p.pool() },
       cents(money),
     );
-    // The offering's direct costs are $1,000.
+    // The offering takes in $1,000, 10 sailors at $100.
     await p.indirectCostRate(cents(money) / 100_000);
     named[name] = await p.frozenSet(name);
   },
@@ -1541,10 +1567,6 @@ Step(
     expect(await officeIn(named[name]!, offering!["key"])).toBe(cents(money));
   },
 );
-Step("a draft Financial Plan with one offering that has direct costs", async () => {
-  ({ offering } = await programWithOffering(0));
-  financialPlan = await p.draftSet();
-});
 Step("the Financial Plan's P&L names the offering's share of the office {string}", async (_, lineName: string) => {
   const { lines } = await financialPlanResults(financialPlan!);
   const share = lines.find(

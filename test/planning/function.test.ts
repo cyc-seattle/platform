@@ -10,7 +10,7 @@ import {
   pool,
   product,
   payrollTax,
-  recoverAll,
+  allocateAll,
   staffLevel,
 } from "./fixtures.ts";
 
@@ -52,7 +52,7 @@ describe("function", () => {
       budgetLine({ account_id: A.travel, cost_center_type: "offering", cost_center_key: o.key, amount_cents: 1000 }),
       budgetLine({ cost_center_type: "pool", cost_center_key: ga.key, amount_cents: 50_000 }),
     ];
-    const shares = computePlan(recoverAll(data)).lines.filter((l) => l.line_key.startsWith("pool:"));
+    const shares = computePlan(allocateAll(data)).lines.filter((l) => l.line_key.startsWith("pool:"));
     expect(shares.length).toBeGreaterThan(0);
     for (const s of shares) {
       expect(s.cost_center_type).toBe("offering");

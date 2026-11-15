@@ -8,6 +8,7 @@ describe("the cents-as-dollars display", () => {
     [5, "$0.05"],
     [-1999, "-$19.99"],
     [123456789, "$1,234,567.89"],
+    ["45.2350", "$0.45235"],
   ])("shows %j as %s", (value, shown) => {
     expect(formatCents(value)).toBe(shown);
   });

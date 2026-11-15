@@ -48,6 +48,7 @@ erDiagram
     assets ||--o| boats : "boat subtype"
     boat_classes ||--o{ boats : "class of"
     accounts |o--o{ boat_classes : "upkeep booked to"
+    storage_areas |o--o{ assets : "kept in"
     organizations ||--o{ organization_cost_accounts : "calculated costs go to"
     accounts ||--o{ organization_cost_accounts : "booked to"
 
@@ -127,6 +128,14 @@ erDiagram
         date acquired_on "empty counts from the start"
         date disposed_on "empty while CSC has it"
         string note "at most 280 characters"
+        uuid location_id FK "the storage area it's kept in"
+    }
+    storage_areas {
+        uuid id PK
+        string name "unique, such as Docks"
+        decimal area_sq_ft "usable area"
+        string note "at most 280 characters"
+        int sort
     }
     boats {
         uuid id PK
@@ -144,7 +153,7 @@ erDiagram
 
 `programs` is the subtype of a product of kind `program`, per `AGENTS.md`'s subtype pattern. A product with a program can't be deleted.
 
-A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels and boat rates name no account; a boat class can name the account its upkeep goes to. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, a motor, or other, such as a trailer or the van. `value_cents` is its book value, as in QuickBooks account 1500. A sailboat or powerboat also has a `boats` row, with its class, such as Opti or RIB, per `AGENTS.md`'s subtype pattern; its class is its model, so the Data Studio hides `model` for one. The engine counts the boats of each class that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Motors and other assets are listed, not counted. A boat class with boats can't be deleted. The powerboat classes, RIB and Support, take 0 sailors, and their `account_id` books their upkeep to Coach boats; a class with none books it to boat maintenance. Catalog Writers change the list, and Catalog Readers and planners see it.
+A program area has one revenue account, and a product in an area books its sales there. A product's own `revenue_account_id` is for products in no area, and the Data Studio hides it once an area is set. The Data Studio asks for an area on a program and hides it on other kinds, but the database doesn't require one, since prod's programs had none when areas arrived. The engine warns about a program with no area, and the Google sync's audit about a product whose own account differs from its area's. A program area with products can't be deleted. Who holds a role in an area, such as Director, is in `program_area_role_assignments`, in the CRM schema beside `program_role_assignments`, with the same access: the CRM policies. Anyone who signs in can see each area's name. `organizations` is in the [directory](#directory); our own, of kind `own`, hold their fiscal year, and only they can have a plan or a Financial Plan. `organization_cost_accounts` lists which account each calculated cost (coach wages, payroll tax, and so on) is recorded in, one row per cost type. Directus can't make a pair of columns unique, so nothing stops a second row for a cost type, and the engine then uses whichever it reads last. Staff levels and boat rates name no account; a boat class can name the account its upkeep goes to. QuickBooks Classes split those accounts by program, which the engine's per-product P&L shows. `assets` is the asset list: each boat and piece of equipment CSC owns, by `kind`: a sailboat, a powerboat such as a coach boat, a motor, or other, such as a trailer or the van. `value_cents` is its book value, as in QuickBooks account 1500. A sailboat or powerboat also has a `boats` row, with its class, such as Opti or RIB, per `AGENTS.md`'s subtype pattern; its class is its model, so the Data Studio hides `model` for one. The engine counts the boats of each class that CSC has on each day: from `acquired_on`, or from the start when it's empty, until `disposed_on`. A boat CSC plans to buy is a row with the date it's expected. Motors and other assets are listed, not counted. A boat class with boats can't be deleted. Each asset's `location_id` names the storage area it's kept in, such as Docks, Dry Storage or Yard Arm, which has its usable `area_sq_ft`; Sail Team's Inventory compares what each area holds with it. A storage area with assets can't be deleted. The powerboat classes, RIB and Support, take 0 sailors, and their `account_id` books their upkeep to Coach boats; a class with none books it to boat maintenance. Catalog Writers change the list, and Catalog Readers and planners see it.
 
 ### Directory
 
@@ -192,7 +201,6 @@ erDiagram
         uuid parent_id FK "the Financial Plan it started from"
         uuid frozen_by
         timestamp frozen_at
-        string platform_version "the @cyc-seattle/platform that calculated it"
         timestamp archived_at "hides it from Planning's list"
     }
     plans {
@@ -212,7 +220,9 @@ Every `note` a person writes, on a Financial Plan, an offering, a line, a charge
 
 A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization and year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
 
-A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. Then it works out the results again ([A Financial Plan's results](#a-financial-plans-results)). A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan of the same Financial Plan.
+A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook works out the results again ([A Financial Plan's results](#a-financial-plans-results)), and they record the engine that did. A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan of the same Financial Plan.
+
+Once, at the maintainer's request, a migration (`cyc0022`) broke both rules for prod's 2026 Financial Plans: it set which plan each started from, and made "2026 with conflicts resolved" a draft again, clearing its freeze stamps and its results for the hook to work out again. It was a one-off, not a feature: the rules stand, and another such fix needs a reviewed migration of its own.
 
 A frozen Financial Plan doesn't copy the catalog. Recalculating an old one uses the catalog as it is today: today's products, accounts, boat classes, and the organization's fiscal year.
 
@@ -230,7 +240,7 @@ A frozen Financial Plan, every plan in it, and every row in those, never change,
 Together they refuse:
 
 - changing a frozen Financial Plan, apart from its name, its note, its date, and whether it's archived, turning it back into a draft, or deleting it
-- freezing a Financial Plan without an Operations Plan, or without a `platform_version`
+- freezing a Financial Plan without an Operations Plan
 - a new Financial Plan that isn't a draft, or one that starts from another organization's or year's
 - changing a Financial Plan's organization, year, or parent
 - adding, changing, or deleting a frozen Financial Plan's plans, or a row in one of them
@@ -360,7 +370,7 @@ An offering can be in one of its Financial Plan's terms, by `term_key`, or in no
 
 Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 
-Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, its indirect cost rate, and its `notes`. The indirect cost rate is the share of the program's MTDC it pays toward the shared costs, fixed for the year ([docs/planning-engine.md](planning-engine.md#indirect-costs)). A director's bonus counts it, so only a Plan Admin sets it. Like a plan's own `notes`, a program's are the planner's short notes for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan, they're copied with it, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
+Each program has one `plan_programs` row in its area's Program Plan: the staff level that coaches it, how many sailors one coach at that level can take, its indirect cost rate, and its `notes`. The indirect cost rate is the share of the program's fees it pays toward the shared costs, fixed for the year ([docs/planning-engine.md](planning-engine.md#indirect-costs)). A director's bonus counts it, so only a Plan Admin sets it. Like a plan's own `notes`, a program's are the planner's short notes for their AI, and the engine never reads them ([cyc-seattle/platform#149](https://github.com/cyc-seattle/platform/issues/149)). Being in a plan, they're copied with it, so two drafts can try different settings. Directus can't make a pair of columns unique, so nothing stops a second row for a program, and the engine then uses whichever it reads last.
 
 A block, in `plan_activity_blocks`, is one or more activities on one date that share their staff and boats, such as Guppies and Minnows on the morning of July 13. Each activity is in at most one block, through `block_id`. A block's rows say what it's given: `plan_block_staff`, a number at a staff level or one salaried position, paid out of the salary or by the hour; and `plan_block_boats`, its boats of a class, sailboats or powerboats such as coach boats: the organization's own, the ones it charters, and the ones sailors bring. The planner, or their AI, writes them. Nothing derives them, and nothing records which rule made them. Every foreign key restricts delete, so a block's rows, and its activities' `block_id`, go before the block does.
 
@@ -375,6 +385,7 @@ A budget line counts in its `fiscal_year`. Capital belongs in the Operations Pla
 ```mermaid
 erDiagram
     plans ||--o| plan_rates : contains
+    plans ||--o{ plan_payroll_taxes : contains
     plans ||--o{ plan_staff_levels : contains
     staff_levels ||--o{ plan_staff_levels : "rate for"
     plans ||--o{ plan_salaried_positions : contains
@@ -395,9 +406,13 @@ erDiagram
     products ||--o{ plan_bonus_owner_products : "owned by"
 
     plan_rates {
-        decimal payroll_tax_rate "share of wages"
         int lodging_per_night_cents
         int mileage_rate_cents
+    }
+    plan_payroll_taxes {
+        string name
+        decimal wage_share "share of wages, or"
+        decimal hourly_cents "per paid hour"
     }
     plan_staff_levels {
         uuid staff_level_id FK
@@ -465,7 +480,7 @@ erDiagram
     }
 ```
 
-`plan_rates` holds the year's rates, in at most one row per version. Each staff level, salaried position and boat class also has one rate for the year, so each has a single row. The staff levels themselves are in the [catalog](hr-schema.md): a `plan_staff_levels` row is one level's hourly rate, $0 for a volunteer, and a Program Plan's program, block staff, or labor line picks its level from the catalog. The engine prices it at the rate in the same Financial Plan's Operations Plan, and warns when there's none. A boat class's rates are its fuel and upkeep for each hour one of the organization's boats is on the water, and what one costs to charter for a day.
+`plan_rates` holds the year's rates, in at most one row per version. `plan_payroll_taxes` lists each payroll tax, its own line on the P&L: a share of wages, such as Social Security, or an amount for each paid hour, such as L&I. A row sets one of the two. Plan Admins edit them in the Data Studio. Each staff level, salaried position and boat class also has one rate for the year, so each has a single row. The staff levels themselves are in the [catalog](hr-schema.md): a `plan_staff_levels` row is one level's hourly rate, $0 for a volunteer, and a Program Plan's program, block staff, or labor line picks its level from the catalog. The engine prices it at the rate in the same Financial Plan's Operations Plan, and warns when there's none. A boat class's rates are its fuel and upkeep for each hour one of the organization's boats is on the water, and what one costs to charter for a day.
 
 The plans don't say how many boats the organization has: the [asset list](#core-catalog) does, the same for every plan. The engine warns when the blocks give out more of the organization's boats of a class at once than it has that day; chartered boats don't count.
 
@@ -475,7 +490,7 @@ The Operations Plan also holds the offerings of products in no area: merchandise
 
 A salaried booking names a product, or a program area whose offerings share it by MTDC.
 
-A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. The programs pay toward the pools at their indirect cost rates, and what the rates don't recover stays with the organization ([Indirect costs](planning-engine.md#indirect-costs)).
+A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. The programs pay toward the pools at their indirect cost rates, and what the rates leave unallocated stays with the organization ([Indirect costs](planning-engine.md#indirect-costs)).
 
 A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before its indirect costs (`basis`), if that net is above zero. Every bonus is in the Operations Plan, which the database enforces. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay.
 
@@ -507,7 +522,7 @@ erDiagram
     plan_results {
         uuid financial_plan_id FK "unique"
         timestamp calculated_at
-        string platform_version "the engine that worked them out"
+        string platform_version "the engine that worked them out, such as 3.0.0+engine.4bf7ee983f42"
         int operating_revenue_cents
         int operating_expense_cents
         int operating_net_cents
@@ -603,9 +618,9 @@ The `frozen-plans` hook runs the engine on the plans a Financial Plan holds and 
 
 A draft's results are worked out again after each change to what they come from, wherever it was made: the app, the Data Studio, or MCP. That's one of its plans, a row in one, or the catalog and organization the engine reads, which changes every draft's. Directus runs the hook's actions after it commits a write. The hook waits until a draft's writes have stopped for a second, or 10 seconds after the first, so a burst of them, such as an agent's over MCP, costs one run. It runs one draft at a time, on Directus's main thread. It replaces the draft's results in one transaction, under the locks a freeze takes, so readers see the old results or the new, never a mix. If that fails, it clears them, so no stale numbers look current, and logs why. When Directus starts, it works out the results of every draft that has none. A write that skips Directus's actions, such as SQL, leaves a draft's results as they were until its next change; `calculated_at` says when they were worked out.
 
-A new engine doesn't work out a draft's results again (cyc-seattle/platform#284). Each `plan_results` row records, in `platform_version`, the engine that worked it out, and `GET /frozen-plans/engine` answers any signed-in user with the engine Directus runs now. A draft whose results came from another engine, or from before results recorded one, shows that in Sail Team. Anyone who may edit the Financial Plan can have them worked out again with `POST /frozen-plans/drafts/<Financial Plan id>/results`, which answers once they're written. It refuses a frozen one.
+A new engine doesn't work out a draft's results again (cyc-seattle/platform#284). Each `plan_results` row records, in `platform_version`, the engine that worked it out, draft or frozen: the `@cyc-seattle/platform` release Directus runs, from its latest `v*` tag, and a hash of the engine's code, such as `3.0.0+engine.4bf7ee983f42`. The release job tags a merge before it deploys, so the release is the one that ships the engine. The hash marks a changed engine whatever the release. `GET /frozen-plans/engine` answers any signed-in user with the engine Directus runs now. A draft whose results came from another engine's hash, or from before results recorded one, shows that in Sail Team, and every plan shows the release that worked its results out. Anyone who may edit the Financial Plan can have them worked out again with `POST /frozen-plans/drafts/<Financial Plan id>/results`, which answers once they're written. It refuses a frozen one.
 
-Freezing a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the freeze answers, with the engine whose version it records. Then they never change.
+Freezing a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the freeze answers, recording its engine on them. Then they never change.
 
 `plan_results` holds the organization's totals. Each line and P&L row names, in `plan_id`, the plan that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, powerboats and indirect costs, is one filter. A warning names the plan it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). A program area's P&L by term goes with the area's Program Plan, and a bonus with the plan that pays it. Each P&L by term and each bonus keeps its term's name and first day, as they were when it was worked out. Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays frozen with no results, and the hook logs why. An admin can fill them in with `POST /frozen-plans/results/<Financial Plan id>`. If copying a parent fails, `POST /frozen-plans/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
 

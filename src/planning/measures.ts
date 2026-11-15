@@ -1,5 +1,5 @@
 import type { Context, Entry } from "./context.ts";
-import type { Id } from "./types.ts";
+import type { Id, PlanOffering } from "./types.ts";
 
 function counts(entry: Entry): boolean {
   return entry.stage === "direct";
@@ -18,6 +18,11 @@ function sumEntries(ctx: Context, offeringKey: Id, weigh: (e: Entry) => number):
 /** Modified total direct costs: an offering's direct expenses, less those excluded from MTDC. */
 export function mtdc(ctx: Context, offeringKey: Id): number {
   return sumEntries(ctx, offeringKey, (e) => (ctx.accountType(e.account_id) === "expense" ? e.mtdc_share : 0));
+}
+
+/** An offering's program fees, price × enrollment, without the card fees families pay on top of them. */
+export function programFees(ctx: Context, offering: PlanOffering): number {
+  return Math.max(0, (offering.price_cents ?? 0) * (ctx.enrollment.get(offering.id) ?? 0));
 }
 
 export function revenue(ctx: Context, offeringKey: Id): number {
