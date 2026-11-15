@@ -4,6 +4,9 @@ Pulumi stacks for CYC Community Sailing Center's shared Google Cloud platform: t
 app owns. The apps that run on it live in their own repos, such as
 [isthmia](https://github.com/cyc-seattle/isthmia).
 
+The [docs site](https://cyc-seattle.github.io/platform/) publishes [`docs/`](docs) from `main`: how the
+platform is built, its data model, and the planning engine.
+
 ## Stacks
 
 | Stack                           | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Applied by                                                                                                               |
@@ -164,8 +167,16 @@ login only when it isn't already set, so Actions' credentials win.
 mise run ci
 ```
 
-Runs the type check, Prettier, ESLint, and the unit tests. Tests mock Pulumi with
+Runs the type check, Prettier, ESLint, the unit tests, and the docs site's build. Tests mock Pulumi with
 `pulumi.runtime.setMocks` and never call a live API.
+
+```sh
+mise run docs-dev
+```
+
+Serves the docs site, from `docs-site/`, as you edit `docs/`. A page in `docs/` takes its title from
+its first heading, and a link to another file in the repo goes to GitHub. The build fails on a broken
+link. `.github/workflows/docs.yml` publishes it to GitHub Pages on every push to `main`.
 
 ```sh
 mise run integration

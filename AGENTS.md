@@ -23,14 +23,18 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   schema change, run `mise run schema-types`, and CI fails until you do. The `backend` stack deploys Directus with them, in dev and
   prod. A schema change is tested on dev in the merge queue, or earlier with a manual deploy.
 - `src/planning/` is the planning engine, published as `@cyc-seattle/platform/planning` so an app can
-  load it without Pulumi. `docs/planning-engine.md` gives its rules.
+  load it without Pulumi. [`docs/planning-engine.md`](https://cyc-seattle.github.io/platform/planning-engine/) gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
   `src/index.ts` doesn't export them.
 - `src/syncs/` holds the two deployed syncs, clubspot-sync and gsuite-sync, and the `runtime/` they
   share, plus calendar-sync, which someone runs by hand.
   `src/model/` holds the CRM and Clubspot row types they use. The published package never reaches
   either (`test/published.test.ts`), so the syncs' dependencies are `devDependencies`. The root
-  `Dockerfile` bundles each sync with esbuild into a one-file image. `docs/syncs.md` describes them.
+  `Dockerfile` bundles each sync with esbuild into a one-file image. [`docs/syncs.md`](https://cyc-seattle.github.io/platform/syncs/) describes them.
+- `docs/` is published as the docs site, <https://cyc-seattle.github.io/platform/>, by `docs-site/`
+  (Astro Starlight) and `.github/workflows/docs.yml`, on every push to `main`. Write each page for
+  GitHub too: no title frontmatter, a first heading for the title, and relative links. A new page
+  goes in a section of `docs-site/astro.config.ts`'s sidebar, and in `docs/README.md`.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
   against dev with `mise run integration`, never in `ci`. A feature is living documentation of
   business rules, so write and review one with the `write-feature` skill from
@@ -112,7 +116,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Directus's license allows 5 activations, and each one is bound to the database and `PUBLIC_URL`
   (cyc-seattle/isthmia#172). Never drop, recreate, or rename Directus's database, in dev or prod,
   and never change its `PUBLIC_URL`. Ask the maintainer before any change that could activate a
-  new Directus. `docs/backend.md` has the rest.
+  new Directus. [`docs/backend.md`](https://cyc-seattle.github.io/platform/backend/) has the rest.
 
 ## Schemas
 
@@ -126,7 +130,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   goes in `stacks/backend/migrations/` as a Directus migration, which Directus runs once at start,
   before the apply. It must do nothing when run again or on a new database, and be tested in PGlite.
 - A change to the planning design or its collections updates the ER diagrams in
-  `docs/planning-schema.md` in the same PR.
+  [`docs/planning-schema.md`](https://cyc-seattle.github.io/platform/planning-schema/) in the same PR.
 - A subtype, such as `programs` of `products`, is its own collection (cyc-seattle/isthmia#213 §2):
   - The base holds the shared fields and a `kind`. A kind with no fields of its own gets no
     collection.
@@ -137,7 +141,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   - Directus can't compare fields across collections, so nothing stops a subtype row's base having
     the wrong `kind`. `test/subtypes.test.ts` lists every subtype and checks its schema, so add a new
     one there.
-- A change to how the engine calculates a number updates `docs/planning-engine.md` in the same PR. A
+- A change to how the engine calculates a number updates [`docs/planning-engine.md`](https://cyc-seattle.github.io/platform/planning-engine/) in the same PR. A
   frozen Financial Plan records the `@cyc-seattle/platform` version that calculated it, so such a change
   must be a `feat:` or `fix:`, which releases a new version.
 
