@@ -22,7 +22,6 @@ const RESULTS = "plan_results";
 const SETS = "financial_plans";
 
 const REFUSED = "A frozen plan can't be changed. Start a new Financial Plan from the one it's in.";
-const NEEDS_PLATFORM = "Freezing a Financial Plan needs the @cyc-seattle/platform version that calculated it.";
 const NOT_EDITOR = "Only someone who can edit this Financial Plan can do this.";
 const NOT_DRAFT = "Only a draft's numbers can be worked out again.";
 const PLAN_STAYS = "A plan can't move to another Financial Plan.";
@@ -58,7 +57,6 @@ const REASONS = {
   [PLANS_FIXED]: 403,
   [ACTIVE_STAYS]: 403,
   [RESULTS_BY_HOOK]: 403,
-  [NEEDS_PLATFORM]: 400,
   [PLAN_STAYS]: 400,
   [ROW_STAYS]: 400,
   [SAME_PLAN]: 400,
@@ -138,7 +136,7 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
   }
 
   if (collection === SETS) {
-    const stamps = ["frozen_by", "frozen_at", "platform_version"];
+    const stamps = ["frozen_by", "frozen_at"];
     if (event === "create") {
       if ((payload.status ?? "draft") !== "draft") throw refuse(NEW_SET_DRAFT, 400);
       return unstamped(payload, stamps);
@@ -159,8 +157,7 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     }
     const rest = unstamped(payload, stamps);
     if (rest.status !== "frozen") return rest;
-    // The hook works out a frozen Financial Plan's results, so it records its own engine's version.
-    return { ...rest, platform_version: config.platformVersion, frozen_by: user ?? null, frozen_at: now };
+    return { ...rest, frozen_by: user ?? null, frozen_at: now };
   }
 
   if (config.results.includes(collection)) {
@@ -200,7 +197,6 @@ function columnsNeeded(config) {
       "fiscal_year",
       "status",
       "parent_id",
-      "platform_version",
       "frozen_by",
       "frozen_at",
       "archived_at",
@@ -407,14 +403,11 @@ BEGIN
     ${raise(SET_FIXED)};
   END IF;
   IF NEW.status = 'frozen' THEN
-    IF coalesce(btrim(NEW.platform_version), '') = '' THEN
-      ${raise(NEEDS_PLATFORM)};
-    END IF;
     PERFORM pg_advisory_xact_lock(hashtextextended('cyc_set|' || NEW.id, 0));
     IF NOT EXISTS (SELECT 1 FROM ${PLANS} p WHERE p.financial_plan_id = NEW.id AND p.kind = 'operations') THEN
       ${raise(NEEDS_OPERATIONS)};
     END IF;
-    -- A draft's results are cleared, for the hook to work out again with the engine it records.
+    -- A draft's results are cleared, for the hook to work out again and stamp with its engine.
     PERFORM set_config('cyc.writing_results', 'on', true);
     ${config.results.map((table) => `DELETE FROM ${table} WHERE financial_plan_id = NEW.id;`).join("\n    ")}
     PERFORM set_config('cyc.writing_results', 'off', true);

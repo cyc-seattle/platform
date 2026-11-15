@@ -443,8 +443,6 @@ export interface FinancialPlans {
   frozen_by: string | null;
   /** Set when the Financial Plan is frozen. */
   frozen_at: string | null;
-  /** The version of the planning engine that calculated its numbers when it was frozen. */
-  platform_version: string | null;
   /** The day the Financial Plan is in force from. Leave it empty for one that isn't active. On any day, the plan in force is the one for the year with the latest date on or before that day. A draft can be active. No two Financial Plans for a year can share a date. */
   effective_from: string | null;
   /** Set when the Financial Plan is archived, which hides it from Planning's list. Clear it to bring the plan back. The plan in force can't be archived. */

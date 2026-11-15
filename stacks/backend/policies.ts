@@ -368,7 +368,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         {
           collection: SETS,
           action: "update",
-          fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at", "platform_version"],
+          fields: ["status", "effective_from", "archived_at", "frozen_by", "frozen_at"],
         },
         ...(["create", "update", "delete"] as const).map((action) => ({ collection: PLANS, action })),
         // A Program Plan's admin-only fields too. Directus keeps one rule per collection and action, so
@@ -491,7 +491,7 @@ export interface FrozenPlansConfig {
   rows: string[];
   /** The collections that hold a Financial Plan's results, which only the hook writes. */
   results: string[];
-  /** The engine version the hook calculates results with, which it records on each frozen Financial Plan. */
+  /** The engine version the hook calculates results with, which it records with each Financial Plan's results. */
   platformVersion: string;
   /** Each table's decimal fields, which the database returns as strings and the engine needs as numbers. */
   decimals: Record<string, string[]>;

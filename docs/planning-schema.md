@@ -201,7 +201,6 @@ erDiagram
         uuid parent_id FK "the Financial Plan it started from"
         uuid frozen_by
         timestamp frozen_at
-        string platform_version "the @cyc-seattle/platform that calculated it"
         timestamp archived_at "hides it from Planning's list"
     }
     plans {
@@ -221,7 +220,7 @@ Every `note` a person writes, on a Financial Plan, an offering, a line, a charge
 
 A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization and year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
 
-A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook records the `platform_version` of the engine (`@cyc-seattle/platform`) that calculates the results, whatever the request sends: the package's version and a hash of the engine's code. Then it works out the results again ([A Financial Plan's results](#a-financial-plans-results)). A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan of the same Financial Plan.
+A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook works out the results again ([A Financial Plan's results](#a-financial-plans-results)), and they record the engine that did. A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan of the same Financial Plan.
 
 Once, at the maintainer's request, a migration (`cyc0022`) broke both rules for prod's 2026 Financial Plans: it set which plan each started from, and made "2026 with conflicts resolved" a draft again, clearing its freeze stamps and its results for the hook to work out again. It was a one-off, not a feature: the rules stand, and another such fix needs a reviewed migration of its own.
 
@@ -241,7 +240,7 @@ A frozen Financial Plan, every plan in it, and every row in those, never change,
 Together they refuse:
 
 - changing a frozen Financial Plan, apart from its name, its note, its date, and whether it's archived, turning it back into a draft, or deleting it
-- freezing a Financial Plan without an Operations Plan, or without a `platform_version`
+- freezing a Financial Plan without an Operations Plan
 - a new Financial Plan that isn't a draft, or one that starts from another organization's or year's
 - changing a Financial Plan's organization, year, or parent
 - adding, changing, or deleting a frozen Financial Plan's plans, or a row in one of them
@@ -518,7 +517,7 @@ erDiagram
     plan_results {
         uuid financial_plan_id FK "unique"
         timestamp calculated_at
-        string platform_version "the engine that worked them out"
+        string platform_version "the engine that worked them out, such as 3.0.0+engine.4bf7ee983f42"
         int operating_revenue_cents
         int operating_expense_cents
         int operating_net_cents
@@ -614,9 +613,9 @@ The `frozen-plans` hook runs the engine on the plans a Financial Plan holds and 
 
 A draft's results are worked out again after each change to what they come from, wherever it was made: the app, the Data Studio, or MCP. That's one of its plans, a row in one, or the catalog and organization the engine reads, which changes every draft's. Directus runs the hook's actions after it commits a write. The hook waits until a draft's writes have stopped for a second, or 10 seconds after the first, so a burst of them, such as an agent's over MCP, costs one run. It runs one draft at a time, on Directus's main thread. It replaces the draft's results in one transaction, under the locks a freeze takes, so readers see the old results or the new, never a mix. If that fails, it clears them, so no stale numbers look current, and logs why. When Directus starts, it works out the results of every draft that has none. A write that skips Directus's actions, such as SQL, leaves a draft's results as they were until its next change; `calculated_at` says when they were worked out.
 
-A new engine doesn't work out a draft's results again (cyc-seattle/platform#284). Each `plan_results` row records, in `platform_version`, the engine that worked it out, and `GET /frozen-plans/engine` answers any signed-in user with the engine Directus runs now. A draft whose results came from another engine, or from before results recorded one, shows that in Sail Team. Anyone who may edit the Financial Plan can have them worked out again with `POST /frozen-plans/drafts/<Financial Plan id>/results`, which answers once they're written. It refuses a frozen one.
+A new engine doesn't work out a draft's results again (cyc-seattle/platform#284). Each `plan_results` row records, in `platform_version`, the engine that worked it out, draft or frozen: the `@cyc-seattle/platform` release Directus runs, from its latest `v*` tag, and a hash of the engine's code, such as `3.0.0+engine.4bf7ee983f42`. The release job tags a merge before it deploys, so the release is the one that ships the engine. The hash marks a changed engine whatever the release. `GET /frozen-plans/engine` answers any signed-in user with the engine Directus runs now. A draft whose results came from another engine's hash, or from before results recorded one, shows that in Sail Team, and every plan shows the release that worked its results out. Anyone who may edit the Financial Plan can have them worked out again with `POST /frozen-plans/drafts/<Financial Plan id>/results`, which answers once they're written. It refuses a frozen one.
 
-Freezing a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the freeze answers, with the engine whose version it records. Then they never change.
+Freezing a Financial Plan clears its draft results in the same statement, and the hook works them out again a moment after the freeze answers, recording its engine on them. Then they never change.
 
 `plan_results` holds the organization's totals. Each line and P&L row names, in `plan_id`, the plan that holds what it's charged to: an offering goes with its own plan, and a product or program area with that area's Program Plan. Everything else, including pools and the organization, goes with the Operations Plan. So one Program Plan's P&L, with its wages, powerboats and indirect costs, is one filter. A warning names the plan it's about, if there is one, and the date. Its `category` is `allocation` when the blocks break a limit or run on a closed day, and `data` when a row is missing or wrong ([Warnings](planning-engine.md#warnings)). A program area's P&L by term goes with the area's Program Plan, and a bonus with the plan that pays it. Each P&L by term and each bonus keeps its term's name and first day, as they were when it was worked out. Positions are the whole calculation's. The hook writes `plan_results` last, so a Financial Plan that has it has all its results. If the engine fails, it stays frozen with no results, and the hook logs why. An admin can fill them in with `POST /frozen-plans/results/<Financial Plan id>`. If copying a parent fails, `POST /frozen-plans/copy/<Financial Plan id>` tries again, and does nothing for one that already has plans.
 

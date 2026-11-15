@@ -49,8 +49,9 @@ platform is built, its data model, and the planning engine.
   principal, or set `serviceAccountAnnotations` to run as a Google service account.
 - `enableService` enables a Google Cloud API.
 
-`mise run build` builds it into `dist/`, which is all it publishes. `.github/workflows/release.yml`
-releases each merge to `main` with semantic-release, versioned by the conventional commits.
+`mise run build` builds it into `dist/`, which is all it publishes. `.github/workflows/pull-request.yml`
+releases each merge to `main` with semantic-release, versioned by the conventional commits, before
+it deploys.
 
 ## Environments
 
