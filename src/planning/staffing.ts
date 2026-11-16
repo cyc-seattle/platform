@@ -213,14 +213,6 @@ export class Staffing {
     for (const o of offerings) {
       const settings = programs.get(o.product_id);
       if (settings?.staff_level_id == null || settings.sailors_per_coach == null || settings.sailors_per_coach <= 0) {
-        if (warns) {
-          this.warnOnce(
-            "no_program_settings",
-            `${o.name}'s program has no staff level or sailors per coach. Add both to check that ${ctx.data.organization.name} has enough coach boats`,
-            o.product_id,
-            { plan_id: o.plan_id, date: block.row.date },
-          );
-        }
         continue;
       }
       needs.set(o.id, most(o) / settings.sailors_per_coach);
