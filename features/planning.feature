@@ -88,13 +88,12 @@ Feature: Plans
   sailors at which it pays for itself.
 
   A planner is warned when the blocks break a limit: more of the organization's boats of a class out
-  at once than it has that day, too few of its boats of a class for every offering to fill, or an
-  activity with no staff. Each warning says which plan and date it's about. A full program needs
+  at once than it has that day, or too few of its boats of a class for every offering to fill. An
+  activity with no staff isn't a warning: a program such as open boating runs without one. Each warning says which plan and date it's about. A full program needs
   sailboats enough for all its sailors, each boat taking its class's most sailors, and a coach boat
   for each coach: each coach can safely take the program's number of sailors. Any of the organization's
   powerboats can be a coach boat. Too few boats if every offering fills is a warning; too few for
-  the sailors expected is an error, since the plan can't run as it is. A program such as open
-  boating can run without staff. The boats that
+  the sailors expected is an error, since the plan can't run as it is. The boats that
   sailors bring count, and so do the boats a block charters, since the organization can charter
   more of a class it doesn't own. The planner isn't warned about coaches, since CSC can always hire
   more. A program's staff level is what the planner aims for, not a hard rule: any coach in the
@@ -903,31 +902,13 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering doesn't pay for itself, even when it's full
 
-  Rule: A planner is warned about an activity with no staff
-
-    Example: A practice in no block
-      Given an offering with a practice on August 2 that's in no block
-      When a planner calculates the P&L
-      Then the planner is warned that the practice on August 2 has no staff
-
-    Example: A practice in a block with boats but no staff
-      Given an offering with a practice on August 2, in a block with boats but no staff
-      When a planner calculates the P&L
-      Then the planner is warned that the practice on August 2 has no staff
-
-    Example: Open boating runs without staff
-      Given an Open Boating program that runs without staff
-      And an Open Boating practice on August 2, in a block with boats but no staff
-      When a planner calculates the P&L
-      Then the planner isn't warned about staff
-
   Rule: A frozen Financial Plan keeps its warnings, each with the plan and date it's about
 
-    Example: A practice with no staff in a frozen Financial Plan
+    Example: A practice on a closed day in a frozen Financial Plan
       Given a user with the Plan Writer and Plan Admin policies
-      And a draft Financial Plan whose Program Plan has a practice on August 2 with no staff
+      And a draft Financial Plan whose Program Plan has a practice on August 2, a closed day
       When they freeze the Financial Plan
-      Then the Financial Plan's warnings say that the practice on August 2, in its Program Plan, has no staff
+      Then the Financial Plan's warnings say that the practice on August 2, in its Program Plan, is on a closed day
 
   Rule: A planner is warned about an activity on a closed day
 

@@ -970,7 +970,7 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
 
   it("names the plan and the date each warning is about", async () => {
     const db = await database(config(false));
-    const { draftSet, draft: plan, draftOffering, w } = await draft(db, 2807);
+    const { draftSet, draft: plan, draftOffering, draftOperations, w } = await draft(db, 2807);
     expect(
       await w.update("plan_offerings", draftOffering, { starts_on: "2807-06-01", ends_on: "2807-06-30" }),
     ).toBeUndefined();
@@ -981,13 +981,19 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
       date: "2807-06-06",
       kind: "practice",
     });
+    await w.insert("plan_closed_dates", {
+      plan_id: draftOperations,
+      key: randomUUID(),
+      date: "2807-06-06",
+      name: "Closed",
+    });
     expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
     const { rows } = await db.query<Values>(
-      `SELECT plan_id, to_char(date, 'YYYY-MM-DD') AS date, category, error FROM plan_result_warnings
-        WHERE financial_plan_id = $1 AND code = 'unallocated_activity'`,
+      `SELECT plan_id, to_char(date, 'YYYY-MM-DD') AS date, category, severity FROM plan_result_warnings
+        WHERE financial_plan_id = $1 AND code = 'closed_date'`,
       [draftSet],
     );
-    expect(rows).toEqual([{ plan_id: plan, date: "2807-06-06", category: "allocation", error: false }]);
+    expect(rows).toEqual([{ plan_id: plan, date: "2807-06-06", category: "allocation", severity: "warning" }]);
   });
 
   it("leaves a frozen Financial Plan's results to its freeze", async () => {

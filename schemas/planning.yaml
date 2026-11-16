@@ -10699,39 +10699,51 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_warnings
-    field: error
-    type: boolean
+    field: severity
+    type: string
     meta:
       collection: plan_result_warnings
       conditions: null
-      display: null
-      display_options: null
-      field: error
+      display: labels
+      display_options:
+        choices:
+          - text: Warning
+            value: warning
+          - text: Error
+            value: error
+      field: severity
       group: null
       hidden: false
-      interface: boolean
-      note: "Yes when the plan can't run as allocated for the sailors expected. Otherwise it's a warning, such as too few boats if every offering fills."
-      options: null
+      interface: select-dropdown
+      note: "Error: the plan can't run as allocated for the sailors expected. Warning: something to check, such as too few boats if every offering fills."
+      options:
+        choices:
+          - text: Warning
+            value: warning
+          - text: Error
+            value: error
       readonly: true
       required: false
       searchable: true
       sort: 11
       special: null
-      translations:
-        - language: en-US
-          translation: Error
-      validation: null
-      validation_message: null
+      translations: null
+      validation:
+        severity:
+          _in:
+            - warning
+            - error
+      validation_message: "Must be one of: warning, error."
       width: full
     schema:
-      name: error
+      name: severity
       table: plan_result_warnings
-      data_type: boolean
-      default_value: false
-      max_length: null
+      data_type: character varying
+      default_value: warning
+      max_length: 255
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false
@@ -11498,48 +11510,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_programs
-    field: runs_without_staff
-    type: boolean
-    meta:
-      collection: plan_programs
-      conditions: null
-      display: null
-      display_options: null
-      field: runs_without_staff
-      group: null
-      hidden: false
-      interface: boolean
-      note: "Yes for a program no one coaches, such as open boating. Its activities need no staff, and it needs no staff level or sailors per coach."
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 7
-      special: null
-      translations:
-        - language: en-US
-          translation: Runs without staff
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: runs_without_staff
-      table: plan_programs
-      data_type: boolean
-      default_value: false
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_programs
     field: indirect_cost_rate
     type: decimal
     meta:
@@ -11556,7 +11526,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 8
+      sort: 7
       special: null
       translations: null
       validation: null
@@ -11598,7 +11568,7 @@ fields:
       readonly: false
       required: false
       searchable: true
-      sort: 9
+      sort: 8
       special:
         - cast-json
       translations:

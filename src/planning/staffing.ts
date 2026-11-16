@@ -10,6 +10,7 @@ import type {
   PlanBlockStaff,
   PlanOffering,
   PlanProgram,
+  WarningSeverity,
 } from "./types.ts";
 
 /** Hours a salaried position coached, by offering key, for the salaried rule. */
@@ -188,20 +189,6 @@ export class Staffing {
     return result;
   }
 
-  /** Warns about each activity, other than travel, that's in no block, or in one with no staff. */
-  private checkUnallocated(scheduled: ScheduledActivity[], blocks: Map<Id, Block>): void {
-    const programs = this.programs();
-    for (const a of scheduled) {
-      if (a.kind === "travel" || programs.get(a.offering.product_id)?.runs_without_staff) continue;
-      const block = a.stored.block_id == null ? undefined : blocks.get(a.stored.block_id);
-      if (block !== undefined && sum(block.staff.map((s) => s.count)) > 0) continue;
-      this.ctx.warn("unallocated_activity", `${a.offering.name}'s ${a.kind} has no staff`, a.stored.key, {
-        plan_id: a.stored.plan_id,
-        date: a.date,
-      });
-    }
-  }
-
   /** Each program's settings, by its product. */
   private programs(): Map<Id, PlanProgram> {
     return new Map(this.ctx.data.plan_programs.map((p) => [p.product_id, p]));
@@ -226,7 +213,7 @@ export class Staffing {
     for (const o of offerings) {
       const settings = programs.get(o.product_id);
       if (settings?.staff_level_id == null || settings.sailors_per_coach == null || settings.sailors_per_coach <= 0) {
-        if (warns && !settings?.runs_without_staff) {
+        if (warns) {
           this.warnOnce(
             "no_program_settings",
             `${o.name}'s program has no staff level or sailors per coach. Add both to check that ${ctx.data.organization.name} has enough coach boats`,
@@ -437,9 +424,15 @@ export class Staffing {
         (a.acquired_on == null || a.acquired_on <= date) && (a.disposed_on == null || date < a.disposed_on);
       const peakOf = (used: (b: Block) => number) =>
         mostAtOnce(list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : [])));
-      const warn = (code: string, what: string, at: { block: Block }[], message: string, error = false) => {
+      const warn = (
+        code: string,
+        what: string,
+        at: { block: Block }[],
+        message: string,
+        severity: WarningSeverity = "warning",
+      ) => {
         for (const plan of new Set(at.map(({ block }) => block.row.plan_id))) {
-          ctx.warn(code, message, what, { plan_id: plan, date: date as DateString, error });
+          ctx.warn(code, message, what, { plan_id: plan, date: date as DateString, severity });
         }
       };
       const kinds = new Set(
@@ -463,7 +456,11 @@ export class Staffing {
           continue;
         }
         if (have === 0) continue;
-        const short = (need: Map<Block, Map<string, number>>, when: (it: string) => string, error: boolean) => {
+        const short = (
+          need: Map<Block, Map<string, number>>,
+          when: (it: string) => string,
+          severity: WarningSeverity,
+        ) => {
           const peak = peakOf((b) => need.get(b)!.get(kind) ?? 0);
           if (peak.total <= have) return false;
           const names = [...new Set(peak.at.flatMap(({ block }) => block.members.map((a) => a.offering.name)))];
@@ -473,11 +470,12 @@ export class Staffing {
             what,
             peak.at,
             `${listOf(names)} ${needs} ${countIn(peak.total, kind)} out at once ${when(it)}, but ${organization} has only ${have}, so ${it} ${peak.total - have} short`,
-            error,
+            severity,
           );
           return true;
         };
-        if (!short(expected, () => "for the sailors expected", true)) short(atMax, (it) => `when ${it} full`, false);
+        if (!short(expected, () => "for the sailors expected", "error"))
+          short(atMax, (it) => `when ${it} full`, "warning");
       }
     }
   }
@@ -529,7 +527,6 @@ export class Staffing {
   } {
     const { ctx } = this;
     const blocks = this.blocks(scheduled);
-    this.checkUnallocated(scheduled, blocks);
     const programs = this.programs();
     const holds = new Map<Id, number>();
     // By date, so a warning given once names the first date it's seen on.

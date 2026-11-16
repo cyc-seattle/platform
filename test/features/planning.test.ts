@@ -1045,7 +1045,7 @@ Step(
   (_, _program: string, needs: string, _boats: string, have: string) => {
     const found = warning("short_of_boats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    expect(found?.error).not.toBe(true);
+    expect(found?.severity).toBe("warning");
     expect(found?.message).toMatch(
       new RegExp(
         // Each test's boat class has a name of its own, such as "Sailqubes boat-1".
@@ -1058,7 +1058,7 @@ Step(
   "the planner is shown an error that on July 13 {program} needs {count} {boats} for the sailors expected, but the organization has {count}",
   (_, _program: string, needs: string, _boats: string, have: string) => {
     const found = warning("short_of_boats");
-    expect(found).toMatchObject({ category: "allocation", date: JULY_13, error: true });
+    expect(found).toMatchObject({ category: "allocation", date: JULY_13, severity: "error" });
     expect(found?.message).toMatch(
       new RegExp(
         `^.+ needs ${needs} .+ out at once for the sailors expected, but .+ has only ${have}, so it's ${Number(needs) - Number(have)} short$`,
@@ -1150,37 +1150,6 @@ Step("the offering doesn't pay for itself, even when it's full", () => {
 Step("the planner isn't warned about the block", () => {
   // The block's boats are the organization's own, but this example is about its coaches.
   expect(p.out.warnings.filter((w) => w.category === "allocation" && /coach/.test(w.message))).toEqual([]);
-});
-
-// Activities with no staff.
-Step("an offering with a practice on August 2 that's in no block", async () => {
-  await p.activities(await offeringOf(undefined, 1), [AUGUST_2], "09:00", "12:00");
-});
-Step("an offering with a practice on August 2, in a block with boats but no staff", async () => {
-  await blockOf(
-    [await offeringOf(undefined, 1)],
-    MORNING,
-    { boats: [{ boat_class_id: await boatClass("Optis"), count: 1 }] },
-    AUGUST_2,
-  );
-});
-Step("the planner is warned that the practice on August 2 has no staff", () => {
-  expect(warning("unallocated_activity")).toMatchObject({ category: "allocation", date: AUGUST_2 });
-});
-Step("an Open Boating program that runs without staff", async () => {
-  await p.programSettings(await theArea(), await programNamed("Open Boating"), { runs_without_staff: true });
-});
-Step("an Open Boating practice on August 2, in a block with boats but no staff", async () => {
-  await blockOf(
-    [await offeringOf("Open Boating", 1)],
-    MORNING,
-    { boats: [{ boat_class_id: await boatClass("Optis"), count: 1 }] },
-    AUGUST_2,
-  );
-});
-Step("the planner isn't warned about staff", () => {
-  expect(p.warned("unallocated_activity")).toBe(false);
-  expect(p.warned("no_program_settings")).toBe(false);
 });
 
 // Readable result lines.
@@ -1787,23 +1756,27 @@ Step("the draft is gone", async () => {
 });
 
 // A frozen Financial Plan's warnings.
-Step("a draft Financial Plan whose Program Plan has a practice on August 2 with no staff", async () => {
+Step("a draft Financial Plan whose Program Plan has a practice on August 2, a closed day", async () => {
   ({ offering } = await programWithOffering());
   await p.activities(offering, [AUGUST_2], "09:00", "12:00");
+  await p.operationsRow("plan_closed_dates", { date: AUGUST_2, name: "A closed day" });
   financialPlan = await p.draftSet();
 });
-Step("the Financial Plan's warnings say that the practice on August 2, in its Program Plan, has no staff", async () => {
-  const planner = (await userFor({ policies: ["Plan Reader"] })).session;
-  const filter = encodeURIComponent(
-    JSON.stringify({ financial_plan_id: { _eq: financialPlan }, code: { _eq: "unallocated_activity" } }),
-  );
-  // The hook writes a frozen Financial Plan's results just after the freeze answers.
-  const warnings = async () =>
-    planner.ok("GET", `/items/plan_result_warnings?filter=${filter}&fields=plan_id,date,category`);
-  await expect
-    .poll(warnings, { timeout: 60_000, interval: 1000 })
-    .toEqual([{ plan_id: offering!["plan_id"], date: AUGUST_2, category: "allocation" }]);
-});
+Step(
+  "the Financial Plan's warnings say that the practice on August 2, in its Program Plan, is on a closed day",
+  async () => {
+    const planner = (await userFor({ policies: ["Plan Reader"] })).session;
+    const filter = encodeURIComponent(
+      JSON.stringify({ financial_plan_id: { _eq: financialPlan }, code: { _eq: "closed_date" } }),
+    );
+    // The hook writes a frozen Financial Plan's results just after the freeze answers.
+    const warnings = async () =>
+      planner.ok("GET", `/items/plan_result_warnings?filter=${filter}&fields=plan_id,date,category,severity`);
+    await expect
+      .poll(warnings, { timeout: 60_000, interval: 1000 })
+      .toEqual([{ plan_id: offering!["plan_id"], date: AUGUST_2, category: "allocation", severity: "warning" }]);
+  },
+);
 
 // What a Plan Writer and a Plan Admin can do, and the date a Financial Plan is active from.
 const ONE_PER_DATE = "Another Financial Plan for the year is already active from that date.";

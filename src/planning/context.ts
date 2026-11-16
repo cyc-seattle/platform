@@ -14,13 +14,13 @@ import type {
   Product,
   ProgramArea,
   WarningCategory,
+  WarningSeverity,
 } from "./types.ts";
 
 /** The warnings about what the blocks are given, or when they run. The rest are about the data. */
 const ALLOCATION_WARNINGS = new Set([
   "over_inventory_boats",
   "short_of_boats",
-  "unallocated_activity",
   "closed_date",
   "position_double_booked",
 ]);
@@ -41,8 +41,8 @@ const COST_TYPES: Record<CostType, string> = {
 export interface WarningScope {
   plan_id?: Id;
   date?: DateString;
-  /** True for an error: the plan can't run as allocated for the sailors expected. */
-  error?: boolean;
+  /** `error` when the plan can't run as allocated for the sailors expected. */
+  severity?: WarningSeverity;
 }
 
 /** The step that recorded an entry. Only `direct` entries count toward MTDC. */
@@ -149,7 +149,7 @@ export class Context {
       code,
       message,
       category,
-      ...(scope.error === true && { error: true }),
+      severity: scope.severity ?? "warning",
       ...(key !== undefined && { key }),
       ...(scope.plan_id !== undefined && { plan_id: scope.plan_id }),
       ...(scope.date !== undefined && { date: scope.date }),

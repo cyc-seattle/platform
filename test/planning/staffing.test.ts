@@ -62,43 +62,13 @@ describe("staffing", () => {
     expect(out.activities[0]?.coaches).toBe(2);
   });
 
-  it("costs nothing an activity isn't given, and warns that it has no staff", () => {
+  it("costs nothing an activity isn't given, and doesn't warn that it has no staff", () => {
     const p = product();
     const off = offering(p.id, { target_enrollment: 13 });
     const a = activity(off.id, { date: "2027-08-02" });
     const out = computePlan(emptyPlan({ products: [p], plan_offerings: [off], plan_activities: [a] }));
     expect(out.lines.filter((l) => l.line_key.startsWith("coach_wages"))).toEqual([]);
-    expect(out.warnings).toContainEqual(
-      expect.objectContaining({
-        code: "unallocated_activity",
-        category: "allocation",
-        plan_id: "v1",
-        date: "2027-08-02",
-        key: a.key,
-        message: "An offering's practice has no staff",
-      }),
-    );
-  });
-
-  it("warns about an activity in a block with no staff, but not about a travel day", () => {
-    const level = staffLevel();
-    const { data, off } = onePractice({ boats: [{ boat_class_id: "opti", count: 1 }] });
-    expect(codes(data)).toContain("unallocated_activity");
-    const t = trip(off.id);
-    data.plan_trips = [t];
-    data.plan_activities = [activity(off.id, { kind: "travel", trip_id: t.id })];
-    data.plan_staff_levels = [level];
-    expect(codes(data)).not.toContain("unallocated_activity");
-  });
-
-  it("doesn't warn about staff or program settings for a program that runs without staff", () => {
-    const { data, p } = onePractice({ boats: [{ boat_class_id: "opti", count: 1 }] });
-    data.boat_classes = [{ id: "opti", name: "Opti", max_capacity: 1, footprint_sq_ft: null }];
-    data.plan_programs = [program(p.id)];
-    expect(codes(data)).toEqual(expect.arrayContaining(["unallocated_activity", "no_program_settings"]));
-    data.plan_programs = [program(p.id, { runs_without_staff: true })];
-    expect(codes(data)).not.toContain("unallocated_activity");
-    expect(codes(data)).not.toContain("no_program_settings");
+    expect(out.warnings.filter((w) => w.category === "allocation")).toEqual([]);
   });
 
   it("runs a block from its first start to its last end, plus its longest setup and put-away", () => {
@@ -458,7 +428,7 @@ describe("staffing", () => {
 
     it("is a warning when the organization's boats run short only if every offering fills", () => {
       const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, sailqubes(6));
-      expect(short(data)[0]?.error).toBeUndefined();
+      expect(short(data)[0]?.severity).toBe("warning");
     });
 
     it("is an error when the organization's boats run short even for the sailors expected", () => {
@@ -466,7 +436,7 @@ describe("staffing", () => {
       const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 4 }] }, sailqubes(4));
       expect(short(data)).toEqual([
         expect.objectContaining({
-          error: true,
+          severity: "error",
           message:
             "Guppies Week 2 needs 5 Sailqubes out at once for the sailors expected, but A club has only 4, so it's 1 short",
         }),

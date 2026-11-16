@@ -889,8 +889,6 @@ export interface PlanPrograms {
   staff_level_id: string | StaffLevels | null;
   /** How many sailors one coach at its staff level can safely take. */
   sailors_per_coach: string | null;
-  /** Yes for a program no one coaches, such as open boating. Its activities need no staff, and it needs no staff level or sailors per coach. */
-  runs_without_staff: boolean;
   /** A share of the program's fees that it pays toward the shared costs, fixed for the year. 0.15 means 15%. Only a Plan Admin sets it. */
   indirect_cost_rate: string | null;
   /** The program's rules, for your AI to follow in each of its offerings. Short notes, one a line, each up to 280 characters. Bold, italic, code and links work. */
@@ -1049,8 +1047,8 @@ export interface PlanResultWarnings {
   date: string | null;
   /** Allocation: the blocks break a limit, or run on a closed day. Data: a row is missing or wrong. */
   category: "allocation" | "data" | null;
-  /** Yes when the plan can't run as allocated for the sailors expected. Otherwise it's a warning, such as too few boats if every offering fills. */
-  error: boolean;
+  /** Error: the plan can't run as allocated for the sailors expected. Warning: something to check, such as too few boats if every offering fills. */
+  severity: "warning" | "error" | null;
 }
 
 /** A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */

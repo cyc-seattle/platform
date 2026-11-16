@@ -165,8 +165,6 @@ export interface PlanProgram extends PlanRow {
   /** The staff level that coaches it. */
   staff_level_id: Id | null;
   sailors_per_coach: number | null;
-  /** No one coaches it, such as open boating, so it needs no staff, staff level or sailors per coach. */
-  runs_without_staff?: boolean | null;
   /** The share of its offerings' program fees they pay toward the shared costs, fixed for the year. */
   indirect_cost_rate?: number | null;
   /** The planner's short notes, which only their AI reads. */
@@ -490,12 +488,14 @@ export interface ComputedActivity {
 /** `allocation` when the blocks break a limit or a closed day; `data` when a row is missing or wrong. */
 export type WarningCategory = "allocation" | "data";
 
+/** `error` when the plan can't run as allocated for the sailors expected; otherwise `warning`. */
+export type WarningSeverity = "warning" | "error";
+
 export interface EngineWarning {
   code: string;
   message: string;
   category: WarningCategory;
-  /** True when the plan can't run as allocated for the sailors expected; otherwise it's a warning. */
-  error?: boolean;
+  severity: WarningSeverity;
   /** The key of the row it's about, when there is one. */
   key?: string;
   /** The plan it's about, when there is one. */
