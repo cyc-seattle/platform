@@ -363,9 +363,9 @@ describe("one salaried coach in two places", () => {
 });
 
 describe("closed dates", () => {
-  it("warns about an activity on a day the club is closed, but not a travel day", () => {
-    const p = product();
-    const o = offering(p.id, { starts_on: "2027-09-01", ends_on: "2027-09-30" });
+  it("warns about an activity on a day the club is closed, naming its program and offering, but not a travel day", () => {
+    const p = product({ name: "J-Pod" });
+    const o = offering(p.id, { name: "Fall", starts_on: "2027-09-01", ends_on: "2027-09-30" });
     const data = emptyPlan({
       products: [p],
       plan_offerings: [o],
@@ -376,7 +376,7 @@ describe("closed dates", () => {
       expect.objectContaining({
         code: "closed_date",
         date: "2027-09-06",
-        message: "An offering's practice is on Labor Day.",
+        message: "J-Pod Fall's practice is on Labor Day.",
       }),
     );
     data.plan_activities = [activity(o.id, { date: "2027-09-06", kind: "travel" })];

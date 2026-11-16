@@ -206,7 +206,9 @@ given.
 A message gives only the detail, in a few plain words, since the warning already gives its plan and
 date, and Sail Team names each code: "Guppies Week 2 and Opti Camp Week 2 need 12 Sailqubes when
 full. CSC has 10.", or "9 Sailqubes out for Guppies Week 4. CSC has 8.". One about a block names the
-block's offerings. Each sentence ends with a period. Messages follow the `ui-copy` skill from
+block's offerings. A message names an offering by its program, then its own name, which is only what it adds to the
+program, such as Week 4; one whose own name already starts with its program keeps it. Each sentence ends with a period.
+Messages follow the `ui-copy` skill from
 [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
 
 Allocation warnings:

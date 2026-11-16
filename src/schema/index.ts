@@ -835,6 +835,7 @@ export interface PlanOfferings {
   /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
   key: string;
   product_id: string | Products;
+  /** What it adds to its program's name, such as "Week 3" or "Spring". */
   name: string;
   /** The term it runs in: copy the Key from a term in the Operations Plan. Leave it empty for an offering in no term. */
   term_key: string | null;

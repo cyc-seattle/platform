@@ -14,7 +14,11 @@ export function offeringTerms(ctx: Context): OfferingTerms {
   for (const o of ctx.data.plan_offerings) {
     const term = o.term_key == null ? null : (terms.get(o.term_key) ?? null);
     if (o.term_key != null && term === null) {
-      ctx.warn("unknown_term", `${o.name}'s term isn't in the Operations Plan, so it's in no term.`, o.key);
+      ctx.warn(
+        "unknown_term",
+        `${ctx.offeringName(o)}'s term isn't in the Operations Plan, so it's in no term.`,
+        o.key,
+      );
     }
     byOffering.set(o.key, term);
   }

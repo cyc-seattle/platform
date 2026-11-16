@@ -36,6 +36,8 @@ import type {
  */
 export function computePlan(data: PlanData): EngineOutput {
   const output = calculate(data, new Map());
+  // Only for offerings' names: its own warnings are already in the output.
+  const names = new Context(data);
   const rates = indirectCostRates(data);
   for (const row of output.pnl) {
     if (row.level !== "offering") continue;
@@ -43,20 +45,20 @@ export function computePlan(data: PlanData): EngineOutput {
     if (offering === undefined) continue;
     const rate = output.organization.indirect.recovered_cents === 0 ? 0 : (rates.get(offering.product_id) ?? 0);
     row.breakeven_enrollment = breakeven(data, offering, row.net_cents, rate);
-    output.warnings.push(...offeringWarnings(offering, row));
+    output.warnings.push(...offeringWarnings(offering, names.offeringName(offering), row));
   }
   return output;
 }
 
 /** Warns when an offering's blocks take fewer sailors than it plans for, or it needs more sailors than expected to pay. */
-function offeringWarnings(offering: PlanOffering, row: Pnl): EngineWarning[] {
+function offeringWarnings(offering: PlanOffering, name: string, row: Pnl): EngineWarning[] {
   const about = { key: offering.key, plan_id: offering.plan_id };
   const warnings: EngineWarning[] = [];
   const holds = row.allocation_holds;
   if (holds !== null && holds < row.enrollment) {
     warnings.push({
       code: "capacity_below_max",
-      message: `${offering.name}'s blocks take ${holds}, but it expects ${row.enrollment}.`,
+      message: `${name}'s blocks take ${holds}, but it expects ${row.enrollment}.`,
       category: "allocation",
       severity: "error",
       ...about,
@@ -64,7 +66,7 @@ function offeringWarnings(offering: PlanOffering, row: Pnl): EngineWarning[] {
   } else if (holds !== null && row.max_enrollment !== null && holds < row.max_enrollment) {
     warnings.push({
       code: "capacity_below_max",
-      message: `${offering.name}'s blocks take ${holds}. Max is ${row.max_enrollment}.`,
+      message: `${name}'s blocks take ${holds}. Max is ${row.max_enrollment}.`,
       category: "allocation",
       severity: "warning",
       ...about,
@@ -75,7 +77,7 @@ function offeringWarnings(offering: PlanOffering, row: Pnl): EngineWarning[] {
   if (breakeven === null) {
     warnings.push({
       code: "never_breaks_even",
-      message: `${offering.name} loses money even when full.`,
+      message: `${name} loses money even when full.`,
       category: "data",
       severity: "warning",
       ...about,
@@ -83,7 +85,7 @@ function offeringWarnings(offering: PlanOffering, row: Pnl): EngineWarning[] {
   } else if (breakeven > row.enrollment) {
     warnings.push({
       code: "breakeven_above_target",
-      message: `${offering.name} breaks even at ${breakeven}. Target is ${row.enrollment}.`,
+      message: `${name} breaks even at ${breakeven}. Target is ${row.enrollment}.`,
       category: "data",
       severity: "warning",
       ...about,
@@ -211,8 +213,8 @@ function checkAreas(ctx: Context): void {
     if (wrong) {
       const message =
         plan.kind === "operations"
-          ? `${offering.name} is in the Operations Plan, but its program is in an area.`
-          : `${offering.name} is in another area's plan.`;
+          ? `${ctx.offeringName(offering)} is in the Operations Plan, but its program is in an area.`
+          : `${ctx.offeringName(offering)} is in another area's plan.`;
       ctx.warn("offering_in_wrong_plan", message, offering.key);
     }
   }
