@@ -541,10 +541,10 @@ describe("staffing", () => {
   describe("inventory", () => {
     /** Two blocks on July 13, with `first` and `second` Sailqubes, at the given times. */
     function twoBlocks(first: number, second: number, times: [string, string][], sailorOwned = 0, chartered = 0) {
-      const p = product();
+      const [guppies, minnows] = [product({ name: "Guppies" }), product({ name: "Minnows" })];
       const [x, y] = [
-        offering(p.id, { name: "Guppies Week 3", target_enrollment: 1 }),
-        offering(p.id, { name: "Minnows Week 3", target_enrollment: 1 }),
+        offering(guppies.id, { name: "Week 3", target_enrollment: 1 }),
+        offering(minnows.id, { name: "Week 3", target_enrollment: 1 }),
       ];
       const ax = activity(x.id, { date: "2027-07-13", start_time: times[0]![0], end_time: times[0]![1] });
       const ay = activity(y.id, { date: "2027-07-13", start_time: times[1]![0], end_time: times[1]![1] });
@@ -552,7 +552,7 @@ describe("staffing", () => {
         boats: [{ boat_class_id: "sailqube", count: n, sailor_owned: sailorOwned, chartered }],
       });
       return emptyPlan({
-        products: [p],
+        products: [guppies, minnows],
         plan_offerings: [x, y],
         plan_activities: [ax, ay],
         boat_classes: [{ id: "sailqube", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }],

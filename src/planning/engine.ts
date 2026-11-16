@@ -165,8 +165,8 @@ function checkAreas(ctx: Context): void {
     if (wrong) {
       const message =
         plan.kind === "operations"
-          ? `${offering.name} is in the Operations Plan, but its program is in a program area`
-          : `${offering.name} is in the Program Plan for another program area`;
+          ? `${ctx.offeringName(offering)} is in the Operations Plan, but its program is in a program area`
+          : `${ctx.offeringName(offering)} is in the Program Plan for another program area`;
       ctx.warn("offering_in_wrong_plan", message, offering.key);
     }
   }

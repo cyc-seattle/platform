@@ -53,7 +53,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
     if (closedFor !== undefined && activity.kind !== "travel") {
       ctx.warn(
         "closed_date",
-        `${offering.name}'s ${activity.kind} is on ${closedFor}, when ${ctx.data.organization.name} is closed`,
+        `${ctx.offeringName(offering)}'s ${activity.kind} is on ${closedFor}, when ${ctx.data.organization.name} is closed`,
         activity.key,
         {
           plan_id: activity.plan_id,

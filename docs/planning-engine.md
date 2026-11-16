@@ -203,7 +203,8 @@ given.
 A message says only what's wrong, in plain words, since the warning already gives its plan and date:
 "Guppies Week 2 and Opti Camp Week 2 need 12 Sailqubes out at once when they're full, but CSC has
 only 10, so they're 2 short", or "9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
-offerings. Messages follow the `ui-copy` skill from
+offerings. A message names an offering by its program, then its own name, which is only what it adds to the program, such
+as Week 4; one whose own name already starts with its program keeps it. Messages follow the `ui-copy` skill from
 [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
 
 Allocation warnings:
