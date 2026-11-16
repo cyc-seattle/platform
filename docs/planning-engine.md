@@ -250,7 +250,7 @@ Allocation warnings:
   or boats were too few for every offering at its max.
 - Results frozen before cyc-seattle/platform#318 may have `no_program_settings`, for a program in a
   block with no staff level or sailors per coach.
-- Results worked out before cyc-seattle/platform#PRNUM may have `capacity_below_max`, for an offering
+- Results worked out before cyc-seattle/platform#323 may have `capacity_below_max`, for an offering
   whose blocks' boats seat fewer sailors than its max. `short_of_boats` covers it, with the organization's spare
   boats counted.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
