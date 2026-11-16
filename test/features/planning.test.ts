@@ -994,6 +994,17 @@ Step("the two offerings pay {money} for boat charters between them", async (_, m
   expect(paid(p.offerings[0]!) + paid(p.offerings[1]!)).toBe(cents(money));
 });
 
+Step("{program} can sail {boats} and {boats}", async (_, program: string, one: string, other: string) => {
+  const [settings] = await read("programs", { product_id: { _eq: await programNamed(program) } }, "id");
+  for (const boats of [one, other]) {
+    await adminCreate("program_boat_classes", {
+      id: randomUUID(),
+      program_id: settings!["id"],
+      boat_class_id: await boatClass(boats),
+    });
+  }
+});
+
 // Boats for a full program.
 Step(
   "the organization has {count} {boats} and {count} {boats}",

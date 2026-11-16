@@ -69,6 +69,7 @@ export interface Schema {
   products: Products[];
   program_area_role_assignments: ProgramAreaRoleAssignments[];
   program_areas: ProgramAreas[];
+  program_boat_classes: ProgramBoatClasses[];
   program_role_assignments: ProgramRoleAssignments[];
   program_roles: ProgramRoles[];
   programs: Programs[];
@@ -1220,6 +1221,13 @@ export interface ProgramAreas {
   role_assignments: (string | ProgramAreaRoleAssignments)[];
 }
 
+/** A boat class a program's sailors can sail. */
+export interface ProgramBoatClasses {
+  id: string;
+  program_id: string | Programs;
+  boat_class_id: string | BoatClasses;
+}
+
 /** The role someone has in a program, such as Parent Coordinator. Entered by staff, never by a sync. With no dates, it lasts until someone ends it. */
 export interface ProgramRoleAssignments {
   id: string;
@@ -1249,6 +1257,8 @@ export interface Programs {
   team: boolean;
   /** The program's color on calendars and charts in Sail Team. Leave it empty and it gets one of its own. */
   color: string | null;
+  /** The boat classes its sailors can sail. When a class runs short, the boat checks count the others here that are spare that day. */
+  boat_classes: (string | ProgramBoatClasses)[];
   /** Who has a role in this program. */
   role_assignments: (string | ProgramRoleAssignments)[];
   /** The program's Google Group, if it has one. Most programs don't. */

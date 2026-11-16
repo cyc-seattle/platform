@@ -63,6 +63,18 @@ export interface QualificationCover {
   covers_id: Id;
 }
 
+/** A lasting program in the catalog, such as K Pod, for a program product. */
+export interface Program {
+  id: Id;
+  product_id: Id | null;
+}
+
+/** A boat class a program's sailors can sail. */
+export interface ProgramBoatClass {
+  program_id: Id;
+  boat_class_id: Id;
+}
+
 // HR
 
 /** A staff level's grade, in the order planning lists a role's levels. */
@@ -378,6 +390,9 @@ export interface PlanData {
   accounts: Account[];
   qualifications: Qualification[];
   qualification_covers: QualificationCover[];
+  /** The catalog's programs, and the boat classes each can sail, which can stand in for each other. */
+  programs?: Program[];
+  program_boat_classes?: ProgramBoatClass[];
   boat_classes: BoatClass[];
   /** The asset list, with its boats, which the engine counts by class on each day. */
   assets: Asset[];

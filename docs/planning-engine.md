@@ -212,7 +212,11 @@ Allocation warnings:
   the boats of that class, sail or power, it has that day: those on the asset list acquired on or
   before it, or with no acquired date, and not yet disposed of. Every class with a `max_capacity` of
   0, such as a RIB or a support boat, is a coach boat, and coach boats are counted together, since
-  any can stand in for another. Boats it charters, or sailors bring,
+  any can stand in for another. A sailboat class out beyond what the organization has is covered by spare
+  boats of another class that every program in the block can sail, its catalog program's `boat_classes`:
+  those the organization has that day, less the most of them out at once that day, and less those
+  already standing in. Each seats its own `max_capacity`, a block lends out no more seats than its own
+  boats of the class take, and the block still pays for the class it's given. Boats it charters, or sailors bring,
   don't count. Blocks are out
   from their first activity's start to their last one's end; one with no times is out all day.
 - Results frozen before boats were counted by class may also have `over_inventory_resource`, for
@@ -235,7 +239,8 @@ Allocation warnings:
   - Charters stay as given, so the organization's own boats make up the rest.
 
   The most of a class the blocks need at once on a date, counted as for `over_inventory_boats`, is
-  checked against the boats of that class the organization has that day. A class it has none of
+  checked against the boats of that class the organization has that day. Spare boats of a class its programs can sail
+  stand in, as for `over_inventory_boats`, counted against the most of them needed at once. A class it has none of
   that day isn't checked, since it can charter more. Coaches aren't checked: the organization can
   always hire more. Qualifications aren't checked either (#208).
 
