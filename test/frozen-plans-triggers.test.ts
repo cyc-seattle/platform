@@ -983,11 +983,11 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     });
     expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
     const { rows } = await db.query<Values>(
-      `SELECT plan_id, to_char(date, 'YYYY-MM-DD') AS date, category FROM plan_result_warnings
+      `SELECT plan_id, to_char(date, 'YYYY-MM-DD') AS date, category, error FROM plan_result_warnings
         WHERE financial_plan_id = $1 AND code = 'unallocated_activity'`,
       [draftSet],
     );
-    expect(rows).toEqual([{ plan_id: plan, date: "2807-06-06", category: "allocation" }]);
+    expect(rows).toEqual([{ plan_id: plan, date: "2807-06-06", category: "allocation", error: false }]);
   });
 
   it("leaves a frozen Financial Plan's results to its freeze", async () => {

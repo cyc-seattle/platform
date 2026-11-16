@@ -91,6 +91,16 @@ describe("staffing", () => {
     expect(codes(data)).not.toContain("unallocated_activity");
   });
 
+  it("doesn't warn about staff or program settings for a program that runs without staff", () => {
+    const { data, p } = onePractice({ boats: [{ boat_class_id: "opti", count: 1 }] });
+    data.boat_classes = [{ id: "opti", name: "Opti", max_capacity: 1, footprint_sq_ft: null }];
+    data.plan_programs = [program(p.id)];
+    expect(codes(data)).toEqual(expect.arrayContaining(["unallocated_activity", "no_program_settings"]));
+    data.plan_programs = [program(p.id, { runs_without_staff: true })];
+    expect(codes(data)).not.toContain("unallocated_activity");
+    expect(codes(data)).not.toContain("no_program_settings");
+  });
+
   it("runs a block from its first start to its last end, plus its longest setup and put-away", () => {
     const p = product();
     const level = staffLevel({ hourly_rate_cents: 2000 });
@@ -420,7 +430,46 @@ describe("staffing", () => {
       ];
       expect(short(guppies(given, owned(4)))).toEqual([]);
       expect(short(guppies(given, owned(3))).map((w) => w.message)).toEqual([
-        "Guppies Week 2 needs 4 RIBs out at once when it's full, but A club has only 3, so it's 1 short",
+        "Guppies Week 2 needs 4 coach boats out at once when it's full, but A club has only 3, so it's 1 short",
+      ]);
+    });
+
+    it("counts every class that seats no sailors as a coach boat, such as a RIB or a support boat", () => {
+      const given = {
+        boats: [
+          { boat_class_id: "sailqube", count: 8 },
+          { boat_class_id: "rib", count: 2 },
+          { boat_class_id: "support", count: 1 },
+        ],
+      };
+      const data = guppies(given, [
+        ...sailqubes(8),
+        { boat_class_id: "rib", count: 2, kind: "powerboat" as const },
+        { boat_class_id: "support", count: 2, kind: "powerboat" as const },
+      ]);
+      data.boat_classes = [...classes, { id: "support", name: "Support", max_capacity: 0, footprint_sq_ft: null }];
+      expect(codes(data)).not.toContain("over_inventory_boats");
+      expect(short(data)).toEqual([]);
+      data.boats.pop();
+      expect(short(data).map((w) => w.message)).toEqual([
+        "Guppies Week 2 needs 4 coach boats out at once when it's full, but A club has only 3, so it's 1 short",
+      ]);
+    });
+
+    it("is a warning when the organization's boats run short only if every offering fills", () => {
+      const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, sailqubes(6));
+      expect(short(data)[0]?.error).toBeUndefined();
+    });
+
+    it("is an error when the organization's boats run short even for the sailors expected", () => {
+      // 4 Sailqubes seat 8; the 10 expected need 5, and a full 16 need 8.
+      const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 4 }] }, sailqubes(4));
+      expect(short(data)).toEqual([
+        expect.objectContaining({
+          error: true,
+          message:
+            "Guppies Week 2 needs 5 Sailqubes out at once for the sailors expected, but A club has only 4, so it's 1 short",
+        }),
       ]);
     });
 

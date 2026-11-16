@@ -194,7 +194,9 @@ coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issu
 ### Warnings
 
 Each warning has a `code`, a `message`, and a `category`. When it's about one plan or one date,
-it names them in `plan_id` and `date`. A warning about a row that's given once for each plan, such as a program with no settings, names the first date it's seen on. `allocation` warnings say the blocks break a limit or run on
+it names them in `plan_id` and `date`. It's an `error` when the plan can't run as allocated for the
+sailors expected, and otherwise a warning, such as too few boats if every offering fills
+(cyc-seattle/platform#313). A warning about a row that's given once for each plan, such as a program with no settings, names the first date it's seen on. `allocation` warnings say the blocks break a limit or run on
 a closed day; the rest are `data`, a row that's missing or wrong. The engine still costs what it's
 given.
 
@@ -207,17 +209,21 @@ offerings. Messages follow the `ui-copy` skill from
 Allocation warnings:
 
 - `unallocated_activity`: an activity, other than a travel day, in no block, or in a block with no
-  staff.
+  staff. A program that `runs_without_staff`, such as open boating, needs none.
 - `over_inventory_boats`: more of the organization's boats of one class out at once on a date than
   the boats of that class, sail or power, it has that day: those on the asset list acquired on or
-  before it, or with no acquired date, and not yet disposed of. Boats it charters, or sailors bring,
+  before it, or with no acquired date, and not yet disposed of. Every class with a `max_capacity` of
+  0, such as a RIB or a support boat, is a coach boat, and coach boats are counted together, since
+  any can stand in for another. Boats it charters, or sailors bring,
   don't count. Blocks are out
   from their first activity's start to their last one's end; one with no times is out all day.
 - Results frozen before boats were counted by class may also have `over_inventory_resource`, for
   RIBs and other equipment.
-- `short_of_boats`: too few of the organization's boats of one class on a date for every offering
-  to run full, when the boats given aren't already more than it has (`over_inventory_boats`). For
-  each block whose activities use boats, with every offering at its max enrollment:
+- `short_of_boats`: too few of the organization's boats of one class, or coach boats, on a date
+  for every offering to run full, when the boats given aren't already more than it has
+  (`over_inventory_boats`). It's an error when they're too few even for the sailors expected: each
+  offering's enrollment in place of its max. For each block whose activities use boats, with every
+  offering at its max enrollment:
   - Its sailboats, the classes with a `max_capacity` above 0, are scaled up until they seat
     everyone: each class's boats, the organization's and chartered, × (Σ max − the seats in the
     boats sailors bring) ÷ the seats in the organization's and chartered boats, rounded up. They're
@@ -240,8 +246,8 @@ Allocation warnings:
 
 Data warnings about blocks:
 
-- `no_program_settings`: a program in a block with no staff level or sailors per coach. Its sailors
-  need no coach boats.
+- `no_program_settings`: a program in a block with no staff level or sailors per coach, unless it
+  `runs_without_staff`. Its sailors need no coach boats.
 - `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors and
   aren't scaled.
 - `no_charter_rate`: a block's chartered boats, whose class has no `charter_per_day_cents`.

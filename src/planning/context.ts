@@ -41,6 +41,8 @@ const COST_TYPES: Record<CostType, string> = {
 export interface WarningScope {
   plan_id?: Id;
   date?: DateString;
+  /** True for an error: the plan can't run as allocated for the sailors expected. */
+  error?: boolean;
 }
 
 /** The step that recorded an entry. Only `direct` entries count toward MTDC. */
@@ -147,6 +149,7 @@ export class Context {
       code,
       message,
       category,
+      ...(scope.error === true && { error: true }),
       ...(key !== undefined && { key }),
       ...(scope.plan_id !== undefined && { plan_id: scope.plan_id }),
       ...(scope.date !== undefined && { date: scope.date }),

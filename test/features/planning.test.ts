@@ -516,7 +516,7 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
-parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs"]);
+parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs", "support boats", "support boat"]);
 parameter("staff", ["one coach", "two coaches"]);
 parameter("day", ["July 1", "August 1"]);
 /** "4pm" or "noon" as `HH:MM`. */
@@ -577,14 +577,16 @@ async function level(name: string, rate = 2000): Promise<Item> {
   return levels[name];
 }
 /** A boat class by its plural name. RIBs are coach boats: they take no sailors, and book to coach boats. */
+const POWERBOATS = new Set(["RIBs", "support boat", "support boats"]);
 async function boatClass(name: string, sailors = name === "Optis" ? 1 : 2): Promise<string> {
-  classes[name] ??=
-    name === "RIBs"
-      ? await p.boatClass(name, 0, { account_id: await p.account("ribs") })
-      : await p.boatClass(name, sailors);
-  return classes[name];
+  // A support boat is a coach boat of its own class, as RIBs are.
+  const key = name === "support boat" ? "support boats" : name;
+  classes[key] ??= POWERBOATS.has(name)
+    ? await p.boatClass(key, 0, { account_id: await p.account("ribs") })
+    : await p.boatClass(key, sailors);
+  return classes[key];
 }
-const kindOf = (boats: string) => (boats === "RIBs" ? "powerboat" : "sailboat");
+const kindOf = (boats: string) => (POWERBOATS.has(boats) ? "powerboat" : "sailboat");
 /** A class's boat rate in the Operations Plan, with `fields` such as its fuel. */
 const boatRate = async (boats: string, fields: Row) =>
   p.operationsRow("plan_boat_rates", {
@@ -1043,10 +1045,23 @@ Step(
   (_, _program: string, needs: string, _boats: string, have: string) => {
     const found = warning("short_of_boats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
+    expect(found?.error).not.toBe(true);
     expect(found?.message).toMatch(
       new RegExp(
         // Each test's boat class has a name of its own, such as "Sailqubes boat-1".
         `^.+ needs ${needs} .+ out at once when it's full, but .+ has only ${have}, so it's ${Number(needs) - Number(have)} short$`,
+      ),
+    );
+  },
+);
+Step(
+  "the planner is shown an error that on July 13 {program} needs {count} {boats} for the sailors expected, but the organization has {count}",
+  (_, _program: string, needs: string, _boats: string, have: string) => {
+    const found = warning("short_of_boats");
+    expect(found).toMatchObject({ category: "allocation", date: JULY_13, error: true });
+    expect(found?.message).toMatch(
+      new RegExp(
+        `^.+ needs ${needs} .+ out at once for the sailors expected, but .+ has only ${have}, so it's ${Number(needs) - Number(have)} short$`,
       ),
     );
   },
@@ -1151,6 +1166,21 @@ Step("an offering with a practice on August 2, in a block with boats but no staf
 });
 Step("the planner is warned that the practice on August 2 has no staff", () => {
   expect(warning("unallocated_activity")).toMatchObject({ category: "allocation", date: AUGUST_2 });
+});
+Step("an Open Boating program that runs without staff", async () => {
+  await p.programSettings(await theArea(), await programNamed("Open Boating"), { runs_without_staff: true });
+});
+Step("an Open Boating practice on August 2, in a block with boats but no staff", async () => {
+  await blockOf(
+    [await offeringOf("Open Boating", 1)],
+    MORNING,
+    { boats: [{ boat_class_id: await boatClass("Optis"), count: 1 }] },
+    AUGUST_2,
+  );
+});
+Step("the planner isn't warned about staff", () => {
+  expect(p.warned("unallocated_activity")).toBe(false);
+  expect(p.warned("no_program_settings")).toBe(false);
 });
 
 // Readable result lines.

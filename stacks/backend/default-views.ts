@@ -307,8 +307,8 @@ export const defaultViews: DefaultView[] = [
   },
   {
     collection: "plan_result_warnings",
-    sort: ["financial_plan_id.name", "code"],
-    fields: ["message", "code", "financial_plan_id"],
+    sort: ["financial_plan_id.name", "-error", "code"],
+    fields: ["error", "message", "code", "financial_plan_id"],
   },
   // Financial Plans, by year: drafts, then the newest frozen.
   {

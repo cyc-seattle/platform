@@ -91,7 +91,10 @@ Feature: Plans
   at once than it has that day, too few of its boats of a class for every offering to fill, or an
   activity with no staff. Each warning says which plan and date it's about. A full program needs
   sailboats enough for all its sailors, each boat taking its class's most sailors, and a coach boat
-  for each coach: each coach can safely take the program's number of sailors. The boats that
+  for each coach: each coach can safely take the program's number of sailors. Any of the organization's
+  powerboats can be a coach boat. Too few boats if every offering fills is a warning; too few for
+  the sailors expected is an error, since the plan can't run as it is. A program such as open
+  boating can run without staff. The boats that
   sailors bring count, and so do the boats a block charters, since the organization can charter
   more of a class it doesn't own. The planner isn't warned about coaches, since CSC can always hire
   more. A program's staff level is what the planner aims for, not a hard rule: any coach in the
@@ -799,6 +802,12 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 7 RIBs out, but the organization has 6
 
+    Example: Any of the organization's powerboats can be a coach boat
+      Given the organization has 6 RIBs and 1 support boat
+      And two blocks on the morning of July 13, with 4 RIBs and 3 RIBs
+      When a planner calculates the P&L
+      Then the planner isn't warned about RIBs
+
     Example: Boats the organization gets before the day count
       Given the organization has 12 Sailqubes, and gets 2 more on July 1
       And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
@@ -839,6 +848,13 @@ Feature: Plans
       And a Guppies offering for up to 16 sailors that expects 10, in a block with 8 Sailqubes and 2 RIBs on the morning of July 13
       When a planner calculates the P&L
       Then the planner is warned that on July 13 Guppies needs 4 RIBs when it's full, but the organization has 3
+
+    Example: Too few Sailqubes even for the sailors expected is an error
+      Given Sailqubes take 2 sailors each
+      And the organization has 4 Sailqubes
+      And a Guppies offering for up to 16 sailors that expects 10, in a block with 4 Sailqubes on the morning of July 13
+      When a planner calculates the P&L
+      Then the planner is shown an error that on July 13 Guppies needs 5 Sailqubes for the sailors expected, but the organization has 4
 
     Example: Too few coaches for a full program isn't a warning
       Given Guppies have a coach for every 10 sailors
@@ -898,6 +914,12 @@ Feature: Plans
       Given an offering with a practice on August 2, in a block with boats but no staff
       When a planner calculates the P&L
       Then the planner is warned that the practice on August 2 has no staff
+
+    Example: Open boating runs without staff
+      Given an Open Boating program that runs without staff
+      And an Open Boating practice on August 2, in a block with boats but no staff
+      When a planner calculates the P&L
+      Then the planner isn't warned about staff
 
   Rule: A frozen Financial Plan keeps its warnings, each with the plan and date it's about
 
