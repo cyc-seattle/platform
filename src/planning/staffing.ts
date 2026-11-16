@@ -389,8 +389,10 @@ export class Staffing {
    * than it has that day on the asset list, and else when it hasn't enough for every block to run
    * full (cyc-seattle/platform#294): an error when it hasn't enough even for the sailors expected
    * (cyc-seattle/platform#313). Every class that seats no sailors is a coach boat, and any coach
-   * boat can stand in for another, so they're counted together. Boats it charters, or sailors
-   * bring, don't count. A class it has none of that day is only chartered, and more can be.
+   * boat can stand in for another, so they're counted together. A sailboat class that runs short
+   * is covered by spare boats of the other classes every program in the block can sail
+   * (cyc-seattle/platform#313). Boats it charters, or sailors bring, don't count. A class it has
+   * none of that day is only chartered, and more can be.
    */
   private checkInventory(blocks: Block[], programs: Map<Id, PlanProgram>): void {
     const { ctx } = this;
@@ -419,11 +421,66 @@ export class Staffing {
       blocks.map((b) => [b, byKind(this.ownedFor(b, programs, (o) => ctx.enrollment.get(o.id) ?? 0))]),
     );
     const organization = ctx.data.organization.name;
+    const sails = new Map<Id, Set<Id>>();
+    const productOf = new Map((ctx.data.programs ?? []).map((p) => [p.id, p.product_id]));
+    for (const row of ctx.data.program_boat_classes ?? []) {
+      const product = productOf.get(row.program_id);
+      if (product == null) continue;
+      sails.set(product, (sails.get(product) ?? new Set()).add(row.boat_class_id));
+    }
+    // The classes that can stand in for `kind` on a block: those every program in it can sail.
+    const standIns = (block: Block, kind: string): Id[] => {
+      const lists = offeringsIn(block).map((o) => sails.get(o.product_id));
+      if (lists.length === 0 || lists.some((l) => l === undefined)) return [];
+      return [...lists[0]!].filter(
+        (id) => id !== kind && (classes.get(id)?.max_capacity ?? 0) > 0 && lists.every((l) => l!.has(id)),
+      );
+    };
     for (const [date, list] of dates) {
       const has = (a: Asset) =>
         (a.acquired_on == null || a.acquired_on <= date) && (a.disposed_on == null || date < a.disposed_on);
       const peakOf = (used: (b: Block) => number) =>
         mostAtOnce(list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : [])));
+      const haveOf = (kind: string) => boats.filter((b) => b.kind === kind && has(b.asset)).length;
+      // Boats each check has already borrowed from a class on this date, so none is lent twice.
+      const lent = new Map<string, Map<string, number>>();
+      /**
+       * Whether spare boats of the classes that can stand in seat the `short` boats of `kind` that
+       * the blocks `at` use. A class's spare boats are those the organization has that day, less the
+       * most of them `used` at once that day. A block lends out no more seats than its own boats take.
+       */
+      const covered = (
+        kind: string,
+        short: number,
+        at: { block: Block; n: number }[],
+        used: (b: Block, kind: string) => number,
+        check: string,
+      ) => {
+        const perBoat = classes.get(kind)?.max_capacity ?? 0;
+        if (kind === COACH_BOATS || perBoat <= 0) return false;
+        const done = lent.get(check) ?? new Map<string, number>();
+        const borrowed = new Map<string, number>();
+        let seats = short * perBoat;
+        for (const { block, n } of at) {
+          let own = n * perBoat;
+          for (const id of standIns(block, kind)) {
+            if (seats <= 0 || own <= 0) break;
+            const takes = classes.get(id)!.max_capacity!;
+            const spare = haveOf(id) - peakOf((b) => used(b, id)).total - (done.get(id) ?? 0) - (borrowed.get(id) ?? 0);
+            const n = Math.min(spare, Math.ceil(Math.min(seats, own) / takes));
+            if (n <= 0) continue;
+            borrowed.set(id, (borrowed.get(id) ?? 0) + n);
+            seats -= n * takes;
+            own -= n * takes;
+          }
+        }
+        if (seats > 0) return false;
+        for (const [id, n] of borrowed) done.set(id, (done.get(id) ?? 0) + n);
+        lent.set(check, done);
+        return true;
+      };
+      const given = (b: Block, kind: string) =>
+        sum(b.boats.filter((x) => kindOf(x.boat_class_id) === kind).map((x) => x.count));
       const warn = (
         code: string,
         what: string,
@@ -440,9 +497,9 @@ export class Staffing {
       );
       for (const kind of kinds) {
         const what = nameOf(kind);
-        const have = boats.filter((b) => b.kind === kind && has(b.asset)).length;
-        const out = peakOf((b) => sum(b.boats.filter((x) => kindOf(x.boat_class_id) === kind).map((x) => x.count)));
-        if (out.total > have) {
+        const have = haveOf(kind);
+        const out = peakOf((b) => given(b, kind));
+        if (out.total > have && !covered(kind, out.total - have, out.at, given, "given")) {
           const only = have === 0 ? "none" : `only ${have}`;
           const count = countIn(out.total, kind);
           warn(
@@ -460,9 +517,11 @@ export class Staffing {
           need: Map<Block, Map<string, number>>,
           when: (it: string) => string,
           severity: WarningSeverity,
+          check: string,
         ) => {
           const peak = peakOf((b) => need.get(b)!.get(kind) ?? 0);
           if (peak.total <= have) return false;
+          if (covered(kind, peak.total - have, peak.at, (b, id) => need.get(b)!.get(id) ?? 0, check)) return false;
           const names = [...new Set(peak.at.flatMap(({ block }) => block.members.map((a) => a.offering.name)))];
           const [needs, it] = names.length === 1 ? ["needs", "it's"] : ["need", "they're"];
           warn(
@@ -474,8 +533,8 @@ export class Staffing {
           );
           return true;
         };
-        if (!short(expected, () => "for the sailors expected", "error"))
-          short(atMax, (it) => `when ${it} full`, "warning");
+        if (!short(expected, () => "for the sailors expected", "error", "expected"))
+          short(atMax, (it) => `when ${it} full`, "warning", "max");
       }
     }
   }

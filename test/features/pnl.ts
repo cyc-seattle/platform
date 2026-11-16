@@ -512,6 +512,8 @@ export class PnlPlan {
       qualifications: [],
       qualification_covers: [],
       boat_classes: await read("boat_classes", { id: anyOf(this.boatClasses) }),
+      programs: await read("programs", { product_id: anyOf(this.products) }),
+      program_boat_classes: await read("program_boat_classes", { boat_class_id: anyOf(this.boatClasses) }),
       assets: await read("assets", { id: anyOf(this.assets) }),
       boats: await read("boats", { asset_id: anyOf(this.assets) }),
       // The plans' levels, whose names the engine gives its labor lines. It doesn't sort them.

@@ -426,6 +426,52 @@ describe("staffing", () => {
       ]);
     });
 
+    /** Lets Guppies sail `ids`, in the catalog. */
+    const sails = (data: PlanData, ids: string[]) => {
+      data.programs = [{ id: "guppies", product_id: data.products[0]!.id }];
+      data.program_boat_classes = ids.map((id) => ({ program_id: "guppies", boat_class_id: id }));
+      return data;
+    };
+
+    it("covers a class that runs short with spare boats of another class its programs can sail", () => {
+      // 16 sailors need 8 Sailqubes, and the organization has 6, so 2 FJs stand in.
+      const owned = [...sailqubes(6), { boat_class_id: "fj", count: 2 }];
+      const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, owned);
+      expect(short(data)).toHaveLength(1);
+      expect(short(sails(data, ["sailqube", "fj"]))).toEqual([]);
+      data.boats.pop();
+      expect(short(data)[0]?.message).toMatch(/needs 8 Sailqubes out at once when it's full/);
+    });
+
+    it("counts only the stand-ins no other block has out at the same time", () => {
+      const data = sails(
+        guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, [
+          ...sailqubes(6),
+          { boat_class_id: "fj", count: 2 },
+        ]),
+        ["sailqube", "fj"],
+      );
+      const p = product({ name: "Minnows" });
+      const off = offering(p.id, { name: "Minnows Week 2", capacity: 2, target_enrollment: 2 });
+      const a = activity(off.id, { date: "2027-07-13", start_time: "10:00", end_time: "11:00" });
+      const other = block([a], { boats: [{ boat_class_id: "fj", count: 1 }] }, { name: "Minnows" });
+      data.products.push(p);
+      data.plan_offerings.push(off);
+      data.plan_activities.push(a);
+      data.plan_activity_blocks.push(...other.plan_activity_blocks);
+      data.plan_block_boats.push(...other.plan_block_boats);
+      expect(short(data)[0]?.message).toMatch(/needs 8 Sailqubes out at once when it's full/);
+    });
+
+    it("covers boats given beyond what the organization has, too", () => {
+      const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 7 }] }, [
+        ...sailqubes(6),
+        { boat_class_id: "fj", count: 1 },
+      ]);
+      expect(codes(data)).toContain("over_inventory_boats");
+      expect(codes(sails(data, ["sailqube", "fj"]))).not.toContain("over_inventory_boats");
+    });
+
     it("is a warning when the organization's boats run short only if every offering fills", () => {
       const data = guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, sailqubes(6));
       expect(short(data)[0]?.severity).toBe("warning");

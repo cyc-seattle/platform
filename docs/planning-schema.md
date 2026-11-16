@@ -11,7 +11,7 @@ A Financial Plan holds what planners enter, and the results the [planning engine
 ### Terms
 
 - **Product:** a lasting thing CYC sells, such as J-Pod, boat charters or storage leasing. Products live in the new `core` domain.
-- **Program:** a product of kind `program`, such as J-Pod. A program with `team` set is a team, such as a race team. Each application groups programs its own way: the website by category, Google Workspace by Group. A program's `color` is its color on calendars and charts in every app: `programColor()` in `@cyc-seattle/platform/planning` gives the one a Catalog Writer set, or else one of `PROGRAM_PALETTE`'s twelve, picked by its id, so it stays the same everywhere.
+- **Program:** a product of kind `program`, such as J-Pod. A program with `team` set is a team, such as a race team. Each application groups programs its own way: the website by category, Google Workspace by Group. A program's `color` is its color on calendars and charts in every app: `programColor()` in `@cyc-seattle/platform/planning` gives the one a Catalog Writer set, or else one of `PROGRAM_PALETTE`'s twelve, picked by its id, so it stays the same everywhere. Its `boat_classes` are the classes its sailors can sail, such as FJs and 420s for K Pod, which a Catalog Writer sets; the boat checks let one stand in for another (cyc-seattle/platform#313).
 - **Program area:** one part of the organization's programs, such as Summer or Singlehanded, with one revenue account. People hold roles in it, such as Director, the way they hold program roles, and its directors plan it. Every program belongs to one. Areas are the program services the organization reports in Part III of Form 990. Merchandise, storage and charters belong to none.
 - **Offering:** a product sold for a period, such as J-Pod Fall 2027 or Guppies summer week 3. A program offering is one Clubspot session × class, the unit Clubspot caps enrollment on.
 - **Activity:** one dated, timed event that uses coaches, boats or other resources, such as a practice, a regatta day or a travel day. The planner, or a scheduling tool, enters each one.
@@ -45,6 +45,8 @@ erDiagram
     accounts |o--o{ accounts : "parent, contra"
     products ||--o| programs : "program subtype"
     programs ||--o{ catalog_offerings : "offerings of"
+    programs ||--o{ program_boat_classes : sails
+    boat_classes ||--o{ program_boat_classes : "sailed by"
     assets ||--o| boats : "boat subtype"
     boat_classes ||--o{ boats : "class of"
     accounts |o--o{ boat_classes : "upkeep booked to"
@@ -92,6 +94,11 @@ erDiagram
         uuid id PK
         uuid product_id FK "unique, required, kind program"
         bool team "a team, such as a race team"
+    }
+    program_boat_classes {
+        uuid id PK
+        uuid program_id FK
+        uuid boat_class_id FK "a class its sailors can sail"
     }
     catalog_offerings {
         uuid id PK

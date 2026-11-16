@@ -92,7 +92,8 @@ Feature: Plans
   activity with no staff isn't a warning: a program such as open boating runs without one. Each warning says which plan and date it's about. A full program needs
   sailboats enough for all its sailors, each boat taking its class's most sailors, and a coach boat
   for each coach: each coach can safely take the program's number of sailors. Any of the organization's
-  powerboats can be a coach boat. Too few boats if every offering fills is a warning; too few for
+  powerboats can be a coach boat, and a boat of another class a program can sail can stand in for
+  one it's given, if it's spare that day. Too few boats if every offering fills is a warning; too few for
   the sailors expected is an error, since the plan can't run as it is. The boats that
   sailors bring count, and so do the boats a block charters, since the organization can charter
   more of a class it doesn't own. The planner isn't warned about coaches, since CSC can always hire
@@ -800,6 +801,13 @@ Feature: Plans
       And two blocks on the morning of July 13, with 4 RIBs and 3 RIBs
       When a planner calculates the P&L
       Then the planner is warned that July 13 has 7 RIBs out, but the organization has 6
+
+    Example: A class a program can sail stands in for the one it's given
+      Given Guppies can sail Sailqubes and FJs
+      And the organization has 12 Sailqubes and 2 FJs
+      And a Guppies block with 9 Sailqubes and a Minnows block with 5, both on the morning of July 13
+      When a planner calculates the P&L
+      Then the planner isn't warned about Sailqubes
 
     Example: Any of the organization's powerboats can be a coach boat
       Given the organization has 6 RIBs and 1 support boat

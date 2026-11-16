@@ -578,6 +578,8 @@ const CATALOG = [
   "boats",
   "staff_roles",
   "staff_levels",
+  "programs",
+  "program_boat_classes",
 ];
 
 /** A `date` as `YYYY-MM-DD`, whether the driver gives a string, or a `Date` at UTC or local midnight. */
