@@ -228,10 +228,11 @@ Allocation warnings:
   (`over_inventory_boats`). It's an error when they're too few even for the sailors expected: each
   offering's enrollment in place of its max. For each block whose activities use boats, with every
   offering at its max enrollment:
-  - Its sailboats, the classes with a `max_capacity` above 0, are scaled up until they seat
-    everyone: each class's boats, the organization's and chartered, × (Σ max − the seats in the
-    boats sailors bring) ÷ the seats in the organization's and chartered boats, rounded up. They're
-    never scaled down, and the boats sailors bring stay as given.
+  - Its sailboats, the classes with a `max_capacity` above 0, are the organization's it's given. If
+    their seats, with the chartered ones and the boats sailors bring, are fewer than its sailors, the
+    seats it's short come in the fewest more boats: of the class it's given that seats the most, and
+    of those, the one it's given most of. Seats count across classes, so a block with a Harpoon and a
+    Venture that's 4 short needs 1 more Harpoon, not 1 more of each (cyc-seattle/platform#313).
   - It needs a coach boat for each coach a full program needs: Σ (each program's max ÷ its
     `sailors_per_coach`), rounded up. If that's more than the coach boats it's given, the rest are
     of the coach boat class it's given most of. A block given no coach boats needs none, and a

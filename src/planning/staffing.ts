@@ -265,8 +265,8 @@ export class Staffing {
 
   /**
    * The boats of each class a block that sails would need of the organization's own for `most` of
-   * each offering's sailors: every offering full, or the sailors expected. Its sailboats are scaled
-   * up from what it's given until they seat everyone, the boats sailors bring kept as they are, and
+   * each offering's sailors: every offering full, or the sailors expected. Its sailboats are what
+   * it's given, and more of one class if their seats, with the boats sailors bring, are too few, and
    * it needs a coach boat for each coach its programs need, the extra ones of the coach boat class
    * it's given most of. Charters stay as given.
    */
@@ -282,12 +282,20 @@ export class Staffing {
 
     const seats = (n: (b: PlanBlockBoats) => number) =>
       sum(sailboats.map((b) => n(b) * capacity.get(b.boat_class_id)!));
-    const theirs = seats((b) => b.sailor_owned ?? 0);
-    const ours = seats(given);
-    const scale = ours > 0 ? Math.max(1, (sum(offerings.map(most)) - theirs) / ours) : 1;
-    for (const b of sailboats) {
-      const n = Math.ceil(given(b) * scale - 1e-9) - (b.chartered ?? 0);
-      result.set(b.boat_class_id, (result.get(b.boat_class_id) ?? 0) + n);
+    for (const b of sailboats) result.set(b.boat_class_id, (result.get(b.boat_class_id) ?? 0) + b.count);
+    // The seats it's short, in whatever classes it's given, come in the fewest more boats: of the class
+    // that seats the most, and of those, the one it's given most of (cyc-seattle/platform#313).
+    const short = sum(offerings.map(most)) - seats((b) => b.sailor_owned ?? 0) - seats(given);
+    const perBoat = (b: PlanBlockBoats) => capacity.get(b.boat_class_id)!;
+    const roomiest = sailboats
+      .filter((b) => given(b) > 0)
+      .reduce<PlanBlockBoats | undefined>(
+        (x, b) => (x && (perBoat(x) > perBoat(b) || (perBoat(x) === perBoat(b) && given(x) >= given(b))) ? x : b),
+        undefined,
+      );
+    if (short > 0 && roomiest !== undefined) {
+      const id = roomiest.boat_class_id;
+      result.set(id, result.get(id)! + Math.ceil(short / perBoat(roomiest) - 1e-9));
     }
 
     const coaches = Math.ceil(
