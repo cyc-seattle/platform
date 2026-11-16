@@ -488,10 +488,14 @@ export interface ComputedActivity {
 /** `allocation` when the blocks break a limit or a closed day; `data` when a row is missing or wrong. */
 export type WarningCategory = "allocation" | "data";
 
+/** `error` when the plan can't run as allocated for the sailors expected; otherwise `warning`. */
+export type WarningSeverity = "warning" | "error";
+
 export interface EngineWarning {
   code: string;
   message: string;
   category: WarningCategory;
+  severity: WarningSeverity;
   /** The key of the row it's about, when there is one. */
   key?: string;
   /** The plan it's about, when there is one. */

@@ -729,6 +729,7 @@ function resultRows(data, out, operations) {
       subject_key: w.key ?? null,
       date: w.date ?? null,
       category: w.category,
+      severity: w.severity,
     })),
     totals: {
       calculated_at: new Date().toISOString(),

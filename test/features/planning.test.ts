@@ -516,7 +516,7 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
-parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs"]);
+parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs", "support boats", "support boat"]);
 parameter("staff", ["one coach", "two coaches"]);
 parameter("day", ["July 1", "August 1"]);
 /** "4pm" or "noon" as `HH:MM`. */
@@ -577,14 +577,16 @@ async function level(name: string, rate = 2000): Promise<Item> {
   return levels[name];
 }
 /** A boat class by its plural name. RIBs are coach boats: they take no sailors, and book to coach boats. */
+const POWERBOATS = new Set(["RIBs", "support boat", "support boats"]);
 async function boatClass(name: string, sailors = name === "Optis" ? 1 : 2): Promise<string> {
-  classes[name] ??=
-    name === "RIBs"
-      ? await p.boatClass(name, 0, { account_id: await p.account("ribs") })
-      : await p.boatClass(name, sailors);
-  return classes[name];
+  // A support boat is a coach boat of its own class, as RIBs are.
+  const key = name === "support boat" ? "support boats" : name;
+  classes[key] ??= POWERBOATS.has(name)
+    ? await p.boatClass(key, 0, { account_id: await p.account("ribs") })
+    : await p.boatClass(key, sailors);
+  return classes[key];
 }
-const kindOf = (boats: string) => (boats === "RIBs" ? "powerboat" : "sailboat");
+const kindOf = (boats: string) => (POWERBOATS.has(boats) ? "powerboat" : "sailboat");
 /** A class's boat rate in the Operations Plan, with `fields` such as its fuel. */
 const boatRate = async (boats: string, fields: Row) =>
   p.operationsRow("plan_boat_rates", {
@@ -1043,10 +1045,23 @@ Step(
   (_, _program: string, needs: string, _boats: string, have: string) => {
     const found = warning("short_of_boats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
+    expect(found?.severity).toBe("warning");
     expect(found?.message).toMatch(
       new RegExp(
         // Each test's boat class has a name of its own, such as "Sailqubes boat-1".
         `^.+ needs ${needs} .+ out at once when it's full, but .+ has only ${have}, so it's ${Number(needs) - Number(have)} short$`,
+      ),
+    );
+  },
+);
+Step(
+  "the planner is shown an error that on July 13 {program} needs {count} {boats} for the sailors expected, but the organization has {count}",
+  (_, _program: string, needs: string, _boats: string, have: string) => {
+    const found = warning("short_of_boats");
+    expect(found).toMatchObject({ category: "allocation", date: JULY_13, severity: "error" });
+    expect(found?.message).toMatch(
+      new RegExp(
+        `^.+ needs ${needs} .+ out at once for the sailors expected, but .+ has only ${have}, so it's ${Number(needs) - Number(have)} short$`,
       ),
     );
   },
@@ -1135,22 +1150,6 @@ Step("the offering doesn't pay for itself, even when it's full", () => {
 Step("the planner isn't warned about the block", () => {
   // The block's boats are the organization's own, but this example is about its coaches.
   expect(p.out.warnings.filter((w) => w.category === "allocation" && /coach/.test(w.message))).toEqual([]);
-});
-
-// Activities with no staff.
-Step("an offering with a practice on August 2 that's in no block", async () => {
-  await p.activities(await offeringOf(undefined, 1), [AUGUST_2], "09:00", "12:00");
-});
-Step("an offering with a practice on August 2, in a block with boats but no staff", async () => {
-  await blockOf(
-    [await offeringOf(undefined, 1)],
-    MORNING,
-    { boats: [{ boat_class_id: await boatClass("Optis"), count: 1 }] },
-    AUGUST_2,
-  );
-});
-Step("the planner is warned that the practice on August 2 has no staff", () => {
-  expect(warning("unallocated_activity")).toMatchObject({ category: "allocation", date: AUGUST_2 });
 });
 
 // Readable result lines.
@@ -1757,23 +1756,27 @@ Step("the draft is gone", async () => {
 });
 
 // A frozen Financial Plan's warnings.
-Step("a draft Financial Plan whose Program Plan has a practice on August 2 with no staff", async () => {
+Step("a draft Financial Plan whose Program Plan has a practice on August 2, a closed day", async () => {
   ({ offering } = await programWithOffering());
   await p.activities(offering, [AUGUST_2], "09:00", "12:00");
+  await p.operationsRow("plan_closed_dates", { date: AUGUST_2, name: "A closed day" });
   financialPlan = await p.draftSet();
 });
-Step("the Financial Plan's warnings say that the practice on August 2, in its Program Plan, has no staff", async () => {
-  const planner = (await userFor({ policies: ["Plan Reader"] })).session;
-  const filter = encodeURIComponent(
-    JSON.stringify({ financial_plan_id: { _eq: financialPlan }, code: { _eq: "unallocated_activity" } }),
-  );
-  // The hook writes a frozen Financial Plan's results just after the freeze answers.
-  const warnings = async () =>
-    planner.ok("GET", `/items/plan_result_warnings?filter=${filter}&fields=plan_id,date,category`);
-  await expect
-    .poll(warnings, { timeout: 60_000, interval: 1000 })
-    .toEqual([{ plan_id: offering!["plan_id"], date: AUGUST_2, category: "allocation" }]);
-});
+Step(
+  "the Financial Plan's warnings say that the practice on August 2, in its Program Plan, is on a closed day",
+  async () => {
+    const planner = (await userFor({ policies: ["Plan Reader"] })).session;
+    const filter = encodeURIComponent(
+      JSON.stringify({ financial_plan_id: { _eq: financialPlan }, code: { _eq: "closed_date" } }),
+    );
+    // The hook writes a frozen Financial Plan's results just after the freeze answers.
+    const warnings = async () =>
+      planner.ok("GET", `/items/plan_result_warnings?filter=${filter}&fields=plan_id,date,category,severity`);
+    await expect
+      .poll(warnings, { timeout: 60_000, interval: 1000 })
+      .toEqual([{ plan_id: offering!["plan_id"], date: AUGUST_2, category: "allocation", severity: "warning" }]);
+  },
+);
 
 // What a Plan Writer and a Plan Admin can do, and the date a Financial Plan is active from.
 const ONE_PER_DATE = "Another Financial Plan for the year is already active from that date.";

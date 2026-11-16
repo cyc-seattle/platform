@@ -1047,6 +1047,8 @@ export interface PlanResultWarnings {
   date: string | null;
   /** Allocation: the blocks break a limit, or run on a closed day. Data: a row is missing or wrong. */
   category: "allocation" | "data" | null;
+  /** Error: the plan can't run as allocated for the sailors expected. Warning: something to check, such as too few boats if every offering fills. */
+  severity: "warning" | "error" | null;
 }
 
 /** A Financial Plan's totals for the organization. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */

@@ -10,6 +10,7 @@ import type {
   PlanBlockStaff,
   PlanOffering,
   PlanProgram,
+  WarningSeverity,
 } from "./types.ts";
 
 /** Hours a salaried position coached, by offering key, for the salaried rule. */
@@ -188,19 +189,6 @@ export class Staffing {
     return result;
   }
 
-  /** Warns about each activity, other than travel, that's in no block, or in one with no staff. */
-  private checkUnallocated(scheduled: ScheduledActivity[], blocks: Map<Id, Block>): void {
-    for (const a of scheduled) {
-      if (a.kind === "travel") continue;
-      const block = a.stored.block_id == null ? undefined : blocks.get(a.stored.block_id);
-      if (block !== undefined && sum(block.staff.map((s) => s.count)) > 0) continue;
-      this.ctx.warn("unallocated_activity", `${a.offering.name}'s ${a.kind} has no staff`, a.stored.key, {
-        plan_id: a.stored.plan_id,
-        date: a.date,
-      });
-    }
-  }
-
   /** Each program's settings, by its product. */
   private programs(): Map<Id, PlanProgram> {
     return new Map(this.ctx.data.plan_programs.map((p) => [p.product_id, p]));
@@ -276,17 +264,17 @@ export class Staffing {
   }
 
   /**
-   * The boats of each class a block that sails would need of the organization's own with every
-   * offering full. Its sailboats are scaled up from what it's given until they seat everyone, the
-   * boats sailors bring kept as they are, and it needs a coach boat for each coach a full program
-   * needs, the extra ones of the coach boat class it's given most of. Charters stay as given.
+   * The boats of each class a block that sails would need of the organization's own for `most` of
+   * each offering's sailors: every offering full, or the sailors expected. Its sailboats are scaled
+   * up from what it's given until they seat everyone, the boats sailors bring kept as they are, and
+   * it needs a coach boat for each coach its programs need, the extra ones of the coach boat class
+   * it's given most of. Charters stay as given.
    */
-  private ownedAtMax(block: Block, programs: Map<Id, PlanProgram>): Map<Id, number> {
+  private ownedFor(block: Block, programs: Map<Id, PlanProgram>, most: (o: PlanOffering) => number): Map<Id, number> {
     const result = new Map<Id, number>();
     if (!block.members.some((a) => a.uses_boats)) return result;
     const { ctx } = this;
     const offerings = offeringsIn(block);
-    const most = (o: PlanOffering) => ctx.maxEnrollment.get(o.id) ?? 0;
     const capacity = new Map(ctx.data.boat_classes.map((c) => [c.id, c.max_capacity]));
     const given = (b: PlanBlockBoats) => b.count + (b.chartered ?? 0);
     const sailboats = block.boats.filter((b) => (capacity.get(b.boat_class_id) ?? 0) > 0);
@@ -399,38 +387,64 @@ export class Staffing {
   /**
    * Warns when more of the organization's boats of one class are given to blocks at once on a date
    * than it has that day on the asset list, and else when it hasn't enough for every block to run
-   * full (cyc-seattle/platform#294). Boats it charters, or sailors bring, don't count. A class it
-   * has none of that day is only chartered, and more can be.
+   * full (cyc-seattle/platform#294): an error when it hasn't enough even for the sailors expected
+   * (cyc-seattle/platform#313). Every class that seats no sailors is a coach boat, and any coach
+   * boat can stand in for another, so they're counted together. Boats it charters, or sailors
+   * bring, don't count. A class it has none of that day is only chartered, and more can be.
    */
   private checkInventory(blocks: Block[], programs: Map<Id, PlanProgram>): void {
     const { ctx } = this;
     const dates = groupBy(blocks, (b) => b.row.date);
     const classes = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
+    const COACH_BOATS = "coach boats";
+    // What a class is counted as: itself, or every coach boat together.
+    const kindOf = (id: Id) => (classes.get(id)?.max_capacity === 0 ? COACH_BOATS : id);
+    const nameOf = (kind: string) => (kind === COACH_BOATS ? "coach boat" : (classes.get(kind)?.name ?? kind));
+    const countIn = (n: number, kind: string) =>
+      kind === COACH_BOATS ? `${n} coach boat${n === 1 ? "" : "s"}` : countOf(n, nameOf(kind));
     const assets = new Map(ctx.data.assets.map((a) => [a.id, a]));
     const boats = ctx.data.boats.flatMap((b) => {
       const asset = assets.get(b.asset_id);
-      return asset === undefined ? [] : [{ asset, boat_class_id: b.boat_class_id }];
+      return asset === undefined ? [] : [{ asset, kind: kindOf(b.boat_class_id) }];
     });
-    const atMax = new Map(blocks.map((b) => [b, this.ownedAtMax(b, programs)]));
+    const byKind = (owned: Map<Id, number>) => {
+      const result = new Map<string, number>();
+      for (const [id, n] of owned) result.set(kindOf(id), (result.get(kindOf(id)) ?? 0) + n);
+      return result;
+    };
+    const atMax = new Map(
+      blocks.map((b) => [b, byKind(this.ownedFor(b, programs, (o) => ctx.maxEnrollment.get(o.id) ?? 0))]),
+    );
+    const expected = new Map(
+      blocks.map((b) => [b, byKind(this.ownedFor(b, programs, (o) => ctx.enrollment.get(o.id) ?? 0))]),
+    );
     const organization = ctx.data.organization.name;
     for (const [date, list] of dates) {
       const has = (a: Asset) =>
         (a.acquired_on == null || a.acquired_on <= date) && (a.disposed_on == null || date < a.disposed_on);
       const peakOf = (used: (b: Block) => number) =>
         mostAtOnce(list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : [])));
-      const warn = (code: string, what: string, at: { block: Block }[], message: string) => {
+      const warn = (
+        code: string,
+        what: string,
+        at: { block: Block }[],
+        message: string,
+        severity: WarningSeverity = "warning",
+      ) => {
         for (const plan of new Set(at.map(({ block }) => block.row.plan_id))) {
-          ctx.warn(code, message, what, { plan_id: plan, date: date as DateString });
+          ctx.warn(code, message, what, { plan_id: plan, date: date as DateString, severity });
         }
       };
-      const classIds = new Set(list.flatMap((b) => [...b.boats.map((x) => x.boat_class_id), ...atMax.get(b)!.keys()]));
-      for (const id of classIds) {
-        const what = classes.get(id)?.name ?? id;
-        const have = boats.filter((b) => b.boat_class_id === id && has(b.asset)).length;
-        const out = peakOf((b) => sum(b.boats.filter((x) => x.boat_class_id === id).map((x) => x.count)));
+      const kinds = new Set(
+        list.flatMap((b) => [...b.boats.map((x) => kindOf(x.boat_class_id)), ...atMax.get(b)!.keys()]),
+      );
+      for (const kind of kinds) {
+        const what = nameOf(kind);
+        const have = boats.filter((b) => b.kind === kind && has(b.asset)).length;
+        const out = peakOf((b) => sum(b.boats.filter((x) => kindOf(x.boat_class_id) === kind).map((x) => x.count)));
         if (out.total > have) {
           const only = have === 0 ? "none" : `only ${have}`;
-          const count = countOf(out.total, what);
+          const count = countIn(out.total, kind);
           warn(
             "over_inventory_boats",
             what,
@@ -442,16 +456,26 @@ export class Staffing {
           continue;
         }
         if (have === 0) continue;
-        const full = peakOf((b) => atMax.get(b)!.get(id) ?? 0);
-        if (full.total <= have) continue;
-        const names = [...new Set(full.at.flatMap(({ block }) => block.members.map((a) => a.offering.name)))];
-        const [needs, it] = names.length === 1 ? ["needs", "it's"] : ["need", "they're"];
-        warn(
-          "short_of_boats",
-          what,
-          full.at,
-          `${listOf(names)} ${needs} ${countOf(full.total, what)} out at once when ${it} full, but ${organization} has only ${have}, so ${it} ${full.total - have} short`,
-        );
+        const short = (
+          need: Map<Block, Map<string, number>>,
+          when: (it: string) => string,
+          severity: WarningSeverity,
+        ) => {
+          const peak = peakOf((b) => need.get(b)!.get(kind) ?? 0);
+          if (peak.total <= have) return false;
+          const names = [...new Set(peak.at.flatMap(({ block }) => block.members.map((a) => a.offering.name)))];
+          const [needs, it] = names.length === 1 ? ["needs", "it's"] : ["need", "they're"];
+          warn(
+            "short_of_boats",
+            what,
+            peak.at,
+            `${listOf(names)} ${needs} ${countIn(peak.total, kind)} out at once ${when(it)}, but ${organization} has only ${have}, so ${it} ${peak.total - have} short`,
+            severity,
+          );
+          return true;
+        };
+        if (!short(expected, () => "for the sailors expected", "error"))
+          short(atMax, (it) => `when ${it} full`, "warning");
       }
     }
   }
@@ -503,7 +527,6 @@ export class Staffing {
   } {
     const { ctx } = this;
     const blocks = this.blocks(scheduled);
-    this.checkUnallocated(scheduled, blocks);
     const programs = this.programs();
     const holds = new Map<Id, number>();
     // By date, so a warning given once names the first date it's seen on.
