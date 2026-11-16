@@ -365,6 +365,28 @@ describe("staffing", () => {
       expect(computePlan(data).warnings.filter((w) => w.category === "allocation")).toEqual([]);
     });
 
+    it("counts the seats a block is short across its classes, and adds the fewest boats to seat them", () => {
+      // A Harpoon and a Venture seat 12, so 16 sailors are 4 short: 1 more Harpoon, not 2 of each.
+      const given = {
+        boats: [
+          { boat_class_id: "harpoon", count: 1 },
+          { boat_class_id: "venture", count: 1 },
+        ],
+      };
+      const data = guppies(given, [
+        { boat_class_id: "harpoon", count: 2 },
+        { boat_class_id: "venture", count: 1 },
+      ]);
+      data.boat_classes = [
+        ...classes,
+        { id: "harpoon", name: "Harpoon", max_capacity: 6, footprint_sq_ft: null },
+        { id: "venture", name: "Venture", max_capacity: 6, footprint_sq_ft: null },
+      ];
+      expect(short(data)).toEqual([]);
+      data.boats.splice(1, 1);
+      expect(short(data)[0]?.message).toMatch(/needs 2 Harpoons out at once when it's full/);
+    });
+
     it("keeps the boats sailors bring as they are", () => {
       // 2 of theirs seat 4, so 5 of the organization's seating 10 need to seat 12: 6.
       const given = { boats: [{ boat_class_id: "sailqube", count: 5, sailor_owned: 2 }] };

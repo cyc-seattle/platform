@@ -516,7 +516,7 @@ Step("a director on a {money} salary, who's paid {money} an hour to coach", asyn
 
 // Program settings, blocks, and what each block is given.
 parameter("program", ["Guppies", "Minnows"]);
-parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs", "support boats", "support boat"]);
+parameter("boats", ["Sailqubes", "Optis", "RIBs", "FJs", "Harpoons", "RS Ventures", "support boats", "support boat"]);
 parameter("staff", ["one coach", "two coaches"]);
 parameter("day", ["July 1", "August 1"]);
 /** "4pm" or "noon" as `HH:MM`. */

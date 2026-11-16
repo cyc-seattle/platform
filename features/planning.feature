@@ -849,6 +849,14 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner isn't warned that the organization hasn't enough Sailqubes
 
+    Example: A block short of seats needs only enough boats to seat them
+      Given Harpoons take 6 sailors each
+      And RS Ventures take 6 sailors each
+      And the organization has 3 Harpoons and 2 RS Ventures
+      And a Guppies offering for up to 26 sailors that expects 20, in a block with 2 Harpoons and 2 RS Ventures on the morning of July 13
+      When a planner calculates the P&L
+      Then the planner isn't warned that the organization hasn't enough RS Ventures
+
     Example: A coach boat for each coach a full program needs
       Given Guppies have a coach for every 5 sailors
       And the organization has 8 Sailqubes and 3 RIBs
