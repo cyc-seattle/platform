@@ -808,17 +808,26 @@ describe("a block costs what it's given", () => {
     expect(out.activities[0]).toMatchObject({ boats: 15 });
   });
 
-  it("gives the most sailors the block can take, by its coaches or its boats", () => {
+  it("gives the most sailors the block's boats can seat, whatever its coaches", () => {
     const { data, off } = full(
       16,
       10,
-      { staff: [{ staff_level_id: coach.staff_level_id, count: 4 }], boats: [{ boat_class_id: "q", count: 6 }] },
+      { staff: [{ staff_level_id: coach.staff_level_id, count: 1 }], boats: [{ boat_class_id: "q", count: 6 }] },
       { boat_classes: [{ id: "q", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }] },
     );
     data.plan_activities[0]!.uses_boats = true;
+    // One coach for 5 sailors doesn't limit it: more coaches can be hired.
     expect(pnlOf(computePlan(data), off.key)).toMatchObject({ max_enrollment: 16, allocation_holds: 12 });
     data.plan_block_boats[0]!.count = 20;
-    expect(pnlOf(computePlan(data), off.key).allocation_holds).toBe(20);
+    expect(pnlOf(computePlan(data), off.key).allocation_holds).toBe(40);
+  });
+
+  it("gives no number, and no warning, for blocks that don't use boats", () => {
+    const { data, off } = full(16, 10, { staff: [{ staff_level_id: coach.staff_level_id, count: 1 }] });
+    data.plan_activities[0]!.uses_boats = false;
+    const out = computePlan(data);
+    expect(pnlOf(out, off.key).allocation_holds).toBeNull();
+    expect(out.warnings.filter((w) => w.code === "capacity_below_max")).toEqual([]);
   });
 
   it("warns when the blocks take fewer than the max, and it's an error when they take fewer than expected", () => {
@@ -847,41 +856,34 @@ describe("a block costs what it's given", () => {
     const [g, m] = [product(), product()];
     const og = offering(g.id, { capacity: 10, target_enrollment: 4 });
     const om = offering(m.id, { capacity: 5, target_enrollment: 2 });
-    const acts = [activity(og.id, { uses_boats: false }), activity(om.id, { uses_boats: false })];
+    const acts = [activity(og.id, { uses_boats: true }), activity(om.id, { uses_boats: true })];
     const out = computePlan(
       emptyPlan({
         products: [g, m],
-        plan_programs: [
-          program(g.id, { staff_level_id: coach.staff_level_id, sailors_per_coach: 10 }),
-          program(m.id, { staff_level_id: coach.staff_level_id, sailors_per_coach: 5 }),
-        ],
         plan_offerings: [og, om],
         plan_activities: acts,
-        plan_staff_levels: [coach],
-        ...block(acts, { staff: [{ staff_level_id: coach.staff_level_id, count: 3 }] }),
+        boat_classes: [{ id: "q", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }],
+        ...block(acts, { boats: [{ boat_class_id: "q", count: 10 }] }),
       }),
     );
-    expect(pnlOf(out, og.key).allocation_holds).toBe(20);
+    // 20 seats, less the other offering's max.
+    expect(pnlOf(out, og.key).allocation_holds).toBe(15);
     expect(pnlOf(out, om.key).allocation_holds).toBe(10);
   });
 
-  it("takes the fewest sailors any of the offering's blocks can take", () => {
+  it("takes the fewest sailors any of the offering's blocks can seat", () => {
     const p = product();
     const off = offering(p.id, { capacity: 16 });
-    const [a, b] = [
-      activity(off.id, { uses_boats: false }),
-      activity(off.id, { date: "2027-06-02", uses_boats: false }),
-    ];
+    const [a, b] = [activity(off.id, { uses_boats: true }), activity(off.id, { date: "2027-06-02", uses_boats: true })];
     const out = computePlan(
       emptyPlan({
         products: [p],
-        plan_programs: [program(p.id, { staff_level_id: coach.staff_level_id, sailors_per_coach: 8 })],
         plan_offerings: [off],
         plan_activities: [a, b],
-        plan_staff_levels: [coach],
+        boat_classes: [{ id: "q", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }],
         ...blocks(
-          block([a], { staff: [{ staff_level_id: coach.staff_level_id, count: 2 }] }),
-          block([b], { staff: [{ staff_level_id: coach.staff_level_id, count: 1 }] }),
+          block([a], { boats: [{ boat_class_id: "q", count: 8 }] }),
+          block([b], { boats: [{ boat_class_id: "q", count: 4 }] }),
         ),
       }),
     );

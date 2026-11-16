@@ -998,7 +998,7 @@ export interface PlanResultPnl {
   term_name: string | null;
   /** The term's first day, which puts the terms in order. */
   term_starts_on: string | null;
-  /** The most sailors an offering's blocks can take, with every other offering in them full. Empty for a product or program area. */
+  /** The most sailors an offering's blocks' boats can seat, with every other offering in them full. Empty for a product or program area, or when none of its blocks use boats. */
   allocation_holds: number | null;
   /** The fewest sailors, up to its capacity, at which an offering pays for itself, with its share of shared costs as planned. Empty when it doesn't even when full, and for a product or program area. */
   breakeven_enrollment: number | null;

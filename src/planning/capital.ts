@@ -45,7 +45,7 @@ export function rankCapital(ctx: Context, lines: CostLine[], organization: Organ
   for (const l of budget) {
     ctx.warn(
       "capital_unranked",
-      `${l.line_name} is a budget line, so it comes last.`,
+      `Add ${l.line_name} to the capital list to rank it.`,
       l.line_key.slice("budget:".length),
     );
   }

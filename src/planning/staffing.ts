@@ -195,31 +195,16 @@ export class Staffing {
   }
 
   /**
-   * Records the most sailors of each offering the block can take with every other offering full,
-   * by its coaches and its seats. Each program's sailors count against its own sailors per coach,
-   * and every coach on the block counts, at any staff level or salaried: the ratio is required, a
-   * coach's level isn't (cyc-seattle/sail-team#82). Seats count the boats sailors bring.
+   * Records the most sailors of each offering the block's seats take with every other offering full.
+   * Coaches don't limit it, since more can always be hired. Seats count the boats sailors bring.
    */
-  private checkCapacity(block: Block, programs: Map<Id, PlanProgram>, holds: Map<Id, number>): void {
+  private checkCapacity(block: Block, holds: Map<Id, number>): void {
     const { ctx } = this;
     const offerings = offeringsIn(block);
     const most = (o: PlanOffering) => ctx.maxEnrollment.get(o.id) ?? 0;
     const sailors = sum(offerings.map(most));
     const warns = sailors > 0;
     const scope = { plan_id: block.row.plan_id, date: block.row.date };
-
-    const needs = new Map<Id, number>();
-    const perCoach = new Map<Id, number>();
-    for (const o of offerings) {
-      const settings = programs.get(o.product_id);
-      if (settings?.staff_level_id == null || settings.sailors_per_coach == null || settings.sailors_per_coach <= 0) {
-        continue;
-      }
-      needs.set(o.id, most(o) / settings.sailors_per_coach);
-      perCoach.set(o.id, settings.sailors_per_coach);
-    }
-    const coaches = sum(block.staff.map((s) => s.count));
-    const load = sum(needs.values());
 
     const sails = block.members.some((a) => a.uses_boats);
     let seats = 0;
@@ -244,13 +229,9 @@ export class Staffing {
     }
 
     // What's left for each offering once the others in the block are full.
+    if (!sails) return;
     for (const o of offerings) {
-      const own = needs.get(o.id);
-      const byCoaches =
-        own === undefined ? Infinity : Math.floor((coaches - (load - own)) * perCoach.get(o.id)! + 1e-9);
-      const byBoats = sails ? seats - (sailors - most(o)) : Infinity;
-      const n = Math.min(byCoaches, byBoats);
-      if (n === Infinity) continue;
+      const n = seats - (sailors - most(o));
       holds.set(o.id, Math.min(holds.get(o.id) ?? Infinity, Math.max(0, n)));
     }
   }
@@ -589,7 +570,7 @@ export class Staffing {
     const programs = this.programs();
     const holds = new Map<Id, number>();
     // By date, so a warning given once names the first date it's seen on.
-    for (const block of byDate(blocks)) this.checkCapacity(block, programs, holds);
+    for (const block of byDate(blocks)) this.checkCapacity(block, holds);
     this.checkInventory(byDate(blocks), programs);
     const doubleBooked = this.checkDoubleBooked([...blocks.values()]);
 
