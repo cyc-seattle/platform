@@ -98,6 +98,8 @@ describe("capital items", () => {
       [1, data.plan_capital_items![0]!.key, 300_000],
       [2, lump.key, 1_300_000],
     ]);
-    expect(out.warnings.map((w) => w.code)).toEqual(["capital_unranked"]);
+    expect(out.warnings.map((w) => [w.code, w.message])).toEqual([
+      ["capital_unranked", "Add Capital spend to the capital list to rank it."],
+    ]);
   });
 });
