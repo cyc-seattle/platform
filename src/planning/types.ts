@@ -470,8 +470,8 @@ export interface Pnl extends Totals {
   /** The most sailors an offering takes: its `capacity`, or else its enrollment. Null for a product or area. */
   max_enrollment: number | null;
   /**
-   * The most sailors an offering's blocks can take, with every other offering in them full. Null when
-   * it's in no block that limits it, and for a product or area.
+   * The most sailors an offering's blocks' boats can seat, with every other offering in them full. Coaches don't
+   * limit it, since more can be hired. Null when none of its blocks use boats, and for a product or area.
    */
   allocation_holds: number | null;
   /**

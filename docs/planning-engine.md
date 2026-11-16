@@ -173,16 +173,12 @@ coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issu
 
 ### A full program
 
-- An offering's `allocation_holds` is the most sailors its blocks can take: on each of its blocks,
-  other than travel, with every other offering in the block at its max, the fewer of
-  ⌊(the block's coaches − the others' Σ max ÷ sailors per coach) × its own sailors per coach⌋ and the
-  block's seats − the others' Σ max, at least 0. Each program's sailors count against its own
-  `sailors_per_coach`, in its `plan_programs` row, and every coach on the block counts, at any staff
-  level, and so does a salaried position: a program's `staff_level_id` is for planning and cost,
-  not a hard rule (cyc-seattle/sail-team#82). A block's seats are Σ (boats, the organization's,
-  chartered and the sailors' own, × the class's `max_capacity`); a coach boat's class takes 0. It's the fewest over its blocks. A limit that can't be
-  worked out, such as a program with no settings or a block whose activities don't use boats, is left
-  out; with none, it's null. It can be more than the max enrollment.
+- An offering's `allocation_holds` is the most sailors its blocks' boats can seat: on each of its
+  blocks whose activities use boats, with every other offering in the block at its max, the block's
+  seats − the others' Σ max, at least 0. A block's seats are Σ (boats, the organization's, chartered
+  and the sailors' own, × the class's `max_capacity`); a coach boat's class takes 0. Coaches don't
+  limit it, since more can always be hired. It's the fewest over its blocks, and null when none of
+  them use boats. It can be more than the max enrollment.
 - Its `breakeven_enrollment` is the fewest sailors, from 1 up to its `capacity`, at which its net after
   indirect costs is zero or more. The engine recalculates only the offering's slice: it, its
   activities, trips and own lines, and its blocks with the activities that share them, less its

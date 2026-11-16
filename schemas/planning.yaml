@@ -8786,7 +8786,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: The most sailors an offering's blocks can take, with every other offering in them full. Empty for a product or program area.
+      note: The most sailors an offering's blocks' boats can seat, with every other offering in them full. Empty for a product or program area, or when none of its blocks use boats.
       options: null
       readonly: true
       required: false
