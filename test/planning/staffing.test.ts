@@ -300,12 +300,10 @@ describe("staffing", () => {
       });
     }
 
-    it("warns about a program with no settings", () => {
+    it("doesn't warn about a program with no settings, which needs no coach boats", () => {
       const data = guppies({ staff: [{ staff_level_id: L1.staff_level_id }] });
       data.plan_programs = [];
-      expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "Guppies Week 2's program has no staff level or sailors per coach. Add both to check that A club has enough coach boats",
-      );
+      expect(codes(data)).not.toContain("no_program_settings");
     });
 
     it("warns when a class has no max capacity", () => {

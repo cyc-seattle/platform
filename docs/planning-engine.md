@@ -247,13 +247,13 @@ Allocation warnings:
 
 - Results frozen before cyc-seattle/platform#294 may have `over_capacity`, for a block whose coaches
   or boats were too few for every offering at its max.
+- Results frozen before cyc-seattle/platform#PR may have `no_program_settings`, for a program in a
+  block with no staff level or sailors per coach.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
 - `closed_date`: an activity, other than a travel day, on a closed day.
 
 Data warnings about blocks:
 
-- `no_program_settings`: a program in a block with no staff level or sailors per coach. Its sailors
-  need no coach boats.
 - `no_max_capacity`: a block's boat class with no `max_capacity`. Its boats take no sailors and
   aren't scaled.
 - `no_charter_rate`: a block's chartered boats, whose class has no `charter_per_day_cents`.
