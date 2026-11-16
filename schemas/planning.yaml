@@ -1101,7 +1101,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: null
+      note: What it adds to its program's name, such as "Week 3" or "Spring".
       options: null
       readonly: false
       required: true

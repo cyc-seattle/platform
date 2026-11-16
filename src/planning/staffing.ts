@@ -88,8 +88,8 @@ function listOf(names: string[]): string {
 }
 
 /** The offerings a block holds, by name, so a warning about it says whose it is. */
-function offeringsOf(block: Block): string {
-  return listOf([...new Set(block.members.map((a) => a.offering.name))]);
+function offeringsOf(ctx: Context, block: Block): string {
+  return listOf([...new Set(block.members.map((a) => ctx.offeringName(a.offering)))]);
 }
 
 /** The offerings a block holds, other than on a travel day, each once. */
@@ -139,7 +139,7 @@ export class Staffing {
       if (row === undefined) {
         this.ctx.warn(
           "unknown_block",
-          `${a.offering.name}'s ${a.kind} is in a block that isn't in the plan`,
+          `${this.ctx.offeringName(a.offering)}'s ${a.kind} is in a block that isn't in the plan`,
           a.stored.key,
         );
         continue;
@@ -147,7 +147,7 @@ export class Staffing {
       if (row.date !== a.date) {
         this.ctx.warn(
           "block_date_mismatch",
-          `${a.offering.name}'s ${a.kind} is in ${row.name}, which is on ${dayOf(row.date)}`,
+          `${this.ctx.offeringName(a.offering)}'s ${a.kind} is in ${row.name}, which is on ${dayOf(row.date)}`,
           a.stored.key,
           { plan_id: a.stored.plan_id, date: a.date },
         );
@@ -507,8 +507,8 @@ export class Staffing {
             what,
             out.at,
             out.at.length === 1
-              ? `${count} out at once for ${offeringsOf(out.at[0]!.block)}, but ${organization} has ${only}`
-              : `${count} out at once, but ${organization} has ${only}: ${listOf(out.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`,
+              ? `${count} out at once for ${offeringsOf(ctx, out.at[0]!.block)}, but ${organization} has ${only}`
+              : `${count} out at once, but ${organization} has ${only}: ${listOf(out.at.map(({ block, n }) => `${n} for ${offeringsOf(ctx, block)}`))}`,
           );
           continue;
         }
@@ -522,7 +522,9 @@ export class Staffing {
           const peak = peakOf((b) => need.get(b)!.get(kind) ?? 0);
           if (peak.total <= have) return false;
           if (covered(kind, peak.total - have, peak.at, (b, id) => need.get(b)!.get(id) ?? 0, check)) return false;
-          const names = [...new Set(peak.at.flatMap(({ block }) => block.members.map((a) => a.offering.name)))];
+          const names = [
+            ...new Set(peak.at.flatMap(({ block }) => block.members.map((a) => ctx.offeringName(a.offering)))),
+          ];
           const [needs, it] = names.length === 1 ? ["needs", "it's"] : ["need", "they're"];
           warn(
             "short_of_boats",

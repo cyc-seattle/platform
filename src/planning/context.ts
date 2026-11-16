@@ -96,6 +96,17 @@ export class Context {
 
   readonly data: PlanData;
 
+  /**
+   * An offering as people name it: its program, then its own name, such as "Guppies Week 3". An offering's own name is
+   * only what it adds to its program, but one named before that already starts with it, and keeps its name.
+   */
+  offeringName(offering: PlanOffering): string {
+    const program = this.products.get(offering.product_id)?.name;
+    if (program === undefined || offering.name === program || offering.name.startsWith(`${program} `))
+      return offering.name;
+    return `${program} ${offering.name}`;
+  }
+
   constructor(data: PlanData) {
     this.data = data;
     this.accounts = new Map(data.accounts.map((a) => [a.id, a]));
