@@ -10,7 +10,7 @@ function rankedItems(ctx: Context): PlanCapitalItem[] {
   return (ctx.data.plan_capital_items ?? [])
     .filter((item) => {
       if (ctx.accountType(item.account_id) === "asset") return true;
-      ctx.warn("capital_not_asset", `${item.name} isn't on an asset account, so it's left out of capital`, item.key);
+      ctx.warn("capital_not_asset", `${item.name} isn't on an asset account. It's left out.`, item.key);
       return false;
     })
     .sort(byRank);
@@ -45,7 +45,7 @@ export function rankCapital(ctx: Context, lines: CostLine[], organization: Organ
   for (const l of budget) {
     ctx.warn(
       "capital_unranked",
-      `${l.line_name} is capital entered as a budget line, so it comes after the ranked capital list`,
+      `${l.line_name} is a budget line, so it comes last.`,
       l.line_key.slice("budget:".length),
     );
   }

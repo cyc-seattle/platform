@@ -44,7 +44,7 @@ export class CostCenterBooker {
             : (this.ctx.areas.get(key)?.name ?? key);
         this.ctx.warn(
           `${entry.cost_center_type}_without_offerings`,
-          `${name} has no offerings this year, so ${entry.line_name} isn't split among offerings`,
+          `${name} has no offerings this year, so ${entry.line_name} stays on it.`,
           entry.cost_center_key ?? undefined,
         );
         this.ctx.book(entry);
@@ -71,11 +71,7 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
     (type === "program_area" && key != null && ctx.areas.has(key)) ||
     (type === "pool" && key != null && ctx.data.plan_pools.some((p) => p.key === key));
   if (!known)
-    ctx.warn(
-      "unknown_cost_center",
-      `Line ${line} is charged to ${type.replace("_", " ")} ${key ?? ""}, which isn't in the plan`,
-      line,
-    );
+    ctx.warn("unknown_cost_center", `Line ${line}'s ${type.replace("_", " ")} ${key ?? ""} isn't in the plan.`, line);
   return known;
 }
 
@@ -96,12 +92,11 @@ function warnCostShift(
   const org = ctx.data.organization.name;
   const capital = ctx.accountType(line.account_id) === "asset";
   if (capital && line.cost_center_type === "org") {
-    warn(`${line.name} is capital, so ${org} pays for it, not this area's programs`);
-  } else if (line.cost_center_type === "org") warn(`${line.name} is charged to ${org}, not to this area's programs`);
-  else if (line.cost_center_type === "pool")
-    warn(`${line.name} is charged to shared costs, which every program area pays`);
+    warn(`${line.name} is capital, so ${org} pays for it.`);
+  } else if (line.cost_center_type === "org") warn(`${line.name} is charged to ${org}.`);
+  else if (line.cost_center_type === "pool") warn(`${line.name} is charged to shared costs.`);
   if (line.in_mtdc === false) {
-    warn(`${line.name} is left out of the split of shared costs, so the other program areas pay more of them`);
+    warn(`${line.name} is left out of the shared-cost split, so other areas pay more.`);
   }
 }
 
@@ -117,11 +112,7 @@ export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
     const onOrg = line.cost_center_type === "org" || capital;
     warnCostShift(ctx, line);
     if (capital && line.cost_center_type !== "org") {
-      ctx.warn(
-        "capital_off_org",
-        `${line.name} is capital, so it's charged to ${ctx.data.organization.name}, which pays for all capital`,
-        line.key,
-      );
+      ctx.warn("capital_off_org", `${line.name} is capital, so ${ctx.data.organization.name} pays for it.`, line.key);
     }
     booker.add({
       cost_center_type: onOrg ? "org" : line.cost_center_type,
@@ -147,11 +138,7 @@ export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
     const level = line.staff_level_id;
     const rate = level == null ? undefined : rates.get(level);
     if (level == null || rate === undefined) {
-      ctx.warn(
-        "unknown_staff_level",
-        `Labor line ${line.key} has no staff level with a rate in the Operations Plan, so it's left out`,
-        line.key,
-      );
+      ctx.warn("unknown_staff_level", `Labor line ${line.key}'s staff level has no rate. It's left out.`, line.key);
       continue;
     }
     booker.add({

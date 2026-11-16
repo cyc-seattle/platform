@@ -47,19 +47,14 @@ export function allocateIndirectCosts(ctx: Context): IndirectCosts {
     const rate = rates.get(o.product_id);
     if (rate === undefined && pooled.length > 0) {
       const name = ctx.products.get(o.product_id)?.name ?? o.product_id;
-      ctx.warn(
-        "no_indirect_cost_rate",
-        `${name} has no indirect cost rate, so it pays none of the shared costs`,
-        o.product_id,
-        { plan_id: o.plan_id },
-      );
+      ctx.warn("no_indirect_cost_rate", `${name} pays no shared costs.`, o.product_id, { plan_id: o.plan_id });
     }
     charges.set(o.key, (rate ?? 0) * base);
   }
   const full_recovery_rate = fees > 0 ? shared / fees : null;
   let allocated = [...charges.values()].reduce((t, c) => t + c, 0);
   if (shared === 0 && allocated > 0) {
-    ctx.warn("no_shared_costs", "The Operations Plan has no shared costs, so no program pays its indirect cost rate");
+    ctx.warn("no_shared_costs", "No program pays its indirect cost rate.");
     allocated = 0;
   }
 

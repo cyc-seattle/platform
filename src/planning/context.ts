@@ -116,8 +116,7 @@ export class Context {
     this.offeringsById = new Map(data.plan_offerings.map((o) => [o.id, o]));
     this.offeringsByKey = new Map(data.plan_offerings.map((o) => [o.key, o]));
     this.rates = data.plan_rates[0];
-    if (data.plan_rates.length > 1)
-      this.warn("many_rates", "The Operations Plan has more than one set of rates. Only the first one counts");
+    if (data.plan_rates.length > 1) this.warn("many_rates", "Only the first set of rates counts.");
     this.payrollTaxes = this.checkPayrollTaxes(data.plan_payroll_taxes);
     this.costAccounts = new Map(
       data.organization_cost_accounts
@@ -132,7 +131,7 @@ export class Context {
       if ((tax.wage_share == null) !== (tax.hourly_cents == null)) return true;
       this.warn(
         "payroll_tax_basis",
-        `${tax.name} needs a share of wages or an amount an hour, but not both, so it's left out`,
+        `${tax.name} needs a share of wages or an hourly amount, not both. It's left out.`,
         tax.key,
       );
       return false;
@@ -143,11 +142,7 @@ export class Context {
   costAccount(type: CostType): Id | undefined {
     const account = this.costAccounts.get(type);
     if (account === undefined) {
-      this.warn(
-        "no_cost_account",
-        `${this.data.organization.name} has no account for ${COST_TYPES[type]}, so that cost is left out`,
-        type,
-      );
+      this.warn("no_cost_account", `No account for ${COST_TYPES[type]}, so it's left out.`, type);
     }
     return account;
   }
@@ -210,7 +205,7 @@ export class Context {
     if (product.revenue_account_id != null && product.revenue_account_id !== area.revenue_account_id) {
       this.warn(
         "revenue_account_differs",
-        `${product.name} has its own revenue account, but its revenue goes to ${area.name}'s account`,
+        `${product.name}'s revenue goes to ${area.name}'s account, not its own.`,
         product.id,
       );
     }

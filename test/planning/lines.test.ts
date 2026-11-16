@@ -222,20 +222,20 @@ describe("lines that move a cost off a program area's programs", () => {
 
   it("warns about a Program Plan line left out of the split, or charged to the shared costs or the organization", () => {
     expect(shifts(planWith({ cost_center_type: "org", in_mtdc: false }))).toEqual([
-      { message: "Storage is charged to A club, not to this area's programs", plan_id: "v1" },
+      { message: "Storage is charged to A club.", plan_id: "v1" },
       {
-        message: "Storage is left out of the split of shared costs, so the other program areas pay more of them",
+        message: "Storage is left out of the shared-cost split, so other areas pay more.",
         plan_id: "v1",
       },
     ]);
     expect(shifts(planWith({ cost_center_type: "pool", cost_center_key: "ga" }))).toEqual([
-      { message: "Storage is charged to shared costs, which every program area pays", plan_id: "v1" },
+      { message: "Storage is charged to shared costs.", plan_id: "v1" },
     ]);
   });
 
   it("warns about capital in a Program Plan", () => {
     expect(shifts(planWith({ cost_center_type: "org", account_id: "acct-boat" }))).toEqual([
-      { message: "Storage is capital, so A club pays for it, not this area's programs", plan_id: "v1" },
+      { message: "Storage is capital, so A club pays for it.", plan_id: "v1" },
     ]);
   });
 

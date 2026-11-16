@@ -63,7 +63,7 @@ function bookBonus(
     if (base.offeringKeys.length === 0) {
       ctx.warn(
         "bonus_without_offerings",
-        `${owner.role_name}'s bonus has no offerings this year to charge it to, so it's left out`,
+        `${owner.role_name}'s bonus has no offerings this year. It's left out.`,
         owner.key,
       );
       return 0;
@@ -71,7 +71,7 @@ function bookBonus(
     // Its net came from elsewhere, such as revenue booked on a product, so its offerings share it evenly.
     ctx.warn(
       "bonus_without_revenue",
-      `${owner.role_name}'s offerings have no revenue of their own, so its bonus is split evenly among them`,
+      `${owner.role_name}'s offerings have no revenue, so its bonus is split evenly.`,
       owner.key,
     );
     for (const key of base.offeringKeys) weights.set(key, 1);
@@ -133,7 +133,7 @@ function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Bas
     if (plan?.kind === "program_area" && product?.program_area_id !== plan.program_area_id) {
       ctx.warn(
         "bonus_outside_area",
-        `${owner.role_name}'s bonus names ${product?.name ?? row.product_id}, which isn't in this plan's program area, so it's left out`,
+        `${owner.role_name}'s bonus names ${product?.name ?? row.product_id}, from another area. It's left out.`,
         owner.key,
       );
       continue;

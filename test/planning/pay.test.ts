@@ -376,7 +376,7 @@ describe("closed dates", () => {
       expect.objectContaining({
         code: "closed_date",
         date: "2027-09-06",
-        message: "J-Pod Fall's practice is on Labor Day, when A club is closed",
+        message: "J-Pod Fall's practice is on Labor Day.",
       }),
     );
     data.plan_activities = [activity(o.id, { date: "2027-09-06", kind: "travel" })];

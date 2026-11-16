@@ -938,8 +938,8 @@ Step(
   (_, out: string, _boats: string, have: string) => {
     const found = warning("over_inventory_boats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13 });
-    // The warning gives the date, so the message starts with the count, and names the organization.
-    expect(found?.message).toMatch(new RegExp(`^${out} .+ out at once.*, but .+ has only ${have}`));
+    // The warning gives the date, so the message starts with the count, and ends with how many the organization has.
+    expect(found?.message).toMatch(new RegExp(`^${out} .+ out.*\\. .+ has ${have}\\.$`));
   },
 );
 Step("the planner isn't warned about {boats}", () => {
@@ -1060,7 +1060,7 @@ Step(
     expect(found?.message).toMatch(
       new RegExp(
         // Each test's boat class has a name of its own, such as "Sailqubes boat-1".
-        `^.+ needs ${needs} .+ out at once when it's full, but .+ has only ${have}, so it's ${Number(needs) - Number(have)} short$`,
+        `^.+ needs ${needs} .+ when full\\. .+ has ${have}\\.$`,
       ),
     );
   },
@@ -1070,11 +1070,7 @@ Step(
   (_, _program: string, needs: string, _boats: string, have: string) => {
     const found = warning("short_of_boats");
     expect(found).toMatchObject({ category: "allocation", date: JULY_13, severity: "error" });
-    expect(found?.message).toMatch(
-      new RegExp(
-        `^.+ needs ${needs} .+ out at once for the sailors expected, but .+ has only ${have}, so it's ${Number(needs) - Number(have)} short$`,
-      ),
-    );
+    expect(found?.message).toMatch(new RegExp(`^.+ needs ${needs} (?![^.]* when full)[^.]+\\. .+ has ${have}\\.$`));
   },
 );
 Step("the planner isn't warned that the organization hasn't enough {boats}", () => {

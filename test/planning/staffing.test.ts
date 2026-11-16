@@ -351,8 +351,7 @@ describe("staffing", () => {
           category: "allocation",
           date: "2027-07-13",
           plan_id: "v1",
-          message:
-            "Guppies Week 2 needs 8 Sailqubes out at once when it's full, but A club has only 6, so it's 2 short",
+          message: "Guppies Week 2 needs 8 Sailqubes when full. A club has 6.",
         }),
       ]);
       expect(short(guppies({ boats: [{ boat_class_id: "sailqube", count: 5 }] }, sailqubes(8)))).toEqual([]);
@@ -360,7 +359,7 @@ describe("staffing", () => {
 
     it("doesn't warn about coaches, since more can be hired", () => {
       const data = guppies({ staff: [{ staff_level_id: L1.staff_level_id, count: 1 }] }, []);
-      expect(computePlan(data).warnings.filter((w) => w.category === "allocation")).toEqual([]);
+      expect(computePlan(data).warnings.filter((w) => w.code === "short_of_boats")).toEqual([]);
     });
 
     it("counts the seats a block is short across its classes, and adds the fewest boats to seat them", () => {
@@ -382,7 +381,7 @@ describe("staffing", () => {
       ];
       expect(short(data)).toEqual([]);
       data.boats.splice(1, 1);
-      expect(short(data)[0]?.message).toMatch(/needs 2 Harpoons out at once when it's full/);
+      expect(short(data)[0]?.message).toMatch(/needs 2 Harpoons when full/);
     });
 
     it("keeps the boats sailors bring as they are", () => {
@@ -396,9 +395,7 @@ describe("staffing", () => {
       // 5 seat 10, so 16 sailors need 8, and 2 are chartered.
       const given = { boats: [{ boat_class_id: "sailqube", count: 3, chartered: 2 }] };
       expect(short(guppies(given, sailqubes(6)))).toEqual([]);
-      expect(short(guppies(given, sailqubes(5)))[0]?.message).toMatch(
-        /needs 6 Sailqubes .* has only 5, so it's 1 short$/,
-      );
+      expect(short(guppies(given, sailqubes(5)))[0]?.message).toMatch(/needs 6 Sailqubes when full\. A club has 5\.$/);
     });
 
     it("doesn't warn about a class the organization has none of, since more can be chartered", () => {
@@ -420,7 +417,7 @@ describe("staffing", () => {
       ];
       expect(short(guppies(given, owned(4)))).toEqual([]);
       expect(short(guppies(given, owned(3))).map((w) => w.message)).toEqual([
-        "Guppies Week 2 needs 4 coach boats out at once when it's full, but A club has only 3, so it's 1 short",
+        "Guppies Week 2 needs 4 coach boats when full. A club has 3.",
       ]);
     });
 
@@ -442,7 +439,7 @@ describe("staffing", () => {
       expect(short(data)).toEqual([]);
       data.boats.pop();
       expect(short(data).map((w) => w.message)).toEqual([
-        "Guppies Week 2 needs 4 coach boats out at once when it's full, but A club has only 3, so it's 1 short",
+        "Guppies Week 2 needs 4 coach boats when full. A club has 3.",
       ]);
     });
 
@@ -460,7 +457,7 @@ describe("staffing", () => {
       expect(short(data)).toHaveLength(1);
       expect(short(sails(data, ["sailqube", "fj"]))).toEqual([]);
       data.boats.pop();
-      expect(short(data)[0]?.message).toMatch(/needs 8 Sailqubes out at once when it's full/);
+      expect(short(data)[0]?.message).toMatch(/needs 8 Sailqubes when full/);
     });
 
     it("counts only the stand-ins no other block has out at the same time", () => {
@@ -480,7 +477,7 @@ describe("staffing", () => {
       data.plan_activities.push(a);
       data.plan_activity_blocks.push(...other.plan_activity_blocks);
       data.plan_block_boats.push(...other.plan_block_boats);
-      expect(short(data)[0]?.message).toMatch(/needs 8 Sailqubes out at once when it's full/);
+      expect(short(data)[0]?.message).toMatch(/needs 8 Sailqubes when full/);
     });
 
     it("covers boats given beyond what the organization has, too", () => {
@@ -503,8 +500,7 @@ describe("staffing", () => {
       expect(short(data)).toEqual([
         expect.objectContaining({
           severity: "error",
-          message:
-            "Guppies Week 2 needs 5 Sailqubes out at once for the sailors expected, but A club has only 4, so it's 1 short",
+          message: "Guppies Week 2 needs 5 Sailqubes. A club has 4.",
         }),
       ]);
     });
@@ -524,7 +520,7 @@ describe("staffing", () => {
       expect(short(data)).toEqual([]);
       data.boats.pop();
       expect(short(data).map((w) => w.message)).toEqual([
-        "Guppies Week 2 and Minnows Week 2 need 12 Sailqubes out at once when they're full, but A club has only 11, so they're 1 short",
+        "Guppies Week 2 and Minnows Week 2 need 12 Sailqubes when full. A club has 11.",
       ]);
       a.start_time = "13:00";
       a.end_time = "14:00";
@@ -573,23 +569,21 @@ describe("staffing", () => {
           category: "allocation",
           date: "2027-07-13",
           plan_id: "v1",
-          message: "14 Sailqubes out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+          message: "14 Sailqubes out: 9 for Guppies Week 3 and 5 for Minnows Week 3. A club has 12.",
         }),
       );
     });
 
     it("names the offerings of the one block that's over", () => {
       const out = computePlan(twoBlocks(14, 0, morning));
-      expect(out.warnings.map((w) => w.message)).toContain(
-        "14 Sailqubes out at once for Guppies Week 3, but A club has only 12",
-      );
+      expect(out.warnings.map((w) => w.message)).toContain("14 Sailqubes out for Guppies Week 3. A club has 12.");
     });
 
     it("uses a boat class's name as given unless it's one word", () => {
       const data = twoBlocks(9, 5, morning);
       data.boat_classes[0]!.name = "Laser Radial";
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "14 Laser Radial out at once, but A club has only 12: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+        "14 Laser Radial out: 9 for Guppies Week 3 and 5 for Minnows Week 3. A club has 12.",
       );
     });
 
@@ -636,7 +630,7 @@ describe("staffing", () => {
     it("says the organization has none of a boat class with no boats that day", () => {
       const data = Object.assign(twoBlocks(9, 5, morning), assetList([{ boat_class_id: "opti", count: 12 }]));
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "14 Sailqubes out at once, but A club has none: 9 for Guppies Week 3 and 5 for Minnows Week 3",
+        "14 Sailqubes out: 9 for Guppies Week 3 and 5 for Minnows Week 3. A club has 0.",
       );
     });
 
@@ -645,7 +639,7 @@ describe("staffing", () => {
       data.boat_classes[0]!.name = "RIB";
       Object.assign(data, assetList([{ boat_class_id: "sailqube", count: 6, kind: "powerboat" }]));
       expect(computePlan(data).warnings.map((w) => w.message)).toContain(
-        "7 RIBs out at once, but A club has only 6: 4 for Guppies Week 3 and 3 for Minnows Week 3",
+        "7 RIBs out: 4 for Guppies Week 3 and 3 for Minnows Week 3. A club has 6.",
       );
     });
 
@@ -827,6 +821,28 @@ describe("a block costs what it's given", () => {
     expect(pnlOf(computePlan(data), off.key).allocation_holds).toBe(20);
   });
 
+  it("warns when the blocks take fewer than the max, and it's an error when they take fewer than expected", () => {
+    const { data, off } = full(
+      16,
+      10,
+      { staff: [{ staff_level_id: coach.staff_level_id, count: 4 }], boats: [{ boat_class_id: "q", count: 6 }] },
+      { boat_classes: [{ id: "q", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }] },
+    );
+    data.plan_activities[0]!.uses_boats = true;
+    const capacity = () => computePlan(data).warnings.filter((w) => w.code === "capacity_below_max");
+    expect(capacity()).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        key: off.key,
+        message: `${off.name}'s blocks take 12. Max is 16.`,
+      }),
+    ]);
+    data.plan_offerings[0]!.target_enrollment = 14;
+    expect(capacity()).toEqual([
+      expect.objectContaining({ severity: "error", message: `${off.name}'s blocks take 12, but it expects 14.` }),
+    ]);
+  });
+
   it("leaves room in a shared block for the other offering's most", () => {
     const [g, m] = [product(), product()];
     const og = offering(g.id, { capacity: 10, target_enrollment: 4 });
@@ -894,6 +910,29 @@ describe("a block costs what it's given", () => {
     it("is null when the offering doesn't cover its costs even when full, or has no capacity", () => {
       expect(withCosts(10, 10_000, 200_000)).toBeNull();
       expect(withCosts(null, 50_000, 300_000)).toBeNull();
+    });
+
+    it("warns when the offering breaks even above its target, or never does", () => {
+      const warningsFor = (capacity: number | null, price: number, costs: number) => {
+        const p = product();
+        const off = offering(p.id, { capacity, target_enrollment: 1, price_cents: price });
+        const data = emptyPlan({
+          products: [p],
+          plan_offerings: [off],
+          plan_budget_lines: [
+            budgetLine({ cost_center_type: "offering", cost_center_key: off.key, amount_cents: costs }),
+          ],
+        });
+        return computePlan(data)
+          .warnings.filter((w) => w.key === off.key)
+          .map((w) => [w.code, w.message.replace(/^.+? (?=breaks|loses)/, "It ")]);
+      };
+      expect(warningsFor(16, 50_000, 300_000)).toEqual([
+        ["breakeven_above_target", "It breaks even at 6. Target is 1."],
+      ]);
+      expect(warningsFor(10, 10_000, 200_000)).toEqual([["never_breaks_even", "It loses money even when full."]]);
+      expect(warningsFor(16, 50_000, 0)).toEqual([]);
+      expect(warningsFor(null, 50_000, 300_000)).toEqual([]);
     });
 
     it("counts the offering's indirect cost rate on its own fees, which grow with its sailors", () => {

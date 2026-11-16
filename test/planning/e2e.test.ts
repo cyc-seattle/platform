@@ -488,8 +488,11 @@ describe("a realistic plan, end to end", () => {
     expect(camp.days).toBe(10);
   });
 
-  it("raises no warnings", () => {
-    expect(out.warnings).toEqual([]);
+  it("warns only that the programs lose money even when full", () => {
+    expect(out.warnings.map((w) => [w.code, w.key, w.message])).toEqual([
+      ["never_breaks_even", "camp-week-1-key", "Summer Camp week 1 loses money even when full."],
+      ["never_breaks_even", "racing-fall-key", "Youth Racing Fall loses money even when full."],
+    ]);
   });
 
   it("gives each product's P&L", () => {

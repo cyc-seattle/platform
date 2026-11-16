@@ -97,7 +97,7 @@ describe("payroll taxes", () => {
     expect(out.warnings).toContainEqual(
       expect.objectContaining({
         code: "no_paid_hours_for_tax",
-        message: "Director has no paid hours per year, so L&I isn't charged on its salary",
+        message: "Director has no paid hours a year, so no L&I on its salary.",
       }),
     );
     expect(total(out, { line: "payroll_tax:" })).toBe(0);
@@ -117,8 +117,8 @@ describe("payroll taxes", () => {
     const out = computePlan(data);
     expect(total(out, { line: "payroll_tax:" })).toBe(0);
     expect(out.warnings.filter((w) => w.code === "payroll_tax_basis").map((w) => w.message)).toEqual([
-      "Both needs a share of wages or an amount an hour, but not both, so it's left out",
-      "Neither needs a share of wages or an amount an hour, but not both, so it's left out",
+      "Both needs a share of wages or an hourly amount, not both. It's left out.",
+      "Neither needs a share of wages or an hourly amount, not both. It's left out.",
     ]);
   });
 });

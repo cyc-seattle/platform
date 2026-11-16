@@ -16,7 +16,7 @@ export function offeringTerms(ctx: Context): OfferingTerms {
     if (o.term_key != null && term === null) {
       ctx.warn(
         "unknown_term",
-        `${ctx.offeringName(o)} is in a term the Operations Plan doesn't have, so it counts as in no term`,
+        `${ctx.offeringName(o)}'s term isn't in the Operations Plan, so it's in no term.`,
         o.key,
       );
     }

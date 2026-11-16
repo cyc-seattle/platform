@@ -20,6 +20,7 @@ import {
 import type {
   CostLine,
   EngineOutput,
+  EngineWarning,
   Id,
   OrganizationTotals,
   Pnl,
@@ -35,6 +36,8 @@ import type {
  */
 export function computePlan(data: PlanData): EngineOutput {
   const output = calculate(data, new Map());
+  // Only for offerings' names: its own warnings are already in the output.
+  const names = new Context(data);
   const rates = indirectCostRates(data);
   for (const row of output.pnl) {
     if (row.level !== "offering") continue;
@@ -42,8 +45,53 @@ export function computePlan(data: PlanData): EngineOutput {
     if (offering === undefined) continue;
     const rate = output.organization.indirect.recovered_cents === 0 ? 0 : (rates.get(offering.product_id) ?? 0);
     row.breakeven_enrollment = breakeven(data, offering, row.net_cents, rate);
+    output.warnings.push(...offeringWarnings(offering, names.offeringName(offering), row));
   }
   return output;
+}
+
+/** Warns when an offering's blocks take fewer sailors than it plans for, or it needs more sailors than expected to pay. */
+function offeringWarnings(offering: PlanOffering, name: string, row: Pnl): EngineWarning[] {
+  const about = { key: offering.key, plan_id: offering.plan_id };
+  const warnings: EngineWarning[] = [];
+  const holds = row.allocation_holds;
+  if (holds !== null && holds < row.enrollment) {
+    warnings.push({
+      code: "capacity_below_max",
+      message: `${name}'s blocks take ${holds}, but it expects ${row.enrollment}.`,
+      category: "allocation",
+      severity: "error",
+      ...about,
+    });
+  } else if (holds !== null && row.max_enrollment !== null && holds < row.max_enrollment) {
+    warnings.push({
+      code: "capacity_below_max",
+      message: `${name}'s blocks take ${holds}. Max is ${row.max_enrollment}.`,
+      category: "allocation",
+      severity: "warning",
+      ...about,
+    });
+  }
+  if (offering.capacity == null) return warnings;
+  const breakeven = row.breakeven_enrollment;
+  if (breakeven === null) {
+    warnings.push({
+      code: "never_breaks_even",
+      message: `${name} loses money even when full.`,
+      category: "data",
+      severity: "warning",
+      ...about,
+    });
+  } else if (breakeven > row.enrollment) {
+    warnings.push({
+      code: "breakeven_above_target",
+      message: `${name} breaks even at ${breakeven}. Target is ${row.enrollment}.`,
+      category: "data",
+      severity: "warning",
+      ...about,
+    });
+  }
+  return warnings;
 }
 
 /**
@@ -152,9 +200,9 @@ function checkAreas(ctx: Context): void {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) continue;
     if (product.kind === "program" && product.program_area_id == null) {
-      ctx.warn("program_without_area", `${product.name} is a program but has no program area`, product.id);
+      ctx.warn("program_without_area", `${product.name} has no program area.`, product.id);
     } else if (product.kind !== "program" && product.program_area_id != null) {
-      ctx.warn("area_on_non_program", `${product.name} isn't a program but has a program area`, product.id);
+      ctx.warn("area_on_non_program", `${product.name} isn't a program, but it's in an area.`, product.id);
     }
     const plan = ctx.planOf.get(offering.plan_id);
     if (plan === undefined) continue;
@@ -165,8 +213,8 @@ function checkAreas(ctx: Context): void {
     if (wrong) {
       const message =
         plan.kind === "operations"
-          ? `${ctx.offeringName(offering)} is in the Operations Plan, but its program is in a program area`
-          : `${ctx.offeringName(offering)} is in the Program Plan for another program area`;
+          ? `${ctx.offeringName(offering)} is in the Operations Plan, but its program is in an area.`
+          : `${ctx.offeringName(offering)} is in another area's plan.`;
       ctx.warn("offering_in_wrong_plan", message, offering.key);
     }
   }
@@ -187,7 +235,7 @@ function summarizePositions(
   ];
   for (const key of new Set(named)) {
     if (!known.has(key)) {
-      ctx.warn("unknown_position", `A block or bonus names salaried position ${key}, which isn't in the plan`, key);
+      ctx.warn("unknown_position", `Salaried position ${key} isn't in the plan.`, key);
     }
   }
   return ctx.data.plan_salaried_positions.map((position) => {
