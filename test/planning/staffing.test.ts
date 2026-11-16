@@ -827,29 +827,17 @@ describe("a block costs what it's given", () => {
     data.plan_activities[0]!.uses_boats = false;
     const out = computePlan(data);
     expect(pnlOf(out, off.key).allocation_holds).toBeNull();
-    expect(out.warnings.filter((w) => w.code === "capacity_below_max")).toEqual([]);
   });
 
-  it("warns when the blocks take fewer than the max, and it's an error when they take fewer than expected", () => {
-    const { data, off } = full(
+  it("doesn't warn when the boats seat fewer than the max, since short of boats covers it", () => {
+    const { data } = full(
       16,
       10,
       { staff: [{ staff_level_id: coach.staff_level_id, count: 4 }], boats: [{ boat_class_id: "q", count: 6 }] },
       { boat_classes: [{ id: "q", name: "Sailqube", max_capacity: 2, footprint_sq_ft: null }] },
     );
     data.plan_activities[0]!.uses_boats = true;
-    const capacity = () => computePlan(data).warnings.filter((w) => w.code === "capacity_below_max");
-    expect(capacity()).toEqual([
-      expect.objectContaining({
-        severity: "warning",
-        key: off.key,
-        message: `${off.name}'s blocks take 12. Max is 16.`,
-      }),
-    ]);
-    data.plan_offerings[0]!.target_enrollment = 14;
-    expect(capacity()).toEqual([
-      expect.objectContaining({ severity: "error", message: `${off.name}'s blocks take 12, but it expects 14.` }),
-    ]);
+    expect(computePlan(data).warnings.map((w) => w.code)).not.toContain("capacity_below_max");
   });
 
   it("leaves room in a shared block for the other offering's most", () => {

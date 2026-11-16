@@ -50,28 +50,10 @@ export function computePlan(data: PlanData): EngineOutput {
   return output;
 }
 
-/** Warns when an offering's blocks take fewer sailors than it plans for, or it needs more sailors than expected to pay. */
+/** Warns when an offering needs more sailors than expected to pay for itself, or never does. */
 function offeringWarnings(offering: PlanOffering, name: string, row: Pnl): EngineWarning[] {
   const about = { key: offering.key, plan_id: offering.plan_id };
   const warnings: EngineWarning[] = [];
-  const holds = row.allocation_holds;
-  if (holds !== null && holds < row.enrollment) {
-    warnings.push({
-      code: "capacity_below_max",
-      message: `${name}'s blocks take ${holds}, but it expects ${row.enrollment}.`,
-      category: "allocation",
-      severity: "error",
-      ...about,
-    });
-  } else if (holds !== null && row.max_enrollment !== null && holds < row.max_enrollment) {
-    warnings.push({
-      code: "capacity_below_max",
-      message: `${name}'s blocks take ${holds}. Max is ${row.max_enrollment}.`,
-      category: "allocation",
-      severity: "warning",
-      ...about,
-    });
-  }
   if (offering.capacity == null) return warnings;
   const breakeven = row.breakeven_enrollment;
   if (breakeven === null) {
