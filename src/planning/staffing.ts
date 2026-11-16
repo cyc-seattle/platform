@@ -137,17 +137,13 @@ export class Staffing {
       if (id == null) continue;
       const row = rows.get(id);
       if (row === undefined) {
-        this.ctx.warn(
-          "unknown_block",
-          `${a.offering.name}'s ${a.kind} is in a block that isn't in the plan`,
-          a.stored.key,
-        );
+        this.ctx.warn("unknown_block", `${a.offering.name}'s ${a.kind} is in a missing block.`, a.stored.key);
         continue;
       }
       if (row.date !== a.date) {
         this.ctx.warn(
           "block_date_mismatch",
-          `${a.offering.name}'s ${a.kind} is in ${row.name}, which is on ${dayOf(row.date)}`,
+          `${a.offering.name}'s ${a.kind} is in ${row.name}, on ${dayOf(row.date)}.`,
           a.stored.key,
           { plan_id: a.stored.plan_id, date: a.date },
         );
@@ -232,7 +228,7 @@ export class Staffing {
           if (warns) {
             this.warnOnce(
               "no_max_capacity",
-              `${classes.get(b.boat_class_id)?.name ?? b.boat_class_id} has no max capacity. Add it to check that ${ctx.data.organization.name} has enough of them`,
+              `Add ${classes.get(b.boat_class_id)?.name ?? b.boat_class_id}'s max capacity to check there are enough.`,
               b.boat_class_id,
               scope,
             );
@@ -360,7 +356,7 @@ export class Staffing {
           for (const { block } of uses) {
             this.warnOnce(
               "no_charter_rate",
-              `${block.row.name} charters ${pluralOf(name)}, but the Operations Plan has no charter rate for them, so they cost nothing`,
+              `${block.row.name} charters ${pluralOf(name)}, which have no charter rate. They cost nothing.`,
               id,
               { plan_id: block.row.plan_id, date: block.row.date },
             );
@@ -500,22 +496,21 @@ export class Staffing {
         const have = haveOf(kind);
         const out = peakOf((b) => given(b, kind));
         if (out.total > have && !covered(kind, out.total - have, out.at, given, "given")) {
-          const only = have === 0 ? "none" : `only ${have}`;
           const count = countIn(out.total, kind);
           warn(
             "over_inventory_boats",
             what,
             out.at,
             out.at.length === 1
-              ? `${count} out at once for ${offeringsOf(out.at[0]!.block)}, but ${organization} has ${only}`
-              : `${count} out at once, but ${organization} has ${only}: ${listOf(out.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}`,
+              ? `${count} out for ${offeringsOf(out.at[0]!.block)}. ${organization} has ${have}.`
+              : `${count} out: ${listOf(out.at.map(({ block, n }) => `${n} for ${offeringsOf(block)}`))}. ${organization} has ${have}.`,
           );
           continue;
         }
         if (have === 0) continue;
         const short = (
           need: Map<Block, Map<string, number>>,
-          when: (it: string) => string,
+          when: string,
           severity: WarningSeverity,
           check: string,
         ) => {
@@ -523,18 +518,17 @@ export class Staffing {
           if (peak.total <= have) return false;
           if (covered(kind, peak.total - have, peak.at, (b, id) => need.get(b)!.get(id) ?? 0, check)) return false;
           const names = [...new Set(peak.at.flatMap(({ block }) => block.members.map((a) => a.offering.name)))];
-          const [needs, it] = names.length === 1 ? ["needs", "it's"] : ["need", "they're"];
+          const needs = names.length === 1 ? "needs" : "need";
           warn(
             "short_of_boats",
             what,
             peak.at,
-            `${listOf(names)} ${needs} ${countIn(peak.total, kind)} out at once ${when(it)}, but ${organization} has only ${have}, so ${it} ${peak.total - have} short`,
+            `${listOf(names)} ${needs} ${countIn(peak.total, kind)}${when}. ${organization} has ${have}.`,
             severity,
           );
           return true;
         };
-        if (!short(expected, () => "for the sailors expected", "error", "expected"))
-          short(atMax, (it) => `when ${it} full`, "warning", "max");
+        if (!short(expected, "", "error", "expected")) short(atMax, " when full", "warning", "max");
       }
     }
   }
@@ -566,8 +560,8 @@ export class Staffing {
       for (const plan of new Set(list.map((b) => b.row.plan_id))) {
         this.ctx.warn(
           "position_double_booked",
-          `${names.get(key) ?? key} coaches ${clash[0].row.name} and ${clash[1].row.name} at the same time` +
-            (hours > 0 ? `, so another coach is needed for ${round2(hours)} hours` : ""),
+          `${names.get(key) ?? key} is on ${clash[0].row.name} and ${clash[1].row.name} at once` +
+            (hours > 0 ? ` for ${round2(hours)} hours.` : "."),
           key,
           { plan_id: plan, date },
         );
@@ -618,7 +612,7 @@ export class Staffing {
             if (position !== undefined && rate == null) {
               this.warnOnce(
                 "no_hourly_rate",
-                `${position.name} is paid by the hour to coach but has no own hourly coaching rate, so those hours cost nothing`,
+                `${position.name} has no hourly coaching rate, so its hours cost nothing.`,
                 position.key,
                 scope,
               );
@@ -652,7 +646,7 @@ export class Staffing {
         if (rate === undefined) {
           this.warnOnce(
             "unknown_staff_level",
-            `${block.row.name} has staff at a staff level with no rate in the Operations Plan, so they cost nothing`,
+            `${block.row.name}'s staff level has no rate, so they cost nothing.`,
             s.staff_level_id ?? s.key,
             scope,
           );
@@ -738,7 +732,7 @@ export class Staffing {
           .sort()[0];
         this.warnOnce(
           "trip_without_staff",
-          `${trip.name} has no staff on its travel days, so the plan has no airfare or lodging for its coaches`,
+          `${trip.name} has no staff on its travel days, so no coach airfare or lodging.`,
           trip.key,
           { plan_id: trip.plan_id, ...(first !== undefined && { date: first }) },
         );
@@ -746,14 +740,10 @@ export class Staffing {
       const lodging = ctx.rates?.lodging_per_night_cents ?? null;
       const mileage = ctx.rates?.mileage_rate_cents ?? null;
       if ((trip.nights ?? 0) > 0 && lodging === null) {
-        this.warnOnce(
-          "no_rate",
-          "Trips have nights, but the Operations Plan has no lodging per night",
-          "lodging_per_night_cents",
-        );
+        this.warnOnce("no_rate", "Trips have nights, but no lodging rate.", "lodging_per_night_cents");
       }
       if ((trip.miles ?? 0) > 0 && mileage === null) {
-        this.warnOnce("no_rate", "Trips have miles, but the Operations Plan has no mileage rate", "mileage_rate_cents");
+        this.warnOnce("no_rate", "Trips have miles, but no mileage rate.", "mileage_rate_cents");
       }
       const amount =
         coaches * (trip.airfare_cents ?? 0) +

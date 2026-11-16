@@ -190,6 +190,9 @@ coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issu
   its planned net less the slice's net at its enrollment, so bonuses and anything else outside the
   slice stay as planned. Each number is tried in turn, since costs set per sailor can step. It's null when the
   offering doesn't cover its costs even when full, or has no `capacity`.
+- An offering with a `capacity` gets a data warning, naming it in `key`, when its
+  `breakeven_enrollment` is more than its enrollment (`breakeven_above_target`), or null
+  (`never_breaks_even`).
 
 ### Warnings
 
@@ -200,10 +203,10 @@ for the sailors expected, and otherwise `warning`, such as too few boats if ever
 a closed day; the rest are `data`, a row that's missing or wrong. The engine still costs what it's
 given.
 
-A message says only what's wrong, in plain words, since the warning already gives its plan and date:
-"Guppies Week 2 and Opti Camp Week 2 need 12 Sailqubes out at once when they're full, but CSC has
-only 10, so they're 2 short", or "9 Sailqubes out at once for Guppies Week 4, but CSC has only 8". One about a block names the block's
-offerings. Messages follow the `ui-copy` skill from
+A message gives only the detail, in a few plain words, since the warning already gives its plan and
+date, and Sail Team names each code: "Guppies Week 2 and Opti Camp Week 2 need 12 Sailqubes when
+full. CSC has 10.", or "9 Sailqubes out for Guppies Week 4. CSC has 8.". One about a block names the
+block's offerings. Each sentence ends with a period. Messages follow the `ui-copy` skill from
 [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills).
 
 Allocation warnings:
@@ -249,6 +252,9 @@ Allocation warnings:
   or boats were too few for every offering at its max.
 - Results frozen before cyc-seattle/platform#318 may have `no_program_settings`, for a program in a
   block with no staff level or sailors per coach.
+- `capacity_below_max`: an offering whose blocks take fewer sailors (`allocation_holds`) than its
+  max enrollment. It's an error when they take fewer than its enrollment. It names the offering in
+  `key`, and no date.
 - `position_double_booked`: a salaried position on two blocks whose times overlap.
 - `closed_date`: an activity, other than a travel day, on a closed day.
 

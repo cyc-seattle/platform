@@ -58,7 +58,7 @@ function warnUnpaidHours(ctx: Context, taxes: PlanPayrollTax[]): void {
     if (position.annual_salary_cents <= 0 || (position.paid_hours_per_year ?? 0) > 0) continue;
     ctx.warn(
       "no_paid_hours_for_tax",
-      `${position.name} has no paid hours per year, so ${hourly.name} isn't charged on its salary`,
+      `${position.name} has no paid hours a year, so no ${hourly.name} on its salary.`,
       position.key,
     );
   }
