@@ -7,6 +7,8 @@ config:
     - ungood@onetrue.name
   backend:externalDomain: cyccommunitysailing.org
   backend:safeToEvict: false
+  # The GitHub App that starts csc-website's publish workflow (docs/manual-setup.md §6).
+  backend:websitePublishAppId: "5792788"
   clubspot-sync:clubId: nw6IMf9Bnq
   # The break-glass super-admins, granted OWNER on every group.
   gsuite-sync:groupOwners: master@cyccommunitysailing.org
