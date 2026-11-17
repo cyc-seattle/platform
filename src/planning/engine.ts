@@ -80,7 +80,7 @@ function offeringWarnings(offering: PlanOffering, name: string, row: Pnl): Engin
  * The fewest sailors, from 1 up to the offering's capacity, at which its net after shared costs is
  * zero or more. Each number is tried in turn, since coaches and boats cost in steps. Recalculating the
  * whole plan for each would take seconds, so only the offering's own slice is, with its indirect cost
- * rate on its fees at that number, and whatever lies outside it, such as its bonus, stays as planned.
+ * rate on the slice's MTDC at that number, and whatever lies outside it, such as its bonus, stays as planned.
  */
 function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate: number): number | null {
   if (offering.capacity == null) return null;
@@ -89,7 +89,7 @@ function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate
     const row = calculate(slice, new Map([[offering.id, n]])).pnl.find(
       (p) => p.level === "offering" && p.key === offering.key,
     );
-    return row === undefined ? 0 : row.net_cents - rate * Math.max(0, (offering.price_cents ?? 0) * n);
+    return row === undefined ? 0 : row.net_cents - rate * Math.max(0, row.mtdc_cents);
   };
   const outside = planned - netAt(enrollmentOf(offering));
   for (let n = 1; n <= offering.capacity; n++) if (netAt(n) + outside >= 0) return n;

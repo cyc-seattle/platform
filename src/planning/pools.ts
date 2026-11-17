@@ -1,5 +1,5 @@
 import type { Context, Entry } from "./context.ts";
-import { programFees } from "./measures.ts";
+import { mtdc } from "./measures.ts";
 import type { Id, PlanData } from "./types.ts";
 
 /** What the year's shared costs are, and how much of them the programs' indirect cost rates allocate. */
@@ -8,7 +8,7 @@ export interface IndirectCosts {
   shared: number;
   /** What the rates charge the programs' offerings. */
   allocated: number;
-  /** The one rate that would allocate every shared cost: shared ÷ the programs' fees. Null with no fees. */
+  /** The one rate that would allocate every shared cost: shared ÷ the programs' MTDC. Null with no MTDC. */
   full_recovery_rate: number | null;
 }
 
@@ -25,8 +25,8 @@ export function indirectCostRates(data: PlanData): Map<Id, number> {
 }
 
 /**
- * Charges each program's offerings its indirect cost rate × their own program fees, fixed for the year,
- * so one program's year never changes another's charge (cyc-seattle/platform#296). The charge is split over the
+ * Charges each program's offerings its indirect cost rate × their own MTDC, fixed for the year, so one
+ * program's year never changes another's charge (cyc-seattle/platform#296). The charge is split over the
  * pools' lines by their size, keeping each line's account and function. What it doesn't cover of each
  * line stays unallocated with the organization, or, when the rates allocate more, is a credit there. The
  * `unrecovered:` key predates the words Allocated and Unallocated, and stays so stored results keep it.
@@ -39,19 +39,19 @@ export function allocateIndirectCosts(ctx: Context): IndirectCosts {
   const shared = pooled.reduce((t, e) => t + e.amount, 0);
 
   const charges = new Map<Id, number>();
-  let fees = 0;
+  let base = 0;
   for (const o of ctx.data.plan_offerings) {
     if (!isProgram(ctx, o.product_id)) continue;
-    const base = programFees(ctx, o);
-    fees += base;
+    const own = Math.max(0, mtdc(ctx, o.key));
+    base += own;
     const rate = rates.get(o.product_id);
     if (rate === undefined && pooled.length > 0) {
       const name = ctx.products.get(o.product_id)?.name ?? o.product_id;
       ctx.warn("no_indirect_cost_rate", `${name} pays no shared costs.`, o.product_id, { plan_id: o.plan_id });
     }
-    charges.set(o.key, (rate ?? 0) * base);
+    charges.set(o.key, (rate ?? 0) * own);
   }
-  const full_recovery_rate = fees > 0 ? shared / fees : null;
+  const full_recovery_rate = base > 0 ? shared / base : null;
   let allocated = [...charges.values()].reduce((t, c) => t + c, 0);
   if (shared === 0 && allocated > 0) {
     ctx.warn("no_shared_costs", "No program pays its indirect cost rate.");
@@ -72,7 +72,7 @@ export function allocateIndirectCosts(ctx: Context): IndirectCosts {
         amount: charge * part,
         line_key: `pool:${e.cost_center_key}:${e.line_key}`,
         line_name: `${name} share: ${e.line_name}`,
-        explanation: `${name}: ${e.explanation}, its part of the program's indirect cost rate × its fees`,
+        explanation: `${name}: ${e.explanation}, its part of the program's indirect cost rate × its MTDC`,
       });
     }
     const left = e.amount - allocated * part;
