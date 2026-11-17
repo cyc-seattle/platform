@@ -26,7 +26,6 @@ function person(overrides: Partial<MergePerson> & { id: string }): MergePerson {
     school: null,
     share_contact: null,
     display_name: null,
-    directus_user_id: null,
     ...overrides,
   };
 }
@@ -41,6 +40,7 @@ function related(overrides: Partial<MergeRelatedData> = {}): MergeRelatedData {
     programAreaRoleAssignments: [],
     registrations: [],
     googleGroupMemberships: [],
+    logins: [],
     ...overrides,
   };
 }
@@ -85,12 +85,6 @@ describe("findDuplicatePeople", () => {
       ["2", [{ id: "p2" }, { id: "p3" }]],
     ]);
     const groups = findDuplicatePeople(people, participantsByPerson);
-    expect(groups[0]?.keeperId).toBe("2");
-  });
-
-  it("breaks a participant-count tie in favor of a directus_user_id", () => {
-    const people = [person({ id: "1" }), person({ id: "2", directus_user_id: "du-1" })];
-    const groups = findDuplicatePeople(people, new Map());
     expect(groups[0]?.keeperId).toBe("2");
   });
 
@@ -342,25 +336,26 @@ describe("planPersonMerge", () => {
     });
   });
 
-  it("moves a duplicate's directus_user_id to the keeper as one batch update, duplicate cleared before keeper set", () => {
-    const keeper = person({ id: "keep", directus_user_id: null });
-    const duplicates = [person({ id: "dup", directus_user_id: "du-1" })];
-    const steps = planPersonMerge(keeper, duplicates, related());
+  it("moves every login from each duplicate to the keeper, and leaves the keeper's own", () => {
+    const keeper = person({ id: "keep" });
+    const duplicates = [person({ id: "dup1" }), person({ id: "dup2" })];
+    const logins = [
+      { id: "u-keep", person_id: "keep" },
+      { id: "u-dup1a", person_id: "dup1" },
+      { id: "u-dup1b", person_id: "dup1" },
+      { id: "u-dup2", person_id: "dup2" },
+    ];
+    const steps = planPersonMerge(keeper, duplicates, related({ logins }));
 
-    expect(steps).toContainEqual({
-      type: "batchUpdate",
-      collection: "people",
-      items: [
-        { id: "dup", patch: { directus_user_id: null } },
-        { id: "keep", patch: { directus_user_id: "du-1" } },
-      ],
-    });
-  });
-
-  it("throws instead of merging when two rows in the group already have a directus_user_id", () => {
-    const keeper = person({ id: "keep", directus_user_id: "du-keep" });
-    const duplicates = [person({ id: "dup", directus_user_id: "du-dup" })];
-    expect(() => planPersonMerge(keeper, duplicates, related())).toThrow();
+    expect(steps.filter((step) => step.collection === "directus_users")).toEqual(
+      ["u-dup1a", "u-dup1b", "u-dup2"].map((id) => ({
+        type: "update",
+        collection: "directus_users",
+        id,
+        patch: { person_id: "keep" },
+      })),
+    );
+    expect(steps.at(-1)).toEqual({ type: "delete", collection: "people", ids: ["dup1", "dup2"] });
   });
 
   it("fills the keeper's null scalar with a duplicate's non-null value", () => {

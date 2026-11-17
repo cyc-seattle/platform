@@ -18,6 +18,9 @@ Feature: Roles and groups
   and their details. An admin manages the groups in the Data Studio: who is in each one, and which
   policies each one gives. To change something means to add, edit, or delete it.
 
+  Some people sign in with more than one email, and each is a login of its own. Each login a person
+  has gets everything the person does: their family, their role, and their groups' policies.
+
   Groups only give policies to people. They never change anyone's role. The syncs sign in with
   accounts of their own, and the first admin account is the one the system was set up with. Groups
   never change what those accounts can do.
@@ -28,6 +31,19 @@ Feature: Roles and groups
       Given the people in the CRM who have signed in
       When an admin looks up their roles
       Then each of them has the Community, Team, Crew, Staff, or Admin role
+
+  Rule: Each of a person's logins sees their family and gets their groups' policies
+
+    Example: Someone who signs in with two emails sees their household with either
+      Given a person who signs in with two emails, with a child in their household
+      When they look up the people they can see with each email
+      Then each email shows themselves and their child, and no one else
+
+    Example: Someone who signs in with two emails gets their group's policies with either
+      Given a person who signs in with two emails, in a group that gives the CRM Writer policy
+      When they sign in with their second email
+      Then they can change people and their details
+      And both of their logins have the CRM Writer policy
 
   Rule: A family on a team has the Team role, and goes back to Community once they're no longer on one
 

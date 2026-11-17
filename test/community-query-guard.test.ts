@@ -54,7 +54,6 @@ describe("effectiveAccess", () => {
     expect(team.restricted).toEqual({
       people: [
         "date_of_birth",
-        "directus_user_id",
         "display_name",
         "email",
         "household_id",
@@ -217,8 +216,8 @@ describe("the query guard for migrated staff", () => {
   });
 
   it("still rejects a filter into the accounts, whose other rows Directus hides", () => {
-    expect(check("people", { filter: { directus_user_id: { email: { _starts_with: "a" } } } }, staff)).toBe(
-      "the relation people.directus_user_id",
+    expect(check("people", { filter: { logins: { email: { _starts_with: "a" } } } }, staff)).toBe(
+      "the relation people.logins",
     );
   });
 });
@@ -243,15 +242,25 @@ describe("the query guard for Team", () => {
     expect(check("people", { filter: { last_name: { _eq: "Test" } } }, team)).toBeUndefined();
   });
 
-  it("passes a filter for the viewer's own login, and no other filter on logins", () => {
+  it("passes a filter for the viewer's own person, by its id or by one of its logins", () => {
     const login = (filter: Record<string, unknown>, user?: string) =>
       violation(team, schema.relations, "people", { filter }, user);
-    expect(login({ directus_user_id: { _eq: "u-me" } }, "u-me")).toBeUndefined();
-    expect(login({ directus_user_id: { _eq: "u-other" } }, "u-me")).toBe("people.directus_user_id");
-    expect(login({ directus_user_id: { _eq: "$CURRENT_USER" } })).toBe("people.directus_user_id");
-    expect(login({ directus_user_id: { _neq: "u-me" } }, "u-me")).toBe("people.directus_user_id");
-    expect(login({ directus_user_id: { _eq: "u-me", _nnull: true } }, "u-me")).toBe("people.directus_user_id");
-    expect(login({ my_contacts: { contact_id: { directus_user_id: { _eq: "u-me" } } } }, "u-me")).toBe(
+    // What Directus puts in place of `$CURRENT_USER.person_id`.
+    expect(login({ id: { _eq: "p-me" } }, "u-me")).toBeUndefined();
+    expect(login({ logins: { id: { _eq: "u-me" } } }, "u-me")).toBeUndefined();
+    expect(login({ logins: { id: { _eq: "$CURRENT_USER" } } }, "u-me")).toBeUndefined();
+  });
+
+  it("rejects any other filter on a person's logins", () => {
+    const login = (filter: Record<string, unknown>, user?: string) =>
+      violation(team, schema.relations, "people", { filter }, user);
+    expect(login({ logins: { id: { _eq: "u-other" } } }, "u-me")).toBe("the relation people.logins");
+    expect(login({ logins: { id: { _eq: "$CURRENT_USER" } } })).toBe("the relation people.logins");
+    expect(login({ logins: { id: { _neq: "u-me" } } }, "u-me")).toBe("the relation people.logins");
+    expect(login({ logins: { id: { _eq: "u-me", _nnull: true } } }, "u-me")).toBe("the relation people.logins");
+    expect(login({ logins: { id: { _eq: "u-me" }, email: { _eq: "x" } } }, "u-me")).toBe("the relation people.logins");
+    expect(login({ logins: { email: { _starts_with: "a" } } }, "u-me")).toBe("the relation people.logins");
+    expect(login({ my_contacts: { contact_id: { logins: { id: { _eq: "u-me" } } } } }, "u-me")).toBe(
       "the relation people.my_contacts",
     );
   });

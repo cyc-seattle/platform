@@ -385,13 +385,14 @@ describe("a person's login", () => {
     for (const rule of writes) {
       expect(rule.fields, `${rule.action} on people`).toBeDefined();
       expect(rule.fields).not.toContain("*");
-      expect(rule.fields).not.toContain("directus_user_id");
+      expect(rule.fields).not.toContain("logins");
     }
+    expect(held.filter((rule) => rule.collection === "directus_users" && rule.action !== "read")).toEqual([]);
   });
 
   it("leaves every other field of a person to a CRM Writer", () => {
     const update = named("CRM Writer").rules.find((rule) => rule.collection === "people" && rule.action === "update");
-    expect([...(update?.fields ?? []), "directus_user_id"].sort()).toEqual(fieldsOf("people").sort());
+    expect([...(update?.fields ?? []), "logins"].sort()).toEqual(fieldsOf("people").sort());
   });
 });
 

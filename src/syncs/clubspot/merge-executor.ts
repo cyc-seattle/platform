@@ -45,6 +45,7 @@ async function readGroupRelatedData(directus: DirectusClient, personIds: readonl
     programAreaRoleAssignments,
     registrations,
     googleGroupMemberships,
+    logins,
   ] = await Promise.all([
     readByIds<MergeParticipant>(directus, "clubspot_participants", "person_id", personIds),
     readByIds<MergeContact>(directus, "contacts", "subject_id", personIds),
@@ -55,6 +56,7 @@ async function readGroupRelatedData(directus: DirectusClient, personIds: readonl
     readByIds<MergePersonReference>(directus, "program_area_role_assignments", "person_id", personIds),
     readByIds<MergePersonReference>(directus, "registrations", "person_id", personIds),
     readByIds<MergePersonReference>(directus, "google_group_memberships", "person_id", personIds, ["id", "person_id"]),
+    readByIds<MergePersonReference>(directus, "directus_users", "person_id", personIds, ["id", "person_id"]),
   ]);
 
   return {
@@ -66,6 +68,7 @@ async function readGroupRelatedData(directus: DirectusClient, personIds: readonl
     programAreaRoleAssignments,
     registrations,
     googleGroupMemberships,
+    logins,
   };
 }
 
@@ -77,13 +80,6 @@ async function reopenFinding(directus: DirectusClient, findingId: string, messag
 async function applyStep(directus: DirectusClient, step: MergeStep): Promise<void> {
   if (step.type === "update") {
     await directus.updateItem<Record<string, unknown>>(step.collection, step.id, step.patch);
-    return;
-  }
-  if (step.type === "batchUpdate") {
-    await directus.updateItems<Record<string, unknown>>(
-      step.collection,
-      step.items.map((item) => ({ id: item.id, ...item.patch })),
-    );
     return;
   }
   for (const id of step.ids) {
@@ -142,7 +138,7 @@ async function finalizeMerge(
 
 /**
  * Applies one approved `duplicate_person` finding. Every check here is an expected condition -
- * a stale group, or two rows that both claim a `directus_user_id` - and reopens the finding rather
+ * a stale group, say - and reopens the finding rather
  * than throwing, so one bad finding doesn't stop the rest. An unexpected failure (a Directus write
  * itself failing) is not caught here: it propagates to `runApprovedPersonMerges`, which leaves the
  * finding `approved` and moves on to the next one - the next run picks this finding back up, since
@@ -182,19 +178,7 @@ async function applyApprovedFinding(
 
   const related = await readGroupRelatedData(directus, memberIds);
 
-  let steps: MergeStep[];
-  try {
-    steps = planPersonMerge(keeper, duplicates, related);
-  } catch (error) {
-    await reopenFinding(
-      directus,
-      findingId,
-      `duplicate_person finding could not be planned: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return "skipped";
-  }
-
-  for (const step of steps) {
+  for (const step of planPersonMerge(keeper, duplicates, related)) {
     // The final guard below is what actually earns this delete - see findRemainingReferences.
     if (step.type === "delete" && step.collection === "people") {
       continue;

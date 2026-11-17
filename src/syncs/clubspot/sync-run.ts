@@ -1410,9 +1410,8 @@ export interface RunSyncResult {
   auditFindingsResolved: number;
   /** Approved `duplicate_person` findings this run merged through to a deleted duplicate. */
   mergesApplied: number;
-  /** Approved findings this run couldn't finish - a stale group, an unresolvable
-   * `directus_user_id` conflict, or a duplicate a leftover reference still blocks - each reopened
-   * rather than left silently `approved`. */
+  /** Approved findings this run couldn't finish - a stale group, or a duplicate a leftover
+   * reference still blocks - each reopened rather than left silently `approved`. */
   mergesSkipped: number;
   /** Unset only for a dry run, whose `sync_runs` create no-ops and returns no id. */
   syncRunId?: string;

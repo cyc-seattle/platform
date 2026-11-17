@@ -161,11 +161,11 @@ who are genuinely different (a parent and child sharing a name, say) get the fin
 who are the same person get it set to `approved`.
 
 The next sync run does the merge: it relinks every duplicate's participants to the keeper, folds
-medical profiles and contacts onto it, moves a lone `directus_user_id`, fills the keeper's null
+medical profiles and contacts onto it, moves every duplicate's logins to it, fills the keeper's null
 fields from the duplicates, and deletes each duplicate once nothing references it any more. The
 finding then reads `resolved`. If a run can't finish a merge — the group no longer shares a name,
-two rows both hold a `directus_user_id`, or something still references a duplicate after the merge
-— it sets the finding back to `open` and logs why, for another look.
+or something still references a duplicate after the merge — it sets the finding back to `open` and
+logs why, for another look.
 
 **Unmerging** is manual: create a new person, and point the wrongly-merged participant's
 `person_id` at it in the Data Studio. The sync never re-resolves a linked participant, so this is
@@ -278,10 +278,10 @@ Auth info does not live on `people`. Directus already has its own identity table
 — with roles, policies, and OIDC `provider`/`external_identifier` fields for linking a Google login.
 Reusing it instead of a homegrown field means:
 
-- `people.directus_user_id` is a nullable, unique FK to `directus_users.id`, declared in
-  `schemas/sync.yaml` — Directus is itself a provider, so its own identity column is an
-  extension field on `people` like any other. Set only for people who have an actual login, and only
-  by an admin or the group hook. No policy a person can hold writes it.
+- `directus_users.person_id` is a nullable FK to `people.id`, declared in `schemas/access.yaml`, so
+  a person can have any number of logins, such as a personal and a work email. `people.logins` lists
+  them. Only an admin or the group hook sets it, and no policy a person can hold writes it. Deleting
+  a person empties it on their logins and keeps the logins.
 - Directus's own OIDC config matches a sign-in to its `directus_users` row (`provider` +
   `external_identifier`). The group hook then links that login to a person by email, once
   ([access.md](access.md#groups)). Rules match the signed-in user by that link, not by email.

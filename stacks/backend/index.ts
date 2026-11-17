@@ -428,8 +428,21 @@ permissionRule(
     policyId: clubspotSyncPolicyId,
     collection: "directus_users",
     action: "read",
-    fields: ["id"],
-    permissions: { id: { _eq: "$CURRENT_USER" } },
+    fields: ["id", "person_id"],
+    permissions: { _or: [{ id: { _eq: "$CURRENT_USER" } }, { person_id: { _nnull: true } }] },
+  },
+  { dependsOn: crmSchema },
+);
+// Merging duplicate people moves each duplicate's logins to the person it keeps.
+permissionRule(
+  "crm-clubspot-sync-users-update",
+  {
+    ...auth,
+    policyId: clubspotSyncPolicyId,
+    collection: "directus_users",
+    action: "update",
+    fields: ["person_id"],
+    permissions: { person_id: { _nnull: true } },
   },
   { dependsOn: crmSchema },
 );

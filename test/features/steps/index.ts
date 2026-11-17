@@ -12,6 +12,7 @@ import {
   hasRole,
   newGroup,
   newPerson,
+  personFor,
   policiesOf,
   policyNames,
   removeFromGroup,
@@ -380,17 +381,15 @@ Step("they still have the {role} role", async (_, role: string) => {
   expect(await roleOf(await current().userId())).toBe(role);
 });
 
-let signedIn: { id: string; directus_user_id: { role: { name: string } | null } | null }[] = [];
+let signedIn: { id: string; role: { name: string } | null }[] = [];
 Step("the people in the CRM who have signed in", () => runRows());
 Step("an admin looks up their roles", async () => {
-  const filter = encodeURIComponent(JSON.stringify({ directus_user_id: { _nnull: true } }));
-  signedIn = await (
-    await admin()
-  ).ok("GET", `/items/people?filter=${filter}&fields=id,directus_user_id.role.name&limit=-1`);
+  const filter = encodeURIComponent(JSON.stringify({ person_id: { _nnull: true } }));
+  signedIn = await (await admin()).ok("GET", `/users?filter=${filter}&fields=id,role.name&limit=-1`);
 });
 Step("each of them has the Community, Team, Crew, Staff, or Admin role", () => {
-  for (const { id, directus_user_id: user } of signedIn) {
-    expect(roleNames, `person ${id}`).toContain(user?.role?.name);
+  for (const { id, role } of signedIn) {
+    expect(roleNames, `login ${id}`).toContain(role?.name);
   }
 });
 
@@ -459,8 +458,8 @@ Step("they sign in for the first time", async () => {
   await hasPolicies(user.userId, newcomer.policies);
   if (newcomer.policies.length > 0) {
     // Stored, so a later change to the person's email can't move their access to someone else.
-    const person = await (await admin()).ok("GET", `/items/people/${newcomer.personId}?fields=directus_user_id`);
-    expect(person.directus_user_id).toBe(user.userId);
+    const login = await (await admin()).ok("GET", `/users/${user.userId}?fields=person_id`);
+    expect(login.person_id).toBe(newcomer.personId);
   }
   setThey(as(user));
 });
@@ -477,7 +476,7 @@ Step("they sign in again", async () => {
 
 async function aMemberOf(groups: number, policy: string): Promise<void> {
   const user = await createUser(email("volunteer"), "Crew");
-  const personId = await newPerson({ email: user.email, directus_user_id: user.userId });
+  const personId = await personFor(user);
   for (let i = 0; i < groups; i++) {
     await join(personId, policy);
   }
@@ -498,7 +497,7 @@ Step("an admin adds them to a group that gives the {policy} policy", async (_, p
     setThey(as(user));
   }
   const { email: signIn } = await (await admin()).ok("GET", `/users/${userId}?fields=email`);
-  await join(await newPerson({ email: signIn, directus_user_id: userId }), policy);
+  await join(await personFor({ userId, email: signIn }), policy);
   await hasPolicies(userId, [...(await policiesOf(userId)), policy]);
 });
 
@@ -536,10 +535,7 @@ Step("an admin adds it to a group that gives the {policy} policy", async (_, pol
   const before = await policiesOf(userId);
   await join(await newPerson({ email: signIn }), policy);
   const witness = await createUser(email("witness"), "Crew");
-  await addToGroup(
-    memberships[0]!.groupId,
-    await newPerson({ email: witness.email, directus_user_id: witness.userId }),
-  );
+  await addToGroup(memberships[0]!.groupId, await personFor(witness));
   await hasPolicies(witness.userId, [policy]);
   expect(await policiesOf(userId)).toEqual(before);
 });

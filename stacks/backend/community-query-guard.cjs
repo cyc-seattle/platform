@@ -12,8 +12,8 @@
 
 const OPERATOR_RELATIONS = ["_some", "_none"];
 
-/** Each collection's login field. A filter for the user's own login can match only their own row. */
-const LOGINS = { people: "directus_user_id" };
+/** Each collection's list of logins. A filter for the user's own login can match only their own person. */
+const LOGINS = { people: "logins" };
 
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
 function forbidden(reason) {
@@ -76,10 +76,15 @@ function effectiveAccess(config, names, fieldsOf) {
   return { restricted, open: open.sort() };
 }
 
+/** `{ id: { _eq: <the viewer> } }`, and nothing else. */
 function isOwnLogin(value, user) {
   if (value === null || typeof value !== "object") return false;
   const keys = Object.keys(value);
-  return keys.length === 1 && keys[0] === "_eq" && user !== undefined && [user, "$CURRENT_USER"].includes(value._eq);
+  if (keys.length !== 1 || keys[0] !== "id") return false;
+  const id = value.id;
+  if (id === null || typeof id !== "object") return false;
+  const ops = Object.keys(id);
+  return ops.length === 1 && ops[0] === "_eq" && user !== undefined && [user, "$CURRENT_USER"].includes(id._eq);
 }
 
 /** `$FOLLOW(contacts,subject_id)` joins `contacts` rows whose `subject_id` is the current row. */
@@ -143,11 +148,11 @@ function violation(config, relations, collection, query, user) {
         typeof value === "object" &&
         Object.keys(value).some((inner) => !inner.startsWith("_") || OPERATOR_RELATIONS.includes(inner));
       if (!nested) {
-        if (LOGINS[current] === key && isOwnLogin(value, user)) continue;
         const reason = checkField(current, key);
         if (reason) return reason;
         continue;
       }
+      if (LOGINS[current] === key && isOwnLogin(value, user)) continue;
       const { target, reason } = step(current, key);
       if (reason) return reason;
       // Directus reads `_some` or `_none` only as the first key. Checking every key covers whichever

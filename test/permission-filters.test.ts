@@ -32,6 +32,9 @@ function related(collection: string, field: string): string | undefined {
   return undefined;
 }
 
+/** The fields of Directus's own collections a filter names, which the schemas don't declare. */
+const DIRECTUS_FIELDS: Record<string, string[]> = { directus_users: ["id"] };
+
 /** Every key in `filter` that isn't a field of the collection it applies to. Directus silently drops
  * such a clause, and the query then fails with a 500. */
 function unknownFields(collection: string, filter: unknown, path = collection): string[] {
@@ -42,7 +45,8 @@ function unknownFields(collection: string, filter: unknown, path = collection): 
     }
     if (key === "_some" || key === "_none") return unknownFields(collection, value, path);
     if (key.startsWith("_")) return [];
-    if (!schema.fields.some((field) => field.collection === collection && field.field === key)) {
+    const declared = schema.fields.some((field) => field.collection === collection && field.field === key);
+    if (!declared && !DIRECTUS_FIELDS[collection]?.includes(key)) {
       return [`${path}.${key}`];
     }
     const target = related(collection, key);

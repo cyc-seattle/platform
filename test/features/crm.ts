@@ -11,7 +11,7 @@ import {
 } from "./steps/index.ts";
 import { asAdmin } from "./cluster.ts";
 import { clubspotRun, seedClass, seedSailor, type ClubspotRun } from "./steps/clubspot.ts";
-import { createUser, type User } from "./steps/logins.ts";
+import { createUser, linkLogin, type User } from "./steps/logins.ts";
 import { admin, adminCreate, created, email, itemPath, newRow, runId } from "./steps/rows.ts";
 import { runClubspotSync } from "./syncs.ts";
 
@@ -133,7 +133,7 @@ async function aParentWhoSaidYes(run: ClubspotRun): Promise<string> {
  */
 async function signedIn(personId: string): Promise<User> {
   const user = await createUser(email("parent"), "Community");
-  await asAdmin("PATCH", `/items/people/${personId}`, { directus_user_id: user.userId });
+  await linkLogin(user.userId, personId);
   return user;
 }
 

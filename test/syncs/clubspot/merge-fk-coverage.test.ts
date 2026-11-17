@@ -46,10 +46,13 @@ describe("merge FK coverage", () => {
     expect(missing).toEqual([]);
   });
 
-  it("has on_delete: RESTRICT on every relation to people except clubspot_participants.person_id", () => {
+  // Deleting a person keeps their Clubspot participants and their logins, unlinked.
+  const SET_NULL = ["clubspot_participants.person_id", "directus_users.person_id"];
+
+  it("has on_delete: RESTRICT on every relation to people except a participant's or a login's", () => {
     for (const relation of relations) {
       const key = `${relation.collection}.${relation.field}`;
-      const expected = key === "clubspot_participants.person_id" ? "SET NULL" : "RESTRICT";
+      const expected = SET_NULL.includes(key) ? "SET NULL" : "RESTRICT";
       expect(relation.schema?.on_delete).toBe(expected);
     }
   });

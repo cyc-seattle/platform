@@ -41,10 +41,12 @@ A policy is a named set of permissions. Each role has a policy of its own, which
 permissions, plus any shared policies it's given:
 
 - Community has one policy, Community: own family, in `stacks/backend/community-rules.ts`. It
-  matches the signed-in user by their login, `people.directus_user_id`, not their email. It gives
-  everyone in their household with their details, their children's registrations and medical
-  information, the names of programs and program areas, and the list of schools. It reads their own
-  login too, so an app finds their row with a filter on `directus_user_id` for `$CURRENT_USER`.
+  matches the signed-in user by their login's person, `directus_users.person_id`, not their email,
+  so each of a person's logins sees the same. It gives everyone in their household with their
+  details, their children's registrations and medical information, the names of programs and
+  program areas, and the list of schools. It reads their own login's `person_id` too, so an app
+  finds their row with a filter on `id` for `$CURRENT_USER.person_id`. Directus reads that variable
+  with the user's own access in a query, though not in a permission rule.
   Anyone in a household, a child who signs in too, changes anyone in it's `display_name`, `phone`,
   `school_id`, and `school`. Only an adult changes whether it shares, `households.share_contact`.
 
@@ -103,10 +105,11 @@ rather than a policy (`docs/planning-schema.md`). A Medical policy is given with
 Programs belong to the catalog, so only a Catalog Writer changes them. A CRM policy reads them, and
 so do Crew and the Google sync, but none of them changes them. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
 
-One field is held back: no policy a person can hold sets a person's login,
-`people.directus_user_id`, because the login decides whose groups' policies a user gets. Only an
-admin or the group hook sets it. The Clubspot sync's own policy still can, since a merge moves a
-duplicate's login onto the person it keeps.
+One field is held back: no policy a person can hold sets a login's person,
+`directus_users.person_id`, or the list of a person's logins, `people.logins`, because a login's
+person decides whose family and groups' policies it gets. Only an admin or the group hook sets it.
+The Clubspot sync's own policy moves a linked login, since a merge moves a duplicate's logins onto
+the person it keeps.
 
 One risk is known and accepted: a CRM Writer can edit guardian links in `contacts`, so they could
 make themselves a child's guardian and read that child's medical information. CRM Writers are people
@@ -185,20 +188,26 @@ list creates a new row, so someone not yet in People is added there first.
 
 The `group-policies` hook (`stacks/backend/group-policies.cjs`) keeps each user's own policy links
 equal to what their groups give. It runs after any change to a group, a member, or a grant, when a
-user or person is made, and when a person's email, login, or name changes. It also runs every 15
+user or person is made or a person deleted, when a login's role, email, or person changes, and when
+a person's email, logins, or name changes. It also runs every 15
 minutes, to catch a change that emitted no event, such as a cascade.
 
-- A person's login is `people.directus_user_id`. A group member with none is linked by their email,
-  once, and the hook stores the link. So someone added to a group before they first sign in gets its
-  policies once they do, and a later change to their email doesn't move their access.
-- It links every signed-in user's person this way, not only group members', since the Community
-  rules match by login.
-- It links by email only when exactly one person has that email and no person is linked to that
-  login yet, or when everyone else with the email is that person's child. Otherwise a shared email
-  links nobody. The hook logs it, and an admin links the login by hand.
+- A login's person is `directus_users.person_id`, and a person can have any number of logins, such
+  as someone who signs in with a personal and a work email. Each login gets the person's groups'
+  policies. A login with no person is linked by its email, once, and the hook stores the link. So
+  someone added to a group before they first sign in gets its policies once they do, and a later
+  change to their email doesn't move their access.
+- It links every signed-in user this way, not only group members, since the Community rules match
+  by a login's person.
+- It links by email only when exactly one person has that email, or when everyone else with the
+  email is that person's child. Otherwise a shared email links nobody. The hook logs it, and an
+  admin links the login by hand. It never moves a linked login by email. An admin links a login
+  whose email isn't the person's, such as a Workspace alias, from the login's page or the person's
+  Logins.
+- Deleting a person empties their logins' `person_id`, and keeps the logins.
 - It manages only links to the policies a group can give, and only for users on Community, Team,
   Crew, Staff, or Admin. It never touches a sync's user or the first admin account.
-- It moves a Community user whose person is on a team to Team, and a Team user who isn't back to
+- It moves each Community login whose person is on a team to Team, and a Team user who isn't back to
   Community. It never changes Crew, Staff, or Admin. Registrations, offerings, programs, and contacts set it
   off too, and the 15-minute run closes the 12-month window as time passes.
 - It gives each user their person's first and last name, so the Data Studio, comments, and
@@ -224,8 +233,9 @@ into a collection they can't read every row of. Everything else passes:
   That holds for `$FOLLOW` too.
 - A `deep` query reads its related rows with permissions, as a top-level query does, so its own
   filter and sort get the same checks as one.
-- A filter of `people.directus_user_id` equal to the user's own login passes. It can match only their
-  own row, so it reveals nothing, and any other filter on a login is refused.
+- A filter on `people.id` passes, since every rule shows it. So does a filter of `people.logins`
+  whose only test is that a login's `id` is the user's own. It can match only their own person, so it
+  reveals nothing, and any other filter on a person's logins is refused.
 - A filter into `directus_users` is refused unless the user is an admin. Directus lets everyone else
   read only their own account, so a filter could probe other people's.
 

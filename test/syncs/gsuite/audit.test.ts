@@ -453,7 +453,6 @@ describe("candidateMemberPeople", () => {
       date_of_birth: null,
       gender: null,
       school: null,
-      directus_user_id: null,
     } as unknown as PersonRow;
   }
 

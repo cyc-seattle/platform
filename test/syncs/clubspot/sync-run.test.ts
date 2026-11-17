@@ -2092,7 +2092,6 @@ describe("runSync", () => {
           state: null,
           postal_code: null,
           school: null,
-          directus_user_id: null,
         },
         {
           id: "person-2",
@@ -2107,7 +2106,6 @@ describe("runSync", () => {
           state: null,
           postal_code: null,
           school: null,
-          directus_user_id: null,
         },
       ];
     }
@@ -2252,7 +2250,7 @@ describe("runSync", () => {
     it("reopens an approved finding whose group can't be merged, without failing the run", async () => {
       const now = new Date("2026-01-15T12:00:00Z");
       const detail = "Jane Doe: person-1 (dob 2010-01-01), person-2 (dob 2011-02-02)";
-      const person = (id: string, dateOfBirth: string, directusUserId: string) => ({
+      const person = (id: string, dateOfBirth: string) => ({
         id,
         first_name: "Jane",
         last_name: "Doe",
@@ -2265,10 +2263,11 @@ describe("runSync", () => {
         state: null,
         postal_code: null,
         school: null,
-        directus_user_id: directusUserId,
       });
       const { fetchMock, tables } = makeDirectusStore({
-        people: [person("person-1", "2010-01-01", "du-1"), person("person-2", "2011-02-02", "du-2")],
+        people: [person("person-1", "2010-01-01"), person("person-2", "2011-02-02")],
+        // A group gives access, so the merge never moves a membership, and stops on the duplicate's delete.
+        group_members: [{ id: "member-1", group_id: "group-1", person_id: "person-2" }],
         audit_findings: [
           {
             id: "finding-1",

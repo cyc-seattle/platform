@@ -88,6 +88,11 @@ export function generateSchemaTypes(snapshot: Snapshot): string {
     .filter((c) => c.schema != null)
     .sort((a, b) => a.collection.localeCompare(b.collection));
   const known = new Set(collections.map((c) => c.collection));
+  // A Directus collection with fields of ours, such as directus_users.person_id, lists only those,
+  // and @directus/sdk adds Directus's own.
+  const core = [...new Set(snapshot.fields.map((f) => f.collection))]
+    .filter((collection) => collection.startsWith("directus_") && !known.has(collection))
+    .sort();
   const fieldsOf = (collection: string) => snapshot.fields.filter((f) => f.collection === collection);
   const primaryKey = (collection: string) => {
     const pk = fieldsOf(collection).find((f) => f.schema?.is_primary_key);
@@ -119,10 +124,17 @@ export function generateSchemaTypes(snapshot: Snapshot): string {
   for (const c of collections) {
     out += `  ${c.collection}: ${typeName(c.collection)}${c.meta?.singleton ? "" : "[]"};\n`;
   }
+  for (const collection of core) {
+    out += `  ${collection}: ${typeName(collection)}[];\n`;
+  }
   out += "}\n";
 
-  for (const c of collections) {
-    out += `\n${comment(c.meta?.note, "")}export interface ${typeName(c.collection)} {\n`;
+  const interfaces = [
+    ...collections.map((c) => ({ collection: c.collection, note: c.meta?.note })),
+    ...core.map((collection) => ({ collection, note: "The fields we add to Directus's own." })),
+  ];
+  for (const c of interfaces) {
+    out += `\n${comment(c.note, "")}export interface ${typeName(c.collection)} {\n`;
     for (const field of fieldsOf(c.collection)) {
       const type = fieldType(field);
       if (type !== undefined) {

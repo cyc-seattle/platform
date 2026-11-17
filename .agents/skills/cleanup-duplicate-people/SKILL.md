@@ -22,7 +22,7 @@ first.
    the proposed keeper. `detail` lists each member's id and date of birth
    (`parseDuplicatePersonFindingMemberIds`, `src/syncs/clubspot/audit.ts`).
 2. For each member, read the `people` row (`first_name`, `last_name`, `date_of_birth`, `email`,
-   `phone`, `directus_user_id`), plus:
+   `phone`, `logins.email`), plus:
    - `participant_links` with each participant's registration and camp — is this row a participant?
    - `contact_for` — is it someone's guardian or emergency contact, and whose?
    - `my_contacts` — who are its guardians?
@@ -64,8 +64,8 @@ Give each group one verdict, with one line of evidence:
 
 - **Approve** — the same person. Every member has the same non-null date of birth, or there's
   equivalent evidence: the same guardians, the same email and phone, or one row that has only a
-  `contact_for` link and none of its own. Check the proposed keeper too. A merge fails if two
-  members both hold a `directus_user_id`.
+  `contact_for` link and none of its own. Check the proposed keeper too. A merge moves every
+  member's logins to the keeper.
 - **Dismiss** — different people. The dates of birth differ, or one is the other's guardian.
 - **Fix the data first** — the dates of birth differ only by a typo, for example a swapped day and
   month. Propose the corrected `date_of_birth`, then approve. If the typo came from the family's
