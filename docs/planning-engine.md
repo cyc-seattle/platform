@@ -422,6 +422,8 @@ revenue, not costs, because a director's bonus is a share of revenue too.
   another term's bonus.
 - Its products' offerings in no term make one more net, for the year, with anything booked on
   the products themselves.
+- A bonus owner with a `term_key` is paid only in that term, on its offerings there. A term the
+  Operations Plan doesn't have pays nothing, with a warning (`unknown_bonus_term`).
 - `basis` `after_shared_costs`, the default, counts each offering's indirect costs;
   `before_shared_costs` doesn't.
 - No bonus counts in any bonus's base.

@@ -344,6 +344,8 @@ export interface PlanBonusOwner extends PlanRow {
   basis?: "after_shared_costs" | "before_shared_costs" | null;
   /** A `plan_salaried_positions` key: the position the bonus pays. */
   position_key?: Id | null;
+  /** A `plan_terms` key: the one term it's paid in. Empty pays in every term, and on the year. */
+  term_key?: Id | null;
 }
 
 export interface PlanBonusOwnerProduct extends PlanRow {

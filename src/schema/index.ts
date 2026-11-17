@@ -750,6 +750,8 @@ export interface PlanBonusOwners {
   basis: "after_shared_costs" | "before_shared_costs" | null;
   /** The salaried position this bonus pays, if any: copy the Key from a salaried position in the Operations Plan. */
   position_key: string | null;
+  /** Term it's paid in. Empty: every term. */
+  term_key: string | null;
 }
 
 /** A cost or revenue entered as an amount. */

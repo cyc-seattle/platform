@@ -122,7 +122,8 @@ function areaOf(ctx: Context, owner: PlanBonusOwner): Id | null {
 
 /**
  * The owner's products' net in each term they have an offering in, with those offerings, in term
- * order and then no term. An area plan's bonus counts only that area's products, and warns about any other.
+ * order and then no term. An owner with a `term_key` has only that term's. An area plan's bonus
+ * counts only that area's products, and warns about any other.
  */
 function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Base[] {
   const plan = ctx.planOf.get(owner.plan_id);
@@ -166,5 +167,11 @@ function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Bas
     if (type === "revenue") baseFor(term).net += e.amount;
     else if (type === "expense") baseFor(term).net -= e.amount;
   }
-  return [...bases.values()].sort((a, b) => compareTerms(a.term, b.term));
+  if (owner.term_key == null) return [...bases.values()].sort((a, b) => compareTerms(a.term, b.term));
+  const term = (ctx.data.plan_terms ?? []).find((t) => t.key === owner.term_key);
+  if (term === undefined) {
+    ctx.warn("unknown_bonus_term", `${owner.role_name}'s bonus term isn't in the plan, so it isn't paid.`, owner.key);
+    return [];
+  }
+  return [baseFor(term)];
 }

@@ -63,6 +63,7 @@ const PLANNER_KEYS: Record<string, string> = {
   "plan_labor_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
   "plan_budget_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
   "plan_bonus_owners.position_key": "Planners copy in a salaried position's Key.",
+  "plan_bonus_owners.term_key": "Planners copy in a term's Key.",
 };
 
 /** A planning row's own Key: read-only, and visible so planners can copy it into the fields above. */
