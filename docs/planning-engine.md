@@ -79,9 +79,8 @@ Plan policy can read them.
 
 - **Pool:** a group of shared costs, such as general and administrative (G&A) costs or program
   admin, that no single offering owns.
-- **Indirect cost rate:** the share of a program's fees it pays toward the shared costs, set for each
-  program in the plan and fixed for the year. A program's indirect costs are its rate × its fees.
-- **Program fees:** an offering's price × its enrollment, without the card fees families pay on top.
+- **Indirect cost rate:** the share of a program's MTDC it pays toward the shared costs, set for each
+  program in the plan and fixed for the year. A program's indirect costs are its rate × its MTDC.
 - **Non-program:** every offering whose product isn't a program, such as merchandise, storage and
   charters.
 - **MTDC** (modified total direct costs): an offering's own costs, less a few kinds a federal grant
@@ -96,7 +95,7 @@ Plan policy can read them.
 4. **Lines.** Budget lines, capital items, labor lines and salaried positions. Costs on a product or area are divided among
    its offerings last, once every offering's own costs are in.
 5. **Payroll taxes** on every wage and paid hour.
-6. **Indirect costs**, each program's rate × its offerings' fees.
+6. **Indirect costs**, each program's rate × its offerings' MTDC.
 7. **Bonuses**, with their taxes on wages.
 
 ## Rules
@@ -182,7 +181,7 @@ coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issu
 - Its `breakeven_enrollment` is the fewest sailors, from 1 up to its `capacity`, at which its net after
   indirect costs is zero or more. The engine recalculates only the offering's slice: it, its
   activities, trips and own lines, and its blocks with the activities that share them, less its
-  program's indirect cost rate × its fees at n sailors. Its net at n sailors is the slice's net at n, plus
+  program's indirect cost rate × the slice's MTDC at n sailors. Its net at n sailors is the slice's net at n, plus
   its planned net less the slice's net at its enrollment, so bonuses and anything else outside the
   slice stay as planned. Each number is tried in turn, since costs set per sailor can step. It's null when the
   offering doesn't cover its costs even when full, or has no `capacity`.
@@ -381,15 +380,14 @@ scholarships and fellowships, tuition remission, patient care, and each subaward
 
 ### Indirect costs
 
-Each program pays a fixed rate on its own fees toward the shared costs, so one program's year never
+Each program pays a fixed rate on its own MTDC toward the shared costs, so one program's year never
 changes another's indirect costs, or its director's bonus
-([cyc-seattle/platform#296](https://github.com/cyc-seattle/platform/issues/296)). The rate is on
-revenue, not costs, because a director's bonus is a share of revenue too.
+([cyc-seattle/platform#296](https://github.com/cyc-seattle/platform/issues/296)). A Plan Admin sets
+the rate at budget time from the year before's shared costs ÷ its programs' MTDC.
 
 - The shared costs are everything in every pool.
 - A program's offering's indirect costs are its program's `indirect_cost_rate`, in its
-  `plan_programs` row, × the offering's fees: its price × its enrollment. The card fees families pay
-  on top don't count. A program with no rate pays none, and the engine warns
+  `plan_programs` row, × the offering's MTDC (see [MTDC](#mtdc)). A program with no rate pays none, and the engine warns
   (`no_indirect_cost_rate`). Only a Plan Admin sets the rate.
 - The indirect costs are split over the pools' lines by their size, keeping each line's account and
   function, keyed `pool:<pool key>:<the original line key>`. So a program's P&L shows its indirect
@@ -401,8 +399,9 @@ revenue, not costs, because a director's bonus is a share of revenue too.
   with the organization.
 - With no shared costs, no program pays its rate, and the engine warns (`no_shared_costs`).
 - Results calculated before the rates spread the pools by MTDC, after non-program's net offset them;
-  their `offset:` lines are the part non-program's net covered. Results calculated after the rates
-  came in, but before they were on fees, charged each rate on the offering's MTDC.
+  their `offset:` lines are the part non-program's net covered. For a while the rates were on fees
+  ([cyc-seattle/platform#304](https://github.com/cyc-seattle/platform/pull/304)): results calculated
+  then charged each rate on the offering's price × enrollment.
 
 ### Terms
 
@@ -484,6 +483,6 @@ operating net plus fundraising net, less capital.
 
 Its `indirect` gives the shared costs (`shared_cents`), what the indirect cost rates allocate of them
 (`recovered_cents`), and what they leave unallocated (`unrecovered_cents`, below zero when
-over-allocated). Its `full_recovery_rate` is the shared costs ÷ every program's offerings' fees: the
+over-allocated). Its `full_recovery_rate` is the shared costs ÷ every program's offerings' MTDC: the
 one rate that would allocate them all. A Plan Admin sets next year's rates from
 it.

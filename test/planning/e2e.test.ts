@@ -488,9 +488,9 @@ describe("a realistic plan, end to end", () => {
     expect(camp.days).toBe(10);
   });
 
-  it("warns only that the programs lose money even when full", () => {
+  it("warns only about the programs that don't pay for themselves at their targets", () => {
     expect(out.warnings.map((w) => [w.code, w.key, w.message])).toEqual([
-      ["never_breaks_even", "camp-week-1-key", "Summer Camp week 1 loses money even when full."],
+      ["breakeven_above_target", "camp-week-1-key", "Summer Camp week 1 breaks even at 29. Target is 27."],
       ["never_breaks_even", "racing-fall-key", "Youth Racing Fall loses money even when full."],
     ]);
   });
@@ -512,8 +512,8 @@ describe("a realistic plan, end to end", () => {
     expect(pnl).toMatchInlineSnapshot(`
       {
         "Adult Learn to Sail": {
-          "expenses": 315292,
-          "net": 44708,
+          "expenses": 281621,
+          "net": 78379,
           "revenue": 360000,
         },
         "Charters": {
@@ -527,7 +527,7 @@ describe("a realistic plan, end to end", () => {
           "revenue": 500000,
         },
         "Organization": {
-          "expenses": 18561302,
+          "expenses": 18879941,
           "net": 0,
           "revenue": 0,
         },
@@ -537,13 +537,13 @@ describe("a realistic plan, end to end", () => {
           "revenue": 2400000,
         },
         "Summer Camp": {
-          "expenses": 2209100,
-          "net": 58900,
+          "expenses": 1952624,
+          "net": 315376,
           "revenue": 2268000,
         },
         "Youth Racing": {
-          "expenses": 3933533,
-          "net": -743533,
+          "expenses": 3905041,
+          "net": -715041,
           "revenue": 3190000,
         },
       }

@@ -177,7 +177,7 @@ export interface PlanProgram extends PlanRow {
   /** The staff level that coaches it. */
   staff_level_id: Id | null;
   sailors_per_coach: number | null;
-  /** The share of its offerings' program fees they pay toward the shared costs, fixed for the year. */
+  /** The share of its offerings' MTDC they pay toward the shared costs, fixed for the year. */
   indirect_cost_rate?: number | null;
   /** The planner's short notes, which only their AI reads. */
   notes: string[] | null;
@@ -543,7 +543,7 @@ export interface IndirectTotals {
   recovered_cents: number;
   /** Unallocated: what's left on the organization, shared less allocated. Below zero when over-allocated. */
   unrecovered_cents: number;
-  /** The one rate that would allocate every shared cost: shared ÷ the programs' fees. Null with no fees. */
+  /** The one rate that would allocate every shared cost: shared ÷ the programs' MTDC. Null with no MTDC. */
   full_recovery_rate: number | null;
 }
 

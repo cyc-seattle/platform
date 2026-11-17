@@ -43,8 +43,7 @@ Feature: Plans
   the Data Studio, or by an AI. A frozen Financial Plan keeps the P&L it had when it was frozen, and
   that never changes either. Each line of a frozen P&L says in plain words what it is.
   Shared costs are the costs that several offerings share, such as the office. Each program pays
-  toward them at its indirect cost rate, a share of its program fees, not counting the card fees
-  families pay on top. A director's bonus is a share of revenue too, so the two line up. A Plan Admin sets each program's rate in the plan, from the year before,
+  toward them at its indirect cost rate, a share of its direct costs. A Plan Admin sets each program's rate in the plan, from the year before,
   and it stays fixed for the year, so one program's year never changes what another pays, or its
   director's bonus. What the rates leave unallocated of the shared costs stays with the organization. Some charges are set as
   a share of revenue, such as scholarships or card fees. The Operations Plan lists each one, with
@@ -419,7 +418,7 @@ Feature: Plans
         | no term     | $2,000   |
 
     Example: Each term pays its own indirect costs
-      Given a program area with an offering in "Summer 2027" and one in "Fall 2027", each taking in $1,000
+      Given a program area with an offering in "Summer 2027" and one in "Fall 2027", each costing $1,000
       And $1,000 of office costs shared by every offering
       And every program's indirect cost rate is 50%
       When a planner calculates the P&L
@@ -526,7 +525,7 @@ Feature: Plans
 
       Examples:
         | counted             | bonus  |
-        | after shared costs  | $2,000 |
+        | after shared costs  | $3,000 |
         | before shared costs | $5,000 |
 
   Rule: A bonus is paid on each term's net on its own, so a loss in one term doesn't lower another term's bonus
@@ -900,12 +899,12 @@ Feature: Plans
       When a planner calculates the P&L
       Then the offering pays for itself at 6 sailors
 
-    Example: Its indirect costs grow with the fees its sailors pay
+    Example: It pays its indirect costs on its direct costs
       Given $1,000 of office costs shared by every offering
       And an offering for up to 16 sailors at $500 a sailor, with $2,000 of its own costs
-      And every program's indirect cost rate is 20%
+      And every program's indirect cost rate is 50%
       When a planner calculates the P&L
-      Then the offering pays for itself at 5 sailors
+      Then the offering pays for itself at 6 sailors
 
     Example: Every coach on the block is paid, however many sailors sign up
       Given Guppies have a coach for every 5 sailors
@@ -934,34 +933,34 @@ Feature: Plans
       When a planner calculates the P&L
       Then the planner is warned that the practice is on a closed day
 
-  Rule: Each program pays its indirect cost rate on its program fees, and the organization keeps the rest
+  Rule: Each program pays its indirect cost rate on its direct costs, and the organization keeps the rest
 
     Example: Two Program Plans pay their rates, and the organization keeps what's unallocated
       Given $1,000 of office costs shared by every offering
-      And a draft Financial Plan with two Program Plans whose offerings each take in $1,000
+      And a draft Financial Plan with two Program Plans whose offerings each cost $1,000
       And every program's indirect cost rate is 30%
       When a planner calculates the P&L
       Then each Program Plan's offering pays $300 of the office costs
       And the organization's totals show $400 of unallocated indirect costs
 
-    Example: The card fees families pay don't count toward a program's indirect costs
+    Example: Storage doesn't count toward a program's indirect costs
       Given $1,000 of office costs shared by every offering
-      And the Operations Plan collects card fees from families at 3% of revenue
-      And an offering of a program that takes in $10,000
+      And a program area with two offerings with the same direct costs
+      And $3,000 of storage charged to the program area
       And every program's indirect cost rate is 10%
       When a planner calculates the P&L
-      Then the offering pays $1,000 of the office costs
+      Then each offering pays $100 of the office costs
 
     Example: One program's year doesn't change what another pays
       Given $1,000 of office costs shared by every offering
-      And a program area with two offerings that each take in $1,000
+      And a program area with two offerings with the same direct costs
       And every program's indirect cost rate is 30%
-      When the second offering takes in twice as much
+      When the second offering costs twice as much
       Then the first offering still pays $300 of the office costs
 
-    Example: The full rate is the shared costs over every program's fees
+    Example: The full rate is the shared costs over every program's direct costs
       Given $1,000 of office costs shared by every offering
-      And a program area with two offerings that each take in $2,000
+      And a program area with two offerings that each cost $2,000
       When a planner calculates the P&L
       Then the full rate, which would allocate every shared cost, is 25%
 
@@ -1017,7 +1016,7 @@ Feature: Plans
     Example: An offering's share of the office is named for its pool and its line
       Given a user with the Plan Writer and Plan Admin policies
       And $1,000 of office costs in a pool named "G&A"
-      And a draft Financial Plan whose offering takes in $10,000
+      And a draft Financial Plan whose offering costs $10,000
       And every program's indirect cost rate is 10%
       When they freeze the Financial Plan
       Then the Financial Plan's P&L names the offering's share of the office "G&A share: Office"

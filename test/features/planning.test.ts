@@ -73,6 +73,9 @@ async function twoOfferings(price: number, costs: [number, number]): Promise<str
 Step("a program area with two offerings that each take in {money}", (_, money: string) =>
   twoOfferings(cents(money), [0, 0]),
 );
+Step("a program area with two offerings that each cost {money}", (_, money: string) =>
+  twoOfferings(10_000, [cents(money), cents(money)]),
+);
 Step("{money} of storage charged to the program area", async (_, money: string) => {
   const area = p.areas[0]!;
   await p.line(p.areaPlan(area), "storage", { cost_center_type: "program_area", cost_center_key: area }, cents(money), {
@@ -134,10 +137,10 @@ Step("the program area's P&L for each term is:", (_, table: { term: string; "tak
   );
 });
 Step(
-  "a program area with an offering in {string} and one in {string}, each taking in {money}",
+  "a program area with an offering in {string} and one in {string}, each costing {money}",
   async (_, first: string, second: string, money: string) => {
-    await termOffering(first, cents(money));
-    await termOffering(second, cents(money));
+    await termOffering(first, cents(money), cents(money));
+    await termOffering(second, cents(money), cents(money));
   },
 );
 Step(
@@ -245,11 +248,11 @@ Step("{money} of office costs shared by every offering", async (_, money: string
   );
 });
 Step("every program's indirect cost rate is {percent}", (_, percent: string) => p.indirectCostRate(share(percent)));
-Step("the second offering takes in twice as much", async () => {
-  const offering = p.offerings[1]!;
+Step("the second offering costs twice as much", async () => {
+  const [line] = await read("plan_budget_lines", { cost_center_key: { _eq: second() } });
   await (
     await admin()
-  ).ok("PATCH", itemPath("plan_offerings", offering["id"]), { price_cents: Number(offering["price_cents"]) * 2 });
+  ).ok("PATCH", itemPath("plan_budget_lines", line!["id"]), { amount_cents: Number(line!["amount_cents"]) * 2 });
   await p.calculate();
 });
 Step("the first offering still pays {money} of the office costs", async (_, money: string) => {
@@ -264,6 +267,10 @@ Step("the planner is warned that a program has no indirect cost rate", () => {
 });
 Step("the offering pays {money} of the office costs", async (_, money: string) => {
   expect(p.total(onOffering(first(), await p.account("office")))).toBe(cents(money));
+});
+Step("each offering pays {money} of the office costs", async (_, money: string) => {
+  const office = await p.account("office");
+  for (const key of [first(), second()]) expect(p.total(onOffering(key, office))).toBe(cents(money));
 });
 Step("the full rate, which would allocate every shared cost, is {percent}", (_, percent: string) => {
   expect(p.out.organization.indirect.full_recovery_rate).toBe(share(percent));
@@ -1236,9 +1243,13 @@ async function adminStart(name: string, parent: string): Promise<string> {
 }
 
 /** A Program Plan with one offering of `price` a sailor, and the offering. */
-async function programWithOffering(price = 100_000, extra: Row = {}): Promise<{ area: string; offering: Item }> {
+async function programWithOffering(
+  price = 100_000,
+  extra: Row = {},
+  costs = 100_000,
+): Promise<{ area: string; offering: Item }> {
   const area = await p.area();
-  const offering = await p.offering(p.areaPlan(area), await p.product("program", area), price, 10, 100_000, extra);
+  const offering = await p.offering(p.areaPlan(area), await p.product("program", area), price, 10, costs, extra);
   return { area, offering };
 }
 
@@ -1465,10 +1476,9 @@ Step("its P&L stays the same", async () => {
 });
 
 // A Financial Plan's P&L.
-Step("a draft Financial Plan with two Program Plans whose offerings each take in {money}", async (_, money: string) => {
-  // Each offering has 10 sailors.
-  await programWithOffering(cents(money) / 10);
-  await programWithOffering(cents(money) / 10);
+Step("a draft Financial Plan with two Program Plans whose offerings each cost {money}", async (_, money: string) => {
+  await programWithOffering(10_000, {}, cents(money));
+  await programWithOffering(10_000, {}, cents(money));
   financialPlan = await p.draftSet();
 });
 Step("each Program Plan's offering pays {money} of the office costs", async (_, money: string) => {
@@ -1480,6 +1490,11 @@ Step("each Program Plan's offering pays {money} of the office costs", async (_, 
 Step("a draft Financial Plan whose offering takes in {money}", async (_, money: string) => {
   const area = await p.area();
   offering = await p.offering(p.areaPlan(area), await p.product("program", area), cents(money), 1);
+  financialPlan = await p.draftSet();
+});
+Step("a draft Financial Plan whose offering costs {money}", async (_, money: string) => {
+  const area = await p.area();
+  offering = await p.offering(p.areaPlan(area), await p.product("program", area), 0, 1, cents(money));
   financialPlan = await p.draftSet();
 });
 Step("they change the offering to take in {money}", async (_, money: string) => {
@@ -1548,7 +1563,7 @@ Step(
       { cost_center_type: "pool", cost_center_key: await p.pool() },
       cents(money),
     );
-    // The offering takes in $1,000, 10 sailors at $100.
+    // The offering's direct costs are $1,000.
     await p.indirectCostRate(cents(money) / 100_000);
     named[name] = await p.frozenSet(name);
   },
