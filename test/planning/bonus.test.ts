@@ -135,6 +135,35 @@ describe("bonuses by term", () => {
     expect(total(out, { line: "bonus:", cost_center_key: none.key })).toBe(3000);
   });
 
+  it("pays a bonus with a term only in that term", () => {
+    const { summer, data } = terms();
+    data.plan_bonus_owners = [owner({ term_key: "summer" })];
+    const out = computePlan(data);
+    expect(out.bonuses.map((b) => [b.term_key, b.net_cents, b.bonus_cents])).toEqual([["summer", 200_000, 20_000]]);
+    expect(total(out, { line: "bonus:" })).toBe(20_000);
+    expect(total(out, { line: "bonus:", cost_center_key: summer.key })).toBe(20_000);
+  });
+
+  it("pays nothing in a term with a loss, even when the year makes money", () => {
+    const { data } = terms();
+    data.plan_bonus_owners = [owner({ term_key: "fall" })];
+    const out = computePlan(data);
+    expect(out.bonuses.map((b) => [b.term_key, b.net_cents, b.bonus_cents])).toEqual([["fall", -50_000, 0]]);
+    expect(total(out, { line: "bonus:" })).toBe(0);
+  });
+
+  it("pays nothing, with a warning, when its term isn't in the plan", () => {
+    const { data } = terms();
+    data.plan_bonus_owners = [owner({ term_key: "winter" })];
+    const out = computePlan(data);
+    expect(out.bonuses).toEqual([]);
+    expect(total(out, { line: "bonus:" })).toBe(0);
+    expect(out.warnings.find((w) => w.code === "unknown_bonus_term")).toMatchObject({
+      key: "owner-key",
+      message: "Director's bonus term isn't in the plan, so it isn't paid.",
+    });
+  });
+
   it("gives a program area a P&L for each term, in date order, and one for its offerings in no term", () => {
     const { a, data } = terms();
     const out = computePlan(data);

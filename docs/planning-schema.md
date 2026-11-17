@@ -461,6 +461,7 @@ erDiagram
         uuid account_id FK
         string basis "after_shared_costs|before_shared_costs"
         uuid position_key "operations key: the position it pays"
+        uuid term_key "operations key: the one term it's paid in, or every term"
     }
     plan_closed_dates {
         date date
@@ -498,7 +499,7 @@ A salaried booking names a product, or a program area whose offerings share it b
 
 A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. The programs pay toward the pools at their indirect cost rates, and what the rates leave unallocated stays with the organization ([Indirect costs](planning-engine.md#indirect-costs)).
 
-A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before its indirect costs (`basis`), if that net is above zero. Every bonus is in the Operations Plan, which the database enforces. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay.
+A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before its indirect costs (`basis`), if that net is above zero. Every bonus is in the Operations Plan, which the database enforces. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay. `term_key` limits it to one term, such as Winter; empty pays it in every term.
 
 `plan_capital_items` is the ranked list of what the organization means to buy, such as a coach boat, with the most needed first. Planners drag the rows into order in the Data Studio. Each is capital on the organization, and the engine says how far down the list the year's money goes.
 

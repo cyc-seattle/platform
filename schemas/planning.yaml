@@ -6369,6 +6369,48 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: plan_bonus_owners
+    field: term_key
+    type: uuid
+    meta:
+      collection: plan_bonus_owners
+      conditions: null
+      display: null
+      display_options: null
+      field: term_key
+      group: null
+      hidden: false
+      interface: input
+      note: "Term it's paid in. Empty: every term."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations:
+        - language: en-US
+          translation: Term
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: term_key
+      table: plan_bonus_owners
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: plan_bonus_owner_products
     field: id
     type: uuid
