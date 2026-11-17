@@ -27,6 +27,8 @@ export function prodDirectus({ adminEmail, admins, externalDomain, baseUrl }: Pr
   const gsuiteSyncToken = randomSecret("gsuite-sync-directus-token");
   // cyc-seattle/csc-website's build reads it from Secret Manager.
   const websiteBuildToken = randomSecret("csc-website-directus-token");
+  // Set by hand: the key of the GitHub App that starts the site's publish workflow (docs/manual-setup.md §6).
+  new Secret("csc-website-publish-key");
   // Authentik generated it, and it moved here from its state, so prod's client never changed
   // (cyc-seattle/workplace#6). Authentik registers it from this stack's outputs.
   const oidcClientSecret = randomSecret("directus-oidc-client-secret");

@@ -12,6 +12,8 @@ projects with their resource names unchanged, and their states moved over with `
 - the roles, policies, and permission rules ([access.md](access.md)), including the Community and
   Team policies and the query guard
 - the `group-policies` hook, which gives each user the policies their groups give
+- the `website-publish` hook, which publishes the public website when its content changes
+  ([website.md](website.md#publishing))
 - the admins' accounts, and the clubspot-sync, gsuite-sync, and website build machine users with their
   tokens
 - Directus's OIDC client at Authentik

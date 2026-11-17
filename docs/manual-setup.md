@@ -91,6 +91,7 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | `clubspot-sync-directus-token`      | clubspot-sync | **Pulumi-generated.** Its machine user's Directus token                                                |
 | `gsuite-sync-directus-token`        | gsuite-sync   | **Pulumi-generated.** Its machine user's Directus token                                                |
 | `csc-website-directus-token`        | csc-website   | **Pulumi-generated.** The website build's Directus token, which cyc-seattle/csc-website's build reads  |
+| `csc-website-publish-key`           | Directus      | The private key of the GitHub App that starts the website's publish workflow (§6)                      |
 | `google-oauth-client-id`            | Authentik     | The Google OAuth client's ID (§8)                                                                      |
 | `google-oauth-client-secret`        | Authentik     | The Google OAuth client's secret (§8)                                                                  |
 | `authentik-secret-key`              | Authentik     | **Pulumi-generated.**                                                                                  |
@@ -115,6 +116,17 @@ down.
       (see [syncs.md](syncs.md#clubspot-sync)).
 - [ ] Set `directus-license-key` (§5), or `dev-directus-license-key` in dev, before Directus first
       boots, and renew the grant each year.
+- [ ] Make the GitHub App that publishes the website when its content changes
+      ([website.md](website.md#publishing)), in prod only:
+  1. In the `cyc-seattle` organization's settings, under **Developer settings → GitHub Apps**, create
+     an App. Turn its webhook off, give it one repository permission, **Actions: Read and write**,
+     and let it be installed only on this account.
+  2. Install it on **Only select repositories**: `csc-website`.
+  3. Generate a private key, and set the downloaded file as `csc-website-publish-key` (§5):
+     `gcloud secrets versions add csc-website-publish-key --data-file=<the .pem file> --project cyc-admin-scripts`.
+     Then delete the file.
+  4. Set `backend:websitePublishAppId` in `stacks/backend/Pulumi.prod.yaml` to the App's ID, and
+     deploy. Until then, nothing reads the key and Directus publishes nothing.
 
 MCP needs no manual step: `backend` writes its settings row ([backend.md](backend.md#mcp)). Connect a
 client with `claude mcp add --transport http directus https://directus.<domain>/mcp`, then authorize

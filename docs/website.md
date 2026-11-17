@@ -25,6 +25,19 @@ Storage bucket ([backend.md](backend.md)).
 
 The site's build reads them as the Website Build user ([access.md](access.md#the-website-build)).
 
+## Publishing
+
+The site is built ahead of time, so a content change shows only after a build. Prod's Directus starts
+one itself: the `website-publish` hook (`stacks/backend/website-publish.cjs`) runs
+cyc-seattle/csc-website's `publish` workflow after a row in a `website_*` collection, or a file in
+the Website folder, is created, changed, sorted, or deleted. It waits until edits have stopped for 30
+seconds, and no more than 5 minutes, so a burst of edits is one build. The workflow's nightly run
+publishes anything a failed start missed.
+
+The hook signs in to GitHub as a GitHub App installed only on csc-website, which can only start that
+repo's workflows ([manual-setup.md](manual-setup.md#6-directus-directusdomain)). Dev has no App, so
+an edit in dev publishes nothing.
+
 ## Loading the proof of concept
 
 The proof of concept copied Wix's content into JSON and pictures. `mise run load-website` loads it

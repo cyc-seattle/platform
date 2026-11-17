@@ -10,7 +10,7 @@ import { directusFilesBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv } from "./workloads.ts";
-import type { GroupPoliciesConfig, QueryGuardConfig, FrozenPlansConfig } from "./policies.ts";
+import type { GroupPoliciesConfig, QueryGuardConfig, FrozenPlansConfig, WebsitePublishConfig } from "./policies.ts";
 
 // Directus on the cluster (cyc-seattle/isthmia#231). Its uploaded files are in a bucket infra makes.
 
@@ -48,6 +48,7 @@ export interface DirectusExtensions {
   queryGuard: QueryGuardConfig;
   groupPolicies: GroupPoliciesConfig;
   frozenPlans: FrozenPlansConfig;
+  websitePublish: WebsitePublishConfig;
   /** The planning engine's modules, which the frozen-plans hook loads (./engine-files.ts). */
   engine: Record<string, string>;
 }
@@ -87,6 +88,13 @@ export async function deployDirectus(
         .getSecretVersionAccessOutput({ secret: `${isDev ? "dev-" : ""}directus-license-key` })
         .apply((version) => version.secretData)
     : undefined;
+  // The website-publish hook's GitHub App key, set by hand in Secret Manager (docs/manual-setup.md §6).
+  const publishKey =
+    extensions.websitePublish.appId === undefined
+      ? undefined
+      : gcp.secretmanager
+          .getSecretVersionAccessOutput({ secret: "csc-website-publish-key" })
+          .apply((version) => version.secretData);
   const oidcClientId = existing
     ? existing.oidcClientId
     : new random.RandomString("directus-oidc-client-id", { length: 40, special: false }).result;
@@ -100,6 +108,7 @@ export async function deployDirectus(
     ADMIN_PASSWORD: adminPassword,
     ...(licenseKey && { LICENSE_KEY: pulumi.secret(licenseKey) }),
     AUTH_AUTHENTIK_CLIENT_SECRET: oidcClientSecret,
+    ...(publishKey && { WEBSITE_PUBLISH_PRIVATE_KEY: pulumi.secret(publishKey) }),
   });
 
   // Directus loads extensions only at start. Unnamed, so a change replaces it under a new name, and
@@ -131,6 +140,7 @@ export async function deployDirectus(
     hook("frozen-plans", "frozen-plans.cjs", extensions.frozenPlans, extensions.engine),
     hook("school-choice", "school-choice.cjs", {}),
     hook("link-preview", "link-preview.cjs", {}),
+    hook("website-publish", "website-publish.cjs", extensions.websitePublish),
     extension("cents-as-dollars", "display", "cents-display.mjs"),
   ];
   // Directus runs each migration it hasn't recorded at start, before it serves.

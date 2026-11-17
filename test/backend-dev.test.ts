@@ -97,6 +97,13 @@ const extensions = {
     platformVersion: "1.0.0+engine.abc",
     decimals: {},
   },
+  websitePublish: {
+    collections: ["website_pages"],
+    folder: "website-folder",
+    repository: "cyc-seattle/csc-website",
+    workflow: "publish.yml",
+    ref: "main",
+  },
   engine: { "planning-index.mjs": "" },
 };
 
@@ -138,6 +145,13 @@ describe("Directus on the cluster", () => {
     expect(envNames("directus")).toMatchObject({ STORAGE_GCS_BUCKET: "test-project-directus-files-dev" });
   });
 
+  it("has no key to publish the website with", () => {
+    expect(secretReads()).not.toContain("csc-website-publish-key");
+    expect(find("kubernetes:core/v1:Secret", "directus").inputs["stringData"].value).not.toHaveProperty(
+      "WEBSITE_PUBLISH_PRIVATE_KEY",
+    );
+  });
+
   it("logs only warnings and errors", () => {
     expect(envNames("directus")).toMatchObject({ LOG_LEVEL: "warn" });
   });
@@ -162,6 +176,7 @@ describe("Directus's extensions", () => {
     ["frozen-plans", extensions.frozenPlans],
     ["school-choice", {}],
     ["link-preview", {}],
+    ["website-publish", extensions.websitePublish],
   ])("mounts %s with its config", (name, config) => {
     const data = find("kubernetes:core/v1:ConfigMap", `directus-${name}`).inputs["data"];
     expect(JSON.parse(data["package.json"])["directus:extension"].type).toBe("hook");
