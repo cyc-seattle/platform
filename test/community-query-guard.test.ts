@@ -54,7 +54,6 @@ describe("effectiveAccess", () => {
     expect(team.restricted).toEqual({
       people: [
         "date_of_birth",
-        "directus_user_id",
         "display_name",
         "email",
         "household_id",
@@ -246,17 +245,6 @@ describe("the query guard for Team", () => {
   it("passes a filter for the viewer's own person by its id, which every rule shows", () => {
     // What Directus puts in place of `$CURRENT_USER.person_id`.
     expect(check("people", { filter: { id: { _eq: "p-me" } } }, team)).toBeUndefined();
-  });
-
-  // Until the old login field goes (cyc-seattle/platform#329).
-  it("passes a filter for the viewer's own old login field, and no other filter on it", () => {
-    const login = (filter: Record<string, unknown>, user?: string) =>
-      violation(team, schema.relations, "people", { filter }, user);
-    expect(login({ directus_user_id: { _eq: "u-me" } }, "u-me")).toBeUndefined();
-    expect(login({ directus_user_id: { _eq: "u-other" } }, "u-me")).toBe("people.directus_user_id");
-    expect(login({ directus_user_id: { _eq: "$CURRENT_USER" } })).toBe("people.directus_user_id");
-    expect(login({ directus_user_id: { _neq: "u-me" } }, "u-me")).toBe("people.directus_user_id");
-    expect(login({ directus_user_id: { _eq: "u-me", _nnull: true } }, "u-me")).toBe("people.directus_user_id");
   });
 
   it("rejects any filter on a person's logins", () => {
