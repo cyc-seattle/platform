@@ -6,6 +6,8 @@ export interface PlanInput {
   links: { id: string; user: string; policy: string }[];
   /** How many people have each lowercased email. */
   emailCounts: Record<string, number>;
+  /** The people some login, managed or not, is already linked to. */
+  linkedPeople: string[];
   /** The guardian links between people who share an email. */
   guardianLinks?: { subject: string; contact: string }[];
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyMoves, coalesce, plan, renames, teamMoves } from "../stacks/backend/group-policies.cjs";
 
 const login = (id: string, email: string | null, person_id: string | null = null) => ({ id, email, person_id });
-const once = { emailCounts: { "crew@example.com": 1, "new@example.com": 1 } };
+const once = { emailCounts: { "crew@example.com": 1, "new@example.com": 1 }, linkedPeople: [] };
 
 describe("the group-policies hook's plan", () => {
   it("gives a member each policy their groups give, once", () => {
@@ -38,6 +38,7 @@ describe("the group-policies hook's plan", () => {
       grants: [{ person_id: "p-alex", policy_id: "writer" }],
       links: [{ id: "a1", user: "u-gmail", policy: "writer" }],
       emailCounts: {},
+      linkedPeople: [],
     });
     expect(add).toEqual([{ user: "u-work", policy: "writer" }]);
     expect(remove).toEqual([]);
@@ -56,16 +57,43 @@ describe("the group-policies hook's plan", () => {
     expect(personOf).toEqual(new Map([["u-new", "p-new"]]));
   });
 
-  it("links a second login to a person who already has one, by its email", () => {
-    const { add, link } = plan({
-      users: [login("u-crew", "crew@example.com", "p-crew"), login("u-new", "new@example.com")],
-      people: [{ id: "p-crew", email: "new@example.com" }],
-      grants: [{ person_id: "p-crew", policy_id: "writer" }],
-      links: [{ id: "a1", user: "u-crew", policy: "writer" }],
+  // Someone who can change a person's email could give it the address they sign in with, and take
+  // the person's access. Only an admin links a second login.
+  it("never links a login by email to a person who already has one, and says why", () => {
+    const { add, link, unlinked } = plan({
+      users: [login("u-staff", "crew@example.com", "p-staff"), login("u-stranger", "new@example.com")],
+      people: [{ id: "p-staff", email: "new@example.com" }],
+      grants: [{ person_id: "p-staff", policy_id: "writer" }],
+      links: [{ id: "a1", user: "u-staff", policy: "writer" }],
       ...once,
     });
-    expect(link).toEqual([{ person: "p-crew", user: "u-new" }]);
-    expect(add).toEqual([{ user: "u-new", policy: "writer" }]);
+    expect(link).toEqual([]);
+    expect(add).toEqual([]);
+    expect(unlinked).toEqual([{ user: "u-stranger", reason: expect.stringContaining("already has a login") }]);
+  });
+
+  it("never links a login by email to a person whose only login it doesn't manage", () => {
+    const { link } = plan({
+      users: [login("u-stranger", "new@example.com")],
+      people: [{ id: "p-staff", email: "new@example.com" }],
+      grants: [],
+      links: [],
+      ...once,
+      linkedPeople: ["p-staff"],
+    });
+    expect(link).toEqual([]);
+  });
+
+  it("links only one of two new logins with the same person's email", () => {
+    const { link, unlinked } = plan({
+      users: [login("u-a", "new@example.com"), login("u-b", "NEW@example.com")],
+      people: [{ id: "p-new", email: "new@example.com" }],
+      grants: [],
+      links: [],
+      ...once,
+    });
+    expect(link).toEqual([{ person: "p-new", user: "u-a" }]);
+    expect(unlinked).toEqual([{ user: "u-b", reason: expect.stringContaining("already has a login") }]);
   });
 
   it("links nobody by an email two people share, and says why", () => {
@@ -78,6 +106,7 @@ describe("the group-policies hook's plan", () => {
       grants: [{ person_id: "p-new", policy_id: "medical" }],
       links: [],
       emailCounts: { "new@example.com": 2 },
+      linkedPeople: [],
     });
     expect(link).toEqual([]);
     expect(add).toEqual([]);
@@ -150,6 +179,7 @@ describe("linking a family's login", () => {
     grants: [],
     links: [],
     emailCounts: { "family@example.com": 2 },
+    linkedPeople: [],
   };
 
   it("links a login with no group to its person, so the Community rules can find them", () => {

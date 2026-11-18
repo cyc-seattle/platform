@@ -19,7 +19,8 @@ Feature: Roles and groups
   policies each one gives. To change something means to add, edit, or delete it.
 
   Some people sign in with more than one email, and each is a login of its own. Each login a person
-  has gets everything the person does: their family, their role, and their groups' policies.
+  has gets everything the person does: their family, their role, and their groups' policies. A
+  person's first login is linked to them by its email, and an admin links any other.
 
   Groups only give policies to people. They never change anyone's role. The syncs sign in with
   accounts of their own, and the first admin account is the one the system was set up with. Groups

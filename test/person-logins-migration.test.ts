@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { up } from "../stacks/backend/migrations/cyc0026-person-logins.cjs";
 
-// The move of a person's login from people.directus_user_id to directus_users.person_id, in a real
+// The copy of each person's login from people.directus_user_id to directus_users.person_id, in a real
 // Postgres (PGlite), with Directus's own tables cut down to the columns the migration touches.
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -32,7 +32,7 @@ const knex = (db: PGlite) => ({ raw: (sql: string) => db.exec(sql) });
 
 // Starting a PGlite can take longer than the 5s default on a CI runner.
 describe("the person logins migration", { timeout: 30_000 }, () => {
-  it("copies each person's login to the login's person, then drops the old field", async () => {
+  it("copies each person's login to the login's person, and keeps the old field for now", async () => {
     const db = await database();
     await up(knex(db));
     await up(knex(db));
@@ -41,17 +41,24 @@ describe("the person logins migration", { timeout: 30_000 }, () => {
       { id: id(2), person_id: id(12) },
       { id: id(3), person_id: null },
     ]);
-    const { rows } = await db.query(
-      "SELECT 1 FROM information_schema.columns WHERE table_name = 'people' AND column_name = 'directus_user_id'",
-    );
-    expect(rows).toEqual([]);
+    expect((await db.query("SELECT id, directus_user_id FROM people ORDER BY id")).rows).toEqual([
+      { id: id(11), directus_user_id: id(1) },
+      { id: id(12), directus_user_id: id(2) },
+      { id: id(13), directus_user_id: null },
+    ]);
     expect((await db.query("SELECT collection, field, special FROM directus_fields ORDER BY id")).rows).toEqual([
       { collection: "people", field: "first_name", special: null },
+      { collection: "people", field: "directus_user_id", special: "m2o" },
       { collection: "directus_users", field: "person_id", special: "m2o" },
     ]);
     expect(
-      (await db.query("SELECT many_collection, many_field, one_collection, one_field FROM directus_relations")).rows,
+      (
+        await db.query(
+          "SELECT many_collection, many_field, one_collection, one_field FROM directus_relations ORDER BY id",
+        )
+      ).rows,
     ).toEqual([
+      { many_collection: "people", many_field: "directus_user_id", one_collection: "directus_users", one_field: null },
       { many_collection: "directus_users", many_field: "person_id", one_collection: "people", one_field: "logins" },
     ]);
   });
@@ -70,16 +77,16 @@ describe("the person logins migration", { timeout: 30_000 }, () => {
 
   it("changes nothing if a link doesn't copy", async () => {
     const db = await database();
-    // A login already linked to someone else, which the copy would overwrite but not match.
+    // Something that stops the copy, which the check must catch.
     await db.exec(`
-      ALTER TABLE directus_users ADD COLUMN person_id uuid;
-      CREATE FUNCTION keep_person() RETURNS trigger AS $$ BEGIN NEW.person_id := OLD.person_id; RETURN NEW; END $$ LANGUAGE plpgsql;
-      CREATE TRIGGER keep_person BEFORE UPDATE ON directus_users FOR EACH ROW EXECUTE FUNCTION keep_person();
+      CREATE FUNCTION drop_person() RETURNS trigger AS $$ BEGIN NEW.person_id := NULL; RETURN NEW; END $$ LANGUAGE plpgsql;
+      CREATE TRIGGER drop_person BEFORE UPDATE ON directus_users FOR EACH ROW EXECUTE FUNCTION drop_person();
     `);
     await expect(up(knex(db))).rejects.toThrow(/copied 0 of 2 logins/);
-    expect((await db.query("SELECT count(*)::int AS n FROM people WHERE directus_user_id IS NOT NULL")).rows).toEqual([
-      { n: 2 },
-    ]);
+    const { rows } = await db.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_name = 'directus_users' AND column_name = 'person_id'",
+    );
+    expect(rows).toEqual([]);
   });
 
   it("does nothing on a new database", async () => {

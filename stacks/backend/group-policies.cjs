@@ -16,13 +16,16 @@ const DEBOUNCE_MS = 500;
 /**
  * The links to add and remove, and the logins to link to a person. A login's person is its
  * `person_id`, and a person can have several. A login with none is linked by email, once: only when
- * one person has that email, or one of them is the parent of every other person with it. Families
- * share an email, and the Clubspot sync rewrites it, so after that the stored link is what counts.
+ * one person has that email, or one of them is the parent of every other person with it, and that
+ * person has no login yet. Families share an email, and the Clubspot sync rewrites it, so after that
+ * the stored link is what counts. A person's email can be changed to one a stranger signs in with,
+ * so only an admin links a second login.
  *
- * `emailCounts` is how many people have each lowercased email; `guardianLinks` are the guardian
- * links between people who share an email, as `{ subject, contact }`.
+ * `emailCounts` is how many people have each lowercased email; `linkedPeople` are the people some
+ * login is already linked to; `guardianLinks` are the guardian links between people who share an
+ * email, as `{ subject, contact }`.
  */
-function plan({ users, people, grants, links, emailCounts, guardianLinks = [] }) {
+function plan({ users, people, grants, links, emailCounts, linkedPeople, guardianLinks = [] }) {
   const managed = new Set(users.map((user) => user.id));
   const byEmail = new Map();
   for (const person of people) {
@@ -31,13 +34,17 @@ function plan({ users, people, grants, links, emailCounts, guardianLinks = [] })
   }
   const parent = parentByEmail(people, emailCounts, guardianLinks);
   const personOf = new Map();
-  const link = [];
-  const unlinked = [];
+  const taken = new Set(linkedPeople);
   for (const user of users) {
     if (user.person_id) {
       personOf.set(user.id, user.person_id);
-      continue;
+      taken.add(user.person_id);
     }
+  }
+  const link = [];
+  const unlinked = [];
+  for (const user of users) {
+    if (user.person_id) continue;
     const email = user.email?.toLowerCase();
     const matches = email ? (byEmail.get(email) ?? []) : [];
     if (matches.length === 0) continue;
@@ -47,6 +54,11 @@ function plan({ users, people, grants, links, emailCounts, guardianLinks = [] })
       unlinked.push({ user: user.id, reason: "has an email more than one person has" });
       continue;
     }
+    if (taken.has(person)) {
+      unlinked.push({ user: user.id, reason: "has the email of a person who already has a login" });
+      continue;
+    }
+    taken.add(person);
     personOf.set(user.id, person);
     link.push({ person, user: user.id });
   }
@@ -279,6 +291,20 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       if (email && emails.includes(email)) emailCounts[email] = (emailCounts[email] ?? 0) + 1;
     }
 
+    // Only the people a login could be linked to by email need checking.
+    const candidates = people.filter((person) => person.email && emails.includes(person.email.toLowerCase()));
+    const linkedPeople =
+      candidates.length === 0
+        ? []
+        : (
+            await database("directus_users")
+              .distinct("person_id")
+              .whereIn(
+                "person_id",
+                candidates.map((person) => person.id),
+              )
+          ).map((row) => row.person_id);
+
     const shared = people.filter((person) => person.email && emailCounts[person.email.toLowerCase()] > 1);
     const sharedIds = shared.map((person) => person.id);
     const guardianLinks =
@@ -296,6 +322,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       grants,
       links,
       emailCounts,
+      linkedPeople,
       guardianLinks,
     });
     // Logged once per login and reason, not on every 15-minute run.

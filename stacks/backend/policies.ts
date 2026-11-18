@@ -61,7 +61,7 @@ export function fieldsIn(schemas: LoadedSchema[], collection: string): string[] 
  * Fields only an admin writes. A person's login decides whose groups' policies a user gets
  * (docs/access.md), so a writer who could set it could take someone else's.
  */
-const ADMIN_ONLY: Record<string, string[]> = { people: ["logins"] };
+const ADMIN_ONLY: Record<string, string[]> = { people: ["logins", "directus_user_id"] };
 
 /** The catalog's collections: every one in the core and HR schemas. */
 export function catalogCollections(schemas: LoadedSchema[]): string[] {

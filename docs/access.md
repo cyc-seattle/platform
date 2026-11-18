@@ -199,11 +199,13 @@ minutes, to catch a change that emitted no event, such as a cascade.
   change to their email doesn't move their access.
 - It links every signed-in user this way, not only group members, since the Community rules match
   by a login's person.
-- It links by email only when exactly one person has that email, or when everyone else with the
-  email is that person's child. Otherwise a shared email links nobody. The hook logs it, and an
-  admin links the login by hand. It never moves a linked login by email. An admin links a login
-  whose email isn't the person's, such as a Workspace alias, from the login's page or the person's
-  Logins.
+- It links by email only a person's first login: when exactly one person has that email, or when
+  everyone else with the email is that person's child, and that person has no login yet. Otherwise
+  it links nobody, logs it, and an admin links the login by hand. Anyone can sign up, and a CRM
+  Writer or the Clubspot sync can change a person's email, so linking a second login by email would
+  hand the person's access to whoever signs in with the new address. An admin links every second
+  login, such as a Workspace alias or a work email, from the login's page or the person's Logins.
+  It never moves a linked login by email.
 - Deleting a person empties their logins' `person_id`, and keeps the logins.
 - It manages only links to the policies a group can give, and only for users on Community, Team,
   Crew, Staff, or Admin. It never touches a sync's user or the first admin account.
@@ -233,9 +235,8 @@ into a collection they can't read every row of. Everything else passes:
   That holds for `$FOLLOW` too.
 - A `deep` query reads its related rows with permissions, as a top-level query does, so its own
   filter and sort get the same checks as one.
-- A filter on `people.id` passes, since every rule shows it. So does a filter of `people.logins`
-  whose only test is that a login's `id` is the user's own. It can match only their own person, so it
-  reveals nothing, and any other filter on a person's logins is refused.
+- A filter on `people.id` passes, since every rule shows it, so an app finds the user's own row
+  with `$CURRENT_USER.person_id`. A filter on a person's logins is refused.
 - A filter into `directus_users` is refused unless the user is an admin. Directus lets everyone else
   read only their own account, so a filter could probe other people's.
 
