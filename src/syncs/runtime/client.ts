@@ -80,7 +80,7 @@ function queryToParams(query: ItemQuery): URLSearchParams {
 
 // Directus serves its own collections (`directus_revisions`, `directus_users`, ...) at `/revisions`,
 // `/users`, ..., and refuses them under `/items`.
-function readPath(collection: string): string {
+function collectionPath(collection: string): string {
   return collection.startsWith("directus_") ? `/${collection.slice("directus_".length)}` : `/items/${collection}`;
 }
 
@@ -124,7 +124,7 @@ export class DirectusClient {
       }
       const suffix = params.size > 0 ? `?${params}` : "";
       // A 204 (no matching rows) comes back as `undefined`, same as any other empty write response.
-      const response = await this.request<{ data: T[] } | undefined>("GET", `${readPath(collection)}${suffix}`);
+      const response = await this.request<{ data: T[] } | undefined>("GET", `${collectionPath(collection)}${suffix}`);
       return response?.data ?? [];
     }
 
@@ -133,7 +133,7 @@ export class DirectusClient {
       const params = queryToParams(query);
       params.set("limit", String(PAGE_SIZE));
       params.set("page", String(page));
-      const response = await this.request<{ data: T[] } | undefined>("GET", `${readPath(collection)}?${params}`);
+      const response = await this.request<{ data: T[] } | undefined>("GET", `${collectionPath(collection)}?${params}`);
       const rows = response?.data ?? [];
       items.push(...rows);
       if (rows.length < PAGE_SIZE) {
@@ -166,7 +166,7 @@ export class DirectusClient {
       winston.info("Dry run: skipping update", { collection, id, fields: Object.keys(patch) });
       return patch as T;
     }
-    const response = await this.request<{ data: T }>("PATCH", `/items/${collection}/${id}`, patch);
+    const response = await this.request<{ data: T }>("PATCH", `${collectionPath(collection)}/${id}`, patch);
     return response.data;
   }
 

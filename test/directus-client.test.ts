@@ -66,8 +66,8 @@ function snapshot(
 // than `snapshot()`'s shorthand (whose `fields`/`relations` arrays only carry a `collection`).
 function fieldSnapshot(
   collections: string[],
-  fields: { collection: string; field: string }[],
-  relations: { collection: string; field: string }[] = [],
+  fields: { collection: string; field: string; meta?: unknown }[],
+  relations: { collection: string; field: string; meta?: unknown }[] = [],
   systemFields: { collection: string; field: string }[] = [],
 ) {
   return {
@@ -275,6 +275,27 @@ describe("applySchema", () => {
     const diffCall = fetchMock.mock.calls[1] as [string, { body: string }];
     const postedSnapshot = JSON.parse(diffCall[1].body) as ReturnType<typeof snapshot>;
     expect(postedSnapshot.systemFields).toEqual([{ collection: "directus_activity", field: "timestamp" }]);
+  });
+
+  it("replaces a live field and relation on a collection no package owns, such as directus_users, by collection.field", async () => {
+    const personId = { collection: "directus_users", field: "person_id" };
+    const live = fieldSnapshot(["a"], [personId, { collection: "directus_users", field: "other" }], [personId]);
+    const appSchema = fieldSnapshot(["a"], [{ ...personId, meta: { note: "new" } }], [{ ...personId, meta: {} }]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: live })) // GET /schema/snapshot
+      .mockResolvedValueOnce(jsonResponse(204, undefined)); // POST /schema/diff: in sync (bare 204)
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applySchema(baseUrl, token, appSchema);
+
+    const diffCall = fetchMock.mock.calls[1] as [string, { body: string }];
+    const postedSnapshot = JSON.parse(diffCall[1].body) as ReturnType<typeof fieldSnapshot>;
+    expect(postedSnapshot.fields).toEqual([
+      { collection: "directus_users", field: "other" },
+      { ...personId, meta: { note: "new" } },
+    ]);
+    expect(postedSnapshot.relations).toEqual([{ ...personId, meta: {} }]);
   });
 
   it("preserves a live systemField entry this app's schema doesn't declare", async () => {

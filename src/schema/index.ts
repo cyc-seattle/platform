@@ -103,6 +103,7 @@ export interface Schema {
   website_settings: WebsiteSettings;
   website_sponsor_levels: WebsiteSponsorLevels[];
   website_sponsors: WebsiteSponsors[];
+  directus_users: DirectusUsers[];
 }
 
 /** The chart of accounts that plans, results, and actuals book to. */
@@ -604,6 +605,8 @@ export interface Organizations {
 
 /** One row for each person the club knows. */
 export interface People {
+  /** The logins this person signs in with. Usually one, sometimes none, and more for someone with several emails. */
+  logins: string[];
   /** The Clubspot participants linked to this person. */
   participant_links: (string | ClubspotParticipants)[];
   id: string;
@@ -635,7 +638,7 @@ export interface People {
   household_id: string | Households | null;
   /** The school they sail for, which may not be the one they attend. Blank, with a school in their own words below, means a school not on the list. */
   school_id: string | Schools | null;
-  /** The person's own Directus login, if they have one. Usually empty. */
+  /** No longer kept up to date. Logins lists this person's logins. */
   directus_user_id: string | null;
 }
 
@@ -1626,4 +1629,10 @@ export interface WebsiteSponsors {
   logo: string | null;
   level_id: string | WebsiteSponsorLevels | null;
   sort: number | null;
+}
+
+/** The fields we add to Directus's own. */
+export interface DirectusUsers {
+  /** The person who signs in with this login. It sees what their groups and family give them. */
+  person_id: string | People | null;
 }

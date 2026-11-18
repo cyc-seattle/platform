@@ -452,8 +452,12 @@ export function discoverSchemaFiles(schemasDir: string): { name: string; path: s
  * passes through untouched.
  */
 function scopeSnapshot(live: DirectusSnapshot, appSchema: DirectusSnapshot, owned: Set<string>): DirectusSnapshot {
+  // A field on a collection no package owns, such as directus_users.person_id, replaces its live
+  // entry by key, as a system field does, so the diff never sees it twice.
+  const keyOf = (entry: DirectusSnapshotEntry) => `${entry.collection}.${(entry as Partial<DirectusFieldEntry>).field}`;
+  const declared = new Set([...appSchema.fields, ...appSchema.relations].map(keyOf));
   const keepLive = <T extends DirectusSnapshotEntry>(entries: T[]): T[] =>
-    entries.filter((entry) => !owned.has(entry.collection));
+    entries.filter((entry) => !owned.has(entry.collection) && !declared.has(keyOf(entry)));
   const declaredSystemFields = new Set(
     (appSchema.systemFields as DirectusFieldEntry[]).map((f) => `${f.collection}.${f.field}`),
   );

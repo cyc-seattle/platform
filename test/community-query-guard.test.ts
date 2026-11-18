@@ -217,8 +217,8 @@ describe("the query guard for migrated staff", () => {
   });
 
   it("still rejects a filter into the accounts, whose other rows Directus hides", () => {
-    expect(check("people", { filter: { directus_user_id: { email: { _starts_with: "a" } } } }, staff)).toBe(
-      "the relation people.directus_user_id",
+    expect(check("people", { filter: { logins: { email: { _starts_with: "a" } } } }, staff)).toBe(
+      "the relation people.logins",
     );
   });
 });
@@ -243,7 +243,13 @@ describe("the query guard for Team", () => {
     expect(check("people", { filter: { last_name: { _eq: "Test" } } }, team)).toBeUndefined();
   });
 
-  it("passes a filter for the viewer's own login, and no other filter on logins", () => {
+  it("passes a filter for the viewer's own person by its id, which every rule shows", () => {
+    // What Directus puts in place of `$CURRENT_USER.person_id`.
+    expect(check("people", { filter: { id: { _eq: "p-me" } } }, team)).toBeUndefined();
+  });
+
+  // Until the old login field goes (cyc-seattle/platform#329).
+  it("passes a filter for the viewer's own old login field, and no other filter on it", () => {
     const login = (filter: Record<string, unknown>, user?: string) =>
       violation(team, schema.relations, "people", { filter }, user);
     expect(login({ directus_user_id: { _eq: "u-me" } }, "u-me")).toBeUndefined();
@@ -251,8 +257,12 @@ describe("the query guard for Team", () => {
     expect(login({ directus_user_id: { _eq: "$CURRENT_USER" } })).toBe("people.directus_user_id");
     expect(login({ directus_user_id: { _neq: "u-me" } }, "u-me")).toBe("people.directus_user_id");
     expect(login({ directus_user_id: { _eq: "u-me", _nnull: true } }, "u-me")).toBe("people.directus_user_id");
-    expect(login({ my_contacts: { contact_id: { directus_user_id: { _eq: "u-me" } } } }, "u-me")).toBe(
-      "the relation people.my_contacts",
+  });
+
+  it("rejects any filter on a person's logins", () => {
+    expect(check("people", { filter: { logins: { id: { _eq: "u-me" } } } }, team)).toBe("the relation people.logins");
+    expect(check("people", { filter: { logins: { email: { _starts_with: "a" } } } }, team)).toBe(
+      "the relation people.logins",
     );
   });
 });

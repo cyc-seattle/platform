@@ -31,12 +31,14 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   { collection: "registrations", field: "person_id" },
   { collection: "google_group_memberships", field: "person_id" },
   { collection: "clubspot_participants", field: "person_id" },
+  // A person's logins, which all move to the keeper.
+  { collection: "directus_users", field: "person_id" },
   // Never repointed: a group gives access, so an admin moves a duplicate's memberships by hand, and
   // until then the merge stops on the final delete.
   { collection: "group_members", field: "person_id" },
 ];
 
-/** A `people` row as the merge needs it - every scalar column, plus `directus_user_id` (an extension field in `schemas/sync.yaml`). */
+/** A `people` row as the merge needs it: every scalar column. */
 export interface MergePerson {
   id: string;
   first_name: string;
@@ -53,10 +55,9 @@ export interface MergePerson {
   school: string | null;
   share_contact: boolean | null;
   display_name: string | null;
-  directus_user_id: string | null;
 }
 
-const PERSON_SCALAR_FIELDS: readonly (keyof Omit<MergePerson, "id" | "directus_user_id">)[] = [
+const PERSON_SCALAR_FIELDS: readonly (keyof Omit<MergePerson, "id">)[] = [
   "first_name",
   "last_name",
   "email",
@@ -89,7 +90,6 @@ export const MERGE_PERSON_FIELDS: readonly (keyof MergePerson)[] = [
   "school",
   "share_contact",
   "display_name",
-  "directus_user_id",
 ];
 
 export interface MergeParticipant {
@@ -140,6 +140,8 @@ export interface MergeRelatedData {
   programAreaRoleAssignments: readonly MergePersonReference[];
   registrations: readonly MergePersonReference[];
   googleGroupMemberships: readonly MergePersonReference[];
+  /** `directus_users` rows, each a login of someone in the group. */
+  logins: readonly MergePersonReference[];
 }
 
 export interface MergeUpdateStep {
@@ -149,20 +151,13 @@ export interface MergeUpdateStep {
   readonly patch: Readonly<Record<string, unknown>>;
 }
 
-/** One row per patch, applied together in one Directus transaction - see `planPersonMerge`'s `directus_user_id` move. */
-export interface MergeBatchUpdateStep {
-  readonly type: "batchUpdate";
-  readonly collection: string;
-  readonly items: readonly { readonly id: string; readonly patch: Readonly<Record<string, unknown>> }[];
-}
-
 export interface MergeDeleteStep {
   readonly type: "delete";
   readonly collection: string;
   readonly ids: readonly string[];
 }
 
-export type MergeStep = MergeUpdateStep | MergeBatchUpdateStep | MergeDeleteStep;
+export type MergeStep = MergeUpdateStep | MergeDeleteStep;
 
 export interface DuplicatePersonMember {
   id: string;
@@ -185,7 +180,7 @@ function compareIds(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/** Most linked participants; tie to a `directus_user_id`; tie to the smallest id. Negative means `a` should win over `b`. */
+/** Most linked participants; tie to the smallest id. Negative means `a` should win over `b`. */
 function compareKeeperCandidates(
   a: MergePerson,
   b: MergePerson,
@@ -194,10 +189,6 @@ function compareKeeperCandidates(
   const countDiff = (participantsByPerson.get(b.id)?.length ?? 0) - (participantsByPerson.get(a.id)?.length ?? 0);
   if (countDiff !== 0) {
     return countDiff;
-  }
-  const directusDiff = Number(b.directus_user_id != null) - Number(a.directus_user_id != null);
-  if (directusDiff !== 0) {
-    return directusDiff;
   }
   return compareIds(a.id, b.id);
 }
@@ -394,7 +385,8 @@ function planContactPointMerge(
   return steps;
 }
 
-/** These just repoint. A duplicate `google_group_memberships` row is left for gsuite-sync, which reads a removed row first. */
+/** These just repoint. A duplicate `google_group_memberships` row is left for gsuite-sync, which reads a removed row first,
+ * and a person can have any number of logins, so a duplicate's join the keeper's. */
 function planSimpleRepoint(
   collection: string,
   keeperId: string,
@@ -408,15 +400,9 @@ function planSimpleRepoint(
 
 /**
  * The keeper's own row: its non-null scalars win, a duplicate's non-null value fills only a null
- * one, taken in the given order. `directus_user_id` is separate - it isn't filled, it's moved, and
- * `directusUserHolder` (the duplicate giving it up, if any) is passed in rather than recomputed, so
- * this patch and the step that clears the duplicate agree on which row it came from.
+ * one, taken in the given order.
  */
-function buildKeeperPersonPatch(
-  keeper: MergePerson,
-  duplicates: readonly MergePerson[],
-  directusUserHolder: MergePerson | undefined,
-): Record<string, unknown> {
+function buildKeeperPersonPatch(keeper: MergePerson, duplicates: readonly MergePerson[]): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
   for (const field of PERSON_SCALAR_FIELDS) {
     if (keeper[field] == null) {
@@ -435,53 +421,20 @@ function buildKeeperPersonPatch(
     }
   }
 
-  if (directusUserHolder) {
-    patch["directus_user_id"] = directusUserHolder.directus_user_id;
-  }
-
   return patch;
-}
-
-/** The duplicate whose `directus_user_id` the keeper is about to claim, if any. */
-function findDirectusUserHolder(keeper: MergePerson, duplicates: readonly MergePerson[]): MergePerson | undefined {
-  if (keeper.directus_user_id != null) {
-    return undefined;
-  }
-  return duplicates.find((duplicate) => duplicate.directus_user_id != null);
-}
-
-/** Throws when more than one row in the group already holds a `directus_user_id` - moving is only defined for exactly one. */
-function assertAtMostOneDirectusUser(keeper: MergePerson, duplicates: readonly MergePerson[]): void {
-  const holders = [keeper, ...duplicates].filter((person) => person.directus_user_id != null);
-  if (holders.length > 1) {
-    throw new Error(
-      `Cannot merge into person ${keeper.id}: ${holders.length} rows in the group already have a directus_user_id (${holders
-        .map((person) => person.id)
-        .join(", ")})`,
-    );
-  }
 }
 
 /**
  * An ordered, explicit plan for one approved `duplicate_person` finding, following the doc's merge
- * steps: relink participants, merge medical profiles, repoint every other FK, collapse the
- * duplicates that repointing created, clear a lone `directus_user_id` off its duplicate and move it
- * onto the keeper, fill the keeper's null scalars, and delete the duplicate people last so a rerun
- * of a partial merge still completes.
- *
- * The clear and the move land as one `batchUpdate` step, not two separate updates: `directus_user_id`
- * has a unique index, so setting the keeper's copy before the duplicate's is cleared would collide
- * with the row the plan hasn't deleted yet. Two independent writes also risk the clear succeeding
- * while the set fails - the finding stays approved, and a rerun finds no holder and deletes the
- * duplicate, leaving the `directus_user_id` linked to nobody. A single Directus batch update runs
- * both in one transaction, so that can't happen.
+ * steps: relink participants, merge medical profiles, repoint every other FK and every login,
+ * collapse the duplicates that repointing created, fill the keeper's null scalars, and delete the
+ * duplicate people last so a rerun of a partial merge still completes.
  */
 export function planPersonMerge(
   keeper: MergePerson,
   duplicates: readonly MergePerson[],
   related: MergeRelatedData,
 ): MergeStep[] {
-  assertAtMostOneDirectusUser(keeper, duplicates);
   const duplicateIds = new Set(duplicates.map((duplicate) => duplicate.id));
 
   const steps: MergeStep[] = [];
@@ -506,20 +459,10 @@ export function planPersonMerge(
   );
   steps.push(...planSimpleRepoint("registrations", keeper.id, duplicateIds, related.registrations));
   steps.push(...planSimpleRepoint("google_group_memberships", keeper.id, duplicateIds, related.googleGroupMemberships));
+  steps.push(...planSimpleRepoint("directus_users", keeper.id, duplicateIds, related.logins));
 
-  const directusUserHolder = findDirectusUserHolder(keeper, duplicates);
-  const personPatch = buildKeeperPersonPatch(keeper, duplicates, directusUserHolder);
-
-  if (directusUserHolder) {
-    steps.push({
-      type: "batchUpdate",
-      collection: "people",
-      items: [
-        { id: directusUserHolder.id, patch: { directus_user_id: null } },
-        { id: keeper.id, patch: personPatch },
-      ],
-    });
-  } else if (Object.keys(personPatch).length > 0) {
+  const personPatch = buildKeeperPersonPatch(keeper, duplicates);
+  if (Object.keys(personPatch).length > 0) {
     steps.push({ type: "update", collection: "people", id: keeper.id, patch: personPatch });
   }
 

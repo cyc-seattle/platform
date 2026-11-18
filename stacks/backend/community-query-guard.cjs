@@ -12,7 +12,8 @@
 
 const OPERATOR_RELATIONS = ["_some", "_none"];
 
-/** Each collection's login field. A filter for the user's own login can match only their own row. */
+/** Each collection's old login field, which goes in a later release (cyc-seattle/platform#329). A
+ * filter for the user's own login can match only their own row. */
 const LOGINS = { people: "directus_user_id" };
 
 /** A `DirectusError` by duck type, which Directus's error handler answers with its status. */
@@ -76,16 +77,16 @@ function effectiveAccess(config, names, fieldsOf) {
   return { restricted, open: open.sort() };
 }
 
-function isOwnLogin(value, user) {
-  if (value === null || typeof value !== "object") return false;
-  const keys = Object.keys(value);
-  return keys.length === 1 && keys[0] === "_eq" && user !== undefined && [user, "$CURRENT_USER"].includes(value._eq);
-}
-
 /** `$FOLLOW(contacts,subject_id)` joins `contacts` rows whose `subject_id` is the current row. */
 function followed(key) {
   const match = /^\$FOLLOW\((\w+),\s*\w+\)$/.exec(key);
   return match ? match[1] : undefined;
+}
+
+function isOwnLogin(value, user) {
+  if (value === null || typeof value !== "object") return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "_eq" && user !== undefined && [user, "$CURRENT_USER"].includes(value._eq);
 }
 
 /**

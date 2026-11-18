@@ -33,8 +33,8 @@ export interface CommunityPolicyData {
   rules: CommunityRuleFields[];
 }
 
-/** The signed-in user's own `people` row. */
-const MY_LOGIN: Filter = { directus_user_id: { _eq: "$CURRENT_USER" } };
+/** The signed-in user's own `people` row: the person their login is linked to. A person can have several logins. */
+const MY_LOGIN: Filter = { id: { _eq: "$CURRENT_USER.person_id" } };
 
 /** A `contacts` row naming the signed-in user as a guardian. */
 const MY_CHILD_LINK: Filter = { _and: [{ relationship_type: { _eq: "guardian" } }, { contact_id: MY_LOGIN }] };
@@ -120,8 +120,8 @@ export const familyPolicies: CommunityPolicyData[] = [
       {
         collection: "people",
         action: "read",
-        // The login lets a page find the user's own row, with the one filter the query guard allows on it. One
-        // rule, so every field reads the same on every row and the guard has nothing to hide from Community.
+        // One rule, so every field reads the same on every row and the guard has nothing to hide from Community.
+        // directus_user_id goes once sail-team finds a person by `$CURRENT_USER.person_id` (cyc-seattle/platform#329).
         fields: [
           "id",
           "first_name",
@@ -171,6 +171,13 @@ export const familyPolicies: CommunityPolicyData[] = [
         action: "read",
         fields: ["id", "program_id", "starts_on", "ends_on"],
         permissions: { registrations: { person_id: MY_FAMILY } },
+      },
+      // A query filter reads `$CURRENT_USER.person_id` with the user's own access, so a page can find their person.
+      {
+        collection: "directus_users",
+        action: "read",
+        fields: ["id", "person_id"],
+        permissions: { id: { _eq: "$CURRENT_USER" } },
       },
       // A program's name isn't private, and a page shows it beside each sign-up.
       { collection: "programs", action: "read", fields: ["id", "name"] },

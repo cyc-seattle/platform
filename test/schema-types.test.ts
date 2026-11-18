@@ -41,8 +41,15 @@ const snapshot: Snapshot = {
     pk("boat_crew", "integer"),
     field("boat_crew", "boat_id", "uuid", { schema: { is_nullable: false } }),
     pk("settings", "integer"),
+    field("directus_users", "boat_id", "uuid", { meta: { note: "Their boat." } }),
   ],
   relations: [
+    {
+      collection: "directus_users",
+      field: "boat_id",
+      related_collection: "boats",
+      meta: { one_collection: "boats" },
+    },
     {
       collection: "boat_crew",
       field: "boat_id",
@@ -97,6 +104,13 @@ describe("generateSchemaTypes", () => {
 
   it("types a many-to-one as the related key or item", () => {
     expect(body("BoatCrew")).toContain("  boat_id: string | Boats;");
+  });
+
+  it("lists a Directus collection by the fields we add to it, for @directus/sdk to merge with its own", () => {
+    expect(body("Schema")).toContain("  directus_users: DirectusUsers[];");
+    expect(body("DirectusUsers")).toBe(
+      "export interface DirectusUsers {\n  /** Their boat. */\n  boat_id: string | Boats | null;",
+    );
   });
 
   it("types a relation to a collection outside the snapshot by its key", () => {

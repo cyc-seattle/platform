@@ -118,6 +118,18 @@ export async function newPerson(fields: Record<string, unknown> = {}): Promise<s
   return person.id;
 }
 
+/** Links a login to its person, as an admin does, or the group-policies hook does by email. */
+export async function linkLogin(userId: string, personId: string): Promise<void> {
+  await (await admin()).ok("PATCH", `/users/${userId}`, { person_id: personId });
+}
+
+/** A person in the CRM with the user's email, linked to their login. */
+export async function personFor(user: Pick<User, "userId" | "email">, fields: Record<string, unknown> = {}) {
+  const personId = await newPerson({ email: user.email, ...fields });
+  await linkLogin(user.userId, personId);
+  return personId;
+}
+
 /** The junction collection behind each of a group's many-to-many fields. */
 const groupJunctions = { members: "group_members", policies: "group_policies" } as const;
 type GroupField = keyof typeof groupJunctions;
@@ -188,20 +200,16 @@ async function actorUser(actor: Actor): Promise<User> {
   if (role === "Community" && policies.length === 0) {
     // A family member, so the Community role's own-family rules have someone to match.
     await runRows();
-    await (
-      await admin()
-    ).ok("PATCH", `/items/people/${guardianPersonId}`, {
-      email: user.email,
-      directus_user_id: user.userId,
-    });
+    await (await admin()).ok("PATCH", `/items/people/${guardianPersonId}`, { email: user.email });
+    await linkLogin(user.userId, guardianPersonId);
     return user;
   }
   if (role === "Team") {
-    await onATeam(await newPerson({ email: user.email, directus_user_id: user.userId, date_of_birth: "1980-01-01" }));
+    await onATeam(await personFor(user, { date_of_birth: "1980-01-01" }));
     await hasRole(user.userId, "Team");
   }
   if (policies.length > 0) {
-    await joinGroups(user, await newPerson({ email: user.email, directus_user_id: user.userId }), policies);
+    await joinGroups(user, await personFor(user), policies);
   }
   return user;
 }

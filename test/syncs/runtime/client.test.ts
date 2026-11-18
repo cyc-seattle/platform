@@ -198,9 +198,9 @@ describe("createItems", () => {
 
 describe("updateItems", () => {
   it("sends the whole batch as one PATCH to /items/<collection>", async () => {
-    const items: { id: string; directus_user_id: string | null }[] = [
-      { id: "1", directus_user_id: null },
-      { id: "2", directus_user_id: "du-1" },
+    const items: { id: string; household_id: string | null }[] = [
+      { id: "1", household_id: null },
+      { id: "2", household_id: "h-1" },
     ];
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: items }));
     vi.stubGlobal("fetch", fetchMock);
@@ -282,6 +282,18 @@ describe("updateItem", () => {
 
     const [url, init] = fetchMock.mock.calls[0] as [string, FetchInit];
     expect(url).toBe(`${baseUrl}/items/people/1`);
+    expect(init.method).toBe("PATCH");
+  });
+
+  it("sends a PATCH for a Directus system collection to its own path", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { data: { id: "u-1", person_id: "p-1" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new DirectusClient(baseUrl, token);
+
+    await client.updateItem("directus_users", "u-1", { person_id: "p-1" });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, FetchInit];
+    expect(url).toBe(`${baseUrl}/users/u-1`);
     expect(init.method).toBe("PATCH");
   });
 

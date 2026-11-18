@@ -14,52 +14,63 @@ const TEAM_WATCHED = new Set(["registrations", "offerings", "programs", "contact
 const DEBOUNCE_MS = 500;
 
 /**
- * The links to add and remove, and the people to link to a login. A person's user is their
- * `directus_user_id`. A person with none is linked by email, once: only when they're the one person
- * with that email, or the parent of every other person with it, and no person is linked to the
- * managed user who has it. Families share an email, and the Clubspot sync rewrites it, so after that
- * the stored link is what counts.
+ * The links to add and remove, and the logins to link to a person. A login's person is its
+ * `person_id`, and a person can have several. A login with none is linked by email, once: only when
+ * one person has that email, or one of them is the parent of every other person with it, and that
+ * person has no login yet. Families share an email, and the Clubspot sync rewrites it, so after that
+ * the stored link is what counts. A person's email can be changed to one a stranger signs in with,
+ * so only an admin links a second login.
  *
- * `emailCounts` is how many people have each lowercased email; `linkedUsers` are the users some
- * person is already linked to; `guardianLinks` are the guardian links between people who share an
+ * `emailCounts` is how many people have each lowercased email; `linkedPeople` are the people some
+ * login is already linked to; `guardianLinks` are the guardian links between people who share an
  * email, as `{ subject, contact }`.
  */
-function plan({ users, people, grants, links, emailCounts, linkedUsers, guardianLinks = [] }) {
+function plan({ users, people, grants, links, emailCounts, linkedPeople, guardianLinks = [] }) {
   const managed = new Set(users.map((user) => user.id));
-  const byEmail = new Map(users.filter((user) => user.email).map((user) => [user.email.toLowerCase(), user.id]));
-  const taken = new Set(linkedUsers);
-  const userOf = new Map();
-  const link = [];
-  const unlinked = [];
-  const parent = parentByEmail(people, emailCounts, guardianLinks);
+  const byEmail = new Map();
   for (const person of people) {
-    if (person.directus_user_id) {
-      userOf.set(person.id, person.directus_user_id);
-      continue;
-    }
     const email = person.email?.toLowerCase();
-    const user = email ? byEmail.get(email) : undefined;
-    if (user === undefined) continue;
-    const count = emailCounts[email] ?? 0;
-    if (count !== 1 && parent.has(email)) {
-      if (parent.get(email) !== person.id) continue;
-    } else if (count !== 1) {
-      unlinked.push({ person: person.id, reason: "shares their email with another person" });
-      continue;
-    }
-    if (taken.has(user)) {
-      unlinked.push({ person: person.id, reason: "has the email of a login another person is linked to" });
-    } else {
-      taken.add(user);
-      userOf.set(person.id, user);
-      link.push({ person: person.id, user });
+    if (email) byEmail.set(email, [...(byEmail.get(email) ?? []), person.id]);
+  }
+  const parent = parentByEmail(people, emailCounts, guardianLinks);
+  const personOf = new Map();
+  const taken = new Set(linkedPeople);
+  for (const user of users) {
+    if (user.person_id) {
+      personOf.set(user.id, user.person_id);
+      taken.add(user.person_id);
     }
   }
+  const link = [];
+  const unlinked = [];
+  for (const user of users) {
+    if (user.person_id) continue;
+    const email = user.email?.toLowerCase();
+    const matches = email ? (byEmail.get(email) ?? []) : [];
+    if (matches.length === 0) continue;
+    const count = emailCounts[email] ?? 0;
+    const person = count === 1 && matches.length === 1 ? matches[0] : parent.get(email);
+    if (person === undefined) {
+      unlinked.push({ user: user.id, reason: "has an email more than one person has" });
+      continue;
+    }
+    if (taken.has(person)) {
+      unlinked.push({ user: user.id, reason: "has the email of a person who already has a login" });
+      continue;
+    }
+    taken.add(person);
+    personOf.set(user.id, person);
+    link.push({ person, user: user.id });
+  }
 
-  const wanted = new Set();
+  const policiesOf = new Map();
   for (const { person_id, policy_id } of grants) {
-    const user = userOf.get(person_id);
-    if (user !== undefined && managed.has(user)) wanted.add(`${user} ${policy_id}`);
+    policiesOf.set(person_id, [...(policiesOf.get(person_id) ?? []), policy_id]);
+  }
+  const wanted = new Set();
+  for (const [user, person] of personOf) {
+    if (!managed.has(user)) continue;
+    for (const policy of policiesOf.get(person) ?? []) wanted.add(`${user} ${policy}`);
   }
 
   const kept = new Set();
@@ -79,18 +90,18 @@ function plan({ users, people, grants, links, emailCounts, linkedUsers, guardian
       const [user, policy] = key.split(" ");
       return { user, policy };
     });
-  return { add, remove, link, unlinked, userOf };
+  return { add, remove, link, unlinked, personOf };
 }
 
 /**
- * Per lowercased email that several unlinked people share, the one who is the parent of all the
- * others, if there is one: a family that signs its children up with a parent's email.
+ * Per lowercased email that several people share, the one who is the parent of all the others, if
+ * there is one: a family that signs its children up with a parent's email.
  */
 function parentByEmail(people, emailCounts, guardianLinks) {
   const groups = new Map();
   for (const person of people) {
     const email = person.email?.toLowerCase();
-    if (!email || person.directus_user_id || (emailCounts[email] ?? 0) < 2) continue;
+    if (!email || (emailCounts[email] ?? 0) < 2) continue;
     groups.set(email, [...(groups.get(email) ?? []), person.id]);
   }
   const children = new Map();
@@ -99,7 +110,7 @@ function parentByEmail(people, emailCounts, guardianLinks) {
   }
   const parent = new Map();
   for (const [email, ids] of groups) {
-    // Someone with the email who isn't loaded, or is already linked, leaves it ambiguous.
+    // Someone with the email who isn't loaded leaves it ambiguous.
     if (ids.length !== emailCounts[email]) continue;
     const parents = ids.filter((id) => ids.every((other) => other === id || children.get(id)?.has(other)));
     if (parents.length === 1) parent.set(email, parents[0]);
@@ -108,29 +119,24 @@ function parentByEmail(people, emailCounts, guardianLinks) {
 }
 
 /**
- * The users to move between Community and Team. A user on either is Team while a person linked to
- * them is on a team (`onTeam`), and Community otherwise. Every other role stays as it is.
+ * The users to move between Community and Team. A user on either is Team while their person
+ * (`personOf`) is on a team (`onTeam`), and Community otherwise. Every other role stays as it is.
  */
-function teamMoves({ users, userOf, onTeam, community, team }) {
-  const teamUsers = new Set();
-  for (const [person, user] of userOf) {
-    if (onTeam.has(person)) teamUsers.add(user);
-  }
+function teamMoves({ users, personOf, onTeam, community, team }) {
   const moves = [];
   for (const user of users) {
     if (user.role !== community && user.role !== team) continue;
-    const role = teamUsers.has(user.id) ? team : community;
+    const role = onTeam.has(personOf.get(user.id)) ? team : community;
     if (role !== user.role) moves.push({ user: user.id, role });
   }
   return moves;
 }
 
 /**
- * The users whose first and last name differ from their person's. `userOf` maps a person to their
- * user, and a user it doesn't map keeps the name they have.
+ * The users whose first and last name differ from their person's. `personOf` maps a user to their
+ * person, and a user it doesn't map keeps the name they have.
  */
-function renames({ users, people, userOf }) {
-  const personOf = new Map([...userOf].map(([person, user]) => [user, person]));
+function renames({ users, people, personOf }) {
   const byId = new Map(people.map((person) => [person.id, person]));
   const updates = [];
   for (const user of users) {
@@ -251,6 +257,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
           "directus_users.email",
           "directus_users.first_name",
           "directus_users.last_name",
+          "directus_users.person_id",
           "directus_roles.name as role",
         )
         .whereIn("directus_roles.name", config.roles)
@@ -262,47 +269,43 @@ function register({ filter, action, schedule }, { services, database, getSchema,
             .join("group_policies", "group_policies.group_id", "group_members.group_id")
             .select("group_members.person_id", "group_policies.policy_id")
             .whereIn("group_policies.policy_id", ids);
-    const personIds = [...new Set(grants.map((grant) => grant.person_id))];
-    const userIds = users.map((user) => user.id);
-    const userEmails = [...new Set(users.filter((user) => user.email).map((user) => user.email.toLowerCase()))];
-    // Everyone a managed user is, or could be linked to: the Team role needs a family's person too.
+    const linkedIds = [...new Set(users.map((user) => user.person_id).filter(Boolean))];
+    const emails = [
+      ...new Set(users.filter((user) => !user.person_id && user.email).map((user) => user.email.toLowerCase())),
+    ];
+    // Everyone a managed user is, or could be linked to: the people the logins' emails name, all of
+    // them, so the hook can tell which one is the parent.
     const people = await database("people")
-      .select("id", "email", "first_name", "last_name", "directus_user_id")
+      .select("id", "email", "first_name", "last_name")
       .where((where) => {
-        where.whereIn("id", personIds).orWhereIn("directus_user_id", userIds);
-        if (userEmails.length > 0) where.orWhereIn(database.raw("lower(email)"), userEmails);
+        where.whereIn("id", linkedIds);
+        if (emails.length > 0) where.orWhereIn(database.raw("lower(email)"), emails);
       });
     const links =
       ids.length === 0
         ? []
         : await database("directus_access").select("id", "user", "policy").whereNotNull("user").whereIn("policy", ids);
-    const emails = [
-      ...new Set(people.filter((person) => !person.directus_user_id && person.email).map((p) => p.email.toLowerCase())),
-    ];
     const emailCounts = {};
-    const linkedUsers = [];
-    if (emails.length > 0) {
-      const counts = await database("people")
-        .select(database.raw("lower(email) as email"))
-        .count("* as count")
-        .whereIn(database.raw("lower(email)"), emails)
-        .groupByRaw("lower(email)");
-      for (const row of counts) emailCounts[row.email] = Number(row.count);
-      const candidates = users.filter((user) => user.email && emails.includes(user.email.toLowerCase()));
-      if (candidates.length > 0) {
-        const rows = await database("people")
-          .select("directus_user_id")
-          .whereIn(
-            "directus_user_id",
-            candidates.map((user) => user.id),
-          );
-        linkedUsers.push(...rows.map((row) => row.directus_user_id));
-      }
+    for (const person of people) {
+      const email = person.email?.toLowerCase();
+      if (email && emails.includes(email)) emailCounts[email] = (emailCounts[email] ?? 0) + 1;
     }
 
-    const shared = people.filter(
-      (person) => !person.directus_user_id && person.email && emailCounts[person.email.toLowerCase()] > 1,
-    );
+    // Only the people a login could be linked to by email need checking.
+    const candidates = people.filter((person) => person.email && emails.includes(person.email.toLowerCase()));
+    const linkedPeople =
+      candidates.length === 0
+        ? []
+        : (
+            await database("directus_users")
+              .distinct("person_id")
+              .whereIn(
+                "person_id",
+                candidates.map((person) => person.id),
+              )
+          ).map((row) => row.person_id);
+
+    const shared = people.filter((person) => person.email && emailCounts[person.email.toLowerCase()] > 1);
     const sharedIds = shared.map((person) => person.id);
     const guardianLinks =
       sharedIds.length === 0
@@ -313,29 +316,27 @@ function register({ filter, action, schedule }, { services, database, getSchema,
             .whereIn("subject_id", sharedIds)
             .whereIn("contact_id", sharedIds);
 
-    const { add, remove, link, unlinked, userOf } = plan({
+    const { add, remove, link, unlinked, personOf } = plan({
       users,
       people,
       grants,
       links,
       emailCounts,
-      linkedUsers,
+      linkedPeople,
       guardianLinks,
     });
-    // Logged once per person and reason, not on every 15-minute run.
-    const warnings = new Set(unlinked.map(({ person, reason }) => `group-policies: person ${person} ${reason}`));
+    // Logged once per login and reason, not on every 15-minute run.
+    const warnings = new Set(unlinked.map(({ user, reason }) => `group-policies: login ${user} ${reason}`));
     for (const warning of warnings) {
-      if (!warned.has(warning)) logger.warn(`${warning}, so an admin must link their login by hand`);
+      if (!warned.has(warning)) logger.warn(`${warning}, so an admin must link it to its person by hand`);
     }
     warned = warnings;
     const schema = await getSchema();
-    if (link.length > 0) {
-      const items = new services.ItemsService("people", { schema, knex: database });
-      for (const { person, user } of link) {
-        await items.updateOne(person, { directus_user_id: user }, { emitEvents: false });
-      }
-      logger.info(`group-policies: linked ${link.length} people to their logins`);
+    const usersService = new services.UsersService({ schema, knex: database });
+    for (const { person, user } of link) {
+      await usersService.updateOne(user, { person_id: person }, { emitEvents: false });
     }
+    if (link.length > 0) logger.info(`group-policies: linked ${link.length} logins to their people`);
     if (add.length > 0 || remove.length > 0) {
       // Through the service, so Directus clears its permission caches.
       const access = new services.AccessService({ schema, knex: database });
@@ -344,9 +345,8 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       logger.info(`group-policies: gave ${add.length} and took away ${remove.length} policy links`);
     }
 
-    const named = renames({ users, people, userOf });
+    const named = renames({ users, people, personOf });
     if (named.length > 0) {
-      const usersService = new services.UsersService({ schema, knex: database });
       for (const { user, first_name, last_name } of named) {
         await usersService.updateOne(user, { first_name, last_name }, { emitEvents: false });
       }
@@ -356,10 +356,10 @@ function register({ filter, action, schedule }, { services, database, getSchema,
     const families = new Set(
       users.filter((user) => user.role === config.community || user.role === config.team).map((user) => user.id),
     );
-    const familyIds = [...userOf].filter(([, user]) => families.has(user)).map(([person]) => person);
+    const familyIds = [...new Set([...personOf].filter(([user]) => families.has(user)).map(([, person]) => person))];
     const moves = teamMoves({
       users,
-      userOf,
+      personOf,
       onTeam: await onATeam(familyIds),
       community: config.community,
       team: config.team,
@@ -401,11 +401,13 @@ function register({ filter, action, schedule }, { services, database, getSchema,
   }
   action("people.items.create", request);
   action("people.items.update", ({ payload }) => {
-    if (["email", "directus_user_id", "first_name", "last_name"].some((field) => field in payload)) request();
+    if (["email", "logins", "first_name", "last_name"].some((field) => field in payload)) request();
   });
+  // Deleting a person empties their logins' person_id, which emits no event of its own.
+  action("people.items.delete", request);
   action("users.create", request);
   action("users.update", ({ payload }) => {
-    if ("role" in payload || "email" in payload) request();
+    if (["role", "email", "person_id"].some((field) => field in payload)) request();
   });
   // Catches anything the actions missed, such as a cascade, which emits no event, and closes the
   // team window as time passes.

@@ -1396,6 +1396,9 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  # Replaced by directus_users.person_id (cyc-seattle/platform#329), and nothing writes it any more.
+  # It stays one release, so the live Community rules and sail-team's filter on it work through the
+  # deploy, then goes.
   - collection: people
     field: directus_user_id
     type: uuid
@@ -1409,9 +1412,9 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: The person's own Directus login, if they have one. Usually empty.
+      note: No longer kept up to date. Logins lists this person's logins.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 13

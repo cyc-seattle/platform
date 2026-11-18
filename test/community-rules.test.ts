@@ -14,7 +14,7 @@ describe("the Community rules by login", () => {
 
   it("let anyone in a household, a child too, change the people in it", () => {
     const [people] = rules.filter((rule) => rule.collection === "people" && rule.action === "update");
-    expect(people!.permissions).toEqual({ household_id: { members: { directus_user_id: { _eq: "$CURRENT_USER" } } } });
+    expect(people!.permissions).toEqual({ household_id: { members: { id: { _eq: "$CURRENT_USER.person_id" } } } });
   });
 
   it("let only an adult change whether the household shares", () => {
@@ -49,9 +49,20 @@ describe("the Community rules by login", () => {
     expect(new Set(reads).size).toBe(reads.length);
   });
 
-  it("match the signed-in user by their login, never by email", () => {
-    expect(JSON.stringify(rules)).toContain("$CURRENT_USER");
+  it("match the signed-in user by their login's person, never by email, so each of a person's logins sees the same", () => {
+    expect(JSON.stringify(rules)).toContain('{"id":{"_eq":"$CURRENT_USER.person_id"}}');
     expect(JSON.stringify(rules)).not.toContain("$CURRENT_USER.email");
+  });
+
+  it("let a user read only their own login's person, so a page can find their row", () => {
+    expect(rules.filter((rule) => rule.collection === "directus_users")).toEqual([
+      {
+        collection: "directus_users",
+        action: "read",
+        fields: ["id", "person_id"],
+        permissions: { id: { _eq: "$CURRENT_USER" } },
+      },
+    ]);
   });
 });
 

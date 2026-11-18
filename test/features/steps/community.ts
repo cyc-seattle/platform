@@ -2,7 +2,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import type { DirectusSession } from "../directus.ts";
 import { expectRefusal, onEachScenario, parameter, setThey, Step, theirSession } from "./index.ts";
-import { createUser, hasRole, type User } from "./logins.ts";
+import { createUser, hasRole, linkLogin, type User } from "./logins.ts";
 import { admin, adminCreate, email, key, runId } from "./rows.ts";
 import { newCamp, newProgram, signUp, type Camp, type Program, type Season } from "./teams.ts";
 
@@ -162,7 +162,7 @@ async function guardianOf(
 async function signIn(who: Person, role = "Community", typed = who.email): Promise<Person> {
   who.user = await createUser(typed, role);
   if (who.id !== "") {
-    await (await admin()).ok("PATCH", `/items/people/${who.id}`, { directus_user_id: who.user.userId });
+    await linkLogin(who.user.userId, who.id);
   }
   scene.me = who;
   actAs(who);
@@ -493,13 +493,13 @@ Step("a teammate who hasn't answered the sharing question, and their parent, who
   const teammate = await aTeammate({ share: null });
   const parent = call("the teammate's parent", await guardianOf(teammate));
   parent.user = await createUser(parent.email, "Community");
-  await (await admin()).ok("PATCH", `/items/people/${parent.id}`, { directus_user_id: parent.user.userId });
+  await linkLogin(parent.user.userId, parent.id);
 });
 
-const byLogin = (login: string) =>
-  `?fields=id,household_id.share_contact&filter=${encodeURIComponent(JSON.stringify({ directus_user_id: { _eq: login } }))}`;
+const lookUp = (filter: object) =>
+  `?fields=id,household_id.share_contact&filter=${encodeURIComponent(JSON.stringify(filter))}`;
 Step("they look themselves up by their login", async () => {
-  scene.rows = await read(await theirSession(), "people", byLogin("$CURRENT_USER"));
+  scene.rows = await read(await theirSession(), "people", lookUp({ id: { _eq: "$CURRENT_USER.person_id" } }));
 });
 Step("they see only themselves, with whether their household shares", async () => {
   expect(scene.rows).toEqual([{ id: scene.me!.id, household_id: { share_contact: await shares(scene.me!) } }]);
@@ -507,7 +507,7 @@ Step("they see only themselves, with whether their household shares", async () =
 Step("they look the teammate's parent up by their login", async () => {
   const { status } = await (
     await theirSession()
-  ).request("GET", `/items/people${byLogin(the("the teammate's parent").user!.userId)}`);
+  ).request("GET", `/items/people${lookUp({ logins: { id: { _eq: the("the teammate's parent").user!.userId } } })}`);
   expectRefusal(() => expect(status).toBe(403));
 });
 
