@@ -638,8 +638,6 @@ export interface People {
   household_id: string | Households | null;
   /** The school they sail for, which may not be the one they attend. Blank, with a school in their own words below, means a school not on the list. */
   school_id: string | Schools | null;
-  /** No longer kept up to date. Logins lists this person's logins. */
-  directus_user_id: string | null;
 }
 
 /** One dated activity, such as a practice, a regatta day, or a travel day. */

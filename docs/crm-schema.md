@@ -281,10 +281,7 @@ Reusing it instead of a homegrown field means:
 - `directus_users.person_id` is a nullable FK to `people.id`, declared in `schemas/access.yaml`, so
   a person can have any number of logins, such as a personal and a work email. `people.logins` lists
   them. The group hook links a person's first login by email, and an admin links any other. No
-  policy a person can hold writes it.
-- `people.directus_user_id`, the one login a person had before, stays for one release so the rules
-  and apps that read it keep working through the deploy. Nothing writes it, so it goes stale, and a
-  later release drops it. Deleting
+  policy a person can hold writes it. Deleting
   a person empties it on their logins and keeps the logins.
 - Directus's own OIDC config matches a sign-in to its `directus_users` row (`provider` +
   `external_identifier`). The group hook then links that login to a person by email, once

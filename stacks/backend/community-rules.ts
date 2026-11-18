@@ -121,7 +121,6 @@ export const familyPolicies: CommunityPolicyData[] = [
         collection: "people",
         action: "read",
         // One rule, so every field reads the same on every row and the guard has nothing to hide from Community.
-        // directus_user_id goes once sail-team finds a person by `$CURRENT_USER.person_id` (cyc-seattle/platform#329).
         fields: [
           "id",
           "first_name",
@@ -134,7 +133,6 @@ export const familyPolicies: CommunityPolicyData[] = [
           "date_of_birth",
           "household_id",
           "share_contact",
-          "directus_user_id",
         ],
         permissions: { _or: [MY_FAMILY, MY_HOUSEHOLD] },
       },
