@@ -101,6 +101,24 @@ export const defaultViews: DefaultView[] = [
   { collection: "organizations", sort: ["name"], fields: ["name", "short_name", "kind", "website"] },
   { collection: "venues", sort: ["name"], fields: ["name", "organization_id", "address"] },
 
+  // Crew
+  {
+    collection: "crew_members",
+    sort: ["person_id.last_name", "person_id.first_name"],
+    fields: ["person_id", "terms", "on_website"],
+  },
+  { collection: "crew_positions", sort: ["name"], fields: ["name", "committee_id", "qualifications"] },
+  {
+    collection: "crew_terms",
+    sort: ["-starts_on", "position_id.name"],
+    fields: ["crew_member_id", "position_id", "program_id", "starts_on", "ends_on"],
+  },
+  {
+    collection: "crew_qualifications",
+    sort: ["-earned_on"],
+    fields: ["crew_member_id", "qualification_id", "earned_on", "expires_on"],
+  },
+
   // CRM
   { collection: "people", sort: ["last_name", "first_name"], fields: ["last_name", "first_name", "email", "phone"] },
   {
@@ -323,6 +341,7 @@ export const defaultViews: DefaultView[] = [
   { collection: "website_programs", sort: ["sort", "title"], fields: ["title", "status", "subtitle", "slug"] },
   { collection: "website_faq_topics", sort: ["title"], fields: ["title", "heading", "questions"] },
   { collection: "website_profiles", sort: ["sort", "name"], fields: ["name", "title", "groups"] },
+  { collection: "website_crew_sections", sort: ["sort", "title"], fields: ["title", "positions"] },
   { collection: "website_policies", sort: ["sort", "title"], fields: ["title", "in_footer", "versions"] },
   { collection: "website_sponsor_levels", sort: ["-amount_cents"], fields: ["name", "amount_cents", "sponsors"] },
   { collection: "website_sponsors", sort: ["sort", "name"], fields: ["name", "level_id", "url"] },
@@ -351,4 +370,6 @@ export const defaultViews: DefaultView[] = [
 export const familyViews: DefaultView[] = [
   { collection: "offerings", sort: ["-starts_on"], fields: ["program_id", "starts_on", "ends_on"] },
   { collection: "registrations", sort: ["status", "person_id"], fields: ["person_id", "offering_id", "status"] },
+  // A planner who is also a family reads only their own person whole, so the view can't sort through people.
+  { collection: "crew_members", sort: ["person_id"], fields: ["person_id", "terms"] },
 ];

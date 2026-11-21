@@ -92,6 +92,45 @@ export function websiteCollections(schemas: LoadedSchema[]): string[] {
   return collectionsInSchema(website);
 }
 
+/** Crew's collections: every one in the crew schema. */
+export function crewCollections(schemas: LoadedSchema[]): string[] {
+  const crew = schemas.find(({ name }) => name === "crew")?.schema;
+  if (crew === undefined) {
+    throw new Error("backend: expected a schemas/crew.yaml to find Crew's collections");
+  }
+  return collectionsInSchema(crew);
+}
+
+/** A term's pay, which only Crew Writers and the planners read (cyc-seattle/platform#125). */
+export const CREW_PAY_FIELDS = ["staff_level_id", "hourly_rate_cents", "profit_share"];
+
+/** What the website reads of Crew: a profile only while it's on the website, and only current terms. */
+export const WEBSITE_CREW_RULES: PermissionRuleInput[] = [
+  {
+    collection: "crew_members",
+    action: "read",
+    permissions: { on_website: { _eq: true } },
+    fields: ["id", "website_name", "website_bio", "website_photo"],
+  },
+  {
+    collection: "crew_terms",
+    action: "read",
+    // A date is midnight, so a term is still current all of its last day.
+    permissions: {
+      _and: [
+        { crew_member_id: { on_website: { _eq: true } } },
+        { _or: [{ starts_on: { _null: true } }, { starts_on: { _lte: "$NOW" } }] },
+        { _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: "$NOW(-1 day)" } }] },
+      ],
+    },
+    fields: ["id", "crew_member_id", "position_id", "starts_on", "ends_on"],
+  },
+  { collection: "crew_positions", action: "read", fields: ["id", "name", "title"] },
+];
+
+/** The Crew collections whose writes change what the website shows. */
+export const WEBSITE_CREW_COLLECTIONS = ["crew_members", "crew_terms", "crew_positions"];
+
 export { WEBSITE_BUILD } from "../../src/directus/names.ts";
 
 /**
@@ -113,12 +152,14 @@ export const WEBSITE_FILE_FIELDS = [
 ];
 
 /**
- * The csc-website build's rules (cyc-seattle/platform#150): the website's collections, and the files
- * in the Website folder, which its images are. Nothing else, so the public site can't show CRM data.
+ * The csc-website build's rules (cyc-seattle/platform#150): the website's collections, Crew's public
+ * profiles, and the files in the Website folder, which its images are. Nothing else, so the public
+ * site can't show CRM data.
  */
 export function websiteBuildRules(schemas: LoadedSchema[]): PermissionRuleInput[] {
   return [
     ...websiteCollections(schemas).map((collection) => ({ collection, action: "read" as const })),
+    ...WEBSITE_CREW_RULES,
     {
       collection: "directus_files",
       action: "read",
@@ -259,13 +300,49 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
     action: "read" as const,
     fields: ["id", "first_name", "last_name"],
   };
+  const crew = crewCollections(schemas);
+  const termFields = fieldsIn(schemas, "crew_terms");
+  const readTermsWithoutPay = {
+    collection: "crew_terms",
+    action: "read" as const,
+    fields: termFields.filter((field) => !CREW_PAY_FIELDS.includes(field)),
+  };
+  // Who holds which position, as the CRM showed program roles; not their pay or qualifications.
+  const readPositionHolders: PermissionRuleInput[] = [
+    { collection: "crew_members", action: "read", fields: ["id", "person_id"] },
+    { collection: "crew_positions", action: "read" },
+    readTermsWithoutPay,
+  ];
+  // A planner sees who holds a paid position, and the person in a salaried one, by name.
+  const readCrewPay = [
+    { collection: "crew_terms", action: "read" as const },
+    { collection: "crew_members", action: "read" as const, fields: ["id", "person_id"] },
+    { collection: "crew_positions", action: "read" as const, fields: ["id", "name", "title"] },
+    { collection: "people", action: "read" as const, fields: ["id", "first_name", "last_name"] },
+  ];
+  // Picking someone for Crew: never more of a person than their name and email.
+  const crewReads: PermissionRuleInput[] = [
+    { collection: "people", action: "read", fields: ["id", "first_name", "last_name", "email"] },
+    {
+      collection: "groups",
+      action: "read",
+      permissions: { committee: { _eq: true } },
+      fields: ["id", "name", "description", "committee"],
+    },
+    { collection: "programs", action: "read", fields: ["id", "name"] },
+    { collection: "program_areas", action: "read", fields: ["id", "name"] },
+    { collection: "qualifications", action: "read" },
+    { collection: "qualification_covers", action: "read" },
+    { collection: "staff_levels", action: "read", fields: ["id", "name", "retired"] },
+  ];
+  const websiteFolder = { folder: { _eq: WEBSITE_FOLDER } };
   return [
     {
       key: "crm-reader",
       name: "CRM Reader",
       icon: "person_search",
       description: "Sees people, their details, and Clubspot's events and registrations. No medical information.",
-      rules: collections.map((collection) => ({ collection, action: "read" })),
+      rules: [...collections.map((collection) => ({ collection, action: "read" as const })), ...readPositionHolders],
     },
     {
       key: "crm-writer",
@@ -273,11 +350,14 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       icon: "person_edit",
       description: "Changes people and their details. Clubspot's own records stay read-only. No medical information.",
       // Programs belong to the catalog, so only a Catalog Writer changes them.
-      rules: writerRules(
-        collections,
-        [...clubspotCollections(schemas), ...DERIVED_FROM_CLUBSPOT, "programs"],
-        (collection) => fieldsIn(schemas, collection),
-      ),
+      rules: [
+        ...writerRules(
+          collections,
+          [...clubspotCollections(schemas), ...DERIVED_FROM_CLUBSPOT, "programs"],
+          (collection) => fieldsIn(schemas, collection),
+        ),
+        ...readPositionHolders,
+      ],
     },
     {
       key: "medical-reader",
@@ -320,7 +400,12 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "Plan Reader",
       icon: "event_note",
       description: "Sees every plan, wages and bonus rates included, the catalog, and users' names.",
-      rules: [...readCatalog, readUserNames, ...plans.map((collection) => ({ collection, action: "read" as const }))],
+      rules: [
+        ...readCatalog,
+        readUserNames,
+        ...readCrewPay,
+        ...plans.map((collection) => ({ collection, action: "read" as const })),
+      ],
     },
     // The frozen-plans hook keeps a frozen Financial Plan from changing, for every user (docs/planning-schema.md).
     // Programs, within the Operations Plan's rules.
@@ -333,6 +418,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       rules: [
         ...readCatalog,
         readUserNames,
+        ...readCrewPay,
         ...plans.map((collection) => ({ collection, action: "read" as const })),
         // The hook copies a new draft's plans from its parent, and refuses a status other than draft.
         { collection: SETS, action: "create", fields: [...SET_FIELDS, "status"] },
@@ -364,6 +450,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       rules: [
         ...readCatalog,
         readUserNames,
+        ...readCrewPay,
         ...plans.map((collection) => ({ collection, action: "read" as const })),
         // Freezing writes the hook's stamps, which Directus checks after the hook adds them. The hook drops any sent.
         {
@@ -381,6 +468,36 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
               : { collection, action, permissions: inPlan("operations") },
           ),
         ),
+      ],
+    },
+    {
+      key: "crew-reader",
+      name: "Crew Reader",
+      icon: "diversity_3",
+      description: "Sees Crew: who holds which position, and their qualifications. Not their pay.",
+      rules: [
+        ...crew
+          .filter((collection) => collection !== "crew_terms")
+          .map((collection) => ({ collection, action: "read" as const })),
+        readTermsWithoutPay,
+        ...crewReads,
+      ],
+    },
+    // A photo for the website goes in the Website folder, where anyone can see it.
+    {
+      key: "crew-writer",
+      name: "Crew Writer",
+      icon: "manage_accounts",
+      description:
+        "Changes Crew: crew members, positions, terms and pay, qualifications held, and what the website shows of each.",
+      rules: [
+        ...crew.flatMap((collection) =>
+          (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
+        ),
+        ...crewReads,
+        { collection: "directus_files", action: "create", permissions: websiteFolder },
+        { collection: "directus_files", action: "read", permissions: websiteFolder, fields: WEBSITE_FILE_FIELDS },
+        { collection: "directus_files", action: "update", permissions: websiteFolder },
       ],
     },
     {
@@ -554,7 +671,7 @@ export interface WebsitePublishConfig {
 /** What ./website-publish.cjs needs. */
 export function websitePublishConfig(schemas: LoadedSchema[], appId?: string): WebsitePublishConfig {
   return {
-    collections: websiteCollections(schemas),
+    collections: [...websiteCollections(schemas), ...WEBSITE_CREW_COLLECTIONS],
     folder: WEBSITE_FOLDER,
     repository: "cyc-seattle/csc-website",
     workflow: "publish.yml",

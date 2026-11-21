@@ -9,7 +9,7 @@ import { docsDir, remarkDocs } from "./src/plugins/remark-docs.ts";
 const base = "/platform";
 
 const platform = ["architecture", "backend", "access", "syncs", "backups", "website", "manual-setup"];
-const dataModel = ["crm-schema", "hr-schema", "planning-schema", "planning-engine"];
+const dataModel = ["crm-schema", "crew-schema", "hr-schema", "planning-schema", "planning-engine"];
 // A new page lands here until it's given a section.
 const reference = fs
   .readdirSync(docsDir)

@@ -443,6 +443,10 @@ async function aNewcomer(policies: string[]): Promise<void> {
   newcomer = { email: signIn, personId, policies };
 }
 Step("a person in the CRM who has never signed in", () => aNewcomer([]));
+Step("a crew member in the CRM who has never signed in", async () => {
+  await aNewcomer([]);
+  await adminCreate("crew_members", await newRow("crew_members", { person_id: newcomer!.personId }));
+});
 Step("a person in the CRM who has never signed in, in a group that gives the {policy} policy", (_, policy: string) =>
   aNewcomer([policy]),
 );

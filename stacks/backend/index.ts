@@ -459,6 +459,21 @@ for (const collection of ["program_role_assignments", "program_area_role_assignm
   }
 }
 
+// A person merge moves a duplicate's crew member to the person kept, when it's the group's only one.
+for (const action of ["read", "update"] as const) {
+  permissionRule(
+    `crm-clubspot-sync-crew_members-${action}`,
+    {
+      ...auth,
+      policyId: clubspotSyncPolicyId,
+      collection: "crew_members",
+      action,
+      fields: action === "read" ? ["id", "person_id"] : ["person_id"],
+    },
+    { dependsOn: crmSchema },
+  );
+}
+
 // A person merge stops while a duplicate is still in a group (src/syncs/clubspot/merge.ts), so
 // it reads who is in each one, and changes none of them.
 permissionRule(

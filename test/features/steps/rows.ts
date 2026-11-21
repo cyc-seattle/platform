@@ -249,6 +249,41 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     program_area_id: row["program_areas"],
     program_role_id: row["program_roles"],
   }),
+  // A person is on Crew once, so each crew member gets a person of its own.
+  crew_members: async () => ({
+    id: randomUUID(),
+    person_id: (await adminCreate("people", await newRow("people", { first_name: "Casey" }))).id,
+    website_name: "Casey",
+    on_website: false,
+  }),
+  crew_positions: async () => ({ id: randomUUID(), name: `Position ${key("position")}` }),
+  crew_terms: async () => ({
+    id: randomUUID(),
+    crew_member_id: row["crew_members"],
+    position_id: row["crew_positions"],
+    program_id: row["programs"],
+    starts_on: daysFromNow(-30),
+    staff_level_id: row["staff_levels"],
+    hourly_rate_cents: 2_500,
+  }),
+  crew_qualifications: async () => ({
+    id: randomUUID(),
+    crew_member_id: row["crew_members"],
+    qualification_id: row["qualifications"],
+    earned_on: daysFromNow(-30),
+    expires_on: daysFromNow(335),
+  }),
+  crew_position_qualifications: async () => ({
+    id: randomUUID(),
+    position_id: row["crew_positions"],
+    qualification_id: row["qualifications"],
+  }),
+  website_crew_sections: async () => ({ id: randomUUID(), title: `Crew list ${key("section")}` }),
+  website_crew_sections_positions: async () => ({
+    id: randomUUID(),
+    section_id: (await adminCreate("website_crew_sections", await newRow("website_crew_sections"))).id,
+    position_id: row["crew_positions"],
+  }),
   // A queue no worker reads, so no sync picks the task up.
   sync_tasks: async () => {
     const queue = `test-${runId}`;
@@ -477,6 +512,13 @@ export const changes: Record<string, () => Row> = {
   registrations: () => ({ status: "waitlist" }),
   program_role_assignments: () => ({ ends_on: daysFromNow(30) }),
   program_area_role_assignments: () => ({ ends_on: daysFromNow(30) }),
+  crew_members: () => ({ website_bio: "Changed." }),
+  crew_positions: () => ({ description: "Changed." }),
+  crew_terms: () => ({ ends_on: daysFromNow(30) }),
+  crew_qualifications: () => ({ expires_on: daysFromNow(300) }),
+  crew_position_qualifications: () => ({ qualification_id: row["qualifications"] }),
+  website_crew_sections: () => ({ title: `Crew list ${key("section")}` }),
+  website_crew_sections_positions: () => ({ sort: 2 }),
   sync_tasks: () => ({ last_error: "Changed." }),
   sync_runs: () => ({ error: "Changed." }),
   audit_findings: () => ({ detail: "A changed test finding." }),
@@ -568,6 +610,11 @@ async function createRows(): Promise<void> {
     ["registrations", () => ({ clubspot_entry_id: row["clubspot_registration_entries"] })],
     ["program_role_assignments", () => ({})],
     ["program_area_role_assignments", () => ({})],
+    ["crew_members", () => ({})],
+    ["crew_positions", () => ({})],
+    ["crew_terms", () => ({})],
+    ["crew_qualifications", () => ({})],
+    ["crew_position_qualifications", () => ({})],
     ["sync_tasks", () => ({})],
     ["sync_runs", () => ({})],
     ["audit_findings", () => ({})],
@@ -584,6 +631,9 @@ async function createRows(): Promise<void> {
     row[collection] = item.id;
     fixture[collection] = item;
   }
+
+  // A committee, which the Crew policies see by name.
+  row["committee"] = (await adminCreate("groups", await newRow("groups", { committee: true }))).id;
 
   // Another family's child, in the same class, whose rows no one but staff may read.
   const other = await adminCreate("people", await newRow("people", { first_name: "Robin" }));

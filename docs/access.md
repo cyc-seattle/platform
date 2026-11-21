@@ -87,12 +87,17 @@ can give, attached to no role:
 | Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                        |
 | Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does        |
 | Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same |
+| Crew Reader         | Reads Crew, but a term's pay ([crew-schema.md](crew-schema.md))                                                        |
+| Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                       |
 | Link Writer         | Changes Sail Team's links, but not their previews                                                                      |
 | Announcement Writer | Changes Sail Team's announcements                                                                                      |
 
-They're coarse: whole collections, with no row filters and no hidden fields, but for users and link
-previews: a Plan policy reads only each user's first and last name, so a frozen Financial Plan names
-who froze it, and a Link Writer can't write a link's preview.
+They're coarse: whole collections, with no row filters and no hidden fields, but for users, people,
+link previews, and Crew: a Plan policy reads only each user's and person's first and last name, so a
+frozen Financial Plan names who froze it and a term names who holds it, and a Link Writer can't write
+a link's preview. A term's pay is read only by Crew Writers and the Plan policies, and the CRM
+policies read who holds which position without it. A Crew policy reads only a person's name and
+email, and only the groups marked as committees, by name.
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
 Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `plan_id.kind`, and none of the collections only an Operations Plan uses
@@ -163,8 +168,11 @@ narrower, since it lets its holder impersonate a superuser.
 
 cyc-seattle/csc-website builds the public website from Directus ([website.md](website.md)). Its build
 signs in as the Website Build machine user, with a static token `backend` generates. Its policy reads
-every `website_*` collection whole, and the files in the Website folder, and nothing else: anything it
-can read could end up on the public site. `features/website.feature` gives the rule.
+every `website_*` collection whole, Crew's public profiles, and the files in the Website folder, and
+nothing else: anything it can read could end up on the public site. Of Crew it reads a crew member's
+website name, bio, and photo while they're on the website, their current terms, and each position's
+name and title: never who they are in the CRM, their pay, or their qualifications.
+`features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.
 
@@ -180,7 +188,12 @@ can't write a secret. The site has no PR previews, so no build reads dev's.
 - `group_members`: who is in each group, as people in the CRM
 - `group_policies`: which policies each group gives
 
-Only admins can see or change them. A group never sets a role.
+Only admins can see or change them, but for a committee's name, which the Crew policies read. A group
+never sets a role.
+
+A committee is a group with `committee` set. Its positions are in Crew, and its members are added
+here by hand: holding a position on a committee doesn't put anyone in its group
+([crew-schema.md](crew-schema.md)).
 
 An admin changes a group from its own page in the Data Studio. Members and Policies are
 many-to-many lists: "Add existing" picks a person, or one of the policies a group can give. Neither

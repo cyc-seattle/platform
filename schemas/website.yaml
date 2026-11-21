@@ -522,6 +522,58 @@ collections:
       versioning: false
     schema:
       name: website_sponsors
+  - collection: website_crew_sections
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_crew_sections
+      color: null
+      display_template: "{{title}}"
+      group: Website
+      hidden: false
+      icon: groups
+      item_duplication_fields: null
+      note: A list on Our Crew, such as the board. It shows whoever holds its positions today and is on the website.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_crew_sections
+  - collection: website_crew_sections_positions
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_crew_sections_positions
+      color: null
+      display_template: "{{section_id.title}}: {{position_id.name}}"
+      group: Website
+      hidden: true
+      icon: format_list_numbered
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_crew_sections_positions
 fields:
   - collection: website_settings
     field: id
@@ -5860,6 +5912,374 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: website_crew_sections
+    field: id
+    type: uuid
+    meta:
+      collection: website_crew_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_crew_sections
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_crew_sections
+    field: title
+    type: string
+    meta:
+      collection: website_crew_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: Such as Our Board of Directors.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations:
+        - language: en-US
+          translation: Heading
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_crew_sections
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_crew_sections
+    field: sort
+    type: integer
+    meta:
+      collection: website_crew_sections
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_crew_sections
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_crew_sections
+    field: positions
+    type: alias
+    meta:
+      collection: website_crew_sections
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{position_id.name}}"
+      field: positions
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: Drag to order. People in the first position come first, then by name.
+      options:
+        enableCreate: false
+        template: "{{position_id.name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - m2m
+      translations:
+        - language: en-US
+          translation: Positions
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_crew_sections_positions
+    field: id
+    type: uuid
+    meta:
+      collection: website_crew_sections_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_crew_sections_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_crew_sections_positions
+    field: section_id
+    type: uuid
+    meta:
+      collection: website_crew_sections_positions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: section_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Crew list
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: section_id
+      table: website_crew_sections_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_crew_sections
+      foreign_key_column: id
+  - collection: website_crew_sections_positions
+    field: position_id
+    type: uuid
+    meta:
+      collection: website_crew_sections_positions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: position_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Position
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: position_id
+      table: website_crew_sections_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: crew_positions
+      foreign_key_column: id
+  - collection: website_crew_sections_positions
+    field: sort
+    type: integer
+    meta:
+      collection: website_crew_sections_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_crew_sections_positions
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_categories
+    field: crew_section_id
+    type: uuid
+    meta:
+      collection: website_categories
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: crew_section_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The crew list this category's page shows under Meet Our Crew.
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 16
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Crew list
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: crew_section_id
+      table: website_categories
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_crew_sections
+      foreign_key_column: id
 relations:
   - collection: website_settings
     field: logo
@@ -6468,5 +6888,68 @@ relations:
       foreign_key_table: website_sponsor_levels
       foreign_key_column: id
       constraint_name: website_sponsors_level_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_crew_sections_positions
+    field: section_id
+    related_collection: website_crew_sections
+    meta:
+      junction_field: position_id
+      many_collection: website_crew_sections_positions
+      many_field: section_id
+      one_allowed_collections: null
+      one_collection: website_crew_sections
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: positions
+      sort_field: sort
+    schema:
+      table: website_crew_sections_positions
+      column: section_id
+      foreign_key_table: website_crew_sections
+      foreign_key_column: id
+      constraint_name: website_crew_sections_positions_section_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_crew_sections_positions
+    field: position_id
+    related_collection: crew_positions
+    meta:
+      junction_field: section_id
+      many_collection: website_crew_sections_positions
+      many_field: position_id
+      one_allowed_collections: null
+      one_collection: crew_positions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_crew_sections_positions
+      column: position_id
+      foreign_key_table: crew_positions
+      foreign_key_column: id
+      constraint_name: website_crew_sections_positions_position_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_categories
+    field: crew_section_id
+    related_collection: website_crew_sections
+    meta:
+      junction_field: null
+      many_collection: website_categories
+      many_field: crew_section_id
+      one_allowed_collections: null
+      one_collection: website_crew_sections
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: website_categories
+      column: crew_section_id
+      foreign_key_table: website_crew_sections
+      foreign_key_column: id
+      constraint_name: website_categories_crew_section_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL

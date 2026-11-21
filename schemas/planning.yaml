@@ -12695,6 +12695,51 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: plan_salaried_positions
+    field: person_id
+    type: uuid
+    meta:
+      collection: plan_salaried_positions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
+      field: person_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The person in the position, if it's filled.
+      options:
+        template: "{{first_name}} {{last_name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 21
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: person_id
+      table: plan_salaried_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: people
+      foreign_key_column: id
 relations:
   - collection: plan_offerings
     field: plan_id
@@ -14019,3 +14064,24 @@ relations:
       constraint_name: plans_financial_plan_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: plan_salaried_positions
+    field: person_id
+    related_collection: people
+    meta:
+      junction_field: null
+      many_collection: plan_salaried_positions
+      many_field: person_id
+      one_allowed_collections: null
+      one_collection: people
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_salaried_positions
+      column: person_id
+      foreign_key_table: people
+      foreign_key_column: id
+      constraint_name: plan_salaried_positions_person_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT

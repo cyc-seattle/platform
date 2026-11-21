@@ -15,7 +15,8 @@ Directus's API and MCP, as an admin, so every text field is Markdown.
 | `website_categories`                          | Program categories, with their status, and sorted lists of programs, FAQ topics, crew, and photos      |
 | `website_programs`                            | Program pages. Hidden ones have no page. Each can link to programs in the catalog                      |
 | `website_faq_topics`, `website_faqs`          | Sets of questions, one question per row                                                                |
-| `website_profiles`                            | Crew bios, not linked to People, so a public bio can't show private fields                             |
+| `website_crew_sections`                       | The lists on Our Crew, each a sorted list of Crew's positions                                          |
+| `website_profiles`                            | Crew bios, not linked to People. Replaced by Crew's public profiles, and dropped once they're moved    |
 | `website_policies`, `website_policy_versions` | Policies and their dated versions. The site shows the latest version that has taken effect             |
 | `website_sponsor_levels`, `website_sponsors`  | Sponsorship levels, in cents, and sponsors                                                             |
 
@@ -23,16 +24,21 @@ The rest are the join tables behind the sorted lists. Pictures are files in the 
 the `cyc0007` migration makes with a fixed ID. Directus keeps files in the environment's Cloud
 Storage bucket ([backend.md](backend.md)).
 
+The site's crew come from Crew ([crew-schema.md](crew-schema.md)). A list on Our Crew shows, for each
+of its positions in order, the crew members in it today who are on the website, by name. A category's
+Meet Our Crew shows the list it names. The build reads a crew member's website name, bio, and photo,
+never who they are in the CRM.
+
 The site's build reads them as the Website Build user ([access.md](access.md#the-website-build)).
 
 ## Publishing
 
 The site is built ahead of time, so a content change shows only after a build. Prod's Directus starts
 one itself: the `website-publish` hook (`stacks/backend/website-publish.cjs`) runs
-cyc-seattle/csc-website's `publish` workflow after a row in a `website_*` collection, or a file in
-the Website folder, is created, changed, sorted, or deleted. It waits until edits have stopped for 30
+cyc-seattle/csc-website's `publish` workflow after a row in a `website_*` collection, a crew member,
+term, or position, or a file in the Website folder, is created, changed, sorted, or deleted. It waits until edits have stopped for 30
 seconds, and no more than 5 minutes, so a burst of edits is one build. The workflow's nightly run
-publishes anything a failed start missed.
+publishes anything a failed start missed, and a term that starts or ends that day.
 
 The hook signs in to GitHub as a GitHub App installed only on csc-website, which can only start that
 repo's workflows ([manual-setup.md](manual-setup.md#6-directus-directusdomain)). Dev has no App, so

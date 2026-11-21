@@ -1,12 +1,13 @@
 @licensed
 Feature: The public website
   The center's public website, cyccommunitysailing.org, is built from content kept here: its pages,
-  program categories and programs, questions and answers, crew, policies, and sponsors. The pictures
-  the website shows are kept in a Website folder of their own.
+  program categories and programs, questions and answers, policies, and sponsors. Its crew come from
+  Crew: each crew member's public profile, shown while they hold a position the page lists. The
+  pictures the website shows are kept in a Website folder of their own.
 
   The website is built outside the club's systems, by a service account of its own: the website
-  build. Anything it can see could end up on the public website. So it can see the website and its
-  pictures, and nothing else.
+  build. Anything it can see could end up on the public website. So it can see the website, its
+  pictures, and the public profiles of crew on the website, and nothing else.
 
   Rule: The website build can see the website and its pictures
 
@@ -24,11 +25,40 @@ Feature: The public website
       And a picture in the website's folder
       Then it can see the picture
 
+  Rule: The website build sees a crew member's public profile, and nothing else about them
+
+    Example: The website build sees a crew member on the website and their current position
+      Given the website build's service account
+      And a crew member on the website, with a current term as Head Coach
+      Then it can see their name, bio and photo for the website
+      And it can see their term as Head Coach
+
+    Example: The website build can't see who a crew member is in the CRM
+      Given the website build's service account
+      And a crew member on the website, with a current term as Head Coach
+      Then it can't see which person they are
+      And it can't see their qualifications or pay
+
+    Example: The website build can't see a crew member who isn't on the website
+      Given the website build's service account
+      And a crew member who isn't on the website, with a current term as Head Coach
+      Then it can't see them or their terms
+
+    Example: The website build can't see a term that has ended
+      Given the website build's service account
+      And a crew member on the website whose term as Treasurer ended yesterday
+      Then it can't see that term
+
+    Example: The website build can't search crew by what it can't see
+      Given the website build's service account
+      When it searches crew members by their person's email
+      Then it isn't allowed
+
   Rule: The website build can't see anything else
 
-    Example: The website build can't see anything outside the website
+    Example: The website build can't see anything outside the website and crew's public profiles
       Given the website build's service account
-      Then it can't see anything outside the website
+      Then it can't see anything outside the website and crew's public profiles
 
     Scenario Outline: The website build can't see <records>
       Given the website build's service account
@@ -42,6 +72,7 @@ Feature: The public website
         | the catalog              |
         | plans                    |
         | groups                   |
+        | qualifications held      |
 
     Example: The website build can't see a picture kept anywhere else
       Given the website build's service account

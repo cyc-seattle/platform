@@ -277,6 +277,8 @@ fields:
               - CRM Writer
               - Catalog Reader
               - Catalog Writer
+              - Crew Reader
+              - Crew Writer
               - Link Writer
               - Medical Reader
               - Medical Writer
@@ -626,6 +628,48 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: groups
+    field: committee
+    type: boolean
+    meta:
+      collection: groups
+      conditions: null
+      display: null
+      display_options: null
+      field: committee
+      group: null
+      hidden: false
+      interface: boolean
+      note: A committee. Its positions are in Crew, but its members are still the people added here.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 15
+      special: null
+      translations:
+        - language: en-US
+          translation: Committee
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: committee
+      table: groups
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
 relations:
   - collection: group_members
     field: group_id
