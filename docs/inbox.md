@@ -42,9 +42,10 @@ in `APP_REMOTE_HOST_WHITE_LIST`.
 ## Signing in
 
 Everyone signs in through Authentik, with FreeScout's paid OAuth & Social Login module. The
-`authentik` stack registers the `Inbox` application, and binds it to one group, `Inbox` by default
-(`authentik:inboxGroup`). Only its members and Authentik's superusers get in. Its members are added by
-hand in Authentik's admin, until where access comes from is decided (cyc-seattle/platform#334).
+`authentik` stack registers the `Inbox` application, and binds it to one group, named by
+`authentik:inboxGroup`. Only its members and Authentik's superusers get in. Its default name,
+`FreeScout sign-in`, and its members, added by hand in Authentik's admin, hold until the access
+design decides both (cyc-seattle/platform#334).
 
 A first sign-in makes a FreeScout user with no mailboxes. An admin then puts them on each mailbox
 they answer, under the mailbox's Permissions. FreeScout's admins see every mailbox.

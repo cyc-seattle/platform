@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { DEFAULT_INBOX_GROUP } from "../../stacks/authentik/naming.ts";
 import { TEST_MAILBOX } from "../../stacks/inbox/cluster.ts";
 import { proxyOk } from "./cluster.ts";
 import { accessToken, devPlatform, kube, secretValue } from "./support.ts";
@@ -33,9 +34,16 @@ async function authentik(method: string, path: string, body?: unknown): Promise<
 
 const authentikUsers: number[] = [];
 
-/** An Authentik user named for the run, in the Inbox group or not. */
-export async function newAuthentikUser(runId: string, inInboxGroup: boolean): Promise<number> {
-  const groups = inInboxGroup ? [(await authentik("GET", "/core/groups/?name=Inbox")).results[0].pk] : [];
+/** The group that may sign in to the shared inbox, from the authentik stack's dev config. */
+function inboxGroupName(): string {
+  const config = readFileSync(join(import.meta.dirname, "../../stacks/authentik/Pulumi.dev.yaml"), "utf8");
+  return /^\s*authentik:inboxGroup:\s*"?([^"\n]+?)"?\s*$/m.exec(config)?.[1] ?? DEFAULT_INBOX_GROUP;
+}
+
+/** An Authentik user named for the run, in the group that may sign in to the shared inbox or not. */
+export async function newAuthentikUser(runId: string, allowed: boolean): Promise<number> {
+  const name = encodeURIComponent(inboxGroupName());
+  const groups = allowed ? [(await authentik("GET", `/core/groups/?name=${name}`)).results[0].pk] : [];
   const user = await authentik("POST", "/core/users/", {
     username: `inbox-${runId}`,
     name: `Inbox test ${runId}`,

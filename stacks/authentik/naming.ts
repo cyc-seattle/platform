@@ -46,8 +46,11 @@ export function inboxRedirectUriPattern(internalDomain: string): string {
   return `^https://inbox\\.${internalDomain.replace(/\./g, "\\.")}/.*$`;
 }
 
-/** The group whose members can sign in to the shared inbox, until where access comes from is decided (cyc-seattle/platform#334). */
-export const DEFAULT_INBOX_GROUP = "Inbox";
+/**
+ * The group whose members can sign in to the shared inbox, named for what it allows. The access
+ * design (cyc-seattle/platform#334) sets the real name through `authentik:inboxGroup`.
+ */
+export const DEFAULT_INBOX_GROUP = "FreeScout sign-in";
 
 /**
  * The embedded outpost's `config` (`authentik.Outpost.config`, a JSON blob). Every key but

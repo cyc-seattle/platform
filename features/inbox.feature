@@ -4,17 +4,17 @@ Feature: The shared inbox
   Someone takes a conversation, answers it, and closes it, and everyone on the mailbox can see who
   has which conversation. Their answers go out from the mailbox's address, not their own.
 
-  Only people in the Inbox group can sign in to the shared inbox. An admin puts each of them on the
+  Only people an admin allows can sign in to the shared inbox. An admin puts each of them on the
   mailboxes they answer, and they see only those.
 
-  Rule: Only people in the Inbox group can sign in
+  Rule: Only people allowed to use the shared inbox can sign in
 
-    Example: A volunteer in the Inbox group can sign in
-      Given a volunteer in the Inbox group
+    Example: A volunteer allowed to use the shared inbox can sign in
+      Given a volunteer allowed to use the shared inbox
       Then they can sign in to the shared inbox
 
-    Example: A parent who isn't in the Inbox group can't sign in
-      Given a parent who isn't in the Inbox group
+    Example: A parent who isn't allowed to use the shared inbox can't sign in
+      Given a parent who isn't allowed to use the shared inbox
       Then they can't sign in to the shared inbox
 
   @api

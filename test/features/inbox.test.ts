@@ -68,10 +68,10 @@ async function replyReceived(thread: Thread): Promise<ReceivedEmail> {
 describeFeature(
   feature("inbox.feature"),
   ({ Rule }) => {
-    Rule("Only people in the Inbox group can sign in", ({ RuleScenario }) => {
-      RuleScenario("A volunteer in the Inbox group can sign in", ({ Given, Then }) => {
+    Rule("Only people allowed to use the shared inbox can sign in", ({ RuleScenario }) => {
+      RuleScenario("A volunteer allowed to use the shared inbox can sign in", ({ Given, Then }) => {
         let user: number;
-        Given("a volunteer in the Inbox group", async () => {
+        Given("a volunteer allowed to use the shared inbox", async () => {
           user = await newAuthentikUser(newRunId(), true);
         });
         Then("they can sign in to the shared inbox", async () => {
@@ -79,9 +79,9 @@ describeFeature(
         });
       });
 
-      RuleScenario("A parent who isn't in the Inbox group can't sign in", ({ Given, Then }) => {
+      RuleScenario("A parent who isn't allowed to use the shared inbox can't sign in", ({ Given, Then }) => {
         let user: number;
-        Given("a parent who isn't in the Inbox group", async () => {
+        Given("a parent who isn't allowed to use the shared inbox", async () => {
           user = await newAuthentikUser(newRunId(), false);
         });
         Then("they can't sign in to the shared inbox", async () => {
