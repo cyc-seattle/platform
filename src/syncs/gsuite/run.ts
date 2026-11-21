@@ -80,7 +80,6 @@ export interface MembershipSnapshot extends MembershipTables {
   accessGroupMembers: AccessGroupMemberRow[];
 }
 
-
 async function readMembershipSnapshot(directus: DirectusClient): Promise<MembershipSnapshot> {
   const [
     programs,
@@ -147,7 +146,7 @@ async function syncProgramMembers(
   snapshot: () => Promise<MembershipSnapshot>,
   now: Date,
 ): Promise<void> {
-  const { programs, groups, accessGroups, accessGroupMembers: _members, ...tables } = await snapshot();
+  const { programs, groups, accessGroups, ...tables } = await snapshot();
 
   const program = programs.find((row) => row.id === programId);
   if (!program?.google_group_id) {
@@ -555,13 +554,7 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
         directus,
         QUEUE,
         {
-          [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(
-            directus,
-            directory,
-            adder,
-            snapshot,
-            now,
-          ),
+          [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(directus, directory, adder, snapshot, now),
           [ACCESS_GROUP_MEMBERS_KIND]: (task: SyncTaskRow) =>
             syncAccessGroupMembers(targetFromKey(task), directory, adder, remover, snapshot),
           [SETTINGS_KIND]: groupSettingsTaskHandler(directus, settingsApplier),

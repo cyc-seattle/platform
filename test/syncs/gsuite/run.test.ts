@@ -6,6 +6,7 @@ import {
   type GroupMember,
   type GroupRole,
   type GroupSettings,
+  type RemoveMemberResult,
   resolveGroupSettingsTemplate,
 } from "@cyc-seattle/gsuite-sdk";
 import { type SettingsReader } from "../../../src/syncs/gsuite/audit-settings.ts";
@@ -122,8 +123,9 @@ function recordingRemover(): MemberRemover & { calls: [string, string][] } {
   const calls: [string, string][] = [];
   return {
     calls,
-    async removeMember(groupKey: string, email: string): Promise<void> {
+    async removeMember(groupKey: string, email: string): Promise<RemoveMemberResult> {
       calls.push([groupKey, email]);
+      return "removed";
     },
   };
 }

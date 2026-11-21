@@ -1,5 +1,5 @@
 import winston from "winston";
-import { type AddMemberResult, type GroupRole } from "@cyc-seattle/gsuite-sdk";
+import { type AddMemberResult, type GroupRole, type RemoveMemberResult } from "@cyc-seattle/gsuite-sdk";
 
 /** The slice of `DirectoryClient` the membership pass writes through - narrow enough that a
  * `DirectoryClient` instance satisfies it structurally, with no wrapping needed for a real run. */
@@ -20,7 +20,7 @@ export function dryRunMemberAdder(): MemberAdder {
 
 /** Takes a member out of a group: the one write a group in the CRM needs that a program's never does. */
 export interface MemberRemover {
-  removeMember(groupKey: string, email: string): Promise<void>;
+  removeMember(groupKey: string, email: string): Promise<RemoveMemberResult>;
 }
 
 /** Logs the removal instead of making it, for a `--dry-run` run. */
@@ -28,6 +28,7 @@ export function dryRunMemberRemover(): MemberRemover {
   return {
     async removeMember(groupKey, email) {
       winston.info("Dry run: skipping remove group member", { groupKey, email });
+      return "removed";
     },
   };
 }

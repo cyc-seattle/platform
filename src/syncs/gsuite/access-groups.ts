@@ -48,9 +48,7 @@ export function googleGroupSources(
  */
 export function contestedGoogleGroups(sources: ReadonlyMap<string, GroupSource[]>): Set<string> {
   return new Set(
-    [...sources]
-      .filter(([, from]) => from.length > 1 && from.some((source) => "group" in source))
-      .map(([id]) => id),
+    [...sources].filter(([, from]) => from.length > 1 && from.some((source) => "group" in source)).map(([id]) => id),
   );
 }
 

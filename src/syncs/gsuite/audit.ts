@@ -11,12 +11,7 @@ import {
 } from "../../model/crm/index.ts";
 import { type AuditFindingInput } from "../runtime/index.ts";
 import { type GroupMember } from "@cyc-seattle/gsuite-sdk";
-import {
-  type AccessGroupRow,
-  contestedGoogleGroups,
-  googleGroupLabel,
-  type GroupSource,
-} from "./access-groups.ts";
+import { type AccessGroupRow, contestedGoogleGroups, googleGroupLabel, type GroupSource } from "./access-groups.ts";
 import { removedPersonIds } from "./group-memberships.ts";
 import { type MembershipTables, planProgramMemberPeople, planProgramMembers } from "./membership.ts";
 import { planGroupNesting } from "./nesting.ts";

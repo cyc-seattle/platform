@@ -7,7 +7,7 @@ import winston from "winston";
 import { LoggingOption, VerboseOption } from "@cyc-seattle/commodore";
 import { DirectusClient, SyncQueue } from "../runtime/index.ts";
 import { type ClientOptions, DirectoryClient, GroupSettingsClient } from "@cyc-seattle/gsuite-sdk";
-import { dryRunMemberAdder, type MemberAdder } from "./directory-writer.ts";
+import { dryRunMemberAdder, dryRunMemberRemover, type MemberAdder, type MemberRemover } from "./directory-writer.ts";
 import { runGroupSync } from "./run.ts";
 import { dryRunSettingsApplier, type SettingsApplier } from "./settings-writer.ts";
 
@@ -85,6 +85,7 @@ const program = new Command("gsuite-sync")
     const { directory, settingsReader } = googleClients(auth, options.googleRootUrl);
 
     const adder: MemberAdder = dryRun ? dryRunMemberAdder() : directory;
+    const remover: MemberRemover = dryRun ? dryRunMemberRemover() : directory;
     const settingsApplier: SettingsApplier = dryRun ? dryRunSettingsApplier() : settingsReader;
 
     const result = await runGroupSync({
@@ -92,6 +93,7 @@ const program = new Command("gsuite-sync")
       directus,
       queue,
       adder,
+      remover,
       settingsApplier,
       directory,
       settingsReader,

@@ -9,7 +9,7 @@ import { enableService } from "../../src/services.ts";
 // it calls the Workspace APIs as gsuite-sync@, through Workload Identity.
 
 // Renovate bumps it with @cyc-seattle/gsuite-sdk, which publishes the fake (renovate.json).
-const fakeImage = "ghcr.io/cyc-seattle/workspace-fake:0.3.0";
+const fakeImage = "ghcr.io/cyc-seattle/workspace-fake:1.1.0";
 
 /** The CronJob, its Secret and image, and in dev, the Workspace fake. */
 export async function deployGsuiteSync(cluster: Cluster, directusToken: pulumi.Input<string>): Promise<void> {

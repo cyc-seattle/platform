@@ -92,6 +92,7 @@ async function runGoogleSyncFor(target: { programId: string } | { accessGroupId:
       directus: client,
       queue: new SyncQueue(client),
       adder: directory,
+      remover: directory,
       settingsApplier: settingsReader,
       directory,
       settingsReader,
