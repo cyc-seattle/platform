@@ -95,7 +95,13 @@ export const defaultViews: DefaultView[] = [
 
   // HR
   { collection: "staff_roles", sort: ["sort", "name"], fields: ["name"] },
-  { collection: "staff_levels", sort: ["role_id.sort", "name"], fields: ["name", "role_id", "grade"] },
+  // Levels in use only, until someone clears the filter.
+  {
+    collection: "staff_levels",
+    sort: ["role_id.sort", "name"],
+    fields: ["name", "role_id", "grade"],
+    filter: { archived_at: { _null: true } },
+  },
 
   // Directory
   { collection: "organizations", sort: ["name"], fields: ["name", "short_name", "kind", "website"] },
@@ -107,7 +113,7 @@ export const defaultViews: DefaultView[] = [
     sort: ["person_id.last_name", "person_id.first_name"],
     fields: ["person_id", "terms", "on_website"],
   },
-  { collection: "crew_positions", sort: ["name"], fields: ["name", "committee_id", "qualifications"] },
+  { collection: "crew_positions", sort: ["name"], fields: ["name", "title", "qualifications"] },
   {
     collection: "crew_terms",
     sort: ["-starts_on", "position_id.name"],

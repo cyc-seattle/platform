@@ -613,9 +613,6 @@ async function createRows(): Promise<void> {
     fixture[collection] = item;
   }
 
-  // A committee, which the Crew policies see by name.
-  row["committee"] = (await adminCreate("groups", await newRow("groups", { committee: true }))).id;
-
   // Another family's child, in the same class, whose rows no one but staff may read.
   const other = await adminCreate("people", await newRow("people", { first_name: "Robin" }));
   const otherGuardian = await adminCreate("people", await newRow("people", { first_name: "Sam" }));

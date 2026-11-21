@@ -76,12 +76,11 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters but the planners' by kind of plan and Crew's committees and photos, and no field lists but a person's writable fields, CRM Writer's two hand-set ones, and Crew's", () => {
+  it("are coarse: no row filters but the planners' by kind of plan and Crew's photos, and no field lists but a person's writable fields, CRM Writer's two hand-set ones, and Crew's", () => {
     const planners = ["Plan Writer", "Plan Admin"];
-    const crewFilters = new Set(["groups", "directus_files"]);
     for (const { name, rules } of policies.filter(({ name }) => !planners.includes(name))) {
       for (const rule of rules) {
-        if (name.startsWith("Crew ") && crewFilters.has(rule.collection)) continue;
+        if (name === "Crew Writer" && rule.collection === "directus_files") continue;
         expect(rule.permissions).toBeUndefined();
       }
     }
@@ -102,20 +101,11 @@ describe("the policies a group can give", () => {
     expect([...collections("Medical Writer", "delete")]).toEqual(["medical_profiles"]);
   });
 
-  it("leave groups to admins, but for committees' names, and the catalog's money to the Catalog policies", () => {
+  it("leave groups to admins, and the catalog's money to the Catalog policies", () => {
     for (const policy of policies) {
       const touched = policy.rules.map((rule) => rule.collection);
-      for (const collection of ["group_members", "group_policies"]) {
+      for (const collection of ["groups", "group_members", "group_policies"]) {
         expect(touched).not.toContain(collection);
-      }
-      for (const rule of policy.rules.filter(({ collection }) => collection === "groups")) {
-        expect(policy.name.startsWith("Crew ")).toBe(true);
-        expect(rule).toEqual({
-          collection: "groups",
-          action: "read",
-          permissions: { committee: { _eq: true } },
-          fields: ["id", "name", "description", "committee"],
-        });
       }
       const changed = policy.rules.filter((rule) => rule.action !== "read").map((rule) => rule.collection);
       if (!policy.name.startsWith("Catalog ")) {

@@ -58,8 +58,8 @@ collections:
     meta:
       accountability: all
       archive_app_filter: true
-      archive_field: retired
-      archive_value: "true"
+      archive_field: null
+      archive_value: null
       autosave_revision_interval: null
       collapse: open
       collection: staff_levels
@@ -76,7 +76,7 @@ collections:
       sort_field: null
       status: active
       translations: null
-      unarchive_value: "false"
+      unarchive_value: null
       versioning: false
     schema:
       name: staff_levels
@@ -397,37 +397,39 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: staff_levels
-    field: retired
-    type: boolean
+    field: archived_at
+    type: timestamp
     meta:
       collection: staff_levels
       conditions: null
       display: null
       display_options: null
-      field: retired
+      field: archived_at
       group: null
       hidden: false
-      interface: boolean
-      note: A retired level stays with anyone who has it. Pick another for someone new.
+      interface: datetime
+      note: Set when the level is no longer used for new work. It stays with anyone who has it. Clear it to use the level again.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 5
       special: null
-      translations: null
+      translations:
+        - language: en-US
+          translation: Archived
       validation: null
       validation_message: null
       width: full
     schema:
-      name: retired
+      name: archived_at
       table: staff_levels
-      data_type: boolean
-      default_value: false
+      data_type: timestamp with time zone
+      default_value: null
       max_length: null
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false

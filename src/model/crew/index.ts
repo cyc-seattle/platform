@@ -19,7 +19,6 @@ export interface CrewPositionRow {
   name: string;
   title: string | null;
   description: string | null;
-  committee_id: string | null;
 }
 
 /** One crew member in one position. Either date may be blank, for no bound on that side. */

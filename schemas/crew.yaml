@@ -637,54 +637,6 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: crew_positions
-    field: committee_id
-    type: uuid
-    meta:
-      collection: crew_positions
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: committee_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The committee the job is on, if any. Holding it doesn't add anyone to the committee.
-      options:
-        template: "{{name}}"
-        filter:
-          committee:
-            _eq: true
-      readonly: false
-      required: false
-      searchable: true
-      sort: 5
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Committee
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: committee_id
-      table: crew_positions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: groups
-      foreign_key_column: id
-  - collection: crew_positions
     field: qualifications
     type: alias
     meta:
@@ -1064,8 +1016,8 @@ fields:
       options:
         template: "{{name}}"
         filter:
-          retired:
-            _eq: false
+          archived_at:
+            _null: true
       readonly: false
       required: false
       searchable: true
@@ -1648,27 +1600,6 @@ relations:
       constraint_name: crew_members_website_photo_foreign
       on_update: NO ACTION
       on_delete: SET NULL
-  - collection: crew_positions
-    field: committee_id
-    related_collection: groups
-    meta:
-      junction_field: null
-      many_collection: crew_positions
-      many_field: committee_id
-      one_allowed_collections: null
-      one_collection: groups
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: crew_positions
-      column: committee_id
-      foreign_key_table: groups
-      foreign_key_column: id
-      constraint_name: crew_positions_committee_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
   - collection: crew_terms
     field: crew_member_id
     related_collection: crew_members

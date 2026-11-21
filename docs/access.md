@@ -98,7 +98,7 @@ link previews, and Crew: a Plan policy reads only each user's and person's first
 frozen Financial Plan names who froze it and a term names who holds it, and a Link Writer can't write
 a link's preview. A term's pay is read only by Crew Writers and the Plan policies, and the CRM
 policies read who holds which position without it. A Crew policy reads only a person's name and
-email, and only the groups marked as committees, by name.
+email.
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
 Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `plan_id.kind`, and none of the collections only an Operations Plan uses
@@ -189,11 +189,8 @@ can't write a secret. The site has no PR previews, so no build reads dev's.
 - `group_members`: who is in each group, as people in the CRM
 - `group_policies`: which policies each group gives
 
-Only admins can see or change them, but for a committee's name, which the Crew policies read. A group
-never sets a role.
-
-A committee is a group with `committee` set. Its positions are in Crew, and its members are added
-here by hand: holding a position on a committee doesn't put anyone in its group
+Only admins can see or change them. A group never sets a role. A committee, such as the Finance
+Committee, is a group like any other, and holding a position in Crew doesn't put anyone in one
 ([crew-schema.md](crew-schema.md)).
 
 An admin changes a group from its own page in the Data Studio. Members and Policies are

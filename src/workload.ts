@@ -6,7 +6,10 @@ type Probe = k8s.types.input.core.v1.Probe;
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 type EnvFromSource = k8s.types.input.core.v1.EnvFromSource;
 
-/** A volume and where the container mounts it. Give exactly one of `emptyDir`, `configMap`, or `secret`. */
+/**
+ * A volume and where the container mounts it. Give exactly one of `emptyDir`, `configMap`, `secret`, or
+ * `persistentVolumeClaim`.
+ */
 export interface WorkloadVolume {
   name: string;
   mountPath: string;
@@ -15,6 +18,8 @@ export interface WorkloadVolume {
   configMap?: pulumi.Input<string>;
   /** A Secret's name. */
   secret?: pulumi.Input<string>;
+  /** A PersistentVolumeClaim's name, for data that outlives the pod. */
+  persistentVolumeClaim?: pulumi.Input<string>;
   subPath?: string;
   readOnly?: boolean;
 }
@@ -40,6 +45,8 @@ export interface PodArgs {
   volumes?: WorkloadVolume[];
   /** Needed when the image's user is a name, which `runAsNonRoot` can't check. Also sets the group. */
   runAsUser?: number;
+  /** The group that owns a mounted persistent volume's files, so a non-root user can write them. */
+  fsGroup?: number;
   /** Annotations on the Kubernetes ServiceAccount, such as `iam.gke.io/gcp-service-account`. */
   serviceAccountAnnotations?: Record<string, string>;
 }
@@ -60,6 +67,11 @@ export interface WorkloadArgs extends PodArgs {
   minAvailable?: number;
   /** How long a rollout may take before the Deployment, and so the deploy, fails. Defaults to 600. */
   progressDeadlineSeconds?: number;
+  /**
+   * Stops the old pod before starting the new one. A pod with a `ReadWriteOnce` volume needs it: the
+   * new pod can't attach the disk on another node while the old one holds it.
+   */
+  recreate?: boolean;
 }
 
 /** The pods' Workload Identity principal, for IAM grants. */
@@ -117,6 +129,7 @@ export function podSpec(
       runAsNonRoot: true,
       seccompProfile: { type: "RuntimeDefault" },
       ...(args.runAsUser !== undefined && { runAsUser: args.runAsUser, runAsGroup: args.runAsUser }),
+      ...(args.fsGroup !== undefined && { fsGroup: args.fsGroup }),
     },
     ...(volumes.length > 0 && {
       volumes: volumes.map((v) => ({
@@ -124,6 +137,7 @@ export function podSpec(
         ...(v.emptyDir && { emptyDir: v.emptyDir }),
         ...(v.configMap !== undefined && { configMap: { name: v.configMap } }),
         ...(v.secret !== undefined && { secret: { secretName: v.secret } }),
+        ...(v.persistentVolumeClaim !== undefined && { persistentVolumeClaim: { claimName: v.persistentVolumeClaim } }),
       })),
     }),
     containers: [
@@ -201,6 +215,7 @@ export function deployment(parent: pulumi.Resource, name: string, args: Workload
       metadata,
       spec: {
         replicas,
+        ...(args.recreate && { strategy: { type: "Recreate" } }),
         ...(args.progressDeadlineSeconds !== undefined && { progressDeadlineSeconds: args.progressDeadlineSeconds }),
         selector: { matchLabels: labels },
         template: {
