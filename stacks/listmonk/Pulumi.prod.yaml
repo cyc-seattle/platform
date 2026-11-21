@@ -1,0 +1,9 @@
+config:
+  gcp:project: cyc-admin-scripts
+  gcp:region: us-west1
+  listmonk:hostname: mail.cyccommunitysailing.org
+  # Mailchimp's From today, so subscribers' filters still match (cyc-seattle/platform#180).
+  listmonk:fromEmail: CYC Community Sailing Center <info@cyccommunitysailing.org>
+  listmonk:trustedUrls:
+    - https://cyccommunitysailing.org/newsletter/check-your-email
+secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod

@@ -42,6 +42,22 @@ export interface PodArgs {
   runAsUser?: number;
   /** Annotations on the Kubernetes ServiceAccount, such as `iam.gke.io/gcp-service-account`. */
   serviceAccountAnnotations?: Record<string, string>;
+  /**
+   * Run in order, each to completion, before the container starts, with the same requests, volumes and
+   * security as it, such as a schema migration.
+   */
+  initContainers?: InitContainer[];
+}
+
+/** A step a pod runs before its container. */
+export interface InitContainer {
+  name: string;
+  /** Defaults to the pod's image. */
+  image?: pulumi.Input<string>;
+  command: string[];
+  args?: string[];
+  env?: pulumi.Input<EnvVar>[];
+  envFrom?: pulumi.Input<EnvFromSource>[];
 }
 
 export interface WorkloadArgs extends PodArgs {
@@ -107,6 +123,30 @@ export function podSpec(
   container: Partial<k8s.types.input.core.v1.Container> = {},
 ): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
   const volumes = args.volumes ?? [];
+  // What every container in the pod has: its requests and limits, mounts, and security.
+  const shared = {
+    // A LimitRange's default limit could otherwise sit below the request, which the API refuses.
+    resources: {
+      requests: args.requests,
+      limits: {
+        cpu: args.limits?.cpu ?? args.requests.cpu,
+        memory: args.limits?.memory ?? args.requests.memory,
+      },
+    },
+    ...(volumes.length > 0 && {
+      volumeMounts: volumes.map((v) => ({
+        name: v.name,
+        mountPath: v.mountPath,
+        ...(v.subPath !== undefined && { subPath: v.subPath }),
+        ...(v.readOnly !== undefined && { readOnly: v.readOnly }),
+      })),
+    }),
+    securityContext: {
+      allowPrivilegeEscalation: false,
+      readOnlyRootFilesystem: true,
+      capabilities: { drop: ["ALL"] },
+    },
+  };
   // The namespace is the environment's name.
   return pulumi.output(args.platform).namespace.apply((namespace) => ({
     serviceAccountName,
@@ -126,6 +166,17 @@ export function podSpec(
         ...(v.secret !== undefined && { secret: { secretName: v.secret } }),
       })),
     }),
+    ...(args.initContainers && {
+      initContainers: args.initContainers.map((init) => ({
+        name: init.name,
+        image: init.image ?? args.image,
+        command: init.command,
+        ...(init.args && { args: init.args }),
+        ...(init.env && { env: init.env }),
+        ...(init.envFrom && { envFrom: init.envFrom }),
+        ...shared,
+      })),
+    }),
     containers: [
       {
         name,
@@ -133,29 +184,9 @@ export function podSpec(
         ...(args.command && { command: args.command }),
         ...(args.args && { args: args.args }),
         ...container,
-        // A LimitRange's default limit could otherwise sit below the request, which the API refuses.
-        resources: {
-          requests: args.requests,
-          limits: {
-            cpu: args.limits?.cpu ?? args.requests.cpu,
-            memory: args.limits?.memory ?? args.requests.memory,
-          },
-        },
         ...(args.env && { env: args.env }),
         ...(args.envFrom && { envFrom: args.envFrom }),
-        ...(volumes.length > 0 && {
-          volumeMounts: volumes.map((v) => ({
-            name: v.name,
-            mountPath: v.mountPath,
-            ...(v.subPath !== undefined && { subPath: v.subPath }),
-            ...(v.readOnly !== undefined && { readOnly: v.readOnly }),
-          })),
-        }),
-        securityContext: {
-          allowPrivilegeEscalation: false,
-          readOnlyRootFilesystem: true,
-          capabilities: { drop: ["ALL"] },
-        },
+        ...shared,
       },
     ],
   }));
