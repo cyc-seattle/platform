@@ -34,7 +34,10 @@ beforeAll(async () => {
             : args.type === "gcp:storage/transferJob:TransferJob"
               ? { ...args.inputs, name: `transferJobs/${args.name}` }
               : args.type === "gcp:projects/iAMCustomRole:IAMCustomRole"
-                ? { ...args.inputs, name: `projects/example-project/roles/${args.inputs.roleId}` }
+                ? {
+                    ...args.inputs,
+                    name: `projects/${args.inputs.project ?? "example-project"}/roles/${args.inputs.roleId}`,
+                  }
                 : args.inputs;
         return { id: `${args.name}_id`, state };
       },
@@ -106,10 +109,17 @@ describe("databases bucket", () => {
     ]);
   });
 
-  it("lets only the prod instance create and read copies, never delete them", () => {
-    expect(bucketMembers("csc-backups-databases").map((g) => [g.role, g.member])).toEqual([
+  it("lets the prod instance only create copies, and backup-runner only list them", () => {
+    expect(
+      bucketMembers("csc-backups-databases")
+        .map((g) => [g.role, g.member])
+        .sort(),
+    ).toEqual([
+      ["projects/csc-backups/roles/copyLister", "serviceAccount:backup-runner@example-project.iam.gserviceaccount.com"],
       ["roles/storage.objectCreator", sqlAccount],
-      ["roles/storage.objectViewer", sqlAccount],
+    ]);
+    expect(byName("gcp:projects/iAMCustomRole:IAMCustomRole", "copyLister").permissions).toEqual([
+      "storage.objects.list",
     ]);
   });
 });
@@ -169,10 +179,16 @@ describe("backup Workflow", () => {
     expect(source).toContain("backup: failed");
   });
 
-  it("starts twice a day, so the 23.5-hour absence alert catches one missed run", () => {
+  it("names every copy by the second it was made, since the bucket refuses to replace one", () => {
+    const source = fs.readFileSync(path.join(import.meta.dirname, "../stacks/bootstrap/backup.workflow.yaml"), "utf8");
+    expect(source).toContain('"/daily/" + database.name + "/" + stamp + ".sql.gz"');
+    expect(source).toContain('"/monthly/" + database.name + "/" + month + "/" + stamp + ".sql.gz"');
+  });
+
+  it("starts twice a day in UTC, so the 23.5-hour absence alert catches one missed run", () => {
     expect(byName("gcp:cloudscheduler/job:Job", "backup")).toMatchObject({
-      schedule: "0 2,14 * * *",
-      timeZone: "America/Los_Angeles",
+      schedule: "0 10,22 * * *",
+      timeZone: "Etc/UTC",
       httpTarget: { oauthToken: { serviceAccountEmail: "backup-runner@example-project.iam.gserviceaccount.com" } },
     });
   });

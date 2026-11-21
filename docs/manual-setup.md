@@ -230,9 +230,11 @@ the organization needs more than project Owner.
    An organization admin grants what's missing in the
    [IAM console](https://console.cloud.google.com/iam-admin/iam), at the organization.
 
-2. [ ] `mise run preview-bootstrap`, then `mise run deploy-bootstrap`. It also gives deploy-runner the
+2. [ ] Check prod's Cloud SQL instance and the buckets `bootstrap` copies exist, which only a rebuild
+       lacks ([backups.md](backups.md#if-the-main-project-is-lost)). Then `mise run preview-bootstrap`,
+       and `mise run deploy-bootstrap`. It also gives deploy-runner the
        role the `infra` stack's uptime checks need, so apply `infra` after it.
-3. [ ] After the next 2:00 or 14:00 run, check both buckets have copies, then run the first drill,
+3. [ ] After the next run (10:00 or 22:00 UTC), check both buckets have copies, then run the first drill,
        `mise run restore-drill`, and paste its result in cyc-seattle/platform#170.
 
 ## When you add a new manual step

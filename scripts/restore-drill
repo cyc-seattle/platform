@@ -32,6 +32,11 @@ cleanup() {
   gcloud sql instances delete "$instance" --project "$project" --quiet
 }
 
+# True when something on this machine accepts connections on the port.
+listening() {
+  (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+}
+
 latest() {
   gcloud storage ls "$databases_bucket/daily/$1/" | sort | tail -1
 }
@@ -47,6 +52,13 @@ authentik_copy="$(latest authentik)"
 echo "Restoring $directus_copy and $authentik_copy into $instance."
 
 command -v cloud-sql-proxy >/dev/null || gcloud components install cloud-sql-proxy --quiet
+# Otherwise the checks below would run against whatever already holds the port.
+for taken in "$port" "$directus_port"; do
+  if listening "$taken"; then
+    echo "Port $taken is in use. Stop what's using it and run the drill again." >&2
+    exit 1
+  fi
+done
 
 trap cleanup EXIT
 gcloud sql instances create "$instance" --project "$project" --region "$region" \
@@ -65,10 +77,20 @@ gcloud sql import sql "$instance" "$authentik_copy" --database authentik --user 
 
 cloud-sql-proxy --gcloud-auth --port "$port" "$project:$region:$instance" >/dev/null 2>&1 &
 proxy_pid=$!
-sleep 5
+for _ in $(seq 30); do
+  listening "$port" && break
+  kill -0 "$proxy_pid" 2>/dev/null || break
+  sleep 1
+done
+listening "$port" && kill -0 "$proxy_pid" 2>/dev/null || {
+  echo "The Cloud SQL Auth Proxy didn't start on port $port." >&2
+  exit 1
+}
 
 # With neither a key nor a token, the copy can't activate or refresh the license (cyc-seattle/isthmia#172).
 sql directus "UPDATE directus_settings SET license_key = NULL, license_token = NULL" >/dev/null
+# Nor run a flow, which could email people or call another service as prod.
+sql directus "UPDATE directus_flows SET status = 'inactive'" >/dev/null
 
 docker run -d --name restore-drill-directus --network host \
   -e DB_CLIENT=pg -e DB_HOST=127.0.0.1 -e DB_PORT="$port" -e DB_DATABASE=directus -e DB_USER=directus \

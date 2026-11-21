@@ -91,68 +91,7 @@ export const filesBucket = backupBucket("files", {
   lifecycleRules: [{ action: { type: "Delete" }, condition: { daysSinceNoncurrentTime: fileVersionDays } }],
 });
 
-// The prod instance, found as isthmia's db-tunnel finds it. Its own account writes each export.
-const instance = gcp.sql.getDatabaseInstancesOutput({ project: projectId, region: location }).apply(({ instances }) => {
-  const prod = instances.filter((i) => i.name.startsWith("substrate-"));
-  if (prod.length !== 1) {
-    throw new Error(`Expected one prod Cloud SQL instance named substrate-*, found ${prod.length}.`);
-  }
-  return prod[0]!;
-});
-const instanceMember = pulumi.interpolate`serviceAccount:${instance.serviceAccountEmailAddress}`;
-
-// Create and read only: an export can't delete or replace a copy, and an import needs to read one.
-for (const role of ["roles/storage.objectCreator", "roles/storage.objectViewer"]) {
-  new gcp.storage.BucketIAMMember(
-    `databases-prod-sql-${role.replace("roles/storage.", "")}`,
-    { bucket: databasesBucket.name, role, member: instanceMember },
-    iamOpts,
-  );
-}
-
-const transferApi = enableService("storagetransfer.googleapis.com");
-const workflowsApi = enableService("workflows.googleapis.com");
-const schedulerApi = enableService("cloudscheduler.googleapis.com");
-
-const transferAgent = gcp.storage.getTransferProjectServiceAccountOutput(
-  { project: projectId },
-  { dependsOn: transferApi },
-);
-const transferMember = pulumi.interpolate`serviceAccount:${transferAgent.email}`;
-
-// The roles Storage Transfer documents for a bucket-to-bucket copy.
-new gcp.storage.BucketIAMMember(
-  "files-transfer-writer",
-  { bucket: filesBucket.name, role: "roles/storage.legacyBucketWriter", member: transferMember },
-  iamOpts,
-);
-
-/** One transfer job per bucket, into a folder named after it. Run by the Workflow, so it has no schedule. */
-const transferJobs = backedUpBuckets.map((source) => {
-  for (const role of ["roles/storage.objectViewer", "roles/storage.legacyBucketReader"]) {
-    new gcp.storage.BucketIAMMember(
-      `${source}-transfer-${role.replace("roles/storage.", "")}`,
-      { bucket: source, role, member: transferMember },
-      iamOpts,
-    );
-  }
-  const job = new gcp.storage.TransferJob(
-    `backup-${source}`,
-    {
-      description: `Copies ${source} to the backups project`,
-      transferSpec: {
-        gcsDataSource: { bucketName: source },
-        gcsDataSink: { bucketName: filesBucket.name, path: `${source}/` },
-        // A file deleted at the source becomes an old version here, kept for fileVersionDays.
-        transferOptions: { overwriteWhen: "DIFFERENT", deleteObjectsUniqueInSink: true },
-      },
-    },
-    { dependsOn: transferApi },
-  );
-  return { source, name: job.name };
-});
-
-export const backupRunner = new ServiceAccount("backup-runner", "Runs the nightly backup Workflow.");
+export const backupRunner = new ServiceAccount("backup-runner", "Runs the backup Workflow.");
 
 export const backupRunnerRole = new gcp.projects.IAMCustomRole("backupRunner", {
   roleId: "backupRunner",
@@ -182,43 +121,137 @@ for (const [label, role] of [
   );
 }
 
-export const backupWorkflow = new gcp.workflows.Workflow(
-  "backup",
+// Names and metadata only, so the Workflow can see whether this month's copy exists without reading any.
+const copyListerRole = new gcp.projects.IAMCustomRole(
+  "copyLister",
   {
-    name: "backup",
-    region: location,
-    description: "Copies prod's databases and buckets to the backups project.",
-    serviceAccount: backupRunner.email,
-    sourceContents: fs.readFileSync(path.join(import.meta.dirname, "backup.workflow.yaml"), "utf8"),
-    userEnvVars: {
-      INSTANCE: instance.name,
-      BUCKET: databasesBucket.name,
-      TRANSFER_JOBS: pulumi.jsonStringify(transferJobs),
-    },
-    deletionProtection: true,
+    project: backupsProject.projectId,
+    roleId: "copyLister",
+    title: "Copy lister",
+    description: "Lists the backup copies, without reading them.",
+    permissions: ["storage.objects.list"],
   },
-  { dependsOn: workflowsApi },
+  { dependsOn: backupsServices },
 );
 
-// Twice a day, because an absence alert can wait at most 23.5 hours: one missed run leaves a gap of
-// 24, so it alerts, where a nightly run would alert every night.
-export const backupSchedule = new gcp.cloudscheduler.Job(
-  "backup",
-  {
-    name: "backup",
-    region: location,
-    schedule: "0 2,14 * * *",
-    timeZone: "America/Los_Angeles",
-    httpTarget: {
-      httpMethod: "POST",
-      uri: pulumi.interpolate`https://workflowexecutions.googleapis.com/v1/${backupWorkflow.id}/executions`,
-      body: Buffer.from("{}").toString("base64"),
-      headers: { "Content-Type": "application/json" },
-      oauthToken: {
-        serviceAccountEmail: backupRunner.email,
-        scope: "https://www.googleapis.com/auth/cloud-platform",
+new gcp.storage.BucketIAMMember(
+  "databases-backup-runner-lister",
+  { bucket: databasesBucket.name, role: copyListerRole.name, member: backupRunner.member },
+  iamOpts,
+);
+
+/**
+ * Copies prod's instance and buckets, so it needs them to exist. A rebuild in a new project sets
+ * `bootstrap:backupCopies` to false until infra has made them (docs/backups.md).
+ */
+function copyProd(): void {
+  // The prod instance, found as isthmia's db-tunnel finds it. Its own account writes each export.
+  const instance = gcp.sql
+    .getDatabaseInstancesOutput({ project: projectId, region: location })
+    .apply(({ instances }) => {
+      const prod = instances.filter((i) => i.name.startsWith("substrate-"));
+      if (prod.length !== 1) {
+        throw new Error(`Expected one prod Cloud SQL instance named substrate-*, found ${prod.length}.`);
+      }
+      return prod[0]!;
+    });
+
+  // Create only. Reading a copy would let anyone with cloudsql.admin on prod, deploy-runner included,
+  // import it and read it, so a restore grants read by hand for its length (docs/backups.md).
+  new gcp.storage.BucketIAMMember(
+    "databases-prod-sql-objectCreator",
+    {
+      bucket: databasesBucket.name,
+      role: "roles/storage.objectCreator",
+      member: pulumi.interpolate`serviceAccount:${instance.serviceAccountEmailAddress}`,
+    },
+    iamOpts,
+  );
+
+  const transferApi = enableService("storagetransfer.googleapis.com");
+  const workflowsApi = enableService("workflows.googleapis.com");
+  const schedulerApi = enableService("cloudscheduler.googleapis.com");
+
+  const transferAgent = gcp.storage.getTransferProjectServiceAccountOutput(
+    { project: projectId },
+    { dependsOn: transferApi },
+  );
+  const transferMember = pulumi.interpolate`serviceAccount:${transferAgent.email}`;
+
+  // The roles Storage Transfer documents for a bucket-to-bucket copy.
+  new gcp.storage.BucketIAMMember(
+    "files-transfer-writer",
+    { bucket: filesBucket.name, role: "roles/storage.legacyBucketWriter", member: transferMember },
+    iamOpts,
+  );
+
+  // One transfer job per bucket, into a folder named after it. Run by the Workflow, so it has no schedule.
+  const transferJobs = backedUpBuckets.map((source) => {
+    for (const role of ["roles/storage.objectViewer", "roles/storage.legacyBucketReader"]) {
+      new gcp.storage.BucketIAMMember(
+        `${source}-transfer-${role.replace("roles/storage.", "")}`,
+        { bucket: source, role, member: transferMember },
+        iamOpts,
+      );
+    }
+    const job = new gcp.storage.TransferJob(
+      `backup-${source}`,
+      {
+        description: `Copies ${source} to the backups project`,
+        transferSpec: {
+          gcsDataSource: { bucketName: source },
+          gcsDataSink: { bucketName: filesBucket.name, path: `${source}/` },
+          // A file deleted at the source becomes an old version here, kept for fileVersionDays.
+          transferOptions: { overwriteWhen: "DIFFERENT", deleteObjectsUniqueInSink: true },
+        },
+      },
+      { dependsOn: transferApi },
+    );
+    return { source, name: job.name };
+  });
+
+  const workflow = new gcp.workflows.Workflow(
+    "backup",
+    {
+      name: "backup",
+      region: location,
+      description: "Copies prod's databases and buckets to the backups project.",
+      serviceAccount: backupRunner.email,
+      sourceContents: fs.readFileSync(path.join(import.meta.dirname, "backup.workflow.yaml"), "utf8"),
+      userEnvVars: {
+        INSTANCE: instance.name,
+        BUCKET: databasesBucket.name,
+        TRANSFER_JOBS: pulumi.jsonStringify(transferJobs),
+      },
+      deletionProtection: true,
+    },
+    { dependsOn: workflowsApi },
+  );
+
+  // Twice a day, because an absence alert can wait at most 23.5 hours: one missed run leaves a gap of
+  // 24, so it alerts, where a nightly run would alert every night. In UTC, which has no skipped hour.
+  new gcp.cloudscheduler.Job(
+    "backup",
+    {
+      name: "backup",
+      region: location,
+      schedule: "0 10,22 * * *",
+      timeZone: "Etc/UTC",
+      httpTarget: {
+        httpMethod: "POST",
+        uri: pulumi.interpolate`https://workflowexecutions.googleapis.com/v1/${workflow.id}/executions`,
+        body: Buffer.from("{}").toString("base64"),
+        headers: { "Content-Type": "application/json" },
+        oauthToken: {
+          serviceAccountEmail: backupRunner.email,
+          scope: "https://www.googleapis.com/auth/cloud-platform",
+        },
       },
     },
-  },
-  { dependsOn: schedulerApi },
-);
+    { dependsOn: schedulerApi },
+  );
+}
+
+if (new pulumi.Config().getBoolean("backupCopies") ?? true) {
+  copyProd();
+}

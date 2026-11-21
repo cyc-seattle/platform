@@ -1,6 +1,6 @@
 # Copies each prod database, and each bucket with a transfer job, to the backups project (#170).
 # infra's alerts read the `backup` field of the lines it logs. A database the instance gains is
-# copied from its next run.
+# copied from its next run. Every copy gets a new name, since the bucket refuses to replace one.
 main:
   steps:
     - init:
@@ -11,9 +11,8 @@ main:
           - transferJobs: ${json.decode(sys.get_env("TRANSFER_JOBS"))}
           # Pacific time, such as 2026-11-21T02:00:00.123-08:00.
           - now: ${time.format(sys.now(), "America/Los_Angeles")}
-          - stamp: ${text.substring(now, 0, 13) + text.substring(now, 14, 16)}
-          # The 1st's early run also writes the copy kept for 13 months.
-          - monthly: ${text.substring(now, 8, 10) == "01" and int(text.substring(now, 11, 13)) < 12}
+          - stamp: ${text.replace_all(text.substring(now, 0, 19), ":", "")}
+          - month: ${text.substring(now, 0, 7)}
     - run:
         try:
           steps:
@@ -39,9 +38,18 @@ main:
                           instance: ${instance}
                           database: ${database.name}
                           uri: ${"gs://" + bucket + "/daily/" + database.name + "/" + stamp + ".sql.gz"}
+                    # The month's first good run also writes the copy kept for 13 months, so a failed
+                    # run on the 1st is made up by the next one.
+                    - findMonthly:
+                        call: googleapis.storage.v1.objects.list
+                        args:
+                          bucket: ${bucket}
+                          prefix: ${"monthly/" + database.name + "/" + month + "/"}
+                          maxResults: 1
+                        result: monthly
                     - monthlyCopy:
                         switch:
-                          - condition: ${monthly}
+                          - condition: ${not("items" in monthly)}
                             steps:
                               - export:
                                   call: export
@@ -49,18 +57,32 @@ main:
                                     project: ${project}
                                     instance: ${instance}
                                     database: ${database.name}
-                                    uri: ${"gs://" + bucket + "/monthly/" + database.name + "/" + text.substring(now, 0, 7) + ".sql.gz"}
+                                    uri: ${"gs://" + bucket + "/monthly/" + database.name + "/" + month + "/" + stamp + ".sql.gz"}
             - transferEach:
                 for:
                   value: job
                   in: ${transferJobs}
                   steps:
+                    # Waits for the transfer, and raises if its operation fails.
                     - transfer:
                         call: googleapis.storagetransfer.v1.transferJobs.run
                         args:
                           jobName: ${job.name}
                           body:
                             projectId: ${project}
+                          connector_params:
+                            timeout: 3600
+                        result: operation
+                    # A transfer can finish while some files failed, so check its counts too.
+                    - checkTransfer:
+                        switch:
+                          - condition: >-
+                              ${default(map.get(operation, ["metadata", "status"]), "SUCCESS") != "SUCCESS"
+                              or default(map.get(operation, ["metadata", "counters", "objectsFromSourceFailed"]), "0") != "0"
+                              or default(map.get(operation, ["metadata", "counters", "objectsFailedToDeleteFromSink"]), "0") != "0"}
+                            raise:
+                              message: ${"Transfer of " + job.source + " didn't fully succeed"}
+                              operation: ${operation}
                     - logTransfer:
                         call: sys.log
                         args:
