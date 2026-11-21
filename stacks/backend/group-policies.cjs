@@ -5,7 +5,14 @@
 // only links to the policies a group may give, and only for users on the roles it's told, so it
 // never touches a machine user or the first admin account. It also moves a user between Community
 // and Team as they join and leave a team, and never changes any other role, and gives each user
-// their person's first and last name.
+// their person's first and last name. It also keeps Authentik's sign-in groups equal to who holds
+// each sign-in policy, and removes any other policy linked straight to a managed user, so a policy
+// comes only from a role or a group.
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
+const fs = require("node:fs");
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
+const path = require("node:path");
 
 const WATCHED = new Set(["groups", "group_members", "group_policies"]);
 // What decides who is on a team.
@@ -91,6 +98,89 @@ function plan({ users, people, grants, links, emailCounts, linkedPeople, guardia
       return { user, policy };
     });
   return { add, remove, link, unlinked, personOf };
+}
+
+/**
+ * Per sign-in policy name, the lowercased emails of the logins whose person a group gives it.
+ * `policies` maps each sign-in policy's id to its name.
+ */
+function signInMembers({ users, personOf, grants, policies }) {
+  const given = new Map();
+  for (const { person_id, policy_id } of grants) {
+    if (!(policy_id in policies)) continue;
+    given.set(person_id, new Set([...(given.get(person_id) ?? []), policies[policy_id]]));
+  }
+  const members = Object.fromEntries(Object.values(policies).map((name) => [name, new Set()]));
+  for (const user of users) {
+    const email = user.email?.toLowerCase();
+    if (!email) continue;
+    for (const name of given.get(personOf.get(user.id)) ?? []) members[name].add(email);
+  }
+  return Object.fromEntries(Object.entries(members).map(([name, emails]) => [name, [...emails].sort()]));
+}
+
+/**
+ * The Authentik users to add to a group and take out of it, by pk. `members` are its users now,
+ * `wanted` the lowercased emails it should hold, and `found` the pk of each wanted email's active
+ * Authentik user. Someone who has never signed in has none, and joins on a later pass.
+ */
+function groupChanges({ members, wanted, found }) {
+  const want = new Set(wanted);
+  const have = new Set(members.map((member) => member.email?.toLowerCase()));
+  return {
+    add: wanted.filter((email) => !have.has(email) && found[email] !== undefined).map((email) => found[email]),
+    remove: members.filter((member) => !want.has(member.email?.toLowerCase())).map((member) => member.pk),
+  };
+}
+
+/**
+ * Makes each Authentik group in `members`, by name, hold exactly those emails' users. `request`
+ * calls Authentik's API with a path and options, and returns the parsed body.
+ */
+async function syncAuthentik({ members, request, logger }) {
+  for (const [name, wanted] of Object.entries(members)) {
+    const { results } = await request(`/core/groups/?name=${encodeURIComponent(name)}&include_users=true`);
+    const group = results.find((result) => result.name === name);
+    if (!group) {
+      logger.warn(`group-policies: Authentik has no ${name} group yet`);
+      continue;
+    }
+    const current = group.users_obj ?? [];
+    const have = new Set(current.map((member) => member.email?.toLowerCase()));
+    const found = {};
+    for (const email of wanted.filter((email) => !have.has(email))) {
+      const users = await request(`/core/users/?email=${encodeURIComponent(email)}&is_active=true`);
+      const user = users.results.find((result) => result.email?.toLowerCase() === email);
+      if (user) found[email] = user.pk;
+    }
+    const { add, remove } = groupChanges({ members: current, wanted, found });
+    for (const pk of add) await request(`/core/groups/${group.pk}/add_user/`, { method: "POST", body: { pk } });
+    for (const pk of remove) await request(`/core/groups/${group.pk}/remove_user/`, { method: "POST", body: { pk } });
+    if (add.length > 0 || remove.length > 0) {
+      logger.info(`group-policies: added ${add.length} to and took ${remove.length} out of Authentik's ${name} group`);
+    }
+  }
+}
+
+/** Calls Authentik's API with the address and token in `dir`, or returns undefined until they're there. */
+function authentikRequester(dir) {
+  let url, token;
+  try {
+    url = fs.readFileSync(path.join(dir, "url"), "utf8").trim();
+    token = fs.readFileSync(path.join(dir, "token"), "utf8").trim();
+  } catch {
+    return undefined;
+  }
+  return async (route, { method = "GET", body } = {}) => {
+    const response = await fetch(`${url}/api/v3${route}`, {
+      method,
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      ...(body !== undefined && { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`Authentik answered ${method} ${route} with ${response.status}`);
+    return response.status === 204 ? undefined : response.json();
+  };
 }
 
 /**
@@ -247,6 +337,26 @@ function register({ filter, action, schedule }, { services, database, getSchema,
     return new Set([...onTeam, ...parents].map((row) => row.id));
   }
 
+  // Authentik is a copy: a pass that can't reach it still applies Directus's links, and the next
+  // pass catches Authentik up.
+  let authentikWarned = false;
+  async function copyToAuthentik({ users, personOf, grants }) {
+    const request = authentikRequester(config.authentikDir);
+    if (!request) {
+      if (!authentikWarned) logger.warn("group-policies: no Authentik token yet, so sign-in groups wait");
+      authentikWarned = true;
+      return;
+    }
+    authentikWarned = false;
+    const rows = await database("directus_policies").select("id", "name").whereIn("name", config.signIn);
+    const policies = Object.fromEntries(rows.map((row) => [row.id, row.name]));
+    try {
+      await syncAuthentik({ members: signInMembers({ users, personOf, grants, policies }), request, logger });
+    } catch (error) {
+      logger.warn(error, "group-policies: couldn't update Authentik's sign-in groups");
+    }
+  }
+
   async function reconcile() {
     const ids = await grantableIds(database);
     const users = (
@@ -281,10 +391,8 @@ function register({ filter, action, schedule }, { services, database, getSchema,
         where.whereIn("id", linkedIds);
         if (emails.length > 0) where.orWhereIn(database.raw("lower(email)"), emails);
       });
-    const links =
-      ids.length === 0
-        ? []
-        : await database("directus_access").select("id", "user", "policy").whereNotNull("user").whereIn("policy", ids);
+    // Every policy linked straight to a user, so the plan removes any a group doesn't give.
+    const links = await database("directus_access").select("id", "user", "policy").whereNotNull("user");
     const emailCounts = {};
     for (const person of people) {
       const email = person.email?.toLowerCase();
@@ -344,6 +452,8 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       if (add.length > 0) await access.createMany(add);
       logger.info(`group-policies: gave ${add.length} and took away ${remove.length} policy links`);
     }
+
+    await copyToAuthentik({ users, personOf, grants });
 
     const named = renames({ users, people, personOf });
     if (named.length > 0) {
@@ -434,3 +544,6 @@ module.exports.teamMoves = teamMoves;
 module.exports.renames = renames;
 module.exports.applyMoves = applyMoves;
 module.exports.coalesce = coalesce;
+module.exports.signInMembers = signInMembers;
+module.exports.groupChanges = groupChanges;
+module.exports.syncAuthentik = syncAuthentik;

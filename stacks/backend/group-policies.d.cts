@@ -72,3 +72,40 @@ export function applyMoves(input: ApplyMovesInput): Promise<Record<string, numbe
 
 /** Runs `pass` now, or once more after the one running, however many times it's asked meanwhile. */
 export function coalesce(pass: () => Promise<unknown>): () => Promise<unknown>;
+
+export interface SignInMembersInput {
+  users: { id: string; email: string | null }[];
+  /** Each login's person. */
+  personOf: Map<string, string>;
+  grants: { person_id: string; policy_id: string }[];
+  /** Each sign-in policy's name, by id. */
+  policies: Record<string, string>;
+}
+
+/** Per sign-in policy name, the lowercased emails of the logins whose person a group gives it. */
+export function signInMembers(input: SignInMembersInput): Record<string, string[]>;
+
+export interface GroupChangesInput {
+  /** The group's Authentik users now. */
+  members: { pk: number; email?: string | null }[];
+  /** The lowercased emails the group should hold. */
+  wanted: string[];
+  /** Each wanted email's active Authentik user's pk, where it has one. */
+  found: Record<string, number>;
+}
+
+/** The Authentik users to add to a group and take out of it, by pk. */
+export function groupChanges(input: GroupChangesInput): { add: number[]; remove: number[] };
+
+/** Calls Authentik's API at a path under `/api/v3`, and returns the parsed body. */
+export type AuthentikRequest = (
+  route: string,
+  options?: { method?: "GET" | "POST"; body?: unknown },
+) => Promise<unknown>;
+
+/** Makes each Authentik group in `members`, by name, hold exactly those emails' users. */
+export function syncAuthentik(input: {
+  members: Record<string, string[]>;
+  request: AuthentikRequest;
+  logger: { info(message: string): void; warn(message: string): void };
+}): Promise<void>;

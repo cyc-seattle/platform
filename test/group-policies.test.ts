@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { applyMoves, coalesce, plan, renames, teamMoves } from "../stacks/backend/group-policies.cjs";
+import {
+  applyMoves,
+  coalesce,
+  groupChanges,
+  plan,
+  renames,
+  signInMembers,
+  syncAuthentik,
+  teamMoves,
+} from "../stacks/backend/group-policies.cjs";
 
 const login = (id: string, email: string | null, person_id: string | null = null) => ({ id, email, person_id });
 const once = { emailCounts: { "crew@example.com": 1, "new@example.com": 1 }, linkedPeople: [] };
@@ -142,6 +151,17 @@ describe("the group-policies hook's plan", () => {
     });
     expect(add).toEqual([]);
     expect(remove).toEqual(["a2", "a3"]);
+  });
+
+  it("takes away a policy linked straight to a login, which no group gives", () => {
+    const { remove } = plan({
+      users: [login("u-crew", "crew@example.com", "p-crew")],
+      people: [{ id: "p-crew", email: null }],
+      grants: [],
+      links: [{ id: "a1", user: "u-crew", policy: "crew-rules" }],
+      ...once,
+    });
+    expect(remove).toEqual(["a1"]);
   });
 
   it("takes away a login's links once it's unlinked from its person", () => {
@@ -364,5 +384,80 @@ describe("the hook's passes", () => {
     finish();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(passes).toBe(2);
+  });
+});
+
+describe("Authentik's sign-in groups", () => {
+  const policies = { "p-agent": "FreeScout Agent", "p-send": "Listmonk Send" };
+
+  it("hold the emails of each login whose person a group gives the policy, and no one else", () => {
+    const members = signInMembers({
+      users: [
+        { id: "u-gmail", email: "Alex@Gmail.example" },
+        { id: "u-work", email: "alex@work.example" },
+        { id: "u-other", email: "other@example.com" },
+        { id: "u-none", email: null },
+      ],
+      personOf: new Map([
+        ["u-gmail", "p-alex"],
+        ["u-work", "p-alex"],
+        ["u-other", "p-other"],
+        ["u-none", "p-alex"],
+      ]),
+      grants: [
+        { person_id: "p-alex", policy_id: "p-agent" },
+        { person_id: "p-alex", policy_id: "p-agent" },
+        { person_id: "p-other", policy_id: "writer" },
+      ],
+      policies,
+    });
+    expect(members).toEqual({
+      "FreeScout Agent": ["alex@gmail.example", "alex@work.example"],
+      "Listmonk Send": [],
+    });
+  });
+
+  it("add who's missing, if they have an Authentik account, and take out who shouldn't be there", () => {
+    expect(
+      groupChanges({
+        members: [
+          { pk: 1, email: "Kept@example.com" },
+          { pk: 2, email: "by-hand@example.com" },
+        ],
+        wanted: ["kept@example.com", "new@example.com", "never-signed-in@example.com"],
+        found: { "new@example.com": 3 },
+      }),
+    ).toEqual({ add: [3], remove: [2] });
+  });
+
+  it("are made right through Authentik's API, and a group Authentik lacks is skipped with a warning", async () => {
+    const calls: string[] = [];
+    const request = async (route: string, options: { method?: string; body?: unknown } = {}) => {
+      calls.push(`${options.method ?? "GET"} ${route} ${options.body ? JSON.stringify(options.body) : ""}`.trim());
+      if (route.startsWith("/core/groups/?name=FreeScout")) {
+        return {
+          results: [{ pk: "g1", name: "FreeScout Agent", users_obj: [{ pk: 2, email: "by-hand@example.com" }] }],
+        };
+      }
+      if (route.startsWith("/core/groups/?name=")) return { results: [] };
+      if (route.startsWith("/core/users/?email=new%40example.com")) {
+        return { results: [{ pk: 3, email: "new@example.com" }] };
+      }
+      return undefined;
+    };
+    const warnings: string[] = [];
+    await syncAuthentik({
+      members: { "FreeScout Agent": ["new@example.com"], "Listmonk Send": ["new@example.com"] },
+      request,
+      logger: { info: () => {}, warn: (message) => warnings.push(message) },
+    });
+    expect(calls).toEqual([
+      "GET /core/groups/?name=FreeScout%20Agent&include_users=true",
+      "GET /core/users/?email=new%40example.com&is_active=true",
+      'POST /core/groups/g1/add_user/ {"pk":3}',
+      'POST /core/groups/g1/remove_user/ {"pk":2}',
+      "GET /core/groups/?name=Listmonk%20Send&include_users=true",
+    ]);
+    expect(warnings).toEqual(["group-policies: Authentik has no Listmonk Send group yet"]);
   });
 });

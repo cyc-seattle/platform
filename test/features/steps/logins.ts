@@ -32,6 +32,9 @@ export const policyNames = [
   "Plan Admin",
   "Link Writer",
   "Announcement Writer",
+  "FreeScout Agent",
+  "Listmonk Write",
+  "Listmonk Send",
 ];
 export const roleNames = ["Community", "Team", "Crew", "Staff", "Admin"];
 export const serviceNames = Object.keys(services);
