@@ -140,11 +140,12 @@ describe("files bucket", () => {
     ]);
   });
 
-  it("gets Directus's prod files and prod's Pulumi state, each in its own folder", () => {
+  it("gets Directus's prod files, prod's Pulumi state, and Listmonk's pictures, each in its own folder", () => {
     const jobs = ofType("gcp:storage/transferJob:TransferJob");
     expect(jobs.map((j) => [j.transferSpec.gcsDataSource.bucketName, j.transferSpec.gcsDataSink.path])).toEqual([
       ["example-project-directus-files-prod", "example-project-directus-files-prod/"],
       ["example-project-pulumi-prod", "example-project-pulumi-prod/"],
+      ["example-project-listmonk-media-prod", "example-project-listmonk-media-prod/"],
     ]);
     for (const job of jobs) {
       expect(job.schedule).toBeUndefined();
@@ -169,6 +170,10 @@ describe("backup Workflow", () => {
         name: "transferJobs/backup-example-project-directus-files-prod",
       },
       { source: "example-project-pulumi-prod", name: "transferJobs/backup-example-project-pulumi-prod" },
+      {
+        source: "example-project-listmonk-media-prod",
+        name: "transferJobs/backup-example-project-listmonk-media-prod",
+      },
     ]);
   });
 

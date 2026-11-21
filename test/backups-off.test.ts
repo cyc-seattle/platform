@@ -30,7 +30,8 @@ beforeAll(async () => {
 describe("backups with backupCopies false, for a rebuild", () => {
   it("keeps the project and its buckets, and copies nothing from a prod that doesn't exist yet", () => {
     expect(types).toContain("gcp:organizations/project:Project");
-    expect(types.filter((t) => t === "gcp:storage/bucket:Bucket")).toHaveLength(2);
+    // The backups project's two, and Listmonk's pictures, which bootstrap also makes.
+    expect(types.filter((t) => t === "gcp:storage/bucket:Bucket")).toHaveLength(3);
     for (const type of [
       "gcp:workflows/workflow:Workflow",
       "gcp:cloudscheduler/job:Job",

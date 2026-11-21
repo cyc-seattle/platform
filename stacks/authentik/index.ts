@@ -16,6 +16,7 @@ import { Secret } from "../../src/app/secret.ts";
 import {
   loginHost,
   directusRedirectUri,
+  listmonkRedirectUri,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
   signInNormalizeExpression,
@@ -354,7 +355,7 @@ new authentik.Brand(
 new authentik.SystemSettings("system-settings", { defaultUserChangeEmail: false, impersonation: true }, opts);
 
 // --- 5. The `staff` group. Membership is managed by hand, not synced from anywhere.
-new authentik.Group(STAFF_GROUP_NAME, { name: STAFF_GROUP_NAME }, opts);
+const staffGroup = new authentik.Group(STAFF_GROUP_NAME, { name: STAFF_GROUP_NAME }, opts);
 
 // --- 6. Directus's admins, as Authentik superusers.
 adminGroup(siblingList("backend", "directusAdmins"), opts);
@@ -457,5 +458,42 @@ const signedInPolicy = new authentik.PolicyExpression(
 new authentik.PolicyBinding(
   "directus-signed-in-binding",
   { target: directusApplication.uuid, policy: signedInPolicy.id, order: 0 },
+  opts,
+);
+
+// --- 10. Listmonk, the newsletter. The client comes from platform's `listmonk` stack. Listmonk makes an
+// account on a first sign-in, so only staff get this far. access-334 replaces `staff` with the groups
+// for Listmonk Write and Listmonk Send (cyc-seattle/platform#334).
+const listmonkProvider = new ConfidentialOidcProvider(
+  "listmonk-oidc",
+  {
+    name: "Listmonk",
+    clientId: siblingOutput("listmonk", "oidcClientId"),
+    clientSecret: siblingSecret("listmonk", "oidcClientSecret"),
+    signingKey: signingCertificate.id,
+    authorizationFlow: implicitConsentFlow.id,
+    invalidationFlow: providerInvalidationFlow.id,
+    allowedRedirectUris: [
+      {
+        matching_mode: "strict",
+        redirect_uri_type: "authorization",
+        url: siblingOutput("listmonk", "url").apply(listmonkRedirectUri),
+      },
+    ],
+    // Listmonk finds the account by email, so it gets the same lowercased one as Directus.
+    propertyMappings: [openidScopeMapping.id, profileScopeMapping.id, directusEmailScopeMapping.id],
+  },
+  opts,
+);
+
+const listmonkApplication = new authentik.Application(
+  "listmonk",
+  { name: "Newsletter", slug: "listmonk", protocolProvider: numericId(listmonkProvider.providerOauth2Id) },
+  opts,
+);
+
+new authentik.PolicyBinding(
+  "listmonk-staff-binding",
+  { target: listmonkApplication.uuid, group: staffGroup.id, order: 0 },
   opts,
 );

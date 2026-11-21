@@ -38,6 +38,11 @@ export function directusRedirectUri(internalDomain: string): string {
   return `https://directus.${internalDomain}/auth/login/authentik/callback`;
 }
 
+/** Where Listmonk expects Authentik to send the browser back, from its root URL. */
+export function listmonkRedirectUri(rootUrl: string): string {
+  return `${rootUrl.replace(/\/+$/, "")}/auth/oidc`;
+}
+
 /**
  * The embedded outpost's `config` (`authentik.Outpost.config`, a JSON blob). Every key but
  * `authentik_host` is copied verbatim from the live outpost - Authentik's own blueprint reconciler
