@@ -10,6 +10,7 @@ import { directusFilesBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv, mailEnv } from "./workloads.ts";
+import { AUTHENTIK_ACCESS_SECRET } from "./policies.ts";
 import type { GroupPoliciesConfig, QueryGuardConfig, FrozenPlansConfig, WebsitePublishConfig } from "./policies.ts";
 import type { FormsConfig } from "./forms.cjs";
 
@@ -214,6 +215,15 @@ export async function deployDirectus(
         readOnly: true,
       })),
       { name: "migrations", mountPath: "/directus/migrations", configMap: migrations.metadata.name, readOnly: true },
+      // The `authentik` stack writes it, after this one deploys. A mounted Secret follows its changes, so
+      // the group-policies hook picks it up without a restart.
+      {
+        name: "authentik-access",
+        mountPath: extensions.groupPolicies.authentikDir,
+        secret: AUTHENTIK_ACCESS_SECRET,
+        optional: true,
+        readOnly: true,
+      },
     ],
     // The image's user is `node`, a name, which runAsNonRoot can't check.
     runAsUser: 1000,

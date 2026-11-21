@@ -1,12 +1,6 @@
 // Pure helpers factored out of index.ts so the hostnames and the OIDC scope mapping's expression
 // are each testable without standing up Pulumi or a live Authentik instance.
 
-/** Authentik's `staff` group. Membership is managed by hand. */
-export const STAFF_GROUP_NAME = "staff";
-
-/** The groups for the policies that let someone into Listmonk, which the policy sync makes (cyc-seattle/platform#334). */
-export const LISTMONK_GROUPS = ["Listmonk Write", "Listmonk Send"];
-
 /** Authentik's built-in objects this project looks up rather than manages. */
 export const IMPLICIT_CONSENT_FLOW = "default-provider-authorization-implicit-consent";
 export const PROVIDER_INVALIDATION_FLOW = "default-provider-invalidation-flow";
@@ -44,6 +38,14 @@ export function directusRedirectUri(internalDomain: string): string {
 /** Where Listmonk expects Authentik to send the browser back, from its root URL. */
 export function listmonkRedirectUri(rootUrl: string): string {
   return `${rootUrl.replace(/\/+$/, "")}/auth/oidc`;
+}
+
+/**
+ * The shared inbox's redirects, as a regex. FreeScout's sign-in module doesn't document its callback
+ * path, so this admits any path on the inbox's host until it's known (cyc-seattle/platform#182).
+ */
+export function inboxRedirectUriPattern(internalDomain: string): string {
+  return `^https://inbox\\.${internalDomain.replace(/\./g, "\\.")}/.*$`;
 }
 
 /**

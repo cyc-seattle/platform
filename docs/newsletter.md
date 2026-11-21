@@ -75,7 +75,7 @@ everything staff make stay in Listmonk.
 
 ## SES
 
-The `infra` stack holds SES ([manual-setup.md](manual-setup.md#11-the-newsletter-aws-ses-and-listmonk) makes the
+The `infra` stack holds SES ([manual-setup.md](manual-setup.md#12-the-newsletter-aws-ses-and-listmonk) makes the
 account and role):
 
 - The domain is verified with Easy DKIM, 2048-bit. Its 3 DKIM records and the `bounce.` Return-Path's MX and SPF

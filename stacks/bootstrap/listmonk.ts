@@ -48,7 +48,7 @@ new gcp.secretmanager.SecretVersion("listmonk-media-hmac", {
 });
 
 // CSC's AWS role trusts deploy-runner's own Google ID token, so infra signs in to SES with no stored key
-// (docs/manual-setup.md §11).
+// (docs/manual-setup.md §12).
 new gcp.serviceaccount.IAMMember(
   "deploy-runner-own-id-token",
   {

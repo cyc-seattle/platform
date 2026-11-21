@@ -18,6 +18,11 @@ Feature: Roles and groups
   and their details. An admin manages the groups in the Data Studio: who is in each one, and which
   policies each one gives. To change something means to add, edit, or delete it.
 
+  Some policies let their holders sign in to another app, and give nothing in the Data Studio:
+  FreeScout Agent signs in to FreeScout, the shared inbox, and Listmonk Write and Listmonk Send sign
+  in to Listmonk, the newsletter. A policy comes only from a role or a group, so an admin gives these
+  through a group too, and nobody gives them in Authentik, the sign-in service, itself.
+
   Some people sign in with more than one email, and each is a login of its own. Each login a person
   has gets everything the person does: their family, their role, and their groups' policies. A
   person's first login is linked to them by its email, and an admin links any other.
@@ -175,3 +180,32 @@ Feature: Roles and groups
     Example: A Team member can't change groups
       Given a user with the Team role
       Then they can't change groups
+
+  Rule: A group can let its members sign in to another app
+
+    Example: A volunteer in a group that gives FreeScout Agent can sign in to FreeScout
+      Given someone who has signed in, in a group that gives the FreeScout Agent policy
+      Then they can sign in to FreeScout
+
+    Example: Leaving the group stops them signing in
+      Given someone who has signed in, in a group that gives the FreeScout Agent policy
+      When an admin takes them out of the group
+      Then they can't sign in to FreeScout
+
+    Example: Someone let in by hand in Authentik is taken out
+      Given someone who has signed in with the Community role, in no group
+      And an Authentik admin adds them by hand to the people who can sign in to FreeScout
+      When the access sync runs
+      Then they can't sign in to FreeScout
+
+    Example: An admin in no such group can't sign in to Listmonk
+      Given someone who has signed in with the Admin role, in no group
+      When the access sync runs
+      Then they can't sign in to Listmonk
+
+  Rule: A policy comes only from a role or a group
+
+    Example: The Crew role's policy linked straight to someone's login is taken away
+      Given a user with the Community role
+      When an admin links the Crew role's policy straight to their login
+      Then they can't see the rosters

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   loginHost,
   directusRedirectUri,
+  inboxRedirectUriPattern,
   listmonkRedirectUri,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
@@ -26,6 +27,14 @@ describe("hostnames", () => {
   it("sends Listmonk's sign-in back to its /auth/oidc, with or without a trailing slash", () => {
     expect(listmonkRedirectUri("https://mail.example.org/")).toBe("https://mail.example.org/auth/oidc");
     expect(listmonkRedirectUri("https://mail.example.org")).toBe("https://mail.example.org/auth/oidc");
+  });
+
+  it("admits a redirect to any path on the inbox's host, and nowhere else", () => {
+    const pattern = new RegExp(inboxRedirectUriPattern("cycsail.team"));
+    expect(pattern.test("https://inbox.cycsail.team/oauth/callback")).toBe(true);
+    expect(pattern.test("https://inboxxcycsail.team/")).toBe(false);
+    expect(pattern.test("https://inbox.cycsail.team.example.com/")).toBe(false);
+    expect(pattern.test("http://inbox.cycsail.team/")).toBe(false);
   });
 });
 
