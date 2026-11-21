@@ -433,10 +433,14 @@ Listmonk sends the newsletter through Amazon SES ([newsletter.md](newsletter.md)
        website's address, and how signups are confirmed and bounces handled. AWS answers within 4 days.
 10. [ ] **Listmonk's stacks**, as for the inbox's (§11 step 1), with `--cwd stacks/listmonk`, before the PR that
         adds them merges. Commit the `encryptedkey` line each adds.
-11. [ ] **Bounces back to Listmonk.** Once `https://mail.<external domain>/health` answers, set
+11. [ ] **Send through SES.** Once SES is out of its test mode, set `listmonk:ses: true` in
+        `stacks/listmonk/Pulumi.prod.yaml`, and once `bootstrap` has made the pictures bucket,
+        `listmonk:mediaBucket: true`. Until then prod sends its confirmations through the Workspace relay, and keeps
+        pictures in the pod.
+12. [ ] **Bounces back to Listmonk.** Once `https://mail.<external domain>/health` answers, set
         `infra:listmonkFeedback: true` in a PR. Listmonk confirms SNS's subscription itself:
         **Amazon SNS → Subscriptions** shows it confirmed.
-12. [ ] **Listmonk's look.** Signed in as `admin` (`pulumi stack output adminPassword --show-secrets` in
+13. [ ] **Listmonk's look.** Signed in as `admin` (`pulumi stack output adminPassword --show-secrets` in
         `stacks/listmonk`), set the logo, colors, and the confirmation email's words under **Settings →
         Appearance** and **Campaigns → Templates**. Settings that live in code are written again at each start.
 

@@ -138,7 +138,8 @@ export function listmonkSettings(args: ListmonkSettingsArgs): Record<string, unk
         enabled: true,
         host: args.smtp.host,
         port: args.smtp.port,
-        auth_protocol: args.smtp.tls === "none" ? "none" : "login",
+        // The Workspace relay and Mailpit admit by address, with no login.
+        auth_protocol: args.smtp.username === "" ? "none" : "login",
         username: args.smtp.username,
         password: args.smtp.password,
         hello_hostname: "",

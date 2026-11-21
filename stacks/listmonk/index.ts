@@ -51,18 +51,25 @@ async function deploy() {
   ];
   const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
+  // Until `infra` has made SES's login (docs/manual-setup.md §12), prod sends through the Workspace relay,
+  // which admits the cluster by its address and suits a few confirmation emails, not the newsletter.
+  const ses = config.getBoolean("ses") ?? false;
   const smtp: pulumi.Output<SmtpServer> = isDev
     ? pulumi.output({ host: "mailpit", port: 1025, tls: "none" as const, username: "", password: "" })
-    : secretJson<{ username: string; password: string }>("listmonk-ses-smtp").apply(({ username, password }) => ({
-        host: "email-smtp.us-west-2.amazonaws.com",
-        port: 587,
-        tls: "STARTTLS" as const,
-        username,
-        password,
-      }));
+    : !ses
+      ? pulumi.output({ host: "smtp-relay.gmail.com", port: 587, tls: "STARTTLS" as const, username: "", password: "" })
+      : secretJson<{ username: string; password: string }>("listmonk-ses-smtp").apply(({ username, password }) => ({
+          host: "email-smtp.us-west-2.amazonaws.com",
+          port: 587,
+          tls: "STARTTLS" as const,
+          username,
+          password,
+        }));
 
   // Dev's pictures are made up, so they live in the pod and go with it.
-  const media: pulumi.Output<Media> = isDev
+  // Prod's bucket and its key come from `bootstrap`, so until it's applied, prod's are in the pod too.
+  const mediaInPod = isDev || !(config.getBoolean("mediaBucket") ?? false);
+  const media: pulumi.Output<Media> = mediaInPod
     ? pulumi.output({ provider: "filesystem" as const })
     : secretJson<{ accessId: string; secret: string }>("listmonk-media-hmac").apply(({ accessId, secret }) => ({
         provider: "s3" as const,
@@ -84,7 +91,7 @@ async function deploy() {
           oidcClientSecret: secret,
           trustedUrls: config.requireObject<string[]>("trustedUrls"),
           media,
-          sesBounces: !isDev,
+          sesBounces: ses,
         }),
         uuid,
         logins.map(({ login }, i) => ({ login, tokenHash: sha256(tokens[i]!) })),
@@ -161,7 +168,7 @@ async function deploy() {
       // Imports write their files here.
       { name: "tmp", mountPath: "/tmp", emptyDir: { sizeLimit: "256Mi" } },
       { name: "settings", mountPath: "/settings", secret: settings.metadata.name, readOnly: true },
-      ...(isDev ? [{ name: "uploads", mountPath: "/listmonk/uploads", emptyDir: { sizeLimit: "256Mi" } }] : []),
+      ...(mediaInPod ? [{ name: "uploads", mountPath: "/listmonk/uploads", emptyDir: { sizeLimit: "256Mi" } }] : []),
     ],
     runAsUser: 1000,
   });

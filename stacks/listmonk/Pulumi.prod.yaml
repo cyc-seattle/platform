@@ -6,6 +6,9 @@ config:
   listmonk:hostname: mail.cyccommunitysailing.org
   # Mailchimp's From today, so subscribers' filters still match (cyc-seattle/platform#180).
   listmonk:fromEmail: CYC Community Sailing Center <info@cyccommunitysailing.org>
+  # Turned on once SES's login and the pictures bucket exist (docs/manual-setup.md §12).
+  listmonk:ses: false
+  listmonk:mediaBucket: false
   listmonk:trustedUrls:
     - https://cyccommunitysailing.org/newsletter/check-your-email
 secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod

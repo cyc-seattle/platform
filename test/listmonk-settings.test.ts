@@ -87,6 +87,11 @@ describe("Listmonk's settings", () => {
   });
 
   it("sends through SMTP with STARTTLS, or plain to dev's Mailpit", () => {
+    const relay = listmonkSettings({
+      ...args,
+      smtp: { host: "smtp-relay.gmail.com", port: 587, tls: "STARTTLS", username: "", password: "" },
+    });
+    expect(relay["smtp"]).toEqual([expect.objectContaining({ tls_type: "STARTTLS", auth_protocol: "none" })]);
     expect(listmonkSettings(args)["smtp"]).toEqual([
       expect.objectContaining({ host: args.smtp.host, port: 587, tls_type: "STARTTLS", auth_protocol: "login" }),
     ]);
