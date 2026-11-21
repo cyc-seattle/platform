@@ -114,6 +114,8 @@ describe("the shared inbox in dev", () => {
       INBOX_SMTP_HOST: "greenmail",
       INBOX_SMTP_PORT: "3025",
       APP_REMOTE_HOST_WHITE_LIST: "greenmail,10.3.0.7",
+      INBOX_TEST_MAILBOX: "info@example.test",
+      INBOX_TEST_VOLUNTEER: "volunteer@example.test",
     });
   });
 

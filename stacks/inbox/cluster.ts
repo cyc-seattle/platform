@@ -24,6 +24,10 @@ const greenmailImage = "greenmail/standalone:2.1.5";
 /** The image's www-data, by number. */
 const WWW_DATA = 82;
 
+/** Dev's mailbox and the volunteer on it, which the integration tests use. */
+export const TEST_MAILBOX = "info@example.test";
+export const TEST_VOLUNTEER = "volunteer@example.test";
+
 export const imageTag = inputsTag(path.join(import.meta.dirname, "image"), ["."]);
 
 export interface InboxOnCluster {
@@ -108,7 +112,12 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
         dependsOn: [greenmail],
       },
     ).spec.clusterIP;
-    devEnv.push({ name: "APP_REMOTE_HOST_WHITE_LIST", value: pulumi.interpolate`${greenmail.host},${clusterIp}` });
+    devEnv.push(
+      { name: "APP_REMOTE_HOST_WHITE_LIST", value: pulumi.interpolate`${greenmail.host},${clusterIp}` },
+      // The image makes this mailbox, reading GreenMail, and a volunteer on it, for the tests.
+      { name: "INBOX_TEST_MAILBOX", value: TEST_MAILBOX },
+      { name: "INBOX_TEST_VOLUNTEER", value: TEST_VOLUNTEER },
+    );
   }
 
   // Attachments and installed modules. A pod's own disk loses them on every restart. Protected, so

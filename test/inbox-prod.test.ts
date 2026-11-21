@@ -87,6 +87,7 @@ describe("the shared inbox in prod", () => {
       INBOX_SMTP_ENCRYPTION: "tls",
     });
     expect(env()).not.toHaveProperty("APP_REMOTE_HOST_WHITE_LIST");
+    expect(env()).not.toHaveProperty("INBOX_TEST_MAILBOX");
     expect(resources.find((r) => r.name === "greenmail")).toBeUndefined();
   });
 

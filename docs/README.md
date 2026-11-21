@@ -10,6 +10,7 @@ How CYC's shared Google Cloud platform is built and run, for anyone who works on
 - [Who can do what](access.md): roles, policies, and the query guard
 - [The syncs](syncs.md): clubspot-sync and gsuite-sync
 - [The public website's content](website.md)
+- [The shared inbox](inbox.md): FreeScout, for info@
 - [Manual setup steps](manual-setup.md): what Pulumi can't do
 
 ## Data model

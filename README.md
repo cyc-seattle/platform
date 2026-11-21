@@ -15,7 +15,8 @@ platform is built, its data model, and the planning engine.
 | [`infra`](stacks/infra)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, Artifact Registry and its cleanup policy, the GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, the log exclusions, the public website's Firebase Hosting site, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass.                   |
 | [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                                                                                                                                                                                                                                                                                          | `deploy-dev`, from Actions for each merged PR. A deployer, with `PULUMI_STACK=dev mise run deploy`, when breaking glass. |
 | [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync and website build machine users, its OIDC client, and MCP, and the clubspot-sync and gsuite-sync CronJobs, with dev's Clubspot and Workspace fakes                                                                                                                                                                                                                                                                  | `deploy-dev` and then `deploy-runner`, from Actions on a push to `main`, after `infra`.                                  |
-| [`authentik`](stacks/authentik) | Authentik, the sign-in at `login.<domain>`: its server and worker, database, secrets, and A record, dev's Mailpit, and its own configuration: flows, stages, policies, the Google source, the `staff` group, the `Admins` superuser group, and the Directus OIDC and portal proxy applications                                                                                                                                                                                                                           | `deploy-dev` and then `deploy-runner`, from Actions on a push to `main`, after `backend`.                                |
+| [`inbox`](stacks/inbox)         | FreeScout, the shared inbox at `inbox.<domain>`, from our own image: its database, disk, secrets, OIDC client, and A record, and dev's GreenMail                                                                                                                                                                                                                                                                                                                                                                         | `deploy-dev` and then `deploy-runner`, from Actions on a push to `main`, after `backend`.                                |
+| [`authentik`](stacks/authentik) | Authentik, the sign-in at `login.<domain>`: its server and worker, database, secrets, and A record, dev's Mailpit, and its own configuration: flows, stages, policies, the Google source, the `staff` and `Inbox` groups, the `Admins` superuser group, and the Directus and Inbox OIDC and portal proxy applications                                                                                                                                                                                                    | `deploy-dev` and then `deploy-runner`, from Actions on a push to `main`, after `inbox`.                                  |
 
 ## @cyc-seattle/platform
 
@@ -124,8 +125,8 @@ changes, so a merge that changes nothing in prod asks for no approval. Dev build
 for every commit, and prod's CronJobs run the one built for theirs, so until cyc-seattle/isthmia#258
 every merge previews `backend`'s CronJobs as changed.
 
-`PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, `backend`, then
-`authentik`, and `prod` is `infra`, `backend`, then `authentik`. `integration` is dev only.
+`PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `dev` is `smoke`, `backend`, `inbox`,
+then `authentik`, and `prod` is `infra`, `backend`, `inbox`, then `authentik`. `integration` is dev only.
 
 `bootstrap` is never deployed from Actions (cyc-seattle/isthmia#118). It holds the identities that
 CI assumes, and a human with project Owner and `gh` `admin:org` applies it with the tasks below.
@@ -142,7 +143,7 @@ mise run deploy
 PULUMI_STACK=dev mise run deploy
 ```
 
-`mise run deploy` applies `infra`, `backend`, then `authentik`. isthmia's prod stacks read its outputs through a StackReference.
+`mise run deploy` applies `infra`, `backend`, `inbox`, then `authentik`. isthmia's prod stacks read its outputs through a StackReference.
 Dev stacks can't read prod state, so `infra` writes each environment's platform
 values to `platform/outputs.json` in that environment's state bucket.
 
