@@ -105,6 +105,11 @@ run = "node scripts/compare-dns.ts"
 description = "Load the website's proof of concept into $DIRECTUS_URL, after asking"
 run = "node scripts/load-website.ts"
 
+# By hand, each quarter, with Owner on csc-backups (docs/backups.md).
+[tasks.restore-drill]
+description = "Restore the latest prod backups into a throwaway instance, check Directus starts on them, and delete it"
+run = "./scripts/restore-drill"
+
 # Needs the dev deploy, so it isn't part of ci.
 [tasks.integration]
 description = "Run the integration tests against dev"

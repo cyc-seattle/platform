@@ -562,6 +562,84 @@ describe("Job alerts", () => {
   });
 });
 
+describe("backup alerts", () => {
+  const policy = (name: string) => byName("gcp:monitoring/alertPolicy:AlertPolicy", name);
+
+  it("email the alert addresses", () => {
+    for (const name of ["backup-failed", "backup-absent"]) {
+      expect(policy(name).notificationChannels).toEqual(["alerts-0_name"]);
+    }
+  });
+
+  it("alert on a failed run of the backup Workflow", () => {
+    const [condition] = policy("backup-failed").conditions;
+    expect(condition.conditionMatchedLog.filter).toBe(
+      'resource.type="workflows.googleapis.com/Workflow"\nresource.labels.workflow_id="backup"\njsonPayload.backup="failed"',
+    );
+  });
+
+  it("count each database and bucket copied", () => {
+    const metric = byName("gcp:logging/metric:Metric", "backup-finished");
+    expect(metric.filter).toContain('jsonPayload.backup="finished"');
+    expect(metric.labelExtractors).toEqual({ item: "EXTRACT(jsonPayload.item)" });
+  });
+
+  it("alert on each one not copied in 23.5 hours, the longest an absence condition waits", () => {
+    const [condition] = policy("backup-absent").conditions;
+    expect(condition.conditionAbsent).toMatchObject({
+      filter:
+        'metric.type="logging.googleapis.com/user/prod-backup-finished" AND resource.type="workflows.googleapis.com/Workflow"',
+      duration: "84600s",
+    });
+    expect(condition.conditionAbsent.aggregations[0].crossSeriesReducer).toBeUndefined();
+  });
+});
+
+describe("uptime checks", () => {
+  const checks = () => created.filter((r) => r.type === "gcp:monitoring/uptimeCheckConfig:UptimeCheckConfig");
+  const policy = (name: string) => byName("gcp:monitoring/alertPolicy:AlertPolicy", name);
+
+  it("check each public address over HTTPS, validating its certificate", () => {
+    expect(
+      Object.fromEntries(checks().map((r) => [r.inputs.monitoredResource.labels.host, r.inputs.httpCheck.path])),
+    ).toEqual({
+      "example.team": "/",
+      "directus.example.team": "/server/info",
+      "login.example.team": "/-/health/live/",
+      "example.org": "/",
+      "www.example.org": "/",
+    });
+    for (const { inputs } of checks()) {
+      expect(inputs.httpCheck).toMatchObject({ port: 443, useSsl: true, validateSsl: true });
+      expect(inputs.selectedRegions).toHaveLength(3);
+    }
+  });
+
+  it("accept a redirect only from the website", () => {
+    const redirects = checks()
+      .filter((r) =>
+        r.inputs.httpCheck.acceptedResponseStatusCodes.some((c: any) => c.statusClass === "STATUS_CLASS_3XX"),
+      )
+      .map((r) => r.inputs.monitoredResource.labels.host);
+    expect(redirects).toEqual(["example.org", "www.example.org"]);
+  });
+
+  it("alert when 2 of 3 regions fail an address for 5 minutes", () => {
+    const { conditionThreshold } = policy("site-down").conditions[0];
+    expect(conditionThreshold).toMatchObject({ comparison: "COMPARISON_GT", thresholdValue: 1, duration: "300s" });
+    expect(conditionThreshold.aggregations[0]).toMatchObject({
+      crossSeriesReducer: "REDUCE_COUNT_FALSE",
+      groupByFields: ["resource.label.host"],
+    });
+  });
+
+  it("alert when a certificate has under 14 days left", () => {
+    const { conditionThreshold } = policy("certificate-expiring").conditions[0];
+    expect(conditionThreshold.filter).toContain("uptime_check/time_until_ssl_cert_expires");
+    expect(conditionThreshold).toMatchObject({ comparison: "COMPARISON_LT", thresholdValue: 14 });
+  });
+});
+
 describe("Artifact Registry", () => {
   const repository = () => byName("gcp:artifactregistry/repository:Repository", "artifact-repository");
 

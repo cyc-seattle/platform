@@ -215,6 +215,28 @@ during a newsletter send.
 
 From then on, the domain's records change only in `external-records.ts`, never at Porkbun.
 
+## 10. The backups project
+
+`bootstrap` makes `csc-backups` and everything in it ([backups.md](backups.md)). Making a project under
+the organization needs more than project Owner.
+
+1. [ ] The person who applies `bootstrap` holds **Project Creator** on the organization and **Billing
+       Account User** on the billing account `cyc-admin-scripts` uses. Check with:
+
+   ```sh
+   gcloud organizations get-iam-policy <ORG_ID> --flatten=bindings --filter="bindings.members:user:<deployer-email>" --format="value(bindings.role)"
+   ```
+
+   An organization admin grants what's missing in the
+   [IAM console](https://console.cloud.google.com/iam-admin/iam), at the organization.
+
+2. [ ] Check prod's Cloud SQL instance and the buckets `bootstrap` copies exist, which only a rebuild
+       lacks ([backups.md](backups.md#if-the-main-project-is-lost)). Then `mise run preview-bootstrap`,
+       and `mise run deploy-bootstrap`. It also gives deploy-runner the
+       role the `infra` stack's uptime checks need, so apply `infra` after it.
+3. [ ] After the next run (10:00 or 22:00 UTC), check both buckets have copies, then run the first drill,
+       `mise run restore-drill`, and paste its result in cyc-seattle/platform#170.
+
 ## When you add a new manual step
 
 If you add infrastructure that needs an out-of-band action, add it here.
