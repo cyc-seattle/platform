@@ -3,3 +3,4 @@ config:
   gcp:region: us-west1
   inbox:adminEmail: master@cyccommunitysailing.org
 secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-dev
+encryptedkey: CiQAwaFTJFymqvKY70lfGlEt5fq2kZx62DySWaiwHAZIaDX6d3sSSQBLFC/+cFLdjP1BubmWYcvzufIpDS5517vjys09rYUKXuEOKKQck1PI0xVTgbVGBRS4fecItHdE713grCtNxBOm4f5qweHcmZ0=
