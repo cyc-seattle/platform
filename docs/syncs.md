@@ -348,7 +348,7 @@ off, unarchived on the next discovery run. Every write pass and most of the audi
 row; the audit still raises `missing_group` for one if a program still points at it - the one case
 that needs a human.
 
-**Every write pass is add-only.** A person removed from `clubspot_registration_entries`, or a role revoked
+**Every write pass for a program is add-only.** A person removed from `clubspot_registration_entries`, or a role revoked
 in `program_role_assignments`, simply stops being re-added on the next run — nobody is ever removed
 from a Google Group by this job.
 
@@ -373,6 +373,21 @@ A row's `email` is the address the sync last saw for that person. When a person'
 the sync adds the new address and updates the row, unless the row is removed. People who share an
 address share its row state: if any of them is recorded as removed, nobody re-adds the address.
 The audit treats a removed person as intentionally absent, and raises nothing for them.
+
+**A group in the CRM can fill a Google Group, exactly.** An admin picks a Google Group on a group's
+page (`groups.google_group_id`, declared in `schemas/gsuite.yaml`), such as board@ for the Board of
+Directors. Each run, `access-groups.ts` plans that Google Group's members as the group members' main
+emails, skipping an unusable one, which the audit reports as `invalid_email`. The sync adds who's
+missing and takes out every other plain member, so someone who leaves board@ on their own is put
+back. It never takes out a manager, an owner, or a nested group. It keeps no
+`google_group_memberships` rows for these, since the CRM group says exactly who belongs.
+
+**A Google Group a CRM group shares is filled by neither.** A CRM group takes out whoever isn't in
+it, so it can't share a Google Group with a program, which only adds, or with another CRM group.
+The sync fills such a Google Group from none of its sources, and the audit reports it as
+`google_group_filled_twice`, until only one source is left. Programs can still share one Google
+Group with each other. `googleGroupSources` is the one place that decides which Google Group a
+program or a CRM group fills.
 
 **A program's membership task is enqueued on `google_group_id` alone, not on having a due class.**
 A program whose only current activity is a `program_role_assignments` row — off-season, or set up

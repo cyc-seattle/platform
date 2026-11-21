@@ -10,7 +10,7 @@ import {
 } from "@cyc-seattle/gsuite-sdk";
 import { type SettingsReader } from "../../../src/syncs/gsuite/audit-settings.ts";
 import { type DirectoryReader } from "../../../src/syncs/gsuite/audit-writer.ts";
-import { type MemberAdder } from "../../../src/syncs/gsuite/directory-writer.ts";
+import { type MemberAdder, type MemberRemover } from "../../../src/syncs/gsuite/directory-writer.ts";
 import { type GroupDirectoryReader } from "../../../src/syncs/gsuite/discovery-writer.ts";
 import {
   enqueueAudit,
@@ -114,6 +114,16 @@ function recordingAdder(): MemberAdder & { calls: [string, string, GroupRole][] 
     async addMember(groupKey: string, email: string, role: GroupRole): Promise<AddMemberResult> {
       calls.push([groupKey, email, role]);
       return "added";
+    },
+  };
+}
+
+function recordingRemover(): MemberRemover & { calls: [string, string][] } {
+  const calls: [string, string][] = [];
+  return {
+    calls,
+    async removeMember(groupKey: string, email: string): Promise<void> {
+      calls.push([groupKey, email]);
     },
   };
 }
@@ -375,6 +385,103 @@ describe("enqueueDiscovery", () => {
 });
 
 describe("runGroupSync", () => {
+  it("makes a CRM group's Google Group hold exactly its members, and leaves its manager", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      google_groups: [{ id: "g-board", email: "board@cyccommunitysailing.org" }],
+      groups: [{ id: "board", name: "Board of Directors", google_group_id: "g-board" }],
+      group_members: [{ id: "m1", group_id: "board", person_id: "p-new" }],
+      people: [{ id: "p-new", email: "new@example.com" }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const directus = new DirectusClient(baseUrl, token);
+    const adder = recordingAdder();
+    const remover = recordingRemover();
+
+    const result = await runGroupSync({
+      now,
+      directus,
+      queue: new SyncQueue(directus),
+      adder,
+      remover,
+      settingsApplier: recordingSettingsApplier(),
+      directory: fakeDirectory({
+        async listGroups() {
+          return liveGroupsFrom(tables);
+        },
+        async listMembers(groupKey: string) {
+          return groupKey === "board@cyccommunitysailing.org"
+            ? [
+                { email: "left@example.com", role: "MEMBER", type: "USER" },
+                { email: "chair@example.com", role: "MANAGER", type: "USER" },
+              ]
+            : [];
+        },
+      }),
+      settingsReader: fakeSettingsReader(),
+      groupOwners: [],
+      customer,
+    });
+
+    expect(result.status).toBe("ok");
+    expect(adder.calls).toEqual([["board@cyccommunitysailing.org", "new@example.com", "MEMBER"]]);
+    expect(remover.calls).toEqual([["board@cyccommunitysailing.org", "left@example.com"]]);
+  });
+
+  it("fills a Google Group from neither a program nor a CRM group when both fill it, and reports it", async () => {
+    const { fetchMock, tables } = makeDirectusStore({
+      programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1" }],
+      clubspot_classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
+      clubspot_camps: [{ id: "camp-1", end_date: null }],
+      google_groups: [{ id: "group-1", email: "program-1@cyccommunitysailing.org" }],
+      clubspot_registration_entries: [{ id: "e1", registration_id: "r1", class_id: "class-1", status: "confirmed" }],
+      clubspot_registrations: [{ id: "r1", participant_id: "participant-r1" }],
+      clubspot_participants: [{ id: "participant-r1", person_id: "participant" }],
+      people: [
+        { id: "participant", email: "participant@example.com" },
+        { id: "p-board", email: "board@example.com" },
+      ],
+      groups: [{ id: "board", name: "Board of Directors", google_group_id: "group-1" }],
+      group_members: [{ id: "m1", group_id: "board", person_id: "p-board" }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const directus = new DirectusClient(baseUrl, token);
+    const adder = recordingAdder();
+    const remover = recordingRemover();
+
+    await runGroupSync({
+      now,
+      directus,
+      queue: new SyncQueue(directus),
+      adder,
+      remover,
+      settingsApplier: recordingSettingsApplier(),
+      directory: fakeDirectory({
+        async listGroups() {
+          return liveGroupsFrom(tables);
+        },
+        async listMembers() {
+          return [{ email: "someone@example.com", role: "MEMBER", type: "USER" }];
+        },
+      }),
+      settingsReader: fakeSettingsReader(),
+      groupOwners: [],
+      customer,
+    });
+
+    expect(adder.calls).toEqual([]);
+    expect(remover.calls).toEqual([]);
+    expect(tables.get("audit_findings")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "google_group_filled_twice",
+          subject: "program-1@cyccommunitysailing.org",
+          detail:
+            "program-1@cyccommunitysailing.org is filled by the program Double-handed and the group Board of Directors, so the Google sync fills it from neither until only one does",
+        }),
+      ]),
+    );
+  });
+
   it("adds every planned program member as MEMBER and reports the task as checked", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1" }],
@@ -398,6 +505,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory({
         async listGroups() {
@@ -461,6 +569,7 @@ describe("runGroupSync", () => {
       directus,
       queue: new SyncQueue(directus),
       adder,
+      remover: recordingRemover(),
       settingsApplier: recordingSettingsApplier(),
       directory: fakeDirectory({
         async listGroups() {
@@ -504,6 +613,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       // The program's own group row is deliberately absent; a group unrelated to it stands in for
       // the live Workspace list, since `planGroupUpserts` throws on an empty one.
@@ -573,6 +683,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory({
         async listGroups() {
@@ -624,6 +735,7 @@ describe("runGroupSync", () => {
       directus,
       queue: new SyncQueue(directus),
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory({ listGroups }),
       settingsReader: fakeSettingsReader(),
@@ -649,6 +761,7 @@ describe("runGroupSync", () => {
       directus,
       queue: new SyncQueue(directus),
       adder: recordingAdder(),
+      remover: recordingRemover(),
       settingsApplier: recordingSettingsApplier(),
       directory: fakeDirectory(),
       settingsReader: fakeSettingsReader(),
@@ -687,6 +800,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory({
         async listGroups() {
@@ -738,6 +852,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       // No google_groups row to preserve here - one unrelated live group stands in, since
       // `planGroupUpserts` throws on an empty live list. Discovery creates a row for it, which
@@ -801,6 +916,7 @@ describe("runGroupSync", () => {
       directus,
       queue: new SyncQueue(directus),
       adder: recordingAdder(),
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory({
         async listGroups() {
@@ -856,6 +972,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory({
         async listGroups() {
@@ -894,6 +1011,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory(),
       settingsReader: fakeSettingsReader(),
@@ -925,6 +1043,7 @@ describe("runGroupSync", () => {
       directus,
       queue,
       adder,
+      remover: recordingRemover(),
       settingsApplier,
       directory: fakeDirectory({
         async listGroups() {

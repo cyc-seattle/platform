@@ -17,3 +17,17 @@ export function dryRunMemberAdder(): MemberAdder {
     },
   };
 }
+
+/** Takes a member out of a group: the one write a group in the CRM needs that a program's never does. */
+export interface MemberRemover {
+  removeMember(groupKey: string, email: string): Promise<void>;
+}
+
+/** Logs the removal instead of making it, for a `--dry-run` run. */
+export function dryRunMemberRemover(): MemberRemover {
+  return {
+    async removeMember(groupKey, email) {
+      winston.info("Dry run: skipping remove group member", { groupKey, email });
+    },
+  };
+}

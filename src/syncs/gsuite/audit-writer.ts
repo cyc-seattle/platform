@@ -27,6 +27,7 @@ import {
   type AuditTables,
   candidateMemberPeople,
   findClassesWithoutProgram,
+  findContestedGoogleGroups,
   findInvalidEmails,
   findAreaAccountMismatches,
   findMismatchedRevenueAccounts,
@@ -42,6 +43,7 @@ import {
   plannedGroupMembers,
 } from "./audit.ts";
 import { findSettingsDrift, type SettingsReader } from "./audit-settings.ts";
+import { accessGroupPeople, googleGroupSources, readAccessGroups } from "./access-groups.ts";
 import { type GoogleGroupMembershipRow, type GoogleGroupRow, type ProgramWithGoogleGroup } from "./schema.ts";
 
 /** The slice of `DirectoryClient` the audit pass reads through - narrow enough that a real
@@ -140,7 +142,20 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
   const candidatePeople = candidateMemberPeople(tables, now);
   const secondaryEmails = findSecondaryEmailAddresses(candidatePeople, tables.contactPoints);
 
+  const [accessGroups, accessGroupMembers] = await readAccessGroups(directus);
+  // Someone in a group that fills a Google Group is skipped there if their email isn't usable, too.
+  const groupPeople = accessGroups
+    .filter((group) => group.id && group.google_group_id)
+    .flatMap((group) => accessGroupPeople(group.id as string, accessGroupMembers, tables.people));
+  const reported = new Set(candidatePeople.map((person) => person.id));
+
   const findings: GsuiteAuditFinding[] = [
+    ...findContestedGoogleGroups(
+      tables.groups,
+      googleGroupSources(tables.programs, accessGroups),
+      tables.programs,
+      accessGroups,
+    ),
     ...findProgramsWithoutGroup(tables.programs),
     ...findClassesWithoutProgram(tables.classes),
     ...findProgramProductProblems(tables.programs, tables.products),
@@ -153,7 +168,10 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
       tables.programAreas,
     ),
     ...findAreaAccountMismatches(tables.products, tables.programAreas),
-    ...findInvalidEmails(candidatePeople),
+    ...findInvalidEmails([
+      ...candidatePeople,
+      ...groupPeople.filter((person) => !reported.has(person.id) && reported.add(person.id)),
+    ]),
   ];
 
   for (const group of tables.groups) {

@@ -714,6 +714,55 @@ fields:
       has_auto_increment: false
       foreign_key_table: google_groups
       foreign_key_column: id
+  - collection: groups
+    field: google_group_id
+    type: uuid
+    meta:
+      collection: groups
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}} <{{email}}>"
+      field: google_group_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: "Its members become exactly this group's members: the Google sync adds and takes out people, but never a manager or owner."
+      options:
+        filter:
+          archived:
+            _eq: false
+        template: "{{name}} <{{email}}>"
+        enableCreate: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Google Group
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: google_group_id
+      table: groups
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: google_groups
+      foreign_key_column: id
 relations:
   - collection: google_groups
     field: parent_id
@@ -797,5 +846,26 @@ relations:
       foreign_key_table: google_groups
       foreign_key_column: id
       constraint_name: programs_google_group_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: groups
+    field: google_group_id
+    related_collection: google_groups
+    meta:
+      junction_field: null
+      many_collection: groups
+      many_field: google_group_id
+      one_allowed_collections: null
+      one_collection: google_groups
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: groups
+      column: google_group_id
+      foreign_key_table: google_groups
+      foreign_key_column: id
+      constraint_name: groups_google_group_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL

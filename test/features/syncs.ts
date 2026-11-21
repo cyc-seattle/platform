@@ -69,7 +69,16 @@ export async function runClubspotSync(campId: string): Promise<void> {
 }
 
 /** Runs gsuite-sync for one program's group, and fails if the run does. */
-export async function runGoogleSync(programId: string): Promise<void> {
+export function runGoogleSync(programId: string): Promise<void> {
+  return runGoogleSyncFor({ programId });
+}
+
+/** Runs gsuite-sync for one CRM group's Google group, and fails if the run does. */
+export function runGoogleSyncForGroup(accessGroupId: string): Promise<void> {
+  return runGoogleSyncFor({ accessGroupId });
+}
+
+async function runGoogleSyncFor(target: { programId: string } | { accessGroupId: string }): Promise<void> {
   const env = await cronJobEnv("gsuite-sync");
   const client = await directus(env["DIRECTUS_TOKEN"]!);
   // The Workspace fake ignores auth, and the forwarder sends the cluster's token in its place.
@@ -88,10 +97,10 @@ export async function runGoogleSync(programId: string): Promise<void> {
       settingsReader,
       groupOwners: env["GSUITE_SYNC_GROUP_OWNERS"]!.split(","),
       customer: env["GSUITE_SYNC_CUSTOMER"]!,
-      programId,
+      ...target,
     }),
   );
   if (result.status !== "ok") {
-    throw new Error(`gsuite-sync failed for the program ${programId}: ${JSON.stringify(result)}`);
+    throw new Error(`gsuite-sync failed for ${JSON.stringify(target)}: ${JSON.stringify(result)}`);
   }
 }
