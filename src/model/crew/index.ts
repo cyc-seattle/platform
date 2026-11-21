@@ -7,7 +7,6 @@
 export interface CrewMemberRow {
   id: string;
   person_id: string;
-  website_name: string | null;
   website_bio: string | null;
   website_photo: string | null;
   on_website: boolean;
@@ -17,7 +16,6 @@ export interface CrewMemberRow {
 export interface CrewPositionRow {
   id: string;
   name: string;
-  title: string | null;
   description: string | null;
 }
 

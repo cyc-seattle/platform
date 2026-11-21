@@ -113,7 +113,7 @@ export const defaultViews: DefaultView[] = [
     sort: ["person_id.last_name", "person_id.first_name"],
     fields: ["person_id", "terms", "on_website"],
   },
-  { collection: "crew_positions", sort: ["name"], fields: ["name", "title", "qualifications"] },
+  { collection: "crew_positions", sort: ["name"], fields: ["name", "description", "qualifications"] },
   {
     collection: "crew_terms",
     sort: ["-starts_on", "position_id.name"],

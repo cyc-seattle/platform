@@ -322,7 +322,7 @@ describe("the Plan policies", () => {
       expect(crew).toEqual([
         { collection: "crew_terms", action: "read" },
         { collection: "crew_members", action: "read", fields: ["id", "person_id"] },
-        { collection: "crew_positions", action: "read", fields: ["id", "name", "title"] },
+        { collection: "crew_positions", action: "read", fields: ["id", "name"] },
         { collection: "people", action: "read", fields: ["id", "first_name", "last_name"] },
       ]);
     }
@@ -533,11 +533,11 @@ describe("the csc-website build's rules", () => {
   it("read a crew member's website fields only while they're on it, and only their current terms", () => {
     expect(rules.filter((rule) => rule.collection.startsWith("crew_"))).toEqual(WEBSITE_CREW_RULES);
     const [members, terms, positions] = WEBSITE_CREW_RULES;
-    expect(members!.fields).toEqual(["id", "website_name", "website_bio", "website_photo"]);
+    expect(members!.fields).toEqual(["id", "website_bio", "website_photo"]);
     expect(members!.permissions).toEqual({ on_website: { _eq: true } });
     expect(terms!.fields).not.toEqual(expect.arrayContaining(CREW_PAY_FIELDS));
     expect(JSON.stringify(terms!.permissions)).toContain("on_website");
-    expect(positions!.fields).toEqual(["id", "name", "title"]);
+    expect(positions!.fields).toEqual(["id", "name"]);
     for (const rule of WEBSITE_CREW_RULES) {
       expect(rule.fields).not.toContain("person_id");
       expect(rule.fields).not.toContain("*");

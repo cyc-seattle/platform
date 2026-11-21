@@ -439,8 +439,6 @@ export interface CrewMembers {
   id: string;
   /** Each person is on Crew once. */
   person_id: string | People;
-  /** What the website calls them. For anyone under 18, first name only. */
-  website_name: string | null;
   /** Markdown. */
   website_bio: string | null;
   /** Kept in the Website folder, so anyone can see it. */
@@ -462,8 +460,6 @@ export interface CrewPositions {
   id: string;
   /** Such as Treasurer, Director 1A, or Parent Coordinator. */
   name: string;
-  /** What the website calls someone in it, such as Director for seat 1A. Leave empty to use the name. */
-  title: string | null;
   /** What the job is, and how someone is chosen for it. Markdown. */
   description: string | null;
   /** What someone in this position must hold. */

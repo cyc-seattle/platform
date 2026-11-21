@@ -253,7 +253,6 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   crew_members: async () => ({
     id: randomUUID(),
     person_id: (await adminCreate("people", await newRow("people", { first_name: "Casey" }))).id,
-    website_name: "Casey",
     on_website: false,
   }),
   crew_positions: async () => ({ id: randomUUID(), name: `Position ${key("position")}` }),

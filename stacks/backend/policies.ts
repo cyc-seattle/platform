@@ -110,7 +110,7 @@ export const WEBSITE_CREW_RULES: PermissionRuleInput[] = [
     collection: "crew_members",
     action: "read",
     permissions: { on_website: { _eq: true } },
-    fields: ["id", "website_name", "website_bio", "website_photo"],
+    fields: ["id", "website_bio", "website_photo"],
   },
   {
     collection: "crew_terms",
@@ -125,7 +125,7 @@ export const WEBSITE_CREW_RULES: PermissionRuleInput[] = [
     },
     fields: ["id", "crew_member_id", "position_id", "starts_on", "ends_on"],
   },
-  { collection: "crew_positions", action: "read", fields: ["id", "name", "title"] },
+  { collection: "crew_positions", action: "read", fields: ["id", "name"] },
 ];
 
 /** The Crew collections whose writes change what the website shows. */
@@ -317,7 +317,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   const readCrewPay = [
     { collection: "crew_terms", action: "read" as const },
     { collection: "crew_members", action: "read" as const, fields: ["id", "person_id"] },
-    { collection: "crew_positions", action: "read" as const, fields: ["id", "name", "title"] },
+    { collection: "crew_positions", action: "read" as const, fields: ["id", "name"] },
     { collection: "people", action: "read" as const, fields: ["id", "first_name", "last_name"] },
   ];
   // Picking someone for Crew: never more of a person than their name and email.

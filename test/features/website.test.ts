@@ -173,11 +173,8 @@ const byId = (collection: string, id: string, fields = "id") =>
   `/items/${collection}?fields=${fields}&filter=${encodeURIComponent(JSON.stringify({ id: { _eq: id } }))}`;
 
 Step("it can see their name, bio and photo for the website", async () => {
-  const { status, body } = await read(
-    `/items/crew_members/${crew!.memberId}?fields=id,website_name,website_bio,website_photo`,
-  );
+  const { status, body } = await read(`/items/crew_members/${crew!.memberId}?fields=id,website_bio,website_photo`);
   expect(status, JSON.stringify(body)).toBe(200);
-  expect(body.data.website_name).toBe("Casey");
 });
 Step("it can see their term as Head Coach", async () => {
   const { status, body } = await read(`/items/crew_terms/${crew!.termId}?fields=id,position_id.name`);
