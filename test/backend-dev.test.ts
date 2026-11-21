@@ -88,6 +88,8 @@ const extensions = {
     community: "Community",
     team: "Team",
     teamMonths: 12,
+    signIn: [],
+    authentikDir: "/directus/authentik-access",
   },
   frozenPlans: {
     rows: ["plan_offerings"],
@@ -183,6 +185,20 @@ describe("Directus's extensions", () => {
     expect(JSON.parse(data["config.json"])).toEqual(config);
     expect(container("directus").volumeMounts).toEqual(
       expect.arrayContaining([expect.objectContaining({ mountPath: `/directus/extensions/${name}` })]),
+    );
+  });
+
+  it("mounts the Secret the authentik stack writes for the group-policies hook, and starts without it", () => {
+    const spec = find("kubernetes:apps/v1:Deployment", "directus").inputs["spec"].template.spec;
+    expect(spec.volumes).toEqual(
+      expect.arrayContaining([
+        { name: "authentik-access", secret: { secretName: "directus-authentik-access", optional: true } },
+      ]),
+    );
+    expect(container("directus").volumeMounts).toEqual(
+      expect.arrayContaining([
+        { name: "authentik-access", mountPath: extensions.groupPolicies.authentikDir, readOnly: true },
+      ]),
     );
   });
 

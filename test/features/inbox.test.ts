@@ -14,9 +14,18 @@ import {
   sendToInbox,
   type ReceivedEmail,
 } from "./inbox.ts";
+import { deleteUsers } from "./steps/logins.ts";
+import { deleteRows } from "./steps/rows.ts";
 import { feature } from "./support.ts";
 
-afterAll(deleteAuthentikUsers, 60_000);
+afterAll(async () => {
+  await deleteAuthentikUsers();
+  // Rows first: a person's row points at its user.
+  const failures = [...(await deleteRows()), ...(await deleteUsers())];
+  if (failures.length > 0) {
+    throw new Error(`Couldn't clean up:\n${failures.join("\n")}`);
+  }
+}, 120_000);
 
 /** Who emailed info@ in a scenario, and what about. */
 interface Thread {

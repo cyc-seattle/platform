@@ -1,9 +1,6 @@
 // Pure helpers factored out of index.ts so the hostnames and the OIDC scope mapping's expression
 // are each testable without standing up Pulumi or a live Authentik instance.
 
-/** Authentik's `staff` group. Membership is managed by hand. */
-export const STAFF_GROUP_NAME = "staff";
-
 /** Authentik's built-in objects this project looks up rather than manages. */
 export const IMPLICIT_CONSENT_FLOW = "default-provider-authorization-implicit-consent";
 export const PROVIDER_INVALIDATION_FLOW = "default-provider-invalidation-flow";
@@ -45,12 +42,6 @@ export function directusRedirectUri(internalDomain: string): string {
 export function inboxRedirectUriPattern(internalDomain: string): string {
   return `^https://inbox\\.${internalDomain.replace(/\./g, "\\.")}/.*$`;
 }
-
-/**
- * The group whose members can sign in to the shared inbox, named for what it allows. The access
- * design (cyc-seattle/platform#334) sets the real name through `authentik:inboxGroup`.
- */
-export const DEFAULT_INBOX_GROUP = "FreeScout sign-in";
 
 /**
  * The embedded outpost's `config` (`authentik.Outpost.config`, a JSON blob). Every key but

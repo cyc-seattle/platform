@@ -76,6 +76,7 @@ beforeAll(async () => {
       { name: "tmp", mountPath: "/tmp", emptyDir: { sizeLimit: "64Mi" } },
       { name: "config", mountPath: "/etc/mailpit/config.yml", configMap: "mailpit", subPath: "config.yml" },
       { name: "certs", mountPath: "/certs", secret: "mailpit-tls", readOnly: true },
+      { name: "later", mountPath: "/later", secret: "made-later", optional: true },
     ],
     readinessProbe: { tcpSocket: { port: 1025 } },
     livenessProbe: { httpGet: { path: "/livez", port: 8025 } },
@@ -262,16 +263,18 @@ describe("Workload", () => {
     expect(find("kubernetes:apps/v1:Deployment", "mailpit").spec.replicas).toBe(2);
   });
 
-  it("mounts emptyDir, ConfigMap, and Secret volumes", () => {
+  it("mounts emptyDir, ConfigMap, and Secret volumes, and a Secret that may not exist yet", () => {
     expect(podSpec("mailpit").volumes).toEqual([
       { name: "tmp", emptyDir: { sizeLimit: "64Mi" } },
       { name: "config", configMap: { name: "mailpit" } },
       { name: "certs", secret: { secretName: "mailpit-tls" } },
+      { name: "later", secret: { secretName: "made-later", optional: true } },
     ]);
     expect(podSpec("mailpit").containers[0].volumeMounts).toEqual([
       { name: "tmp", mountPath: "/tmp" },
       { name: "config", mountPath: "/etc/mailpit/config.yml", subPath: "config.yml" },
       { name: "certs", mountPath: "/certs", readOnly: true },
+      { name: "later", mountPath: "/later" },
     ]);
   });
 
