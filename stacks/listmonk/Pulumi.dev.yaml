@@ -4,7 +4,7 @@ config:
   # The CSC Newsletter list's ID, which the website's signup form posts. Public.
   listmonk:listId: 6053a494-582f-4f05-a19a-f84a21b8a012
   listmonk:hostname: mail.dev.cycsail.team
-  listmonk:fromEmail: CSC Newsletter (dev) <noreply@cyccommunitysailing.org>
+  listmonk:fromEmail: CSC Newsletter dev <noreply@cyccommunitysailing.org>
   listmonk:trustedUrls:
     - https://cyccommunitysailing.org/newsletter/check-your-email
     - http://localhost:4321/newsletter/check-your-email

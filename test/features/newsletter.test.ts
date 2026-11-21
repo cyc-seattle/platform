@@ -39,15 +39,15 @@ async function signUp(nonce = "") {
 /** Their subscription to the newsletter list, as Listmonk's API reports it, or undefined. */
 async function subscription(): Promise<string | undefined> {
   const { LISTMONK_API_USER, LISTMONK_API_TOKEN } = await secretData("listmonk-tests");
-  const query = encodeURIComponent(`subscribers.email = '${reader()}'`);
-  const response = await fetch(`${await mailUrl()}/api/subscribers?query=${query}`, {
+  // `search`, not `query`: a SQL query needs the permission that reads every subscriber's every field.
+  const response = await fetch(`${await mailUrl()}/api/subscribers?search=${encodeURIComponent(reader())}`, {
     headers: { authorization: `token ${LISTMONK_API_USER}:${LISTMONK_API_TOKEN}` },
   });
   expect(response.status, await response.clone().text()).toBe(200);
   const body = (await response.json()) as {
-    data: { results: { lists: { uuid: string; subscription_status: string }[] }[] };
+    data: { results: { email: string; lists: { uuid: string; subscription_status: string }[] }[] };
   };
-  const [subscriber] = body.data.results;
+  const subscriber = body.data.results.find((result) => result.email === reader());
   return subscriber?.lists.find((list) => list.uuid === listId)?.subscription_status;
 }
 
@@ -100,11 +100,11 @@ Step("a subscriber on the newsletter list", async () => {
   await confirm();
 });
 // An issue's preferences link names the campaign and the subscriber. Leaving every list there
-// doesn't depend on the campaign, so any ID stands in for it.
+// doesn't depend on the campaign, so the all-zero ID, which a confirmation email's own link uses, stands in.
 Step("they leave the list from the link to their preferences in an issue", async () => {
   const subscriber = optin!.pathname.split("/").at(-1);
   const { status } = await postForm(
-    `${await mailUrl()}/subscription/00000000-0000-4000-8000-000000000000/${subscriber}`,
+    `${await mailUrl()}/subscription/00000000-0000-0000-0000-000000000000/${subscriber}`,
     { manage: "true", name: `Reader ${runId}` },
   );
   expect(status).toBe(200);
