@@ -197,6 +197,8 @@ function copyProd(): void {
     const job = new gcp.storage.TransferJob(
       `backup-${source}`,
       {
+        // Pulumi's automatic name has a random suffix and no "transferJobs/" prefix, which Google refuses.
+        name: `transferJobs/backup-${source}`,
         description: `Copies ${source} to the backups project`,
         transferSpec: {
           gcsDataSource: { bucketName: source },
