@@ -99,14 +99,14 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | `authentik-bootstrap-token`         | Authentik     | **Pulumi-generated.** akadmin's API token, used only to create the `pulumi` service account and token  |
 | `authentik-api-token`               | Authentik     | **Pulumi-generated.** The `pulumi` service account's token, which `authentik` signs in with            |
 | `authentik-bootstrap-password`      | Authentik     | **Pulumi-generated.** akadmin's break-glass login (§8)                                                 |
-| `inbox-app-key`                     | FreeScout     | **Pulumi-generated.** Encrypts each mailbox's Google sign-in, so a restore needs it (§10)              |
-| `inbox-admin-password`              | FreeScout     | **Pulumi-generated.** The break-glass admin, for when Authentik is down (§10)                          |
-| `inbox-oauth-licence`               | nobody        | The OAuth & Social Login module's licence key, kept for a rebuild (§10)                                |
-| `inbox-api-licence`                 | nobody        | The API & Webhooks module's licence key, kept for a rebuild (§10)                                      |
+| `inbox-app-key`                     | FreeScout     | **Pulumi-generated.** Encrypts each mailbox's Google sign-in, so a restore needs it (§11)              |
+| `inbox-admin-password`              | FreeScout     | **Pulumi-generated.** The break-glass admin, for when Authentik is down (§11)                          |
+| `inbox-oauth-licence`               | nobody        | The OAuth & Social Login module's licence key, kept for a rebuild (§11)                                |
+| `inbox-api-licence`                 | nobody        | The API & Webhooks module's licence key, kept for a rebuild (§11)                                      |
 
 Dev reads only `dev-directus-license-key`, set by hand to the same grant key, and the
 `dev-db-<name>-password` and `dev-csc-website-directus-token` secrets that the `infra` stack
-creates. The integration tests read `dev-inbox-api-key` (§10). Its fakes take the place of the
+creates. The integration tests read `dev-inbox-api-key` (§11). Its fakes take the place of the
 Clubspot and Google credentials, and it has no Google sign-in.
 
 ## 6. Directus (`directus.<domain>`)
@@ -219,7 +219,29 @@ during a newsletter send.
 
 From then on, the domain's records change only in `external-records.ts`, never at Porkbun.
 
-## 10. The shared inbox (`inbox.<domain>`)
+## 10. The backups project
+
+`bootstrap` makes `csc-backups` and everything in it ([backups.md](backups.md)). Making a project under
+the organization needs more than project Owner.
+
+1. [ ] The person who applies `bootstrap` holds **Project Creator** on the organization and **Billing
+       Account User** on the billing account `cyc-admin-scripts` uses. Check with:
+
+   ```sh
+   gcloud organizations get-iam-policy <ORG_ID> --flatten=bindings --filter="bindings.members:user:<deployer-email>" --format="value(bindings.role)"
+   ```
+
+   An organization admin grants what's missing in the
+   [IAM console](https://console.cloud.google.com/iam-admin/iam), at the organization.
+
+2. [ ] Check prod's Cloud SQL instance and the buckets `bootstrap` copies exist, which only a rebuild
+       lacks ([backups.md](backups.md#if-the-main-project-is-lost)). Then `mise run preview-bootstrap`,
+       and `mise run deploy-bootstrap`. It also gives deploy-runner the
+       role the `infra` stack's uptime checks need, so apply `infra` after it.
+3. [ ] After the next run (10:00 or 22:00 UTC), check both buckets have copies, then run the first drill,
+       `mise run restore-drill`, and paste its result in cyc-seattle/platform#170.
+
+## 11. The shared inbox (`inbox.<domain>`)
 
 [inbox.md](inbox.md) describes what the `inbox` stack deploys. These steps come in order.
 

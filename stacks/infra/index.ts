@@ -10,6 +10,8 @@ import { prodOutputs } from "./prod.ts";
 import { websiteSite } from "./website.ts";
 import "./dev-databases.ts";
 import "./alerts.ts";
+import "./backups.ts";
+import "./uptime.ts";
 import "./logs.ts";
 
 // What the app stacks read through a StackReference.

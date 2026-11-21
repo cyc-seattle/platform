@@ -61,13 +61,15 @@ Paid modules are bought once for each instance: a licence covers one. Prod and d
 - **API & Webhooks**, which the integration tests use, and later the contact form
 
 A module is installed from FreeScout's admin with its licence key, onto the disk, so a restart keeps
-it. No command enters a licence. [manual-setup.md](manual-setup.md#10-the-shared-inbox-inboxdomain)
+it. No command enters a licence. [manual-setup.md](manual-setup.md#11-the-shared-inbox-inboxdomain)
 has the steps. Until dev's API module is installed and `inbox:apiModule: true` is set in
 `stacks/inbox/Pulumi.dev.yaml`, the scenarios that need it are skipped.
 
 ## Backups
 
-- The `inbox` database is on the Cloud SQL instance, with its backups.
-- The disk `inbox-data` holds the attachments, and the copy outside the cluster is cyc-seattle/platform#170's.
+- The `inbox` database is copied to `csc-backups` twice a day with every other prod database
+  ([backups.md](backups.md)).
+- The disk `inbox-data` holds the attachments and installed modules. The backups copy buckets, not
+  disks, so it isn't copied yet.
 - A restored database needs the same `inbox-app-key`. Without it, someone reconnects each mailbox
   by hand.
