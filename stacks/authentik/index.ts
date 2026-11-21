@@ -356,10 +356,17 @@ new authentik.SystemSettings("system-settings", { defaultUserChangeEmail: false,
 
 // --- 5. The sign-in groups, one per sign-in policy in Directus, which an app lets in. The
 // group-policies hook in `backend` keeps each equal to the policy's holders (docs/access.md), so this
-// project leaves their members alone.
+// project leaves their members alone. The provider's update sends the whole group, with the members
+// Pulumi last saw, which would put back people the hook took out. So any change replaces the group
+// with an empty one, which the hook fills on its next pass.
 const signInGroups = SIGN_IN_POLICIES.map(({ key, name }) => ({
   key,
-  group: new authentik.Group(`sign-in-${key}`, { name }, { ...opts, ignoreChanges: ["users"] }),
+  group: new authentik.Group(
+    `sign-in-${key}`,
+    { name },
+    // Authentik's group names are unique, so the old one goes first.
+    { ...opts, ignoreChanges: ["users"], replaceOnChanges: ["*"], deleteBeforeReplace: true },
+  ),
 }));
 
 // The hook's account, which can see users and change only the sign-in groups' members. It can't
@@ -384,18 +391,13 @@ for (const { key, group } of signInGroups) {
     );
   }
 }
-const accessSyncGroup = new authentik.Group(
-  "directus-access-sync",
-  { name: "Directus access sync", roles: [accessSyncRole.id] },
-  opts,
-);
 const accessSyncUser = new authentik.User(
   "directus-access-sync",
   {
     username: "directus-access-sync",
     name: "Directus access sync",
     type: "service_account",
-    groups: [accessSyncGroup.id],
+    roles: [accessSyncRole.id],
   },
   opts,
 );

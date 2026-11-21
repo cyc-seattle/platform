@@ -236,11 +236,17 @@ gives it through a group like any other: FreeScout Agent, Listmonk Write, and Li
 one, Admin included.
 
 The `authentik` stack makes an Authentik group of each one's name, and each app lets in only its
-groups. The `group-policies` hook keeps each group's members equal to the logins whose person holds
-the policy, on the same passes as the policy links, so someone added to a group in Authentik by hand
-is taken out. It matches an Authentik account by its email, so someone who has never signed in has
-none, and joins on the first pass after they do. Authentik is a copy: a pass that can't reach it
-logs a warning, and the next catches it up.
+groups. The `group-policies` hook keeps each group's members equal to the active logins whose person
+holds the policy, on the same passes as the policy links, so someone added to a group in Authentik by
+hand is taken out, and so is a suspended login. It matches an Authentik account by its email, so
+someone who has never signed in has none, and joins on the first pass after they do. It takes people
+out of a group before adding anyone. Authentik is a copy: a group it can't update is logged, the
+others still are, and the next pass catches it up. If Directus has none of the policies a group can
+give, the hook changes no links and no sign-in group, and warns.
+
+Any change to a sign-in group in the `authentik` stack, such as a new name, replaces it with an
+empty one, which the hook fills on its next pass, within 15 minutes. Updating it in place would send
+back the members Pulumi last saw.
 
 The hook signs in to Authentik as the `directus-access-sync` service account, whose token the
 `authentik` stack writes to the `directus-authentik-access` Secret. Directus mounts the Secret

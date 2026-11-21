@@ -74,7 +74,8 @@ export function applyMoves(input: ApplyMovesInput): Promise<Record<string, numbe
 export function coalesce(pass: () => Promise<unknown>): () => Promise<unknown>;
 
 export interface SignInMembersInput {
-  users: { id: string; email: string | null }[];
+  /** The managed users. Only an active one gets a sign-in group. */
+  users: { id: string; email: string | null; status?: string | null }[];
   /** Each login's person. */
   personOf: Map<string, string>;
   grants: { person_id: string; policy_id: string }[];
@@ -82,7 +83,7 @@ export interface SignInMembersInput {
   policies: Record<string, string>;
 }
 
-/** Per sign-in policy name, the lowercased emails of the logins whose person a group gives it. */
+/** Per sign-in policy name, the lowercased emails of the active logins whose person a group gives it. */
 export function signInMembers(input: SignInMembersInput): Record<string, string[]>;
 
 export interface GroupChangesInput {
@@ -103,9 +104,12 @@ export type AuthentikRequest = (
   options?: { method?: "GET" | "POST"; body?: unknown },
 ) => Promise<unknown>;
 
-/** Makes each Authentik group in `members`, by name, hold exactly those emails' users. */
+/**
+ * Makes each Authentik group in `members`, by name, hold exactly those emails' users, taking people
+ * out first. A group that fails is logged, and the rest still run.
+ */
 export function syncAuthentik(input: {
   members: Record<string, string[]>;
   request: AuthentikRequest;
-  logger: { info(message: string): void; warn(message: string): void };
+  logger: { info(message: string): void; warn(...args: unknown[]): void };
 }): Promise<void>;

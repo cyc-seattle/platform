@@ -101,7 +101,7 @@ function plan({ users, people, grants, links, emailCounts, linkedPeople, guardia
 }
 
 /**
- * Per sign-in policy name, the lowercased emails of the logins whose person a group gives it.
+ * Per sign-in policy name, the lowercased emails of the active logins whose person a group gives it.
  * `policies` maps each sign-in policy's id to its name.
  */
 function signInMembers({ users, personOf, grants, policies }) {
@@ -113,7 +113,8 @@ function signInMembers({ users, personOf, grants, policies }) {
   const members = Object.fromEntries(Object.values(policies).map((name) => [name, new Set()]));
   for (const user of users) {
     const email = user.email?.toLowerCase();
-    if (!email) continue;
+    // A suspended or archived login keeps its Directus links, but signs in to nothing.
+    if (!email || user.status !== "active") continue;
     for (const name of given.get(personOf.get(user.id)) ?? []) members[name].add(email);
   }
   return Object.fromEntries(Object.entries(members).map(([name, emails]) => [name, [...emails].sort()]));
@@ -139,26 +140,40 @@ function groupChanges({ members, wanted, found }) {
  */
 async function syncAuthentik({ members, request, logger }) {
   for (const [name, wanted] of Object.entries(members)) {
-    const { results } = await request(`/core/groups/?name=${encodeURIComponent(name)}&include_users=true`);
-    const group = results.find((result) => result.name === name);
-    if (!group) {
-      logger.warn(`group-policies: Authentik has no ${name} group yet`);
-      continue;
+    try {
+      await syncAuthentikGroup({ name, wanted, request, logger });
+    } catch (error) {
+      logger.warn(error, `group-policies: couldn't update Authentik's ${name} group`);
     }
-    const current = group.users_obj ?? [];
-    const have = new Set(current.map((member) => member.email?.toLowerCase()));
-    const found = {};
-    for (const email of wanted.filter((email) => !have.has(email))) {
-      const users = await request(`/core/users/?email=${encodeURIComponent(email)}&is_active=true`);
-      const user = users.results.find((result) => result.email?.toLowerCase() === email);
-      if (user) found[email] = user.pk;
-    }
-    const { add, remove } = groupChanges({ members: current, wanted, found });
-    for (const pk of add) await request(`/core/groups/${group.pk}/add_user/`, { method: "POST", body: { pk } });
-    for (const pk of remove) await request(`/core/groups/${group.pk}/remove_user/`, { method: "POST", body: { pk } });
-    if (add.length > 0 || remove.length > 0) {
-      logger.info(`group-policies: added ${add.length} to and took ${remove.length} out of Authentik's ${name} group`);
-    }
+  }
+}
+
+/**
+ * One sign-in group. Takes people out before looking anyone up or adding them, so a failure part way
+ * never keeps in someone who should be out.
+ */
+async function syncAuthentikGroup({ name, wanted, request, logger }) {
+  const { results } = await request(`/core/groups/?name=${encodeURIComponent(name)}&include_users=true`);
+  const group = results.find((result) => result.name === name);
+  if (!group) {
+    logger.warn(`group-policies: Authentik has no ${name} group yet`);
+    return;
+  }
+  const current = group.users_obj ?? [];
+  const { remove } = groupChanges({ members: current, wanted, found: {} });
+  for (const pk of remove) await request(`/core/groups/${group.pk}/remove_user/`, { method: "POST", body: { pk } });
+
+  const have = new Set(current.map((member) => member.email?.toLowerCase()));
+  const found = {};
+  for (const email of wanted.filter((email) => !have.has(email))) {
+    const users = await request(`/core/users/?email=${encodeURIComponent(email)}&is_active=true`);
+    const user = users.results.find((result) => result.email?.toLowerCase() === email);
+    if (user) found[email] = user.pk;
+  }
+  const { add } = groupChanges({ members: current, wanted, found });
+  for (const pk of add) await request(`/core/groups/${group.pk}/add_user/`, { method: "POST", body: { pk } });
+  if (add.length > 0 || remove.length > 0) {
+    logger.info(`group-policies: added ${add.length} to and took ${remove.length} out of Authentik's ${name} group`);
   }
 }
 
@@ -340,6 +355,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
   // Authentik is a copy: a pass that can't reach it still applies Directus's links, and the next
   // pass catches Authentik up.
   let authentikWarned = false;
+  let grantableWarned = false;
   async function copyToAuthentik({ users, personOf, grants }) {
     const request = authentikRequester(config.authentikDir);
     if (!request) {
@@ -368,6 +384,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
           "directus_users.first_name",
           "directus_users.last_name",
           "directus_users.person_id",
+          "directus_users.status",
           "directus_roles.name as role",
         )
         .whereIn("directus_roles.name", config.roles)
@@ -391,8 +408,16 @@ function register({ filter, action, schedule }, { services, database, getSchema,
         where.whereIn("id", linkedIds);
         if (emails.length > 0) where.orWhereIn(database.raw("lower(email)"), emails);
       });
-    // Every policy linked straight to a user, so the plan removes any a group doesn't give.
-    const links = await database("directus_access").select("id", "user", "policy").whereNotNull("user");
+    // Every policy linked straight to a user, so the plan removes any a group doesn't give. With no
+    // grantable policies found, the config and Directus disagree, so it changes no links at all.
+    if (ids.length === 0) {
+      if (!grantableWarned) logger.warn("group-policies: Directus has none of the policies a group can give");
+      grantableWarned = true;
+    } else {
+      grantableWarned = false;
+    }
+    const links =
+      ids.length === 0 ? [] : await database("directus_access").select("id", "user", "policy").whereNotNull("user");
     const emailCounts = {};
     for (const person of people) {
       const email = person.email?.toLowerCase();
@@ -453,7 +478,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
       logger.info(`group-policies: gave ${add.length} and took away ${remove.length} policy links`);
     }
 
-    await copyToAuthentik({ users, personOf, grants });
+    if (ids.length > 0) await copyToAuthentik({ users, personOf, grants });
 
     const named = renames({ users, people, personOf });
     if (named.length > 0) {

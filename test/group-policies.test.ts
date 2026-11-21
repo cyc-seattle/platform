@@ -390,17 +390,19 @@ describe("the hook's passes", () => {
 describe("Authentik's sign-in groups", () => {
   const policies = { "p-agent": "FreeScout Agent", "p-send": "Listmonk Send" };
 
-  it("hold the emails of each login whose person a group gives the policy, and no one else", () => {
+  it("hold the emails of each active login whose person a group gives the policy, and no one else", () => {
     const members = signInMembers({
       users: [
-        { id: "u-gmail", email: "Alex@Gmail.example" },
-        { id: "u-work", email: "alex@work.example" },
-        { id: "u-other", email: "other@example.com" },
-        { id: "u-none", email: null },
+        { id: "u-gmail", email: "Alex@Gmail.example", status: "active" },
+        { id: "u-work", email: "alex@work.example", status: "active" },
+        { id: "u-suspended", email: "alex@old.example", status: "suspended" },
+        { id: "u-other", email: "other@example.com", status: "active" },
+        { id: "u-none", email: null, status: "active" },
       ],
       personOf: new Map([
         ["u-gmail", "p-alex"],
         ["u-work", "p-alex"],
+        ["u-suspended", "p-alex"],
         ["u-other", "p-other"],
         ["u-none", "p-alex"],
       ]),
@@ -430,7 +432,7 @@ describe("Authentik's sign-in groups", () => {
     ).toEqual({ add: [3], remove: [2] });
   });
 
-  it("are made right through Authentik's API, and a group Authentik lacks is skipped with a warning", async () => {
+  it("are made right through Authentik's API, taking out before adding, and a missing or failing group doesn't stop the rest", async () => {
     const calls: string[] = [];
     const request = async (route: string, options: { method?: string; body?: unknown } = {}) => {
       calls.push(`${options.method ?? "GET"} ${route} ${options.body ? JSON.stringify(options.body) : ""}`.trim());
@@ -439,6 +441,7 @@ describe("Authentik's sign-in groups", () => {
           results: [{ pk: "g1", name: "FreeScout Agent", users_obj: [{ pk: 2, email: "by-hand@example.com" }] }],
         };
       }
+      if (route.startsWith("/core/groups/?name=Listmonk%20Write")) throw new Error("Authentik answered 500");
       if (route.startsWith("/core/groups/?name=")) return { results: [] };
       if (route.startsWith("/core/users/?email=new%40example.com")) {
         return { results: [{ pk: 3, email: "new@example.com" }] };
@@ -447,17 +450,25 @@ describe("Authentik's sign-in groups", () => {
     };
     const warnings: string[] = [];
     await syncAuthentik({
-      members: { "FreeScout Agent": ["new@example.com"], "Listmonk Send": ["new@example.com"] },
+      members: {
+        "Listmonk Write": ["new@example.com"],
+        "FreeScout Agent": ["new@example.com"],
+        "Listmonk Send": ["new@example.com"],
+      },
       request,
-      logger: { info: () => {}, warn: (message) => warnings.push(message) },
+      logger: { info: () => {}, warn: (...args) => warnings.push(String(args.at(-1))) },
     });
     expect(calls).toEqual([
+      "GET /core/groups/?name=Listmonk%20Write&include_users=true",
       "GET /core/groups/?name=FreeScout%20Agent&include_users=true",
+      'POST /core/groups/g1/remove_user/ {"pk":2}',
       "GET /core/users/?email=new%40example.com&is_active=true",
       'POST /core/groups/g1/add_user/ {"pk":3}',
-      'POST /core/groups/g1/remove_user/ {"pk":2}',
       "GET /core/groups/?name=Listmonk%20Send&include_users=true",
     ]);
-    expect(warnings).toEqual(["group-policies: Authentik has no Listmonk Send group yet"]);
+    expect(warnings).toEqual([
+      "group-policies: couldn't update Authentik's Listmonk Write group",
+      "group-policies: Authentik has no Listmonk Send group yet",
+    ]);
   });
 });
