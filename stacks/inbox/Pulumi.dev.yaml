@@ -1,0 +1,5 @@
+config:
+  gcp:project: cyc-admin-scripts
+  gcp:region: us-west1
+  inbox:adminEmail: master@cyccommunitysailing.org
+secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-dev

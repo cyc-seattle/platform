@@ -39,6 +39,17 @@ export function directusRedirectUri(internalDomain: string): string {
 }
 
 /**
+ * The shared inbox's redirects, as a regex. FreeScout's sign-in module doesn't document its callback
+ * path, so this admits any path on the inbox's host until it's known (cyc-seattle/platform#182).
+ */
+export function inboxRedirectUriPattern(internalDomain: string): string {
+  return `^https://inbox\\.${internalDomain.replace(/\./g, "\\.")}/.*$`;
+}
+
+/** The group whose members can sign in to the shared inbox, until where access comes from is decided (cyc-seattle/platform#334). */
+export const DEFAULT_INBOX_GROUP = "Inbox";
+
+/**
  * The embedded outpost's `config` (`authentik.Outpost.config`, a JSON blob). Every key but
  * `authentik_host` is copied verbatim from the live outpost - Authentik's own blueprint reconciler
  * owns them, and this project has no reason to second-guess their values, only to pin the one key
