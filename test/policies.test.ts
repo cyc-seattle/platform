@@ -41,14 +41,17 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, Plan, and Sail Team writer policies", () => {
+  it("are the CRM, Medical, Catalog, Plan, Sail Team writer, and sign-in policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
       "Announcement Writer",
       "CRM Reader",
       "CRM Writer",
       "Catalog Reader",
       "Catalog Writer",
+      "FreeScout Agent",
       "Link Writer",
+      "Listmonk Send",
+      "Listmonk Write",
       "Medical Reader",
       "Medical Writer",
       "Plan Admin",

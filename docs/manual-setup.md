@@ -318,8 +318,9 @@ the organization needs more than project Owner.
        FreeScout, check the reply comes from info@ with `spf=pass` and `dmarc=pass` in its headers,
        answer it, and check the answer joins the conversation.
 
-8. [ ] **Let people in**: add each person to the group `authentik:inboxGroup` names (`FreeScout sign-in` by default) in Authentik's admin, under
-       Directory → Groups. They need to have signed in to something once, so Authentik knows them.
+8. [ ] **Let people in**: in the Data Studio, under Access → Groups, make a group such as Office that
+       gives the FreeScout Agent policy, and add each person to it. They need to have signed in to
+       something once, so Authentik knows them.
        After their first sign-in to FreeScout, put them on the mailbox under Manage → Mailboxes →
        info@ → Permissions.
 
