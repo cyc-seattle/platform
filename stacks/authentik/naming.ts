@@ -4,6 +4,9 @@
 /** Authentik's `staff` group. Membership is managed by hand. */
 export const STAFF_GROUP_NAME = "staff";
 
+/** The groups for the policies that let someone into Listmonk, which the policy sync makes (cyc-seattle/platform#334). */
+export const LISTMONK_GROUPS = ["Listmonk Write", "Listmonk Send"];
+
 /** Authentik's built-in objects this project looks up rather than manages. */
 export const IMPLICIT_CONSENT_FLOW = "default-provider-authorization-implicit-consent";
 export const PROVIDER_INVALIDATION_FLOW = "default-provider-invalidation-flow";

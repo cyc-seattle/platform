@@ -408,22 +408,6 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         action,
       })),
     },
-    // Access to Listmonk, the newsletter, kept here with everything else a group gives. They give nothing in
-    // Directus: access-334's sync gives each holder the Listmonk role of the same name (docs/newsletter.md).
-    {
-      key: "listmonk-write",
-      name: "Listmonk Write",
-      icon: "edit_note",
-      description: "Writes and tests newsletters in Listmonk, and manages subscribers and imports.",
-      rules: [],
-    },
-    {
-      key: "listmonk-send",
-      name: "Listmonk Send",
-      icon: "send",
-      description: "Sends a newsletter to a list in Listmonk, and does everything Listmonk Write does.",
-      rules: [],
-    },
   ];
 }
 

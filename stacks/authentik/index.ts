@@ -25,6 +25,7 @@ import {
   signedInPolicyExpression,
   embeddedOutpostConfig,
   STAFF_GROUP_NAME,
+  LISTMONK_GROUPS,
   IMPLICIT_CONSENT_FLOW,
   PROVIDER_INVALIDATION_FLOW,
   INVALIDATION_FLOW,
@@ -355,7 +356,7 @@ new authentik.Brand(
 new authentik.SystemSettings("system-settings", { defaultUserChangeEmail: false, impersonation: true }, opts);
 
 // --- 5. The `staff` group. Membership is managed by hand, not synced from anywhere.
-const staffGroup = new authentik.Group(STAFF_GROUP_NAME, { name: STAFF_GROUP_NAME }, opts);
+new authentik.Group(STAFF_GROUP_NAME, { name: STAFF_GROUP_NAME }, opts);
 
 // --- 6. Directus's admins, as Authentik superusers.
 adminGroup(siblingList("backend", "directusAdmins"), opts);
@@ -462,8 +463,8 @@ new authentik.PolicyBinding(
 );
 
 // --- 10. Listmonk, the newsletter. The client comes from platform's `listmonk` stack. Listmonk makes an
-// account on a first sign-in, so only staff get this far. access-334 replaces `staff` with the groups
-// for Listmonk Write and Listmonk Send (cyc-seattle/platform#334).
+// account on a first sign-in, so only the groups for the policies Listmonk Write and Listmonk Send get
+// this far. Their sync makes those groups (cyc-seattle/platform#334).
 const listmonkProvider = new ConfidentialOidcProvider(
   "listmonk-oidc",
   {
@@ -492,8 +493,11 @@ const listmonkApplication = new authentik.Application(
   opts,
 );
 
-new authentik.PolicyBinding(
-  "listmonk-staff-binding",
-  { target: listmonkApplication.uuid, group: staffGroup.id, order: 0 },
-  opts,
-);
+LISTMONK_GROUPS.forEach((name, order) => {
+  const group = authentik.getGroupOutput({ name }, invokeOpts);
+  new authentik.PolicyBinding(
+    `listmonk-${name.toLowerCase().replace(/\s+/g, "-")}-binding`,
+    { target: listmonkApplication.uuid, group: group.id, order },
+    opts,
+  );
+});

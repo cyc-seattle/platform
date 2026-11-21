@@ -35,8 +35,10 @@ and the rest of the address to Listmonk. `stacks/backend/forms.cjs` answers it:
 
 ## Who can use Listmonk
 
-Staff sign in through Authentik. Listmonk can't read a role from the sign-in, so access comes from two policies a
-group gives in the Data Studio ([access.md](access.md#groups)):
+Staff sign in through Authentik, which lets in only the Authentik groups Listmonk Write and Listmonk Send. Listmonk
+can't read a role from the sign-in, so access comes from the two policies of those names that a group gives in the
+Data Studio ([access.md](access.md#groups)), and the policy sync
+([cyc-seattle/platform#334](https://github.com/cyc-seattle/platform/issues/334)) makes the groups:
 
 | Policy         | Listmonk role | Can                                                                         |
 | -------------- | ------------- | --------------------------------------------------------------------------- |

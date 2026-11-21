@@ -278,8 +278,6 @@ fields:
               - Catalog Reader
               - Catalog Writer
               - Link Writer
-              - Listmonk Send
-              - Listmonk Write
               - Medical Reader
               - Medical Writer
               - Plan Admin
