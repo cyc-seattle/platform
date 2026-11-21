@@ -1,0 +1,39 @@
+#!/bin/sh
+# Prepares /data and /cache, migrates the database, then runs php-fpm, nginx, and FreeScout's
+# scheduler side by side. If any of them exits, so does the container, and Kubernetes restarts it.
+set -eu
+
+# /data is the disk: attachments, sessions, installed modules, and the .env FreeScout edits.
+mkdir -p /data/storage/app/public /data/storage/app/attachment \
+  /data/storage/framework/cache /data/storage/framework/sessions /data/storage/framework/views \
+  /data/storage/logs /data/Modules /data/public-modules
+touch /data/.env /data/storage/.installed
+# /cache is scratch, rebuilt on every start.
+mkdir -p /cache/bootstrap /cache/css-builds /cache/js-builds
+
+cd /app
+# Not freescout:after-app-update, which skipped the migrations on an empty database.
+php artisan migrate --force --no-interaction
+php artisan freescout:clear-cache --no-interaction
+php /usr/local/lib/freescout/configure.php
+
+# The break-glass admin, for when Authentik is down. It fails harmlessly once the user exists.
+if [ -n "${INBOX_ADMIN_EMAIL:-}" ]; then
+  php artisan freescout:create-user --no-interaction --role=admin --firstName=Inbox --lastName=Admin \
+    --email="$INBOX_ADMIN_EMAIL" --password="$INBOX_ADMIN_PASSWORD" >/dev/null 2>&1 || true
+fi
+
+php-fpm &
+fpm=$!
+nginx -e /dev/stderr -g 'daemon off;' &
+web=$!
+# FreeScout's scheduler fetches mail, sends it, and starts its own queue worker. Laravel 5.5 has no
+# schedule:work, so this is cron's every minute.
+(while true; do php artisan schedule:run --no-interaction >/dev/null; sleep 60; done) &
+scheduler=$!
+
+trap 'kill "$fpm" "$web" "$scheduler" 2>/dev/null; exit 0' TERM INT
+while kill -0 "$fpm" && kill -0 "$web" && kill -0 "$scheduler"; do
+  sleep 5
+done 2>/dev/null
+exit 1

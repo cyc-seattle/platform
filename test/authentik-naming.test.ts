@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   loginHost,
   directusRedirectUri,
+  inboxRedirectUriPattern,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
   signInNormalizeExpression,
@@ -20,6 +21,14 @@ describe("hostnames", () => {
 
   it("builds Directus's OIDC callback URL", () => {
     expect(directusRedirectUri("cycsail.team")).toBe("https://directus.cycsail.team/auth/login/authentik/callback");
+  });
+
+  it("admits a redirect to any path on the inbox's host, and nowhere else", () => {
+    const pattern = new RegExp(inboxRedirectUriPattern("cycsail.team"));
+    expect(pattern.test("https://inbox.cycsail.team/oauth/callback")).toBe(true);
+    expect(pattern.test("https://inboxxcycsail.team/")).toBe(false);
+    expect(pattern.test("https://inbox.cycsail.team.example.com/")).toBe(false);
+    expect(pattern.test("http://inbox.cycsail.team/")).toBe(false);
   });
 });
 

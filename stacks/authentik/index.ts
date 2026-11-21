@@ -16,6 +16,8 @@ import { Secret } from "../../src/app/secret.ts";
 import {
   loginHost,
   directusRedirectUri,
+  inboxRedirectUriPattern,
+  DEFAULT_INBOX_GROUP,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
   signInNormalizeExpression,
@@ -457,5 +459,49 @@ const signedInPolicy = new authentik.PolicyExpression(
 new authentik.PolicyBinding(
   "directus-signed-in-binding",
   { target: directusApplication.uuid, policy: signedInPolicy.id, order: 0 },
+  opts,
+);
+
+// --- 10. The shared inbox's OIDC provider and application (cyc-seattle/platform#182). The client
+// comes from this repo's `inbox` stack. Only one group's members get in. Where that group's members
+// come from is undecided (cyc-seattle/platform#334), so its name is the one setting that changes.
+const inboxGroup = new authentik.Group(
+  "inbox",
+  { name: config.get("inboxGroup") ?? DEFAULT_INBOX_GROUP },
+  // Like `staff`, its members are added by hand, in Authentik's admin.
+  opts,
+);
+
+const inboxProvider = new ConfidentialOidcProvider(
+  "inbox-oidc",
+  {
+    name: "Inbox",
+    clientId: siblingOutput("inbox", "oidcClientId"),
+    clientSecret: siblingSecret("inbox", "oidcClientSecret"),
+    signingKey: signingCertificate.id,
+    authorizationFlow: implicitConsentFlow.id,
+    invalidationFlow: providerInvalidationFlow.id,
+    allowedRedirectUris: [
+      {
+        matching_mode: "regex",
+        redirect_uri_type: "authorization",
+        url: internalDomain.apply((domain) => inboxRedirectUriPattern(domain)),
+      },
+    ],
+    propertyMappings: [openidScopeMapping.id, profileScopeMapping.id, directusEmailScopeMapping.id],
+  },
+  opts,
+);
+
+const inboxApplication = new authentik.Application(
+  "inbox",
+  { name: "Inbox", slug: "inbox", protocolProvider: numericId(inboxProvider.providerOauth2Id) },
+  opts,
+);
+
+// A group binding: only its members pass. Authentik superusers pass any binding.
+new authentik.PolicyBinding(
+  "inbox-group-binding",
+  { target: inboxApplication.uuid, group: inboxGroup.id, order: 0 },
   opts,
 );

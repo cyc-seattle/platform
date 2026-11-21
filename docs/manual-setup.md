@@ -99,10 +99,14 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | `authentik-bootstrap-token`         | Authentik     | **Pulumi-generated.** akadmin's API token, used only to create the `pulumi` service account and token  |
 | `authentik-api-token`               | Authentik     | **Pulumi-generated.** The `pulumi` service account's token, which `authentik` signs in with            |
 | `authentik-bootstrap-password`      | Authentik     | **Pulumi-generated.** akadmin's break-glass login (§8)                                                 |
+| `inbox-app-key`                     | FreeScout     | **Pulumi-generated.** Encrypts each mailbox's Google sign-in, so a restore needs it (§11)              |
+| `inbox-admin-password`              | FreeScout     | **Pulumi-generated.** The break-glass admin, for when Authentik is down (§11)                          |
+| `inbox-oauth-licence`               | nobody        | The OAuth & Social Login module's licence key, kept for a rebuild (§11)                                |
+| `inbox-api-licence`                 | nobody        | The API & Webhooks module's licence key, kept for a rebuild (§11)                                      |
 
 Dev reads only `dev-directus-license-key`, set by hand to the same grant key, and the
 `dev-db-<name>-password` and `dev-csc-website-directus-token` secrets that the `infra` stack
-creates. Its fakes take the place of the
+creates. The integration tests read `dev-inbox-api-key` (§11). Its fakes take the place of the
 Clubspot and Google credentials, and it has no Google sign-in.
 
 ## 6. Directus (`directus.<domain>`)
@@ -236,6 +240,96 @@ the organization needs more than project Owner.
        role the `infra` stack's uptime checks need, so apply `infra` after it.
 3. [ ] After the next run (10:00 or 22:00 UTC), check both buckets have copies, then run the first drill,
        `mise run restore-drill`, and paste its result in cyc-seattle/platform#170.
+
+## 11. The shared inbox (`inbox.<domain>`)
+
+[inbox.md](inbox.md) describes what the `inbox` stack deploys. These steps come in order.
+
+1. [ ] **Create the stacks.** Each Pulumi stack must exist before the first deploy, which never
+       creates one. A deployer runs, from the repo root:
+
+   ```sh
+   PULUMI_STACK=dev mise exec -- pulumi stack init dev --cwd stacks/inbox --secrets-provider gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-dev
+   mise exec -- pulumi stack init prod --cwd stacks/inbox --secrets-provider gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod
+   ```
+
+   Each adds an `encryptedkey` line to its `Pulumi.<stack>.yaml`. Commit both. Apply prod `infra`
+   from the branch too, since it makes dev's `inbox` database.
+
+2. [ ] **Make the mailbox user**, as a Workspace super-admin, in the Admin console:
+   1. Billing → Subscriptions: check it's Google Workspace for Nonprofits, so a new user is free.
+   2. Directory → Users → Add new user: `inbox@cyccommunitysailing.org`, named Inbox FreeScout. Let
+      Google make the password. Nobody signs in to it but to connect FreeScout in step 6.
+   3. Directory → Groups → info@ → Members → Add members: `inbox@`, delivery "Each email".
+   4. In the info@ group's settings, check that anyone can post and that moderation holds nothing.
+      Held mail never reaches inbox@.
+   5. Apps → Google Workspace → Gmail → End User Access → IMAP access: on, for inbox@'s
+      organizational unit.
+
+3. [ ] **Make the Google sign-in for the mailbox**, in the Cloud console for `cyc-admin-scripts`:
+   1. APIs & Services → Library → Gmail API → Enable.
+   2. Credentials → Create credentials → OAuth client ID → Web application, named
+      `FreeScout inbox`, with the authorized redirect URI `https://inbox.cycsail.team/mailbox/oauth`.
+   3. The consent screen is External, for families' Google sign-in (§8), so Google treats the mail
+      scope as unverified. In the Admin console, Security → Access and data control → API controls →
+      Manage third-party app access → Configure new app: paste the client ID, and choose Trusted.
+   4. Keep the client ID and secret for step 6. FreeScout keeps them, encrypted, in its database.
+
+4. [ ] **Buy the modules**, at freescout.net, one licence each for prod and dev, since a licence
+       covers one instance: OAuth & Social Login ($8) and API & Webhooks ($12.99). Keep prod's keys
+       for a rebuild:
+
+   ```sh
+   printf %s '<key>' | gcloud secrets versions add inbox-oauth-licence --data-file=- --project cyc-admin-scripts
+   printf %s '<key>' | gcloud secrets versions add inbox-api-licence --data-file=- --project cyc-admin-scripts
+   ```
+
+5. [ ] **Install the modules**, once each environment is deployed. Sign in at `/login` as the
+       break-glass admin, `inbox:adminEmail`, with its password:
+       `gcloud secrets versions access latest --secret inbox-admin-password --project cyc-admin-scripts`.
+       Dev's is the `inbox` stack's `adminPassword` output. Then:
+   1. Manage → Modules: paste each licence key, then Install, then Activate.
+   2. Manage → Settings → OAuth: add a provider named Sign in, with Authentik's URLs
+      (`https://login.<domain>/application/o/authorize/`, `.../token/`, and `.../userinfo/`), the
+      scopes `openid email profile`, and the `inbox` stack's `oidcClientId` and `oidcClientSecret`
+      outputs (`pulumi stack output --show-secrets --cwd stacks/inbox`). Turn on creating users
+      automatically, and Force OAuth Login.
+   3. Once you know the module's callback path, tighten `inboxRedirectUriPattern` in
+      `stacks/authentik/naming.ts` to it.
+   4. In dev only: Manage → API & Webhooks, copy the API key into `dev-inbox-api-key`, and set
+      `inbox:apiModule: true` in `stacks/inbox/Pulumi.dev.yaml`, so the integration tests run the
+      scenarios that need it:
+
+      ```sh
+      printf %s '<key>' | gcloud secrets versions add dev-inbox-api-key --data-file=- --project cyc-admin-scripts
+      ```
+
+6. [ ] **Connect info@**, in prod's FreeScout: Manage → Mailboxes → New mailbox, with the email
+       `info@cyccommunitysailing.org` and the name CYC Community Sailing Center. Then, in its
+       Connection Settings:
+   - Fetching Emails: IMAP, `imap.gmail.com`, port 993, SSL, the client ID from step 3 as the
+     username and its secret as the password, folder INBOX. Reset inbox@'s password in the Admin
+     console, sign in to Google as inbox@ in a private window, then click Connect, and allow
+     FreeScout. Connecting while signed in as anyone else fails with "Invalid credentials". Sign out
+     after.
+   - Sending Emails: SMTP, `smtp-relay.gmail.com`, port 587, TLS, with no username.
+
+7. [ ] **Test it both ways**: email info@ from a personal address, check it arrives, reply from
+       FreeScout, check the reply comes from info@ with `spf=pass` and `dmarc=pass` in its headers,
+       answer it, and check the answer joins the conversation.
+
+8. [ ] **Let people in**: add each person to the group `authentik:inboxGroup` names (`FreeScout sign-in` by default) in Authentik's admin, under
+       Directory → Groups. They need to have signed in to something once, so Authentik knows them.
+       After their first sign-in to FreeScout, put them on the mailbox under Manage → Mailboxes →
+       info@ → Permissions.
+
+9. [ ] **Cut over**, once volunteers have used FreeScout side by side with the group for the trial:
+   1. Note the info@ group's members and settings, in case you need to put it back.
+   2. Admin console → Directory → Groups → info@ → Delete group. Google frees the address once the
+      group is gone, which can take a few minutes.
+   3. Directory → Users → inbox@ → User information → Alternate email addresses (email aliases) →
+      add `info`. Mail to info@ now lands in inbox@ directly.
+   4. Email info@ again, and check it arrives in FreeScout and a reply still goes out from info@.
 
 ## When you add a new manual step
 
