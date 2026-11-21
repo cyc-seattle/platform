@@ -1,0 +1,27 @@
+name: restore-drill
+
+# Opens an issue each quarter to run the restore drill (#170). The drill itself runs by hand, since
+# only the maintainer may read the copies of prod's data.
+on:
+  schedule:
+    # 9:00 Pacific in winter, on the 1st of January, April, July and October.
+    - cron: "0 17 1 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh issue create \
+            --title "Restore drill, $(date +%Y) Q$(( ($(date +%-m) + 2) / 3 ))" \
+            --assignee ungood \
+            --body "Run \`mise run restore-drill\` and paste its result here. [docs/backups.md](https://cyc-seattle.github.io/platform/backups/#the-restore-drill) has the steps and what to do when a check fails."

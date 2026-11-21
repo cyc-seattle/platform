@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# The quarterly restore drill (docs/backups.md, #170). Loads the latest copy of each prod database into
+# a throwaway Cloud SQL instance in csc-backups, starts Directus on the copy, checks it, compares a
+# copied file with its source, and deletes the instance. Needs Owner on csc-backups, and Docker.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+project=csc-backups
+region=us-central1
+databases_bucket="gs://${project}-databases"
+files_bucket="gs://${project}-files"
+directus_files="${GCP_PROJECT}-directus-files-prod"
+instance="drill-$(date +%Y%m%d-%H%M)"
+port=15432
+directus_port=18055
+image="$(grep -o 'directus/directus:[0-9.]*' stacks/backend/cluster.ts)"
+
+# Throwaway passwords, in the environment only, so they never reach the terminal.
+PGPASSWORD="$(openssl rand -hex 24)"
+export PGPASSWORD
+
+cleanup() {
+  set +e
+  docker rm -f restore-drill-directus >/dev/null 2>&1
+  [[ -n "${proxy_pid:-}" ]] && kill "$proxy_pid" 2>/dev/null
+  if [[ -n "${instance_account:-}" ]]; then
+    gcloud storage buckets remove-iam-policy-binding "$databases_bucket" \
+      --member "serviceAccount:$instance_account" --role roles/storage.objectViewer --quiet >/dev/null
+  fi
+  echo "Deleting $instance..."
+  gcloud sql instances delete "$instance" --project "$project" --quiet
+}
+
+latest() {
+  gcloud storage ls "$databases_bucket/daily/$1/" | sort | tail -1
+}
+
+# Runs one statement on a database of the copy, as its owner, and prints the bare result.
+sql() {
+  docker run --rm --network host -e PGPASSWORD postgres:16 \
+    psql -h 127.0.0.1 -p "$port" -U "$1" -d "$1" -v ON_ERROR_STOP=1 -At -c "$2"
+}
+
+directus_copy="$(latest directus)"
+authentik_copy="$(latest authentik)"
+echo "Restoring $directus_copy and $authentik_copy into $instance."
+
+command -v cloud-sql-proxy >/dev/null || gcloud components install cloud-sql-proxy --quiet
+
+trap cleanup EXIT
+gcloud sql instances create "$instance" --project "$project" --region "$region" \
+  --database-version POSTGRES_16 --edition ENTERPRISE --tier db-f1-micro --no-backup --quiet
+instance_account="$(gcloud sql instances describe "$instance" --project "$project" --format 'value(serviceAccountEmailAddress)')"
+gcloud storage buckets add-iam-policy-binding "$databases_bucket" \
+  --member "serviceAccount:$instance_account" --role roles/storage.objectViewer --quiet >/dev/null
+
+# Each app's user has its database's name and owns its tables, as src/app/cluster.ts makes them.
+for database in directus authentik; do
+  gcloud sql users create "$database" --instance "$instance" --project "$project" --password "$PGPASSWORD" --quiet
+  gcloud sql databases create "$database" --instance "$instance" --project "$project" --quiet
+done
+gcloud sql import sql "$instance" "$directus_copy" --database directus --user directus --project "$project" --quiet
+gcloud sql import sql "$instance" "$authentik_copy" --database authentik --user authentik --project "$project" --quiet
+
+cloud-sql-proxy --gcloud-auth --port "$port" "$project:$region:$instance" >/dev/null 2>&1 &
+proxy_pid=$!
+sleep 5
+
+# With neither a key nor a token, the copy can't activate or refresh the license (cyc-seattle/isthmia#172).
+sql directus "UPDATE directus_settings SET license_key = NULL, license_token = NULL" >/dev/null
+
+docker run -d --name restore-drill-directus --network host \
+  -e DB_CLIENT=pg -e DB_HOST=127.0.0.1 -e DB_PORT="$port" -e DB_DATABASE=directus -e DB_USER=directus \
+  -e DB_PASSWORD="$PGPASSWORD" -e KEY="$(openssl rand -hex 16)" -e SECRET="$(openssl rand -hex 32)" \
+  -e PORT="$directus_port" -e PUBLIC_URL="http://localhost:$directus_port" -e TELEMETRY=false \
+  "$image" >/dev/null
+echo "Waiting for $image to start on the copy..."
+for _ in $(seq 60); do
+  curl -sf "http://localhost:$directus_port/server/info" >/dev/null && break
+  sleep 5
+done
+curl -sf "http://localhost:$directus_port/server/info" >/dev/null || {
+  docker logs --tail 50 restore-drill-directus
+  echo "Directus didn't start on the copy." >&2
+  exit 1
+}
+
+people="$(sql directus "SELECT count(*) FROM people")"
+households="$(sql directus "SELECT count(*) FROM households")"
+newest="$(sql directus "SELECT max(timestamp) FROM directus_activity")"
+hours="$(sql directus "SELECT floor(extract(epoch FROM now() - max(timestamp)) / 3600) FROM directus_activity")"
+users="$(sql authentik "SELECT count(*) FROM authentik_core_user")"
+
+source_object="$(gcloud storage ls "gs://$directus_files/**" | head -1)"
+copied_object="$files_bucket/$directus_files/${source_object#"gs://$directus_files/"}"
+source_hash="$(gcloud storage objects describe "$source_object" --format 'value(md5_hash)')"
+copied_hash="$(gcloud storage objects describe "$copied_object" --format 'value(md5_hash)')"
+
+failed=0
+check() {
+  if [[ "$2" == true ]]; then echo "- [x] $1"; else echo "- [ ] $1"; failed=1; fi
+}
+
+echo
+echo "Restore drill, $(date +%Y-%m-%d)"
+echo
+check "Directus $image started on $directus_copy" true
+check "$people people and $households households" "$([[ $people -gt 0 && $households -gt 0 ]] && echo true)"
+check "Newest Directus activity $newest, $hours hours before the drill" "$([[ $hours -lt 36 ]] && echo true)"
+check "$users Authentik users in $authentik_copy" "$([[ $users -gt 0 ]] && echo true)"
+check "$copied_object matches its source" "$([[ -n $source_hash && $source_hash == "$copied_hash" ]] && echo true)"
+exit "$failed"

@@ -9,6 +9,7 @@ How CYC's shared Google Cloud platform is built and run, for anyone who works on
 - [The backend stack](backend.md): Directus, its schema, and what deploys it
 - [Who can do what](access.md): roles, policies, and the query guard
 - [The syncs](syncs.md): clubspot-sync and gsuite-sync
+- [Backups and restores](backups.md): what's copied, the restore drill, and a real restore
 - [The public website's content](website.md)
 - [Manual setup steps](manual-setup.md): what Pulumi can't do
 

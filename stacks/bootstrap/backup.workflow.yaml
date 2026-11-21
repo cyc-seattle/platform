@@ -1,0 +1,108 @@
+# Copies each prod database, and each bucket with a transfer job, to the backups project (#170).
+# infra's alerts read the `backup` field of the lines it logs. A database the instance gains is
+# copied from its next run.
+main:
+  steps:
+    - init:
+        assign:
+          - project: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+          - instance: ${sys.get_env("INSTANCE")}
+          - bucket: ${sys.get_env("BUCKET")}
+          - transferJobs: ${json.decode(sys.get_env("TRANSFER_JOBS"))}
+          # Pacific time, such as 2026-11-21T02:00:00.123-08:00.
+          - now: ${time.format(sys.now(), "America/Los_Angeles")}
+          - stamp: ${text.substring(now, 0, 13) + text.substring(now, 14, 16)}
+          # The 1st's early run also writes the copy kept for 13 months.
+          - monthly: ${text.substring(now, 8, 10) == "01" and int(text.substring(now, 11, 13)) < 12}
+    - run:
+        try:
+          steps:
+            - listDatabases:
+                call: googleapis.sqladmin.v1beta4.databases.list
+                args:
+                  project: ${project}
+                  instance: ${instance}
+                result: databases
+            - exportEach:
+                for:
+                  value: database
+                  in: ${databases.items}
+                  steps:
+                    - skipSystem:
+                        switch:
+                          - condition: ${database.name == "postgres"}
+                            next: continue
+                    - daily:
+                        call: export
+                        args:
+                          project: ${project}
+                          instance: ${instance}
+                          database: ${database.name}
+                          uri: ${"gs://" + bucket + "/daily/" + database.name + "/" + stamp + ".sql.gz"}
+                    - monthlyCopy:
+                        switch:
+                          - condition: ${monthly}
+                            steps:
+                              - export:
+                                  call: export
+                                  args:
+                                    project: ${project}
+                                    instance: ${instance}
+                                    database: ${database.name}
+                                    uri: ${"gs://" + bucket + "/monthly/" + database.name + "/" + text.substring(now, 0, 7) + ".sql.gz"}
+            - transferEach:
+                for:
+                  value: job
+                  in: ${transferJobs}
+                  steps:
+                    - transfer:
+                        call: googleapis.storagetransfer.v1.transferJobs.run
+                        args:
+                          jobName: ${job.name}
+                          body:
+                            projectId: ${project}
+                    - logTransfer:
+                        call: sys.log
+                        args:
+                          severity: INFO
+                          json:
+                            backup: finished
+                            item: ${"files/" + job.source}
+        except:
+          as: e
+          steps:
+            - logFailure:
+                call: sys.log
+                args:
+                  severity: ERROR
+                  json:
+                    backup: failed
+                    error: ${e}
+            - fail:
+                raise: ${e}
+
+# One database to one gzipped SQL file. Cloud SQL runs one export at a time, so the caller waits.
+export:
+  params: [project, instance, database, uri]
+  steps:
+    - export:
+        call: googleapis.sqladmin.v1beta4.instances.export
+        args:
+          project: ${project}
+          instance: ${instance}
+          body:
+            exportContext:
+              fileType: SQL
+              uri: ${uri}
+              databases:
+                - ${database}
+          connector_params:
+            timeout: 3600
+    - log:
+        call: sys.log
+        args:
+          severity: INFO
+          json:
+            backup: finished
+            item: ${"database/" + database}
+            uri: ${uri}
