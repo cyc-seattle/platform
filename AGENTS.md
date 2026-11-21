@@ -83,7 +83,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   `Integration tests failed on dev`, listing the PRs merged since the last green run, and a green
   run closes it.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, `backend`,
-  then `authentik`, and `prod` is `infra`, `backend`, then `authentik`. `DEPLOY_PROJECTS` narrows the list. Its preview
+  `inbox`, then `authentik`, and `prod` is `infra`, `backend`, `inbox`, then `authentik`. `DEPLOY_PROJECTS` narrows the list. Its preview
   appends each project's `true` or `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip
   a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`, so keep
   those names.
