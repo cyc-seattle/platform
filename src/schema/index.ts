@@ -466,8 +466,6 @@ export interface CrewPositions {
   title: string | null;
   /** What the job is, and how someone is chosen for it. Markdown. */
   description: string | null;
-  /** The committee the job is on, if any. Holding it doesn't add anyone to the committee. */
-  committee_id: string | Groups | null;
   /** What someone in this position must hold. */
   qualifications: (string | CrewPositionQualifications)[];
   terms: (string | CrewTerms)[];
@@ -590,8 +588,6 @@ export interface Groups {
   members: (string | GroupMembers)[];
   /** The policies this group gives its members. */
   policies: (string | GroupPolicies)[];
-  /** A committee. Its positions are in Crew, but its members are still the people added here. */
-  committee: boolean;
 }
 
 /** A sailor and everyone listed as their parent, together with the parents' other children. Made from the Clubspot sign-ups, so change who's in one by fixing the people and their parents. */
@@ -1395,8 +1391,8 @@ export interface StaffLevels {
   role_id: string | StaffRoles;
   /** Volunteer and Junior levels are usually unpaid, with a rate of $0. */
   grade: "volunteer" | "junior" | "standard" | "senior" | "head";
-  /** A retired level stays with anyone who has it. Pick another for someone new. */
-  retired: boolean;
+  /** Set when the level is no longer used for new work. It stays with anyone who has it. Clear it to use the level again. */
+  archived_at: string | null;
 }
 
 /** A job staff are paid by the hour for, such as Instructor or Coach. Drag the rows to change the order planning lists them in. */

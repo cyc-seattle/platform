@@ -8,12 +8,10 @@ import { admin, adminCreate, created, itemPath, newRow, row, runId, runRows } fr
 let personId: string | undefined;
 let positionId: string | undefined;
 let programId: string | undefined;
-let committeeId: string | undefined;
 onEachScenario(() => {
   personId = undefined;
   positionId = undefined;
   programId = undefined;
-  committeeId = undefined;
 });
 
 async function aCrewMember(term: Record<string, unknown> = {}): Promise<void> {
@@ -100,20 +98,6 @@ Step("they can see people's names and emails, but nothing else about them", asyn
     const { status, body } = await user.request("GET", `${itemPath("people", row["people"])}?fields=${field}`);
     expect(status, `${field}: ${JSON.stringify(body)}`).toBe(403);
   }
-});
-
-Step("a committee", async () => {
-  committeeId = (await adminCreate("groups", { id: randomUUID(), name: `Committee ${runId}`, committee: true })).id;
-});
-Step("a crew member with a current term in a position on that committee", async () => {
-  await aCrewMember({ position_id: await aPosition("Treasurer", { committee_id: committeeId }), program_id: null });
-});
-// The group-policies hook runs after the request answers, so give it a moment before reading.
-Step("they aren't one of the committee's members", async () => {
-  await new Promise((resolve) => setTimeout(resolve, 2_000));
-  const filter = encodeURIComponent(JSON.stringify({ group_id: { _eq: committeeId } }));
-  const members = await (await admin()).ok("GET", `/items/group_members?filter=${filter}&fields=person_id`);
-  expect(members).toEqual([]);
 });
 
 describeAccessFeature("crew.feature");

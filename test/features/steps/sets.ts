@@ -122,12 +122,11 @@ const sets: Record<string, Target[]> = {
   "Sail Team's announcements": plain("announcements"),
   plans: [...plain("financial_plans"), ...inFinancialPlans("draft", "frozen")],
   groups: plain("groups", "group_members", "group_policies"),
-  // As crew.feature defines it. A committee is a group marked as one.
+  // As crew.feature defines it.
   Crew: plain("crew_members", "crew_positions", "crew_terms", "crew_qualifications", "crew_position_qualifications"),
   "crew members": plain("crew_members"),
   "who holds which position": plain("crew_members", "crew_positions", "crew_terms"),
   "qualifications held": plain("crew_qualifications"),
-  committees: [{ collection: "groups", rows: ["committee"] }],
   // Everything website.feature calls the website, with the lists that link its parts.
   "the website": plain(
     "website_settings",

@@ -1,7 +1,6 @@
 Feature: Crew
   Crew is everyone who works for CSC, volunteers and paid staff. Each crew member is someone in the
-  CRM. A position is a job, such as Treasurer, Head Coach, or Parent Coordinator, on its own or on a
-  committee. A term is one crew member in one position, from a start date to an end date, and ended
+  CRM. A position is a job, such as Treasurer, Head Coach, or Parent Coordinator. A term is one crew member in one position, from a start date to an end date, and ended
   terms are kept. A term can say which program or program area the job is in, such as the team a
   Parent Coordinator helps, and what it pays: a staff level, a rate of the crew member's own, and
   whether they get a share of the profit. A crew member holds qualifications, such as first aid or
@@ -15,9 +14,9 @@ Feature: Crew
   - Plan Reader, Plan Writer, and Plan Admin, the planners: can see who holds which position, and
     their pay.
 
-  A group gives each of these, and an admin adds its members by hand. A committee is a group too,
-  and an admin adds its members by hand. Being on Crew, holding a position, or holding one on a
-  committee gives no access, and puts no one in a group.
+  A group gives each of these, and an admin adds its members by hand. A committee, such as the
+  Finance Committee, is a group too. Being on Crew or holding a position gives no access, and puts
+  no one in a group.
 
   Rule: A person can be on Crew only once
 
@@ -58,10 +57,9 @@ Feature: Crew
       Given a user with the Crew Writer policy
       Then they can see people's names and emails, but nothing else about them
 
-    Example: A Crew Writer can see committees, but only an admin changes groups
+    Example: Only an admin changes groups
       Given a user with the Crew Writer policy
-      Then they can see committees
-      But they can't change groups
+      Then they can't add, see, edit, or delete groups
 
   Rule: A Crew Reader can see Crew, but not pay, and can't change it
 
@@ -108,13 +106,6 @@ Feature: Crew
         | Community |
         | Team      |
         | Crew      |
-
-  Rule: Holding a position on a committee doesn't put someone on it
-
-    Example: The new Treasurer isn't on the Finance Committee until an admin adds them
-      Given a committee
-      And a crew member with a current term in a position on that committee
-      Then they aren't one of the committee's members
 
   Rule: Being on Crew doesn't give a crew member any access
 

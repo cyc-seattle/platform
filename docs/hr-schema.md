@@ -24,7 +24,7 @@ erDiagram
         string name "such as Senior Instructor"
         uuid role_id FK
         string grade "volunteer|junior|standard|senior|head"
-        boolean retired "kept for whoever has it"
+        timestamp archived_at "set: not for new work"
     }
 ```
 
@@ -33,8 +33,9 @@ A level is a role at a grade, such as Senior Instructor. The grades, in order, a
 Planning lists levels by their role's `sort`, then by grade: `sortStaffLevels()` and `STAFF_GRADES` in `@cyc-seattle/platform/planning` give that order. The Data Studio lists them by role, then by name.
 
 A role with levels, or a level a plan or a Crew term uses, can't be deleted. A level no longer used for
-new work is retired instead (`retired`): it stays with the plans and terms that have it, and the Data
-Studio and a term's picker leave it out. A frozen Financial Plan doesn't copy the catalog, so renaming a level renames it in every plan, frozen ones included. Its rates, and its results, stay as they were.
+new work is archived instead, by setting `archived_at`: it stays with the plans and terms that have
+it, and the Data Studio's default view and a term's picker leave it out. Directus's own archive takes
+a fixed value, not a time, so the collection's archive setting stays off and the view filters instead. A frozen Financial Plan doesn't copy the catalog, so renaming a level renames it in every plan, frozen ones included. Its rates, and its results, stay as they were.
 
 Directus can't make a pair of columns unique, so nothing stops two levels with the same role and grade, or two of a plan's rates for one level. The engine then uses whichever rate it reads last.
 

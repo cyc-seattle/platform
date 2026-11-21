@@ -323,17 +323,11 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
   // Picking someone for Crew: never more of a person than their name and email.
   const crewReads: PermissionRuleInput[] = [
     { collection: "people", action: "read", fields: ["id", "first_name", "last_name", "email"] },
-    {
-      collection: "groups",
-      action: "read",
-      permissions: { committee: { _eq: true } },
-      fields: ["id", "name", "description", "committee"],
-    },
     { collection: "programs", action: "read", fields: ["id", "name"] },
     { collection: "program_areas", action: "read", fields: ["id", "name"] },
     { collection: "qualifications", action: "read" },
     { collection: "qualification_covers", action: "read" },
-    { collection: "staff_levels", action: "read", fields: ["id", "name", "retired"] },
+    { collection: "staff_levels", action: "read", fields: ["id", "name", "archived_at"] },
   ];
   const websiteFolder = { folder: { _eq: WEBSITE_FOLDER } };
   return [
