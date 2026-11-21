@@ -7,8 +7,9 @@ config:
   # Mailchimp's From today, so subscribers' filters still match (cyc-seattle/platform#180).
   listmonk:fromEmail: CYC Community Sailing Center <info@cyccommunitysailing.org>
   # Turned on once SES's login and the pictures bucket exist (docs/manual-setup.md §12).
-  listmonk:ses: false
-  listmonk:mediaBucket: false
+  listmonk:ses: "false"
+  listmonk:mediaBucket: "false"
   listmonk:trustedUrls:
     - https://cyccommunitysailing.org/newsletter/check-your-email
 secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod
+encryptedkey: CiQAbYGDqqITVmLiNbmekIOgirXnKWPScbZcM9x8s8Ie2dakrrESSQAhO9qR3wN2s8+JObdhvfE+YFxiXTNg+LQm2MUy89hH/DaX9WEYMKgNbDEnjXi2BgpLnQp1eYAYSK8Tsd6R0ZI52npd64LjWik=

@@ -9,3 +9,4 @@ config:
     - https://cyccommunitysailing.org/newsletter/check-your-email
     - http://localhost:4321/newsletter/check-your-email
 secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-dev
+encryptedkey: CiQAwaFTJEqqMrFv0KLtCNVhQJ+4EGBeER46sIbfn4PCCiS6kAQSSQBLFC/+kZS082L33GVji2F7ncs+TNwYLOi+CEDYEqEfEwhT99OhYeMf1oqd1KGB+eGvhrwie6zXbtD8bZrSqMBbcRceZ6go6xg=
