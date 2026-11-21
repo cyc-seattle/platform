@@ -88,6 +88,23 @@ account and role):
   accepts, and not by email. With `infra:listmonkFeedback`, SNS posts them to Listmonk's
   `/webhooks/service/ses`.
 
+## Moving from Mailchimp
+
+Mailchimp has one audience. Its export, a ZIP the maintainer keeps outside any repo, goes into Listmonk once, by
+a script run on the maintainer's machine:
+
+- A subscribed contact joins CSC Newsletter as confirmed. Mailchimp's signup and confirmation times and IPs
+  (`OPTIN_TIME`, `OPTIN_IP`, `CONFIRM_TIME`, `CONFIRM_IP`) go in the subscriber's details under `mailchimp`, as
+  the record of their consent.
+- An unsubscribed or cleaned contact is imported blocked, so they're never sent to.
+- Each Mailchimp tag, such as `2025 Adult Classes` or `Volunteer`, becomes a private Listmonk list of the same
+  name, single opt-in, tagged `mailchimp`, and its contacts join it as confirmed. A list, not a subscriber's
+  details, so an issue can be sent to it. The tags also stay in the subscriber's details as Mailchimp had them.
+- Making these lists from Directus instead is
+  [cyc-seattle/platform#339](https://github.com/cyc-seattle/platform/issues/339)'s job.
+
+The December issue goes from Listmonk. Mailchimp, paid monthly, is cancelled once it has gone out.
+
 ## Backups
 
 Listmonk's database is on the Cloud SQL instance, so the nightly copy takes it with the rest
