@@ -7,7 +7,8 @@ import {
   UnverifiedEmailUserWriteStage,
   VerifiedEmailUserWriteStage,
 } from "./resources.ts";
-import { isDev, siblingList, siblingOutput, siblingSecret } from "../../src/app/cluster.ts";
+import { appSecret, isDev, loadCluster, siblingList, siblingOutput, siblingSecret } from "../../src/app/cluster.ts";
+import { AUTHENTIK_ACCESS_SECRET, SIGN_IN_POLICIES } from "../backend/policies.ts";
 import { adminGroup } from "./admins.ts";
 import { deployAuthentik } from "./cluster.ts";
 import { EmbeddedOutpost } from "./embedded-outpost.ts";
@@ -17,7 +18,6 @@ import {
   loginHost,
   directusRedirectUri,
   inboxRedirectUriPattern,
-  DEFAULT_INBOX_GROUP,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
   signInNormalizeExpression,
@@ -25,7 +25,6 @@ import {
   clearPendingVerificationExpression,
   signedInPolicyExpression,
   embeddedOutpostConfig,
-  STAFF_GROUP_NAME,
   IMPLICIT_CONSENT_FLOW,
   PROVIDER_INVALIDATION_FLOW,
   INVALIDATION_FLOW,
@@ -355,8 +354,69 @@ new authentik.Brand(
 // Impersonation is on, for admins to see what someone sees; Authentik's default asks them for a reason.
 new authentik.SystemSettings("system-settings", { defaultUserChangeEmail: false, impersonation: true }, opts);
 
-// --- 5. The `staff` group. Membership is managed by hand, not synced from anywhere.
-new authentik.Group(STAFF_GROUP_NAME, { name: STAFF_GROUP_NAME }, opts);
+// --- 5. The sign-in groups, one per sign-in policy in Directus, which an app lets in. The
+// group-policies hook in `backend` keeps each equal to the policy's holders (docs/access.md), so this
+// project leaves their members alone. The provider's update sends the whole group, with the members
+// Pulumi last saw, which would put back people the hook took out. So any change replaces the group
+// with an empty one, which the hook fills on its next pass.
+const signInGroups = SIGN_IN_POLICIES.map(({ key, name }) => ({
+  key,
+  group: new authentik.Group(
+    `sign-in-${key}`,
+    { name },
+    // Authentik's group names are unique, so the old one goes first.
+    { ...opts, ignoreChanges: ["users"], replaceOnChanges: ["*"], deleteBeforeReplace: true },
+  ),
+}));
+
+// The hook's account, which can see users and change only the sign-in groups' members. It can't
+// make anyone a superuser: adding to a superuser group takes a permission it doesn't have.
+const accessSyncRole = new authentik.RbacRole("directus-access-sync", { name: "Directus access sync" }, opts);
+new authentik.RbacPermissionRole(
+  "directus-access-sync-view-users",
+  { role: accessSyncRole.id, permission: "authentik_core.view_user" },
+  opts,
+);
+function signInGroup(key: string): authentik.Group {
+  const found = signInGroups.find((entry) => entry.key === key);
+  if (!found) throw new Error(`authentik: no sign-in policy has the key ${key}`);
+  return found.group;
+}
+for (const { key, group } of signInGroups) {
+  for (const permission of ["view_group", "add_user_to_group", "remove_user_from_group"]) {
+    new authentik.RbacPermissionRole(
+      `directus-access-sync-${key}-${permission}`,
+      { role: accessSyncRole.id, model: "authentik_core.group", objectId: group.id, permission },
+      opts,
+    );
+  }
+}
+const accessSyncUser = new authentik.User(
+  "directus-access-sync",
+  {
+    username: "directus-access-sync",
+    name: "Directus access sync",
+    type: "service_account",
+    roles: [accessSyncRole.id],
+  },
+  opts,
+);
+const accessSyncToken = new authentik.Token(
+  "directus-access-sync-token",
+  {
+    identifier: "directus-access-sync-token",
+    description: "The group-policies hook's token, to fill the sign-in groups",
+    user: numericId(accessSyncUser.id),
+    intent: "api",
+    expiring: false,
+    retrieveKey: true,
+  },
+  opts,
+);
+// Directus mounts it, optionally, since `backend` deploys first.
+void loadCluster().then((cluster) =>
+  appSecret(cluster, AUTHENTIK_ACCESS_SECRET, { url: authentikUrl, token: accessSyncToken.key }),
+);
 
 // --- 6. Directus's admins, as Authentik superusers.
 adminGroup(siblingList("backend", "directusAdmins"), opts);
@@ -463,14 +523,7 @@ new authentik.PolicyBinding(
 );
 
 // --- 10. The shared inbox's OIDC provider and application (cyc-seattle/platform#182). The client
-// comes from this repo's `inbox` stack. Only one group's members get in. Where that group's members
-// come from is undecided (cyc-seattle/platform#334), so its name is the one setting that changes.
-const inboxGroup = new authentik.Group(
-  "inbox",
-  { name: config.get("inboxGroup") ?? DEFAULT_INBOX_GROUP },
-  // Like `staff`, its members are added by hand, in Authentik's admin.
-  opts,
-);
+// comes from this repo's `inbox` stack. Only holders of the FreeScout Agent policy get in.
 
 const inboxProvider = new ConfidentialOidcProvider(
   "inbox-oidc",
@@ -502,6 +555,6 @@ const inboxApplication = new authentik.Application(
 // A group binding: only its members pass. Authentik superusers pass any binding.
 new authentik.PolicyBinding(
   "inbox-group-binding",
-  { target: inboxApplication.uuid, group: inboxGroup.id, order: 0 },
+  { target: inboxApplication.uuid, group: signInGroup("freescout-agent").id, order: 0 },
   opts,
 );

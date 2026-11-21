@@ -97,6 +97,8 @@ const extensions = {
     community: "Community",
     team: "Team",
     teamMonths: 12,
+    signIn: [],
+    authentikDir: "/directus/authentik-access",
   },
   frozenPlans: {
     rows: ["plan_offerings"],

@@ -20,6 +20,8 @@ export interface WorkloadVolume {
   secret?: pulumi.Input<string>;
   /** A PersistentVolumeClaim's name, for data that outlives the pod. */
   persistentVolumeClaim?: pulumi.Input<string>;
+  /** Starts the pod without the ConfigMap or Secret, which appears in the mount once it exists. */
+  optional?: boolean;
   subPath?: string;
   readOnly?: boolean;
 }
@@ -135,8 +137,12 @@ export function podSpec(
       volumes: volumes.map((v) => ({
         name: v.name,
         ...(v.emptyDir && { emptyDir: v.emptyDir }),
-        ...(v.configMap !== undefined && { configMap: { name: v.configMap } }),
-        ...(v.secret !== undefined && { secret: { secretName: v.secret } }),
+        ...(v.configMap !== undefined && {
+          configMap: { name: v.configMap, ...(v.optional !== undefined && { optional: v.optional }) },
+        }),
+        ...(v.secret !== undefined && {
+          secret: { secretName: v.secret, ...(v.optional !== undefined && { optional: v.optional }) },
+        }),
         ...(v.persistentVolumeClaim !== undefined && { persistentVolumeClaim: { claimName: v.persistentVolumeClaim } }),
       })),
     }),

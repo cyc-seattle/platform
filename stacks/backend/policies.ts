@@ -408,8 +408,42 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         action,
       })),
     },
+    ...SIGN_IN_POLICIES,
   ];
 }
+
+/** The Secret the `authentik` stack writes for the group-policies hook, and where Directus mounts it. */
+export const AUTHENTIK_ACCESS_SECRET = "directus-authentik-access";
+export const AUTHENTIK_ACCESS_DIR = "/directus/authentik-access";
+
+/**
+ * The policies that let their holders sign in to another app, and allow nothing in Directus. The
+ * group-policies hook keeps an Authentik group of each one's name equal to its holders, and the app
+ * lets in only that group.
+ */
+export const SIGN_IN_POLICIES: PolicyData[] = [
+  {
+    key: "freescout-agent",
+    name: "FreeScout Agent",
+    icon: "support_agent",
+    description: "Signs in to FreeScout, the shared inbox, to answer the mailboxes they're put on there.",
+    rules: [],
+  },
+  {
+    key: "listmonk-write",
+    name: "Listmonk Write",
+    icon: "edit_note",
+    description: "Signs in to Listmonk to write and test newsletters, and manage its subscribers. Can't send.",
+    rules: [],
+  },
+  {
+    key: "listmonk-send",
+    name: "Listmonk Send",
+    icon: "send",
+    description: "Signs in to Listmonk to write, test and send newsletters, and manage its subscribers.",
+    rules: [],
+  },
+];
 
 /**
  * Crew's own rules, beside the Community policies it also has: every roster, everyone's contact
@@ -474,6 +508,10 @@ export interface GroupPoliciesConfig {
   team: string;
   /** How many months after their last team offering ends someone stays on the team. */
   teamMonths: number;
+  /** The sign-in policies, by name, each also the name of the Authentik group it fills. */
+  signIn: string[];
+  /** Where Directus mounts the `url` and `token` the hook reaches Authentik with. */
+  authentikDir: string;
 }
 
 /** What ./group-policies.cjs needs. */
@@ -484,6 +522,8 @@ export function groupPoliciesConfig(policies: PolicyData[]): GroupPoliciesConfig
     community: "Community",
     team: "Team",
     teamMonths: TEAM_MONTHS,
+    signIn: SIGN_IN_POLICIES.map(({ name }) => name).sort(),
+    authentikDir: AUTHENTIK_ACCESS_DIR,
   };
 }
 
