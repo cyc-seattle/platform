@@ -279,7 +279,10 @@ fields:
               - Catalog Writer
               - Crew Reader
               - Crew Writer
+              - FreeScout Agent
               - Link Writer
+              - Listmonk Send
+              - Listmonk Write
               - Medical Reader
               - Medical Writer
               - Plan Admin

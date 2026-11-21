@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { DEFAULT_INBOX_GROUP } from "../../stacks/authentik/naming.ts";
 import { TEST_MAILBOX } from "../../stacks/inbox/cluster.ts";
 import { proxyOk } from "./cluster.ts";
+import { addToGroup, createUser, newGroup, personFor } from "./steps/logins.ts";
 import { accessToken, devPlatform, kube, secretValue } from "./support.ts";
+
+const FREESCOUT_AGENT = "FreeScout Agent";
 
 // What the shared inbox's feature reaches on dev: Authentik's API as its admin, FreeScout's API with
 // the API module's key, and GreenMail, which stands in for Gmail, through the cluster's API.
@@ -34,24 +36,34 @@ async function authentik(method: string, path: string, body?: unknown): Promise<
 
 const authentikUsers: number[] = [];
 
-/** The group that may sign in to the shared inbox, from the authentik stack's dev config. */
-function inboxGroupName(): string {
-  const config = readFileSync(join(import.meta.dirname, "../../stacks/authentik/Pulumi.dev.yaml"), "utf8");
-  return /^\s*authentik:inboxGroup:\s*"?([^"\n]+?)"?\s*$/m.exec(config)?.[1] ?? DEFAULT_INBOX_GROUP;
-}
-
-/** An Authentik user named for the run, in the group that may sign in to the shared inbox or not. */
+/**
+ * An Authentik user named for the run, as a first sign-in makes. One allowed to use the shared inbox
+ * is in a group in Directus that gives the FreeScout Agent policy, and the group-policies hook puts
+ * them in Authentik's group of that name.
+ */
 export async function newAuthentikUser(runId: string, allowed: boolean): Promise<number> {
-  const name = encodeURIComponent(inboxGroupName());
-  const groups = allowed ? [(await authentik("GET", `/core/groups/?name=${name}`)).results[0].pk] : [];
+  const email = `inbox-${runId}@example.test`;
   const user = await authentik("POST", "/core/users/", {
     username: `inbox-${runId}`,
     name: `Inbox test ${runId}`,
-    email: `inbox-${runId}@example.test`,
+    email,
     is_active: true,
-    groups,
   });
   authentikUsers.push(user.pk);
+  if (allowed) {
+    const login = await createUser(email, "Crew");
+    const { groupId } = await newGroup(FREESCOUT_AGENT);
+    await addToGroup(groupId, await personFor(login));
+    const name = encodeURIComponent(FREESCOUT_AGENT);
+    await eventually(
+      "the group-policies hook to let them in",
+      async () => {
+        const { results } = await authentik("GET", `/core/groups/?name=${name}&include_users=false`);
+        return results[0]?.users.includes(user.pk) || undefined;
+      },
+      1,
+    );
+  }
   return user.pk;
 }
 

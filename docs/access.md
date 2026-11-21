@@ -91,6 +91,9 @@ can give, attached to no role:
 | Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                       |
 | Link Writer         | Changes Sail Team's links, but not their previews                                                                      |
 | Announcement Writer | Changes Sail Team's announcements                                                                                      |
+| FreeScout Agent     | Signs in to FreeScout, the shared inbox. Nothing in Directus                                                           |
+| Listmonk Write      | Signs in to Listmonk with its Write role: writes and tests newsletters, and manages subscribers. Nothing in Directus   |
+| Listmonk Send       | Signs in to Listmonk with its Send role: Listmonk Write's, and sends newsletters. Nothing in Directus                  |
 
 They're coarse: whole collections, with no row filters and no hidden fields, but for users, people,
 link previews, and Crew: a Plan policy reads only each user's and person's first and last name, so a
@@ -225,6 +228,8 @@ minutes, to catch a change that emitted no event, such as a cascade.
 - It gives each user their person's first and last name, so the Data Studio, comments, and
   revisions show a name, not an email. People is the source of truth, so the next run puts back a
   name changed on the user.
+- It removes any other policy linked straight to one of those users, so a policy comes only from a
+  role or a group.
 - It refuses a `group_policies` row that names any other policy.
 - It changes links through Directus's `AccessService`, which clears Directus's permission caches.
 
@@ -232,6 +237,31 @@ A person merge stops while a duplicate is still in a group, since moving a membe
 has access. An admin moves the membership by hand, and the next sync finishes the merge. For the
 same reason the Clubspot sync never changes the email of someone in a group. It logs the new
 address, which it still keeps among the person's other emails.
+
+## Signing in to other apps
+
+Who may sign in to another app is a policy, named for what it lets someone do there, and an admin
+gives it through a group like any other: FreeScout Agent, Listmonk Write, and Listmonk Send
+(`SIGN_IN_POLICIES` in `stacks/backend/policies.ts`). It allows nothing in Directus. No role gives
+one, Admin included.
+
+The `authentik` stack makes an Authentik group of each one's name, and each app lets in only its
+groups. The `group-policies` hook keeps each group's members equal to the active logins whose person
+holds the policy, on the same passes as the policy links, so someone added to a group in Authentik by
+hand is taken out, and so is a suspended login. It matches an Authentik account by its email, so
+someone who has never signed in has none, and joins on the first pass after they do. It takes people
+out of a group before adding anyone. Authentik is a copy: a group it can't update is logged, the
+others still are, and the next pass catches it up. If Directus has none of the policies a group can
+give, the hook changes no links and no sign-in group, and warns.
+
+Any change to a sign-in group in the `authentik` stack, such as a new name, replaces it with an
+empty one, which the hook fills on its next pass, within 15 minutes. Updating it in place would send
+back the members Pulumi last saw.
+
+The hook signs in to Authentik as the `directus-access-sync` service account, whose token the
+`authentik` stack writes to the `directus-authentik-access` Secret. Directus mounts the Secret
+optionally, since `backend` deploys first, and the hook reads it on each pass. The account sees
+users, and adds to and takes out of only the sign-in groups: it can't touch a superuser group.
 
 ## The query guard
 
