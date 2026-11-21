@@ -1,4 +1,10 @@
 config:
+  backend:contactTo: info@cyccommunitysailing.org
+  backend:formsHostname: mail.dev.cycsail.team
+  backend:formsOrigins:
+    - https://cyccommunitysailing.org
+    - https://csc-website.web.app
+    - http://localhost:4321
   gcp:project: cyc-admin-scripts
   gcp:region: us-west1
   # Resets burst to the 1 vCPU limit; this keeps half of it when the node is busy.

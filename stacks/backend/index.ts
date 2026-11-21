@@ -118,6 +118,12 @@ const app = deployDirectus(
     frozenPlans,
     // Set once the GitHub App exists (docs/manual-setup.md §6). Dev has none, so only prod publishes.
     websitePublish: websitePublishConfig(loadedSchemas, config.get("websitePublishAppId")),
+    forms: {
+      to: config.require("contactTo"),
+      allowedOrigins: config.requireObject<string[]>("formsOrigins"),
+      siteUrl: `https://${config.require("externalDomain")}`,
+    },
+    formsHostname: config.require("formsHostname"),
     engine,
   },
   prod?.values,

@@ -114,6 +114,8 @@ const extensions = {
     ref: "main",
     appId: "12345",
   },
+  forms: { to: "info@example.org", allowedOrigins: ["https://example.org"], siteUrl: "https://example.org" },
+  formsHostname: "mail.example.org",
   engine: { "planning-index.mjs": "" },
 };
 
@@ -204,6 +206,19 @@ describe("prod's Directus on the cluster", () => {
 
   it("asks for at least what Autopilot gives a pod it won't evict", () => {
     expect(requestsAutopilotRaises(resources)).toEqual([]);
+  });
+
+  it("sends mail through the Workspace relay, which admits the cluster's address", () => {
+    const env = Object.fromEntries(
+      container().containers[0].env.map((e: { name: string; value?: unknown }) => [e.name, e.value]),
+    );
+    expect(env).toMatchObject({
+      EMAIL_TRANSPORT: "smtp",
+      EMAIL_SMTP_HOST: "smtp-relay.gmail.com",
+      EMAIL_SMTP_PORT: "587",
+      EMAIL_SMTP_SECURE: "false",
+    });
+    expect(env).not.toHaveProperty("EMAIL_SMTP_PASSWORD");
   });
 
   it("keeps Directus's info logs", () => {

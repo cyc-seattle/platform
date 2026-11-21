@@ -41,7 +41,7 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, Plan, and Sail Team writer policies", () => {
+  it("are the CRM, Medical, Catalog, Plan, Sail Team writer, and Listmonk policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
       "Announcement Writer",
       "CRM Reader",
@@ -49,6 +49,8 @@ describe("the policies a group can give", () => {
       "Catalog Reader",
       "Catalog Writer",
       "Link Writer",
+      "Listmonk Send",
+      "Listmonk Write",
       "Medical Reader",
       "Medical Writer",
       "Plan Admin",
@@ -114,6 +116,13 @@ describe("the policies a group can give", () => {
     expect(collections("CRM Writer", "update").has("people")).toBe(true);
     expect(collections("CRM Writer", "update").has("clubspot_registrations")).toBe(false);
     expect(collections("CRM Reader", "read")).toEqual(collections("CRM Writer", "read"));
+  });
+});
+
+describe("the Listmonk policies", () => {
+  it("give nothing in Directus, only a role in Listmonk", () => {
+    expect(named("Listmonk Write").rules).toEqual([]);
+    expect(named("Listmonk Send").rules).toEqual([]);
   });
 });
 
