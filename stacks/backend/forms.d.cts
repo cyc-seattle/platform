@@ -5,6 +5,8 @@ export interface FormsConfig {
   allowedOrigins: string[];
   /** Where to send the visitor back to when the form's own address isn't one of them. */
   siteUrl: string;
+  /** How many messages one IP may send an hour. */
+  perIp: number;
 }
 
 export interface Fields {

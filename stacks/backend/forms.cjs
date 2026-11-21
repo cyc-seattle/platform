@@ -10,7 +10,6 @@ const querystring = require("node:querystring");
 
 const HOUR_MS = 60 * 60 * 1000;
 const PER_ADDRESS = 3;
-const PER_IP = 10;
 const MAX_BODY = 64 * 1024;
 const MAX_LENGTH = { first_name: 100, last_name: 100, email: 254, phone: 40, message: 5000 };
 const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
@@ -86,10 +85,10 @@ async function readForm(req) {
   return querystring.parse(body);
 }
 
-/** The router for `config`: `{ to, allowedOrigins, siteUrl }`. `send` sends one email. */
+/** The router for `config`: `{ to, allowedOrigins, siteUrl, perIp }`. `send` sends one email. */
 function routes(router, config, send, logger) {
   const byAddress = limiter(PER_ADDRESS, HOUR_MS);
-  const byIp = limiter(PER_IP, HOUR_MS);
+  const byIp = limiter(config.perIp, HOUR_MS);
 
   router.post("/contact", async (req, res) => {
     const origin = req.get("origin") ?? "";

@@ -122,6 +122,7 @@ const app = deployDirectus(
       to: config.require("contactTo"),
       allowedOrigins: config.requireObject<string[]>("formsOrigins"),
       siteUrl: `https://${config.require("externalDomain")}`,
+      perIp: config.getNumber("formsPerIp") ?? 10,
     },
     formsHostname: config.require("formsHostname"),
     engine,

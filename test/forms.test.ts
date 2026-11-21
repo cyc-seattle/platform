@@ -7,6 +7,7 @@ const config: FormsConfig = {
   to: "info@example.org",
   allowedOrigins: [site, "https://example.web.app"],
   siteUrl: site,
+  perIp: 10,
 };
 const form = {
   first_name: " Pat ",

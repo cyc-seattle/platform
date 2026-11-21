@@ -6,7 +6,15 @@ import * as random from "@pulumi/random";
 import { WebService } from "../../src/index.ts";
 import { listmonkMediaBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
-import { ACCESS_SYNC, listmonkSettings, settingsSql, type Media, type SmtpServer } from "./settings.ts";
+import {
+  ACCESS_SYNC,
+  listmonkSettings,
+  settingsSql,
+  TESTS,
+  type ApiLogin,
+  type Media,
+  type SmtpServer,
+} from "./settings.ts";
 
 // Listmonk, the newsletter (cyc-seattle/platform#180). Prod sends through SES, whose identity and SMTP
 // user `infra` makes; dev sends to the Mailpit `authentik` runs. `authentik` registers its sign-in.
@@ -34,9 +42,14 @@ async function deploy() {
   const adminPassword = new random.RandomPassword("listmonk-admin-password", { length: 32, special: false }).result;
   const clientId = new random.RandomString("listmonk-oidc-client-id", { length: 40, special: false }).result;
   const clientSecret = new random.RandomPassword("listmonk-oidc-client-secret", { length: 64, special: false }).result;
-  const listUuid = new random.RandomUuid("listmonk-newsletter-list").result;
-  const accessSyncToken = new random.RandomPassword("listmonk-access-sync-token", { length: 48, special: false })
-    .result;
+  const listUuid = pulumi.output(config.require("listId"));
+  const token = (name: string) => new random.RandomPassword(name, { length: 48, special: false }).result;
+  // Each API login's token; the tests' only in dev.
+  const logins: { login: ApiLogin; secret: string; token: pulumi.Output<string> }[] = [
+    { login: ACCESS_SYNC, secret: "listmonk-access-sync", token: token("listmonk-access-sync-token") },
+    ...(isDev ? [{ login: TESTS, secret: "listmonk-tests", token: token("listmonk-tests-token") }] : []),
+  ];
+  const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
   const smtp: pulumi.Output<SmtpServer> = isDev
     ? pulumi.output({ host: "mailpit", port: 1025, tls: "none" as const, username: "", password: "" })
@@ -59,8 +72,8 @@ async function deploy() {
       }));
 
   const sql = pulumi
-    .all([smtp, media, clientId, clientSecret, listUuid, accessSyncToken])
-    .apply(([smtp, media, id, secret, uuid, token]) =>
+    .all([smtp, media, clientId, clientSecret, listUuid, pulumi.all(logins.map((l) => l.token))])
+    .apply(([smtp, media, id, secret, uuid, tokens]) =>
       settingsSql(
         listmonkSettings({
           rootUrl,
@@ -74,7 +87,7 @@ async function deploy() {
           sesBounces: !isDev,
         }),
         uuid,
-        crypto.createHash("sha256").update(token).digest("hex"),
+        logins.map(({ login }, i) => ({ login, tokenHash: sha256(tokens[i]!) })),
       ),
     );
 
@@ -153,12 +166,15 @@ async function deploy() {
     runAsUser: 1000,
   });
 
-  // What access-334's sync signs in to Listmonk with, to give each account its role (docs/newsletter.md).
-  appSecret(cluster, "listmonk-access-sync", {
-    LISTMONK_URL: "http://listmonk",
-    LISTMONK_API_USER: ACCESS_SYNC.username,
-    LISTMONK_API_TOKEN: accessSyncToken,
-  });
+  // What each API login signs in with: access-334's sync, to give each account its role, and dev's tests
+  // (docs/newsletter.md).
+  for (const { login, secret, token } of logins) {
+    appSecret(cluster, secret, {
+      LISTMONK_URL: "http://listmonk",
+      LISTMONK_API_USER: login.username,
+      LISTMONK_API_TOKEN: token,
+    });
+  }
 
   return {
     oidcClientId: clientId,

@@ -62,14 +62,28 @@ export const ROLES = {
   Send: [...WRITE, "campaigns:send"],
 };
 
+/** An API login, with a role of its own that gives it only what it needs. */
+export interface ApiLogin {
+  username: string;
+  role: string;
+  permissions: string[];
+}
+
 /**
  * The API login access-334's sync uses to give each account the role its policies give
  * (cyc-seattle/platform#334). It may read and change accounts, and read roles, nothing else.
  */
-export const ACCESS_SYNC = {
+export const ACCESS_SYNC: ApiLogin = {
   username: "access-sync",
   role: "Access sync",
   permissions: ["users:get", "users:manage", "roles:get"],
+};
+
+/** Dev's integration tests, which read whether a signup is on the list. Dev only. */
+export const TESTS: ApiLogin = {
+  username: "integration-tests",
+  role: "Integration tests",
+  permissions: ["subscribers:get_all", "lists:get_all"],
 };
 
 /** The role a sign-in creates an account with. Listmonk can't read a role from the sign-in. */
@@ -164,14 +178,24 @@ function literal(value: string): string {
  * The SQL that writes `settings`, the roles, and the list, safe to run at every start. The list keeps
  * any name staff give it; its ID is what the website's form posts.
  */
-export function settingsSql(settings: Record<string, unknown>, listUuid: string, accessSyncTokenHash: string): string {
+export function settingsSql(
+  settings: Record<string, unknown>,
+  listUuid: string,
+  logins: { login: ApiLogin; tokenHash: string }[],
+): string {
   if (!/^[0-9a-f-]{36}$/.test(listUuid)) {
     throw new Error(`listmonk: "${listUuid}" isn't a UUID.`);
   }
-  if (!/^[0-9a-f]{64}$/.test(accessSyncTokenHash)) {
-    throw new Error("listmonk: the access sync's token hash isn't a SHA-256 hex digest.");
+  for (const { login, tokenHash } of logins) {
+    if (!/^[0-9a-f]{64}$/.test(tokenHash)) {
+      throw new Error(`listmonk: ${login.username}'s token hash isn't a SHA-256 hex digest.`);
+    }
   }
-  const roles = Object.entries({ ...ROLES, [ACCESS_SYNC.role]: ACCESS_SYNC.permissions }).map(
+  const roleList: [string, string[]][] = [
+    ...Object.entries(ROLES),
+    ...logins.map(({ login }): [string, string[]] => [login.role, login.permissions]),
+  ];
+  const roles = roleList.map(
     ([name, permissions]) =>
       `INSERT INTO roles (type, name, permissions) VALUES ('user', ${literal(name)}, ARRAY[${permissions
         .map(literal)
@@ -189,10 +213,12 @@ export function settingsSql(settings: Record<string, unknown>, listUuid: string,
     `INSERT INTO lists (uuid, name, type, optin) VALUES ('${listUuid}', ${literal(LIST_NAME)}, 'public', 'double')`,
     "  ON CONFLICT (uuid) DO UPDATE SET type = 'public', optin = 'double', updated_at = NOW();",
     // Listmonk keeps an API login's token as its SHA-256, and reads the logins at start.
-    "INSERT INTO users (username, password_login, password, email, name, type, user_role_id, status)",
-    `  VALUES (${literal(ACCESS_SYNC.username)}, false, '${accessSyncTokenHash}', ${literal(`${ACCESS_SYNC.username}@listmonk.invalid`)}, ` +
-      `${literal(ACCESS_SYNC.role)}, 'api', (SELECT id FROM roles WHERE type = 'user' AND name = ${literal(ACCESS_SYNC.role)}), 'enabled')`,
-    "  ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, user_role_id = EXCLUDED.user_role_id, status = 'enabled', updated_at = NOW();",
+    ...logins.flatMap(({ login, tokenHash }) => [
+      "INSERT INTO users (username, password_login, password, email, name, type, user_role_id, status)",
+      `  VALUES (${literal(login.username)}, false, '${tokenHash}', ${literal(`${login.username}@listmonk.invalid`)}, ` +
+        `${literal(login.role)}, 'api', (SELECT id FROM roles WHERE type = 'user' AND name = ${literal(login.role)}), 'enabled')`,
+      "  ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, user_role_id = EXCLUDED.user_role_id, status = 'enabled', updated_at = NOW();",
+    ]),
     ...values,
     "UPDATE settings SET value = jsonb_set(value, '{default_user_role_id}', to_jsonb(" +
       `(SELECT id FROM roles WHERE type = 'user' AND name = ${literal(DEFAULT_ROLE)})))`,

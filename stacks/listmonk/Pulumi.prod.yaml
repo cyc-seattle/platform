@@ -1,6 +1,8 @@
 config:
   gcp:project: cyc-admin-scripts
   gcp:region: us-west1
+  # The CSC Newsletter list's ID, which the website's signup form posts. Public.
+  listmonk:listId: 2e604823-4eeb-4665-bbea-81a670bf48e3
   listmonk:hostname: mail.cyccommunitysailing.org
   # Mailchimp's From today, so subscribers' filters still match (cyc-seattle/platform#180).
   listmonk:fromEmail: CYC Community Sailing Center <info@cyccommunitysailing.org>

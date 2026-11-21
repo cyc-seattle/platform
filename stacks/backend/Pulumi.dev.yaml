@@ -1,6 +1,8 @@
 config:
   backend:contactTo: info@cyccommunitysailing.org
   backend:formsHostname: mail.dev.cycsail.team
+  # Every integration test posts from one runner, so dev checks only the per-address limit end to end.
+  backend:formsPerIp: 1000
   backend:formsOrigins:
     - https://cyccommunitysailing.org
     - https://csc-website.web.app

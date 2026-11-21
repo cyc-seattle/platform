@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACCESS_SYNC,
+  TESTS,
   listmonkSettings,
   ROLES,
   settingsSql,
@@ -20,6 +21,7 @@ const args: ListmonkSettingsArgs = {
 };
 const uuid = "3f1c2b6e-8d4a-4f7e-9a51-0c2d3e4f5a6b";
 const hash = "a".repeat(64);
+const logins = [{ login: ACCESS_SYNC, tokenHash: hash }];
 
 describe("Listmonk's settings", () => {
   it("signs staff in through Authentik, making an account with the Write role", () => {
@@ -30,7 +32,7 @@ describe("Listmonk's settings", () => {
       client_secret: "secret",
       auto_create_users: true,
     });
-    expect(settingsSql(listmonkSettings(args), uuid, hash)).toContain(
+    expect(settingsSql(listmonkSettings(args), uuid, logins)).toContain(
       "jsonb_set(value, '{default_user_role_id}', to_jsonb((SELECT id FROM roles WHERE type = 'user' AND name = $cyc$Write$cyc$)))",
     );
   });
@@ -97,9 +99,13 @@ describe("Listmonk's settings", () => {
 });
 
 describe("The access sync's login", () => {
+  it("lets dev's tests read only subscribers and lists", () => {
+    expect(TESTS.permissions).toEqual(["subscribers:get_all", "lists:get_all"]);
+  });
+
   it("is an API login that may only read and change accounts, with the token's hash", () => {
     expect(ACCESS_SYNC.permissions).toEqual(["users:get", "users:manage", "roles:get"]);
-    const sql = settingsSql({}, uuid, hash);
+    const sql = settingsSql({}, uuid, logins);
     expect(sql).toContain(`'access-sync'`.replace(/'/g, "$cyc$"));
     expect(sql).toContain(`false, '${hash}'`);
     expect(sql).toContain(
@@ -110,7 +116,7 @@ describe("The access sync's login", () => {
 
 describe("The settings SQL", () => {
   it("writes every setting, the roles, and a double opt-in public list, safely run again", () => {
-    const sql = settingsSql({ "app.root_url": "https://mail.example.org" }, uuid, hash);
+    const sql = settingsSql({ "app.root_url": "https://mail.example.org" }, uuid, logins);
     expect(sql.startsWith("BEGIN;\n")).toBe(true);
     expect(sql.trimEnd().endsWith("COMMIT;")).toBe(true);
     expect(sql).toContain(
@@ -122,12 +128,13 @@ describe("The settings SQL", () => {
     );
     expect(sql).toContain("ON CONFLICT (uuid) DO UPDATE SET type = 'public', optin = 'double'");
     expect(sql.match(/INSERT INTO roles/g)).toHaveLength(3);
+    expect(settingsSql({}, uuid, []).match(/INSERT INTO users/g)).toBeNull();
   });
 
   it("quotes a value with a quote in it, and refuses one it can't quote", () => {
-    expect(settingsSql({ smtp: [{ password: "it's" }] }, uuid, hash)).toContain(`$cyc$[{"password":"it's"}]$cyc$`);
-    expect(() => settingsSql({ smtp: [{ password: "a$cyc$b" }] }, uuid, hash)).toThrow(/can't be quoted/);
-    expect(() => settingsSql({}, "'; DROP TABLE lists; --", hash)).toThrow(/isn't a UUID/);
-    expect(() => settingsSql({}, uuid, "token")).toThrow(/SHA-256/);
+    expect(settingsSql({ smtp: [{ password: "it's" }] }, uuid, logins)).toContain(`$cyc$[{"password":"it's"}]$cyc$`);
+    expect(() => settingsSql({ smtp: [{ password: "a$cyc$b" }] }, uuid, logins)).toThrow(/can't be quoted/);
+    expect(() => settingsSql({}, "'; DROP TABLE lists; --", logins)).toThrow(/isn't a UUID/);
+    expect(() => settingsSql({}, uuid, [{ login: ACCESS_SYNC, tokenHash: "token" }])).toThrow(/SHA-256/);
   });
 });

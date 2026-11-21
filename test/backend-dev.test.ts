@@ -104,7 +104,7 @@ const extensions = {
     workflow: "publish.yml",
     ref: "main",
   },
-  forms: { to: "info@example.org", allowedOrigins: ["https://example.org"], siteUrl: "https://example.org" },
+  forms: { to: "info@example.org", allowedOrigins: ["https://example.org"], siteUrl: "https://example.org", perIp: 10 },
   formsHostname: "mail.dev.example.team",
   engine: { "planning-index.mjs": "" },
 };
