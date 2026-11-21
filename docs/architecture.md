@@ -47,7 +47,7 @@ Data model and table-level design are deliberately out of scope here — those b
                    ▲
    Clubspot  ──►  sync job (Kubernetes CronJob)  ──►  CRM (via Directus API)
    (source of truth)
-   backups: DB ──► GCS (versioned, separate region)
+   backups: DB + files ──► csc-backups project (us-central1), twice a day
    monitoring: Cloud Logging ──► Cloud Monitoring alerts ──► email
 ```
 
@@ -116,17 +116,17 @@ Nothing sensitive is in git. [Manual setup](manual-setup.md) §5 and
 
 ### Backups
 
-Non-negotiable given the data. Target **RPO ≤ 24h** (minutes with PITR) and **RTO of a few hours** (rebuild from
+Non-negotiable given the data. Target **RPO ≤ 12h** (minutes with PITR) and **RTO of a few hours** (rebuild from
 Pulumi + config, restore data).
 
-- **Database**: Cloud SQL automated backups + point-in-time recovery. Also export logical dumps to GCS for a
-  provider-independent copy.
+- **Database**: Cloud SQL automated backups + point-in-time recovery, inside the instance.
 - **Directus files**: a versioned Cloud Storage bucket per environment, which keeps a deleted or replaced file for 30 days.
-- **Bucket**: versioned, lifecycle-managed, in a different region, ideally a separate project for blast-radius
-  isolation. CMEK if you want to hold the key.
+- **Copies outside it**: twice a day, each prod database as plain SQL, Directus's files, and Pulumi's prod state go
+  to `csc-backups`, a project of its own in `us-central1`. A database copy can't be deleted for 35 days.
 - **Verify**: a restore drill each quarter. A backup you haven't restored is a hope.
-- **Alerting**: a dead-man's-switch — if a backup doesn't check in, fire a Google Chat alert via
-  `GoogleChatNotifier`.
+- **Alerting**: an email when a run fails or nothing has been copied in 23.5 hours.
+
+[backups.md](backups.md) has what's kept, the drill, and how to restore.
 
 ### Monitoring
 
@@ -135,7 +135,8 @@ Light; you're already in GCP.
 - **Logs** from every pod go to Cloud Logging. isthmia's `mise run logs` tails a workload's.
 - **Job alerts**, from the `infra` stack: any prod Job that fails, and any CronJob with no successful run in
   3 hours, emails the maintainer.
-- **Still open:** uptime checks against each public surface, and backup-failure and cert-expiry alerts.
+- **Uptime checks**, from the `infra` stack: each public address, every 5 minutes from 3 regions. An address that
+  fails from 2 of them for 5 minutes, or a certificate with under 14 days left, emails the maintainer.
 
 ### Deploy model
 
@@ -200,8 +201,8 @@ Read current figures from the billing console.
 
 Ordered by permission blast radius: internal and low-stakes first, external access to sensitive data last.
 
-1. **Phase 0 — Infrastructure.** Done: the cluster, Cloud SQL, Secret Manager, and DNS/TLS are all live via Pulumi. GCS
-   backup export and monitoring are still open ([cyc-seattle/isthmia#66](https://github.com/cyc-seattle/isthmia/issues/66)).
+1. **Phase 0 — Infrastructure.** Done: the cluster, Cloud SQL, Secret Manager, DNS/TLS, backups outside
+   Cloud SQL, and monitoring are all live via Pulumi ([cyc-seattle/platform#170](https://github.com/cyc-seattle/platform/issues/170)).
 2. **Phase 1 — Identity.** Done: everyone signs in to Directus through Authentik, and the `group-policies` hook links
    each login to a person by email.
 3. **Phase 2 — Staff CRM + Clubspot sync.** Done: Directus holds the CRM, and clubspot-sync keeps it current.
