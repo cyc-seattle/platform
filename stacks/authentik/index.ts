@@ -17,6 +17,7 @@ import { Secret } from "../../src/app/secret.ts";
 import {
   loginHost,
   directusRedirectUri,
+  inboxRedirectUriPattern,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
   signInNormalizeExpression,
@@ -369,6 +370,11 @@ new authentik.RbacPermissionRole(
   { role: accessSyncRole.id, permission: "authentik_core.view_user" },
   opts,
 );
+function signInGroup(key: string): authentik.Group {
+  const found = signInGroups.find((entry) => entry.key === key);
+  if (!found) throw new Error(`authentik: no sign-in policy has the key ${key}`);
+  return found.group;
+}
 for (const { key, group } of signInGroups) {
   for (const permission of ["view_group", "add_user_to_group", "remove_user_from_group"]) {
     new authentik.RbacPermissionRole(
@@ -511,5 +517,42 @@ const signedInPolicy = new authentik.PolicyExpression(
 new authentik.PolicyBinding(
   "directus-signed-in-binding",
   { target: directusApplication.uuid, policy: signedInPolicy.id, order: 0 },
+  opts,
+);
+
+// --- 10. The shared inbox's OIDC provider and application (cyc-seattle/platform#182). The client
+// comes from this repo's `inbox` stack. Only holders of the FreeScout Agent policy get in.
+
+const inboxProvider = new ConfidentialOidcProvider(
+  "inbox-oidc",
+  {
+    name: "Inbox",
+    clientId: siblingOutput("inbox", "oidcClientId"),
+    clientSecret: siblingSecret("inbox", "oidcClientSecret"),
+    signingKey: signingCertificate.id,
+    authorizationFlow: implicitConsentFlow.id,
+    invalidationFlow: providerInvalidationFlow.id,
+    allowedRedirectUris: [
+      {
+        matching_mode: "regex",
+        redirect_uri_type: "authorization",
+        url: internalDomain.apply((domain) => inboxRedirectUriPattern(domain)),
+      },
+    ],
+    propertyMappings: [openidScopeMapping.id, profileScopeMapping.id, directusEmailScopeMapping.id],
+  },
+  opts,
+);
+
+const inboxApplication = new authentik.Application(
+  "inbox",
+  { name: "Inbox", slug: "inbox", protocolProvider: numericId(inboxProvider.providerOauth2Id) },
+  opts,
+);
+
+// A group binding: only its members pass. Authentik superusers pass any binding.
+new authentik.PolicyBinding(
+  "inbox-group-binding",
+  { target: inboxApplication.uuid, group: signInGroup("freescout-agent").id, order: 0 },
   opts,
 );

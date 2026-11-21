@@ -102,6 +102,13 @@ beforeAll(async () => {
   });
   new ScheduledJob("suspended-sync", { ...jobArgs("dev"), suspend: true });
   new Workload("bursty-worker", { ...workloadArgs("prod"), limits: { cpu: "1" } });
+  new Workload("disk-worker", {
+    ...workloadArgs("prod"),
+    volumes: [{ name: "data", mountPath: "/data", persistentVolumeClaim: "worker-data" }],
+    runAsUser: 82,
+    fsGroup: 82,
+    recreate: true,
+  });
   new ScheduledJob("bursty-sync", { ...jobArgs("prod"), limits: { cpu: "500m", memory: "512Mi" } });
   await new Promise((r) => setImmediate(r));
 });
@@ -191,6 +198,19 @@ describe("Workload", () => {
         labelSelector: { matchLabels: { "app.kubernetes.io/name": "prod-ha" } },
       },
     ]);
+  });
+
+  it("rolls out with Kubernetes' default strategy, and no fsGroup", () => {
+    expect(find("kubernetes:apps/v1:Deployment", "dev-worker").spec).not.toHaveProperty("strategy");
+    expect(podSpec("dev-worker").securityContext).not.toHaveProperty("fsGroup");
+  });
+
+  it("mounts a persistent volume its user's group owns, stopping the old pod before starting the new", () => {
+    expect(podSpec("disk-worker").volumes).toEqual([
+      { name: "data", persistentVolumeClaim: { claimName: "worker-data" } },
+    ]);
+    expect(podSpec("disk-worker").securityContext).toMatchObject({ runAsUser: 82, runAsGroup: 82, fsGroup: 82 });
+    expect(find("kubernetes:apps/v1:Deployment", "disk-worker").spec.strategy).toEqual({ type: "Recreate" });
   });
 
   it("leaves a Workload's shutdown and rollout deadline at Kubernetes' defaults", () => {

@@ -1,0 +1,203 @@
+import path from "node:path";
+import * as pulumi from "@pulumi/pulumi";
+import * as gcp from "@pulumi/gcp";
+import * as command from "@pulumi/command";
+import * as k8s from "@pulumi/kubernetes";
+import * as random from "@pulumi/random";
+import { WebService, Workload } from "../../src/index.ts";
+import {
+  appDatabase,
+  appSecret,
+  deployedImage,
+  inputsTag,
+  isDev,
+  loadCluster,
+  secretEnv,
+} from "../../src/app/cluster.ts";
+import { dnsRecord } from "../../src/app/cloud.ts";
+import { Secret } from "../../src/app/secret.ts";
+
+// FreeScout on the cluster (cyc-seattle/platform#182): its database, its disk, and in dev, GreenMail
+// in place of Gmail. Our own image (./image) runs it as www-data on a read-only root filesystem.
+
+const greenmailImage = "greenmail/standalone:2.1.5";
+/** The image's www-data, by number. */
+const WWW_DATA = 82;
+
+/** Dev's mailbox and the volunteer on it, which the integration tests use. */
+export const TEST_MAILBOX = "info@example.test";
+export const TEST_VOLUNTEER = "volunteer@example.test";
+
+export const imageTag = inputsTag(path.join(import.meta.dirname, "image"), ["."]);
+
+export interface InboxOnCluster {
+  url: string;
+  /** FreeScout's client at Authentik, which Authentik registers from this stack's outputs. */
+  oidcClientId: pulumi.Output<string>;
+  oidcClientSecret: pulumi.Output<string>;
+  adminPassword: pulumi.Output<string>;
+}
+
+/** Where FreeScout sends its own mail, such as notifications. Each mailbox sets its own in the UI. */
+interface Smtp {
+  host: pulumi.Input<string>;
+  port: number;
+  encryption: "tls" | "";
+}
+
+function generated(name: string, length: number): pulumi.Output<string> {
+  return new random.RandomPassword(name, { length, special: false }).result;
+}
+
+/** Keeps a generated value in Secret Manager too, for a restore or a break-glass sign-in. Prod only: deploy-dev can't write a secret. */
+function keepCopy(name: string, value: pulumi.Output<string>): void {
+  if (isDev) {
+    return;
+  }
+  const secret = new Secret(name);
+  new gcp.secretmanager.SecretVersion(`${name}-version`, { secret: secret.id, secretData: value }, { parent: secret });
+}
+
+export async function deployInbox(adminEmail: string, mailFrom: string): Promise<InboxOnCluster> {
+  const cluster = await loadCluster();
+  const { platform, provider } = cluster;
+  const hostname = `inbox.${platform.domain}`;
+  const url = `https://${hostname}`;
+
+  const db = appDatabase(cluster, "inbox");
+  // Laravel's key. It encrypts each mailbox's sign-in in the database, so a restore needs it.
+  const appKey = pulumi.secret(
+    new random.RandomBytes("inbox-app-key", { length: 32 }).base64.apply((key) => `base64:${key}`),
+  );
+  keepCopy("inbox-app-key", appKey);
+  const adminPassword = pulumi.secret(generated("inbox-admin-password", 32));
+  keepCopy("inbox-admin-password", adminPassword);
+  const oidcClientId = new random.RandomString("inbox-oidc-client-id", { length: 40, special: false }).result;
+  const oidcClientSecret = pulumi.secret(generated("inbox-oidc-client-secret", 64));
+
+  const secret = appSecret(cluster, "inbox", { APP_KEY: appKey, INBOX_ADMIN_PASSWORD: adminPassword });
+
+  let smtp: Smtp = { host: "smtp-relay.gmail.com", port: 587, encryption: "tls" };
+  const devEnv: k8s.types.input.core.v1.EnvVar[] = [];
+  if (isDev) {
+    const greenmail = new Workload("greenmail", {
+      platform,
+      provider,
+      image: greenmailImage,
+      ports: [
+        { name: "smtp", port: 3025 },
+        { name: "imap", port: 3143 },
+        { name: "api", port: 8080 },
+      ],
+      requests: { cpu: "100m", memory: "256Mi" },
+      env: [
+        {
+          name: "GREENMAIL_OPTS",
+          // Any login works, and the tests read anyone's mail with it.
+          value: "-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled",
+        },
+      ],
+      readinessProbe: { tcpSocket: { port: 3143 } },
+      volumes: [{ name: "tmp", mountPath: "/tmp", emptyDir: {} }],
+      runAsUser: 999,
+    });
+    smtp = { host: greenmail.host, port: 3025, encryption: "" };
+    // FreeScout refuses a mail server at a private address, checking the name and each address it
+    // resolves to. GreenMail's Service keeps its ClusterIP for its life.
+    const clusterIp = k8s.core.v1.Service.get(
+      "greenmail-service",
+      pulumi.interpolate`${platform.namespace}/greenmail`,
+      {
+        provider,
+        dependsOn: [greenmail],
+      },
+    ).spec.clusterIP;
+    devEnv.push(
+      { name: "APP_REMOTE_HOST_WHITE_LIST", value: pulumi.interpolate`${greenmail.host},${clusterIp}` },
+      // The image makes this mailbox, reading GreenMail, and a volunteer on it, for the tests.
+      { name: "INBOX_TEST_MAILBOX", value: TEST_MAILBOX },
+      { name: "INBOX_TEST_VOLUNTEER", value: TEST_VOLUNTEER },
+    );
+  }
+
+  // Attachments and installed modules. A pod's own disk loses them on every restart. Protected, so
+  // no deploy deletes it: the storage class deletes the disk with the claim.
+  const data = new k8s.core.v1.PersistentVolumeClaim(
+    "inbox-data",
+    {
+      metadata: {
+        name: "inbox-data",
+        namespace: platform.namespace,
+        // The class binds a claim only once a pod uses it, so waiting for it here never ends.
+        annotations: { "pulumi.com/skipAwait": "true" },
+      },
+      spec: {
+        accessModes: ["ReadWriteOnce"],
+        storageClassName: "standard-rwo",
+        resources: { requests: { storage: "10Gi" } },
+      },
+    },
+    { provider, protect: true },
+  );
+
+  const image = await deployedImage(cluster, "freescout", { context: "image", tag: imageTag });
+
+  new WebService("inbox", {
+    platform,
+    provider,
+    hostname,
+    image,
+    port: 8080,
+    requests: { cpu: "250m", memory: "512Mi" },
+    limits: { cpu: "500m" },
+    readinessProbe: { httpGet: { path: "/login", port: 8080 }, periodSeconds: 30, timeoutSeconds: 10 },
+    // It migrates the database before it serves.
+    progressDeadlineSeconds: 1200,
+    recreate: true,
+    runAsUser: WWW_DATA,
+    fsGroup: WWW_DATA,
+    env: [
+      { name: "APP_URL", value: url },
+      // FreeScout's own log file would fill the disk; this sends it to the pod's log.
+      { name: "APP_LOG", value: "errorlog" },
+      // The Gateway's load balancer is the only way in.
+      { name: "APP_TRUSTED_PROXIES", value: "**" },
+      { name: "SESSION_SECURE_COOKIE", value: "true" },
+      { name: "DB_CONNECTION", value: "pgsql" },
+      { name: "DB_HOST", value: db.host },
+      { name: "DB_PORT", value: "5432" },
+      { name: "DB_DATABASE", value: db.name },
+      { name: "DB_USERNAME", value: db.name },
+      secretEnv("DB_PASSWORD", db.secret, "password"),
+      { name: "INBOX_ADMIN_EMAIL", value: adminEmail },
+      { name: "INBOX_COMPANY_NAME", value: "CYC Community Sailing Center" },
+      { name: "INBOX_MAIL_FROM", value: mailFrom },
+      { name: "INBOX_SMTP_HOST", value: smtp.host },
+      { name: "INBOX_SMTP_PORT", value: String(smtp.port) },
+      { name: "INBOX_SMTP_ENCRYPTION", value: smtp.encryption },
+      ...devEnv,
+    ],
+    envFrom: [{ secretRef: { name: secret.metadata.name, optional: false } }],
+    volumes: [
+      { name: "data", mountPath: "/data", persistentVolumeClaim: data.metadata.name },
+      { name: "cache", mountPath: "/cache", emptyDir: {} },
+      { name: "tmp", mountPath: "/tmp", emptyDir: {} },
+    ],
+  });
+
+  // Dev's hostnames fall under platform's wildcard record.
+  const record = isDev ? [] : [dnsRecord("inbox-a", hostname, platform.gatewayAddress)];
+
+  // The load balancer takes minutes to admit a new route.
+  new command.local.Command(
+    "inbox-ready",
+    {
+      create: 'curl -fsS -o /dev/null --retry 90 --retry-delay 10 --retry-all-errors "$INBOX_URL/login"',
+      environment: { INBOX_URL: url },
+      triggers: [image, secret.metadata.uid],
+    },
+    { dependsOn: record },
+  );
+
+  return { url, oidcClientId, oidcClientSecret, adminPassword };
+}
