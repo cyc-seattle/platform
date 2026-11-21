@@ -36,8 +36,6 @@ function related(overrides: Partial<MergeRelatedData> = {}): MergeRelatedData {
     medicalProfiles: [],
     contacts: [],
     contactPoints: [],
-    programRoleAssignments: [],
-    programAreaRoleAssignments: [],
     registrations: [],
     googleGroupMemberships: [],
     logins: [],
@@ -299,34 +297,16 @@ describe("planPersonMerge", () => {
     );
   });
 
-  it("repoints program and program area role assignments, registrations, and google_group_memberships with no de-dup", () => {
+  it("repoints registrations and google_group_memberships with no de-dup", () => {
     const keeper = person({ id: "keep" });
     const duplicates = [person({ id: "dup" })];
-    const programRoleAssignments: MergePersonReference[] = [{ id: "pra1", person_id: "dup" }];
-    const programAreaRoleAssignments: MergePersonReference[] = [{ id: "para1", person_id: "dup" }];
     const registrations: MergePersonReference[] = [{ id: "es1", person_id: "dup" }];
     const googleGroupMemberships: MergePersonReference[] = [{ id: "ggm1", person_id: "dup" }];
-    const steps = planPersonMerge(
-      keeper,
-      duplicates,
-      related({ programRoleAssignments, programAreaRoleAssignments, registrations, googleGroupMemberships }),
-    );
-    expect(steps).toContainEqual({
-      type: "update",
-      collection: "program_area_role_assignments",
-      id: "para1",
-      patch: { person_id: "keep" },
-    });
+    const steps = planPersonMerge(keeper, duplicates, related({ registrations, googleGroupMemberships }));
     expect(steps).toContainEqual({
       type: "update",
       collection: "google_group_memberships",
       id: "ggm1",
-      patch: { person_id: "keep" },
-    });
-    expect(steps).toContainEqual({
-      type: "update",
-      collection: "program_role_assignments",
-      id: "pra1",
       patch: { person_id: "keep" },
     });
     expect(steps).toContainEqual({

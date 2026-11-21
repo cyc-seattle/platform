@@ -2,9 +2,9 @@
 Feature: The CRM
   The CRM is the club's list of people: sailors, their parents, and the coaches, volunteers, and
   staff who run programs. A person's details are their name, email, and phone, any extra emails and
-  phone numbers they've given the club, and who their parents and emergency contacts are. The CRM
-  also has each person's program roles: the roles they have in programs, such as coach, Parent
-  Coordinator, or race committee. A registration is a sailor's sign-up for a program, with their
+  phone numbers they've given the club, and who their parents and emergency contacts are. Crew
+  says who does what in each program, such as coaching, Parent Coordinator, or race committee
+  (crew.feature). A registration is a sailor's sign-up for a program, with their
   answers to the sign-up questions and their payments. The CRM also has each sailor's medical
   information: allergies, medications, and what to do in an emergency. That's the most private
   information the club has, so staff need a separate permission to see it.
@@ -43,8 +43,8 @@ Feature: The CRM
   Each household decides whether its adults share their email and phone with the teams. Clubspot
   asks when a family signs a sailor up, and the answer counts for the sailor's whole household. An
   adult in the household can change the answer later, and the latest answer counts. A child never
-  shares their own email or phone. A program role, such as Parent Coordinator, doesn't change what
-  anyone sees.
+  shares their own email or phone. A position in a program, such as Parent Coordinator, doesn't change
+  what anyone sees.
 
   Rule: A sailor can have more than one parent, and more than one emergency contact
 
@@ -435,9 +435,9 @@ Feature: The CRM
       When they stop sharing
       Then they don't share their email and phone
 
-  Rule: A program role doesn't change what someone sees
+  Rule: A position in a program doesn't change what someone sees
 
-    Example: A Parent Coordinator who isn't Crew sees only their own family
+    Example: A Parent Coordinator without the Crew role sees only their own family
       Given a Parent Coordinator for a program
       And a sailor in the program who hasn't answered the sharing question, and their parent
       When they look at the roster

@@ -14,8 +14,8 @@ Step("they can match a registration's sailor to a person in the CRM", () =>
   canSet("clubspot_participants", "person_id"),
 );
 
-Step("it can move people's program roles and which Google groups they're in to another person", async () => {
-  for (const collection of ["program_role_assignments", "google_group_memberships"]) {
+Step("it can move people's places on Crew and which Google groups they're in to another person", async () => {
+  for (const collection of ["crew_members", "google_group_memberships"]) {
     await canSet(collection, "person_id");
   }
 });
@@ -115,7 +115,7 @@ describeAccessFeature("clubspot.feature", {
     const { runId } = run;
     let keeperId: string;
     let duplicateId: string;
-    let assignmentId: string;
+    let crewMemberId: string;
 
     Given("two people who are the same sailor, one a coach in a program", async () => {
       // The same name is what makes them one merge group.
@@ -123,14 +123,9 @@ describeAccessFeature("clubspot.feature", {
       keeperId = (await sailor()).id;
       duplicateId = (await sailor()).id;
       const program = await adminCreate("programs", await newRow("programs", { name: `Program ${runId}` }));
-      const coach = await adminCreate("program_roles", { name: `Coach ${key("role")}` });
-      assignmentId = (
-        await adminCreate("program_role_assignments", {
-          person_id: duplicateId,
-          program_id: program.id,
-          program_role_id: coach.id,
-        })
-      ).id;
+      const coach = await adminCreate("crew_positions", { name: `Coach ${key("position")}` });
+      crewMemberId = (await adminCreate("crew_members", { person_id: duplicateId })).id;
+      await adminCreate("crew_terms", { crew_member_id: crewMemberId, position_id: coach.id, program_id: program.id });
     });
 
     // The finding's detail is the format clubspot-sync writes and its merge reads back.
@@ -153,8 +148,8 @@ describeAccessFeature("clubspot.feature", {
     });
 
     Then("the person kept is the coach", async () => {
-      const assignment = await (await admin()).ok("GET", itemPath("program_role_assignments", assignmentId));
-      expect(assignment.person_id).toBe(keeperId);
+      const member = await (await admin()).ok("GET", itemPath("crew_members", crewMemberId));
+      expect(member.person_id).toBe(keeperId);
     });
 
     And("the duplicate is gone", async () => {

@@ -248,13 +248,15 @@ Step("a user with the Community role whose email isn't in the CRM", async () => 
 /** A phone number unique to the run, so a search on it can't match anyone else's. */
 const phone = () => `+1206${String(randomInt(10_000_000)).padStart(7, "0")}`;
 
-async function aVolunteer(role: string, endsOn: string | null): Promise<void> {
+/** A volunteer with a term in a position in the team's program. */
+async function aVolunteer(positionId: string, endsOn: string | null): Promise<void> {
   const on = await theTeam();
   const volunteer = call("the volunteer", await person("volunteer", null));
-  await adminCreate("program_role_assignments", {
-    person_id: volunteer.id,
+  const member = await adminCreate("crew_members", { person_id: volunteer.id });
+  await adminCreate("crew_terms", {
+    crew_member_id: member.id,
+    position_id: positionId,
     program_id: on.programId,
-    program_role_id: role,
     ends_on: endsOn,
   });
   await signIn(volunteer);
@@ -262,17 +264,17 @@ async function aVolunteer(role: string, endsOn: string | null): Promise<void> {
 
 const PARENT_COORDINATOR = "Parent Coordinator";
 
-/** Every run shares one Parent Coordinator role, as the club has one. */
+/** Every run shares one Parent Coordinator position, as CSC has one. */
 async function parentCoordinator(): Promise<string> {
   const filter = encodeURIComponent(JSON.stringify({ name: { _eq: PARENT_COORDINATOR } }));
-  const [existing] = await (await admin()).ok("GET", `/items/program_roles?filter=${filter}&limit=1`);
-  return existing?.id ?? (await (await admin()).ok("POST", "/items/program_roles", { name: PARENT_COORDINATOR })).id;
+  const [existing] = await (await admin()).ok("GET", `/items/crew_positions?filter=${filter}&limit=1`);
+  return existing?.id ?? (await (await admin()).ok("POST", "/items/crew_positions", { name: PARENT_COORDINATOR })).id;
 }
 
 Step("a Parent Coordinator for a program", async () => aVolunteer(await parentCoordinator(), null));
 Step("a family member who is on race committee for a program", async () => {
-  const role = await adminCreate("program_roles", { name: `Race committee ${key("role")}` });
-  await aVolunteer(role.id, null);
+  const position = await adminCreate("crew_positions", { name: `Race committee ${key("position")}` });
+  await aVolunteer(position.id, null);
   await aTeammate({ share: true, dateOfBirth: ADULT }, "the sailor");
 });
 for (const text of [

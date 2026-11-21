@@ -135,17 +135,6 @@ export const defaultViews: DefaultView[] = [
   { collection: "schools", sort: ["name"], fields: ["name", "aliases"] },
   // Medical details stay on the profile's own page.
   { collection: "medical_profiles", sort: ["-date_updated"], fields: ["person_id", "date_updated"] },
-  { collection: "program_roles", sort: ["name"], fields: ["name", "description"] },
-  {
-    collection: "program_role_assignments",
-    sort: ["-starts_on", "person_id.last_name"],
-    fields: ["person_id", "program_id", "program_role_id", "starts_on", "ends_on"],
-  },
-  {
-    collection: "program_area_role_assignments",
-    sort: ["program_area_id.name", "person_id.last_name"],
-    fields: ["person_id", "program_area_id", "program_role_id", "starts_on", "ends_on"],
-  },
   {
     collection: "offerings",
     sort: ["-starts_on", "program_id.name"],
