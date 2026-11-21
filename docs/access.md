@@ -76,19 +76,21 @@ permissions, plus any shared policies it's given:
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
 
-| Policy              | Gives                                                                                                                  |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| CRM Reader          | Reads every CRM collection but medical information                                                                     |
-| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                   |
-| Medical Reader      | Reads every sailor's medical information                                                                               |
-| Medical Writer      | Changes every sailor's medical information                                                                             |
-| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                       |
-| Catalog Writer      | Changes the catalog, and reads the directory                                                                           |
-| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                        |
-| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does        |
-| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same |
-| Link Writer         | Changes Sail Team's links, but not their previews                                                                      |
-| Announcement Writer | Changes Sail Team's announcements                                                                                      |
+| Policy              | Gives                                                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| CRM Reader          | Reads every CRM collection but medical information                                                                                  |
+| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                                |
+| Medical Reader      | Reads every sailor's medical information                                                                                            |
+| Medical Writer      | Changes every sailor's medical information                                                                                          |
+| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                                    |
+| Catalog Writer      | Changes the catalog, and reads the directory                                                                                        |
+| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                                     |
+| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does                     |
+| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same              |
+| Link Writer         | Changes Sail Team's links, but not their previews                                                                                   |
+| Announcement Writer | Changes Sail Team's announcements                                                                                                   |
+| Listmonk Write      | Nothing in Directus. Writes and tests newsletters in Listmonk, and manages subscribers and imports ([newsletter.md](newsletter.md)) |
+| Listmonk Send       | Nothing in Directus. Sends a newsletter to a list in Listmonk, and does what Listmonk Write does                                    |
 
 They're coarse: whole collections, with no row filters and no hidden fields, but for users and link
 previews: a Plan policy reads only each user's first and last name, so a frozen Financial Plan names

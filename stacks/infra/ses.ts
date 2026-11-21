@@ -13,7 +13,7 @@ import { externalDomain, externalZone } from "./dns.ts";
 import { deployRunner } from "./identities.ts";
 
 // Amazon SES, which sends the newsletter from the external domain (cyc-seattle/platform#180). Until the
-// maintainer makes CSC's AWS account and its role (docs/manual-setup.md §10), `awsRoleArn` is unset and
+// maintainer makes CSC's AWS account and its role (docs/manual-setup.md §11), `awsRoleArn` is unset and
 // this makes nothing.
 
 const config = new pulumi.Config();
