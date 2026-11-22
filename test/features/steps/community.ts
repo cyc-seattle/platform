@@ -587,6 +587,15 @@ Step("they can't change their own email or their child's", async () => {
     expect((await detailsOf(who, ["email"]))["email"]).toBe(who.email);
   }
 });
+// A login with no person once matched everyone with no household, through the household rule's join.
+Step("a person in the CRM who isn't in a household", async () => {
+  call("that person", await person("stranger", ADULT, { phone: phone() }));
+});
+Step("they can't change that person's phone", async () => {
+  const stranger = the("that person");
+  expect(await edit(stranger, { phone: phone() })).toBe(403);
+  expect((await detailsOf(stranger, ["phone"]))["phone"]).toBe(stranger.phone);
+});
 Step("they can't change the teammate's display name", async () => {
   const teammate = the("the teammate");
   expect(await edit(teammate, { display_name: "Changed" })).toBe(403);

@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
-import { describeAccessFeature, onEachScenario, parameter, pattern, Step, theirSession } from "./steps/index.ts";
+import {
+  describeAccessFeature,
+  onEachScenario,
+  parameter,
+  pattern,
+  Step,
+  theirSession,
+  type Shard,
+} from "./steps/index.ts";
 import { planInForce, type CostLine } from "../../src/planning/index.ts";
 import { cents, financialPlanResults, PnlPlan, share } from "./pnl.ts";
 import { userFor } from "./steps/logins.ts";
@@ -650,21 +658,6 @@ Step("{program} have a coach for every {count} sailors", async (_, program: stri
     sailors_per_coach: Number(sailors),
   });
 });
-Step(
-  "Guppies have a coach for every {count} sailors, and Minnows a coach for every {count}",
-  async (_, guppies: string, minnows: string) => {
-    const coach = (await level("Coach"))["staff_level_id"];
-    for (const [program, sailors] of [
-      ["Guppies", guppies],
-      ["Minnows", minnows],
-    ] as const) {
-      await p.programSettings(await theArea(), await programNamed(program), {
-        staff_level_id: coach,
-        sailors_per_coach: Number(sailors),
-      });
-    }
-  },
-);
 for (const text of ["{boats} take {count} sailor each", "{boats} take {count} sailors each"]) {
   Step(text, (_, boats: string, sailors: string) => boatClass(boats, Number(sailors)));
 }
@@ -1102,13 +1095,10 @@ Step(
   },
 );
 Step(
-  "a block for up to {count} Guppies and up to {count} Minnows, with three coaches and boats for {count} sailors",
+  "a block for up to {count} Guppies and up to {count} Minnows, with boats for {count} sailors",
   async (_, guppies: string, minnows: string, sailors: string) => {
     const offerings = [await upTo("Guppies", guppies), await upTo("Minnows", minnows)];
-    await blockOf(offerings, MORNING, {
-      staff: [await staffAt("Coach", 3)],
-      boats: await enoughBoats(Number(sailors)),
-    });
+    await blockOf(offerings, MORNING, { boats: await enoughBoats(Number(sailors)) });
   },
 );
 const pnlOf = (offering: Item) => p.out.pnl.find((x) => x.level === "offering" && x.key === offering["key"]);
@@ -2030,4 +2020,7 @@ Step("the planner isn't warned about the line", () => {
   expect(p.warned("cost_off_programs")).toBe(false);
 });
 
-describeAccessFeature("planning.feature");
+/** planning.feature, which planning-1 to planning-4 split between them, since it took 45 minutes in one file. */
+export function describePlanning(shard: Shard): void {
+  describeAccessFeature("planning.feature", {}, shard);
+}

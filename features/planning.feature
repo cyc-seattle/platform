@@ -886,11 +886,10 @@ Feature: Plans
       Then the offering's block can take 12 sailors
 
     Example: A block shared with another program leaves room for that program's full number
-      Given Guppies have a coach for every 10 sailors, and Minnows a coach for every 5
-      And a block for up to 10 Guppies and up to 5 Minnows, with three coaches and boats for 40 sailors
+      Given a block for up to 10 Guppies and up to 5 Minnows, with boats for 40 sailors
       When a planner calculates the P&L
-      Then the Guppies offering's block can take 20 sailors
-      And the Minnows offering's block can take 10 sailors
+      Then the Guppies offering's block can take 35 sailors
+      And the Minnows offering's block can take 30 sailors
 
   Rule: A planner sees the fewest sailors at which an offering pays for itself
 
