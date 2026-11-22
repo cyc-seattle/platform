@@ -255,8 +255,22 @@ export async function deletePermission(baseUrl: string, token: string, permissio
   try {
     await directusRequest(baseUrl, token, "DELETE", `/permissions/${permissionId}`);
   } catch (error) {
-    if (!isNotFound(error)) throw error;
+    if (isNotFound(error)) return;
+    // Directus answers 403 for a row that isn't there too, such as one a migration dropped with its
+    // collection. A filtered list tells that apart from a real refusal, which fails the list as well.
+    if (!isForbidden(error) || (await permissionExists(baseUrl, token, permissionId))) throw error;
   }
+}
+
+async function permissionExists(baseUrl: string, token: string, permissionId: string): Promise<boolean> {
+  const filter = encodeURIComponent(JSON.stringify({ id: { _eq: permissionId } }));
+  const res = await directusRequest<{ data: unknown[] }>(
+    baseUrl,
+    token,
+    "GET",
+    `/permissions?fields=id&filter=${filter}`,
+  );
+  return res.data.length > 0;
 }
 
 /**

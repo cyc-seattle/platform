@@ -209,7 +209,7 @@ describe("runApprovedPersonMerges", () => {
           weight: null,
         },
       ],
-      program_role_assignments: [{ id: "pra-1", person_id: "person-2" }],
+      crew_members: [{ id: "crew-1", person_id: "person-2" }],
       registrations: [{ id: "es-1", person_id: "person-2" }],
       audit_findings: [duplicatePersonFinding({ subject: "person-1", detail: GROUP_DETAIL })],
     });
@@ -232,9 +232,7 @@ describe("runApprovedPersonMerges", () => {
     expect(tables.get("contact_points")).toContainEqual(
       expect.objectContaining({ id: "cp-dup", person_id: "person-1" }),
     );
-    expect(tables.get("program_role_assignments")).toContainEqual(
-      expect.objectContaining({ id: "pra-1", person_id: "person-1" }),
-    );
+    expect(tables.get("crew_members")).toContainEqual(expect.objectContaining({ id: "crew-1", person_id: "person-1" }));
     expect(tables.get("registrations")).toContainEqual(expect.objectContaining({ id: "es-1", person_id: "person-1" }));
     const findings = tables.get("audit_findings") as unknown as AuditFindingRow[];
     expect(findings).toEqual([expect.objectContaining({ id: "finding-1", status: "resolved" })]);
