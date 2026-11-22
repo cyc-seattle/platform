@@ -18,7 +18,9 @@ import {
   WEBSITE_BUILD,
   WEBSITE_FILE_FIELDS,
   websiteBuildRules,
+  WEBSITE_CATALOG_READS,
   WEBSITE_CREW_RULES,
+  websitePublishConfig,
 } from "../stacks/backend/policies.ts";
 import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0007-website-folder.cjs";
 
@@ -525,8 +527,12 @@ describe("the csc-website build's rules", () => {
     expect(new Set(rules.map((rule) => rule.action))).toEqual(new Set(["read"]));
   });
 
-  it("read every website collection whole, and no other collection but Crew's public profiles and names", () => {
-    const own = rules.filter((rule) => !rule.collection.startsWith("directus_") && !WEBSITE_CREW_RULES.includes(rule));
+  it("read every website collection whole, and no other collection but Crew's public profiles and names, and what's on sale", () => {
+    const catalog = new Set(WEBSITE_CATALOG_READS.map(({ collection }) => collection));
+    const own = rules.filter(
+      (rule) =>
+        !rule.collection.startsWith("directus_") && !WEBSITE_CREW_RULES.includes(rule) && !catalog.has(rule.collection),
+    );
     expect(own.every((rule) => rule.collection.startsWith("website_"))).toBe(true);
     expect(own.every((rule) => rule.permissions === undefined && rule.fields === undefined)).toBe(true);
     expect(own.map((rule) => rule.collection)).toEqual(
@@ -553,6 +559,32 @@ describe("the csc-website build's rules", () => {
     for (const rule of WEBSITE_CREW_RULES) {
       expect(rule.fields).not.toContain("*");
     }
+  });
+
+  it("read only what's on sale of the catalog: no registration, link to Clubspot, archived row, or program's money", () => {
+    const read = Object.fromEntries(
+      rules
+        .filter((rule) => WEBSITE_CATALOG_READS.some(({ collection }) => collection === rule.collection))
+        .map((r) => [r.collection, r]),
+    );
+    expect(Object.keys(read).sort()).toEqual(["clubspot_camps", "offerings", "programs", "registration_forms"]);
+    expect(read["programs"]!.fields).toEqual(["id", "name", "min_age", "max_age"]);
+    expect(read["offerings"]!.fields).not.toEqual(
+      expect.arrayContaining(["clubspot_class_id", "clubspot_session_id", "registrations", "archived_at"]),
+    );
+    expect(read["offerings"]!.permissions).toEqual({ archived_at: { _null: true } });
+    expect(read["registration_forms"]!.permissions).toEqual({ archived_at: { _null: true } });
+    expect(read["clubspot_camps"]!.permissions).toEqual({ public: { _eq: true } });
+    expect(rules.map((rule) => rule.collection)).not.toEqual(
+      expect.arrayContaining(["registrations", "products", "accounts", "clubspot_classes"]),
+    );
+  });
+
+  it("publishes when what's on sale changes, but not for a camp's sync bookkeeping", () => {
+    const { watched } = websitePublishConfig(schemas);
+    expect(watched["clubspot_camps"]).toEqual(["id", "registration_closed", "hide_spots_left", "public"]);
+    expect(watched["offerings"]).toContain("archived_at");
+    expect(watched["clubspot_camps"]).not.toContain("synced_through");
   });
 
   it("read only the files in the Website folder, and that folder", () => {

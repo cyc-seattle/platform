@@ -4,6 +4,7 @@ import { appJwt, debounced, dispatch, listen } from "../stacks/backend/website-p
 
 const config = {
   collections: ["website_pages", "website_settings"],
+  watched: { clubspot_camps: ["id", "registration_closed", "public"] },
   folder: "website-folder",
   repository: "cyc-seattle/csc-website",
   workflow: "publish.yml",
@@ -127,7 +128,7 @@ describe("the website-publish hook's events", () => {
 
   it("publishes after any write to a website collection, and to no other", () => {
     const { handlers, publish } = listening([]);
-    const items = [...handlers.keys()].filter((event) => event.includes(".items."));
+    const items = [...handlers.keys()].filter((event) => event.includes(".items.") && event.startsWith("website_"));
     expect(items.sort()).toEqual(
       ["website_pages", "website_settings"]
         .flatMap((collection) => ["create", "delete", "sort", "update"].map((event) => `${collection}.items.${event}`))
@@ -135,6 +136,16 @@ describe("the website-publish hook's events", () => {
     );
     handlers.get("website_pages.items.update")!({ keys: ["1"], payload: {} });
     expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("publishes when a row the site reads part of comes or goes, or one of the fields it reads changes", () => {
+    const { handlers, publish } = listening([]);
+    handlers.get("clubspot_camps.items.update")!({ keys: ["1"], payload: { synced_through: "now", quiet_runs: 2 } });
+    expect(publish).not.toHaveBeenCalled();
+    handlers.get("clubspot_camps.items.update")!({ keys: ["1"], payload: { public: true } });
+    handlers.get("clubspot_camps.items.create")!({ key: "2", payload: {} });
+    handlers.get("clubspot_camps.items.delete")!({ keys: ["2"] });
+    expect(publish).toHaveBeenCalledTimes(3);
   });
 
   it("publishes for a file uploaded to the Website folder, or over one in it", async () => {

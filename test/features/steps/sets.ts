@@ -114,6 +114,17 @@ const sets: Record<string, Target[]> = {
     "staff_roles",
     "staff_levels",
   ),
+  // The catalog but what's on sale, which the website build sees part of.
+  "the rest of the catalog": plain(
+    "products",
+    "program_areas",
+    "accounts",
+    "qualifications",
+    "qualification_covers",
+    "boat_classes",
+    "staff_roles",
+    "staff_levels",
+  ),
   products: plain("products"),
   "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),

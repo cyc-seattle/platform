@@ -83,6 +83,14 @@ function listen({ filter, action }, { database, logger }, config, publish) {
       action(`${collection}.items.${event}`, () => publish());
     }
   }
+  // The site reads some fields of these, so a change to any other, such as a sync's bookkeeping, doesn't publish.
+  for (const [collection, fields] of Object.entries(config.watched ?? {})) {
+    action(`${collection}.items.create`, () => publish());
+    action(`${collection}.items.delete`, () => publish());
+    action(`${collection}.items.update`, ({ payload }) => {
+      if (Object.keys(payload ?? {}).some((field) => fields.includes(field))) publish();
+    });
+  }
 
   // A file counts if it's in the Website folder or is being put there. A failed check never fails the write.
   const files = async (keys, folder) => {
