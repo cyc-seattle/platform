@@ -233,10 +233,25 @@ describe("checkHostname", () => {
     "rejects %s outside dev.example.org",
     (hostname) => {
       expect(() => checkHostname(hostname, "dev.example.org")).toThrow(
-        `Hostname ${hostname} isn't in the environment's domain, dev.example.org.`,
+        `Hostname ${hostname} isn't in the environment's domain, dev.example.org, or its public hostnames.`,
       );
     },
   );
+
+  it.each(["mail.cyccommunitysailing.org", "Mail.CycCommunitySailing.org"])("accepts prod's public %s", (hostname) => {
+    expect(checkHostname(hostname, "cycsail.team")).toBe(hostname);
+  });
+
+  it.each(["www.cyccommunitysailing.org", "cyccommunitysailing.org", "a.mail.cyccommunitysailing.org"])(
+    "rejects %s, which prod doesn't list",
+    (hostname) => {
+      expect(() => checkHostname(hostname, "cycsail.team")).toThrow(/or its public hostnames/);
+    },
+  );
+
+  it("doesn't give dev prod's public hostnames", () => {
+    expect(() => checkHostname("mail.cyccommunitysailing.org", "dev.cycsail.team")).toThrow(/public hostnames/);
+  });
 });
 
 describe("checkPaths", () => {

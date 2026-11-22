@@ -108,7 +108,7 @@ const extensions = {
     ref: "main",
   },
   forms: { to: "info@example.org", allowedOrigins: ["https://example.org"], siteUrl: "https://example.org", perIp: 10 },
-  formsHostname: "mail.dev.example.team",
+  formsHostname: "mail.dev.example.com",
   engine: { "planning-index.mjs": "" },
 };
 
@@ -199,7 +199,7 @@ describe("Directus's extensions", () => {
 
   it("routes only /forms/ on the forms' public address to Directus", () => {
     expect(find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "directus-forms").inputs["spec"]).toMatchObject({
-      hostnames: ["mail.dev.example.team"],
+      hostnames: ["mail.dev.example.com"],
       rules: [
         {
           matches: [{ path: { type: "PathPrefix", value: "/forms/" } }],
