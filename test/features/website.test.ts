@@ -188,10 +188,20 @@ Step("it can see the offering's form, and whether its camp takes registrations",
   });
 });
 Step("it can't see who registered, or the offering's link to Clubspot", async () => {
-  for (const fields of ["registrations.person_id", "clubspot_class_id", "clubspot_session_id"]) {
+  for (const fields of ["clubspot_class_id", "clubspot_session_id"]) {
     const { status } = await read(`/items/offerings/${sale!.offeringId}?fields=${fields}`);
     expect(status, fields).toBe(403);
   }
+  // Directus 12 leaves out a relation it may not read, rather than refusing: the answer is just the offering's key.
+  for (const fields of ["registrations.person_id", "registrations.*"]) {
+    const { status, body } = await read(`/items/offerings/${sale!.offeringId}?fields=${fields}`);
+    if (status !== 403) {
+      expect(status, fields).toBe(200);
+      expect(body.data, fields).toBe(sale!.offeringId);
+    }
+  }
+  const filter = encodeURIComponent(JSON.stringify({ registrations: { person_id: { _nnull: true } } }));
+  expect((await read(`/items/offerings?fields=id&filter=${filter}`)).status).toBe(403);
   const { status } = await read(`/items/registrations?limit=1`);
   expect(status).toBe(403);
 });
