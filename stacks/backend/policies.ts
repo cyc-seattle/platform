@@ -122,12 +122,12 @@ export const WEBSITE_CREW_RULES: PermissionRuleInput[] = [
   {
     collection: "crew_terms",
     action: "read",
-    // A date is midnight, so a term is still current all of its last day.
+    // Directus compares a date with $NOW's date, in UTC, so a term is current all of its last day.
     permissions: {
       _and: [
         { crew_member_id: { on_website: { _eq: true } } },
         { _or: [{ starts_on: { _null: true } }, { starts_on: { _lte: "$NOW" } }] },
-        { _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: "$NOW(-1 day)" } }] },
+        { _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: "$NOW" } }] },
       ],
     },
     fields: ["id", "crew_member_id", "position_id", "starts_on", "ends_on"],
