@@ -436,14 +436,14 @@ export interface CrewMembers {
   id: string;
   /** Each person is on Crew once. */
   person_id: string | People;
-  /** What the website calls them. For anyone under 18, first name only. */
-  website_name: string | null;
   /** Markdown. */
   website_bio: string | null;
   /** Kept in the Website folder, so anyone can see it. */
   website_photo: string | null;
   /** Shows them on the website's crew lists while they hold a position listed there. */
   on_website: boolean;
+  /** Shows their first and last name on the website. Off shows their first name only. */
+  show_full_name: boolean;
   terms: (string | CrewTerms)[];
   qualifications: (string | CrewQualifications)[];
 }
@@ -459,8 +459,6 @@ export interface CrewPositions {
   id: string;
   /** Such as Treasurer, Director 1A, or Parent Coordinator. */
   name: string;
-  /** What the website calls someone in it, such as Director for seat 1A. Leave empty to use the name. */
-  title: string | null;
   /** What the job is, and how someone is chosen for it. Markdown. */
   description: string | null;
   /** What someone in this position must hold. */
@@ -585,6 +583,8 @@ export interface Groups {
   members: (string | GroupMembers)[];
   /** The policies this group gives its members. */
   policies: (string | GroupPolicies)[];
+  /** Its members become exactly this group's members: the Google sync adds and takes out people, but never a manager or owner. */
+  google_group_id: string | GoogleGroups | null;
 }
 
 /** A sailor and everyone listed as their parent, together with the parents' other children. Made from the Clubspot sign-ups, so change who's in one by fixing the people and their parents. */
@@ -684,6 +684,8 @@ export interface People {
   logins: string[];
   /** The Clubspot participants linked to this person. */
   participant_links: (string | ClubspotParticipants)[];
+  /** Their place on Crew, if they have one. */
+  crew_members: (string | CrewMembers)[];
   id: string;
   first_name: string;
   last_name: string | null;

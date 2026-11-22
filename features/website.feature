@@ -2,12 +2,14 @@
 Feature: The public website
   The center's public website, cyccommunitysailing.org, is built from content kept here: its pages,
   program categories and programs, questions and answers, policies, and sponsors. Its crew come from
-  Crew: each crew member's public profile, shown while they hold a position the page lists. The
-  pictures the website shows are kept in a Website folder of their own.
+  Crew: each crew member's public profile, shown while they hold a position the page lists. A
+  profile is their name, a bio, and a photo. The pictures the website shows are kept in a Website
+  folder of their own.
 
   The website is built outside the club's systems, by a service account of its own: the website
   build. Anything it can see could end up on the public website. So it can see the website, its
-  pictures, and the public profiles of crew on the website, and nothing else.
+  pictures, and the public profiles of crew on the website, with the first and last name of each,
+  and nothing else. The website shows only the first name unless staff choose the full name.
 
   Rule: The website build can see the website and its pictures
 
@@ -30,19 +32,25 @@ Feature: The public website
     Example: The website build sees a crew member on the website and their current position
       Given the website build's service account
       And a crew member on the website, with a current term as Head Coach
-      Then it can see their name, bio and photo for the website
+      Then it can see their first and last name, whether to show both, and their bio and photo
       And it can see their term as Head Coach
 
-    Example: The website build can't see who a crew member is in the CRM
+    Example: The website build sees only a crew member's name in the CRM
       Given the website build's service account
       And a crew member on the website, with a current term as Head Coach
-      Then it can't see which person they are
+      Then it can't see anything else about them in the CRM
       And it can't see their qualifications or pay
 
     Example: The website build can't see a crew member who isn't on the website
       Given the website build's service account
       And a crew member who isn't on the website, with a current term as Head Coach
       Then it can't see them or their terms
+      And it can't see their name
+
+    Example: The website build can't see anyone in the CRM who isn't crew on the website
+      Given the website build's service account
+      And a person in the CRM who isn't on Crew
+      Then it can't see their name
 
     Example: The website build can't see a term that has ended
       Given the website build's service account

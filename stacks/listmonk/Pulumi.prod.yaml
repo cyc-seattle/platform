@@ -1,0 +1,15 @@
+config:
+  gcp:project: cyc-admin-scripts
+  gcp:region: us-west1
+  # The CSC Newsletter list's ID, which the website's signup form posts. Public.
+  listmonk:listId: 2e604823-4eeb-4665-bbea-81a670bf48e3
+  listmonk:hostname: mail.cyccommunitysailing.org
+  # The From Mailchimp sends with, kept so subscribers' filters and contacts still match (cyc-seattle/platform#180).
+  listmonk:fromEmail: CYC Community Sailing Center <info@cyccommunitysailing.org>
+  # Turned on once SES's login and the pictures bucket exist (docs/manual-setup.md §12).
+  listmonk:ses: "false"
+  listmonk:mediaBucket: "false"
+  listmonk:trustedUrls:
+    - https://cyccommunitysailing.org/newsletter/check-your-email
+secretsprovider: gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod
+encryptedkey: CiQAbYGDqqITVmLiNbmekIOgirXnKWPScbZcM9x8s8Ie2dakrrESSQAhO9qR3wN2s8+JObdhvfE+YFxiXTNg+LQm2MUy89hH/DaX9WEYMKgNbDEnjXi2BgpLnQp1eYAYSK8Tsd6R0ZI52npd64LjWik=

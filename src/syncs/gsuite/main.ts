@@ -7,7 +7,7 @@ import winston from "winston";
 import { LoggingOption, VerboseOption } from "@cyc-seattle/commodore";
 import { DirectusClient, SyncQueue } from "../runtime/index.ts";
 import { type ClientOptions, DirectoryClient, GroupSettingsClient } from "@cyc-seattle/gsuite-sdk";
-import { dryRunMemberAdder, type MemberAdder } from "./directory-writer.ts";
+import { dryRunMemberAdder, dryRunMemberRemover, type MemberAdder, type MemberRemover } from "./directory-writer.ts";
 import { runGroupSync } from "./run.ts";
 import { dryRunSettingsApplier, type SettingsApplier } from "./settings-writer.ts";
 
@@ -64,6 +64,12 @@ const program = new Command("gsuite-sync")
     ),
   )
   .option("--dry-run", "Log the writes the sync would make, without making them")
+  .addOption(
+    new Option(
+      "--allow-mass-removal",
+      "Take out of a CRM group's Google Group more than 5 members, or all of its plain members",
+    ).env("GSUITE_SYNC_ALLOW_MASS_REMOVAL"),
+  )
   .hook("preAction", (command) => {
     const opts = command.opts();
     winston.configure({
@@ -85,6 +91,7 @@ const program = new Command("gsuite-sync")
     const { directory, settingsReader } = googleClients(auth, options.googleRootUrl);
 
     const adder: MemberAdder = dryRun ? dryRunMemberAdder() : directory;
+    const remover: MemberRemover = dryRun ? dryRunMemberRemover() : directory;
     const settingsApplier: SettingsApplier = dryRun ? dryRunSettingsApplier() : settingsReader;
 
     const result = await runGroupSync({
@@ -92,11 +99,13 @@ const program = new Command("gsuite-sync")
       directus,
       queue,
       adder,
+      remover,
       settingsApplier,
       directory,
       settingsReader,
       groupOwners,
       customer: options.customer,
+      allowMassRemoval: options.allowMassRemoval ?? false,
     });
 
     winston.info("Group sync run finished", result);

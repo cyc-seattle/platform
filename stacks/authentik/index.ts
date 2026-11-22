@@ -17,6 +17,7 @@ import { Secret } from "../../src/app/secret.ts";
 import {
   loginHost,
   directusRedirectUri,
+  listmonkRedirectUri,
   inboxRedirectUriPattern,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
@@ -558,3 +559,42 @@ new authentik.PolicyBinding(
   { target: inboxApplication.uuid, group: signInGroup("freescout-agent").id, order: 0 },
   opts,
 );
+
+// --- 11. Listmonk, the newsletter. The client comes from platform's `listmonk` stack. Listmonk makes an
+// account on a first sign-in, so only holders of Listmonk Write or Listmonk Send get this far.
+const listmonkProvider = new ConfidentialOidcProvider(
+  "listmonk-oidc",
+  {
+    name: "Listmonk",
+    clientId: siblingOutput("listmonk", "oidcClientId"),
+    clientSecret: siblingSecret("listmonk", "oidcClientSecret"),
+    signingKey: signingCertificate.id,
+    authorizationFlow: implicitConsentFlow.id,
+    invalidationFlow: providerInvalidationFlow.id,
+    allowedRedirectUris: [
+      {
+        matching_mode: "strict",
+        redirect_uri_type: "authorization",
+        url: siblingOutput("listmonk", "url").apply(listmonkRedirectUri),
+      },
+    ],
+    // Listmonk finds the account by email, so it gets the same lowercased one as Directus.
+    propertyMappings: [openidScopeMapping.id, profileScopeMapping.id, directusEmailScopeMapping.id],
+  },
+  opts,
+);
+
+const listmonkApplication = new authentik.Application(
+  "listmonk",
+  { name: "Newsletter", slug: "listmonk", protocolProvider: numericId(listmonkProvider.providerOauth2Id) },
+  opts,
+);
+
+// A member of either group passes.
+["listmonk-write", "listmonk-send"].forEach((key, order) => {
+  new authentik.PolicyBinding(
+    `${key}-group-binding`,
+    { target: listmonkApplication.uuid, group: signInGroup(key).id, order },
+    opts,
+  );
+});

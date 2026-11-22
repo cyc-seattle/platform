@@ -174,8 +174,11 @@ cyc-seattle/csc-website builds the public website from Directus ([website.md](we
 signs in as the Website Build machine user, with a static token `backend` generates. Its policy reads
 every `website_*` collection whole, Crew's public profiles, and the files in the Website folder, and
 nothing else: anything it can read could end up on the public site. Of Crew it reads a crew member's
-website name, bio, and photo while they're on the website, their current terms, and each position's
-name and title: never who they are in the CRM, their pay, or their qualifications.
+person, bio, photo, and `show_full_name` while they're on the website, their current terms, and each
+position's name: never their pay or qualifications. Of People it reads only `first_name` and
+`last_name`, and only of a person whose crew member is on the website, through the `crew_members`
+list on people. The site shows the first name alone unless `show_full_name` is set. It can't read
+anyone else in the CRM, or any other field of theirs.
 `features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.
@@ -192,9 +195,10 @@ can't write a secret. The site has no PR previews, so no build reads dev's.
 - `group_members`: who is in each group, as people in the CRM
 - `group_policies`: which policies each group gives
 
-Only admins can see or change them. A group never sets a role. A committee, such as the Finance
-Committee, is a group like any other, and holding a position in Crew doesn't put anyone in one
-([crew-schema.md](crew-schema.md)).
+Only admins can see or change them. A group never sets a role. A group can also fill a Google
+Group, which the Google sync keeps equal to its members ([syncs.md](syncs.md#gsuite-sync)). A
+committee, such as the Finance Committee, is a group like any other, and holding a position in Crew
+doesn't put anyone in one ([crew-schema.md](crew-schema.md)).
 
 An admin changes a group from its own page in the Data Studio. Members and Policies are
 many-to-many lists: "Add existing" picks a person, or one of the policies a group can give. Neither

@@ -24,6 +24,11 @@ export interface WebServiceArgs extends WorkloadArgs {
    * pod that fails it leaves the load balancer's endpoints either way.
    */
   healthCheck?: { path?: string; checkIntervalSec?: number; timeoutSec?: number };
+  /**
+   * The app rejects a request whose Host isn't its hostname, as FreeScout does. The readiness probe
+   * and the load balancer's check then send it, since each otherwise sends the pod's address.
+   */
+  checksHost?: boolean;
 }
 
 /** Returns `hostname` if it is the environment's domain or a name under it, and throws otherwise. */
@@ -82,7 +87,18 @@ export class WebService extends pulumi.ComponentResource {
 
     const paths = args.paths && checkPaths(name, args.paths);
     const { path: healthCheckPath, ...healthCheckTiming } = args.healthCheck ?? {};
-    const { serviceAccount, service } = deployment(this, name, args, args.port);
+    const readinessProbe = args.checksHost
+      ? {
+          ...args.readinessProbe,
+          httpGet: pulumi
+            .all([args.readinessProbe.httpGet, hostname])
+            .apply(([get, host]): k8s.types.input.core.v1.HTTPGetAction => ({
+              ...get!,
+              httpHeaders: [...(get!.httpHeaders ?? []), { name: "Host", value: host }],
+            })),
+        }
+      : args.readinessProbe;
+    const { serviceAccount, service } = deployment(this, name, { ...args, readinessProbe }, args.port);
     const backendRefs = [{ name: service!.metadata.name, port: 80 }];
 
     new k8s.apiextensions.CustomResource(
@@ -118,6 +134,7 @@ export class WebService extends pulumi.ComponentResource {
               type: "HTTP",
               httpHealthCheck: {
                 portSpecification: "USE_SERVING_PORT",
+                ...(args.checksHost && { host: hostname }),
                 requestPath:
                   healthCheckPath ?? pulumi.output(args.readinessProbe.httpGet).apply((get) => get?.path ?? "/"),
               },

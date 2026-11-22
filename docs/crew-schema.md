@@ -23,7 +23,7 @@ erDiagram
     crew_members {
         uuid id PK
         uuid person_id FK "unique, required"
-        string website_name
+        boolean show_full_name
         text website_bio
         uuid website_photo FK "in the Website folder"
         boolean on_website
@@ -31,7 +31,6 @@ erDiagram
     crew_positions {
         uuid id PK
         string name "such as Treasurer or Parent Coordinator"
-        string title "what the website calls a holder"
         text description
     }
     crew_terms {
@@ -77,9 +76,15 @@ erDiagram
   expiring on one. A renewal is a new row. Someone has a qualification while they hold one in date,
   or one that covers it (`qualification_covers`). Each position lists the qualifications it needs,
   so sail-team shows who is missing one, or holds one that expires in the next 90 days.
-- **The public profile** is the crew member's `website_*` fields and `on_website`. The website build
-  reads only those, only while `on_website` is set, and only the current terms of those crew
-  members: never `person_id`, pay, or qualifications ([website.md](website.md)).
+- **The public profile** is the crew member's name in the CRM, `website_bio`, `website_photo`, and
+  `on_website`. The website build reads those, `show_full_name`, and the current terms of crew
+  members on the website, and each position's name: never pay or qualifications
+  ([website.md](website.md)).
+- **The name on the website** is the person's first name, or first and last name when
+  `show_full_name` is set. It's off by default. Nothing copies the name: the build reads the
+  person's `first_name` and `last_name` itself, through a rule that shows only those two fields, and
+  only of a person whose crew member is on the website (`people.crew_members`, a hidden list).
+  A name changed in the CRM shows on the next publish, which runs nightly.
 
 Directus can't compare one row with another, so nothing stops overlapping terms for one person in
 one position. Sail-team shows both.
@@ -92,7 +97,7 @@ one position. Sail-team shows both.
 | Crew Reader                          | The same, but a term's pay                                                                                          | Nothing                                                 |
 | CRM Reader, CRM Writer               | Crew members' people, positions, and terms, but pay                                                                 | Nothing in Crew                                         |
 | Plan Reader, Plan Writer, Plan Admin | Terms with their pay, crew members' people, positions' names, and people's names                                    | Nothing in Crew                                         |
-| Website Build                        | Public profiles on the website, their current terms, and positions' names                                           | Nothing                                                 |
+| Website Build                        | Public profiles on the website, their people's first and last names, their current terms, and positions' names      | Nothing                                                 |
 
 Groups give each of them, and an admin fills each group by hand. No role gets a Crew policy, and
 the Crew role reads nothing in Crew. [access.md](access.md) has the rest.

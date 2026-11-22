@@ -35,6 +35,11 @@ export function directusRedirectUri(internalDomain: string): string {
   return `https://directus.${internalDomain}/auth/login/authentik/callback`;
 }
 
+/** Where Listmonk expects Authentik to send the browser back, from its root URL. */
+export function listmonkRedirectUri(rootUrl: string): string {
+  return `${rootUrl.replace(/\/+$/, "")}/auth/oidc`;
+}
+
 /**
  * The shared inbox's redirects, as a regex. FreeScout's sign-in module doesn't document its callback
  * path, so this admits any path on the inbox's host until it's known (cyc-seattle/platform#182).
