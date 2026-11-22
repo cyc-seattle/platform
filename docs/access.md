@@ -110,8 +110,10 @@ Financial Plan's status, the date it's active from, and whether it's archived. E
 and writes every program area: there's no per-area access. A
 frozen Financial Plan never changes, even for an admin, so the `frozen-plans` hook enforces that
 rather than a policy (`docs/planning-schema.md`). A Medical policy is given with a CRM policy.
-Programs belong to the catalog, so only a Catalog Writer changes them. A CRM policy reads them, and
-so do Crew and the Google sync, but none of them changes them. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
+Programs and offerings belong to the catalog, so only a Catalog Writer changes them, the links from
+offerings to Clubspot's classes included. A CRM policy reads them, and so do Crew and the Google sync,
+but none of them changes them. The Clubspot sync reads offerings, and writes only each one's count of
+confirmed sailors, which no one else writes. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
 
 One field is held back: no policy a person can hold sets a login's person,
 `directus_users.person_id`, or the list of a person's logins, `people.logins`, because a login's
@@ -177,7 +179,10 @@ person, bio, photo, and `show_full_name` while they're on the website, their cur
 position's name: never their pay or qualifications. Of People it reads only `first_name` and
 `last_name`, and only of a person whose crew member is on the website, through the `crew_members`
 list on people. The site shows the first name alone unless `show_full_name` is set. It can't read
-anyone else in the CRM, or any other field of theirs.
+anyone else in the CRM, or any other field of theirs. Of the catalog it reads what's on sale: each
+program's name and ages, each offering that isn't archived (its dates, price, capacity, confirmed count
+and form, never its registrations or its link to Clubspot), each registration form that isn't archived,
+and, of a Clubspot camp that's public, whether it takes registrations and hides spots left.
 `features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.

@@ -1,18 +1,22 @@
 /**
- * Row shapes for the `offerings` and `registrations` collections. See `schemas/crm.yaml`. clubspot-sync
- * makes both from the Clubspot mirrors, and no one edits them by hand.
+ * Row shapes for the catalog's `offerings` (`schemas/core.yaml`) and the CRM's `registrations`
+ * (`schemas/crm.yaml`). Staff make offerings and link each to its Clubspot class. clubspot-sync makes the
+ * registrations from the Clubspot mirrors, and keeps each offering's confirmed count.
  */
 
-/** A program sold for one dated period: a Clubspot class in one session, or in all of them. */
+/** What CSC sells: one program for one dated period, linked to a Clubspot class in one session, or in all of them. */
 export interface OfferingRow {
   id: string;
   program_id: string;
   starts_on: string | null;
   ends_on: string | null;
   capacity: number | null;
-  clubspot_class_id: string;
+  /** Null until staff link it to its Clubspot class. */
+  clubspot_class_id: string | null;
   /** Null when the class's cap covers every session, so the class is one offering. */
   clubspot_session_id: string | null;
+  confirmed_count: number;
+  archived_at: string | null;
 }
 
 /** One person registered in one offering, from one Clubspot registration entry. */

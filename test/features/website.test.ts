@@ -3,6 +3,7 @@ import { afterAll, expect } from "vitest";
 import { WEBSITE_FOLDER } from "../../stacks/backend/migrations/cyc0007-website-folder.cjs";
 import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
 import { admin, adminCreate, newRow, row, runId, runRows } from "./steps/rows.ts";
+import { newCamp, newProgram, signUp } from "./steps/teams.ts";
 
 // A 1x1 transparent PNG.
 const PICTURE = Buffer.from(
@@ -74,7 +75,7 @@ Step("it can't see the picture", async () => {
 
 // Every collection, the system's own included, read through its own route. A route Directus doesn't
 // serve, such as its migrations', is skipped.
-Step("it can't see anything outside the website and crew's public profiles", async () => {
+Step("it can't see anything outside the website, crew's public profiles, and what's on sale", async () => {
   const everything: { collection: string; schema: unknown }[] = await (
     await admin()
   ).ok("GET", "/collections?limit=-1");
@@ -85,6 +86,10 @@ Step("it can't see anything outside the website and crew's public profiles", asy
     "crew_terms",
     "crew_positions",
     "people",
+    "programs",
+    "offerings",
+    "registration_forms",
+    "clubspot_camps",
   ]);
   const seen: string[] = [];
   for (const { collection, schema } of everything) {
@@ -121,21 +126,77 @@ Step("it looks at the catalog program through the website's program", async () =
   refused = await (await theirSession()).request("GET", `/items/website_programs/${websiteProgramId}?fields=${fields}`);
 });
 
-// Directus leaves out the fields a user can't read, so the list holds only its links' own IDs.
-Step("it sees none of the catalog program's details", () => {
+// Directus leaves out the fields a user can't read, so a linked program has only the four it may.
+Step("it sees only the catalog program's name and ages", () => {
   expect(refused, "nothing was asked").toBeDefined();
   const { status, body } = refused!;
-  if (status === 403) {
-    return;
-  }
   expect(status, JSON.stringify(body)).toBe(200);
-  const links = (body as { data: { catalog_programs: unknown[] } }).data.catalog_programs;
+  const links = (body as { data: { catalog_programs: { catalog_program_id: Record<string, unknown> }[] } }).data
+    .catalog_programs;
   expect(links.length, "the website's program lists its link").toBeGreaterThan(0);
-  for (const link of links) {
-    expect(typeof link, JSON.stringify(body)).toBe("string");
+  for (const { catalog_program_id: program } of links) {
+    expect(Object.keys(program).sort(), JSON.stringify(body)).toEqual(["id", "max_age", "min_age", "name"]);
   }
-  expect(JSON.stringify(body)).not.toContain(String(row["programs"]));
 });
+
+const adminPatch = async (collection: string, id: string, changes: Record<string, unknown>) =>
+  (await admin()).ok("PATCH", `/items/${collection}/${id}`, changes);
+
+let sale: { offeringId: string; formId: string; campId: string } | undefined;
+onEachScenario(() => {
+  sale = undefined;
+});
+
+/** An offering of a new program, on its camp's registration form, with a sailor confirmed in it. */
+async function onSale(campIsPublic: boolean, archived = false): Promise<void> {
+  const program = await newProgram(await newCamp("running"));
+  await adminPatch("clubspot_camps", program.camp.id, { public: campIsPublic, registration_closed: false });
+  const form = await adminCreate("registration_forms", {
+    name: `Form ${runId}`,
+    opens_on: daysAgo(30),
+    clubspot_camp_id: program.camp.id,
+  });
+  await adminPatch("offerings", program.offeringId, {
+    registration_form_id: form.id,
+    price_cents: 67_500,
+    capacity: 12,
+    ...(archived && { archived_at: new Date().toISOString() }),
+  });
+  const person = await adminCreate("people", await newRow("people"));
+  await signUp(person.id, program);
+  await adminPatch("offerings", program.offeringId, { confirmed_count: 1 });
+  sale = { offeringId: program.offeringId, formId: form.id, campId: program.camp.id };
+}
+Step("an offering on a public Clubspot camp's form, with a sailor confirmed in it", () => onSale(true));
+Step("an archived offering", () => onSale(true, true));
+Step("an offering on the form of a Clubspot camp that isn't public", () => onSale(false));
+
+Step("it can see the offering's dates, price and capacity, and that one is confirmed", async () => {
+  const fields = "starts_on,ends_on,price_cents,capacity,confirmed_count";
+  const { status, body } = await read(`/items/offerings/${sale!.offeringId}?fields=${fields}`);
+  expect(status, JSON.stringify(body)).toBe(200);
+  expect(body.data).toMatchObject({ price_cents: 67_500, capacity: 12, confirmed_count: 1 });
+});
+Step("it can see the offering's form, and whether its camp takes registrations", async () => {
+  const fields =
+    "registration_form_id.name,registration_form_id.opens_on,registration_form_id.clubspot_camp_id.registration_closed";
+  const { status, body } = await read(`/items/offerings/${sale!.offeringId}?fields=${fields}`);
+  expect(status, JSON.stringify(body)).toBe(200);
+  expect(body.data.registration_form_id).toMatchObject({
+    name: `Form ${runId}`,
+    clubspot_camp_id: { registration_closed: false },
+  });
+});
+Step("it can't see who registered, or the offering's link to Clubspot", async () => {
+  for (const fields of ["registrations.person_id", "clubspot_class_id", "clubspot_session_id"]) {
+    const { status } = await read(`/items/offerings/${sale!.offeringId}?fields=${fields}`);
+    expect(status, fields).toBe(403);
+  }
+  const { status } = await read(`/items/registrations?limit=1`);
+  expect(status).toBe(403);
+});
+Step("it can't see the offering", () => seesNothing(byId("offerings", sale!.offeringId)));
+Step("it can't see the camp", () => seesNothing(byId("clubspot_camps", sale!.campId)));
 
 Step("a sponsor whose logo is kept outside the website's folder", async () => {
   pictureId = await upload(null);

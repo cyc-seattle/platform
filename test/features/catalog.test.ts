@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect } from "vitest";
 import { describeAccessFeature, expectRefusal, onEachScenario, Step } from "./steps/index.ts";
 import { admin, adminCreate, created, itemPath, key, newRow, runId, runRows, type Row } from "./steps/rows.ts";
+import { newCamp, newProgram, signUp } from "./steps/teams.ts";
 
 // The data model's rules hold for everyone, so an admin checks them.
 
@@ -24,6 +25,25 @@ Step("an admin deletes the program's product", async () => {
 });
 Step("the product is still in the catalog", async () => {
   await (await admin()).ok("GET", itemPath("products", productId));
+});
+
+let offeringId: string | undefined;
+onEachScenario(() => {
+  offeringId = undefined;
+});
+
+Step("an offering with a sailor registered in it", async () => {
+  const program = await newProgram(await newCamp("running"));
+  const person = await adminCreate("people", await newRow("people"));
+  await signUp(person.id, program);
+  offeringId = program.offeringId;
+});
+Step("an admin deletes the offering", async () => {
+  const { status } = await (await admin()).request("DELETE", itemPath("offerings", offeringId));
+  expectRefusal(() => expect(status).toBeGreaterThanOrEqual(400));
+});
+Step("the offering is still in the catalog", async () => {
+  await (await admin()).ok("GET", itemPath("offerings", offeringId));
 });
 
 const account = (number: string) => ({

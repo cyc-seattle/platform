@@ -189,6 +189,18 @@ staff's edit, and an edit stands until the family answers again. At the end of e
 households pass, a household whose `share_contact` is still blank gets the newest answer any of its
 sailors' registrations gave. It never replaces a value (`src/syncs/clubspot/sharing.ts`).
 
+**The sync registers sailors in the catalog's offerings, and never makes one.** Staff link each
+catalog offering to its Clubspot class and session (cyc-seattle/platform#332). After the camp loop and the
+merges, the sync makes each registration in the offering its entry's class and session are linked to,
+or the class's when the offering covers every session. An entry with no linked offering waits, and
+`class_without_offering` reports its class, in a camp that isn't archived or over, so the rosters miss
+those sailors until staff link it. A cleared or changed link never deletes a registration: it keeps
+its offering until the entry is linked again, and goes only when its Clubspot entry does. The same
+pass writes each offering's `confirmed_count`, sets each class's `program_id` to its offerings'
+program for gsuite-sync, and raises `offering_differs` for an offering, not archived or over, whose
+dates or cap aren't Clubspot's. The catalog is right, so the fix is in Clubspot or the link. If the
+pass fails, its open findings are left alone (`src/syncs/clubspot/offerings.ts`).
+
 **A person reference is pinned, not gap-filled.** `clubspot_participants.person_id` and `contacts.contact_id`
 are set once, at creation, and never re-resolved. That is what makes a manual merge durable: staff
 repoint the FK and delete the duplicate, and no later sync undoes it. See `docs/crm-schema.md` for
@@ -441,7 +453,8 @@ has a single sales account (`clubspot_camps.clubspot_sales_account`), so every c
 programs whose products book to one account (`products.revenue_account_id`). A product with no
 account isn't a conflict by itself. Only two or more distinct
 accounts are. Tagged `clubspot-sync`, like `class_without_program`: a finance/Clubspot concern this
-pass happens to compute.
+pass happens to compute. `class_without_program` now means a class no catalog offering is linked to, or
+one whose offerings are of two programs, since clubspot-sync sets a class's program from them.
 
 **A program must be a product of kind `program`.** Directus can't compare a field across
 collections, so the audit raises `program_product_wrong_kind` for a program whose product is some

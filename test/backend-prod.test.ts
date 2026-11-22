@@ -110,6 +110,7 @@ const extensions = {
   },
   websitePublish: {
     collections: ["website_pages"],
+    watched: {},
     folder: "website-folder",
     repository: "cyc-seattle/csc-website",
     workflow: "publish.yml",

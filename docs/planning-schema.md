@@ -18,7 +18,7 @@ A Financial Plan holds what planners enter, and the results the [planning engine
 - **Activity block:** offerings whose activities share coaches and boats on certain days, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
 - **Cost center:** what a money line belongs to. That is an offering, a product or a program area (each divided among its offerings), a pool (G&A, program admin), or the org. Strictly speaking, an offering that earns revenue is a profit center, but we call all of these cost centers.
 - **Bonus owner:** a role, such as a program area's director. It owns a set of products and earns a bonus on their net. Every bonus is in the Operations Plan.
-- **Catalog offering:** a named offering of a program, such as "J-Pod · fall practices" or "Summer camp · week 3", kept in the catalog. Every Financial Plan's offerings point at one, and so do Clubspot's offerings, so a Clubspot offering finds its plan in whichever Financial Plan is in force.
+- **Catalog offering:** what CSC sells, kept in the catalog: one program for one dated period, such as Guppies week 3 of summer 2027, with its price and how many sailors it takes. After the board approves a Financial Plan, the plan's offerings are copied into catalog offerings, and Clubspot's camps are built from those. A plan's offerings don't link to them.
 - **Plan** (`plans`): one part of a Financial Plan, with every row it holds. A **Program Plan** holds one program area's offerings for the year. The **Operations Plan** holds what the areas share, the charges set as a share of revenue, and the products in no area: merchandise, storage and charters.
 - **Financial Plan** (`financial_plans`): the organization's plan for a year: one Operations Plan and a Program Plan for any of the program areas, with the P&L they make together. Planners change its plans while it's a draft. Freezing it keeps it, and its plans, from changing, apart from its name, its note, its date and whether it's archived. A new one starts as a copy of its parent, so two started from the same parent are options to compare, like branches in git.
   - The Financial Plan **in force** on a day is the one for its organization and year with the latest `effective_from` on or before that day: the plan being run, which tracking compares with what happened.
@@ -44,7 +44,8 @@ erDiagram
     qualifications ||--o{ qualification_covers : "covered by"
     accounts |o--o{ accounts : "parent, contra"
     products ||--o| programs : "program subtype"
-    programs ||--o{ catalog_offerings : "offerings of"
+    programs ||--o{ offerings : "offerings of"
+    registration_forms ||--o{ offerings : "sold on"
     programs ||--o{ program_boat_classes : sails
     boat_classes ||--o{ program_boat_classes : "sailed by"
     assets ||--o| boats : "boat subtype"
@@ -100,10 +101,22 @@ erDiagram
         uuid program_id FK
         uuid boat_class_id FK "a class its sailors can sail"
     }
-    catalog_offerings {
+    offerings {
         uuid id PK
         uuid program_id FK
-        string name "such as fall practices"
+        string name "such as week 3"
+        uuid registration_form_id FK
+        date starts_on
+        date ends_on
+        int price_cents
+        int capacity
+        timestamp archived_at
+    }
+    registration_forms {
+        uuid id PK
+        string name "such as 2027 Summer Sailing Camps"
+        date opens_on
+        timestamp archived_at
     }
     organizations {
         uuid id PK

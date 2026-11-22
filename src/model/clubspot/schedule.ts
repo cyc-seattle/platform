@@ -13,6 +13,12 @@ export interface CampRow {
   archived: boolean;
   /** The Clubspot chart-of-accounts code this camp sells against, or null if it has none. */
   clubspot_sales_account: string | null;
+  /** Shown on Clubspot's public pages. */
+  public: boolean;
+  /** Clubspot isn't taking registrations. */
+  registration_closed: boolean;
+  /** Clubspot hides how many spots are left. */
+  hide_spots_left: boolean;
 }
 
 export interface SessionRow {
@@ -25,7 +31,7 @@ export interface SessionRow {
   archived: boolean;
 }
 
-/** `program_id` is set by staff, never by the sync - see `planClasses`. */
+/** `program_id` is the program of the class's catalog offerings, set by the registrations pass - see `planClasses`. */
 export interface ClassRow {
   /** The Clubspot CampClass objectId - assigned by the sync, not generated. */
   id: string;

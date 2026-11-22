@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 import { asAdmin, runCronJob } from "./cluster.ts";
-import { clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
+import { type ClubspotRun, clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
 import { canSet, describeAccessFeature, Step } from "./steps/index.ts";
 import { admin, adminCreate, itemPath, key, newRow, type Row } from "./steps/rows.ts";
 import { runClubspotSync } from "./syncs.ts";
@@ -9,7 +9,25 @@ import { runClubspotSync } from "./syncs.ts";
 // read the result through Directus's REST API. The merge scenario runs the CronJob as a Job instead,
 // which proves the deployed image and its config.
 
-Step("they can set which program a class belongs to", () => canSet("clubspot_classes", "program_id"));
+/**
+ * A catalog offering of a new program, linked to the run's class and session, as staff would link it. It
+ * ends `daysLate` days after the session does.
+ */
+async function linkOffering({ runId, id }: ClubspotRun, daysLate: number): Promise<string> {
+  const program = (await adminCreate("programs", await newRow("programs", { name: `Program ${runId}` }))).id;
+  const session = await asAdmin("GET", `/items/clubspot_sessions/${id("ses")}?fields=start_date,end_date`);
+  const ends = new Date(`${session.end_date}T00:00:00Z`);
+  ends.setUTCDate(ends.getUTCDate() + daysLate);
+  const offering = await adminCreate("offerings", {
+    program_id: program,
+    name: `Offering ${runId}`,
+    starts_on: session.start_date,
+    ends_on: ends.toISOString().slice(0, 10),
+    clubspot_class_id: id("cls"),
+    clubspot_session_id: id("ses"),
+  });
+  return offering.id;
+}
 Step("they can match a registration's sailor to a person in the CRM", () =>
   canSet("clubspot_participants", "person_id"),
 );
@@ -60,11 +78,10 @@ describeAccessFeature("clubspot.feature", {
     });
   },
 
-  "A sailor in a class that belongs to a program is registered in its offering": ({ Given, And, When, Then }) => {
+  "A sailor waits until their class is linked to an offering": ({ Given, And, When, Then }) => {
     const run = clubspotRun();
-    const { runId, id } = run;
-    let programId: string;
-    let offering: Row;
+    const { id } = run;
+    let offeringId: string;
 
     Given("a sailor registered for a class running today in Clubspot", async () => {
       await seedClass(run);
@@ -73,40 +90,72 @@ describeAccessFeature("clubspot.feature", {
 
     And("the Clubspot sync has copied them into the CRM", () => runClubspotSync(id("cmp")));
 
-    When("staff set which program the class belongs to", async () => {
-      programId = (await adminCreate("programs", await newRow("programs", { name: `Program ${runId}` }))).id;
-      await asAdmin("PATCH", `/items/clubspot_classes/${id("cls")}`, { program_id: programId });
+    When("staff link an offering to the class's session", async () => {
+      offeringId = await linkOffering(run, 0);
     });
 
     And("the Clubspot sync runs again", () => runClubspotSync(id("cmp")));
 
-    Then("the program has an offering for the class's session, with the session's dates", async () => {
-      const offerings: Row[] = await asAdmin(
-        "GET",
-        `/items/offerings?filter[program_id][_eq]=${programId}&fields=id,starts_on,ends_on,clubspot_class_id,clubspot_session_id`,
-      );
-      const session = await asAdmin("GET", `/items/clubspot_sessions/${id("ses")}?fields=start_date,end_date`);
-      expect(offerings).toEqual([
-        {
-          id: expect.any(String),
-          starts_on: session.start_date,
-          ends_on: session.end_date,
-          clubspot_class_id: id("cls"),
-          clubspot_session_id: id("ses"),
-        },
-      ]);
-      offering = offerings[0]!;
-    });
-
-    And("the sailor is registered in that offering", async () => {
+    Then("the sailor is registered in that offering", async () => {
       const sailor = await asAdmin("GET", `/items/clubspot_participants/${id("par")}?fields=person_id`);
       const registrations: Row[] = await asAdmin(
         "GET",
-        `/items/registrations?filter[offering_id][_eq]=${offering["id"]}&fields=person_id,status,clubspot_entry_id`,
+        `/items/registrations?filter[offering_id][_eq]=${offeringId}&fields=person_id,status,clubspot_entry_id`,
       );
       expect(registrations).toEqual([
         { person_id: sailor.person_id, status: "confirmed", clubspot_entry_id: id("jn") },
       ]);
+    });
+
+    And("the offering counts one confirmed sailor", async () => {
+      const offering = await asAdmin("GET", `/items/offerings/${offeringId}?fields=confirmed_count`);
+      expect(offering.confirmed_count).toBe(1);
+    });
+  },
+
+  "A class with sailors and no offering is reported": ({ Given, When, Then }) => {
+    const run = clubspotRun();
+    const { id } = run;
+
+    Given("a sailor registered for a class running today in Clubspot", async () => {
+      await seedClass(run);
+      await seedSailor(run);
+    });
+
+    When("the Clubspot sync runs", () => runClubspotSync(id("cmp")));
+
+    Then("the sync reports that the class has sailors in no offering", async () => {
+      const findings: Row[] = await asAdmin(
+        "GET",
+        `/items/audit_findings?filter[kind][_eq]=class_without_offering&filter[subject][_eq]=${id("cls")}&fields=status`,
+      );
+      expect(findings).toEqual([{ status: "open" }]);
+    });
+  },
+
+  "An offering that ends a day later than its Clubspot session": ({ Given, When, And, Then }) => {
+    const run = clubspotRun();
+    const { id } = run;
+    let offeringId: string;
+
+    Given("a sailor registered for a class running today in Clubspot", async () => {
+      await seedClass(run);
+      await seedSailor(run);
+      await runClubspotSync(id("cmp"));
+    });
+
+    When("staff link an offering that ends a day after the class's session", async () => {
+      offeringId = await linkOffering(run, 1);
+    });
+
+    And("the Clubspot sync runs", () => runClubspotSync(id("cmp")));
+
+    Then("the sync reports that the offering differs from Clubspot", async () => {
+      const findings: Row[] = await asAdmin(
+        "GET",
+        `/items/audit_findings?filter[kind][_eq]=offering_differs&filter[subject][_eq]=${offeringId}&fields=status,detail`,
+      );
+      expect(findings).toEqual([{ status: "open", detail: expect.stringContaining("ends_on") }]);
     });
   },
 

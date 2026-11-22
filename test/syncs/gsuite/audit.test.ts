@@ -239,7 +239,7 @@ describe("findClassesWithoutProgram", () => {
         source: "clubspot-sync",
         kind: "class_without_program",
         subject: "class-1",
-        detail: 'Class "Optimist" (class-1) has no program_id',
+        detail: 'Class "Optimist" (class-1) has no offering in the catalog, or offerings of two programs',
       },
     ]);
   });

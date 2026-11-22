@@ -117,6 +117,9 @@ export function planCamps(camps: Camp[], existing: CampWithClubspot[]): Collecti
       end_date: toDateString(camp.get("endDate")),
       archived: camp.get("archived") ?? false,
       clubspot_sales_account: salesAccountCode(camp),
+      public: camp.get("public") ?? false,
+      registration_closed: camp.get("registration_closed") ?? false,
+      hide_spots_left: camp.get("hide_spots_left") ?? false,
     };
     const match = existingById.get(camp.id);
     if (!match) {
@@ -133,9 +136,10 @@ export function planCamps(camps: Camp[], existing: CampWithClubspot[]): Collecti
 }
 
 /**
- * Reconciles `clubspot_classes` by id. A new class is created unlinked (`program_id: null`); an existing
- * row's `program_id` is never part of the diff, since staff set it by hand, once per class - see
- * cyc-seattle/isthmia#149. Bypasses `planById`, whose generic diff would otherwise patch it back to null on every run.
+ * Reconciles `clubspot_classes` by id. A new class is created with no program; an existing row's
+ * `program_id` is never part of the diff, since the registrations pass sets it from the class's catalog
+ * offerings (`planClassPrograms`). Bypasses `planById`, whose generic diff would otherwise patch it back
+ * to null on every run.
  */
 export function planClasses(campClasses: CampClass[], existing: ClassRow[]): CollectionPlan<ClassRow> {
   const existingById = new Map(existing.map((row) => [row.id, row] as const));
