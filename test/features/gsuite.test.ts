@@ -106,7 +106,11 @@ function crmGroupWithGoogleGroup() {
   let groupId: string;
   let serial = 0;
   return {
-    async create(): Promise<void> {
+    /**
+     * The Google group, and a group in the CRM that fills it. Unless `empty`, the group has a member
+     * who stays, already synced in, so taking one person out never empties the Google group.
+     */
+    async create({ empty = false } = {}): Promise<void> {
       await proxyOk("workspace-fake", 8080, "POST", "/admin/directory/v1/groups", {
         email: groupEmail,
         name: `Group ${runId}`,
@@ -115,6 +119,10 @@ function crmGroupWithGoogleGroup() {
       googleGroupId = googleGroup.id;
       const group = await asAdmin("POST", "/items/groups", { name: `Group ${runId}`, google_group_id: googleGroupId });
       groupId = group.id;
+      if (!empty) {
+        await this.addPerson();
+        await this.sync();
+      }
     },
     /** A person an admin adds to the group, with their email and their membership's id. */
     async addPerson(): Promise<{ email: string; memberId: string }> {
@@ -206,6 +214,19 @@ describeAccessFeature("gsuite.feature", {
     When("the Google sync runs for the group", () => group.sync());
     Then("they're not in the Google group", async () => {
       expect(await group.members()).not.toHaveProperty([outsider]);
+    });
+  },
+  "The Google sync won't empty a Google group by itself": ({ Given, When, Then }) => {
+    const group = crmGroupWithGoogleGroup();
+    let members: string[];
+    Given("a Google group with members, which a group in the CRM with no one in it starts to fill", async () => {
+      await group.create({ empty: true });
+      members = [await group.addByHand("MEMBER"), await group.addByHand("MEMBER")];
+    });
+    When("the Google sync runs for the group", () => group.sync());
+    Then("they're all still in the Google group", async () => {
+      const live = await group.members();
+      for (const email of members) expect(live).toHaveProperty([email], "MEMBER");
     });
   },
   "The Google group's manager stays": ({ Given, And, When, Then }) => {

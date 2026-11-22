@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { type GroupMember } from "@cyc-seattle/gsuite-sdk";
 import {
   accessGroupPeople,
   contestedGoogleGroups,
   googleGroupSources,
+  planAccessGroup,
   planAccessGroupMembers,
 } from "../../../src/syncs/gsuite/access-groups.ts";
 
@@ -83,6 +85,58 @@ describe("a CRM group's Google Group", () => {
           { email: "announcers@example.com", role: "MEMBER", type: "GROUP" },
         ],
       ),
-    ).toEqual({ add: ["new@example.com"], remove: ["left@example.com", "outsider@example.org"] });
+    ).toEqual({ add: ["new@example.com"], remove: ["left@example.com", "outsider@example.org"], massRemoval: false });
+  });
+
+  it("skips a member with no address, such as a whole domain", () => {
+    const live = [
+      { email: "kept@example.com", role: "MEMBER", type: "USER" },
+      { role: "MEMBER", type: "CUSTOMER" },
+    ] as GroupMember[];
+    expect(planAccessGroupMembers([{ email: "kept@example.com" }], live)).toEqual({
+      add: [],
+      remove: [],
+      massRemoval: false,
+    });
+  });
+
+  it("keeps a member who joined by an alias, whom Google lists at their primary address", async () => {
+    const plan = await planAccessGroup(
+      [{ email: "jane.doe@cycsail.team" }, { email: "kept@example.com" }],
+      "board@example.org",
+      {
+        async listMembers() {
+          return [
+            { email: "jane@cycsail.team", role: "MEMBER", type: "USER" },
+            { email: "kept@example.com", role: "MEMBER", type: "USER" },
+          ];
+        },
+        async getMember(_, memberKey) {
+          return memberKey === "jane.doe@cycsail.team"
+            ? { email: "Jane@cycsail.team", role: "MEMBER", type: "USER" }
+            : null;
+        },
+      },
+    );
+    expect(plan).toEqual({ add: [], remove: [], massRemoval: false });
+  });
+
+  it("calls taking out every plain member, or more than five, a mass removal", () => {
+    const member = (email: string): GroupMember => ({ email, role: "MEMBER", type: "USER" });
+    const manager: GroupMember = { email: "chair@example.com", role: "MANAGER", type: "USER" };
+    expect(planAccessGroupMembers([], [member("a@example.com"), manager]).massRemoval).toBe(true);
+    expect(
+      planAccessGroupMembers(
+        [{ email: "kept@example.com" }],
+        [member("kept@example.com"), ...["a", "b", "c", "d", "e"].map((name) => member(`${name}@example.com`))],
+      ).massRemoval,
+    ).toBe(false);
+    expect(
+      planAccessGroupMembers(
+        [{ email: "kept@example.com" }],
+        [member("kept@example.com"), ...["a", "b", "c", "d", "e", "f"].map((name) => member(`${name}@example.com`))],
+      ).massRemoval,
+    ).toBe(true);
+    expect(planAccessGroupMembers([], [manager]).massRemoval).toBe(false);
   });
 });

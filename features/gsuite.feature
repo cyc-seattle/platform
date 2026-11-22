@@ -3,7 +3,8 @@ Feature: Google Groups for programs and groups
   Parent Coordinator, belongs to the group. A program role is a role someone has in one program. The
   Google sync adds them to the group. A group in the CRM, such as the Board of Directors, can fill a
   Google group too: the Google sync makes its members exactly the group's members, taking out
-  anyone who isn't in the group, but never the Google group's managers. The CRM has a copy of each Google group and its members, and
+  anyone who isn't in the group, but never the Google group's managers. It won't take out everyone,
+  or more than five people at once, until someone allows it. The CRM has a copy of each Google group and its members, and
   records who the sync added. If someone leaves a group, the Google sync doesn't add them back until
   staff let them back in. The Google sync also reports problems for staff to fix, such as classes
   that Clubspot sells together whose programs book their money to different revenue accounts.
@@ -54,6 +55,11 @@ Feature: Google Groups for programs and groups
       And someone not in the group, added to the Google group by hand
       When the Google sync runs for the group
       Then they're not in the Google group
+
+    Example: The Google sync won't empty a Google group by itself
+      Given a Google group with members, which a group in the CRM with no one in it starts to fill
+      When the Google sync runs for the group
+      Then they're all still in the Google group
 
     Example: The Google group's manager stays
       Given a group in the CRM that fills a Google group

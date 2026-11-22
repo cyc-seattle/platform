@@ -28,6 +28,7 @@ import {
   candidateMemberPeople,
   findClassesWithoutProgram,
   findContestedGoogleGroups,
+  findMassRemoval,
   findInvalidEmails,
   findAreaAccountMismatches,
   findMismatchedRevenueAccounts,
@@ -43,7 +44,13 @@ import {
   plannedGroupMembers,
 } from "./audit.ts";
 import { findSettingsDrift, type SettingsReader } from "./audit-settings.ts";
-import { accessGroupPeople, googleGroupSources, readAccessGroups } from "./access-groups.ts";
+import {
+  accessGroupPeople,
+  contestedGoogleGroups,
+  googleGroupSources,
+  planAccessGroup,
+  readAccessGroups,
+} from "./access-groups.ts";
 import { type GoogleGroupMembershipRow, type GoogleGroupRow, type ProgramWithGoogleGroup } from "./schema.ts";
 
 /** The slice of `DirectoryClient` the audit pass reads through - narrow enough that a real
@@ -53,6 +60,8 @@ import { type GoogleGroupMembershipRow, type GoogleGroupRow, type ProgramWithGoo
 export interface DirectoryReader {
   getGroup(groupKey: string): Promise<Group | null>;
   listMembers(groupKey: string): Promise<GroupMember[]>;
+  /** Finds a member by any address, an alias included - see `planAccessGroup`. */
+  getMember(groupKey: string, memberKey: string): Promise<GroupMember | null>;
 }
 
 async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
@@ -149,13 +158,9 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
     .flatMap((group) => accessGroupPeople(group.id as string, accessGroupMembers, tables.people));
   const reported = new Set(candidatePeople.map((person) => person.id));
 
+  const sources = googleGroupSources(tables.programs, accessGroups);
   const findings: GsuiteAuditFinding[] = [
-    ...findContestedGoogleGroups(
-      tables.groups,
-      googleGroupSources(tables.programs, accessGroups),
-      tables.programs,
-      accessGroups,
-    ),
+    ...findContestedGoogleGroups(tables.groups, sources, tables.programs, accessGroups),
     ...findProgramsWithoutGroup(tables.programs),
     ...findClassesWithoutProgram(tables.classes),
     ...findProgramProductProblems(tables.programs, tables.products),
@@ -186,6 +191,18 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
     findings.push(...findMissingGroup(group, liveGroup !== null));
     if (!liveGroup) {
       continue;
+    }
+
+    // A CRM group that would take out so many that the sync waits for someone to allow it.
+    const contested = contestedGoogleGroups(sources);
+    for (const accessGroup of accessGroups) {
+      if (!accessGroup.id || accessGroup.google_group_id !== group.id || contested.has(group.id)) continue;
+      const plan = await planAccessGroup(
+        accessGroupPeople(accessGroup.id, accessGroupMembers, tables.people),
+        group.email,
+        directory,
+      );
+      if (plan.massRemoval) findings.push(findMassRemoval(group, accessGroup, plan.remove));
     }
 
     if (isProgramGroup(group, tables.programs)) {

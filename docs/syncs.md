@@ -379,7 +379,14 @@ page (`groups.google_group_id`, declared in `schemas/gsuite.yaml`), such as boar
 Directors. Each run, `access-groups.ts` plans that Google Group's members as the group members' main
 emails, skipping an unusable one, which the audit reports as `invalid_email`. The sync adds who's
 missing and takes out every other plain member, so someone who leaves board@ on their own is put
-back. It never takes out a manager, an owner, or a nested group. It keeps no
+back. It never takes out a manager, an owner, a nested group, or a whole domain. Google lists a
+member who joined by an alias at their primary address, so before comparing, the sync asks Google
+who each wanted address it doesn't see is (`getMember`), and keeps that member.
+
+**It won't empty a Google Group by itself.** A run that would take out every plain member, or more
+than five, only adds, and the audit raises `google_group_mass_removal`. Linking a group whose
+members don't match yet is the usual cause. Fix the group, or run the CLI once with
+`--allow-mass-removal` (env `GSUITE_SYNC_ALLOW_MASS_REMOVAL`) to let the removals through. It keeps no
 `google_group_memberships` rows for these, since the CRM group says exactly who belongs.
 
 **A Google Group a CRM group shares is filled by neither.** A CRM group takes out whoever isn't in

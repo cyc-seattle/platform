@@ -36,7 +36,8 @@ export type AuditFindingKind =
   | "program_product_wrong_kind"
   | "revenue_account_differs_from_area"
   | "invalid_email"
-  | "google_group_filled_twice";
+  | "google_group_filled_twice"
+  | "google_group_mass_removal";
 
 /** Every kind this pass can raise. Scopes `planAuditFindingWrites` to the rows it owns, so it
  * never resolves a finding some other sync raised. */
@@ -56,6 +57,7 @@ export const AUDIT_FINDING_KINDS: readonly AuditFindingKind[] = [
   "revenue_account_differs_from_area",
   "invalid_email",
   "google_group_filled_twice",
+  "google_group_mass_removal",
 ];
 
 /** An `audit_findings` input narrowed to the kinds this pass raises - `AuditFindingInput` itself
@@ -278,6 +280,23 @@ export function findContestedGoogleGroups(
       detail: `${label} is filled by ${(sources.get(id) ?? []).map(name).join(" and ")}, so the Google sync fills it from neither until only one does`,
     };
   });
+}
+
+/**
+ * `google_group_mass_removal` finding: a CRM group whose Google Group the sync would take so many
+ * out of that it waits for someone to run it with `--allow-mass-removal`, or fix the group.
+ */
+export function findMassRemoval(
+  group: Pick<GoogleGroupRow, "email">,
+  accessGroup: Pick<AccessGroupRow, "name">,
+  remove: readonly string[],
+): GsuiteAuditFinding {
+  return {
+    source: GSUITE_SYNC_SOURCE,
+    kind: "google_group_mass_removal",
+    subject: group.email,
+    detail: `The group ${accessGroup.name} would take ${remove.length} out of ${group.email} (${remove.join(", ")}), so the Google sync waits for someone to allow it`,
+  };
 }
 
 /**

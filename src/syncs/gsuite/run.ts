@@ -26,7 +26,7 @@ import {
   accessGroupPeople,
   contestedGoogleGroups,
   googleGroupSources,
-  planAccessGroupMembers,
+  planAccessGroup,
   readAccessGroups,
 } from "./access-groups.ts";
 import { type MemberAdder, type MemberRemover } from "./directory-writer.ts";
@@ -252,6 +252,7 @@ async function syncAccessGroupMembers(
   adder: MemberAdder,
   remover: MemberRemover,
   snapshot: () => Promise<MembershipSnapshot>,
+  allowMassRemoval: boolean,
 ): Promise<void> {
   const { programs, groups, accessGroups, accessGroupMembers, people } = await snapshot();
   const accessGroup = accessGroups.find((row) => row.id === groupId);
@@ -266,15 +267,24 @@ async function syncAccessGroupMembers(
     throw new TaskOrphaned(`Group ${groupId}'s Google Group has another source, so neither fills it`);
   }
 
-  const plan = planAccessGroupMembers(
+  const plan = await planAccessGroup(
     accessGroupPeople(groupId, accessGroupMembers, people),
-    await directory.listMembers(googleGroup.email),
+    googleGroup.email,
+    directory,
   );
+  if (plan.massRemoval && !allowMassRemoval) {
+    // The audit raises `google_group_mass_removal` for it. Adding is still safe.
+    winston.warn("Not taking so many out of a Google Group without --allow-mass-removal", {
+      group: googleGroup.email,
+      remove: plan.remove,
+    });
+  } else {
+    for (const email of plan.remove) {
+      await remover.removeMember(googleGroup.email, email);
+    }
+  }
   for (const email of plan.add) {
     await adder.addMember(googleGroup.email, email, "MEMBER");
-  }
-  for (const email of plan.remove) {
-    await remover.removeMember(googleGroup.email, email);
   }
 }
 
@@ -463,6 +473,11 @@ export interface RunGroupSyncOptions {
   programId?: string;
   /** Syncs only this CRM group's Google Group, the same way. */
   accessGroupId?: string;
+  /**
+   * Takes out of a CRM group's Google Group more than `MASS_REMOVAL_LIMIT` members, or all of its
+   * plain members. Without it, such a run only adds, and the audit reports it.
+   */
+  allowMassRemoval?: boolean;
 }
 
 export interface RunGroupSyncResult {
@@ -494,11 +509,19 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
     customer,
     programId,
     accessGroupId,
+    allowMassRemoval = false,
   } = options;
 
   if (accessGroupId !== undefined) {
     try {
-      await syncAccessGroupMembers(accessGroupId, directory, adder, remover, sharedMembershipSnapshot(directus));
+      await syncAccessGroupMembers(
+        accessGroupId,
+        directory,
+        adder,
+        remover,
+        sharedMembershipSnapshot(directus),
+        allowMassRemoval,
+      );
       return { status: "ok", tasksChecked: 1, tasksFailed: 0 };
     } catch (error) {
       winston.error("Group sync of one CRM group failed", {
@@ -556,7 +579,7 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
         {
           [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(directus, directory, adder, snapshot, now),
           [ACCESS_GROUP_MEMBERS_KIND]: (task: SyncTaskRow) =>
-            syncAccessGroupMembers(targetFromKey(task), directory, adder, remover, snapshot),
+            syncAccessGroupMembers(targetFromKey(task), directory, adder, remover, snapshot, allowMassRemoval),
           [SETTINGS_KIND]: groupSettingsTaskHandler(directus, settingsApplier),
           [NESTING_KIND]: groupNestingTaskHandler(directus, adder),
           [OWNERS_KIND]: groupOwnersTaskHandler(directus, adder, groupOwners),

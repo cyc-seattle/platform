@@ -31,8 +31,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.2
       '@cyc-seattle/gsuite-sdk':
-        specifier: ^1.1.0
-        version: 1.1.0
+        specifier: ^1.2.0
+        version: 1.2.0
       '@cyc-seattle/ts-config':
         specifier: ^0.1.2
         version: 0.1.2(@types/node@22.20.5)(eslint@9.39.5)(prettier@3.9.10)(typescript@5.9.3)(vitest@5.0.5(@opentelemetry/api@1.10.0)(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(yaml@2.9.1)))
@@ -454,8 +454,8 @@ packages:
     resolution: {integrity: sha512-o0lB9gCNh4pMgN3BOPsSw/IavULf5chaMS9ri439VucyrjyLc8KDeDxWLaftHmlIWZp5EyPJLMwjjLQCP7wRDA==}
     engines: {node: '>=22'}
 
-  '@cyc-seattle/gsuite-sdk@1.1.0':
-    resolution: {integrity: sha512-+qZIeNsS6Y3FH4k4wC3VxyX5Q5eDhxO0K6ulhiz0ParuA4SEyNeYOdU6LZJlxS5IWHIW8K6w6hYJ5cGD4O7BNg==}
+  '@cyc-seattle/gsuite-sdk@1.2.0':
+    resolution: {integrity: sha512-tjh5iMd9uiJvLix8hV03lupYK5X4xFsK6+ugXdXmY//XhX4FHoP9xHQoUP2kBcRrKaX2KQmFgohLD6RnAKOoBQ==}
     engines: {node: '>=22'}
 
   '@cyc-seattle/ts-config@0.1.2':
@@ -4802,7 +4802,7 @@ snapshots:
       winston: 3.19.0
       winston-console-format: 1.0.8
 
-  '@cyc-seattle/gsuite-sdk@1.1.0':
+  '@cyc-seattle/gsuite-sdk@1.2.0':
     dependencies:
       exponential-backoff: 3.1.3
       googleapis: 144.0.0

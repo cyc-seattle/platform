@@ -62,27 +62,79 @@ export function accessGroupPeople(
   return people.filter((person) => person.id && ids.has(person.id));
 }
 
+/** More removals than this in one run, or every plain member, waits for `allowMassRemoval`. */
+export const MASS_REMOVAL_LIMIT = 5;
+
+/** The slice of `DirectoryClient` planning a CRM group's Google Group reads through. */
+export interface AccessGroupDirectory {
+  listMembers(groupKey: string): Promise<GroupMember[]>;
+  getMember(groupKey: string, memberKey: string): Promise<GroupMember | null>;
+}
+
+/** A Google Group's changes, and whether they'd take out so many that a person must allow it. */
+export interface AccessGroupPlan {
+  add: string[];
+  remove: string[];
+  massRemoval: boolean;
+}
+
+/** A member who is one person with an address: not a nested group, nor a whole domain (CUSTOMER). */
+function isPerson(member: GroupMember): boolean {
+  return Boolean(member.email) && (member.type === undefined || member.type === "USER" || member.type === "EXTERNAL");
+}
+
+/** Everyone's main email, each once. One that isn't usable is skipped, and the audit reports it. */
+function wantedEmails(people: readonly Pick<PersonRow, "email">[]): string[] {
+  return [
+    ...new Set(
+      people.flatMap((person) => (person.email && isValidEmail(person.email) ? [normalizeEmail(person.email)] : [])),
+    ),
+  ].sort();
+}
+
 /**
- * The addresses to add to a group's Google Group and take out of it. Everyone's main email is
- * wanted; one that isn't usable is skipped, and the audit reports it. Only a plain member is taken
- * out: never a manager or owner, and never a nested group, which isn't a person.
+ * The addresses to add to a group's Google Group and take out of it. `resolved` maps an address the
+ * CRM wants, which Google lists under another, to the primary address Google answers with: an alias.
+ * Only a plain member who is a person is taken out: never a manager or owner, a nested group, or a
+ * whole domain.
  */
 export function planAccessGroupMembers(
   people: readonly Pick<PersonRow, "email">[],
   live: readonly GroupMember[],
-): { add: string[]; remove: string[] } {
-  const wanted = new Set(
-    people.flatMap((person) => (person.email && isValidEmail(person.email) ? [normalizeEmail(person.email)] : [])),
-  );
-  const present = new Set(live.map((member) => normalizeEmail(member.email)));
+  resolved: ReadonlyMap<string, string> = new Map(),
+): AccessGroupPlan {
+  const wanted = wantedEmails(people);
+  const present = new Set(live.filter((member) => member.email).map((member) => normalizeEmail(member.email)));
+  const keep = new Set([...wanted, ...resolved.values()]);
+  const plain = live.filter((member) => member.role === "MEMBER" && isPerson(member));
+  const remove = plain
+    .map((member) => normalizeEmail(member.email))
+    .filter((email) => !keep.has(email))
+    .sort();
   return {
-    add: [...wanted].filter((email) => !present.has(email)).sort(),
-    remove: live
-      .filter((member) => member.role === "MEMBER" && member.type !== "GROUP")
-      .map((member) => normalizeEmail(member.email))
-      .filter((email) => !wanted.has(email))
-      .sort(),
+    add: wanted.filter((email) => !present.has(email) && !resolved.has(email)),
+    remove,
+    massRemoval: remove.length > MASS_REMOVAL_LIMIT || (remove.length > 0 && remove.length === plain.length),
   };
+}
+
+/**
+ * Plans a CRM group's Google Group from live state. Each address the CRM wants that Google doesn't
+ * list is looked up, since Google lists a member who joined by an alias at their primary address.
+ */
+export async function planAccessGroup(
+  people: readonly Pick<PersonRow, "email">[],
+  groupEmail: string,
+  directory: AccessGroupDirectory,
+): Promise<AccessGroupPlan> {
+  const live = await directory.listMembers(groupEmail);
+  const present = new Set(live.filter((member) => member.email).map((member) => normalizeEmail(member.email)));
+  const resolved = new Map<string, string>();
+  for (const email of wantedEmails(people).filter((email) => !present.has(email))) {
+    const member = await directory.getMember(groupEmail, email);
+    if (member?.email) resolved.set(email, normalizeEmail(member.email));
+  }
+  return planAccessGroupMembers(people, live, resolved);
 }
 
 /** A Google Group's name for a finding: its address, or its row's id if the row is gone. */

@@ -64,6 +64,12 @@ const program = new Command("gsuite-sync")
     ),
   )
   .option("--dry-run", "Log the writes the sync would make, without making them")
+  .addOption(
+    new Option(
+      "--allow-mass-removal",
+      "Take out of a CRM group's Google Group more than 5 members, or all of its plain members",
+    ).env("GSUITE_SYNC_ALLOW_MASS_REMOVAL"),
+  )
   .hook("preAction", (command) => {
     const opts = command.opts();
     winston.configure({
@@ -99,6 +105,7 @@ const program = new Command("gsuite-sync")
       settingsReader,
       groupOwners,
       customer: options.customer,
+      allowMassRemoval: options.allowMassRemoval ?? false,
     });
 
     winston.info("Group sync run finished", result);

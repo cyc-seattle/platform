@@ -154,6 +154,9 @@ function fakeDirectory(
     async listMembers(): Promise<GroupMember[]> {
       return [];
     },
+    async getMember(): Promise<GroupMember | null> {
+      return null;
+    },
     async listGroups(): Promise<Group[]> {
       return [];
     },
@@ -391,8 +394,14 @@ describe("runGroupSync", () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "g-board", email: "board@cyccommunitysailing.org" }],
       groups: [{ id: "board", name: "Board of Directors", google_group_id: "g-board" }],
-      group_members: [{ id: "m1", group_id: "board", person_id: "p-new" }],
-      people: [{ id: "p-new", email: "new@example.com" }],
+      group_members: [
+        { id: "m1", group_id: "board", person_id: "p-new" },
+        { id: "m2", group_id: "board", person_id: "p-kept" },
+      ],
+      people: [
+        { id: "p-new", email: "new@example.com" },
+        { id: "p-kept", email: "kept@example.com" },
+      ],
     });
     vi.stubGlobal("fetch", fetchMock);
     const directus = new DirectusClient(baseUrl, token);
@@ -413,6 +422,7 @@ describe("runGroupSync", () => {
         async listMembers(groupKey: string) {
           return groupKey === "board@cyccommunitysailing.org"
             ? [
+                { email: "kept@example.com", role: "MEMBER", type: "USER" },
                 { email: "left@example.com", role: "MEMBER", type: "USER" },
                 { email: "chair@example.com", role: "MANAGER", type: "USER" },
               ]
@@ -427,6 +437,64 @@ describe("runGroupSync", () => {
     expect(result.status).toBe("ok");
     expect(adder.calls).toEqual([["board@cyccommunitysailing.org", "new@example.com", "MEMBER"]]);
     expect(remover.calls).toEqual([["board@cyccommunitysailing.org", "left@example.com"]]);
+  });
+
+  it("only adds to a CRM group's Google Group when it would take out every plain member, unless allowed, and reports it", async () => {
+    const seed = () =>
+      makeDirectusStore({
+        google_groups: [{ id: "g-board", email: "board@cyccommunitysailing.org" }],
+        groups: [{ id: "board", name: "Board of Directors", google_group_id: "g-board" }],
+        group_members: [{ id: "m1", group_id: "board", person_id: "p-new" }],
+        people: [{ id: "p-new", email: "new@example.com" }],
+      });
+    const run = async (allowMassRemoval: boolean) => {
+      const { fetchMock, tables } = seed();
+      vi.stubGlobal("fetch", fetchMock);
+      const directus = new DirectusClient(baseUrl, token);
+      const adder = recordingAdder();
+      const remover = recordingRemover();
+      await runGroupSync({
+        now,
+        directus,
+        queue: new SyncQueue(directus),
+        adder,
+        remover,
+        settingsApplier: recordingSettingsApplier(),
+        directory: fakeDirectory({
+          async listGroups() {
+            return liveGroupsFrom(tables);
+          },
+          async listMembers(groupKey: string) {
+            return groupKey === "board@cyccommunitysailing.org"
+              ? [
+                  { email: "old1@example.com", role: "MEMBER", type: "USER" },
+                  { email: "old2@example.com", role: "MEMBER", type: "USER" },
+                ]
+              : [];
+          },
+        }),
+        settingsReader: fakeSettingsReader(),
+        groupOwners: [],
+        customer,
+        allowMassRemoval,
+      });
+      return { adder, remover, tables };
+    };
+
+    const held = await run(false);
+    expect(held.adder.calls).toEqual([["board@cyccommunitysailing.org", "new@example.com", "MEMBER"]]);
+    expect(held.remover.calls).toEqual([]);
+    expect(held.tables.get("audit_findings")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "google_group_mass_removal", subject: "board@cyccommunitysailing.org" }),
+      ]),
+    );
+
+    const allowed = await run(true);
+    expect(allowed.remover.calls).toEqual([
+      ["board@cyccommunitysailing.org", "old1@example.com"],
+      ["board@cyccommunitysailing.org", "old2@example.com"],
+    ]);
   });
 
   it("fills a Google Group from neither a program nor a CRM group when both fill it, and reports it", async () => {
