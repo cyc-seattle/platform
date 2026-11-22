@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { devDirectusAdmin, type DirectusSession } from "./directus.ts";
 import { accessToken, devPlatform, isConnectError, kube } from "./support.ts";
+import { localService, localTarget } from "./target.ts";
 
 // What the sync features share: dev's fakes, reached through the Kubernetes API's service proxy, the
 // syncs' CronJobs, and dev's Directus as its admin.
@@ -36,6 +37,19 @@ export async function proxyOk(
   body?: unknown,
   headers?: Record<string, string>,
 ): Promise<any> {
+  const local = localTarget();
+  if (local) {
+    const response = await fetch(`${localService(local, service, port)}${path}`, {
+      method,
+      headers: { "content-type": "application/json", ...headers },
+      ...(body !== undefined && { body: JSON.stringify(body) }),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`${method} ${service}:${port}${path}: ${response.status} ${text}`);
+    }
+    return response.headers.get("content-type")?.startsWith("application/json") && text ? JSON.parse(text) : text;
+  }
   const response = await devKube(
     method,
     `${await namespaced("", "services")}/${service}:${port}/proxy${path}`,
@@ -56,6 +70,10 @@ const forwarders = new Map<string, Promise<string>>();
  * client's own `Authorization`, so a Service that needs one can't be reached this way.
  */
 export function serviceUrl(service: string, port: number): Promise<string> {
+  const local = localTarget();
+  if (local) {
+    return Promise.resolve(localService(local, service, port));
+  }
   const key = `${service}:${port}`;
   let url = forwarders.get(key);
   if (url === undefined) {
@@ -117,6 +135,10 @@ export async function secretData(name: string): Promise<Record<string, string>> 
 
 /** The env a CronJob's container gets: its own values, and every key of the Secrets it reads. */
 export async function cronJobEnv(cronJob: string): Promise<Record<string, string>> {
+  const local = localTarget()?.cronJobs[cronJob];
+  if (local) {
+    return local;
+  }
   const cron = await devKube("GET", `${await namespaced("batch/v1", "cronjobs")}/${cronJob}`);
   if (cron.status !== 200) {
     throw new Error(`Can't read the CronJob ${cronJob}: ${cron.status} ${JSON.stringify(cron.body)}`);
@@ -223,7 +245,23 @@ export function runCronJob(
   env: Record<string, string> = {},
   timeoutMs = 20 * 60_000,
 ): Promise<void> {
+  if (localTarget()) {
+    // No cluster: the same sync, in this process. The scenario also runs on dev, as a Job (@smoke).
+    return runInProcess(cronJob, env);
+  }
   return oneAtATime(cronJob, () => runJob(cronJob, runId, env, timeoutMs));
+}
+
+async function runInProcess(cronJob: string, env: Record<string, string>): Promise<void> {
+  // Imported here: ./syncs.ts imports this module.
+  const syncs = await import("./syncs.ts");
+  if (cronJob === "clubspot-sync" && env["CLUBSPOT_CAMP_ID"]) {
+    return syncs.runClubspotSync(env["CLUBSPOT_CAMP_ID"]);
+  }
+  if (cronJob === "gsuite-sync" && Object.keys(env).length === 0) {
+    return syncs.runWholeGoogleSync();
+  }
+  throw new Error(`The CI stack can't run ${cronJob} with ${JSON.stringify(env)} in-process.`);
 }
 
 async function runJob(cronJob: string, runId: string, env: Record<string, string>, timeoutMs: number): Promise<void> {

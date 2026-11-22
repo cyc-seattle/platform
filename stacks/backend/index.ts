@@ -20,25 +20,15 @@ import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/config.ts";
 import { familyPolicies, teamPolicies } from "./community-rules.ts";
-import {
-  crewRules,
-  groupPolicies,
-  groupPoliciesConfig,
-  queryGuardConfig,
-  sailTeamPolicy,
-  frozenPlansConfig,
-  WEBSITE_BUILD,
-  websiteBuildRules,
-  websitePublishConfig,
-  type PolicyData,
-} from "./policies.ts";
+import { crewRules, sailTeamPolicy, type PolicyData } from "./policies.ts";
 import { isDev, loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
+import { localDirectus } from "./local.ts";
+import { backendPolicies } from "./extensions.ts";
 import { deployClubspotSync } from "./clubspot-sync.ts";
 import { deployGsuiteSync } from "./gsuite-sync.ts";
 import { fingerprint } from "./frozen-plans.cjs";
 import { defaultViews, familyViews } from "./default-views.ts";
-import { engineFiles, engineVersion } from "./engine-files.ts";
 
 // The CRM app's Directus schema and permission rules, matching docs/crm-schema.md, and the roles and
 // users they attach to (src/directus/roles.ts). A second Directus-backed app would define its own
@@ -70,65 +60,40 @@ const loadedSchemas = schemaFiles.map(({ name, path: file }) => ({
 }));
 const schema = mergeSchemas(loadedSchemas);
 
-// The policies a group can give (docs/access.md).
-const grantable = groupPolicies(loadedSchemas);
+// A Directus the CI job runs in containers (scripts/ci-stack), not one on the cluster: no GCP, no Kubernetes.
+const local = config.getBoolean("local") ?? false;
 
-// What the csc-website build reads (docs/access.md).
-const websiteBuild = websiteBuildRules(loadedSchemas);
+const { extensions, frozenPlans, grantable, websiteBuild } = backendPolicies(loadedSchemas, {
+  contactTo: config.require("contactTo"),
+  formsOrigins: config.requireObject<string[]>("formsOrigins"),
+  externalDomain: config.require("externalDomain"),
+  formsPerIp: config.getNumber("formsPerIp") ?? 10,
+  formsHostname: config.require("formsHostname"),
+  websitePublishAppId: config.get("websitePublishAppId"),
+  frozenPlansDeletable: config.getBoolean("frozenPlansDeletable") ?? false,
+});
 
 // Core has no SSO, and refuses a user whose provider isn't `default`, so unlicensed there are none.
-const admins = isDev
-  ? licensed
-    ? (config.getObject<string[]>("directusAdmins") ?? [])
-    : []
-  : requireStringList("directusAdmins");
+const admins =
+  isDev || local
+    ? licensed
+      ? (config.getObject<string[]>("directusAdmins") ?? [])
+      : []
+    : requireStringList("directusAdmins");
 
 // Prod keeps what its Directus had on the VM (./prod-state.ts).
-const prod = isDev
-  ? undefined
-  : prodDirectus({
-      adminEmail: directusAdminEmail,
-      admins,
-      externalDomain: config.require("externalDomain"),
-      // deployDirectus needs prod's values first, so its own baseUrl comes too late.
-      baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
-    });
+const prod =
+  isDev || local
+    ? undefined
+    : prodDirectus({
+        adminEmail: directusAdminEmail,
+        admins,
+        externalDomain: config.require("externalDomain"),
+        // deployDirectus needs prod's values first, so its own baseUrl comes too late.
+        baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
+      });
 
-// The hook runs the engine when a Financial Plan is frozen, and records which engine it was.
-const engine = engineFiles();
-const frozenPlans = frozenPlansConfig(
-  loadedSchemas,
-  config.getBoolean("frozenPlansDeletable") ?? false,
-  engineVersion(engine),
-);
-
-const app = deployDirectus(
-  directusAdminEmail,
-  licensed,
-  {
-    queryGuard: queryGuardConfig([
-      ...familyPolicies,
-      ...teamPolicies,
-      { name: "Crew", rules: crewRules },
-      { name: WEBSITE_BUILD, rules: websiteBuild },
-      sailTeamPolicy,
-      ...grantable,
-    ]),
-    groupPolicies: groupPoliciesConfig(grantable),
-    frozenPlans,
-    // Set once the GitHub App exists (docs/manual-setup.md §6). Dev has none, so only prod publishes.
-    websitePublish: websitePublishConfig(loadedSchemas, config.get("websitePublishAppId")),
-    forms: {
-      to: config.require("contactTo"),
-      allowedOrigins: config.requireObject<string[]>("formsOrigins"),
-      siteUrl: `https://${config.require("externalDomain")}`,
-      perIp: config.getNumber("formsPerIp") ?? 10,
-    },
-    formsHostname: config.require("formsHostname"),
-    engine,
-  },
-  prod?.values,
-);
+const app = local ? localDirectus() : deployDirectus(directusAdminEmail, licensed, extensions, prod?.values);
 
 function roleIds(roles: CrmIdentities) {
   return {
@@ -170,11 +135,13 @@ function devIdentities(directus: typeof app) {
     clubspotSyncToken,
     gsuiteSyncToken,
     // infra generates it, since deploy-dev can only read dev's secrets.
-    websiteBuildToken: pulumi.secret(
-      gcp.secretmanager
-        .getSecretVersionAccessOutput({ secret: "dev-csc-website-directus-token" })
-        .apply((version) => version.secretData),
-    ),
+    websiteBuildToken: local
+      ? token("website-build-directus-token")
+      : pulumi.secret(
+          gcp.secretmanager
+            .getSecretVersionAccessOutput({ secret: "dev-csc-website-directus-token" })
+            .apply((version) => version.secretData),
+        ),
     communityRoleId: pulumi.output(directus.then(({ communityRoleId }) => communityRoleId)),
   });
   return {
@@ -200,9 +167,13 @@ const {
 
 // The syncs' CronJobs take their machine users' tokens straight into their Secrets.
 const { clubspotSyncToken, gsuiteSyncToken } = identities;
-void loadCluster().then((cluster) =>
-  Promise.all([deployClubspotSync(cluster, clubspotSyncToken), deployGsuiteSync(cluster, gsuiteSyncToken)]),
-);
+if (!local) {
+  void loadCluster().then((cluster) =>
+    Promise.all([deployClubspotSync(cluster, clubspotSyncToken), deployGsuiteSync(cluster, gsuiteSyncToken)]),
+  );
+}
+// CI runs the syncs itself, with these tokens. Undefined, and so no output, on the cluster.
+export const syncTokens = local ? pulumi.secret({ clubspot: clubspotSyncToken, gsuite: gsuiteSyncToken }) : undefined;
 
 // Authentik registers Directus's client from these (cyc-seattle/workplace#6).
 export const directusOidcClientId = pulumi.output(app.then(({ oidcClientId }) => oidcClientId));

@@ -38,6 +38,13 @@ export async function adminCreate(collection: string, data: Row): Promise<Item> 
   return item;
 }
 
+/** Creates rows as the admin in one request, in order. */
+export async function adminCreateMany(collection: string, data: Row[]): Promise<Item[]> {
+  const items: Item[] = await (await admin()).ok("POST", `/items/${collection}`, data);
+  created.push(...items.map((item) => ({ collection, id: item.id })));
+  return items;
+}
+
 /** Creates a fresh row as the admin, for a collection whose foreign key must be unique. */
 export async function fresh(collection: string): Promise<string> {
   return (await adminCreate(collection, await newRow(collection))).id;

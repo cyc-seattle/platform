@@ -1,3 +1,4 @@
+@dev
 Feature: Dev is isolated from prod
   Dev shares the cluster and the Gateway with prod. These scenarios run as the identity that deploys
   dev, which is deploy-dev in CI.

@@ -9,6 +9,7 @@ import { runGroupSync } from "../../src/syncs/gsuite/run.ts";
 import { DirectusClient, SyncQueue } from "../../src/syncs/runtime/index.ts";
 import { cronJobEnv, oneAtATime, serviceUrl } from "./cluster.ts";
 import { devPlatform } from "./support.ts";
+import { localTarget } from "./target.ts";
 
 // The syncs, run in the test's own process with their CronJob's config, and scoped to one scenario's
 // camp or program. A Job takes minutes to get a pod and to sync every test's data, and only one may
@@ -25,7 +26,8 @@ winston.configure({
  * would take the sync's token for its own, so the sync reaches it through the Gateway, as the steps do.
  */
 async function directus(token: string): Promise<DirectusClient> {
-  return new DirectusClient(`https://directus.${(await devPlatform()).domain}`, token);
+  const url = localTarget()?.directus.url ?? `https://directus.${(await devPlatform()).domain}`;
+  return new DirectusClient(url, token);
 }
 
 /** A fake's URL in dev's namespace, such as `http://workspace-fake:8080`, as this process reaches it. */
@@ -78,7 +80,14 @@ export function runGoogleSyncForGroup(accessGroupId: string): Promise<void> {
   return runGoogleSyncFor({ accessGroupId });
 }
 
-async function runGoogleSyncFor(target: { programId: string } | { accessGroupId: string }): Promise<void> {
+/** Runs gsuite-sync for every group, as its CronJob does. */
+export function runWholeGoogleSync(): Promise<void> {
+  return runGoogleSyncFor({});
+}
+
+async function runGoogleSyncFor(
+  target: { programId: string } | { accessGroupId: string } | Record<string, never>,
+): Promise<void> {
   const env = await cronJobEnv("gsuite-sync");
   const client = await directus(env["DIRECTUS_TOKEN"]!);
   // The Workspace fake ignores auth, and the forwarder sends the cluster's token in its place.

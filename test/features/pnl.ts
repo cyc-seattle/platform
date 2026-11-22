@@ -2,7 +2,17 @@ import { randomUUID } from "node:crypto";
 import { computePlan, type EngineOutput, type PlanData } from "../../src/planning/index.ts";
 import type { DirectusSession } from "./directus.ts";
 import { userFor } from "./steps/logins.ts";
-import { admin, adminCreate, itemPath, key, PLAN_YEAR, runId, type Item, type Row } from "./steps/rows.ts";
+import {
+  admin,
+  adminCreate,
+  adminCreateMany,
+  itemPath,
+  key,
+  PLAN_YEAR,
+  runId,
+  type Item,
+  type Row,
+} from "./steps/rows.ts";
 
 // A small plan the P&L examples build in dev, as an app or agent would: rows entered in Directus,
 // read back by a planner, and calculated with the engine. Every figure in them is made up.
@@ -160,25 +170,27 @@ export class PnlPlan {
           fiscal_year_start_month: 1,
         })
       ).id;
-      for (const [name, fields] of Object.entries(ACCOUNTS)) {
-        this.accounts[name as AccountName] = (
-          await adminCreate("accounts", {
-            id: randomUUID(),
-            number: key("account"),
-            name: `${name} ${runId}`,
-            retired: false,
-            ...fields,
-          })
-        ).id;
-      }
-      for (const [costType, account] of Object.entries(COST_ACCOUNTS)) {
-        await adminCreate("organization_cost_accounts", {
+      // Directus doesn't answer a batch in the order it was sent, so the ids are made here.
+      for (const name of Object.keys(ACCOUNTS) as AccountName[]) this.accounts[name] = randomUUID();
+      await adminCreateMany(
+        "accounts",
+        Object.entries(this.accounts).map(([name, id]) => ({
+          id,
+          number: key("account"),
+          name: `${name} ${runId}`,
+          retired: false,
+          ...ACCOUNTS[name as AccountName],
+        })),
+      );
+      await adminCreateMany(
+        "organization_cost_accounts",
+        Object.entries(COST_ACCOUNTS).map(([costType, account]) => ({
           id: randomUUID(),
           organization_id: this.organizationId,
           cost_type: costType,
           account_id: this.accounts[account],
-        });
-      }
+        })),
+      );
     }
     return this.organizationId;
   }

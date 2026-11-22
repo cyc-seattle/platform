@@ -18,6 +18,7 @@ const platform = [
   "inbox",
   "newsletter",
   "manual-setup",
+  "testing",
 ];
 const dataModel = ["crm-schema", "crew-schema", "hr-schema", "planning-schema", "planning-engine"];
 // A new page lands here until it's given a section.

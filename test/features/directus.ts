@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deploymentEnv, devPlatform, secretValue } from "./support.ts";
+import { localTarget } from "./target.ts";
 
 export interface DirectusResponse {
   status: number;
@@ -14,10 +15,14 @@ export class DirectusSession {
   readonly email: string;
   private readonly password: string;
 
-  constructor(baseUrl: string, email: string, password: string) {
+  /** Given a static `token`, the session uses it and never signs in with the password. */
+  constructor(baseUrl: string, email: string, password: string, token?: string) {
     this.baseUrl = baseUrl;
     this.email = email;
     this.password = password;
+    if (token !== undefined) {
+      this.token = Promise.resolve(token);
+    }
   }
 
   private signIn(): Promise<string> {
@@ -35,7 +40,7 @@ export class DirectusSession {
     return this.token;
   }
 
-  /** A new session for the same user, who signs in again. */
+  /** A new session for the same user, who signs in again with the password. */
   again(): DirectusSession {
     return new DirectusSession(this.baseUrl, this.email, this.password);
   }
@@ -158,6 +163,10 @@ function parseJson(text: string): unknown {
  * `directus` Secret. The deploy identity already reads it, so no test token needs creating.
  */
 export async function devDirectusAdmin(): Promise<DirectusSession> {
+  const local = localTarget();
+  if (local) {
+    return new DirectusSession(local.directus.url, local.directus.adminEmail, local.directus.adminPassword);
+  }
   const platform = await devPlatform();
   const email = await deploymentEnv(platform, "directus", "ADMIN_EMAIL");
   const password = await secretValue(platform, "directus", "ADMIN_PASSWORD");

@@ -183,21 +183,25 @@ Feature: Roles and groups
 
   Rule: A group can let its members sign in to another app
 
+    @dev
     Example: A volunteer in a group that gives FreeScout Agent can sign in to FreeScout
       Given someone who has signed in, in a group that gives the FreeScout Agent policy
       Then they can sign in to FreeScout
 
+    @dev
     Example: Leaving the group stops them signing in
       Given someone who has signed in, in a group that gives the FreeScout Agent policy
       When an admin takes them out of the group
       Then they can't sign in to FreeScout
 
+    @dev
     Example: Someone let in by hand in Authentik is taken out
       Given someone who has signed in with the Community role, in no group
       And an Authentik admin adds them by hand to the people who can sign in to FreeScout
       When the access sync runs
       Then they can't sign in to FreeScout
 
+    @dev
     Example: An admin in no such group can't sign in to Listmonk
       Given someone who has signed in with the Admin role, in no group
       When the access sync runs

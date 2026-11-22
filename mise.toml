@@ -110,10 +110,24 @@ run = "node scripts/load-website.ts"
 description = "Restore the latest prod backups into a throwaway instance, check Directus starts on them, and delete it"
 run = "./scripts/restore-drill"
 
-# Needs the dev deploy, so it isn't part of ci.
+# Needs the dev deploy, so it isn't part of ci. deploy.yml calls it after each dev deploy.
 [tasks.integration]
-description = "Run the integration tests against dev"
+description = "Run the @dev and @smoke features against dev"
 run = "pnpm exec vitest run --config vitest.integration.config.ts"
 # Node gives each address only 250 ms before trying the next. Its IPv6 fallback fails at once on
 # Actions' runners, so a slow connect to the cluster's endpoint failed the run.
 env.NODE_OPTIONS = "--dns-result-order=ipv4first --no-network-family-autoselection"
+
+# Needs Docker and DIRECTUS_LICENSE_KEY (docs/testing.md).
+[tasks.ci-stack]
+description = "Start Directus, its database, Mailpit and the fakes in containers, for integration-ci"
+run = "node scripts/ci-stack/index.ts up"
+
+[tasks.ci-stack-down]
+description = "Stop the CI stack"
+run = "node scripts/ci-stack/index.ts down"
+
+[tasks.integration-ci]
+description = "Run the integration tests against the CI stack, all but the @dev features"
+run = "pnpm exec vitest run --config vitest.integration.config.ts"
+env.CI_STACK_TARGET = "{{config_root}}/.ci-stack/target.json"

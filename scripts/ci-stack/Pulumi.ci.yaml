@@ -1,0 +1,24 @@
+# backend's config for the throwaway CI stack (./index.ts copies it to stacks/backend, where Pulumi rewrites it):
+# Directus in a container on the runner, not on the cluster. Its state and passphrase live only in the job.
+config:
+  backend:local: true
+  backend:localUrl: http://localhost:8055
+  backend:localAdminPassword: ci-admin-password
+  # Directus names it as the default role at start, before this stack creates the role.
+  backend:communityRoleId: 6b0c2b1e-5f43-4c8e-9a51-0c1e7f3d2a10
+  backend:directusAdminEmail: admin@example.com
+  backend:licensed: true
+  backend:frozenPlansDeletable: true
+  # As dev's (stacks/backend/Pulumi.dev.yaml): contact.feature posts as the website and reads info@'s mail.
+  backend:contactTo: info@cyccommunitysailing.org
+  backend:formsHostname: mail.localhost
+  backend:formsPerIp: 1000
+  backend:formsOrigins:
+    - https://cyccommunitysailing.org
+    - https://csc-website.web.app
+    - http://localhost:4321
+  backend:externalDomain: cyccommunitysailing.org
+  backend:mcp: false
+  # src/config.ts reads these when it loads. Nothing in a local stack calls Google Cloud.
+  gcp:project: ci-no-project
+  gcp:region: us-west1

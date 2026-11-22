@@ -65,7 +65,10 @@ instead. Ask the maintainer before any change that could activate a new Directus
 
 - Directus activates on startup only when `directus_settings.license_key` is empty, and otherwise
   refreshes. A restart, redeploy, or reset that keeps the database and the URL spends nothing.
-- Never give the key to a throwaway Directus.
+- A throwaway Directus, such as the CI stack's ([testing.md](testing.md)), may have the key: a new activation stays
+  pending for 24 hours and never counts if the instance is gone by then
+  ([pending activations](https://directus.com/docs/licensing/overview#pending-activations)). Never keep one
+  running for 24 hours.
 - Before an instance leaves its `project_id` or `PUBLIC_URL`, release its activation with
   `@directus/license`'s `deactivateKey`, which is meant for server migrations.
 - A refresh that fails with `BINDING_MISMATCH`, as after Directus support resets the activation

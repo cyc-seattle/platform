@@ -117,6 +117,7 @@ Feature: Registrations from Clubspot
 
   Rule: When the Clubspot sync merges two people, the person kept takes over the duplicate's program roles
 
+    @smoke
     Example: The person kept becomes the coach
       Given two people who are the same sailor, one a coach in a program
       And staff have approved merging them
