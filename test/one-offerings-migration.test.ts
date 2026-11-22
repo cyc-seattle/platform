@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { up } from "../stacks/backend/migrations/cyc0028-one-offerings.cjs";
+import { up } from "../stacks/backend/migrations/cyc0027-one-offerings.cjs";
 
 // The CRM's offerings becoming the catalog's, in a real Postgres (PGlite), with Directus's own tables cut
 // down to the columns the migration touches.

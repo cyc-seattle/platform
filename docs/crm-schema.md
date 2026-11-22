@@ -60,7 +60,7 @@ also writes each offering's `confirmed_count`, which the public website reads in
 registrations, and reports an offering whose dates or cap differ from its Clubspot class and session
 (`offering_differs`). An offering with registrations can't be deleted.
 
-Until cyc-seattle/platform#332's migration `cyc0028`, clubspot-sync made the offerings themselves. The
+Until cyc-seattle/platform#332's migration `cyc0027`, clubspot-sync made the offerings themselves. The
 migration kept each one, with its ID, as a catalog offering on a registration form for its camp.
 
 `clubspot_registration_entries` also carries five nullable columns for Clubspot's own per-entry status and
