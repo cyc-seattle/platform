@@ -384,6 +384,26 @@ describe("staffing", () => {
       expect(short(data)[0]?.message).toMatch(/needs 2 Harpoons when full/);
     });
 
+    it("adds the boat, between classes given alike, of the class the organization has most of, whatever their order", () => {
+      const harpoon = { boat_class_id: "harpoon", count: 1 };
+      const venture = { boat_class_id: "venture", count: 1 };
+      for (const boats of [
+        [harpoon, venture],
+        [venture, harpoon],
+      ]) {
+        const data = guppies({ boats }, [
+          { boat_class_id: "harpoon", count: 2 },
+          { boat_class_id: "venture", count: 1 },
+        ]);
+        data.boat_classes = [
+          ...classes,
+          { id: "harpoon", name: "Harpoon", max_capacity: 6, footprint_sq_ft: null },
+          { id: "venture", name: "Venture", max_capacity: 6, footprint_sq_ft: null },
+        ];
+        expect(short(data)).toEqual([]);
+      }
+    });
+
     it("keeps the boats sailors bring as they are", () => {
       // 2 of theirs seat 4, so 5 of the organization's seating 10 need to seat 12: 6.
       const given = { boats: [{ boat_class_id: "sailqube", count: 5, sailor_owned: 2 }] };
