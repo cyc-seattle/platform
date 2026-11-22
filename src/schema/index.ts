@@ -23,6 +23,11 @@ export interface Schema {
   clubspot_sessions: ClubspotSessions[];
   contact_points: ContactPoints[];
   contacts: Contacts[];
+  crew_members: CrewMembers[];
+  crew_position_qualifications: CrewPositionQualifications[];
+  crew_positions: CrewPositions[];
+  crew_qualifications: CrewQualifications[];
+  crew_terms: CrewTerms[];
   financial_plans: FinancialPlans[];
   google_group_memberships: GoogleGroupMemberships[];
   google_groups: GoogleGroups[];
@@ -89,6 +94,8 @@ export interface Schema {
   website_categories_files: WebsiteCategoriesFiles[];
   website_categories_profiles: WebsiteCategoriesProfiles[];
   website_categories_programs: WebsiteCategoriesPrograms[];
+  website_crew_sections: WebsiteCrewSections[];
+  website_crew_sections_positions: WebsiteCrewSectionsPositions[];
   website_faq_topics: WebsiteFaqTopics[];
   website_faqs: WebsiteFaqs[];
   website_page_sections: WebsitePageSections[];
@@ -427,6 +434,75 @@ export interface Contacts {
   relationship_detail: string | null;
 }
 
+/** Someone who works for CSC, as a volunteer or staff. Their terms say what they do. The website sees only the fields named for it. */
+export interface CrewMembers {
+  id: string;
+  /** Each person is on Crew once. */
+  person_id: string | People;
+  /** Markdown. */
+  website_bio: string | null;
+  /** Kept in the Website folder, so anyone can see it. */
+  website_photo: string | null;
+  /** Shows them on the website's crew lists while they hold a position listed there. */
+  on_website: boolean;
+  /** Shows their first and last name on the website. Off shows their first name only. */
+  show_full_name: boolean;
+  terms: (string | CrewTerms)[];
+  qualifications: (string | CrewQualifications)[];
+}
+
+export interface CrewPositionQualifications {
+  id: string;
+  position_id: string | CrewPositions | null;
+  qualification_id: string | Qualifications | null;
+}
+
+/** A job, such as Treasurer or Parent Coordinator. Each person in it holds a term. */
+export interface CrewPositions {
+  id: string;
+  /** Such as Treasurer, Director 1A, or Parent Coordinator. */
+  name: string;
+  /** What the job is, and how someone is chosen for it. Markdown. */
+  description: string | null;
+  /** What someone in this position must hold. */
+  qualifications: (string | CrewPositionQualifications)[];
+  terms: (string | CrewTerms)[];
+}
+
+/** A qualification someone on Crew holds, such as first aid. A renewal is a new row, so the old one stays. */
+export interface CrewQualifications {
+  id: string;
+  crew_member_id: string | CrewMembers;
+  qualification_id: string | Qualifications;
+  earned_on: string;
+  /** Leave empty for one that doesn't expire. */
+  expires_on: string | null;
+  /** Such as a certificate number. */
+  note: string | null;
+}
+
+/** One person in one position, from a start date to an end date. Ended terms are kept. */
+export interface CrewTerms {
+  id: string;
+  crew_member_id: string | CrewMembers;
+  position_id: string | CrewPositions;
+  /** The program the job is in, such as the team a Parent Coordinator helps. They're in its Google Group. */
+  program_id: string | Programs | null;
+  /** The program area the job is in, such as Summer for its director. */
+  program_area_id: string | ProgramAreas | null;
+  /** The first day. Leave empty if it began before anyone wrote it down. */
+  starts_on: string | null;
+  /** The last day. Leave empty while it goes on. */
+  ends_on: string | null;
+  /** The level they're paid at in this position. Leave empty if it's unpaid. */
+  staff_level_id: string | StaffLevels | null;
+  /** What they're paid an hour instead of their level's rate. Leave empty to use the level. In cents: 12500 is $125.00. */
+  hourly_rate_cents: number | null;
+  /** Whether they get a share of the profit. */
+  profit_share: boolean;
+  note: string | null;
+}
+
 /** The organization's plan for a year: an Operations Plan and a Program Plan for any of the program areas. Change it while it's a draft. Freezing it keeps it, and its plans, from changing. Pick a parent when you add one, and its plans are copied in. */
 export interface FinancialPlans {
   id: string;
@@ -611,6 +687,8 @@ export interface People {
   logins: string[];
   /** The Clubspot participants linked to this person. */
   participant_links: (string | ClubspotParticipants)[];
+  /** Their place on Crew, if they have one. */
+  crew_members: (string | CrewMembers)[];
   id: string;
   first_name: string;
   last_name: string | null;
@@ -1136,6 +1214,8 @@ export interface PlanSalariedPositions {
   remainder_pool_id: string | PlanPools | null;
   /** What this position is paid an hour to coach an offering that pays its salaried coach by the hour, instead of the offering's coach level. Leave empty to use the level. In cents: 12500 is $125.00. */
   hourly_coaching_rate_cents: number | null;
+  /** The person in the position, if it's filled. */
+  person_id: string | People | null;
 }
 
 /** What each staff level is paid an hour this year, such as a Senior Instructor's rate. */
@@ -1313,6 +1393,8 @@ export interface StaffLevels {
   role_id: string | StaffRoles;
   /** Volunteer and Junior levels are usually unpaid, with a rate of $0. */
   grade: "volunteer" | "junior" | "standard" | "senior" | "head";
+  /** Set when the level is no longer used for new work. It stays with anyone who has it. Clear it to use the level again. */
+  archived_at: string | null;
 }
 
 /** A job staff are paid by the hour for, such as Instructor or Coach. Drag the rows to change the order planning lists them in. */
@@ -1415,6 +1497,8 @@ export interface WebsiteCategories {
   profiles: (string | WebsiteCategoriesProfiles)[];
   /** Photos shown on the category's page, in order. */
   gallery: (string | WebsiteCategoriesFiles)[];
+  /** The crew list this category's page shows under Meet Our Crew. */
+  crew_section_id: string | WebsiteCrewSections | null;
 }
 
 export interface WebsiteCategoriesFaqTopics {
@@ -1442,6 +1526,23 @@ export interface WebsiteCategoriesPrograms {
   id: string;
   category_id: string | WebsiteCategories | null;
   program_id: string | WebsitePrograms | null;
+  sort: number | null;
+}
+
+/** A list on Our Crew, such as the board. It shows whoever holds its positions today and is on the website. */
+export interface WebsiteCrewSections {
+  id: string;
+  /** Such as Our Board of Directors. */
+  title: string;
+  sort: number | null;
+  /** Drag to order. People in the first position come first, then by name. */
+  positions: (string | WebsiteCrewSectionsPositions)[];
+}
+
+export interface WebsiteCrewSectionsPositions {
+  id: string;
+  section_id: string | WebsiteCrewSections | null;
+  position_id: string | CrewPositions | null;
   sort: number | null;
 }
 

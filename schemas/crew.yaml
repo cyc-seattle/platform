@@ -1,0 +1,1778 @@
+# Crew: everyone who works for CSC, volunteers and staff, with their positions, terms,
+# qualifications, and public profiles (docs/crew-schema.md).
+version: 1
+directus: 12.3.1
+vendor: postgres
+collections:
+  - collection: Crew
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: Crew
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: diversity_3
+      item_duplication_fields: null
+      note: "Everyone who works for CSC, volunteers and staff: their positions, terms, qualifications, and what the website shows of them."
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+  - collection: crew_members
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: crew_members
+      color: null
+      display_template: "{{person_id.first_name}} {{person_id.last_name}}"
+      group: Crew
+      hidden: false
+      icon: badge
+      item_duplication_fields: null
+      note: Someone who works for CSC, as a volunteer or staff. Their terms say what they do. The website sees only the fields named for it.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: crew_members
+  - collection: crew_positions
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: crew_positions
+      color: null
+      display_template: "{{name}}"
+      group: Crew
+      hidden: false
+      icon: work
+      item_duplication_fields: null
+      note: A job, such as Treasurer or Parent Coordinator. Each person in it holds a term.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: crew_positions
+  - collection: crew_terms
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: crew_terms
+      color: null
+      display_template: "{{crew_member_id.person_id.first_name}} {{crew_member_id.person_id.last_name}}, {{position_id.name}}"
+      group: Crew
+      hidden: false
+      icon: event_available
+      item_duplication_fields: null
+      note: One person in one position, from a start date to an end date. Ended terms are kept.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: crew_terms
+  - collection: crew_qualifications
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: crew_qualifications
+      color: null
+      display_template: "{{qualification_id.name}}, {{crew_member_id.person_id.first_name}} {{crew_member_id.person_id.last_name}}"
+      group: Crew
+      hidden: false
+      icon: verified
+      item_duplication_fields: null
+      note: A qualification someone on Crew holds, such as first aid. A renewal is a new row, so the old one stays.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: crew_qualifications
+  - collection: crew_position_qualifications
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: crew_position_qualifications
+      color: null
+      display_template: "{{position_id.name}} needs {{qualification_id.name}}"
+      group: Crew
+      hidden: true
+      icon: rule
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: crew_position_qualifications
+fields:
+  - collection: crew_members
+    field: id
+    type: uuid
+    meta:
+      collection: crew_members
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: crew_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_members
+    field: person_id
+    type: uuid
+    meta:
+      collection: crew_members
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{first_name}} {{last_name}}"
+      field: person_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Each person is on Crew once.
+      options:
+        template: "{{first_name}} {{last_name}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Person
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: person_id
+      table: crew_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: people
+      foreign_key_column: id
+  - collection: crew_members
+    field: website_bio
+    type: text
+    meta:
+      collection: crew_members
+      conditions: null
+      display: null
+      display_options: null
+      field: website_bio
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Bio on the website
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: website_bio
+      table: crew_members
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_members
+    field: website_photo
+    type: uuid
+    meta:
+      collection: crew_members
+      conditions: null
+      display: image
+      display_options: null
+      field: website_photo
+      group: null
+      hidden: false
+      interface: file-image
+      note: Kept in the Website folder, so anyone can see it.
+      options:
+        folder: 1dac44d4-d8ae-4ad1-9e11-f6b4da138a19
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - file
+      translations:
+        - language: en-US
+          translation: Photo on the website
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: website_photo
+      table: crew_members
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: crew_members
+    field: on_website
+    type: boolean
+    meta:
+      collection: crew_members
+      conditions: null
+      display: null
+      display_options: null
+      field: on_website
+      group: null
+      hidden: false
+      interface: boolean
+      note: Shows them on the website's crew lists while they hold a position listed there.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: On the website
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: on_website
+      table: crew_members
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_members
+    field: show_full_name
+    type: boolean
+    meta:
+      collection: crew_members
+      conditions: null
+      display: null
+      display_options: null
+      field: show_full_name
+      group: null
+      hidden: false
+      interface: boolean
+      note: Shows their first and last name on the website. Off shows their first name only.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Full name on the website
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: show_full_name
+      table: crew_members
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_members
+    field: terms
+    type: alias
+    meta:
+      collection: crew_members
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{position_id.name}}"
+      field: terms
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        enableCreate: false
+        template: "{{position_id.name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Terms
+      validation: null
+      validation_message: null
+      width: full
+  - collection: crew_members
+    field: qualifications
+    type: alias
+    meta:
+      collection: crew_members
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{qualification_id.name}}"
+      field: qualifications
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        enableCreate: false
+        template: "{{qualification_id.name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Qualifications
+      validation: null
+      validation_message: null
+      width: full
+  - collection: crew_positions
+    field: id
+    type: uuid
+    meta:
+      collection: crew_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: crew_positions
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_positions
+    field: name
+    type: string
+    meta:
+      collection: crew_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: Such as Treasurer, Director 1A, or Parent Coordinator.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: crew_positions
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_positions
+    field: description
+    type: text
+    meta:
+      collection: crew_positions
+      conditions: null
+      display: null
+      display_options: null
+      field: description
+      group: null
+      hidden: false
+      interface: input-rich-text-md
+      note: What the job is, and how someone is chosen for it. Markdown.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: description
+      table: crew_positions
+      data_type: text
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_positions
+    field: qualifications
+    type: alias
+    meta:
+      collection: crew_positions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{qualification_id.name}}"
+      field: qualifications
+      group: null
+      hidden: false
+      interface: list-m2m
+      note: What someone in this position must hold.
+      options:
+        enableCreate: false
+        template: "{{qualification_id.name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - m2m
+      translations:
+        - language: en-US
+          translation: Qualifications needed
+      validation: null
+      validation_message: null
+      width: full
+  - collection: crew_positions
+    field: terms
+    type: alias
+    meta:
+      collection: crew_positions
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{crew_member_id.person_id.first_name}} {{crew_member_id.person_id.last_name}}"
+      field: terms
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        enableCreate: false
+        template: "{{crew_member_id.person_id.first_name}} {{crew_member_id.person_id.last_name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Terms
+      validation: null
+      validation_message: null
+      width: full
+  - collection: crew_terms
+    field: id
+    type: uuid
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: crew_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_terms
+    field: crew_member_id
+    type: uuid
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{person_id.first_name}} {{person_id.last_name}}"
+      field: crew_member_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{person_id.first_name}} {{person_id.last_name}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Crew member
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: crew_member_id
+      table: crew_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: crew_members
+      foreign_key_column: id
+  - collection: crew_terms
+    field: position_id
+    type: uuid
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: position_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Position
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: position_id
+      table: crew_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: crew_positions
+      foreign_key_column: id
+  - collection: crew_terms
+    field: program_id
+    type: uuid
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The program the job is in, such as the team a Parent Coordinator helps. They're in its Google Group.
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_id
+      table: crew_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: programs
+      foreign_key_column: id
+  - collection: crew_terms
+    field: program_area_id
+    type: uuid
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_area_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The program area the job is in, such as Summer for its director.
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program area
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_area_id
+      table: crew_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: program_areas
+      foreign_key_column: id
+  - collection: crew_terms
+    field: starts_on
+    type: date
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The first day. Leave empty if it began before anyone wrote it down.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Starts
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: starts_on
+      table: crew_terms
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_terms
+    field: ends_on
+    type: date
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: ends_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: The last day. Leave empty while it goes on.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Ends
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ends_on
+      table: crew_terms
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_terms
+    field: staff_level_id
+    type: uuid
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: staff_level_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The level they're paid at in this position. Leave empty if it's unpaid.
+      options:
+        template: "{{name}}"
+        filter:
+          archived_at:
+            _null: true
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Staff level
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: staff_level_id
+      table: crew_terms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: staff_levels
+      foreign_key_column: id
+  - collection: crew_terms
+    field: hourly_rate_cents
+    type: integer
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: hourly_rate_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What they're paid an hour instead of their level's rate. Leave empty to use the level. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations:
+        - language: en-US
+          translation: Own hourly rate
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hourly_rate_cents
+      table: crew_terms
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_terms
+    field: profit_share
+    type: boolean
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: profit_share
+      group: null
+      hidden: false
+      interface: boolean
+      note: Whether they get a share of the profit.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations:
+        - language: en-US
+          translation: Profit share
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: profit_share
+      table: crew_terms
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_terms
+    field: note
+    type: string
+    meta:
+      collection: crew_terms
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: crew_terms
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_qualifications
+    field: id
+    type: uuid
+    meta:
+      collection: crew_qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: crew_qualifications
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_qualifications
+    field: crew_member_id
+    type: uuid
+    meta:
+      collection: crew_qualifications
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{person_id.first_name}} {{person_id.last_name}}"
+      field: crew_member_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{person_id.first_name}} {{person_id.last_name}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Crew member
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: crew_member_id
+      table: crew_qualifications
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: crew_members
+      foreign_key_column: id
+  - collection: crew_qualifications
+    field: qualification_id
+    type: uuid
+    meta:
+      collection: crew_qualifications
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: qualification_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Qualification
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: qualification_id
+      table: crew_qualifications
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: qualifications
+      foreign_key_column: id
+  - collection: crew_qualifications
+    field: earned_on
+    type: date
+    meta:
+      collection: crew_qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: earned_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Earned
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: earned_on
+      table: crew_qualifications
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_qualifications
+    field: expires_on
+    type: date
+    meta:
+      collection: crew_qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: expires_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: Leave empty for one that doesn't expire.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Expires
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: expires_on
+      table: crew_qualifications
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_qualifications
+    field: note
+    type: string
+    meta:
+      collection: crew_qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input
+      note: Such as a certificate number.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: crew_qualifications
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_position_qualifications
+    field: id
+    type: uuid
+    meta:
+      collection: crew_position_qualifications
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: crew_position_qualifications
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_position_qualifications
+    field: position_id
+    type: uuid
+    meta:
+      collection: crew_position_qualifications
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: position_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Position
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: position_id
+      table: crew_position_qualifications
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: crew_positions
+      foreign_key_column: id
+  - collection: crew_position_qualifications
+    field: qualification_id
+    type: uuid
+    meta:
+      collection: crew_position_qualifications
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: qualification_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Qualification
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: qualification_id
+      table: crew_position_qualifications
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: qualifications
+      foreign_key_column: id
+  - collection: people
+    field: crew_members
+    type: alias
+    meta:
+      collection: people
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{show_full_name}}"
+      field: crew_members
+      group: null
+      hidden: true
+      interface: list-o2m
+      note: Their place on Crew, if they have one.
+      options:
+        enableCreate: false
+        template: "{{show_full_name}}"
+      readonly: true
+      required: false
+      searchable: true
+      sort: 30
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Crew
+      validation: null
+      validation_message: null
+      width: full
+relations:
+  - collection: crew_members
+    field: person_id
+    related_collection: people
+    meta:
+      junction_field: null
+      many_collection: crew_members
+      many_field: person_id
+      one_allowed_collections: null
+      one_collection: people
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: crew_members
+      sort_field: null
+    schema:
+      table: crew_members
+      column: person_id
+      foreign_key_table: people
+      foreign_key_column: id
+      constraint_name: crew_members_person_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_members
+    field: website_photo
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: crew_members
+      many_field: website_photo
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: crew_members
+      column: website_photo
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: crew_members_website_photo_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: crew_terms
+    field: crew_member_id
+    related_collection: crew_members
+    meta:
+      junction_field: null
+      many_collection: crew_terms
+      many_field: crew_member_id
+      one_allowed_collections: null
+      one_collection: crew_members
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: terms
+      sort_field: null
+    schema:
+      table: crew_terms
+      column: crew_member_id
+      foreign_key_table: crew_members
+      foreign_key_column: id
+      constraint_name: crew_terms_crew_member_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_terms
+    field: position_id
+    related_collection: crew_positions
+    meta:
+      junction_field: null
+      many_collection: crew_terms
+      many_field: position_id
+      one_allowed_collections: null
+      one_collection: crew_positions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: terms
+      sort_field: null
+    schema:
+      table: crew_terms
+      column: position_id
+      foreign_key_table: crew_positions
+      foreign_key_column: id
+      constraint_name: crew_terms_position_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_terms
+    field: program_id
+    related_collection: programs
+    meta:
+      junction_field: null
+      many_collection: crew_terms
+      many_field: program_id
+      one_allowed_collections: null
+      one_collection: programs
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: crew_terms
+      column: program_id
+      foreign_key_table: programs
+      foreign_key_column: id
+      constraint_name: crew_terms_program_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_terms
+    field: program_area_id
+    related_collection: program_areas
+    meta:
+      junction_field: null
+      many_collection: crew_terms
+      many_field: program_area_id
+      one_allowed_collections: null
+      one_collection: program_areas
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: crew_terms
+      column: program_area_id
+      foreign_key_table: program_areas
+      foreign_key_column: id
+      constraint_name: crew_terms_program_area_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_terms
+    field: staff_level_id
+    related_collection: staff_levels
+    meta:
+      junction_field: null
+      many_collection: crew_terms
+      many_field: staff_level_id
+      one_allowed_collections: null
+      one_collection: staff_levels
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: crew_terms
+      column: staff_level_id
+      foreign_key_table: staff_levels
+      foreign_key_column: id
+      constraint_name: crew_terms_staff_level_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_qualifications
+    field: crew_member_id
+    related_collection: crew_members
+    meta:
+      junction_field: null
+      many_collection: crew_qualifications
+      many_field: crew_member_id
+      one_allowed_collections: null
+      one_collection: crew_members
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: qualifications
+      sort_field: null
+    schema:
+      table: crew_qualifications
+      column: crew_member_id
+      foreign_key_table: crew_members
+      foreign_key_column: id
+      constraint_name: crew_qualifications_crew_member_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_qualifications
+    field: qualification_id
+    related_collection: qualifications
+    meta:
+      junction_field: null
+      many_collection: crew_qualifications
+      many_field: qualification_id
+      one_allowed_collections: null
+      one_collection: qualifications
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: crew_qualifications
+      column: qualification_id
+      foreign_key_table: qualifications
+      foreign_key_column: id
+      constraint_name: crew_qualifications_qualification_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: crew_position_qualifications
+    field: position_id
+    related_collection: crew_positions
+    meta:
+      junction_field: qualification_id
+      many_collection: crew_position_qualifications
+      many_field: position_id
+      one_allowed_collections: null
+      one_collection: crew_positions
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: qualifications
+      sort_field: null
+    schema:
+      table: crew_position_qualifications
+      column: position_id
+      foreign_key_table: crew_positions
+      foreign_key_column: id
+      constraint_name: crew_position_qualifications_position_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: crew_position_qualifications
+    field: qualification_id
+    related_collection: qualifications
+    meta:
+      junction_field: position_id
+      many_collection: crew_position_qualifications
+      many_field: qualification_id
+      one_allowed_collections: null
+      one_collection: qualifications
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: crew_position_qualifications
+      column: qualification_id
+      foreign_key_table: qualifications
+      foreign_key_column: id
+      constraint_name: crew_position_qualifications_qualification_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT

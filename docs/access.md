@@ -87,15 +87,20 @@ can give, attached to no role:
 | Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                        |
 | Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does        |
 | Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same |
+| Crew Reader         | Reads Crew, but a term's pay ([crew-schema.md](crew-schema.md))                                                        |
+| Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                       |
 | Link Writer         | Changes Sail Team's links, but not their previews                                                                      |
 | Announcement Writer | Changes Sail Team's announcements                                                                                      |
 | FreeScout Agent     | Signs in to FreeScout, the shared inbox. Nothing in Directus                                                           |
 | Listmonk Write      | Signs in to Listmonk with its Write role: writes and tests newsletters, and manages subscribers. Nothing in Directus   |
 | Listmonk Send       | Signs in to Listmonk with its Send role: Listmonk Write's, and sends newsletters. Nothing in Directus                  |
 
-They're coarse: whole collections, with no row filters and no hidden fields, but for users and link
-previews: a Plan policy reads only each user's first and last name, so a frozen Financial Plan names
-who froze it, and a Link Writer can't write a link's preview.
+They're coarse: whole collections, with no row filters and no hidden fields, but for users, people,
+link previews, and Crew: a Plan policy reads only each user's and person's first and last name, so a
+frozen Financial Plan names who froze it and a term names who holds it, and a Link Writer can't write
+a link's preview. A term's pay is read only by Crew Writers and the Plan policies, and the CRM
+policies read who holds which position without it. A Crew policy reads only a person's name and
+email.
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
 Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `plan_id.kind`, and none of the collections only an Operations Plan uses
@@ -166,8 +171,14 @@ narrower, since it lets its holder impersonate a superuser.
 
 cyc-seattle/csc-website builds the public website from Directus ([website.md](website.md)). Its build
 signs in as the Website Build machine user, with a static token `backend` generates. Its policy reads
-every `website_*` collection whole, and the files in the Website folder, and nothing else: anything it
-can read could end up on the public site. `features/website.feature` gives the rule.
+every `website_*` collection whole, Crew's public profiles, and the files in the Website folder, and
+nothing else: anything it can read could end up on the public site. Of Crew it reads a crew member's
+person, bio, photo, and `show_full_name` while they're on the website, their current terms, and each
+position's name: never their pay or qualifications. Of People it reads only `first_name` and
+`last_name`, and only of a person whose crew member is on the website, through the `crew_members`
+list on people. The site shows the first name alone unless `show_full_name` is set. It can't read
+anyone else in the CRM, or any other field of theirs.
+`features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.
 
@@ -184,7 +195,9 @@ can't write a secret. The site has no PR previews, so no build reads dev's.
 - `group_policies`: which policies each group gives
 
 Only admins can see or change them. A group never sets a role. A group can also fill a Google
-Group, which the Google sync keeps equal to its members ([syncs.md](syncs.md#gsuite-sync)).
+Group, which the Google sync keeps equal to its members ([syncs.md](syncs.md#gsuite-sync)). A
+committee, such as the Finance Committee, is a group like any other, and holding a position in Crew
+doesn't put anyone in one ([crew-schema.md](crew-schema.md)).
 
 An admin changes a group from its own page in the Data Studio. Members and Policies are
 many-to-many lists: "Add existing" picks a person, or one of the policies a group can give. Neither
