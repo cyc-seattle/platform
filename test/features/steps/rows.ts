@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { newRunId } from "../cluster.ts";
+import { newRunId, oneAtATime } from "../cluster.ts";
 import { devDirectusAdmin, type DirectusSession } from "../directus.ts";
 
 // The rows every access feature works on: a row in each of the catalog's collections, a camp with one session and class, and a child
@@ -800,6 +800,15 @@ export async function deleteRows(): Promise<string[]> {
     return [];
   }
   const session = await adminSession;
+  // Another file's Clubspot sync can register a sailor in this run's offerings at any time, so their
+  // rows go while no sync runs.
+  if (created.some((row) => row.collection === "offerings")) {
+    return oneAtATime("clubspot-sync", () => deleteAll(session));
+  }
+  return deleteAll(session);
+}
+
+async function deleteAll(session: DirectusSession): Promise<string[]> {
   // Last made, so they're deleted first.
   created.push(...(await syncedRows(session)));
   let remaining = created.reverse();
