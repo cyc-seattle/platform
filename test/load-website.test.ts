@@ -40,7 +40,6 @@ const data = {
       gallery: ["a_photo~mv2.jpg", "a_banner~mv2.jpg"],
       programs: ["guppy"],
       faqs: ["00000000-0000-4000-8000-0000000000f1"],
-      profiles: ["00000000-0000-4000-8000-0000000000c1", "gone"],
     },
   ],
   programs: [
@@ -63,16 +62,6 @@ const data = {
       heading: "Registration Questions",
       title: "Registration Questions",
       body: "##### Do I need an account?\n\nYes.\n\n##### Can I get a refund?\n\nSee the policy.",
-    },
-  ],
-  profiles: [
-    {
-      id: "00000000-0000-4000-8000-0000000000c1",
-      name: "Jack",
-      title: "Sailing Director",
-      bio: "Coaches.",
-      photo: "a_photo~mv2.jpg",
-      groups: ["staff"],
     },
   ],
   policies: [
@@ -236,10 +225,6 @@ describe("plan", () => {
   it("links a page to the questions under its heading", () => {
     expect(children("website_pages_faq_topics").map((row) => row["topic_id"])).toEqual([data.faqs[0]!.id]);
     expect(children("website_page_sections")[0]).toMatchObject({ action_label: "Donate", action_url: "/donate" });
-  });
-
-  it("leaves out crew the proof of concept doesn't have", () => {
-    expect(children("website_categories_profiles").map((row) => row["profile_id"])).toEqual([data.profiles[0]!.id]);
   });
 
   it("stores a sponsorship level's amount in cents", () => {

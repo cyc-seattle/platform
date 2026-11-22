@@ -16,7 +16,6 @@ Directus's API and MCP, as an admin, so every text field is Markdown.
 | `website_programs`                            | Program pages. Hidden ones have no page. Each can link to programs in the catalog                      |
 | `website_faq_topics`, `website_faqs`          | Sets of questions, one question per row                                                                |
 | `website_crew_sections`                       | The lists on Our Crew, each a sorted list of Crew's positions                                          |
-| `website_profiles`                            | Crew bios, not linked to People. Replaced by Crew's public profiles, and dropped once they're moved    |
 | `website_policies`, `website_policy_versions` | Policies and their dated versions. The site shows the latest version that has taken effect             |
 | `website_sponsor_levels`, `website_sponsors`  | Sponsorship levels, in cents, and sponsors                                                             |
 
