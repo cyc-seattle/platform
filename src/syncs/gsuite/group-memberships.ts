@@ -1,4 +1,7 @@
+import { type GroupMember } from "@cyc-seattle/gsuite-sdk";
 import { isValidEmail, normalizeEmail, type PersonRow } from "../../model/crm/index.ts";
+import { isPerson, MASS_REMOVAL_LIMIT } from "./access-groups.ts";
+import { type MembershipTables, planProgramMembers, programLeavers } from "./membership.ts";
 import { type GoogleGroupMembershipRow } from "./schema.ts";
 
 export interface MembershipRowUpdate {
@@ -132,4 +135,54 @@ export function planMembershipWrites(
 /** The people whose row in `groupId` records them as removed - the audit treats them as intentionally absent. */
 export function removedPersonIds(groupId: string, rows: readonly GoogleGroupMembershipRow[]): Set<string> {
   return new Set(rows.filter((row) => row.group_id === groupId && row.removed_at != null).map((row) => row.person_id));
+}
+
+/** Who a program's Google Group loses because their term ended, and the rows that recorded them. */
+export interface ProgramGroupRemovals {
+  remove: string[];
+  /** The `google_group_memberships` rows to delete, so a new term adds them again. */
+  forget: string[];
+  /** More than `MASS_REMOVAL_LIMIT`, which waits for `allowMassRemoval`. */
+  massRemoval: boolean;
+}
+
+/**
+ * The plain members to take out of a Google Group because their last term for a program that fills
+ * it has ended. `programIds` is every program that fills the group, since they share it. Only someone
+ * the sync added, whose `google_group_memberships` row for the group is still open, goes, at the
+ * address that row records: someone added by hand stays. So does anyone still there as a family, on
+ * any of those programs' rosters past or present, or with a current term for any of them, and a
+ * manager or an owner.
+ */
+export function planProgramGroupRemovals(
+  programIds: readonly string[],
+  groupId: string,
+  tables: MembershipTables,
+  live: readonly GroupMember[],
+  rows: readonly GoogleGroupMembershipRow[],
+  now: Date,
+): ProgramGroupRemovals {
+  const keep = new Set(
+    programIds.flatMap((programId) => planProgramMembers(programId, tables, now, { includeInactiveCamps: true })),
+  );
+  const leavers = new Set(
+    programIds.flatMap((programId) => programLeavers(programId, tables, now).flatMap((person) => person.id ?? [])),
+  );
+  const plain = new Set(
+    live.filter((member) => member.role === "MEMBER" && isPerson(member)).map((member) => normalizeEmail(member.email)),
+  );
+  const added = rows.filter(
+    (row) =>
+      row.id &&
+      row.group_id === groupId &&
+      row.removed_at == null &&
+      leavers.has(row.person_id) &&
+      plain.has(normalizeEmail(row.email)) &&
+      !keep.has(normalizeEmail(row.email)),
+  );
+  return {
+    remove: [...new Set(added.map((row) => normalizeEmail(row.email)))].sort(),
+    forget: added.map((row) => row.id as string),
+    massRemoval: new Set(added.map((row) => normalizeEmail(row.email))).size > MASS_REMOVAL_LIMIT,
+  };
 }

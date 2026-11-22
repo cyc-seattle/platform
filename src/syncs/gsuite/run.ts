@@ -1,5 +1,5 @@
 import winston from "winston";
-import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "../../model/crm/index.ts";
+import { type ContactRow, normalizeEmail, type PersonRow } from "../../model/crm/index.ts";
 import {
   type CampRow,
   type ClassRow,
@@ -31,8 +31,8 @@ import {
 } from "./access-groups.ts";
 import { type MemberAdder, type MemberRemover } from "./directory-writer.ts";
 import { type GroupDirectoryReader, runDiscovery } from "./discovery-writer.ts";
-import { planMembershipWrites } from "./group-memberships.ts";
-import { type MembershipTables, planProgramMemberPeople } from "./membership.ts";
+import { planMembershipWrites, planProgramGroupRemovals } from "./group-memberships.ts";
+import { type MembershipTables, planProgramMemberPeople, readCrew } from "./membership.ts";
 import { planGroupNesting } from "./nesting.ts";
 import { planGroupOwners } from "./owners.ts";
 import { type GoogleGroupMembershipRow, type GoogleGroupRow, type ProgramWithGoogleGroup } from "./schema.ts";
@@ -91,7 +91,7 @@ async function readMembershipSnapshot(directus: DirectusClient): Promise<Members
     participants,
     people,
     contacts,
-    programRoleAssignments,
+    [crewTerms, crewMembers],
     [accessGroups, accessGroupMembers],
   ] = await Promise.all([
     directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
@@ -106,7 +106,7 @@ async function readMembershipSnapshot(directus: DirectusClient): Promise<Members
     }),
     directus.readItems<PersonRow>("people", { limit: -1 }),
     directus.readItems<ContactRow>("contacts", { limit: -1 }),
-    directus.readItems<ProgramRoleAssignmentRow>("program_role_assignments", { limit: -1 }),
+    readCrew(directus),
     readAccessGroups(directus),
   ]);
   return {
@@ -121,7 +121,8 @@ async function readMembershipSnapshot(directus: DirectusClient): Promise<Members
     participants,
     people,
     contacts,
-    programRoleAssignments,
+    crewTerms,
+    crewMembers,
   };
 }
 
@@ -143,8 +144,10 @@ async function syncProgramMembers(
   directus: DirectusClient,
   directory: DirectoryReader,
   adder: MemberAdder,
+  remover: MemberRemover,
   snapshot: () => Promise<MembershipSnapshot>,
   now: Date,
+  allowMassRemoval: boolean,
 ): Promise<void> {
   const { programs, groups, accessGroups, ...tables } = await snapshot();
 
@@ -171,11 +174,40 @@ async function syncProgramMembers(
       limit: -1,
     }),
   ]);
+
+  // Programs share a Google Group, so whoever any of them still wants stays.
+  const sharing = programs.flatMap((row) =>
+    row.id && row.google_group_id === program.google_group_id ? [row.id] : [],
+  );
+  const removals = planProgramGroupRemovals(sharing, program.google_group_id, tables, liveMembers, membershipRows, now);
+  const removed = new Set<string>();
+  logPlannedRemovals(group.email, removals.remove, removals.massRemoval && !allowMassRemoval);
+  if (removals.massRemoval && !allowMassRemoval) {
+    // The audit raises `google_group_mass_removal` for it.
+    winston.warn("Not taking so many out of a program's Google Group without --allow-mass-removal", {
+      group: group.email,
+      remove: removals.remove,
+    });
+  } else {
+    for (const email of removals.remove) {
+      await remover.removeMember(group.email, email);
+      removed.add(email);
+    }
+    for (const id of removals.forget) {
+      await directus.deleteItem("google_group_memberships", id);
+    }
+  }
+  const forgotten = new Set(removed.size > 0 ? removals.forget : []);
+
   const plan = planMembershipWrites(
     program.google_group_id,
     planned,
-    new Set(liveMembers.map((member) => member.email)),
-    membershipRows,
+    new Set(
+      liveMembers.flatMap((member) =>
+        member.email && !removed.has(normalizeEmail(member.email)) ? [member.email] : [],
+      ),
+    ),
+    membershipRows.filter((row) => !row.id || !forgotten.has(row.id)),
     now,
   );
 
@@ -199,16 +231,19 @@ function programMembersTaskHandler(
   directus: DirectusClient,
   directory: DirectoryReader,
   adder: MemberAdder,
+  remover: MemberRemover,
   snapshot: () => Promise<MembershipSnapshot>,
   now: Date,
+  allowMassRemoval: boolean,
 ): SyncTaskHandler {
-  return (task: SyncTaskRow) => syncProgramMembers(targetFromKey(task), directus, directory, adder, snapshot, now);
+  return (task: SyncTaskRow) =>
+    syncProgramMembers(targetFromKey(task), directus, directory, adder, remover, snapshot, now, allowMassRemoval);
 }
 
 /**
  * Enqueues one `sync_program_members` task per program with a `google_group_id` set. That's the
- * only gate: a program whose only current activity is a `program_role_assignments` row - an
- * off-season program, or one with no class yet - still needs its role holders synced, so this no
+ * only gate: a program whose only current activity is a Crew term - an off-season program, or one
+ * with no class yet - still needs its term holders synced, so this no
  * longer requires a due class (cyc-seattle/isthmia#149). Which participants get added is `planProgramMembers`'s
  * call, not this one's.
  * `SyncQueue.enqueue`'s composed `key` means a program already queued from a prior run is reset to
@@ -245,6 +280,14 @@ export async function enqueueDueProgramGroups(
   return taskIds;
 }
 
+/**
+ * One line per Google Group with who a run would take out, so a `--dry-run` lists them by group
+ * before a change, such as moving program roles into Crew, takes anyone out for real.
+ */
+function logPlannedRemovals(group: string, remove: readonly string[], heldBack: boolean): void {
+  if (remove.length > 0) winston.info("Planned removals", { group, remove, heldBack });
+}
+
 /** Makes a CRM group's Google Group hold exactly its members, taking out only plain members. */
 async function syncAccessGroupMembers(
   groupId: string,
@@ -272,6 +315,7 @@ async function syncAccessGroupMembers(
     googleGroup.email,
     directory,
   );
+  logPlannedRemovals(googleGroup.email, plan.remove, plan.massRemoval && !allowMassRemoval);
   if (plan.massRemoval && !allowMassRemoval) {
     // The audit raises `google_group_mass_removal` for it. Adding is still safe.
     winston.warn("Not taking so many out of a Google Group without --allow-mass-removal", {
@@ -534,7 +578,16 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
 
   if (programId !== undefined) {
     try {
-      await syncProgramMembers(programId, directus, directory, adder, sharedMembershipSnapshot(directus), now);
+      await syncProgramMembers(
+        programId,
+        directus,
+        directory,
+        adder,
+        remover,
+        sharedMembershipSnapshot(directus),
+        now,
+        allowMassRemoval,
+      );
       return { status: "ok", tasksChecked: 1, tasksFailed: 0 };
     } catch (error) {
       winston.error("Group sync of one program failed", {
@@ -577,7 +630,15 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
         directus,
         QUEUE,
         {
-          [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(directus, directory, adder, snapshot, now),
+          [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(
+            directus,
+            directory,
+            adder,
+            remover,
+            snapshot,
+            now,
+            allowMassRemoval,
+          ),
           [ACCESS_GROUP_MEMBERS_KIND]: (task: SyncTaskRow) =>
             syncAccessGroupMembers(targetFromKey(task), directory, adder, remover, snapshot, allowMassRemoval),
           [SETTINGS_KIND]: groupSettingsTaskHandler(directus, settingsApplier),

@@ -311,7 +311,7 @@ The code is in `src/syncs/gsuite/`. Each pass is a pure plan function, and a thi
 - `camps.ts` - whether a class's camp is current or upcoming, so its participants count
   (`isCampActive`).
 - `membership.ts` - plans a program group's members: participants and guardians reached through
-  classes of active camps, and anyone holding a current `program_role_assignments` row.
+  classes of active camps, and anyone with a current Crew term for the program (`crew_terms.program_id`).
 - `group-memberships.ts` - plans a program group's adds and `google_group_memberships` writes from
   its planned people, its live members, and the rows already recorded.
 - `nesting.ts` - plans which groups nest under a program group.
@@ -360,9 +360,13 @@ off, unarchived on the next discovery run. Every write pass and most of the audi
 row; the audit still raises `missing_group` for one if a program still points at it - the one case
 that needs a human.
 
-**Every write pass for a program is add-only.** A person removed from `clubspot_registration_entries`, or a role revoked
-in `program_role_assignments`, simply stops being re-added on the next run — nobody is ever removed
-from a Google Group by this job.
+**A program's group loses only someone whose term ended.** A person removed from
+`clubspot_registration_entries` simply stops being re-added on the next run. Someone whose last Crew
+term for a program ended before today is taken out of its group, unless they're still there as a
+family on any roster of any program that shares the group, past seasons included, or hold a current
+term for one of them. The sync never takes out a manager or an owner, and deletes the
+`google_group_memberships` row it kept for them, so a new term adds them again. More than five at
+once waits for `--allow-mass-removal`, and the audit raises `google_group_mass_removal`.
 
 **The membership pass never re-adds someone who left a group (cyc-seattle/isthmia#265).** It records each person it
 sees in a program group in `google_group_memberships`, keyed by group and person. Each run it lists
@@ -409,15 +413,15 @@ Group with each other. `googleGroupSources` is the one place that decides which 
 program or a CRM group fills.
 
 **A program's membership task is enqueued on `google_group_id` alone, not on having a due class.**
-A program whose only current activity is a `program_role_assignments` row — off-season, or set up
-before its first class exists — still needs its role holders synced (cyc-seattle/isthmia#149). Whether a class's camp is active, below, decides which
+A program whose only current activity is a Crew term — off-season, or set up
+before its first class exists — still needs its term holders synced (cyc-seattle/isthmia#149). Whether a class's camp is active, below, decides which
 _participants_ get added once the task runs; it plays no part in whether the task runs at all.
 
 **A class only contributes participants while its camp is current or upcoming** (`isCampActive`,
 cyc-seattle/isthmia#265): the camp isn't archived, and its `end_date` hasn't passed or is unset. People who register
 in spring for a summer camp get the group's emails before it starts. Last season's members stay in
-the group anyway, because the job never removes anyone. Program role assignments have their own
-`starts_on`/`ends_on` instead.
+the group anyway, because the job never removes a family. Crew terms have their own `starts_on`/`ends_on`
+instead, and count by the day in Seattle.
 
 **The audit pass reports, it never prunes.** It compares live membership and settings against the
 plan and writes `audit_findings` rows for the differences, including members the sync didn't add.
@@ -427,7 +431,7 @@ Resolving a finding is a human decision, not something a later run does automati
 plans: `current`, from active camps, and `all`, which also counts camps that have ended or been
 archived. A live member in `all` but not `current` has a real registration, just not for a current
 or upcoming camp, so it's flagged distinctly from someone who was never planned at all. Since the
-job never removes anyone, every member of last season who hasn't registered again is one.
+job never removes a family, every member of last season who hasn't registered again is one.
 
 **Only groups a program points at have their membership audited.** An unmapped group has no plan
 beyond its owners, so auditing it would report every member as unexpected. `missing_group` and

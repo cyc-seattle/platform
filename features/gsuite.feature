@@ -1,7 +1,7 @@
 Feature: Google Groups for programs and groups
-  Each program has a Google group, and everyone with a program role in it, such as a coach or a
-  Parent Coordinator, belongs to the group. A program role is a role someone has in one program. The
-  Google sync adds them to the group. A group in the CRM, such as the Board of Directors, can fill a
+  Each program has a Google group, and everyone on Crew with a current term for it, such as a coach
+  or a Parent Coordinator, belongs to the group. The Google sync adds them to the group, and takes
+  them out once their last term for it ends, unless they're there as a family. A group in the CRM, such as the Board of Directors, can fill a
   Google group too: the Google sync makes its members exactly the group's members, taking out
   anyone who isn't in the group, but never the Google group's managers. It won't take out everyone,
   or more than five people at once, until someone allows it. The CRM has a copy of each Google group and its members, and
@@ -10,20 +10,34 @@ Feature: Google Groups for programs and groups
   that Clubspot sells together whose programs book their money to different revenue accounts.
 
   The Google sync signs in to the CRM with an account of its own, called a service account. It can
-  see only what it needs. To fill the groups, it can see the programs, their rosters, who has a
-  program role in each, the CRM's groups and who is in each, and people's extra emails and phone
-  numbers. A program's roster is everyone
+  see only what it needs. To fill the groups, it can see the programs, their rosters, who holds a
+  term for each, but not their pay, the CRM's groups and who is in each, and people's extra emails
+  and phone numbers. A program's roster is everyone
   signed up for it, and each sign-up is a registration. To check the revenue accounts, it can see
   products and their revenue accounts. It writes notes in the CRM: a list of tasks, and reports of
   problems for staff to fix. To change something means to add, edit, or delete it.
 
-  Rule: Everyone with a program role is in that program's Google group
+  Rule: Everyone with a current term for a program is in that program's Google group
 
     Example: A coach joins their program's group
       Given a program with a Google group
       And a coach in the program
       When the Google sync runs
       Then they're in the group
+
+    Example: A coach whose term starts next month isn't added yet
+      Given a program with a Google group
+      And a coach whose term for the program starts next month
+      When the Google sync runs
+      Then they're not in the group
+
+  Rule: Someone whose last term for a program has ended is taken out of its Google group
+
+    Example: A coach whose term ended leaves the group
+      Given a program with a Google group
+      And a coach in the group, whose term for the program ended last month
+      When the Google sync runs
+      Then they're not in the group
 
   Rule: Someone who leaves a program's group stays out until staff let them back in
 
@@ -117,6 +131,18 @@ Feature: Google Groups for programs and groups
       And it can add, see, and edit the Google groups
       But it can't delete its notes
       And it can't delete the Google groups
+
+  Rule: The Google sync can change its record of whom it added to each Google group
+
+    Example: The Google sync forgets someone it took out when their term ended
+      Given the Google sync's service account
+      Then it can change whom it added to each Google group
+
+  Rule: The Google sync can see who holds a term for each program, but not their pay
+
+    Example: The Google sync looks up Crew's terms
+      Given the Google sync's service account
+      Then it can see only each term's crew member, program, and dates, and each crew member's person
 
   Rule: The Google sync can see products and their revenue accounts, to check that classes Clubspot sells together book their money to one revenue account
 

@@ -6,7 +6,6 @@ import {
   type PersonRow,
   type ProductRow,
   type ProgramAreaRow,
-  type ProgramRoleAssignmentRow,
 } from "../../model/crm/index.ts";
 import {
   type CampRow,
@@ -44,6 +43,8 @@ import {
   plannedGroupMembers,
 } from "./audit.ts";
 import { findSettingsDrift, type SettingsReader } from "./audit-settings.ts";
+import { planProgramGroupRemovals } from "./group-memberships.ts";
+import { readCrew } from "./membership.ts";
 import {
   accessGroupPeople,
   contestedGoogleGroups,
@@ -73,7 +74,7 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     products,
     programAreas,
     accounts,
-    programRoleAssignments,
+    [crewTerms, crewMembers],
     people,
     contacts,
     registrationEntries,
@@ -95,7 +96,7 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
       limit: -1,
     }),
     directus.readItems<Pick<AccountRow, "id" | "number">>("accounts", { fields: ["id", "number"], limit: -1 }),
-    directus.readItems<ProgramRoleAssignmentRow>("program_role_assignments", { limit: -1 }),
+    readCrew(directus),
     directus.readItems<PersonRow>("people", { limit: -1 }),
     directus.readItems<ContactRow>("contacts", { limit: -1 }),
     directus.readItems<RegistrationEntryRow>("clubspot_registration_entries", { limit: -1 }),
@@ -119,7 +120,8 @@ async function readAuditTables(directus: DirectusClient): Promise<AuditTables> {
     products,
     programAreas,
     accounts,
-    programRoleAssignments,
+    crewTerms,
+    crewMembers,
     people,
     contacts,
     registrationEntries,
@@ -202,7 +204,7 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
         group.email,
         directory,
       );
-      if (plan.massRemoval) findings.push(findMassRemoval(group, accessGroup, plan.remove));
+      if (plan.massRemoval) findings.push(findMassRemoval(group, `The group ${accessGroup.name}`, plan.remove));
     }
 
     if (isProgramGroup(group, tables.programs)) {
@@ -210,6 +212,22 @@ export async function runAudit(options: RunAuditOptions): Promise<void> {
       const planned = plannedGroupMembers(group, tables, now, groupOwners);
       findings.push(...findUnexpectedMembers(group, planned.all, liveMembers, secondaryEmails));
       findings.push(...findStaleMembers(group, planned.current, planned.all, liveMembers));
+      // A contested Google Group is filled from no source, so it takes no one out either.
+      if (!contested.has(group.id as string)) {
+        const sharing = tables.programs.filter((program) => program.id && program.google_group_id === group.id);
+        const removals = planProgramGroupRemovals(
+          sharing.map((program) => program.id as string),
+          group.id as string,
+          tables,
+          liveMembers,
+          tables.groupMemberships,
+          now,
+        );
+        if (removals.massRemoval) {
+          const names = sharing.map((program) => program.name).join(", ");
+          findings.push(findMassRemoval(group, `Ended Crew terms for ${names}`, removals.remove));
+        }
+      }
     }
 
     // Isolated so the settings-drift check can be dropped, along with the settings write pass,

@@ -495,7 +495,8 @@ describe("candidateMemberPeople", () => {
       ],
       people: [person("current", "206-965-5407"), person("old", "Bauer"), person("groupless-kid", "N/A")],
       contacts: [],
-      programRoleAssignments: [],
+      crewTerms: [],
+      crewMembers: [],
       groupMemberships: [],
     } as unknown as AuditTables;
 
@@ -515,9 +516,13 @@ describe("candidateMemberPeople", () => {
       registrationEntries: [],
       people: [person("left", "N/A"), person("stayed", "also bad")],
       contacts: [],
-      programRoleAssignments: [
-        { id: "a1", person_id: "left", program_id: "mapped", starts_on: null, ends_on: null },
-        { id: "a2", person_id: "stayed", program_id: "mapped", starts_on: null, ends_on: null },
+      crewTerms: [
+        { crew_member_id: "crew-left", program_id: "mapped", starts_on: null, ends_on: null },
+        { crew_member_id: "crew-stayed", program_id: "mapped", starts_on: null, ends_on: null },
+      ],
+      crewMembers: [
+        { id: "crew-left", person_id: "left" },
+        { id: "crew-stayed", person_id: "stayed" },
       ],
       groupMemberships: [
         {

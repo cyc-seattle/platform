@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import winston from "winston";
-import { type ContactRow, type PersonRow, type ProgramRoleAssignmentRow } from "../../../src/model/crm/index.ts";
+import { type ContactRow, type PersonRow } from "../../../src/model/crm/index.ts";
 import {
   type CampRow,
   type ClassRow,
@@ -9,10 +9,11 @@ import {
   type RegistrationRow,
 } from "../../../src/model/clubspot/index.ts";
 import {
-  isCurrentProgramRole,
   type MembershipTables,
   planProgramMemberPeople,
   planProgramMembers,
+  programLeavers,
+  type ProgramTermRow,
 } from "../../../src/syncs/gsuite/membership.ts";
 
 const now = new Date("2026-06-15T00:00:00Z");
@@ -95,15 +96,30 @@ function camp(id: string, endDate: string | null, archived = false): CampRow {
   };
 }
 
-function roleAssignment(overrides: Partial<ProgramRoleAssignmentRow>): ProgramRoleAssignmentRow {
+/** A person's term for a program, as Crew holds it: through their crew member. */
+function term(personId: string, overrides: Partial<ProgramTermRow> = {}): ProgramTermRow & { person_id: string } {
   return {
-    id: "assignment-1",
-    person_id: "person-1",
+    crew_member_id: `crew-${personId}`,
     program_id: "program-1",
-    program_role_id: "role-1",
     starts_on: null,
     ends_on: null,
     ...overrides,
+    person_id: personId,
+  };
+}
+
+/** The Crew tables for `terms`, with a crew member for each person. */
+function crew(
+  ...terms: (ProgramTermRow & { person_id: string })[]
+): Pick<MembershipTables, "crewTerms" | "crewMembers"> {
+  return {
+    crewTerms: terms.map(({ crew_member_id, program_id, starts_on, ends_on }) => ({
+      crew_member_id,
+      program_id,
+      starts_on,
+      ends_on,
+    })),
+    crewMembers: [...new Set(terms.map((row) => row.person_id))].map((id) => ({ id: `crew-${id}`, person_id: id })),
   };
 }
 
@@ -119,30 +135,11 @@ function tables(overrides: Partial<MembershipTables>): MembershipTables {
     participants: [],
     people: [],
     contacts: [],
-    programRoleAssignments: [],
+    crewTerms: [],
+    crewMembers: [],
     ...overrides,
   };
 }
-
-describe("isCurrentProgramRole", () => {
-  it("is true with no starts_on or ends_on", () => {
-    expect(isCurrentProgramRole({ starts_on: null, ends_on: null }, now)).toBe(true);
-  });
-
-  it("is false when starts_on is in the future", () => {
-    expect(isCurrentProgramRole({ starts_on: "2026-08-01T00:00:00Z", ends_on: null }, now)).toBe(false);
-  });
-
-  it("is false when ends_on is in the past", () => {
-    expect(isCurrentProgramRole({ starts_on: null, ends_on: "2026-01-01T00:00:00Z" }, now)).toBe(false);
-  });
-
-  it("is true when now is within the window", () => {
-    expect(isCurrentProgramRole({ starts_on: "2026-01-01T00:00:00Z", ends_on: "2026-08-01T00:00:00Z" }, now)).toBe(
-      true,
-    );
-  });
-});
 
 describe("planProgramMembers", () => {
   it("skips an unusable guardian email and keeps everyone else", () => {
@@ -273,12 +270,12 @@ describe("planProgramMembers", () => {
     expect(result).toEqual(["participant@example.com"]);
   });
 
-  it("includes a person holding a current program_role_assignments row", () => {
+  it("includes a person with a current Crew term for the program", () => {
     const result = planProgramMembers(
       PROGRAM_ID,
       tables({
         people: [person("coordinator", "coordinator@example.com")],
-        programRoleAssignments: [roleAssignment({ person_id: "coordinator", program_id: PROGRAM_ID })],
+        ...crew(term("coordinator")),
       }),
       now,
     );
@@ -286,18 +283,12 @@ describe("planProgramMembers", () => {
     expect(result).toEqual(["coordinator@example.com"]);
   });
 
-  it("excludes a program_role_assignments row outside its starts_on/ends_on window", () => {
+  it("excludes a term that hasn't started", () => {
     const result = planProgramMembers(
       PROGRAM_ID,
       tables({
         people: [person("coordinator", "coordinator@example.com")],
-        programRoleAssignments: [
-          roleAssignment({
-            person_id: "coordinator",
-            program_id: PROGRAM_ID,
-            starts_on: "2026-08-01T00:00:00Z",
-          }),
-        ],
+        ...crew(term("coordinator", { starts_on: "2026-08-01" })),
       }),
       now,
     );
@@ -305,12 +296,12 @@ describe("planProgramMembers", () => {
     expect(result).toEqual([]);
   });
 
-  it("excludes a program_role_assignments row for a different program", () => {
+  it("excludes a term for a different program", () => {
     const result = planProgramMembers(
       PROGRAM_ID,
       tables({
         people: [person("coordinator", "coordinator@example.com")],
-        programRoleAssignments: [roleAssignment({ person_id: "coordinator", program_id: "other-program" })],
+        ...crew(term("coordinator", { program_id: "other-program" })),
       }),
       now,
     );
@@ -318,16 +309,16 @@ describe("planProgramMembers", () => {
     expect(result).toEqual([]);
   });
 
-  it("includes a role holder even when the program has no class at all", () => {
-    // The step 8-13 collapse regressed this: a program whose only activity is a role assignment -
-    // off-season, or set up before its first class exists - must still get its role holder (cyc-seattle/isthmia#149).
+  it("includes a term holder even when the program has no class at all", () => {
+    // A program whose only activity is a term - off-season, or set up before its first class exists -
+    // must still get its term holder (cyc-seattle/isthmia#149).
     const result = planProgramMembers(
       PROGRAM_ID,
       tables({
         classes: [],
         camps: [],
         people: [person("coordinator", "coordinator@example.com")],
-        programRoleAssignments: [roleAssignment({ person_id: "coordinator", program_id: PROGRAM_ID })],
+        ...crew(term("coordinator")),
       }),
       now,
     );
@@ -424,5 +415,28 @@ describe("planProgramMembers", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("programLeavers", () => {
+  it("are the people whose last term for the program ended before today", () => {
+    const people = ["ended", "current", "both", "future", "elsewhere"].map((id) => person(id, `${id}@example.com`));
+    const leavers = programLeavers(
+      PROGRAM_ID,
+      tables({
+        people,
+        ...crew(
+          term("ended", { ends_on: "2026-06-10" }),
+          term("current", { ends_on: "2026-06-14" }),
+          term("both", { ends_on: "2026-01-01" }),
+          term("both", { starts_on: "2026-01-02" }),
+          term("future", { starts_on: "2026-07-01" }),
+          term("elsewhere", { program_id: "other-program", ends_on: "2026-01-01" }),
+        ),
+      }),
+      now,
+    );
+
+    expect(leavers.map((leaver) => leaver.id)).toEqual(["ended"]);
   });
 });

@@ -1,11 +1,6 @@
 import winston from "winston";
-import {
-  type ContactRow,
-  isValidEmail,
-  normalizeEmail,
-  type PersonRow,
-  type ProgramRoleAssignmentRow,
-} from "../../model/crm/index.ts";
+import { type ContactRow, isValidEmail, normalizeEmail, type PersonRow } from "../../model/crm/index.ts";
+import { type CrewMemberRow, type CrewTermRow, isCurrentTerm, seattleDate } from "../../model/crew/index.ts";
 import {
   type CampRow,
   type ClassRow,
@@ -13,17 +8,11 @@ import {
   type RegistrationEntryRow,
   type RegistrationRow,
 } from "../../model/clubspot/index.ts";
+import { type DirectusClient } from "../runtime/index.ts";
 import { isCampActive } from "./camps.ts";
 
-/**
- * Whether a `program_role_assignments` row is in effect on `now`. Durable by default: a null
- * `starts_on` or `ends_on` is unbounded on that side, so no dates at all means current forever.
- */
-export function isCurrentProgramRole(row: Pick<ProgramRoleAssignmentRow, "starts_on" | "ends_on">, now: Date): boolean {
-  const started = row.starts_on == null || new Date(row.starts_on) <= now;
-  const notEnded = row.ends_on == null || new Date(row.ends_on) >= now;
-  return started && notEnded;
-}
+/** The fields of a Crew term the Google sync reads: never its pay. */
+export type ProgramTermRow = Pick<CrewTermRow, "crew_member_id" | "program_id" | "starts_on" | "ends_on">;
 
 /** The rows a program-group membership plan reads. See `run.ts` for where these come from. */
 export interface MembershipTables {
@@ -34,12 +23,62 @@ export interface MembershipTables {
   participants: readonly Pick<ParticipantRow, "id" | "person_id">[];
   people: readonly PersonRow[];
   contacts: readonly ContactRow[];
-  programRoleAssignments: readonly ProgramRoleAssignmentRow[];
+  /** Crew's terms, each for a program or none. Someone with a current one for a program is in its group. */
+  crewTerms: readonly ProgramTermRow[];
+  crewMembers: readonly Pick<CrewMemberRow, "id" | "person_id">[];
+}
+
+/** Crew's terms and members, as the Google sync may read them: never a term's pay. */
+export function readCrew(
+  directus: DirectusClient,
+): Promise<[ProgramTermRow[], Pick<CrewMemberRow, "id" | "person_id">[]]> {
+  return Promise.all([
+    directus.readItems<ProgramTermRow>("crew_terms", {
+      fields: ["crew_member_id", "program_id", "starts_on", "ends_on"],
+      limit: -1,
+    }),
+    directus.readItems<Pick<CrewMemberRow, "id" | "person_id">>("crew_members", {
+      fields: ["id", "person_id"],
+      limit: -1,
+    }),
+  ]);
+}
+
+/** Each crew member's person. */
+function personOfCrewMember(tables: Pick<MembershipTables, "crewMembers">): Map<string, string> {
+  return new Map(tables.crewMembers.map((member) => [member.id, member.person_id]));
+}
+
+/** The people with a current term for `programId`. */
+function currentTermHolders(programId: string, tables: MembershipTables, now: Date): Set<string> {
+  const personOf = personOfCrewMember(tables);
+  return new Set(
+    tables.crewTerms
+      .filter((term) => term.program_id === programId && isCurrentTerm(term, now))
+      .flatMap((term) => personOf.get(term.crew_member_id) ?? []),
+  );
+}
+
+/**
+ * The people whose last term for `programId` has ended: they had one that ended before today, and
+ * have none current. A term that hasn't started yet doesn't count either way.
+ */
+export function programLeavers(programId: string, tables: MembershipTables, now: Date): PersonRow[] {
+  const personOf = personOfCrewMember(tables);
+  const today = seattleDate(now);
+  const current = currentTermHolders(programId, tables, now);
+  const ended = new Set(
+    tables.crewTerms
+      .filter((term) => term.program_id === programId && term.ends_on != null && term.ends_on < today)
+      .flatMap((term) => personOf.get(term.crew_member_id) ?? [])
+      .filter((personId) => !current.has(personId)),
+  );
+  return tables.people.filter((person) => person.id && ended.has(person.id));
 }
 
 export interface PlanProgramMembersOptions {
   /** Count every class's participants, whether or not its camp is active: the `all` plan the audit
-   * finds stale members with (see `plannedGroupMembers`). Role assignments are unaffected. */
+   * finds stale members with (see `plannedGroupMembers`). Crew terms are unaffected. */
   includeInactiveCamps?: boolean;
 }
 
@@ -51,7 +90,7 @@ function addEmail(emails: Set<string>, raw: string): void {
 
 /**
  * The people `planProgramMembers` draws its emails from - participants, their guardians, and
- * current role holders - before any email is checked. The audit uses this to report the unusable
+ * current term holders - before any email is checked. The audit uses this to report the unusable
  * addresses that are actually keeping someone out of a group, and nobody else.
  */
 export function planProgramMemberPeople(
@@ -122,10 +161,8 @@ export function planProgramMemberPeople(
     }
   }
 
-  for (const assignment of tables.programRoleAssignments) {
-    if (assignment.program_id === programId && isCurrentProgramRole(assignment, now)) {
-      include(assignment.person_id);
-    }
+  for (const personId of currentTermHolders(programId, tables, now)) {
+    include(personId);
   }
 
   return [...people.values()];
@@ -135,17 +172,17 @@ export function planProgramMemberPeople(
  * The member emails one program's Google Group should have: participants with a confirmed
  * `clubspot_registration_entries` row for one of the program's classes (`classes.program_id`), their
  * guardians, the participant's own email when set - which is what makes an adult with no guardian
- * row work with no special case - and every person with a current `program_role_assignments` row
- * for the program. Every role grants plain `MEMBER`; there's no separate manager mapping. Never
- * emergency contacts. Deduped by lowercased, trimmed email, since a family commonly shares one.
+ * row work with no special case - and every person with a current Crew term for the program. Each
+ * is a plain `MEMBER`; there's no separate manager mapping. Never emergency contacts. Deduped by lowercased, trimmed email, since a family commonly shares one.
  *
  * This is who belongs, not what to write: the membership task diffs these people against live
- * membership and `google_group_memberships` (see `planMembershipWrites`), and never removes anyone.
+ * membership and `google_group_memberships` (see `planMembershipWrites`). It takes out only someone
+ * whose term ended (see `planProgramGroupRemovals`).
  *
  * A class only contributes participants while its camp is current or upcoming (see `isCampActive`,
  * cyc-seattle/isthmia#265), unless `options.includeInactiveCamps` is set. A class whose camp can't be found doesn't
- * contribute. Role assignments have their own `starts_on`/`ends_on` filter instead, and must keep
- * working for a program with no active camp at all (cyc-seattle/isthmia#149).
+ * contribute. Terms have their own `starts_on`/`ends_on` instead, and must keep working for a
+ * program with no active camp at all (cyc-seattle/isthmia#149).
  */
 export function planProgramMembers(
   programId: string,

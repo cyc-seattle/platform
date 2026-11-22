@@ -284,19 +284,20 @@ export function findContestedGoogleGroups(
 }
 
 /**
- * `google_group_mass_removal` finding: a CRM group whose Google Group the sync would take so many
- * out of that it waits for someone to run it with `--allow-mass-removal`, or fix the group.
+ * `google_group_mass_removal` finding: a Google Group the sync would take so many out of, for a CRM
+ * group or for ended Crew terms, that it waits for someone to run it with `--allow-mass-removal`.
  */
 export function findMassRemoval(
   group: Pick<GoogleGroupRow, "email">,
-  accessGroup: Pick<AccessGroupRow, "name">,
+  /** What would take them out, such as "The group Board of Directors". */
+  cause: string,
   remove: readonly string[],
 ): GsuiteAuditFinding {
   return {
     source: GSUITE_SYNC_SOURCE,
     kind: "google_group_mass_removal",
     subject: group.email,
-    detail: `The group ${accessGroup.name} would take ${remove.length} out of ${group.email} (${remove.join(", ")}), so the Google sync waits for someone to allow it`,
+    detail: `${cause} would take ${remove.length} out of ${group.email} (${remove.join(", ")}), so the Google sync waits for someone to allow it`,
   };
 }
 
@@ -450,7 +451,7 @@ export interface AuditTables extends MembershipTables {
 
 /**
  * A group's planned membership under two views, both reachable from `MembershipTables`: `current`
- * is what a write pass would add today (participants of active camps, plus role assignments,
+ * is what a write pass would add today (participants of active camps, plus current Crew terms,
  * nested children, and owners); `all` also counts participants of camps that have ended or been
  * archived. A live member in `all` but not `current` is from a past season rather than never
  * planned - see `findStaleMembers` vs `findUnexpectedMembers`.

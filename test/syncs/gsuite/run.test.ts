@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { withCrew } from "./crew-seed.ts";
 import { DirectusClient, SyncQueue } from "../../../src/syncs/runtime/index.ts";
 import {
   type AddMemberResult,
@@ -54,7 +55,7 @@ function jsonResponse(status: number, body: unknown) {
  * back can't. */
 function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[]>> = {}) {
   const tables = new Map<string, Record<string, unknown>[]>(
-    Object.entries(seed).map(([collection, rows]) => [collection, (rows ?? []).map((row) => ({ ...row }))]),
+    Object.entries(withCrew(seed)).map(([collection, rows]) => [collection, (rows ?? []).map((row) => ({ ...row }))]),
   );
   let nextId = 1;
 
@@ -101,6 +102,12 @@ function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[
       }
       rows[index] = { ...rows[index], ...patch };
       return jsonResponse(200, { data: rows[index] });
+    }
+    if (method === "DELETE" && id !== undefined) {
+      tables.set(
+        collection!,
+        table(collection!).filter((row) => row["id"] !== id),
+      );
     }
     return jsonResponse(204, undefined);
   });
@@ -439,6 +446,71 @@ describe("runGroupSync", () => {
     expect(remover.calls).toEqual([["board@cyccommunitysailing.org", "left@example.com"]]);
   });
 
+  it("takes someone whose term ended out of the program's group, and forgets their row, but keeps a family, a manager, and a sharing program's term holder", async () => {
+    const membership = (id: string) => ({
+      id: `m-${id}`,
+      group_id: "group-1",
+      person_id: id,
+      email: `${id}@example.com`,
+      added_at: "2026-01-01T00:00:00.000Z",
+      removed_at: null,
+    });
+    const ended = { program_id: "program-1", ends_on: "2026-05-01" };
+    const { fetchMock, tables } = makeDirectusStore({
+      programs: [
+        { id: "program-1", name: "J Pod", google_group_id: "group-1" },
+        { id: "program-2", name: "K Pod", google_group_id: "group-1" },
+      ],
+      google_groups: [{ id: "group-1", email: "pods@cyccommunitysailing.org" }],
+      clubspot_classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
+      clubspot_camps: [{ id: "camp-1", end_date: "2025-08-01" }],
+      clubspot_registration_entries: [{ id: "e1", registration_id: "r1", class_id: "class-1", status: "confirmed" }],
+      clubspot_registrations: [{ id: "r1", participant_id: "participant-r1" }],
+      clubspot_participants: [{ id: "participant-r1", person_id: "parent" }],
+      program_terms: [
+        { person_id: "coach", ...ended },
+        { person_id: "parent", ...ended },
+        { person_id: "chair", ...ended },
+        { person_id: "both", ...ended },
+        { person_id: "both", program_id: "program-2" },
+      ],
+      people: ["coach", "parent", "chair", "both"].map((id) => ({ id, email: `${id}@example.com` })),
+      google_group_memberships: ["coach", "parent", "both"].map(membership),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const directus = new DirectusClient(baseUrl, token);
+    const remover = recordingRemover();
+
+    await runGroupSync({
+      now,
+      directus,
+      queue: new SyncQueue(directus),
+      adder: recordingAdder(),
+      remover,
+      settingsApplier: recordingSettingsApplier(),
+      directory: fakeDirectory({
+        async listGroups() {
+          return liveGroupsFrom(tables);
+        },
+        async listMembers() {
+          return [
+            { email: "coach@example.com", role: "MEMBER", type: "USER" },
+            { email: "parent@example.com", role: "MEMBER", type: "USER" },
+            { email: "chair@example.com", role: "MANAGER", type: "USER" },
+            { email: "both@example.com", role: "MEMBER", type: "USER" },
+          ];
+        },
+      }),
+      settingsReader: fakeSettingsReader(),
+      groupOwners: [],
+      customer,
+      programId: "program-1",
+    });
+
+    expect(remover.calls).toEqual([["pods@cyccommunitysailing.org", "coach@example.com"]]);
+    expect(tables.get("google_group_memberships")!.map((row) => row["id"])).toEqual(["m-parent", "m-both"]);
+  });
+
   it("only adds to a CRM group's Google Group when it would take out every plain member, unless allowed, and reports it", async () => {
     const seed = () =>
       makeDirectusStore({
@@ -622,7 +694,7 @@ describe("runGroupSync", () => {
     const { fetchMock, tables } = makeDirectusStore({
       programs: [{ id: "program-1", name: "J Pod", google_group_id: "group-1" }],
       google_groups: [{ id: "group-1", email: "j-pod@cyccommunitysailing.org" }],
-      program_role_assignments: ["left", "gone", "back", "new"].map(roleHolder),
+      program_terms: ["left", "gone", "back", "new"].map(roleHolder),
       people: ["left", "gone", "back", "new"].map((id) => ({ id, email: `${id}@example.com` })),
       google_group_memberships: [
         membership("left", null),
@@ -707,7 +779,7 @@ describe("runGroupSync", () => {
     );
   });
 
-  it("adds both programs' role-assignment members when two programs share one Google Group", async () => {
+  it("adds both programs' term holders when two programs share one Google Group", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "shared-group", email: "shared@cyccommunitysailing.org" }],
       programs: [
@@ -719,7 +791,7 @@ describe("runGroupSync", () => {
         { id: "class-2", camp_id: "camp-1", program_id: "program-2" },
       ],
       clubspot_camps: [{ id: "camp-1", end_date: null }],
-      program_role_assignments: [
+      program_terms: [
         {
           id: "pra-1",
           person_id: "manager-1",
@@ -788,7 +860,7 @@ describe("runGroupSync", () => {
         { id: "program-1", name: "Double-handed", google_group_id: "group-1" },
         { id: "program-2", name: "Single-handed", google_group_id: "group-2" },
       ],
-      program_role_assignments: [roleHolder("program-1"), roleHolder("program-2")],
+      program_terms: [roleHolder("program-1"), roleHolder("program-2")],
       people: [
         { id: "coach-program-1", email: "coach1@example.com" },
         { id: "coach-program-2", email: "coach2@example.com" },
@@ -843,11 +915,11 @@ describe("runGroupSync", () => {
     expect(result).toEqual({ status: "failed", tasksChecked: 1, tasksFailed: 1 });
   });
 
-  it("enqueues and adds a role holder for a program with no class at all (cyc-seattle/isthmia#149 step 14a)", async () => {
+  it("enqueues and adds a term holder for a program with no class at all (cyc-seattle/isthmia#149 step 14a)", async () => {
     const { fetchMock, tables } = makeDirectusStore({
       google_groups: [{ id: "group-1", email: "offseason@cyccommunitysailing.org" }],
       programs: [{ id: "program-1", name: "Off-season", google_group_id: "group-1" }],
-      program_role_assignments: [
+      program_terms: [
         {
           id: "pra-1",
           person_id: "lead",
@@ -1019,7 +1091,7 @@ describe("runGroupSync", () => {
       programs: [{ id: "program-1", name: "Double-handed", google_group_id: "program-group" }],
       clubspot_classes: [{ id: "class-1", camp_id: "camp-1", program_id: "program-1" }],
       clubspot_camps: [{ id: "camp-1", end_date: null }],
-      program_role_assignments: [
+      program_terms: [
         {
           id: "pra-1",
           person_id: "coordinator",

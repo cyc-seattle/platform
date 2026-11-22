@@ -521,7 +521,6 @@ const gsuiteSyncReadCollections = [
   "clubspot_classes",
   "clubspot_camps",
   "programs",
-  "program_role_assignments",
 ];
 
 for (const collection of gsuiteSyncReadCollections) {
@@ -565,6 +564,9 @@ permissionRule(
 // fills a Google Group needs only its name, its Google Group, and who's in it, never its policies.
 for (const [collection, fields] of [
   ["groups", ["id", "name", "google_group_id"]],
+  // A term's program and dates put its holder in the program's group. Never a term's pay.
+  ["crew_terms", ["id", "crew_member_id", "program_id", "starts_on", "ends_on"]],
+  ["crew_members", ["id", "person_id"]],
   ["group_members", ["id", "group_id", "person_id"]],
   ["products", ["id", "name", "kind", "revenue_account_id", "program_area_id"]],
   ["program_areas", ["id", "name", "revenue_account_id"]],
@@ -579,7 +581,8 @@ for (const [collection, fields] of [
 
 // The only collections gsuite-sync writes: its own run queue, the audit findings it raises, the
 // groups discovery mirrors out of Workspace, and the memberships it records (cyc-seattle/isthmia#265). No delete: a
-// group that vanishes from Workspace is archived, and only staff delete a membership row.
+// group that vanishes from Workspace is archived. It deletes only the membership row of someone it
+// took out when their Crew term ended, so a new term adds them again.
 for (const collection of ["sync_tasks", "audit_findings", "google_groups", "google_group_memberships"]) {
   for (const action of ["create", "read", "update"] as const) {
     permissionRule(
@@ -589,6 +592,11 @@ for (const collection of ["sync_tasks", "audit_findings", "google_groups", "goog
     );
   }
 }
+permissionRule(
+  "crm-gsuite-sync-google_group_memberships-delete",
+  { ...auth, policyId: gsuiteSyncPolicyId, collection: "google_group_memberships", action: "delete" },
+  { dependsOn: crmSchema },
+);
 
 for (const rule of websiteBuild) {
   permissionRule(
