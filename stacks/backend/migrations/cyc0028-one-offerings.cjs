@@ -50,11 +50,11 @@ BEGIN
     );
   SELECT count(*) INTO unsorted FROM offerings WHERE clubspot_class_id IS NOT NULL AND registration_form_id IS NULL;
   IF unsorted > 0 THEN
-    RAISE EXCEPTION 'cyc0027: % offerings found no registration form', unsorted;
+    RAISE EXCEPTION 'cyc0028: % offerings found no registration form', unsorted;
   END IF;
 
   INSERT INTO offerings (id, program_id, name) SELECT id, program_id, name FROM catalog_offerings;
-  RAISE NOTICE 'cyc0027: % offerings, % registration forms', (SELECT count(*) FROM offerings),
+  RAISE NOTICE 'cyc0028: % offerings, % registration forms', (SELECT count(*) FROM offerings),
     (SELECT count(*) FROM registration_forms);
 
   ALTER TABLE offerings DROP CONSTRAINT IF EXISTS offerings_clubspot_class_id_foreign;
