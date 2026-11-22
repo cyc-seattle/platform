@@ -335,7 +335,6 @@ export const defaultViews: DefaultView[] = [
   { collection: "website_categories", sort: ["sort", "title"], fields: ["title", "status", "slug", "programs"] },
   { collection: "website_programs", sort: ["sort", "title"], fields: ["title", "status", "subtitle", "slug"] },
   { collection: "website_faq_topics", sort: ["title"], fields: ["title", "heading", "questions"] },
-  { collection: "website_profiles", sort: ["sort", "name"], fields: ["name", "title", "groups"] },
   { collection: "website_crew_sections", sort: ["sort", "title"], fields: ["title", "positions"] },
   { collection: "website_policies", sort: ["sort", "title"], fields: ["title", "in_footer", "versions"] },
   { collection: "website_sponsor_levels", sort: ["-amount_cents"], fields: ["name", "amount_cents", "sponsors"] },

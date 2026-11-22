@@ -64,7 +64,6 @@ interface Data {
     gallery: string[];
     programs: string[];
     faqs: string[];
-    profiles: string[];
   }[];
   programs: {
     slug: string;
@@ -82,7 +81,6 @@ interface Data {
     gallery: string[];
   }[];
   faqs: { id: string; heading: string; title: string; body: string }[];
-  profiles: { id: string; name: string; title: string; bio: string; photo?: string; groups: string[] }[];
   policies: { slug: string; title: string; versions: { title: string; effective: string; body: string }[] }[];
   sponsorLevels: { id: string; name: string; amount: string; benefits: string }[];
   sponsors: { name: string; url: string; logo?: string; level: string }[];
@@ -99,17 +97,7 @@ interface Data {
   }[];
 }
 
-const FILES = [
-  "settings",
-  "categories",
-  "programs",
-  "faqs",
-  "profiles",
-  "policies",
-  "sponsorLevels",
-  "sponsors",
-  "pages",
-];
+const FILES = ["settings", "categories", "programs", "faqs", "policies", "sponsorLevels", "sponsors", "pages"];
 
 export function readData(dir: string): Data {
   return Object.fromEntries(
@@ -155,7 +143,6 @@ export function picturesIn(data: Data): string[] {
     data.settings.badge,
     ...data.categories.flatMap((c) => [c.image, c.banner, ...c.gallery]),
     ...data.programs.flatMap((p) => [p.cardImage, p.banner, ...p.gallery]),
-    ...data.profiles.map((p) => p.photo),
     ...data.sponsors.map((s) => s.logo),
     ...data.pages.flatMap((p) => [p.banner, p.image, ...(p.sections ?? []).map((s) => s.image)]),
   ];
@@ -219,19 +206,6 @@ export function plan(data: Data, file: (media: string | undefined) => string | n
     );
   const action = (a: Action | undefined) => ({ action_label: a?.label ?? null, action_url: a?.href ?? null });
 
-  const profileIds = new Set(data.profiles.map((p) => p.id));
-  data.profiles.forEach((p, sort) =>
-    add("website_profiles", {
-      id: p.id,
-      name: p.name,
-      title: p.title,
-      bio: p.bio,
-      photo: file(p.photo),
-      groups: p.groups,
-      sort,
-    }),
-  );
-
   for (const topic of data.faqs) {
     add("website_faq_topics", { id: topic.id, title: topic.title, heading: topic.heading });
     list(
@@ -293,13 +267,6 @@ export function plan(data: Data, file: (media: string | undefined) => string | n
     });
     links("website_categories_programs", "category_id", "program_id", id, c.programs.map(programId));
     links("website_categories_faq_topics", "category_id", "topic_id", id, c.faqs);
-    links(
-      "website_categories_profiles",
-      "category_id",
-      "profile_id",
-      id,
-      c.profiles.filter((p) => profileIds.has(p)),
-    );
     links(
       "website_categories_files",
       "category_id",

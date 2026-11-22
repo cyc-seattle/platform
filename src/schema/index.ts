@@ -89,7 +89,6 @@ export interface Schema {
   website_categories: WebsiteCategories[];
   website_categories_faq_topics: WebsiteCategoriesFaqTopics[];
   website_categories_files: WebsiteCategoriesFiles[];
-  website_categories_profiles: WebsiteCategoriesProfiles[];
   website_categories_programs: WebsiteCategoriesPrograms[];
   website_crew_sections: WebsiteCrewSections[];
   website_crew_sections_positions: WebsiteCrewSectionsPositions[];
@@ -100,7 +99,6 @@ export interface Schema {
   website_pages_faq_topics: WebsitePagesFaqTopics[];
   website_policies: WebsitePolicies[];
   website_policy_versions: WebsitePolicyVersions[];
-  website_profiles: WebsiteProfiles[];
   website_programs: WebsitePrograms[];
   website_programs_catalog_programs: WebsiteProgramsCatalogPrograms[];
   website_programs_files: WebsiteProgramsFiles[];
@@ -1487,7 +1485,6 @@ export interface WebsiteCategories {
   /** In the order the page shows them. */
   programs: (string | WebsiteCategoriesPrograms)[];
   faq_topics: (string | WebsiteCategoriesFaqTopics)[];
-  profiles: (string | WebsiteCategoriesProfiles)[];
   /** Photos shown on the category's page, in order. */
   gallery: (string | WebsiteCategoriesFiles)[];
   /** The crew list this category's page shows under Meet Our Crew. */
@@ -1505,13 +1502,6 @@ export interface WebsiteCategoriesFiles {
   id: string;
   category_id: string | WebsiteCategories | null;
   file_id: string | null;
-  sort: number | null;
-}
-
-export interface WebsiteCategoriesProfiles {
-  id: string;
-  category_id: string | WebsiteCategories | null;
-  profile_id: string | WebsiteProfiles | null;
   sort: number | null;
 }
 
@@ -1618,20 +1608,6 @@ export interface WebsitePolicyVersions {
   effective: string;
   /** Markdown. */
   body: string | null;
-}
-
-/** The crew the site shows. Not linked to People, so a public bio can never show private details. */
-export interface WebsiteProfiles {
-  id: string;
-  name: string;
-  /** Such as Sailing Director. */
-  title: string | null;
-  sort: number | null;
-  /** Markdown. */
-  bio: string | null;
-  photo: string | null;
-  /** The lists on Our Crew this person is in. */
-  groups: ("staff" | "officers" | "coach" | "instructor")[] | null;
 }
 
 /** A program's page, at /program/ and its slug, and its card on each category's page. */
