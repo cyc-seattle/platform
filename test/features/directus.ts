@@ -53,25 +53,37 @@ export class DirectusSession {
 
   /** Uploads a file, as the Data Studio does. Returns the new file's `data`. */
   async upload(form: FormData): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/files`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${await this.signIn()}` },
-      body: form,
-    });
-    const body = parseJson(await response.text()) as any;
-    if (response.status >= 300) {
-      throw new Error(`${this.email}: upload: ${response.status} ${JSON.stringify(body)}`);
+    // Directus sheds load with a 503 before it reads the upload, so a retry can't make a second file.
+    for (let retry = 0; ; retry++) {
+      const response = await fetch(`${this.baseUrl}/files`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${await this.signIn()}` },
+        body: form,
+      });
+      const body = parseJson(await response.text()) as any;
+      if (response.status === 503 && retry < RETRIES) {
+        await backOff(retry);
+        continue;
+      }
+      if (response.status >= 300) {
+        throw new Error(`${this.email}: upload: ${response.status} ${JSON.stringify(body)}`);
+      }
+      return body?.data;
     }
-    return body?.data;
   }
 
   /** A GET that doesn't throw on an error status, for a file's bytes, which aren't JSON. */
   async fetchAsset(id: string): Promise<number> {
-    const response = await fetch(`${this.baseUrl}/assets/${encodeURIComponent(id)}`, {
-      headers: { authorization: `Bearer ${await this.signIn()}` },
-    });
-    await response.arrayBuffer();
-    return response.status;
+    for (let retry = 0; ; retry++) {
+      const response = await fetch(`${this.baseUrl}/assets/${encodeURIComponent(id)}`, {
+        headers: { authorization: `Bearer ${await this.signIn()}` },
+      });
+      await response.arrayBuffer();
+      if (response.status !== 503 || retry === RETRIES) {
+        return response.status;
+      }
+      await backOff(retry);
+    }
   }
 
   /** A REST call that must succeed. Returns the response's `data`. */
@@ -83,6 +95,9 @@ export class DirectusSession {
     return response.body?.data;
   }
 }
+
+const RETRIES = 3;
+const backOff = (retry: number) => new Promise((resolve) => setTimeout(resolve, 5_000 * 2 ** retry));
 
 async function send(
   baseUrl: string,
@@ -112,10 +127,10 @@ async function send(
       }
       return { status: response.status, body };
     }
-    if (retry === 3) {
+    if (retry === RETRIES) {
       throw new Error(`${method} ${path}: ${response.status} ${text}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, 5_000 * 2 ** retry));
+    await backOff(retry);
   }
 }
 

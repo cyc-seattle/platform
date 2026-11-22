@@ -230,9 +230,10 @@ Allocation warnings:
   offering at its max enrollment:
   - Its sailboats, the classes with a `max_capacity` above 0, are the organization's it's given. If
     their seats, with the chartered ones and the boats sailors bring, are fewer than its sailors, the
-    seats it's short come in the fewest more boats: of the class it's given that seats the most, and
-    of those, the one it's given most of. Seats count across classes, so a block with a Harpoon and a
-    Venture that's 4 short needs 1 more Harpoon, not 1 more of each (cyc-seattle/platform#313).
+    seats it's short come in the fewest more boats: of the class it's given that seats the most, of
+    those, the one it's given most of, and then the one the organization has most of that day. Seats
+    count across classes, so a block with a Harpoon and a Venture that's 4 short needs 1 more
+    Harpoon, not 1 more of each (cyc-seattle/platform#313).
   - It needs a coach boat for each coach a full program needs: Σ (each program's max ÷ its
     `sailors_per_coach`), rounded up. If that's more than the coach boats it's given, the rest are
     of the coach boat class it's given most of. A block given no coach boats needs none, and a

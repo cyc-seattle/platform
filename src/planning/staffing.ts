@@ -99,6 +99,13 @@ function offeringsIn(block: Block): PlanOffering[] {
   ];
 }
 
+/** Whether the organization has the asset on `date`. */
+function hasOn(asset: Asset, date: DateString): boolean {
+  return (
+    (asset.acquired_on == null || asset.acquired_on <= date) && (asset.disposed_on == null || date < asset.disposed_on)
+  );
+}
+
 function groupBy<T>(rows: T[], key: (row: T) => Id): Map<Id, T[]> {
   const groups = new Map<Id, T[]>();
   for (const row of rows) groups.set(key(row), [...(groups.get(key(row)) ?? []), row]);
@@ -236,6 +243,18 @@ export class Staffing {
     }
   }
 
+  /** How many boats of each class the organization has on `date`. */
+  private ownedOn(date: DateString): Map<Id, number> {
+    const assets = new Map(this.ctx.data.assets.map((a) => [a.id, a]));
+    const result = new Map<Id, number>();
+    for (const b of this.ctx.data.boats) {
+      const asset = assets.get(b.asset_id);
+      if (asset !== undefined && hasOn(asset, date))
+        result.set(b.boat_class_id, (result.get(b.boat_class_id) ?? 0) + 1);
+    }
+    return result;
+  }
+
   /**
    * The boats of each class a block that sails would need of the organization's own for `most` of
    * each offering's sailors: every offering full, or the sailors expected. Its sailboats are what
@@ -257,15 +276,20 @@ export class Staffing {
       sum(sailboats.map((b) => n(b) * capacity.get(b.boat_class_id)!));
     for (const b of sailboats) result.set(b.boat_class_id, (result.get(b.boat_class_id) ?? 0) + b.count);
     // The seats it's short, in whatever classes it's given, come in the fewest more boats: of the class
-    // that seats the most, and of those, the one it's given most of (cyc-seattle/platform#313).
+    // that seats the most, of those, the one it's given most of (cyc-seattle/platform#313), then the
+    // one the organization has most of that day. The class's id settles the rest, so the rows' order can't.
     const short = sum(offerings.map(most)) - seats((b) => b.sailor_owned ?? 0) - seats(given);
     const perBoat = (b: PlanBlockBoats) => capacity.get(b.boat_class_id)!;
+    const owned = this.ownedOn(block.row.date);
+    const rank = (b: PlanBlockBoats) => [perBoat(b), given(b), owned.get(b.boat_class_id) ?? 0];
+    const before = (x: PlanBlockBoats, b: PlanBlockBoats) => {
+      const [rx, rb] = [rank(x), rank(b)];
+      const i = rx.findIndex((n, j) => n !== rb[j]);
+      return i >= 0 ? rx[i]! > rb[i]! : x.boat_class_id <= b.boat_class_id;
+    };
     const roomiest = sailboats
       .filter((b) => given(b) > 0)
-      .reduce<PlanBlockBoats | undefined>(
-        (x, b) => (x && (perBoat(x) > perBoat(b) || (perBoat(x) === perBoat(b) && given(x) >= given(b))) ? x : b),
-        undefined,
-      );
+      .reduce<PlanBlockBoats | undefined>((x, b) => (x && before(x, b) ? x : b), undefined);
     if (short > 0 && roomiest !== undefined) {
       const id = roomiest.boat_class_id;
       result.set(id, result.get(id)! + Math.ceil(short / perBoat(roomiest) - 1e-9));
@@ -418,8 +442,7 @@ export class Staffing {
       );
     };
     for (const [date, list] of dates) {
-      const has = (a: Asset) =>
-        (a.acquired_on == null || a.acquired_on <= date) && (a.disposed_on == null || date < a.disposed_on);
+      const has = (a: Asset) => hasOn(a, date);
       const peakOf = (used: (b: Block) => number) =>
         mostAtOnce(list.flatMap((b) => (used(b) > 0 ? [{ block: b, n: used(b) }] : [])));
       const haveOf = (kind: string) => boats.filter((b) => b.kind === kind && has(b.asset)).length;
