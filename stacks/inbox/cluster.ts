@@ -142,7 +142,7 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
 
   const image = await deployedImage(cluster, "freescout", { context: "image", tag: imageTag });
 
-  new WebService("inbox", {
+  const service = new WebService("inbox", {
     platform,
     provider,
     hostname,
@@ -151,6 +151,8 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
     requests: { cpu: "250m", memory: "512Mi" },
     limits: { cpu: "500m" },
     readinessProbe: { httpGet: { path: "/login", port: 8080 }, periodSeconds: 30, timeoutSeconds: 10 },
+    // FreeScout answers 403 to any other Host (GHSA-822g-7rw5-53xj).
+    checksHost: true,
     // It migrates the database before it serves.
     progressDeadlineSeconds: 1200,
     recreate: true,
@@ -188,7 +190,8 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
   // Dev's hostnames fall under platform's wildcard record.
   const record = isDev ? [] : [dnsRecord("inbox-a", hostname, platform.gatewayAddress)];
 
-  // The load balancer takes minutes to admit a new route.
+  // The load balancer takes minutes to admit a new route. Waiting for the pod first keeps the
+  // migrations out of these 15 minutes.
   new command.local.Command(
     "inbox-ready",
     {
@@ -196,7 +199,7 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
       environment: { INBOX_URL: url },
       triggers: [image, secret.metadata.uid],
     },
-    { dependsOn: record },
+    { dependsOn: [service, ...record] },
   );
 
   return { url, oidcClientId, oidcClientSecret, adminPassword };

@@ -96,6 +96,14 @@ describe("the shared inbox in dev", () => {
     expect(env("inbox")).toMatchObject({ APP_URL: "https://inbox.dev.example.com" });
   });
 
+  it("checks /login at its own hostname, since FreeScout refuses any other", () => {
+    expect(pod("inbox").containers[0].readinessProbe.httpGet.httpHeaders).toEqual([
+      { name: "Host", value: "inbox.dev.example.com" },
+    ]);
+    const check = find("kubernetes:networking.gke.io/v1:HealthCheckPolicy", "inbox");
+    expect(check.inputs["spec"].default.config.httpHealthCheck).toMatchObject({ host: "inbox.dev.example.com" });
+  });
+
   it("runs as www-data, which owns the disk, and stops the old pod before starting a new one", () => {
     expect(pod("inbox").securityContext).toMatchObject({ runAsNonRoot: true, runAsUser: 82, fsGroup: 82 });
     expect(pod("inbox").containers[0].securityContext).toMatchObject({ readOnlyRootFilesystem: true });
