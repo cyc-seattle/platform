@@ -2,14 +2,12 @@ import * as pulumi from "@pulumi/pulumi";
 import { ScheduledJob, Workload } from "../../src/index.ts";
 import { appSecret, type Cluster, deployedImage, isDev } from "../../src/app/cluster.ts";
 import { syncImageTag } from "./sync-image.ts";
+import { workspaceFakeImage } from "./images.ts";
 import { enableService } from "../../src/services.ts";
 
 // gsuite-sync on the cluster (cyc-seattle/isthmia#231): an hourly CronJob that reaches Directus inside the namespace.
 // In dev it syncs into the Workspace fake, which keeps its state in memory and ignores auth. In prod
 // it calls the Workspace APIs as gsuite-sync@, through Workload Identity.
-
-// Renovate bumps it with @cyc-seattle/gsuite-sdk, which publishes the fake (renovate.json).
-const fakeImage = "ghcr.io/cyc-seattle/workspace-fake:1.2.0";
 
 /** The CronJob, its Secret and image, and in dev, the Workspace fake. */
 export async function deployGsuiteSync(cluster: Cluster, directusToken: pulumi.Input<string>): Promise<void> {
@@ -27,7 +25,7 @@ export async function deployGsuiteSync(cluster: Cluster, directusToken: pulumi.I
     new Workload("workspace-fake", {
       platform,
       provider,
-      image: fakeImage,
+      image: workspaceFakeImage,
       ports: [{ name: "http", port: 8080 }],
       requests: { cpu: "50m", memory: "128Mi" },
       readinessProbe: { httpGet: { path: "/healthz", port: 8080 } },

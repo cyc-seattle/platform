@@ -5,13 +5,11 @@ import { appDatabase, appSecret, type Cluster, deployedImage, isDev } from "../.
 import { syncImageTag } from "./sync-image.ts";
 import { Secret } from "../../src/app/secret.ts";
 import { clubspotFakeDatabaseUri, clubspotFakeEnv } from "./clubspot-fake.ts";
+import { clubspotFakeImage } from "./images.ts";
 
 // clubspot-sync on the cluster (cyc-seattle/isthmia#231): an hourly CronJob that reaches Directus inside the namespace.
 // In dev it syncs from the Clubspot fake, on its own database on the dev instance. In prod it syncs
 // from Clubspot, with the login set by hand in Secret Manager.
-
-// Renovate bumps it with @cyc-seattle/clubspot-sdk, which publishes the fake (renovate.json).
-const fakeImage = "ghcr.io/cyc-seattle/clubspot-fake:0.3.0";
 
 /** The CronJob, its Secret and image, and in dev, the Clubspot fake. */
 export async function deployClubspotSync(cluster: Cluster, directusToken: pulumi.Input<string>): Promise<void> {
@@ -79,7 +77,7 @@ function clubspotFake(cluster: Cluster, config: pulumi.Config): ClubspotLogin {
   new Workload("clubspot-fake", {
     platform,
     provider,
-    image: fakeImage,
+    image: clubspotFakeImage,
     ports: [{ name: "parse", port: 1337 }],
     requests: { cpu: "50m", memory: "256Mi" },
     // Seeding bursts above the request.

@@ -1,3 +1,4 @@
+@dev
 Feature: The smoke service
   The smoke stack runs one WebService in dev. It shows that a service in dev is reachable through the
   shared Gateway, over HTTPS only.

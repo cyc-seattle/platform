@@ -16,3 +16,6 @@ generated/*/bin/
 
 # Astro's generated types (docs-site)
 .astro/
+stacks/backend/Pulumi.ci.yaml
+.ci-stack/
+.ci-stack-cache/

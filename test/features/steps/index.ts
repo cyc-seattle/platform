@@ -44,6 +44,7 @@ import {
   type Row,
 } from "./rows.ts";
 import { recordNames, targets, type Target } from "./sets.ts";
+import { localTarget, targetTags } from "../target.ts";
 
 // The steps the features share: who "they" are, and what they can see and change. A feature's test
 // file imports this, adds its own steps with `Step`, and calls `describeAccessFeature`.
@@ -201,7 +202,7 @@ function readQuery(target: Target, fields = "id"): string {
 /** The run's rows, and its plan's too for a step about plans, which only the planning steps need. */
 async function rowsFor(target: Target): Promise<void> {
   await runRows();
-  if (target.collection.startsWith("plan")) {
+  if (target.collection.startsWith("plan") || target.collection === "financial_plans") {
     await planRows();
   }
 }
@@ -462,7 +463,9 @@ Step("they sign in for the first time", async () => {
   if (newcomer === undefined) {
     throw new Error("No Given has made the person who signs in.");
   }
-  const defaultRole = await deploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_DEFAULT_ROLE_ID");
+  const defaultRole =
+    localTarget()?.directus.communityRoleId ??
+    (await deploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_DEFAULT_ROLE_ID"));
   const user = await createUser(newcomer.email, { id: defaultRole });
   await hasPolicies(user.userId, newcomer.policies);
   if (newcomer.policies.length > 0) {
@@ -475,8 +478,11 @@ Step("they sign in for the first time", async () => {
 
 // Directus's OpenID driver sets the role on a later sign-in only when a role mapping is set.
 Step("they sign in again", async () => {
-  const mapping = await optionalDeploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_ROLE_MAPPING");
-  expect(mapping, "AUTH_AUTHENTIK_ROLE_MAPPING would reset the role on every sign-in").toBeUndefined();
+  // The CI stack has no Authentik, and so no mapping.
+  if (!localTarget()) {
+    const mapping = await optionalDeploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_ROLE_MAPPING");
+    expect(mapping, "AUTH_AUTHENTIK_ROLE_MAPPING would reset the role on every sign-in").toBeUndefined();
+  }
   const again = (await session()).again();
   await again.ok("GET", "/users/me");
   const userId = await current().userId();
@@ -617,6 +623,12 @@ export interface Shard {
  */
 export function describeAccessFeature(name: string, ownSteps: Record<string, ScenarioSteps> = {}, shard?: Shard): void {
   const parsed = feature(name);
+  // Gherkin's tags apply to everything under them, but vitest-cucumber matches only a scenario's own.
+  for (const rule of parsed.rules) {
+    for (const tag of parsed.tags) rule.tags.add(tag);
+    for (const scenario of rule.scenarii) for (const tag of rule.tags) scenario.tags.add(tag);
+  }
+  for (const scenario of parsed.scenarii) for (const tag of parsed.tags) scenario.tags.add(tag);
   // vitest runs files in parallel but a file's scenarios in turn, so a long feature splits by Rule.
   if (shard) {
     parsed.rules.forEach((rule, i) => {
@@ -632,6 +644,13 @@ export function describeAccessFeature(name: string, ownSteps: Record<string, Sce
     return;
   }
 
+  const tags = targetTags();
+  // A Rule is filtered before its scenarios, so it carries what dev picks any of them by.
+  for (const rule of parsed.rules) {
+    for (const tag of tags.includeTags ?? []) {
+      if (rule.scenarii.some((scenario) => scenario.tags.has(tag))) rule.tags.add(tag);
+    }
+  }
   // vitest-cucumber runs AfterAllScenarios after each Rule, so cleanup waits for the whole file.
   afterAll(async () => {
     // Rows first: a person's row points at its user.
@@ -675,6 +694,6 @@ export function describeAccessFeature(name: string, ownSteps: Record<string, Sce
         });
       }
     },
-    { excludeTags: ["pending", "other-shard"] },
+    { ...tags, excludeTags: ["pending", "other-shard", ...tags.excludeTags] },
   );
 }

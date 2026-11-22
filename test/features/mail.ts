@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { proxyOk } from "./cluster.ts";
 import { devPlatform } from "./support.ts";
+import { localTarget } from "./target.ts";
 
 // What the mail features share: dev's Mailpit, which catches every email dev sends, read through the
 // Kubernetes API's service proxy, and the address the website's forms and Listmonk answer at.
@@ -12,9 +13,9 @@ export interface Mail {
   ReplyTo: { Name: string; Address: string }[];
 }
 
-/** `https://mail.<dev domain>`, where dev's Listmonk and the website's forms answer. */
+/** `https://mail.<dev domain>`, where dev's Listmonk and the website's forms answer, or the CI stack's Directus. */
 export async function mailUrl(): Promise<string> {
-  return `https://mail.${(await devPlatform()).domain}`;
+  return localTarget()?.formsUrl ?? `https://mail.${(await devPlatform()).domain}`;
 }
 
 /** The emails Mailpit holds that match a search, such as `to:"pat@example.com"`. */

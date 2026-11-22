@@ -1,3 +1,4 @@
+@dev
 Feature: The shared inbox
   Crew and staff answer the sailing center's email together in the shared inbox. A mailbox is one
   shared address, such as info@. Each email to it arrives in the shared inbox as a conversation.

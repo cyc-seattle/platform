@@ -35,8 +35,10 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   (Astro Starlight) and `.github/workflows/docs.yml`, on every push to `main`. Write each page for
   GitHub too: no title frontmatter, a first heading for the title, and relative links. A new page
   goes in a section of `docs-site/astro.config.ts`'s sidebar, and in `docs/README.md`.
-- `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run
-  against dev with `mise run integration`, never in `ci`. A feature is living documentation of
+- `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run on
+  a throwaway stack in each CI job (`integration-ci.yml`, `mise run ci-stack` then
+  `mise run integration-ci`), and only those tagged `@dev` or `@smoke` run against dev after a deploy.
+  [`docs/testing.md`](https://cyc-seattle.github.io/platform/testing/) explains. A feature is living documentation of
   business rules, so write and review one with the `write-feature` skill from
   [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills). Here, the `Step` helper
   registers each text under every keyword, `parameter()` in `test/features/steps/index.ts` defines a
@@ -77,7 +79,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   only CI. Each push to `main` deploys dev, then previews prod and applies it once a maintainer
   approves. `prod` waits for dev, so a broken deploy stops there, and is skipped when the preview
   shows no changes.
-- After each dev deploy, `integration.yml` runs the integration tests against dev. One run goes at
+- After each dev deploy, `integration.yml` runs the `@dev` and `@smoke` features against dev. One run goes at
   a time, and a newer one replaces any that's waiting, so pushes during a run are tested together.
   A waiting deploy goes ahead of a test run. A failure opens or comments on the issue
   `Integration tests failed on dev`, listing the PRs merged since the last green run, and a green
@@ -117,7 +119,8 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 - Directus's license allows 5 activations, and each one is bound to the database and `PUBLIC_URL`
   (cyc-seattle/isthmia#172). Never drop, recreate, or rename Directus's database, in dev or prod,
   and never change its `PUBLIC_URL`. Ask the maintainer before any change that could activate a
-  new Directus. [`docs/backend.md`](https://cyc-seattle.github.io/platform/backend/) has the rest.
+  new Directus that lives past 24 hours. A throwaway one gone sooner, like the CI stack's, spends
+  nothing. [`docs/backend.md`](https://cyc-seattle.github.io/platform/backend/) has the rest.
 
 ## Schemas
 

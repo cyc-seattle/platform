@@ -70,9 +70,13 @@ export interface User {
 export async function createUser(signIn: string, role: string | { id: string }): Promise<User> {
   const session = await admin();
   const password = `password-${randomBytes(12).toString("hex")}`;
+  // A password sign-in costs Directus a hash and a session row, so a user signs in with a static token,
+  // unless the email is typed differently from how it's stored, which only a real sign-in can check.
+  const token = signIn === signIn.toLowerCase() ? randomBytes(24).toString("hex") : undefined;
   const user = await session.ok("POST", "/users", {
     email: signIn.toLowerCase(),
     password,
+    ...(token && { token }),
     role: typeof role === "string" ? await roleId(role) : role.id,
     provider: "default",
     status: "active",
@@ -82,7 +86,7 @@ export async function createUser(signIn: string, role: string | { id: string }):
     userId: user.id,
     email: signIn.toLowerCase(),
     password,
-    session: new DirectusSession(session.baseUrl, signIn, password),
+    session: new DirectusSession(session.baseUrl, signIn, password, token),
   };
 }
 
