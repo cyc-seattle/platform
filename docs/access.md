@@ -58,7 +58,8 @@ permissions, plus any shared policies it's given:
   so changing one could hand someone else's person to a stranger. Who's in a household is Clubspot's,
   through the sync. Medical information follows guardian links, never the household.
 
-- A program role, such as Parent Coordinator, gives no access. It only sets Google Groups.
+- A Crew term, such as a program's Parent Coordinator, gives no access. A term in a program only puts
+  its holder in the program's Google Group.
 - Team has the Community policy, plus Team: names, Team: contacts, and Team: schools. Names cover every team's
   sailors and their parents, and which parent belongs to which sailor, whether they shared or not. A
   team member's email and phone show only if they're an adult, or a guardian not known to be under

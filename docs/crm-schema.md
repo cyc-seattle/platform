@@ -17,7 +17,7 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
   from the guardian links ([Households](#households)).
 - The CRM's terms are ours, and Clubspot's appear only in its mirrors and the sync
   (cyc-seattle/isthmia#241). A **program** is a lasting thing CYC runs, such as Guppies or J-Pod, and
-  is what a Google Group or a program role attaches to. A program with `team` set is a **team**, such
+  is what a Google Group or a Crew term attaches to. A program with `team` set is a **team**, such
   as a race team. An **offering** is the catalog's: what CSC sells, one program for one dated period
   (cyc-seattle/platform#332). A Clubspot **camp** (`clubspot_camps`) is only how people sign up, built
   from a registration form's offerings each season, and staff link each offering to the Clubspot class,
@@ -67,21 +67,15 @@ migration kept each one, with its ID, as a catalog offering on a registration fo
 waitlist bookkeeping: `clubspot_status`, `confirmed_at`, `waitlist_number`, `accepted_from_waitlist`,
 `priority`. Their field notes in `schema.yaml` cover the why. This file does not repeat it.
 
-`programs` and `program_roles` are hand-maintained catalogs, not synced from Clubspot.
-`program_role_assignments` links a person to a program with a role from that catalog — a Parent
-Coordinator or Program Lead, hand-entered by staff. Anyone holding an assignment is simply a member of the
-program's Google Group; a role's meaning carries no provider mapping.
-`program_area_role_assignments` links a person to a program area the same way, with a role from
-the same catalog, such as Director. An area can have any number of people in each role. It's a
-table of its own, so Google Group membership, which reads `program_role_assignments`, doesn't
-change.
+`programs` is a hand-maintained catalog, not synced from Clubspot. Who does what in a program or
+program area, such as its Parent Coordinator or Director, is a Crew term
+([crew-schema.md](crew-schema.md)). The `cyc0028` migration moved the old program roles there.
 
 A program's revenue account is its program area's, or its product's own for a product in no area. `gsuite-sync`'s audit
 reads it to flag a Clubspot Camp whose classes map to programs with more than one distinct account
 (cyc-seattle/isthmia#149).
 
-`programs` and `program_areas` live in `schemas/core.yaml`, the catalog, with `crm` adding
-`role_assignments` to each.
+`programs` and `program_areas` live in `schemas/core.yaml`, the catalog.
 `programs.product_id` makes each program a subtype of a product of kind `program`, per `AGENTS.md`'s
 subtype pattern, so every program has one. `gsuite-sync`'s audit reports a program whose product is
 of another kind.
@@ -304,7 +298,7 @@ sail-team's roster page, at `cycsail.team/roster`, shows a signed-in family thei
 family on a team every team's roster, through the Community and Team policies
 (`stacks/backend/community-rules.ts`, [access.md](access.md#policies)). A team member's email and
 phone show only for an adult whose household chose to share. Crew sees everyone's contact details and medical
-information, shared or not. A program role, such as Parent Coordinator, gives no access.
+information, shared or not. A position in a program, such as Parent Coordinator, gives no access.
 
 Directus runs a filter or sort against the raw column once any rule grants the field, and joins a
 relational filter's rows with no rules at all. So `backend` mounts the query guard

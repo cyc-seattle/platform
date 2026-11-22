@@ -71,11 +71,8 @@ export interface Schema {
   plan_trips: PlanTrips[];
   plans: Plans[];
   products: Products[];
-  program_area_role_assignments: ProgramAreaRoleAssignments[];
   program_areas: ProgramAreas[];
   program_boat_classes: ProgramBoatClasses[];
-  program_role_assignments: ProgramRoleAssignments[];
-  program_roles: ProgramRoles[];
   programs: Programs[];
   qualification_covers: QualificationCovers[];
   qualifications: Qualifications[];
@@ -1294,17 +1291,6 @@ export interface Products {
   program_area_id: string | ProgramAreas | null;
 }
 
-/** Who holds a role, such as Director, in a program area, and when. */
-export interface ProgramAreaRoleAssignments {
-  id: string;
-  person_id: string | People;
-  /** The program area the role is in. */
-  program_area_id: string | ProgramAreas;
-  program_role_id: string | ProgramRoles;
-  starts_on: string | null;
-  ends_on: string | null;
-}
-
 /** A part of the club's programs, such as Summer or Singlehanded, with its revenue account. People hold roles in it, such as Director. Each is one of the club's program services on Form 990 Part III. */
 export interface ProgramAreas {
   id: string;
@@ -1313,8 +1299,6 @@ export interface ProgramAreas {
   revenue_account_id: string | Accounts;
   /** The products in the area: its programs. */
   products: (string | Products)[];
-  /** Who holds a role in the area, such as Director. */
-  role_assignments: (string | ProgramAreaRoleAssignments)[];
 }
 
 /** A boat class a program's sailors can sail. */
@@ -1322,23 +1306,6 @@ export interface ProgramBoatClasses {
   id: string;
   program_id: string | Programs;
   boat_class_id: string | BoatClasses;
-}
-
-/** The role someone has in a program, such as Parent Coordinator. Entered by staff, never by a sync. With no dates, it lasts until someone ends it. */
-export interface ProgramRoleAssignments {
-  id: string;
-  person_id: string | People;
-  program_id: string | Programs;
-  program_role_id: string | ProgramRoles;
-  starts_on: string | null;
-  ends_on: string | null;
-}
-
-/** The roles staff can give someone in a program, such as Parent Coordinator. */
-export interface ProgramRoles {
-  id: string;
-  name: string;
-  description: string | null;
 }
 
 /** A lasting program, such as Youth Camp, that staff link each Clubspot class to. Not the same as a Clubspot camp. */
@@ -1359,8 +1326,6 @@ export interface Programs {
   min_age: number | null;
   /** The oldest a sailor can be. Empty means no maximum, as for adults. */
   max_age: number | null;
-  /** Who has a role in this program. */
-  role_assignments: (string | ProgramRoleAssignments)[];
   /** The program's Google Group, if it has one. Most programs don't. */
   google_group_id: string | GoogleGroups | null;
 }

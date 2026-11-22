@@ -12,7 +12,7 @@ A Financial Plan holds what planners enter, and the results the [planning engine
 
 - **Product:** a lasting thing CYC sells, such as J-Pod, boat charters or storage leasing. Products live in the new `core` domain.
 - **Program:** a product of kind `program`, such as J-Pod. A program with `team` set is a team, such as a race team. Each application groups programs its own way: the website by category, Google Workspace by Group. A program's `color` is its color on calendars and charts in every app: `programColor()` in `@cyc-seattle/platform/planning` gives the one a Catalog Writer set, or else one of `PROGRAM_PALETTE`'s twelve, picked by its id, so it stays the same everywhere. Its `boat_classes` are the classes its sailors can sail, such as FJs and 420s for K Pod, which a Catalog Writer sets; the boat checks let one stand in for another (cyc-seattle/platform#313).
-- **Program area:** one part of the organization's programs, such as Summer or Singlehanded, with one revenue account. People hold roles in it, such as Director, the way they hold program roles, and its directors plan it. Every program belongs to one. Areas are the program services the organization reports in Part III of Form 990. Merchandise, storage and charters belong to none.
+- **Program area:** one part of the organization's programs, such as Summer or Singlehanded, with one revenue account. People hold Crew terms in it, such as its Director ([crew-schema.md](crew-schema.md)), and its directors plan it. Every program belongs to one. Areas are the program services the organization reports in Part III of Form 990. Merchandise, storage and charters belong to none.
 - **Offering:** a product sold for a period, such as J-Pod Fall 2027 or Guppies summer week 3. A program offering is one Clubspot session × class, the unit Clubspot caps enrollment on.
 - **Activity:** one dated, timed event that uses coaches, boats or other resources, such as a practice, a regatta day or a travel day. The planner, or a scheduling tool, enters each one.
 - **Activity block:** offerings whose activities share coaches and boats on certain days, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
@@ -38,8 +38,6 @@ erDiagram
     accounts |o--o{ products : "revenue account, outside an area"
     program_areas |o--o{ products : "area of"
     accounts ||--o{ program_areas : "revenue account"
-    program_areas ||--o{ program_area_role_assignments : "people in roles"
-    program_roles ||--o{ program_area_role_assignments : role
     qualifications ||--o{ qualification_covers : covers
     qualifications ||--o{ qualification_covers : "covered by"
     accounts |o--o{ accounts : "parent, contra"
@@ -66,14 +64,6 @@ erDiagram
         uuid id PK
         string name
         uuid revenue_account_id FK "required"
-    }
-    program_area_role_assignments {
-        uuid id PK
-        uuid person_id FK
-        uuid program_area_id FK
-        uuid program_role_id FK "such as Director"
-        date starts_on
-        date ends_on
     }
     accounts {
         uuid id PK
