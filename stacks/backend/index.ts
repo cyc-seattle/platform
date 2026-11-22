@@ -366,9 +366,9 @@ for (const [name, policyId] of [
   }
 }
 
-// The sync derives offerings, registrations, and households from the mirrors and guardian links, and
-// deletes one whose source is gone.
-for (const collection of ["offerings", "registrations", "households"]) {
+// The sync derives registrations and households from the mirrors and guardian links, and deletes one
+// whose source is gone.
+for (const collection of ["registrations", "households"]) {
   for (const action of ["create", "read", "update", "delete"] as const) {
     permissionRule(
       `crm-clubspot-sync-${collection}-${action}`,
@@ -377,6 +377,18 @@ for (const collection of ["offerings", "registrations", "households"]) {
     );
   }
 }
+
+// Offerings are the catalog's. The sync reads their links to Clubspot, and keeps their confirmed counts.
+permissionRule(
+  "crm-clubspot-sync-offerings-read",
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "offerings", action: "read" },
+  { dependsOn: crmSchema },
+);
+permissionRule(
+  "crm-clubspot-sync-offerings-update",
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "offerings", action: "update", fields: ["confirmed_count"] },
+  { dependsOn: crmSchema },
+);
 
 // registration_billing keys on the billing objectId, so a replaced billing object is a delete of
 // the old row followed by a create, not an update - see planRegistrationBilling.

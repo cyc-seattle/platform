@@ -186,6 +186,9 @@ describe("syncCamp", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: syncedThrough.toISOString(),
           quiet_runs: 1,
@@ -217,6 +220,9 @@ describe("syncCamp", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: new Date().toISOString(),
           quiet_runs: 0,
@@ -250,6 +256,9 @@ describe("syncCamp", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: watermark.toISOString(),
           quiet_runs: 3,
@@ -278,6 +287,9 @@ describe("syncCamp", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: "2026-01-14T00:00:00.000Z",
           quiet_runs: 0,
@@ -310,6 +322,9 @@ describe("syncCamp", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           start_date: null,
           end_date: null,
           archived: false,
@@ -334,6 +349,9 @@ describe("syncCamp", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: null,
           quiet_runs: 2,
@@ -388,6 +406,9 @@ describe("syncCamp", () => {
         {
           id: "camp-a",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp A",
           start_date: null,
           end_date: null,
@@ -398,6 +419,9 @@ describe("syncCamp", () => {
         {
           id: "camp-b",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp B",
           start_date: null,
           end_date: null,
@@ -462,6 +486,9 @@ describe("syncCamp", () => {
           {
             id: "camp-1",
             clubspot_sales_account: null,
+            public: false,
+            registration_closed: false,
+            hide_spots_left: false,
             name: "Camp",
             start_date: null,
             end_date: null,
@@ -522,6 +549,9 @@ describe("runSync", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: now.toISOString(),
           quiet_runs: 0,
@@ -549,6 +579,9 @@ describe("runSync", () => {
         {
           id: "camp-1",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: now.toISOString(), // backed all the way off - would never be due on its own
           quiet_runs: 10,
@@ -710,6 +743,9 @@ describe("runSync", () => {
         {
           id: "camp-a",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: null,
           quiet_runs: 0,
@@ -1250,6 +1286,9 @@ describe("runSync", () => {
         {
           id: "camp-a",
           clubspot_sales_account: null,
+          public: false,
+          registration_closed: false,
+          hide_spots_left: false,
           name: "Camp",
           synced_through: null,
           quiet_runs: 0,

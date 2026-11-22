@@ -79,7 +79,7 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters but the planners' by kind of plan and Crew's photos, and no field lists but a person's writable fields, CRM Writer's two hand-set ones, and Crew's", () => {
+  it("are coarse: no row filters but the planners' by kind of plan and Crew's photos, and no field lists but a person's writable fields, CRM Writer's hand-set one, Crew's, and the catalog fields the sync keeps", () => {
     const planners = ["Plan Writer", "Plan Admin"];
     for (const { name, rules } of policies.filter(({ name }) => !planners.includes(name))) {
       for (const rule of rules) {
@@ -91,9 +91,14 @@ describe("the policies a group can give", () => {
       (rule) => rule.fields && rule.collection !== "people" && !rule.collection.startsWith("crew_"),
     );
     expect(fielded.map(({ collection, fields }) => `${collection}.${fields}`)).toEqual([
-      "clubspot_classes.program_id",
       "clubspot_participants.person_id",
     ]);
+    const catalogFielded = named("Catalog Writer").rules.filter((rule) => rule.fields);
+    expect(catalogFielded.map(({ collection, action }) => `${collection}.${action}`)).toEqual([
+      "offerings.create",
+      "offerings.update",
+    ]);
+    for (const rule of catalogFielded) expect(rule.fields).not.toContain("confirmed_count");
   });
 
   it("keep medical information to the Medical policies", () => {
@@ -218,7 +223,8 @@ describe("the Catalog policies", () => {
     "boats",
     "programs",
     "program_boat_classes",
-    "catalog_offerings",
+    "offerings",
+    "registration_forms",
     "organization_cost_accounts",
     "staff_roles",
     "staff_levels",

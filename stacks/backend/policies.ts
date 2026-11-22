@@ -31,8 +31,9 @@ export interface LoadedSchema {
 export function crmCollections(schemas: LoadedSchema[]): string[] {
   return [
     ...schemas.filter(({ name }) => CRM_DOMAINS.has(name)).flatMap(({ schema }) => collectionsInSchema(schema)),
-    // `programs` moved from crm to core, and keeps the access it had.
+    // `programs` and `offerings` moved from crm to core, and keep the access they had.
     "programs",
+    "offerings",
   ];
 }
 
@@ -46,7 +47,10 @@ export function clubspotCollections(schemas: LoadedSchema[]): string[] {
 }
 
 /** The CRM's collections the Clubspot sync makes from Clubspot's records, so they're edited in Clubspot. */
-export const DERIVED_FROM_CLUBSPOT = ["offerings", "registrations"];
+export const DERIVED_FROM_CLUBSPOT = ["registrations"];
+
+/** Catalog fields clubspot-sync keeps, which no one else writes. */
+export const SYNC_ONLY: Record<string, string[]> = { offerings: ["confirmed_count"] };
 
 /** A collection's fields in the schemas, aliases included, since a write can set those too. */
 export function fieldsIn(schemas: LoadedSchema[], collection: string): string[] {
@@ -287,7 +291,6 @@ export function writerRules(
       }
     }
   }
-  rules.push({ collection: "clubspot_classes", action: "update", fields: ["program_id"] });
   rules.push({ collection: "clubspot_participants", action: "update", fields: ["person_id"] });
   return rules;
 }
@@ -353,11 +356,11 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "CRM Writer",
       icon: "person_edit",
       description: "Changes people and their details. Clubspot's own records stay read-only. No medical information.",
-      // Programs belong to the catalog, so only a Catalog Writer changes them.
+      // Programs and offerings belong to the catalog, so only a Catalog Writer changes them.
       rules: [
         ...writerRules(
           collections,
-          [...clubspotCollections(schemas), ...DERIVED_FROM_CLUBSPOT, "programs"],
+          [...clubspotCollections(schemas), ...DERIVED_FROM_CLUBSPOT, "programs", "offerings"],
           (collection) => fieldsIn(schemas, collection),
         ),
         ...readPositionHolders,
@@ -393,7 +396,12 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
         "Changes the catalog: products, program areas, revenue accounts, programs, and the rest. Sees the organizations and venues.",
       rules: [
         ...catalog.flatMap((collection) =>
-          (["create", "read", "update", "delete"] as const).map((action) => ({ collection, action })),
+          (["create", "read", "update", "delete"] as const).map((action) => {
+            const syncOnly = SYNC_ONLY[collection];
+            return syncOnly && (action === "create" || action === "update")
+              ? { collection, action, fields: fieldsIn(schemas, collection).filter((f) => !syncOnly.includes(f)) }
+              : { collection, action };
+          }),
         ),
         ...readDirectory,
       ],
@@ -582,6 +590,7 @@ export const crewRules: PermissionRuleInput[] = [
     "programs",
     "clubspot_camps",
     "clubspot_classes",
+    "offerings",
     ...DERIVED_FROM_CLUBSPOT,
   ].map((collection) => ({
     collection,

@@ -40,7 +40,12 @@ import {
   TaskOrphaned,
   withQueueLease,
 } from "../runtime/index.ts";
-import { AUDIT_FINDING_KINDS, findDuplicatePersonFindings, findUnlinkedParticipantFindings } from "./audit.ts";
+import {
+  AUDIT_FINDING_KINDS,
+  type ClubspotSyncAuditFinding,
+  findDuplicatePersonFindings,
+  findUnlinkedParticipantFindings,
+} from "./audit.ts";
 import { campBackoff, nextSyncState } from "./backoff.ts";
 import { contactPointKeySet, planStaffContactPoints } from "./contact-points.ts";
 import { ID_BATCH_SIZE, readByIds } from "./directus-batch.ts";
@@ -1260,12 +1265,16 @@ interface AuditDetectionResult {
 
 /**
  * Raises `duplicate_person` and `unlinked_participant` findings, once per run after the camp
- * loop, and reconciles `audit_findings` against them (see `planAuditFindingWrites`). Scoped to the
- * two kinds this pass owns (`AUDIT_FINDING_KINDS`), so a finding some other sync raised - such as
- * gsuite-sync's own `class_without_program`, also tagged `source: "clubspot-sync"` - is left alone.
- * A reopened finding counts as raised again, same as a fresh one.
+ * loop, with the registrations pass's `offering_differs` and `class_without_offering`, and reconciles `audit_findings` against
+ * them (see `planAuditFindingWrites`). Scoped to the kinds this pass owns (`AUDIT_FINDING_KINDS`), so a
+ * finding some other sync raised - such as gsuite-sync's own `class_without_program`, also tagged
+ * `source: "clubspot-sync"` - is left alone. A reopened finding counts as raised again, same as a fresh one.
+ * With no `offeringFindings`, because that pass failed, its open findings are left as they are.
  */
-async function detectAuditFindings(directus: DirectusClient): Promise<AuditDetectionResult> {
+async function detectAuditFindings(
+  directus: DirectusClient,
+  offeringFindings: readonly ClubspotSyncAuditFinding[] | undefined,
+): Promise<AuditDetectionResult> {
   const [people, participants] = await Promise.all([
     directus.readItems<MergePerson>("people", { fields: [...MERGE_PERSON_FIELDS], limit: -1 }),
     directus.readItems<Pick<ParticipantRow, "id" | "person_id" | "first_name" | "last_name">>("clubspot_participants", {
@@ -1284,10 +1293,18 @@ async function detectAuditFindings(directus: DirectusClient): Promise<AuditDetec
   }
 
   const groups = findDuplicatePeople(people, participantsByPerson);
-  const findings = [...findDuplicatePersonFindings(groups, people), ...findUnlinkedParticipantFindings(participants)];
+  const findings = [
+    ...findDuplicatePersonFindings(groups, people),
+    ...findUnlinkedParticipantFindings(participants),
+    ...(offeringFindings ?? []),
+  ];
 
   const existingRows = await directus.readItems<AuditFindingRow>("audit_findings", { limit: -1 });
-  const { toCreate, toResolve, toReopen } = planAuditFindingWrites(findings, existingRows, AUDIT_FINDING_KINDS);
+  const kinds =
+    offeringFindings === undefined
+      ? AUDIT_FINDING_KINDS.filter((kind) => kind !== "offering_differs")
+      : AUDIT_FINDING_KINDS;
+  const { toCreate, toResolve, toReopen } = planAuditFindingWrites(findings, existingRows, kinds);
 
   if (toCreate.length > 0) {
     const rows = toCreate.map((finding): Omit<AuditFindingRow, "id"> => ({
@@ -1705,10 +1722,16 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
   // After the camp loop and the merges, so it sees this run's mirrors and each participant's person.
   let offeringsWritten = 0;
   let registrationsWritten = 0;
+  let offeringFindings: ClubspotSyncAuditFinding[] | undefined;
   try {
-    ({ offeringsWritten, registrationsWritten } = await syncOfferings(directus));
+    let findings: ClubspotSyncAuditFinding[];
+    ({ offeringsWritten, registrationsWritten, findings } = await syncOfferings(
+      directus,
+      new Date().toISOString().slice(0, 10),
+    ));
+    offeringFindings = findings;
   } catch (error) {
-    winston.error("Making offerings and registrations from the Clubspot mirrors failed", {
+    winston.error("Making registrations from the Clubspot mirrors failed", {
       error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
     });
     runError = runError ?? (error instanceof Error ? error.message : String(error));
@@ -1728,7 +1751,7 @@ export async function runSync(options: RunSyncOptions): Promise<RunSyncResult> {
   let auditFindingsRaised = 0;
   let auditFindingsResolved = 0;
   try {
-    const detection = await detectAuditFindings(directus);
+    const detection = await detectAuditFindings(directus, offeringFindings);
     auditFindingsRaised = detection.raised;
     auditFindingsResolved = detection.resolved;
   } catch (error) {

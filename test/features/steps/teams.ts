@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { adminCreate, key, newRow, runId } from "./rows.ts";
 
-// Programs, and sailors signed up for them, as Clubspot's mirrors and the CRM's own offerings and
-// registrations both hold them. Each offering and registration is the one clubspot-sync would make
-// from the mirrors, so a sync run during the tests leaves them be.
+// Programs, and sailors signed up for them, as Clubspot's mirrors, the catalog's offerings, and the CRM's
+// registrations hold them. Each offering is linked to its class as staff would link it, and each
+// registration is the one clubspot-sync would make from the mirrors, so a sync run during the tests
+// leaves them be.
 
 const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
@@ -58,6 +59,7 @@ export async function newProgram(camp: Camp, { team = false, programId }: { team
   const offering = await adminCreate("offerings", {
     id: randomUUID(),
     program_id: program,
+    name: `Offering ${runId}`,
     starts_on: camp.startsOn,
     ends_on: camp.endsOn,
     capacity: null,

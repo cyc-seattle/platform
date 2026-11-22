@@ -288,7 +288,7 @@ collections:
       versioning: false
     schema:
       name: programs
-  - collection: catalog_offerings
+  - collection: offerings
     meta:
       accountability: all
       archive_app_filter: true
@@ -296,26 +296,52 @@ collections:
       archive_value: null
       autosave_revision_interval: null
       collapse: open
-      collection: catalog_offerings
+      collection: offerings
       color: null
       display_template: "{{program_id.name}} · {{name}}"
       group: Catalog
       hidden: false
       icon: event_available
       item_duplication_fields: null
-      note: 'An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot''s offerings are linked to it.'
+      note: >-
+        What CSC sells: one program for one dated period, such as Guppies week 3 of summer 2027. Clubspot's camps are
+        built from these.
       preview_url: null
       singleton: false
       sort: null
       sort_field: null
       status: active
-      translations:
-        - language: en-US
-          translation: Catalog offerings
+      translations: null
       unarchive_value: null
       versioning: false
     schema:
-      name: catalog_offerings
+      name: offerings
+  - collection: registration_forms
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: registration_forms
+      color: null
+      display_template: "{{name}}"
+      group: Catalog
+      hidden: false
+      icon: assignment
+      item_duplication_fields: null
+      note: What families sign up on at once, such as 2027 Summer Sailing Camps. Each is one Clubspot camp.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: registration_forms
   - collection: organization_cost_accounts
     meta:
       accountability: all
@@ -2590,6 +2616,90 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: programs
+    field: min_age
+    type: integer
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: min_age
+      group: null
+      hidden: false
+      interface: input
+      note: The youngest a sailor can be. Empty means no minimum.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Youngest age
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: min_age
+      table: programs
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: programs
+    field: max_age
+    type: integer
+    meta:
+      collection: programs
+      conditions: null
+      display: null
+      display_options: null
+      field: max_age
+      group: null
+      hidden: false
+      interface: input
+      note: The oldest a sailor can be. Empty means no maximum, as for adults.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations:
+        - language: en-US
+          translation: Oldest age
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: max_age
+      table: programs
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: products
     field: programs
     type: alias
@@ -3044,131 +3154,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: accounts
       foreign_key_column: id
-  - collection: catalog_offerings
-    field: id
-    type: uuid
-    meta:
-      collection: catalog_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: id
-      group: null
-      hidden: true
-      interface: input
-      note: null
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 1
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: id
-      table: catalog_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: true
-      is_indexed: false
-      is_primary_key: true
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: catalog_offerings
-    field: program_id
-    type: uuid
-    meta:
-      collection: catalog_offerings
-      conditions: null
-      display: related-values
-      display_options:
-        template: "{{name}}"
-      field: program_id
-      group: null
-      hidden: false
-      interface: select-dropdown-m2o
-      note: The program it's an offering of.
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 2
-      special:
-        - m2o
-      translations:
-        - language: en-US
-          translation: Program
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: program_id
-      table: catalog_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: programs
-      foreign_key_column: id
-  - collection: catalog_offerings
-    field: name
-    type: string
-    meta:
-      collection: catalog_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: name
-      group: null
-      hidden: false
-      interface: input
-      note: 'Which offering of the program, such as "fall practices" or "week 3".'
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 3
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: name
-      table: catalog_offerings
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: storage_areas
     field: id
     type: uuid
@@ -3348,6 +3333,572 @@ fields:
       data_type: character varying
       default_value: null
       max_length: 280
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offerings
+    field: id
+    type: uuid
+    meta:
+      collection: offerings
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: offerings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offerings
+    field: program_id
+    type: uuid
+    meta:
+      collection: offerings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: program_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Program
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: program_id
+      table: offerings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: programs
+      foreign_key_column: id
+  - collection: offerings
+    field: name
+    type: string
+    meta:
+      collection: offerings
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: Which period, such as "Week 3" or "Fall". Shown after the program's name.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: offerings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offerings
+    field: registration_form_id
+    type: uuid
+    meta:
+      collection: offerings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: registration_form_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The form families sign up on.
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Registration form
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: registration_form_id
+      table: offerings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: registration_forms
+      foreign_key_column: id
+  - collection: offerings
+    field: starts_on
+    type: date
+    meta:
+      collection: offerings
+      conditions: null
+      display: null
+      display_options: null
+      field: starts_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: Its first day.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Starts on
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: starts_on
+      table: offerings
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offerings
+    field: ends_on
+    type: date
+    meta:
+      collection: offerings
+      conditions: null
+      display: null
+      display_options: null
+      field: ends_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: Its last day.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations:
+        - language: en-US
+          translation: Ends on
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ends_on
+      table: offerings
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offerings
+    field: price_cents
+    type: integer
+    meta:
+      collection: offerings
+      conditions: null
+      display: cents-as-dollars
+      display_options: null
+      field: price_cents
+      group: null
+      hidden: false
+      interface: input
+      note: "What one sailor pays. In cents: 12500 is $125.00."
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations:
+        - language: en-US
+          translation: Price
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: price_cents
+      table: offerings
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offerings
+    field: capacity
+    type: integer
+    meta:
+      collection: offerings
+      conditions: null
+      display: null
+      display_options: null
+      field: capacity
+      group: null
+      hidden: false
+      interface: input
+      note: How many sailors it takes. Empty means no limit.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: capacity
+      table: offerings
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offerings
+    field: archived_at
+    type: timestamp
+    meta:
+      collection: offerings
+      conditions: null
+      display: null
+      display_options: null
+      field: archived_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: Set when it's cancelled. The website stops showing it.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 13
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: archived_at
+      table: offerings
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: registration_forms
+    field: id
+    type: uuid
+    meta:
+      collection: registration_forms
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: registration_forms
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: registration_forms
+    field: name
+    type: string
+    meta:
+      collection: registration_forms
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: Such as 2027 Summer Sailing Camps. The camp's name in Clubspot.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: registration_forms
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: registration_forms
+    field: opens_on
+    type: date
+    meta:
+      collection: registration_forms
+      conditions: null
+      display: null
+      display_options: null
+      field: opens_on
+      group: null
+      hidden: false
+      interface: datetime
+      note: When families can sign up. The website shows it until registration opens.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: en-US
+          translation: Opens on
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: opens_on
+      table: registration_forms
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: registration_forms
+    field: offerings
+    type: alias
+    meta:
+      collection: registration_forms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{program_id.name}} · {{name}}"
+      field: offerings
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: null
+      options:
+        template: "{{program_id.name}} · {{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema: null
+  - collection: registration_forms
+    field: archived_at
+    type: timestamp
+    meta:
+      collection: registration_forms
+      conditions: null
+      display: null
+      display_options: null
+      field: archived_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: Set when it's no longer used.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: archived_at
+      table: registration_forms
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
       numeric_precision: null
       numeric_scale: null
       is_nullable: true
@@ -3675,27 +4226,6 @@ relations:
       constraint_name: program_areas_revenue_account_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
-  - collection: catalog_offerings
-    field: program_id
-    related_collection: programs
-    meta:
-      junction_field: null
-      many_collection: catalog_offerings
-      many_field: program_id
-      one_allowed_collections: null
-      one_collection: programs
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: catalog_offerings
-      column: program_id
-      foreign_key_table: programs
-      foreign_key_column: id
-      constraint_name: catalog_offerings_program_id_foreign
-      on_update: NO ACTION
-      on_delete: RESTRICT
   - collection: assets
     field: location_id
     related_collection: storage_areas
@@ -3715,5 +4245,48 @@ relations:
       foreign_key_table: storage_areas
       foreign_key_column: id
       constraint_name: assets_location_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+
+  - collection: offerings
+    field: program_id
+    related_collection: programs
+    meta:
+      junction_field: null
+      many_collection: offerings
+      many_field: program_id
+      one_allowed_collections: null
+      one_collection: programs
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: offerings
+      column: program_id
+      foreign_key_table: programs
+      foreign_key_column: id
+      constraint_name: offerings_program_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: offerings
+    field: registration_form_id
+    related_collection: registration_forms
+    meta:
+      junction_field: null
+      many_collection: offerings
+      many_field: registration_form_id
+      one_allowed_collections: null
+      one_collection: registration_forms
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: offerings
+      sort_field: null
+    schema:
+      table: offerings
+      column: registration_form_id
+      foreign_key_table: registration_forms
+      foreign_key_column: id
+      constraint_name: offerings_registration_form_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
