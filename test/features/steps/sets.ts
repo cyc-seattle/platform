@@ -96,6 +96,7 @@ const sets: Record<string, Target[]> = {
     "program_role_assignments",
   ),
   "the Google groups": plain("google_groups", "google_group_memberships"),
+  "what each group gives": plain("group_policies"),
   programs: plain("programs"),
   "programs' details": plain("programs"),
   "the catalog": plain(

@@ -3,6 +3,7 @@ import {
   loginHost,
   directusRedirectUri,
   inboxRedirectUriPattern,
+  listmonkRedirectUri,
   lowercaseEmailScopeExpression,
   googleUserPropertiesExpression,
   signInNormalizeExpression,
@@ -21,6 +22,11 @@ describe("hostnames", () => {
 
   it("builds Directus's OIDC callback URL", () => {
     expect(directusRedirectUri("cycsail.team")).toBe("https://directus.cycsail.team/auth/login/authentik/callback");
+  });
+
+  it("sends Listmonk's sign-in back to its /auth/oidc, with or without a trailing slash", () => {
+    expect(listmonkRedirectUri("https://mail.example.org/")).toBe("https://mail.example.org/auth/oidc");
+    expect(listmonkRedirectUri("https://mail.example.org")).toBe("https://mail.example.org/auth/oidc");
   });
 
   it("admits a redirect to any path on the inbox's host, and nowhere else", () => {

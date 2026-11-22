@@ -56,6 +56,7 @@ beforeAll(async () => {
   new WebService("prod-web", args("prod"));
   new WebService("slow-web", { ...args("dev"), healthCheck: { checkIntervalSec: 30, timeoutSec: 10 } });
   new WebService("cheap-check-web", { ...args("dev"), healthCheck: { path: "/static/icon.png", timeoutSec: 10 } });
+  new WebService("host-web", { ...args("dev"), checksHost: true });
   await new Promise((r) => setImmediate(r));
 });
 
@@ -203,6 +204,18 @@ describe("WebService routing", () => {
       },
     });
     expect(podSpec("cheap-check-web").containers[0].readinessProbe.httpGet.path).toBe("/ready");
+  });
+
+  it("sends its hostname in both checks when the app checks the Host", () => {
+    expect(podSpec("host-web").containers[0].readinessProbe.httpGet).toEqual({
+      path: "/ready",
+      port: 8080,
+      httpHeaders: [{ name: "Host", value: "web.dev.example.org" }],
+    });
+    expect(
+      find("kubernetes:networking.gke.io/v1:HealthCheckPolicy", "host-web").spec.default.config.httpHealthCheck,
+    ).toEqual({ portSpecification: "USE_SERVING_PORT", host: "web.dev.example.org", requestPath: "/ready" });
+    expect(podSpec("dev-web").containers[0].readinessProbe.httpGet).toEqual({ path: "/ready", port: 8080 });
   });
 });
 

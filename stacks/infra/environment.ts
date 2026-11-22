@@ -9,24 +9,23 @@ export const environmentLabel = "cycsail.team/environment";
 export const loadBalancerRanges = ["35.191.0.0/16", "130.211.0.0/22"];
 
 /**
- * The Gateway's HTTPS listeners for an environment's domain and its subdomains. Each admits routes
- * only from namespaces labeled with the environment, so a route in dev can't claim a prod hostname.
+ * A Gateway HTTPS listener for one hostname of an environment. It admits routes only from namespaces
+ * labeled with the environment, so a route in dev can't claim a prod hostname.
  */
-export function httpsListeners(environment: string, domain: pulumi.Input<string>) {
+export function httpsListener(environment: string, name: string, hostname: pulumi.Input<string>) {
   const allowedRoutes = {
     kinds: [{ kind: "HTTPRoute" }],
     namespaces: { from: "Selector", selector: { matchLabels: { [environmentLabel]: environment } } },
   };
+  return { name, hostname, protocol: "HTTPS", port: 443, allowedRoutes };
+}
+
+/** The Gateway's HTTPS listeners for an environment's domain and its subdomains. */
+export function httpsListeners(environment: string, domain: pulumi.Input<string>) {
   // A wildcard hostname doesn't match the domain itself, so each needs its own listener.
   return [
-    { name: `https-${environment}`, hostname: domain, protocol: "HTTPS", port: 443, allowedRoutes },
-    {
-      name: `https-${environment}-wildcard`,
-      hostname: pulumi.interpolate`*.${domain}`,
-      protocol: "HTTPS",
-      port: 443,
-      allowedRoutes,
-    },
+    httpsListener(environment, `https-${environment}`, domain),
+    httpsListener(environment, `https-${environment}-wildcard`, pulumi.interpolate`*.${domain}`),
   ];
 }
 

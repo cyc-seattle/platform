@@ -3,8 +3,8 @@ import * as gcp from "@pulumi/gcp";
 import * as k8s from "@pulumi/kubernetes";
 import { enableService } from "../../src/services.ts";
 import { provider } from "./cluster.ts";
-import { httpsListeners } from "./environment.ts";
-import { internalDomain, internalZone } from "./dns.ts";
+import { httpsListener, httpsListeners } from "./environment.ts";
+import { externalDomain, externalZone, internalDomain, internalZone } from "./dns.ts";
 
 const certificateManagerApi = enableService("certificatemanager.googleapis.com");
 
@@ -77,6 +77,47 @@ serveEnvironment("dev", devDomain, true);
 // Each prod app owns its own record, and moves it from the VM to the Gateway at its cutover (#231).
 serveEnvironment("prod", prodDomain, false);
 
+/**
+ * A prod app on the public domain, which subscribers see: its own certificate, map entry and A record.
+ * Google issues the certificate only once the domain answers from Cloud DNS (#210).
+ */
+function servePublic(name: string, hostname: pulumi.Input<string>) {
+  const authorization = new gcp.certificatemanager.DnsAuthorization(
+    name,
+    { domain: hostname, description: pulumi.interpolate`Authorizes a certificate for ${hostname}` },
+    { dependsOn: certificateManagerApi },
+  );
+  const challenge = authorization.dnsResourceRecords.apply((records) => records[0]!);
+  new gcp.dns.RecordSet(`${name}-dns-authorization`, {
+    managedZone: externalZone.name,
+    name: challenge.name,
+    type: challenge.type,
+    ttl: 300,
+    rrdatas: [challenge.data],
+  });
+  const certificate = new gcp.certificatemanager.Certificate(
+    name,
+    { scope: "DEFAULT", managed: { domains: [hostname], dnsAuthorizations: [authorization.id] } },
+    { dependsOn: certificateManagerApi },
+  );
+  new gcp.certificatemanager.CertificateMapEntry(name, {
+    map: certificateMap.name,
+    hostname,
+    certificates: [certificate.id],
+  });
+  new gcp.dns.RecordSet(name, {
+    managedZone: externalZone.name,
+    name: pulumi.interpolate`${hostname}.`,
+    type: "A",
+    ttl: 300,
+    rrdatas: [address.address],
+  });
+  return hostname;
+}
+
+/** Listmonk, the newsletter (cyc-seattle/platform#180), and the website's forms under it. */
+export const mailHostname = servePublic("prod-mail", pulumi.interpolate`mail.${externalDomain}`);
+
 export const gatewayNamespace = new k8s.core.v1.Namespace("gateway", { metadata: { name: "gateway" } }, { provider });
 
 export const gateway = new k8s.apiextensions.CustomResource(
@@ -97,6 +138,7 @@ export const gateway = new k8s.apiextensions.CustomResource(
         { name: "http", protocol: "HTTP", port: 80, allowedRoutes: { namespaces: { from: "Same" } } },
         ...httpsListeners("dev", devDomain),
         ...httpsListeners("prod", prodDomain),
+        httpsListener("prod", "https-prod-mail", mailHostname),
       ],
     },
   },

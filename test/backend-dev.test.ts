@@ -106,6 +106,8 @@ const extensions = {
     workflow: "publish.yml",
     ref: "main",
   },
+  forms: { to: "info@example.org", allowedOrigins: ["https://example.org"], siteUrl: "https://example.org", perIp: 10 },
+  formsHostname: "mail.dev.example.team",
   engine: { "planning-index.mjs": "" },
 };
 
@@ -186,6 +188,33 @@ describe("Directus's extensions", () => {
     expect(container("directus").volumeMounts).toEqual(
       expect.arrayContaining([expect.objectContaining({ mountPath: `/directus/extensions/${name}` })]),
     );
+  });
+
+  it("mounts the website's forms as an endpoint, with their config", () => {
+    const data = find("kubernetes:core/v1:ConfigMap", "directus-forms").inputs["data"];
+    expect(JSON.parse(data["package.json"])["directus:extension"].type).toBe("endpoint");
+    expect(JSON.parse(data["config.json"])).toEqual(extensions.forms);
+  });
+
+  it("routes only /forms/ on the forms' public address to Directus", () => {
+    expect(find("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute", "directus-forms").inputs["spec"]).toMatchObject({
+      hostnames: ["mail.dev.example.team"],
+      rules: [
+        {
+          matches: [{ path: { type: "PathPrefix", value: "/forms/" } }],
+          backendRefs: [{ name: "directus", port: 80 }],
+        },
+      ],
+    });
+  });
+
+  it("sends mail to dev's Mailpit", () => {
+    expect(envNames("directus")).toMatchObject({
+      EMAIL_TRANSPORT: "smtp",
+      EMAIL_FROM: "noreply@cyccommunitysailing.org",
+      EMAIL_SMTP_HOST: "mailpit",
+      EMAIL_SMTP_PORT: "1025",
+    });
   });
 
   it("mounts the Secret the authentik stack writes for the group-policies hook, and starts without it", () => {

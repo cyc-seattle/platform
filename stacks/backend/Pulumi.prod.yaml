@@ -1,4 +1,10 @@
 config:
+  backend:contactTo: info@cyccommunitysailing.org
+  backend:formsHostname: mail.cyccommunitysailing.org
+  backend:formsOrigins:
+    - https://cyccommunitysailing.org
+    - https://www.cyccommunitysailing.org
+    - https://csc-website.web.app
   gcp:project: cyc-admin-scripts
   gcp:region: us-west1
   backend:mcp: true

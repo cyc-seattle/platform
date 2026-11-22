@@ -85,6 +85,9 @@ function fakeDirectory(overrides: Partial<DirectoryReader> = {}): DirectoryReade
     async listMembers(): Promise<GroupMember[]> {
       return [];
     },
+    async getMember(): Promise<GroupMember | null> {
+      return null;
+    },
     ...overrides,
   };
 }

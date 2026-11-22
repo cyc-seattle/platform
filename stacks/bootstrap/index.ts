@@ -8,3 +8,4 @@ export { gsuiteSyncRunner } from "./gsuite-sync.ts";
 export { stateBackends } from "./state.ts";
 export { deployWebsite, websiteSiteId } from "./website.ts";
 export { backupsProject, backupRunner } from "./backups.ts";
+export { listmonkMedia } from "./listmonk.ts";

@@ -13,6 +13,7 @@ import "./alerts.ts";
 import "./backups.ts";
 import "./uptime.ts";
 import "./logs.ts";
+import { sesSetup } from "./ses.ts";
 
 // What the app stacks read through a StackReference.
 export const networkId = network.id;
@@ -39,6 +40,10 @@ export const websiteDefaultUrl = websiteSite.defaultUrl;
 
 // For the Workspace SMTP relay's allowlist, a manual step.
 export const natAddress = clusterNatAddress.address;
+
+// SES's identity and its bounce and complaint topic, once CSC's AWS account exists.
+export const sesIdentityArn = sesSetup?.identityArn;
+export const sesFeedbackTopicArn = sesSetup?.feedbackTopicArn;
 
 // For the registrar delegation, a manual step.
 export const nameServers = {
