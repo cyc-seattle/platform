@@ -544,6 +544,10 @@ function register({ filter, action, schedule }, { services, database, getSchema,
   action("users.update", ({ payload }) => {
     if (["role", "email", "person_id"].some((field) => field in payload)) request();
   });
+  // A policy an admin links straight to a login is taken away at once, not at the next scheduled run. The
+  // hook's own links set this off too, and that pass finds nothing to change.
+  action("access.create", request);
+  action("access.update", request);
   // Catches anything the actions missed, such as a cascade, which emits no event, and closes the
   // team window as time passes.
   schedule("*/15 * * * *", request);
