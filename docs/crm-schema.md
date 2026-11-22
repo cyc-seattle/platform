@@ -59,7 +59,7 @@ waitlist bookkeeping: `clubspot_status`, `confirmed_at`, `waitlist_number`, `acc
 
 `programs` is a hand-maintained catalog, not synced from Clubspot. Who does what in a program or
 program area, such as its Parent Coordinator or Director, is a Crew term
-([crew-schema.md](crew-schema.md)). The `cyc0027` migration moved the old program roles there.
+([crew-schema.md](crew-schema.md)). The `cyc0029` migration moved the old program roles there.
 
 A program's revenue account is its program area's, or its product's own for a product in no area. `gsuite-sync`'s audit
 reads it to flag a Clubspot Camp whose classes map to programs with more than one distinct account

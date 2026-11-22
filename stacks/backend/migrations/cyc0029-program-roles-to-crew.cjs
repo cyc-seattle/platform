@@ -59,9 +59,9 @@ BEGIN
   SELECT count(*) INTO copied FROM crew_terms
     WHERE id IN (SELECT id FROM program_role_assignments UNION SELECT id FROM program_area_role_assignments);
   IF copied <> assigned THEN
-    RAISE EXCEPTION 'cyc0027: copied % of % program role assignments to Crew', copied, assigned;
+    RAISE EXCEPTION 'cyc0029: copied % of % program role assignments to Crew', copied, assigned;
   END IF;
-  RAISE NOTICE 'cyc0027: copied % program role assignments to Crew', copied;
+  RAISE NOTICE 'cyc0029: copied % program role assignments to Crew', copied;
 
   -- Nested, because PL/pgSQL prepares a statement only when it reaches it.
   IF to_regclass('directus_relations') IS NOT NULL THEN
