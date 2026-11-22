@@ -184,6 +184,23 @@ function applyConfig(): { clubspot: string; gsuite: string } {
   }
 }
 
+/**
+ * Starts whatever isn't running. Directus exits if the license service refuses its activation, as it does
+ * for a moment when several runs activate at once ("Activation in progress"), so it gets a few tries.
+ */
+function startAll(): void {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      run("docker", [...compose, "up", "-d", "--wait"], { env: composeEnv() });
+      return;
+    } catch (error) {
+      if (attempt === 5) throw error;
+      console.log(`The stack didn't start (attempt ${attempt}), so it tries again.`);
+      execFileSync("sleep", [String(10 * attempt)]);
+    }
+  }
+}
+
 function up(): void {
   // A Directus made from scratch activates the license as pending, which never counts if the instance
   // is gone within 24 hours (docs/backend.md). Unlicensed, Directus's Core tier refuses the schema.
@@ -212,10 +229,10 @@ function up(): void {
     // A project of its own, so each run's activation is its own pending one.
     psql("UPDATE directus_settings SET project_id = gen_random_uuid(), license_key = NULL, license_token = NULL");
     tokens = JSON.parse(fs.readFileSync(tokensFile, "utf8"));
-    run("docker", [...compose, "up", "-d", "--wait"], { env: composeEnv() });
+    startAll();
     console.log(`Restored ${key} and started the stack in ${elapsed()}.`);
   } else {
-    run("docker", [...compose, "up", "-d", "--wait"], { env: composeEnv() });
+    startAll();
     console.log(`Started the stack in ${elapsed()}. Applying the config, which ${key} hasn't cached.`);
     tokens = applyConfig();
     console.log(`Applied the config in ${elapsed()}.`);
@@ -232,7 +249,7 @@ function up(): void {
       ),
     );
     fs.writeFileSync(tokensFile, JSON.stringify(tokens));
-    run("docker", [...compose, "up", "-d", "--wait", "directus"], { env: composeEnv() });
+    startAll();
     console.log(`Cached the configured database and restarted Directus in ${elapsed()}.`);
   }
 
