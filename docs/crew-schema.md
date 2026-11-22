@@ -97,7 +97,7 @@ one position. Sail-team shows both.
 | Crew Reader                          | The same, but a term's pay                                                                                          | Nothing                                                 |
 | CRM Reader, CRM Writer               | Crew members' people, positions, and terms, but pay                                                                 | Nothing in Crew                                         |
 | Plan Reader, Plan Writer, Plan Admin | Terms with their pay, crew members' people, positions' names, and people's names                                    | Nothing in Crew                                         |
-| Website Build                        | Public profiles on the website, their current terms, and positions' names                                           | Nothing                                                 |
+| Website Build                        | Public profiles on the website, their people's first and last names, their current terms, and positions' names      | Nothing                                                 |
 
 Groups give each of them, and an admin fills each group by hand. No role gets a Crew policy, and
 the Crew role reads nothing in Crew. [access.md](access.md) has the rest.
