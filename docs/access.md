@@ -42,7 +42,7 @@ permissions, plus any shared policies it's given:
 
 - Community has one policy, Community: own family, in `stacks/backend/community-rules.ts`. It
   matches the signed-in user by their login's person, `directus_users.person_id`, not their email,
-  so each of a person's logins sees the same. It gives everyone in their household with their
+  so each of a person's logins sees the same, and a login with no person sees no one. It gives everyone in their household with their
   details, their children's registrations and medical information, the names of programs and
   program areas, and the list of schools. It reads their own login's `person_id` too, so an app
   finds their row with a filter on `id` for `$CURRENT_USER.person_id`. Directus reads that variable

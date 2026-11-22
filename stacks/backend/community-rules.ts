@@ -33,8 +33,10 @@ export interface CommunityPolicyData {
   rules: CommunityRuleFields[];
 }
 
-/** The signed-in user's own `people` row: the person their login is linked to. A person can have several logins. */
-const MY_LOGIN: Filter = { id: { _eq: "$CURRENT_USER.person_id" } };
+/** The signed-in user's own `people` row: the person their login is linked to. A person can have several logins.
+ * Directus turns `_eq` on a login with no person into `IS NULL`, which a relation's LEFT JOIN matches on
+ * every row with nothing to join, such as everyone with no household, so `_nnull` makes it match no one. */
+const MY_LOGIN: Filter = { _and: [{ id: { _eq: "$CURRENT_USER.person_id" } }, { id: { _nnull: true } }] };
 
 /** A `contacts` row naming the signed-in user as a guardian. */
 const MY_CHILD_LINK: Filter = { _and: [{ relationship_type: { _eq: "guardian" } }, { contact_id: MY_LOGIN }] };

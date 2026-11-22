@@ -20,6 +20,11 @@ Feature: Signing in
       When they look at the roster
       Then they see no one
 
+    Example: Someone whose email isn't in the CRM can't change anyone
+      Given a user with the Community role whose email isn't in the CRM
+      And a person in the CRM who isn't in a household
+      Then they can't change that person's phone
+
   Rule: Someone signing in for the first time gets the Community role
 
     Example: A parent signs in for the first time
