@@ -8,16 +8,36 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/cluster-sql"
 connect dev
 
-# Every table but the ones Parse or Directus keep their own state in.
+# Every table but the ones Parse or Directus keep their own state in. TRUNCATE refuses a table a kept
+# one links to, such as a login's person (directus_users.person_id), so each such link is cleared, its
+# constraint dropped for the TRUNCATE, and put back as it was, all in one transaction.
 truncate_all_but() {
   local keep="$1"
   cat <<SQL
 DO \$\$
-DECLARE tables text;
+DECLARE tables text; link record; restore text[] := '{}'; statement text;
 BEGIN
+  FOR link IN
+    SELECT c.conname AS name, c.conrelid::regclass AS kept_table, pg_get_constraintdef(c.oid) AS definition,
+           (SELECT string_agg(format('%I = NULL', a.attname), ', ')
+              FROM pg_attribute a WHERE a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)) AS clear
+      FROM pg_constraint c
+      JOIN pg_class kept ON kept.oid = c.conrelid
+      JOIN pg_class emptied ON emptied.oid = c.confrelid
+      JOIN pg_namespace n ON n.oid = kept.relnamespace
+     WHERE c.contype = 'f' AND n.nspname = 'public'
+       AND kept.relname LIKE '$keep' AND emptied.relname NOT LIKE '$keep'
+  LOOP
+    EXECUTE format('UPDATE %s SET %s', link.kept_table, link.clear);
+    EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', link.kept_table, link.name);
+    restore := restore || format('ALTER TABLE %s ADD CONSTRAINT %I %s', link.kept_table, link.name, link.definition);
+  END LOOP;
   SELECT string_agg(format('%I', tablename), ', ') INTO tables
     FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE '$keep';
   IF tables IS NOT NULL THEN EXECUTE 'TRUNCATE ' || tables; END IF;
+  FOREACH statement IN ARRAY restore LOOP
+    EXECUTE statement;
+  END LOOP;
 END
 \$\$;
 SQL
