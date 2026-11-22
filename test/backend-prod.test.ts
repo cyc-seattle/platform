@@ -118,7 +118,7 @@ const extensions = {
     appId: "12345",
   },
   forms: { to: "info@example.org", allowedOrigins: ["https://example.org"], siteUrl: "https://example.org", perIp: 10 },
-  formsHostname: "mail.example.org",
+  formsHostname: "mail.example.com",
   engine: { "planning-index.mjs": "" },
 };
 

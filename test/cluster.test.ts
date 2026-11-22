@@ -1,5 +1,11 @@
 import * as pulumi from "@pulumi/pulumi";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+// The real list is keyed by CYC's domain, and this test's prod domain is example.team.
+vi.mock("../src/web-service.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/web-service.ts")>()),
+  publicHostnames: { "example.team": ["mail.example.org"] },
+}));
 
 interface Created {
   type: string;

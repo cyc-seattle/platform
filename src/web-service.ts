@@ -5,7 +5,7 @@ import { checkRequests, deployment, workloadMember, type WorkloadArgs } from "./
 type Probe = k8s.types.input.core.v1.Probe;
 
 export interface WebServiceArgs extends WorkloadArgs {
-  /** The public hostname. It must be in the environment's domain. */
+  /** The public hostname. It must be in the environment's domain, or one of its `publicHostnames`. */
   hostname: string;
   /**
    * Path prefixes the route claims on the hostname, such as `["/plans"]`. Leave it out to claim the
@@ -31,12 +31,25 @@ export interface WebServiceArgs extends WorkloadArgs {
   checksHost?: boolean;
 }
 
-/** Returns `hostname` if it is the environment's domain or a name under it, and throws otherwise. */
+/**
+ * The hostnames outside its own domain that an environment's Gateway serves, keyed by that domain.
+ * infra makes each one's certificate, DNS record and listener from this list, so a route can claim
+ * only a hostname infra serves.
+ */
+export const publicHostnames: Readonly<Record<string, readonly string[]>> = {
+  "cycsail.team": ["mail.cyccommunitysailing.org"],
+};
+
+/**
+ * Returns `hostname` if it is the environment's domain, a name under it, or one of the environment's
+ * `publicHostnames`, and throws otherwise.
+ */
 export function checkHostname(hostname: string, domain: string): string {
   const host = hostname.toLowerCase();
   const base = domain.toLowerCase();
-  if (host !== base && !host.endsWith(`.${base}`)) {
-    throw new Error(`Hostname ${hostname} isn't in the environment's domain, ${domain}.`);
+  const inDomain = host === base || host.endsWith(`.${base}`);
+  if (!inDomain && !(publicHostnames[base] ?? []).includes(host)) {
+    throw new Error(`Hostname ${hostname} isn't in the environment's domain, ${domain}, or its public hostnames.`);
   }
   return hostname;
 }

@@ -6,6 +6,7 @@ import * as command from "@pulumi/command";
 import * as k8s from "@pulumi/kubernetes";
 import * as random from "@pulumi/random";
 import { WebService } from "../../src/index.ts";
+import { checkHostname } from "../../src/web-service.ts";
 import { directusFilesBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
@@ -244,7 +245,7 @@ export async function deployDirectus(
       metadata: { name: "directus-forms", namespace: platform.namespace },
       spec: {
         parentRefs: [{ name: platform.gateway.name, namespace: platform.gateway.namespace }],
-        hostnames: [extensions.formsHostname],
+        hostnames: [checkHostname(extensions.formsHostname, platform.domain)],
         rules: [
           {
             matches: [{ path: { type: "PathPrefix", value: "/forms/" } }],

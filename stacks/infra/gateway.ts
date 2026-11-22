@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as k8s from "@pulumi/kubernetes";
 import { enableService } from "../../src/services.ts";
+import { publicHostnames } from "../../src/web-service.ts";
 import { provider } from "./cluster.ts";
 import { httpsListener, httpsListeners } from "./environment.ts";
 import { externalDomain, externalZone, internalDomain, internalZone } from "./dns.ts";
@@ -115,8 +116,14 @@ function servePublic(name: string, hostname: pulumi.Input<string>) {
   return hostname;
 }
 
-/** Listmonk, the newsletter (cyc-seattle/platform#180), and the website's forms under it. */
-export const mailHostname = servePublic("prod-mail", pulumi.interpolate`mail.${externalDomain}`);
+/** Prod's public hostnames, such as Listmonk's `mail.` (cyc-seattle/platform#180), each in the external zone. */
+export const prodPublicHostnames = (publicHostnames[prodDomain] ?? []).map((hostname) => {
+  if (!hostname.endsWith(`.${externalDomain}`)) {
+    throw new Error(`Public hostname ${hostname} isn't in infra:externalDomain, ${externalDomain}.`);
+  }
+  const name = `prod-${hostname.slice(0, -externalDomain.length - 1).replaceAll(".", "-")}`;
+  return { name, hostname: servePublic(name, hostname) };
+});
 
 export const gatewayNamespace = new k8s.core.v1.Namespace("gateway", { metadata: { name: "gateway" } }, { provider });
 
@@ -138,7 +145,7 @@ export const gateway = new k8s.apiextensions.CustomResource(
         { name: "http", protocol: "HTTP", port: 80, allowedRoutes: { namespaces: { from: "Same" } } },
         ...httpsListeners("dev", devDomain),
         ...httpsListeners("prod", prodDomain),
-        httpsListener("prod", "https-prod-mail", mailHostname),
+        ...prodPublicHostnames.map(({ name, hostname }) => httpsListener("prod", `https-${name}`, hostname)),
       ],
     },
   },
