@@ -212,4 +212,4 @@ Feature: Roles and groups
     Example: The Crew role's policy linked straight to someone's login is taken away
       Given a user with the Community role
       When an admin links the Crew role's policy straight to their login
-      Then they can't see the rosters
+      Then they can't see revenue accounts

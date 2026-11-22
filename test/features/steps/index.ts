@@ -400,7 +400,15 @@ Step("each of them has the Community, Team, Crew, Staff, or Admin role", () => {
 });
 
 Step("an admin gives them the {role} role", async (_, role: string) => {
-  await setRole(await current().userId(), role);
+  const they = current();
+  const userId = await they.userId();
+  // The scenario changes a shared actor's role, so later scenarios get one of their own.
+  if (they.actor !== undefined) {
+    const user = await userFor(they.actor);
+    forget(they.actor);
+    setThey(as(user));
+  }
+  await setRole(userId, role);
 });
 
 Step("they can't change anyone's role, even their own", async () => {
