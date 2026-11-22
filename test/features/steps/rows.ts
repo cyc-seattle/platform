@@ -783,11 +783,25 @@ export const planRows = () => (planRowsMade ??= createPlanRows());
 export const itemPath = (collection: string, id: unknown) => `/items/${collection}/${encodeURIComponent(String(id))}`;
 
 /** Deletes every row this run created, newest first. Returns what it couldn't delete. */
+/** Rows a sync made from the run's own, which it can't list in `created`: the registrations in its offerings. */
+async function syncedRows(session: DirectusSession): Promise<{ collection: string; id: unknown }[]> {
+  const offerings = created.filter((row) => row.collection === "offerings").map((row) => row.id);
+  if (offerings.length === 0) {
+    return [];
+  }
+  const filter = encodeURIComponent(JSON.stringify({ offering_id: { _in: offerings } }));
+  const made: Item[] = await session.ok("GET", `/items/registrations?fields=id&limit=-1&filter=${filter}`);
+  const known = new Set(created.filter((row) => row.collection === "registrations").map((row) => row.id));
+  return made.filter((row) => !known.has(row.id)).map((row) => ({ collection: "registrations", id: row.id }));
+}
+
 export async function deleteRows(): Promise<string[]> {
   if (adminSession === undefined) {
     return [];
   }
   const session = await adminSession;
+  // Last made, so they're deleted first.
+  created.push(...(await syncedRows(session)));
   let remaining = created.reverse();
   // One request per collection, most recently made first. A batch that fails because another row
   // still points at it is retried on a later pass, once that row is gone.

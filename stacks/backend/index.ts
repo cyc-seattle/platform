@@ -472,6 +472,20 @@ permissionRule(
   { dependsOn: crmSchema },
 );
 
+// A person merge stops while a duplicate is named in a Financial Plan's salaried positions, which never
+// change once frozen (src/syncs/clubspot/merge.ts), so it reads who each one names, and nothing else.
+permissionRule(
+  "crm-clubspot-sync-plan_salaried_positions-read",
+  {
+    ...auth,
+    policyId: clubspotSyncPolicyId,
+    collection: "plan_salaried_positions",
+    action: "read",
+    fields: ["id", "person_id"],
+  },
+  { dependsOn: crmSchema },
+);
+
 // A person merge folds a duplicate's own rows onto its keeper, then deletes the duplicate - the
 // only deletes clubspot-sync's policy grants (cyc-seattle/isthmia#133).
 for (const collection of ["people", "contacts", "contact_points", "medical_profiles"]) {
