@@ -527,8 +527,11 @@ permissionRule(
 );
 
 // The audit checks each program's product is a program, and that a camp's classes book to one
-// revenue account, so it reads only the fields that link a program to its account.
+// revenue account, so it reads only the fields that link a program to its account. A group that
+// fills a Google Group needs only its name, its Google Group, and who's in it, never its policies.
 for (const [collection, fields] of [
+  ["groups", ["id", "name", "google_group_id"]],
+  ["group_members", ["id", "group_id", "person_id"]],
   ["products", ["id", "name", "kind", "revenue_account_id", "program_area_id"]],
   ["program_areas", ["id", "name", "revenue_account_id"]],
   ["accounts", ["id", "number"]],

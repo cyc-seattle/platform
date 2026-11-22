@@ -1,7 +1,7 @@
 import { expect } from "vitest";
 import { asAdmin, newRunId, proxyOk, runCronJob } from "./cluster.ts";
 import { describeAccessFeature, readOnly, Step } from "./steps/index.ts";
-import { runGoogleSync } from "./syncs.ts";
+import { runGoogleSync, runGoogleSyncForGroup } from "./syncs.ts";
 
 // The sync scenarios set up a program and its role holders in dev's CRM, run gsuite-sync on that
 // program, and read the Workspace fake's Directory API through the Kubernetes API's service proxy.
@@ -17,6 +17,10 @@ interface MembershipRow {
 Step("it can see only which sailor each registration is for", () =>
   readOnly("clubspot_participants", ["id", "person_id"]),
 );
+Step("it can see only each group's name and Google group, and who is in it", async () => {
+  await readOnly("groups", ["id", "name", "google_group_id"]);
+  await readOnly("group_members", ["id", "group_id", "person_id"]);
+});
 Step("it can see only each extra email or phone number, and whose it is", () =>
   readOnly("contact_points", ["id", "person_id", "kind", "normalized"]),
 );
@@ -94,7 +98,163 @@ function programWithGroup() {
   };
 }
 
+/** A group in the CRM that fills a Google group, in the CRM and the Workspace fake, for one scenario. */
+function crmGroupWithGoogleGroup() {
+  const runId = newRunId();
+  const groupEmail = `group.${runId}@example.test`;
+  let googleGroupId: string;
+  let groupId: string;
+  let serial = 0;
+  return {
+    /**
+     * The Google group, and a group in the CRM that fills it. Unless `empty`, the group has a member
+     * who stays, already synced in, so taking one person out never empties the Google group.
+     */
+    async create({ empty = false } = {}): Promise<void> {
+      await proxyOk("workspace-fake", 8080, "POST", "/admin/directory/v1/groups", {
+        email: groupEmail,
+        name: `Group ${runId}`,
+      });
+      const googleGroup = await asAdmin("POST", "/items/google_groups", { email: groupEmail, name: `Group ${runId}` });
+      googleGroupId = googleGroup.id;
+      const group = await asAdmin("POST", "/items/groups", { name: `Group ${runId}`, google_group_id: googleGroupId });
+      groupId = group.id;
+      if (!empty) {
+        await this.addPerson();
+        await this.sync();
+      }
+    },
+    /** A person an admin adds to the group, with their email and their membership's id. */
+    async addPerson(): Promise<{ email: string; memberId: string }> {
+      const email = `member${++serial}.${runId}@example.test`;
+      const person = await asAdmin("POST", "/items/people", { first_name: "Member", last_name: runId, email });
+      const member = await asAdmin("POST", "/items/group_members", { group_id: groupId, person_id: person.id });
+      return { email, memberId: member.id };
+    },
+    async removeMember(memberId: string): Promise<void> {
+      await asAdmin("DELETE", `/items/group_members/${memberId}`);
+    },
+    /** Someone added to the Google group by hand, in Workspace, with `role`. */
+    async addByHand(role: "MEMBER" | "MANAGER"): Promise<string> {
+      const email = `by-hand${++serial}.${runId}@example.test`;
+      await proxyOk(
+        "workspace-fake",
+        8080,
+        "POST",
+        `/admin/directory/v1/groups/${encodeURIComponent(groupEmail)}/members`,
+        {
+          email,
+          role,
+        },
+      );
+      return email;
+    },
+    /** A program whose Google group is this group's too. */
+    async sharedWithAProgram(): Promise<void> {
+      const product = await asAdmin("POST", "/items/products", { name: `Program ${runId}`, kind: "program" });
+      await asAdmin("POST", "/items/programs", {
+        name: `Program ${runId}`,
+        product_id: product.id,
+        google_group_id: googleGroupId,
+      });
+    },
+    /** The Google group's members, by email, with their role. */
+    async members(): Promise<Record<string, string>> {
+      const body = await proxyOk(
+        "workspace-fake",
+        8080,
+        "GET",
+        `/admin/directory/v1/groups/${encodeURIComponent(groupEmail)}/members`,
+      );
+      return Object.fromEntries(
+        (body.members ?? []).map((member: { email: string; role: string }) => [member.email, member.role]),
+      );
+    },
+    sync(): Promise<void> {
+      return runGoogleSyncForGroup(groupId);
+    },
+  };
+}
+
 describeAccessFeature("gsuite.feature", {
+  "A new board member gets the board's email": ({ Given, When, And, Then }) => {
+    const group = crmGroupWithGoogleGroup();
+    let added: { email: string };
+    Given("a group in the CRM that fills a Google group", () => group.create());
+    When("an admin adds someone to the group", async () => {
+      added = await group.addPerson();
+    });
+    And("the Google sync runs for the group", () => group.sync());
+    Then("they're in the Google group", async () => {
+      expect(await group.members()).toHaveProperty([added.email], "MEMBER");
+    });
+  },
+  "Someone taken out of the group leaves the Google group": ({ Given, When, And, Then }) => {
+    const group = crmGroupWithGoogleGroup();
+    let member: { email: string; memberId: string };
+    Given("a member of a group in the CRM that fills a Google group", async () => {
+      await group.create();
+      member = await group.addPerson();
+      await group.sync();
+      expect(await group.members()).toHaveProperty([member.email]);
+    });
+    When("an admin takes them out of the group", () => group.removeMember(member.memberId));
+    And("the Google sync runs for the group", () => group.sync());
+    Then("they're not in the Google group", async () => {
+      expect(await group.members()).not.toHaveProperty([member.email]);
+    });
+  },
+  "Someone added to the Google group by hand is taken out": ({ Given, And, When, Then }) => {
+    const group = crmGroupWithGoogleGroup();
+    let outsider: string;
+    Given("a group in the CRM that fills a Google group", () => group.create());
+    And("someone not in the group, added to the Google group by hand", async () => {
+      outsider = await group.addByHand("MEMBER");
+    });
+    When("the Google sync runs for the group", () => group.sync());
+    Then("they're not in the Google group", async () => {
+      expect(await group.members()).not.toHaveProperty([outsider]);
+    });
+  },
+  "The Google sync won't empty a Google group by itself": ({ Given, When, Then }) => {
+    const group = crmGroupWithGoogleGroup();
+    let members: string[];
+    Given("a Google group with members, which a group in the CRM with no one in it starts to fill", async () => {
+      await group.create({ empty: true });
+      members = [await group.addByHand("MEMBER"), await group.addByHand("MEMBER")];
+    });
+    When("the Google sync runs for the group", () => group.sync());
+    Then("they're all still in the Google group", async () => {
+      const live = await group.members();
+      for (const email of members) expect(live).toHaveProperty([email], "MEMBER");
+    });
+  },
+  "The Google group's manager stays": ({ Given, And, When, Then }) => {
+    const group = crmGroupWithGoogleGroup();
+    let manager: string;
+    Given("a group in the CRM that fills a Google group", () => group.create());
+    And("a manager of the Google group who isn't in the group", async () => {
+      manager = await group.addByHand("MANAGER");
+    });
+    When("the Google sync runs for the group", () => group.sync());
+    Then("they're still a manager of the Google group", async () => {
+      expect(await group.members()).toHaveProperty([manager], "MANAGER");
+    });
+  },
+  "A program and a group fill the same Google group": ({ Given, And, When, Then }) => {
+    const group = crmGroupWithGoogleGroup();
+    let added: { email: string };
+    Given("a group in the CRM that fills a Google group", () => group.create());
+    And("a program whose Google group is the same one", () => group.sharedWithAProgram());
+    When("an admin adds someone to the group", async () => {
+      added = await group.addPerson();
+    });
+    // The run for one group refuses a contested Google group, as the full run skips it.
+    And("the Google sync runs for the group", () => expect(group.sync()).rejects.toThrow(/failed/));
+    Then("they're not in the Google group", async () => {
+      expect(await group.members()).not.toHaveProperty([added.email]);
+    });
+  },
   "A coach joins their program's group": ({ Given, And, When, Then }) => {
     const program = programWithGroup();
     let coach: { id: string; email: string };

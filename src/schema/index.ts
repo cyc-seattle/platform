@@ -510,6 +510,8 @@ export interface Groups {
   members: (string | GroupMembers)[];
   /** The policies this group gives its members. */
   policies: (string | GroupPolicies)[];
+  /** Its members become exactly this group's members: the Google sync adds and takes out people, but never a manager or owner. */
+  google_group_id: string | GoogleGroups | null;
 }
 
 /** A sailor and everyone listed as their parent, together with the parents' other children. Made from the Clubspot sign-ups, so change who's in one by fixing the people and their parents. */

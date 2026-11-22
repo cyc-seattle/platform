@@ -20,7 +20,16 @@ import {
 import { resolveGroupSettingsTemplate } from "@cyc-seattle/gsuite-sdk";
 import { type DirectoryReader, runAudit } from "./audit-writer.ts";
 import { type SettingsReader } from "./audit-settings.ts";
-import { type MemberAdder } from "./directory-writer.ts";
+import {
+  type AccessGroupMemberRow,
+  type AccessGroupRow,
+  accessGroupPeople,
+  contestedGoogleGroups,
+  googleGroupSources,
+  planAccessGroup,
+  readAccessGroups,
+} from "./access-groups.ts";
+import { type MemberAdder, type MemberRemover } from "./directory-writer.ts";
 import { type GroupDirectoryReader, runDiscovery } from "./discovery-writer.ts";
 import { planMembershipWrites } from "./group-memberships.ts";
 import { type MembershipTables, planProgramMemberPeople } from "./membership.ts";
@@ -37,6 +46,7 @@ const QUEUE = "gsuite-sync";
 const DISCOVERY_QUEUE = "gsuite-sync-discovery";
 const DISCOVERY_KIND = "sync_group_discovery";
 const PROGRAM_MEMBERS_KIND = "sync_program_members";
+const ACCESS_GROUP_MEMBERS_KIND = "sync_access_group_members";
 const SETTINGS_KIND = "sync_group_settings";
 const NESTING_KIND = "sync_group_nesting";
 const OWNERS_KIND = "sync_group_owners";
@@ -66,6 +76,8 @@ export async function enqueueDiscovery(now: Date, queue: SyncQueue): Promise<str
 export interface MembershipSnapshot extends MembershipTables {
   programs: ProgramWithGoogleGroup[];
   groups: GoogleGroupRow[];
+  accessGroups: AccessGroupRow[];
+  accessGroupMembers: AccessGroupMemberRow[];
 }
 
 async function readMembershipSnapshot(directus: DirectusClient): Promise<MembershipSnapshot> {
@@ -80,6 +92,7 @@ async function readMembershipSnapshot(directus: DirectusClient): Promise<Members
     people,
     contacts,
     programRoleAssignments,
+    [accessGroups, accessGroupMembers],
   ] = await Promise.all([
     directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
     directus.readItems<GoogleGroupRow>("google_groups", { limit: -1 }),
@@ -94,10 +107,13 @@ async function readMembershipSnapshot(directus: DirectusClient): Promise<Members
     directus.readItems<PersonRow>("people", { limit: -1 }),
     directus.readItems<ContactRow>("contacts", { limit: -1 }),
     directus.readItems<ProgramRoleAssignmentRow>("program_role_assignments", { limit: -1 }),
+    readAccessGroups(directus),
   ]);
   return {
     programs,
     groups,
+    accessGroups,
+    accessGroupMembers,
     classes,
     camps,
     registrationEntries,
@@ -130,7 +146,7 @@ async function syncProgramMembers(
   snapshot: () => Promise<MembershipSnapshot>,
   now: Date,
 ): Promise<void> {
-  const { programs, groups, ...tables } = await snapshot();
+  const { programs, groups, accessGroups, ...tables } = await snapshot();
 
   const program = programs.find((row) => row.id === programId);
   if (!program?.google_group_id) {
@@ -141,6 +157,10 @@ async function syncProgramMembers(
     throw new TaskOrphaned(
       `Program ${programId} references google_groups id ${program.google_group_id}, which is missing or archived`,
     );
+  }
+
+  if (contestedGoogleGroups(googleGroupSources(programs, accessGroups)).has(program.google_group_id)) {
+    throw new TaskOrphaned(`Program ${programId}'s Google Group has another source, so neither fills it`);
   }
 
   const planned = planProgramMemberPeople(programId, tables, now);
@@ -199,18 +219,92 @@ export async function enqueueDueProgramGroups(
   directus: DirectusClient,
   queue: SyncQueue,
 ): Promise<string[]> {
-  const [programs, groups] = await Promise.all([
+  const [programs, groups, [accessGroups]] = await Promise.all([
     directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
     directus.readItems<GoogleGroupRow>("google_groups", { limit: -1 }),
+    readAccessGroups(directus),
   ]);
   const archivedGroupIds = new Set(groups.filter((group) => group.archived && group.id).map((group) => group.id));
+  const contested = contestedGoogleGroups(googleGroupSources(programs, accessGroups));
 
   const taskIds: string[] = [];
   for (const program of programs) {
-    if (!program.id || !program.google_group_id || archivedGroupIds.has(program.google_group_id)) {
+    if (
+      !program.id ||
+      !program.google_group_id ||
+      archivedGroupIds.has(program.google_group_id) ||
+      contested.has(program.google_group_id)
+    ) {
       continue;
     }
     const task = await queue.enqueue({ queue: QUEUE, kind: PROGRAM_MEMBERS_KIND, target: program.id }, now);
+    if (task.id) {
+      taskIds.push(task.id);
+    }
+  }
+  return taskIds;
+}
+
+/** Makes a CRM group's Google Group hold exactly its members, taking out only plain members. */
+async function syncAccessGroupMembers(
+  groupId: string,
+  directory: DirectoryReader,
+  adder: MemberAdder,
+  remover: MemberRemover,
+  snapshot: () => Promise<MembershipSnapshot>,
+  allowMassRemoval: boolean,
+): Promise<void> {
+  const { programs, groups, accessGroups, accessGroupMembers, people } = await snapshot();
+  const accessGroup = accessGroups.find((row) => row.id === groupId);
+  if (!accessGroup?.google_group_id) {
+    throw new TaskOrphaned(`Group ${groupId} fills no Google Group; this task should not have been enqueued`);
+  }
+  const googleGroup = groups.find((row) => row.id === accessGroup.google_group_id);
+  if (!googleGroup || googleGroup.archived) {
+    throw new TaskOrphaned(`Group ${groupId}'s Google Group ${accessGroup.google_group_id} is missing or archived`);
+  }
+  if (contestedGoogleGroups(googleGroupSources(programs, accessGroups)).has(accessGroup.google_group_id)) {
+    throw new TaskOrphaned(`Group ${groupId}'s Google Group has another source, so neither fills it`);
+  }
+
+  const plan = await planAccessGroup(
+    accessGroupPeople(groupId, accessGroupMembers, people),
+    googleGroup.email,
+    directory,
+  );
+  if (plan.massRemoval && !allowMassRemoval) {
+    // The audit raises `google_group_mass_removal` for it. Adding is still safe.
+    winston.warn("Not taking so many out of a Google Group without --allow-mass-removal", {
+      group: googleGroup.email,
+      remove: plan.remove,
+    });
+  } else {
+    for (const email of plan.remove) {
+      await remover.removeMember(googleGroup.email, email);
+    }
+  }
+  for (const email of plan.add) {
+    await adder.addMember(googleGroup.email, email, "MEMBER");
+  }
+}
+
+/** Enqueues one `sync_access_group_members` task per CRM group whose Google Group it alone fills. */
+export async function enqueueAccessGroups(now: Date, directus: DirectusClient, queue: SyncQueue): Promise<string[]> {
+  const [programs, groups, [accessGroups]] = await Promise.all([
+    directus.readItems<ProgramWithGoogleGroup>("programs", { limit: -1 }),
+    directus.readItems<GoogleGroupRow>("google_groups", { limit: -1 }),
+    readAccessGroups(directus),
+  ]);
+  const archived = new Set(groups.filter((group) => group.archived && group.id).map((group) => group.id));
+  const contested = contestedGoogleGroups(googleGroupSources(programs, accessGroups));
+
+  const taskIds: string[] = [];
+  for (const group of accessGroups) {
+    const target = group.google_group_id;
+    if (!group.id || !target || archived.has(target) || contested.has(target)) {
+      continue;
+    }
+    const task = await queue.enqueue({ queue: QUEUE, kind: ACCESS_GROUP_MEMBERS_KIND, target: group.id }, now);
     if (task.id) {
       taskIds.push(task.id);
     }
@@ -364,6 +458,7 @@ export interface RunGroupSyncOptions {
   directus: DirectusClient;
   queue: SyncQueue;
   adder: MemberAdder;
+  remover: MemberRemover;
   settingsApplier: SettingsApplier;
   directory: DirectoryReader & GroupDirectoryReader;
   settingsReader: SettingsReader;
@@ -376,6 +471,13 @@ export interface RunGroupSyncOptions {
    * passes, as clubspot-sync's `campId` does for one camp. The features run it in their own process.
    */
   programId?: string;
+  /** Syncs only this CRM group's Google Group, the same way. */
+  accessGroupId?: string;
+  /**
+   * Takes out of a CRM group's Google Group more than `MASS_REMOVAL_LIMIT` members, or all of its
+   * plain members. Without it, such a run only adds, and the audit reports it.
+   */
+  allowMassRemoval?: boolean;
 }
 
 export interface RunGroupSyncResult {
@@ -394,8 +496,41 @@ export interface RunGroupSyncResult {
  * per-task retry.
  */
 export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGroupSyncResult> {
-  const { now, directus, queue, adder, settingsApplier, directory, settingsReader, groupOwners, customer, programId } =
-    options;
+  const {
+    now,
+    directus,
+    queue,
+    adder,
+    remover,
+    settingsApplier,
+    directory,
+    settingsReader,
+    groupOwners,
+    customer,
+    programId,
+    accessGroupId,
+    allowMassRemoval = false,
+  } = options;
+
+  if (accessGroupId !== undefined) {
+    try {
+      await syncAccessGroupMembers(
+        accessGroupId,
+        directory,
+        adder,
+        remover,
+        sharedMembershipSnapshot(directus),
+        allowMassRemoval,
+      );
+      return { status: "ok", tasksChecked: 1, tasksFailed: 0 };
+    } catch (error) {
+      winston.error("Group sync of one CRM group failed", {
+        accessGroupId,
+        error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+      });
+      return { status: "failed", tasksChecked: 1, tasksFailed: 1 };
+    }
+  }
 
   if (programId !== undefined) {
     try {
@@ -429,6 +564,7 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
 
       const enqueued = await Promise.all([
         enqueueDueProgramGroups(now, directus, queue),
+        enqueueAccessGroups(now, directus, queue),
         enqueueGroupSettings(now, directus, queue),
         enqueueGroupNesting(now, directus, queue),
         enqueueGroupOwners(now, directus, queue),
@@ -436,17 +572,14 @@ export async function runGroupSync(options: RunGroupSyncOptions): Promise<RunGro
       ]);
       const enqueuedTaskIds = enqueued.flat();
 
+      const snapshot = sharedMembershipSnapshot(directus);
       const { taskIds: claimedTaskIds } = await runQueue(
         directus,
         QUEUE,
         {
-          [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(
-            directus,
-            directory,
-            adder,
-            sharedMembershipSnapshot(directus),
-            now,
-          ),
+          [PROGRAM_MEMBERS_KIND]: programMembersTaskHandler(directus, directory, adder, snapshot, now),
+          [ACCESS_GROUP_MEMBERS_KIND]: (task: SyncTaskRow) =>
+            syncAccessGroupMembers(targetFromKey(task), directory, adder, remover, snapshot, allowMassRemoval),
           [SETTINGS_KIND]: groupSettingsTaskHandler(directus, settingsApplier),
           [NESTING_KIND]: groupNestingTaskHandler(directus, adder),
           [OWNERS_KIND]: groupOwnersTaskHandler(directus, adder, groupOwners),

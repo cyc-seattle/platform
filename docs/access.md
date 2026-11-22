@@ -183,7 +183,8 @@ can't write a secret. The site has no PR previews, so no build reads dev's.
 - `group_members`: who is in each group, as people in the CRM
 - `group_policies`: which policies each group gives
 
-Only admins can see or change them. A group never sets a role.
+Only admins can see or change them. A group never sets a role. A group can also fill a Google
+Group, which the Google sync keeps equal to its members ([syncs.md](syncs.md#gsuite-sync)).
 
 An admin changes a group from its own page in the Data Studio. Members and Policies are
 many-to-many lists: "Add existing" picks a person, or one of the policies a group can give. Neither

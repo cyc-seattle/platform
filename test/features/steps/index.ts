@@ -358,6 +358,7 @@ export async function readOnly(collection: string, allowed: string[]): Promise<v
   expect(all.status, JSON.stringify(all.body)).toBe(200);
   expect(Object.keys(all.body.data[0] ?? {}).sort()).toEqual([...allowed].sort());
   const others = Object.keys(fixture[collection] ?? {}).filter((field) => !allowed.includes(field));
+  if (others.length === 0) return;
   const denied = await user.request("GET", readQuery(target, others.join(",")));
   expect(denied.status, JSON.stringify(denied.body)).toBe(403);
 }
