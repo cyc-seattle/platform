@@ -14,7 +14,11 @@ describe("the Community rules by login", () => {
 
   it("let anyone in a household, a child too, change the people in it", () => {
     const [people] = rules.filter((rule) => rule.collection === "people" && rule.action === "update");
-    expect(people!.permissions).toEqual({ household_id: { members: { id: { _eq: "$CURRENT_USER.person_id" } } } });
+    expect(people!.permissions).toEqual({
+      household_id: {
+        members: { _and: [{ id: { _eq: "$CURRENT_USER.person_id" } }, { id: { _nnull: true } }] },
+      },
+    });
   });
 
   it("let only an adult change whether the household shares", () => {
@@ -51,6 +55,15 @@ describe("the Community rules by login", () => {
 
   it("match the signed-in user by their login's person, never by email, so each of a person's logins sees the same", () => {
     expect(JSON.stringify(rules)).toContain('{"id":{"_eq":"$CURRENT_USER.person_id"}}');
+  });
+
+  // Directus turns the _eq into IS NULL for a login with no person, which a LEFT JOIN matches.
+  it("match no one for a login with no person", () => {
+    const json = JSON.stringify(rules);
+    const matches = json.split('{"id":{"_eq":"$CURRENT_USER.person_id"}}').length - 1;
+    const guarded = json.split('{"id":{"_eq":"$CURRENT_USER.person_id"}},{"id":{"_nnull":true}}').length - 1;
+    expect(matches).toBeGreaterThan(0);
+    expect(guarded).toBe(matches);
     expect(JSON.stringify(rules)).not.toContain("$CURRENT_USER.email");
   });
 
