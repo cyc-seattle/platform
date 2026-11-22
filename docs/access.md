@@ -102,8 +102,10 @@ Financial Plan's status, the date it's active from, and whether it's archived. E
 and writes every program area: there's no per-area access. A
 frozen Financial Plan never changes, even for an admin, so the `frozen-plans` hook enforces that
 rather than a policy (`docs/planning-schema.md`). A Medical policy is given with a CRM policy.
-Programs belong to the catalog, so only a Catalog Writer changes them. A CRM policy reads them, and
-so do Crew and the Google sync, but none of them changes them. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
+Programs and offerings belong to the catalog, so only a Catalog Writer changes them, the links from
+offerings to Clubspot's classes included. A CRM policy reads them, and so do Crew and the Google sync,
+but none of them changes them. The Clubspot sync reads offerings, and writes only each one's count of
+confirmed sailors, which no one else writes. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
 
 One field is held back: no policy a person can hold sets a login's person,
 `directus_users.person_id`, or the list of a person's logins, `people.logins`, because a login's

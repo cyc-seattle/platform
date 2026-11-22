@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { type CrmRegistrationRow, type OfferingRow } from "../../../src/model/crm/index.ts";
-import { apply, type Mirrors, planOfferings, planRegistrations } from "../../../src/syncs/clubspot/offerings.ts";
+import {
+  apply,
+  clubspotOfferings,
+  findOfferingDifferences,
+  type Mirrors,
+  offeringIdsByKey,
+  planClassPrograms,
+  planConfirmedCounts,
+  planRegistrations,
+} from "../../../src/syncs/clubspot/offerings.ts";
 import { type DirectusClient } from "../../../src/syncs/runtime/index.ts";
 
 const empty: Mirrors = {
@@ -29,163 +38,179 @@ function mirrors(overrides: Partial<Mirrors>): Mirrors {
 /** A plan's new rows without their fresh ids. */
 const withoutIds = <Row extends { id: string }>(rows: Row[]) =>
   rows.map((row) => Object.fromEntries(Object.entries(row).filter(([field]) => field !== "id")));
-const desired = (plan: { toCreate: OfferingRow[] }) => withoutIds(plan.toCreate);
 
-describe("planOfferings", () => {
-  it("makes one offering for each session of a class with a program", () => {
-    const plan = planOfferings(
+/** A catalog offering, linked to Clubspot unless the overrides say otherwise. */
+function offering(overrides: Partial<OfferingRow> & Pick<OfferingRow, "id">): OfferingRow {
+  return {
+    program_id: "program-guppies",
+    starts_on: "2026-06-15",
+    ends_on: "2026-06-19",
+    capacity: null,
+    clubspot_class_id: "guppies",
+    clubspot_session_id: "week-1",
+    confirmed_count: 0,
+    archived_at: null,
+    ...overrides,
+  };
+}
+
+describe("clubspotOfferings", () => {
+  it("reads each session of a class, with its cap", () => {
+    const found = clubspotOfferings(
       mirrors({
-        classes: [{ id: "guppies", camp_id: "camp-1", program_id: "program-guppies" }],
+        classes: [{ id: "guppies", camp_id: "camp-1", program_id: null }],
         sessionClasses: inBothWeeks("guppies"),
         entryCaps: [{ class_id: "guppies", session_id: "week-1", cap: 12 }],
       }),
-      [],
     );
 
-    expect(desired(plan)).toEqual([
-      {
-        program_id: "program-guppies",
-        starts_on: "2026-06-15",
-        ends_on: "2026-06-19",
-        capacity: 12,
-        clubspot_class_id: "guppies",
-        clubspot_session_id: "week-1",
-      },
-      {
-        program_id: "program-guppies",
-        starts_on: "2026-06-22",
-        ends_on: "2026-06-26",
-        capacity: null,
-        clubspot_class_id: "guppies",
-        clubspot_session_id: "week-2",
-      },
-    ]);
+    expect(Object.fromEntries(found)).toEqual({
+      "guppies:week-1": { starts_on: "2026-06-15", ends_on: "2026-06-19", capacity: 12 },
+      "guppies:week-2": { starts_on: "2026-06-22", ends_on: "2026-06-26", capacity: null },
+    });
   });
 
-  it("makes one offering for a class whose cap covers every session", () => {
-    const plan = planOfferings(
+  it("reads a class whose cap covers every session as one, over all of them", () => {
+    const found = clubspotOfferings(
       mirrors({
-        classes: [{ id: "j-pod", camp_id: "camp-1", program_id: "program-j-pod" }],
+        classes: [{ id: "j-pod", camp_id: "camp-1", program_id: null }],
         sessionClasses: inBothWeeks("j-pod"),
         entryCaps: [{ class_id: "j-pod", session_id: null, cap: 8 }],
       }),
-      [],
     );
 
-    expect(desired(plan)).toEqual([
-      {
-        program_id: "program-j-pod",
-        starts_on: "2026-06-15",
-        ends_on: "2026-06-26",
-        capacity: 8,
-        clubspot_class_id: "j-pod",
-        clubspot_session_id: null,
-      },
-    ]);
+    expect(Object.fromEntries(found)).toEqual({
+      "j-pod:": { starts_on: "2026-06-15", ends_on: "2026-06-26", capacity: 8 },
+    });
   });
 
-  it("dates a class with no sessions by its camp", () => {
-    const plan = planOfferings(
-      mirrors({ classes: [{ id: "k-pod", camp_id: "camp-1", program_id: "program-k-pod" }] }),
-      [],
-    );
-
-    expect(desired(plan)).toMatchObject([
-      { starts_on: "2026-06-01", ends_on: "2026-08-31", clubspot_session_id: null },
-    ]);
-  });
-
-  it("makes nothing for a class with no program, or for an archived session", () => {
-    const plan = planOfferings(
+  it("dates a class with no sessions by its camp, and leaves out an archived session", () => {
+    const found = clubspotOfferings(
       mirrors({
         sessions: [empty.sessions[0]!, { ...empty.sessions[1]!, archived: true }],
         classes: [
-          { id: "guppies", camp_id: "camp-1", program_id: "program-guppies" },
-          { id: "unmapped", camp_id: "camp-1", program_id: null },
-        ],
-        sessionClasses: [...inBothWeeks("guppies"), ...inBothWeeks("unmapped")],
-      }),
-      [],
-    );
-
-    expect(desired(plan)).toMatchObject([{ clubspot_class_id: "guppies", clubspot_session_id: "week-1" }]);
-  });
-
-  it("keeps an unchanged offering, changes a changed one, and deletes one whose class lost its program", () => {
-    const existing: OfferingRow[] = [
-      {
-        id: "o-1",
-        program_id: "program-guppies",
-        starts_on: "2026-06-15",
-        ends_on: "2026-06-19",
-        capacity: null,
-        clubspot_class_id: "guppies",
-        clubspot_session_id: "week-1",
-      },
-      {
-        id: "o-2",
-        program_id: "program-old",
-        starts_on: "2026-06-22",
-        ends_on: "2026-06-26",
-        capacity: null,
-        clubspot_class_id: "guppies",
-        clubspot_session_id: "week-2",
-      },
-      {
-        id: "o-3",
-        program_id: "program-old",
-        starts_on: null,
-        ends_on: null,
-        capacity: null,
-        clubspot_class_id: "unmapped",
-        clubspot_session_id: null,
-      },
-    ];
-    const plan = planOfferings(
-      mirrors({
-        classes: [
-          { id: "guppies", camp_id: "camp-1", program_id: "program-guppies" },
-          { id: "unmapped", camp_id: "camp-1", program_id: null },
+          { id: "k-pod", camp_id: "camp-1", program_id: null },
+          { id: "guppies", camp_id: "camp-1", program_id: null },
         ],
         sessionClasses: inBothWeeks("guppies"),
       }),
-      existing,
     );
 
-    expect(plan.toCreate).toEqual([]);
-    expect(plan.toUpdate).toEqual([{ id: "o-2", patch: { program_id: "program-guppies" } }]);
-    expect(plan.toDelete).toEqual(["o-3"]);
-    expect([...plan.idByKey.values()]).toEqual(["o-1", "o-2"]);
+    expect([...found.keys()]).toEqual(["k-pod:", "guppies:week-1"]);
+    expect(found.get("k-pod:")).toMatchObject({ starts_on: "2026-06-01", ends_on: "2026-08-31" });
+  });
+});
+
+describe("offeringIdsByKey", () => {
+  it("finds each linked offering by its class and session, and skips one not linked yet", () => {
+    const ids = offeringIdsByKey([
+      offering({ id: "o-1" }),
+      offering({ id: "o-2", clubspot_class_id: "j-pod", clubspot_session_id: null }),
+      offering({ id: "o-3", clubspot_class_id: null, clubspot_session_id: null }),
+    ]);
+
+    expect(Object.fromEntries(ids)).toEqual({ "guppies:week-1": "o-1", "j-pod:": "o-2" });
+  });
+});
+
+describe("planClassPrograms", () => {
+  it("gives a class its offerings' program, and none when they disagree or there are none", () => {
+    const patches = planClassPrograms(
+      [
+        { id: "guppies", program_id: null },
+        { id: "mixed", program_id: "program-guppies" },
+        { id: "unlinked", program_id: "program-old" },
+        { id: "same", program_id: "program-j-pod" },
+      ],
+      [
+        offering({ id: "o-1" }),
+        offering({ id: "o-2", clubspot_session_id: "week-2" }),
+        offering({ id: "o-3", clubspot_class_id: "mixed" }),
+        offering({ id: "o-4", clubspot_class_id: "mixed", clubspot_session_id: "week-2", program_id: "program-j-pod" }),
+        offering({ id: "o-5", clubspot_class_id: "same", program_id: "program-j-pod" }),
+      ],
+    );
+
+    expect(patches).toEqual([
+      { id: "guppies", patch: { program_id: "program-guppies" } },
+      { id: "mixed", patch: { program_id: null } },
+      { id: "unlinked", patch: { program_id: null } },
+    ]);
+  });
+});
+
+describe("planConfirmedCounts", () => {
+  it("counts only confirmed sailors, and writes only a count that changed", () => {
+    const patches = planConfirmedCounts(
+      [
+        offering({ id: "o-1", confirmed_count: 1 }),
+        offering({ id: "o-2", confirmed_count: 1 }),
+        offering({ id: "o-3" }),
+      ],
+      [
+        { offering_id: "o-1", status: "confirmed" },
+        { offering_id: "o-1", status: "confirmed" },
+        { offering_id: "o-1", status: "waitlist" },
+        { offering_id: "o-2", status: "confirmed" },
+        { offering_id: "o-3", status: "cancelled" },
+      ],
+    );
+
+    expect(patches).toEqual([{ id: "o-1", patch: { confirmed_count: 2 } }]);
+  });
+});
+
+describe("findOfferingDifferences", () => {
+  const fromClubspot = new Map([
+    ["guppies:week-1", { starts_on: "2026-06-15", ends_on: "2026-06-19", capacity: 12 }],
+    ["guppies:week-2", { starts_on: "2026-06-22", ends_on: "2026-06-26", capacity: 12 }],
+  ]);
+
+  it("reports an offering whose dates or limit differ, or whose class and session Clubspot doesn't have", () => {
+    const findings = findOfferingDifferences(
+      [
+        offering({ id: "o-1", capacity: 12 }),
+        offering({
+          id: "o-2",
+          clubspot_session_id: "week-2",
+          starts_on: "2026-06-22",
+          ends_on: "2026-06-26",
+          capacity: 10,
+        }),
+        offering({ id: "o-3", clubspot_session_id: "week-3" }),
+      ],
+      fromClubspot,
+      "2026-06-01",
+    );
+
+    expect(findings).toEqual([
+      {
+        source: "clubspot-sync",
+        kind: "offering_differs",
+        subject: "o-2",
+        detail: "Offering o-2: capacity is 10 here and 12 in Clubspot",
+      },
+      {
+        source: "clubspot-sync",
+        kind: "offering_differs",
+        subject: "o-3",
+        detail: "Offering o-3: Clubspot has no such class and session",
+      },
+    ]);
   });
 
-  it("leaves an offering whose class or session was made after the mirrors were read", () => {
-    const existing: OfferingRow[] = [
-      {
-        id: "o-new-class",
-        program_id: "program-k-pod",
-        starts_on: "2026-06-01",
-        ends_on: "2026-08-31",
-        capacity: null,
-        clubspot_class_id: "k-pod",
-        clubspot_session_id: null,
-      },
-      {
-        id: "o-new-session",
-        program_id: "program-guppies",
-        starts_on: "2026-06-29",
-        ends_on: "2026-07-03",
-        capacity: null,
-        clubspot_class_id: "guppies",
-        clubspot_session_id: "week-3",
-      },
-    ];
-    const plan = planOfferings(
-      mirrors({ classes: [{ id: "guppies", camp_id: "camp-1", program_id: "program-guppies" }] }),
-      existing,
+  it("leaves out one not linked yet, archived, or over", () => {
+    const findings = findOfferingDifferences(
+      [
+        offering({ id: "o-1", clubspot_class_id: null, clubspot_session_id: null }),
+        offering({ id: "o-2", capacity: 3, archived_at: "2026-05-01T00:00:00Z" }),
+        offering({ id: "o-3", capacity: 3 }),
+      ],
+      fromClubspot,
+      "2026-07-01",
     );
 
-    expect(plan.toDelete).toEqual([]);
-    expect(plan.toUpdate).toEqual([]);
+    expect(findings).toEqual([]);
   });
 });
 

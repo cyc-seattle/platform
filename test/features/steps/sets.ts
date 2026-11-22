@@ -64,6 +64,8 @@ const sets: Record<string, Target[]> = {
   "Clubspot's events and registrations": SESSIONS_CLASSES_AND_REGISTRATIONS,
   "sessions, classes, and registrations": SESSIONS_CLASSES_AND_REGISTRATIONS,
   "offerings and the registrations in them": plain("offerings", "registrations"),
+  "the registrations in offerings": plain("registrations"),
+  offerings: plain("offerings"),
   "sessions, classes, or registrations": plain(
     "clubspot_camps",
     "clubspot_sessions",
@@ -106,7 +108,8 @@ const sets: Record<string, Target[]> = {
     "qualification_covers",
     "boat_classes",
     "programs",
-    "catalog_offerings",
+    "offerings",
+    "registration_forms",
     "staff_roles",
     "staff_levels",
   ),

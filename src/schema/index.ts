@@ -8,7 +8,6 @@ export interface Schema {
   audit_findings: AuditFindings[];
   boat_classes: BoatClasses[];
   boats: Boats[];
-  catalog_offerings: CatalogOfferings[];
   clubspot_camps: ClubspotCamps[];
   clubspot_classes: ClubspotClasses[];
   clubspot_custom_field_definitions: ClubspotCustomFieldDefinitions[];
@@ -75,6 +74,7 @@ export interface Schema {
   programs: Programs[];
   qualification_covers: QualificationCovers[];
   qualifications: Qualifications[];
+  registration_forms: RegistrationForms[];
   registrations: Registrations[];
   schools: Schools[];
   staff_levels: StaffLevels[];
@@ -200,15 +200,6 @@ export interface Boats {
   sail_number: string | null;
 }
 
-/** An offering of a program that plans and Clubspot both point to, such as "J-Pod · fall practices" or "Summer camp · week 3". Each Financial Plan sets its own price, schedule, and size for it, and Clubspot's offerings are linked to it. */
-export interface CatalogOfferings {
-  id: string;
-  /** The program it's an offering of. */
-  program_id: string | Programs;
-  /** Which offering of the program, such as "fall practices" or "week 3". */
-  name: string;
-}
-
 /** A dated event, such as a season's race team. Copied from Clubspot, so edit it there. */
 export interface ClubspotCamps {
   /** Clubspot's own ID for this row. */
@@ -217,6 +208,12 @@ export interface ClubspotCamps {
   start_date: string | null;
   end_date: string | null;
   archived: boolean;
+  /** Shown on Clubspot's public pages. */
+  public: boolean;
+  /** Clubspot isn't taking registrations. */
+  registration_closed: boolean;
+  /** Clubspot hides how many spots are left. */
+  hide_spots_left: boolean;
   /** When this camp last synced from Clubspot. Empty means never. */
   synced_through: string | null;
   /** How many syncs in a row found nothing new. The more there are, the less often the sync checks this camp, down to once a week. */
@@ -231,7 +228,7 @@ export interface ClubspotClasses {
   id: string;
   camp_id: string | ClubspotCamps;
   name: string;
-  /** Set by hand, once for each class. The sync never changes it. */
+  /** The program of the class's offerings. The sync sets it from them. */
   program_id: string | Programs | null;
   /** The registrations signed up for this class. */
   registration_entries: (string | ClubspotRegistrationEntries)[];
@@ -557,17 +554,30 @@ export interface MedicalProfiles {
   date_updated: string | null;
 }
 
-/** A program sold for one dated period, such as Guppies in one summer week. The Clubspot sync makes one for each Clubspot class and session whose class has a program, so edit it in Clubspot. */
+/** What CSC sells: one program for one dated period, such as Guppies week 3 of summer 2027. Clubspot's camps are built from these. */
 export interface Offerings {
+  /** Its class in Clubspot. Set once the class is made in Clubspot. */
+  clubspot_class_id: string | ClubspotClasses;
+  /** Its session in Clubspot, for an offering of one session. Empty when the class's limit covers every session. */
+  clubspot_session_id: string | ClubspotSessions | null;
   id: string;
   program_id: string | Programs;
+  /** Which period, such as "Week 3" or "Fall". Shown after the program's name. */
+  name: string | null;
+  /** The form families sign up on. */
+  registration_form_id: string | RegistrationForms | null;
+  /** Its first day. */
   starts_on: string | null;
+  /** Its last day. */
   ends_on: string | null;
-  /** How many sailors it takes. Empty means Clubspot sets no limit. */
+  /** What one sailor pays. In cents: 12500 is $125.00. */
+  price_cents: number | null;
+  /** How many sailors it takes. Empty means no limit. */
   capacity: number | null;
-  clubspot_class_id: string | ClubspotClasses;
-  /** Empty when the class's limit covers every session. */
-  clubspot_session_id: string | ClubspotSessions | null;
+  /** Set when it's cancelled. The website stops showing it. */
+  archived_at: string | null;
+  /** How many sailors are confirmed. Counted from Clubspot each hour. */
+  confirmed_count: number;
   registrations: (string | Registrations)[];
 }
 
@@ -1263,6 +1273,10 @@ export interface Programs {
   color: string | null;
   /** The boat classes its sailors can sail. When a class runs short, the boat checks count the others here that are spare that day. */
   boat_classes: (string | ProgramBoatClasses)[];
+  /** The youngest a sailor can be. Empty means no minimum. */
+  min_age: number | null;
+  /** The oldest a sailor can be. Empty means no maximum, as for adults. */
+  max_age: number | null;
   /** Who has a role in this program. */
   role_assignments: (string | ProgramRoleAssignments)[];
   /** The program's Google Group, if it has one. Most programs don't. */
@@ -1282,6 +1296,20 @@ export interface Qualifications {
   name: string;
   /** The qualifications this one satisfies a requirement for. */
   covers: (string | QualificationCovers)[];
+}
+
+/** What families sign up on at once, such as 2027 Summer Sailing Camps. Each is one Clubspot camp. */
+export interface RegistrationForms {
+  /** Its camp in Clubspot. Set once the camp is made in Clubspot. */
+  clubspot_camp_id: string | ClubspotCamps | null;
+  id: string;
+  /** Such as 2027 Summer Sailing Camps. The camp's name in Clubspot. */
+  name: string;
+  /** When families can sign up. The website shows it until registration opens. */
+  opens_on: string | null;
+  offerings: (string | Offerings)[];
+  /** Set when it's no longer used. */
+  archived_at: string | null;
 }
 
 /** One person registered in one offering. The Clubspot sync makes one for each sailor in a class and session, so edit it in Clubspot. */

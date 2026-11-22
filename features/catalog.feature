@@ -3,9 +3,11 @@ Feature: The catalog
   the club sells year after year, such as the J-Pod Race Team, boat charters, or storage. Each
   product is one of these kinds: a program, a charter, a storage lease, merchandise, event hosting,
   or other. Some products are programs, which sailors sign up for, such as Summer Camp or the race
-  team. A program has details of its own, such as its Google group, and its catalog offerings: the
-  offerings it runs, by name, such as "J-Pod · fall practices", which plans and Clubspot's sign-ups
-  both point to. The catalog also lists the revenue accounts
+  team. A program has details of its own, such as its Google group and the ages it takes. The
+  catalog's offerings say what CSC sells: one program for one dated period, such as Guppies week 3
+  of summer 2027, with its price and how many sailors it takes. Each is on a registration form, such
+  as 2027 Summer Sailing Camps, which says when registration opens. Clubspot's camps are built from
+  them, and each offering is linked to the Clubspot class that sells it. The catalog also lists the revenue accounts
   the club's money is booked to, the qualifications a coach can hold, and the boat classes, such as
   Opti, 420, or RIB for a coach boat. It lists the staff levels hourly staff are paid at, too. Each
   is a role, such as Instructor, Coach, or Office, at a grade: Volunteer, Junior, Standard, Senior,
@@ -33,6 +35,14 @@ Feature: The catalog
       When an admin deletes the program's product
       Then the catalog doesn't allow it
       And the product is still in the catalog
+
+  Rule: An offering a sailor is registered in can't be deleted
+
+    Example: Deleting an offering with a registration isn't allowed
+      Given an offering with a sailor registered in it
+      When an admin deletes the offering
+      Then the catalog doesn't allow it
+      And the offering is still in the catalog
 
   Rule: A program area can't be deleted while it has programs
 

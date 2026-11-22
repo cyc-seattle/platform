@@ -20,9 +20,15 @@ interface Relation {
   schema: { constraint_name: string };
 }
 
-const schema = yaml.load(fs.readFileSync(path.resolve(import.meta.dirname, "../schemas/clubspot.yaml"), "utf8")) as {
+const declared = yaml.load(fs.readFileSync(path.resolve(import.meta.dirname, "../schemas/clubspot.yaml"), "utf8")) as {
   fields: Field[];
   relations: Relation[];
+};
+// Without the catalog's links to the mirrors, which clubspot.yaml declares too, and which came after.
+const LATER = new Set(["offerings", "registration_forms"]);
+const schema = {
+  fields: declared.fields.filter((field) => !LATER.has(field.collection)),
+  relations: declared.relations.filter((relation) => !LATER.has(relation.collection)),
 };
 
 const unprefixed = (name: string): string => (name.startsWith(PREFIX) ? name.slice(PREFIX.length) : name);

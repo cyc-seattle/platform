@@ -214,10 +214,11 @@ export function findProgramsWithoutGroup(programs: readonly ProgramWithGoogleGro
 }
 
 /**
- * `class_without_program` findings: a `clubspot_classes` row with no `program_id`, the hand-set link from
- * cyc-seattle/isthmia#149. This is a Clubspot-side gap - `program_id` lives on `clubspot_classes` in `clubspot`'s own schema
- * and has nothing to do with a Google Group - so it's tagged `clubspot-sync` rather than
- * `gsuite-sync`, even though this pass is the one computing it today.
+ * `class_without_program` findings: a `clubspot_classes` row with no `program_id`. clubspot-sync sets it
+ * from the catalog offerings staff link to the class (cyc-seattle/platform#332), so a class without one has
+ * no offering, or offerings of two programs. This is a Clubspot-side gap with nothing to do with a Google
+ * Group, so it's tagged `clubspot-sync` rather than `gsuite-sync`, even though this pass is the one
+ * computing it today.
  */
 export function findClassesWithoutProgram(classes: readonly ClassRow[]): GsuiteAuditFinding[] {
   return classes
@@ -226,7 +227,7 @@ export function findClassesWithoutProgram(classes: readonly ClassRow[]): GsuiteA
       source: CLUBSPOT_SYNC_SOURCE,
       kind: "class_without_program" as const,
       subject: cls.id as string,
-      detail: `Class "${cls.name}" (${cls.id}) has no program_id`,
+      detail: `Class "${cls.name}" (${cls.id}) has no offering in the catalog, or offerings of two programs`,
     }));
 }
 

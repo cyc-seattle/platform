@@ -18,10 +18,11 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
 - The CRM's terms are ours, and Clubspot's appear only in its mirrors and the sync
   (cyc-seattle/isthmia#241). A **program** is a lasting thing CYC runs, such as Guppies or J-Pod, and
   is what a Google Group or a program role attaches to. A program with `team` set is a **team**, such
-  as a race team. A Clubspot **camp** (`clubspot_camps`) is only how people sign up, copied each
-  season, and its **classes** map to programs by hand. An **offering** and a **registration** are
-  ours, made from Clubspot's sessions, classes, and entries ([Collections](#collections)). We say
-  registration, not "enrollment."
+  as a race team. An **offering** is the catalog's: what CSC sells, one program for one dated period
+  (cyc-seattle/platform#332). A Clubspot **camp** (`clubspot_camps`) is only how people sign up, built
+  from a registration form's offerings each season, and staff link each offering to the Clubspot class,
+  and session, that sells it. A **registration** is ours, made from Clubspot's entries
+  ([Collections](#collections)). We say registration, not "enrollment."
 - Registration status and person contact fields get **history, not just a current value** — see
   [Change tracking and provenance](#change-tracking-and-provenance).
 - Person identity is resolved once, at creation, and never re-resolved — see
@@ -41,17 +42,25 @@ identity, provenance, and permissions — behavior that isn't visible in either 
 
 Every collection that mirrors Clubspot carries the `clubspot_` prefix, since Directus keeps every
 collection in one namespace and Clubspot's terms are ours only at the sync boundary
-(cyc-seattle/isthmia#241). The CRM's own `offerings` and `registrations` are made from them:
+(cyc-seattle/isthmia#241). The CRM's own `registrations` are made from them:
 
-- An **offering** is a program sold for one dated period: a class with a program, in one session.
-  A class whose cap covers every session (a cap with no session) is one offering, from its first
-  session to its last.
+- A catalog **offering** (`offerings`, in `schemas/core.yaml`) links to its Clubspot class, and to its
+  session when it sells one session. An offering with no session is a class whose cap covers every
+  session, from its first session to its last. A Catalog Writer sets the link. The link fields are
+  declared in `schemas/clubspot.yaml`, beside the mirrors they point at, and clear, not delete the
+  offering, when Clubspot deletes the class or session.
 - A **registration** is one person in one offering, from one `clubspot_registration_entries` row,
-  with its status. An entry waits until its participant is matched to a person.
+  with its status. An entry waits until its participant is matched to a person, and until an offering
+  is linked to its class and session.
 
-clubspot-sync makes both after each run's camps, from every camp's mirrors, archived ones included,
-and deletes a row whose class lost its program or whose session was archived. Staff read them, and
-no one edits them.
+clubspot-sync makes the registrations after each run's camps, from every camp's mirrors, archived ones
+included, and deletes one whose entry no longer has an offering. Staff read them, and no one edits
+them. It also writes each offering's `confirmed_count`, which the public website reads in place of the
+registrations, and reports an offering whose dates or cap differ from its Clubspot class and session
+(`offering_differs`). An offering with registrations can't be deleted.
+
+Until cyc-seattle/platform#332's migration `cyc0027`, clubspot-sync made the offerings themselves. The
+migration kept each one, with its ID, as a catalog offering on a registration form for its camp.
 
 `clubspot_registration_entries` also carries five nullable columns for Clubspot's own per-entry status and
 waitlist bookkeeping: `clubspot_status`, `confirmed_at`, `waitlist_number`, `accepted_from_waitlist`,
@@ -80,7 +89,8 @@ of another kind.
 `programs.google_group_id` in its own schema, even though `programs` belongs to `core`, not this
 package - groups hang off programs only. `clubspot_classes.program_id`, by contrast, is a plain field
 declared directly in `schemas/clubspot.yaml`, since `clubspot-sync` owns the collection it
-came from. Every package's schema is merged into one snapshot and applied together, so a
+came from. clubspot-sync sets it from the offerings linked to the class, for gsuite-sync, which still
+reads it. Every package's schema is merged into one snapshot and applied together, so a
 collection here can carry another package's field without this package knowing about that
 provider.
 

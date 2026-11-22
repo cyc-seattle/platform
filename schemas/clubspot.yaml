@@ -4249,9 +4249,9 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: Set by hand, once for each class. The sync never changes it.
+      note: The program of the class's offerings. The sync sets it from them.
       options: null
-      readonly: false
+      readonly: true
       required: false
       searchable: true
       sort: 5
@@ -4305,6 +4305,126 @@ fields:
       width: full
     schema:
       name: archived
+      table: clubspot_camps
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: clubspot_camps
+    field: public
+    type: boolean
+    meta:
+      collection: clubspot_camps
+      conditions: null
+      display: null
+      display_options: null
+      field: public
+      group: null
+      hidden: false
+      interface: boolean
+      note: Shown on Clubspot's public pages.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: public
+      table: clubspot_camps
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: clubspot_camps
+    field: registration_closed
+    type: boolean
+    meta:
+      collection: clubspot_camps
+      conditions: null
+      display: null
+      display_options: null
+      field: registration_closed
+      group: null
+      hidden: false
+      interface: boolean
+      note: Clubspot isn't taking registrations.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: registration_closed
+      table: clubspot_camps
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: clubspot_camps
+    field: hide_spots_left
+    type: boolean
+    meta:
+      collection: clubspot_camps
+      conditions: null
+      display: null
+      display_options: null
+      field: hide_spots_left
+      group: null
+      hidden: false
+      interface: boolean
+      note: Clubspot hides how many spots are left.
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: hide_spots_left
       table: clubspot_camps
       data_type: boolean
       default_value: false
@@ -4878,6 +4998,141 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: offerings
+    field: clubspot_class_id
+    type: string
+    meta:
+      collection: offerings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}} ({{camp_id.name}})"
+      field: clubspot_class_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Its class in Clubspot. Set once the class is made in Clubspot.
+      options:
+        template: "{{name}} ({{camp_id.name}})"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 9
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Clubspot class
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: clubspot_class_id
+      table: offerings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: clubspot_classes
+      foreign_key_column: id
+  - collection: offerings
+    field: clubspot_session_id
+    type: string
+    meta:
+      collection: offerings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}} ({{camp_id.name}})"
+      field: clubspot_session_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Its session in Clubspot, for an offering of one session. Empty when the class's limit covers every session.
+      options:
+        template: "{{name}} ({{camp_id.name}})"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Clubspot session
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: clubspot_session_id
+      table: offerings
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: clubspot_sessions
+      foreign_key_column: id
+  - collection: registration_forms
+    field: clubspot_camp_id
+    type: string
+    meta:
+      collection: registration_forms
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: clubspot_camp_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: Its camp in Clubspot. Set once the camp is made in Clubspot.
+      options:
+        template: "{{name}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Clubspot camp
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: clubspot_camp_id
+      table: registration_forms
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: clubspot_camps
+      foreign_key_column: id
 relations:
   - collection: contact_points
     field: participant_id
@@ -5297,5 +5552,69 @@ relations:
       foreign_key_table: programs
       foreign_key_column: id
       constraint_name: clubspot_classes_program_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+
+  - collection: offerings
+    field: clubspot_class_id
+    related_collection: clubspot_classes
+    meta:
+      junction_field: null
+      many_collection: offerings
+      many_field: clubspot_class_id
+      one_allowed_collections: null
+      one_collection: clubspot_classes
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: offerings
+      column: clubspot_class_id
+      foreign_key_table: clubspot_classes
+      foreign_key_column: id
+      constraint_name: offerings_clubspot_class_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: offerings
+    field: clubspot_session_id
+    related_collection: clubspot_sessions
+    meta:
+      junction_field: null
+      many_collection: offerings
+      many_field: clubspot_session_id
+      one_allowed_collections: null
+      one_collection: clubspot_sessions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: offerings
+      column: clubspot_session_id
+      foreign_key_table: clubspot_sessions
+      foreign_key_column: id
+      constraint_name: offerings_clubspot_session_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: registration_forms
+    field: clubspot_camp_id
+    related_collection: clubspot_camps
+    meta:
+      junction_field: null
+      many_collection: registration_forms
+      many_field: clubspot_camp_id
+      one_allowed_collections: null
+      one_collection: clubspot_camps
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: registration_forms
+      column: clubspot_camp_id
+      foreign_key_table: clubspot_camps
+      foreign_key_column: id
+      constraint_name: registration_forms_clubspot_camp_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL

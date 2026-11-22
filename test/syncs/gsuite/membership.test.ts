@@ -82,7 +82,17 @@ function cls(id: string, programId: string | null): ClassRow {
 }
 
 function camp(id: string, endDate: string | null, archived = false): CampRow {
-  return { id, name: id, start_date: null, end_date: endDate, archived, clubspot_sales_account: null };
+  return {
+    id,
+    name: id,
+    start_date: null,
+    end_date: endDate,
+    archived,
+    clubspot_sales_account: null,
+    public: false,
+    registration_closed: false,
+    hide_spots_left: false,
+  };
 }
 
 function roleAssignment(overrides: Partial<ProgramRoleAssignmentRow>): ProgramRoleAssignmentRow {

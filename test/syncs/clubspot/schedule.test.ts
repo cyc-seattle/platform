@@ -78,6 +78,9 @@ describe("planCamps", () => {
         end_date: null,
         archived: false,
         clubspot_sales_account: null,
+        public: false,
+        registration_closed: false,
+        hide_spots_left: false,
         synced_through: null,
         quiet_runs: 0,
       },
@@ -94,6 +97,9 @@ describe("planCamps", () => {
         end_date: null,
         archived: false,
         clubspot_sales_account: null,
+        public: false,
+        registration_closed: false,
+        hide_spots_left: false,
         synced_through: null,
         quiet_runs: 0,
       },
@@ -101,6 +107,18 @@ describe("planCamps", () => {
     const plan = planCamps([camp("camp-1", "Youth Camp") as unknown as Camp], existing);
     expect(plan.toCreate).toEqual([]);
     expect(plan.toUpdate).toEqual([]);
+  });
+
+  it("copies whether the camp is public, takes registrations, and shows spots left", () => {
+    const shown = parseObject("camp-1", {
+      name: "Youth Camp",
+      archived: false,
+      public: true,
+      registration_closed: true,
+      hide_spots_left: true,
+    });
+    const plan = planCamps([shown as unknown as Camp], []);
+    expect(plan.toCreate).toMatchObject([{ public: true, registration_closed: true, hide_spots_left: true }]);
   });
 
   it("updates the existing row when a field changed", () => {
@@ -112,6 +130,9 @@ describe("planCamps", () => {
         end_date: null,
         archived: false,
         clubspot_sales_account: null,
+        public: false,
+        registration_closed: false,
+        hide_spots_left: false,
         synced_through: null,
         quiet_runs: 0,
       },
@@ -132,6 +153,9 @@ describe("planCamps", () => {
         end_date: null,
         archived: false,
         clubspot_sales_account: null,
+        public: false,
+        registration_closed: false,
+        hide_spots_left: false,
         synced_through: "2026-01-01T00:00:00.000Z",
         quiet_runs: 3,
       },

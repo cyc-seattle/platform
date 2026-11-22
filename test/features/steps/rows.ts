@@ -97,11 +97,6 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     published_on: daysFromNow(0),
   }),
   // A program is the subtype of a product of kind `program`, and each has its own.
-  catalog_offerings: async () => ({
-    id: randomUUID(),
-    program_id: row["programs"],
-    name: `Offering ${key("offering")}`,
-  }),
   programs: async () => ({
     id: randomUUID(),
     name: `Program ${runId}`,
@@ -220,10 +215,12 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     ),
     currency: "usd",
   }),
-  // As clubspot-sync makes them from the run's rows, so a sync run during the tests leaves them be.
+  registration_forms: async () => ({ id: randomUUID(), name: `Form ${key("form")}` }),
+  // Linked to the run's class and session, as staff link them.
   offerings: async () => ({
     id: randomUUID(),
     program_id: row["programs"],
+    name: `Offering ${key("offering")}`,
     starts_on: null,
     ends_on: null,
     capacity: 10,
@@ -453,7 +450,6 @@ export const changes: Record<string, () => Row> = {
   links: () => ({ note: `Changed ${runId}` }),
   announcements: () => ({ title: `Announcement ${runId} (renamed)` }),
   programs: () => ({ name: `Program ${runId} (renamed)` }),
-  catalog_offerings: () => ({ name: `Offering ${key("offering")} (renamed)` }),
   organizations: () => ({ short_name: "Changed" }),
   venues: () => ({ name: `Venue ${key("venue")} (renamed)` }),
   program_roles: () => ({ description: "Changed." }),
@@ -473,6 +469,7 @@ export const changes: Record<string, () => Row> = {
   clubspot_registrations: () => ({ waiver_status: "signed" }),
   clubspot_registration_entries: () => ({ priority: 1 }),
   clubspot_registration_billing: () => ({ tax: 1 }),
+  registration_forms: () => ({ name: `Form ${key("form")} (renamed)` }),
   offerings: () => ({ capacity: 11 }),
   registrations: () => ({ status: "waitlist" }),
   program_role_assignments: () => ({ ends_on: daysFromNow(30) }),
@@ -546,7 +543,6 @@ async function createRows(): Promise<void> {
     ["organizations", () => ({})],
     ["venues", () => ({})],
     ["programs", () => ({})],
-    ["catalog_offerings", () => ({})],
     ["program_roles", () => ({})],
     ["clubspot_camps", () => ({})],
     ["clubspot_sessions", () => ({})],
@@ -564,6 +560,7 @@ async function createRows(): Promise<void> {
     ["clubspot_custom_field_responses", () => ({})],
     ["clubspot_registration_entries", () => ({ registration_id: row["clubspot_registrations"] })],
     ["clubspot_registration_billing", () => ({ registration_id: row["clubspot_registrations"] })],
+    ["registration_forms", () => ({})],
     ["offerings", () => ({})],
     ["registrations", () => ({ clubspot_entry_id: row["clubspot_registration_entries"] })],
     ["program_role_assignments", () => ({})],

@@ -85,7 +85,12 @@ export const defaultViews: DefaultView[] = [
   { collection: "products", sort: ["name"], fields: ["name", "kind", "program_area_id", "revenue_account_id"] },
   { collection: "program_areas", sort: ["name"], fields: ["name", "revenue_account_id"] },
   { collection: "programs", sort: ["name"], fields: ["name", "product_id", "color"] },
-  { collection: "catalog_offerings", sort: ["program_id.name", "name"], fields: ["program_id", "name"] },
+  {
+    collection: "offerings",
+    sort: ["-starts_on", "program_id.name"],
+    fields: ["program_id", "name", "starts_on", "ends_on", "price_cents", "capacity", "registration_form_id"],
+  },
+  { collection: "registration_forms", sort: ["-opens_on", "name"], fields: ["name", "opens_on", "clubspot_camp_id"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
   {
     collection: "organization_cost_accounts",
@@ -127,11 +132,6 @@ export const defaultViews: DefaultView[] = [
     collection: "program_area_role_assignments",
     sort: ["program_area_id.name", "person_id.last_name"],
     fields: ["person_id", "program_area_id", "program_role_id", "starts_on", "ends_on"],
-  },
-  {
-    collection: "offerings",
-    sort: ["-starts_on", "program_id.name"],
-    fields: ["program_id", "starts_on", "ends_on", "capacity"],
   },
   {
     collection: "registrations",

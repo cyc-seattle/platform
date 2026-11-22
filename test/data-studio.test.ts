@@ -87,7 +87,7 @@ const VISIBLE_JOIN_TABLES: Record<string, string> = {
 };
 
 /** Fields a Clubspot sync copies but staff set by hand. Matches the writer rules in policies.ts. */
-const SET_BY_HAND = new Set(["clubspot_classes.program_id", "clubspot_participants.person_id"]);
+const SET_BY_HAND = new Set(["clubspot_participants.person_id"]);
 
 /** Words in a field's key a staffer wouldn't know without a label or a note. */
 const ACRONYMS = ["ga", "cogs", "byob", "mtdc", "990"];
