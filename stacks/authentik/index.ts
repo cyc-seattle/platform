@@ -384,10 +384,17 @@ function signInGroup(key: string): authentik.Group {
   return found.group;
 }
 for (const { key, group } of signInGroups) {
-  for (const permission of ["view_group", "add_user_to_group", "remove_user_from_group"]) {
+  for (const codename of ["view_group", "add_user_to_group", "remove_user_from_group"]) {
+    // With its app label even on one object: Authentik's assign_perm splits on the dot either way, and
+    // fails with a 500 on a bare codename. The provider reads it back the same way.
     new authentik.RbacPermissionRole(
-      `directus-access-sync-${key}-${permission}`,
-      { role: accessSyncRole.id, model: "authentik_core.group", objectId: group.id, permission },
+      `directus-access-sync-${key}-${codename}`,
+      {
+        role: accessSyncRole.id,
+        model: "authentik_core.group",
+        objectId: group.id,
+        permission: `authentik_core.${codename}`,
+      },
       opts,
     );
   }
