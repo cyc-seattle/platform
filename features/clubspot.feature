@@ -8,7 +8,9 @@ Feature: Registrations from Clubspot
 
   The Clubspot sync copies the sessions, classes, and registrations into the CRM. It registers each
   sailor in the offering their class and session are linked to, and keeps count of each offering's
-  confirmed sailors. A sailor in a class no offering is linked to waits until one is. It adds each
+  confirmed sailors. A sailor in a class no offering is linked to waits until one is, and the sync
+  reports the class, so staff can link it. A sailor's registration stays when a link is cleared or
+  changed, and goes only with their sign-up in Clubspot. It adds each
   sailor and parent on a registration to the CRM as a person, with their details and medical
   information, so staff work from one list of people. What it copies from Clubspot means those
   sessions, classes, registrations, people, details, and medical information. If it finds the same
@@ -43,6 +45,11 @@ Feature: Registrations from Clubspot
       And the Clubspot sync runs again
       Then the sailor is registered in that offering
       And the offering counts one confirmed sailor
+
+    Example: A class with sailors and no offering is reported
+      Given a sailor registered for a class running today in Clubspot
+      When the Clubspot sync runs
+      Then the sync reports that the class has sailors in no offering
 
   Rule: The Clubspot sync reports an offering whose dates or limit differ from Clubspot's
 

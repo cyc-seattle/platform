@@ -1265,7 +1265,7 @@ interface AuditDetectionResult {
 
 /**
  * Raises `duplicate_person` and `unlinked_participant` findings, once per run after the camp
- * loop, with the registrations pass's `offering_differs`, and reconciles `audit_findings` against
+ * loop, with the registrations pass's `offering_differs` and `class_without_offering`, and reconciles `audit_findings` against
  * them (see `planAuditFindingWrites`). Scoped to the kinds this pass owns (`AUDIT_FINDING_KINDS`), so a
  * finding some other sync raised - such as gsuite-sync's own `class_without_program`, also tagged
  * `source: "clubspot-sync"` - is left alone. A reopened finding counts as raised again, same as a fresh one.

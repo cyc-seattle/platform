@@ -48,14 +48,15 @@ collection in one namespace and Clubspot's terms are ours only at the sync bound
   session when it sells one session. An offering with no session is a class whose cap covers every
   session, from its first session to its last. A Catalog Writer sets the link. The link fields are
   declared in `schemas/clubspot.yaml`, beside the mirrors they point at, and clear, not delete the
-  offering, when Clubspot deletes the class or session.
+  offering, when Clubspot deletes the class or session. An offering that loses its session loses its
+  class too, by a trigger on `clubspot_sessions`, so a week never reads as the whole class.
 - A **registration** is one person in one offering, from one `clubspot_registration_entries` row,
   with its status. An entry waits until its participant is matched to a person, and until an offering
-  is linked to its class and session.
+  is linked to its class and session. A cleared or changed link never deletes a registration.
 
 clubspot-sync makes the registrations after each run's camps, from every camp's mirrors, archived ones
-included, and deletes one whose entry no longer has an offering. Staff read them, and no one edits
-them. It also writes each offering's `confirmed_count`, which the public website reads in place of the
+included, and deletes one only with its Clubspot entry. Staff read them, and no one edits them. It
+also writes each offering's `confirmed_count`, which the public website reads in place of the
 registrations, and reports an offering whose dates or cap differ from its Clubspot class and session
 (`offering_differs`). An offering with registrations can't be deleted.
 

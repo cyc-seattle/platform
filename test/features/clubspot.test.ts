@@ -113,6 +113,26 @@ describeAccessFeature("clubspot.feature", {
     });
   },
 
+  "A class with sailors and no offering is reported": ({ Given, When, Then }) => {
+    const run = clubspotRun();
+    const { id } = run;
+
+    Given("a sailor registered for a class running today in Clubspot", async () => {
+      await seedClass(run);
+      await seedSailor(run);
+    });
+
+    When("the Clubspot sync runs", () => runClubspotSync(id("cmp")));
+
+    Then("the sync reports that the class has sailors in no offering", async () => {
+      const findings: Row[] = await asAdmin(
+        "GET",
+        `/items/audit_findings?filter[kind][_eq]=class_without_offering&filter[subject][_eq]=${id("cls")}&fields=status`,
+      );
+      expect(findings).toEqual([{ status: "open" }]);
+    });
+  },
+
   "An offering that ends a day later than its Clubspot session": ({ Given, When, And, Then }) => {
     const run = clubspotRun();
     const { id } = run;

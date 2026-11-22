@@ -5015,7 +5015,7 @@ fields:
       options:
         template: "{{name}} ({{camp_id.name}})"
       readonly: false
-      required: true
+      required: false
       searchable: true
       sort: 9
       special:
@@ -5034,7 +5034,7 @@ fields:
       max_length: 255
       numeric_precision: null
       numeric_scale: null
-      is_nullable: false
+      is_nullable: true
       is_unique: false
       is_indexed: false
       is_primary_key: false

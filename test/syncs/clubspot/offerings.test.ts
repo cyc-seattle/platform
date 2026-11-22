@@ -3,6 +3,7 @@ import { type CrmRegistrationRow, type OfferingRow } from "../../../src/model/cr
 import {
   apply,
   clubspotOfferings,
+  findClassesWithoutOffering,
   findOfferingDifferences,
   type Mirrors,
   offeringIdsByKey,
@@ -13,7 +14,7 @@ import {
 import { type DirectusClient } from "../../../src/syncs/runtime/index.ts";
 
 const empty: Mirrors = {
-  camps: [{ id: "camp-1", start_date: "2026-06-01", end_date: "2026-08-31" }],
+  camps: [{ id: "camp-1", name: "Summer", start_date: "2026-06-01", end_date: "2026-08-31", archived: false }],
   sessions: [
     { id: "week-1", camp_id: "camp-1", start_date: "2026-06-15", end_date: "2026-06-19", archived: false },
     { id: "week-2", camp_id: "camp-1", start_date: "2026-06-22", end_date: "2026-06-26", archived: false },
@@ -58,7 +59,7 @@ describe("clubspotOfferings", () => {
   it("reads each session of a class, with its cap", () => {
     const found = clubspotOfferings(
       mirrors({
-        classes: [{ id: "guppies", camp_id: "camp-1", program_id: null }],
+        classes: [{ id: "guppies", camp_id: "camp-1", name: "guppies", program_id: null }],
         sessionClasses: inBothWeeks("guppies"),
         entryCaps: [{ class_id: "guppies", session_id: "week-1", cap: 12 }],
       }),
@@ -73,7 +74,7 @@ describe("clubspotOfferings", () => {
   it("reads a class whose cap covers every session as one, over all of them", () => {
     const found = clubspotOfferings(
       mirrors({
-        classes: [{ id: "j-pod", camp_id: "camp-1", program_id: null }],
+        classes: [{ id: "j-pod", camp_id: "camp-1", name: "j-pod", program_id: null }],
         sessionClasses: inBothWeeks("j-pod"),
         entryCaps: [{ class_id: "j-pod", session_id: null, cap: 8 }],
       }),
@@ -89,8 +90,8 @@ describe("clubspotOfferings", () => {
       mirrors({
         sessions: [empty.sessions[0]!, { ...empty.sessions[1]!, archived: true }],
         classes: [
-          { id: "k-pod", camp_id: "camp-1", program_id: null },
-          { id: "guppies", camp_id: "camp-1", program_id: null },
+          { id: "k-pod", camp_id: "camp-1", name: "k-pod", program_id: null },
+          { id: "guppies", camp_id: "camp-1", name: "guppies", program_id: null },
         ],
         sessionClasses: inBothWeeks("guppies"),
       }),
@@ -160,6 +161,54 @@ describe("planConfirmedCounts", () => {
   });
 });
 
+describe("findClassesWithoutOffering", () => {
+  const entry = (id: string, classId: string, sessionId: string, status = "confirmed") => ({
+    id,
+    registration_id: "signup-1",
+    session_id: sessionId,
+    class_id: classId,
+    status,
+  });
+
+  it("reports a class with sign-ups in no offering, once, with how many", () => {
+    const findings = findClassesWithoutOffering(
+      mirrors({
+        classes: [
+          { id: "guppies", camp_id: "camp-1", name: "Guppies", program_id: null },
+          { id: "j-pod", camp_id: "camp-1", name: "J Pod", program_id: null },
+        ],
+        entries: [
+          entry("e-1", "guppies", "week-1"),
+          entry("e-2", "guppies", "week-2"),
+          entry("e-3", "guppies", "week-2", "cancelled"),
+          entry("e-4", "j-pod", "week-1"),
+        ],
+      }),
+      new Map([["j-pod:", "offering-j-pod"]]),
+      "2026-06-01",
+    );
+
+    expect(findings).toEqual([
+      {
+        source: "clubspot-sync",
+        kind: "class_without_offering",
+        subject: "guppies",
+        detail: 'Class "Guppies" in "Summer" (guppies): 2 sign-ups in no offering',
+      },
+    ]);
+  });
+
+  it("leaves out a class in a camp that's over or archived", () => {
+    const classes = [{ id: "guppies", camp_id: "camp-1", name: "Guppies", program_id: null }];
+    const entries = [entry("e-1", "guppies", "week-1")];
+    expect(findClassesWithoutOffering(mirrors({ classes, entries }), new Map(), "2026-09-01")).toEqual([]);
+    const archived = [{ ...empty.camps[0]!, archived: true }];
+    expect(findClassesWithoutOffering(mirrors({ camps: archived, classes, entries }), new Map(), "2026-06-01")).toEqual(
+      [],
+    );
+  });
+});
+
 describe("findOfferingDifferences", () => {
   const fromClubspot = new Map([
     ["guppies:week-1", { starts_on: "2026-06-15", ends_on: "2026-06-19", capacity: 12 }],
@@ -217,9 +266,9 @@ describe("findOfferingDifferences", () => {
 describe("planRegistrations", () => {
   const linked: Partial<Mirrors> = {
     classes: [
-      { id: "guppies", camp_id: "camp-1", program_id: "program-guppies" },
-      { id: "j-pod", camp_id: "camp-1", program_id: "program-j-pod" },
-      { id: "unmapped", camp_id: "camp-1", program_id: null },
+      { id: "guppies", camp_id: "camp-1", name: "guppies", program_id: "program-guppies" },
+      { id: "j-pod", camp_id: "camp-1", name: "j-pod", program_id: "program-j-pod" },
+      { id: "unmapped", camp_id: "camp-1", name: "unmapped", program_id: null },
     ],
     registrations: [
       { id: "signup-1", participant_id: "participant-1" },
@@ -274,7 +323,7 @@ describe("planRegistrations", () => {
     ]);
   });
 
-  it("follows a cancelled entry, and deletes a registration whose entry no longer has an offering", () => {
+  it("follows a cancelled entry, and keeps a registration whose class lost its link, in the offering it had", () => {
     const existing: CrmRegistrationRow[] = [
       {
         id: "r-1",
@@ -318,7 +367,40 @@ describe("planRegistrations", () => {
     expect(plan).toEqual({
       toCreate: [],
       toUpdate: [{ id: "r-1", patch: { status: "cancelled" } }],
-      toDelete: ["r-2"],
+      toDelete: [],
+    });
+  });
+
+  it("moves a registration to the offering its class is linked to now", () => {
+    const plan = planRegistrations(
+      mirrors({
+        ...linked,
+        entries: [
+          {
+            id: "entry-1",
+            registration_id: "signup-1",
+            session_id: "week-1",
+            class_id: "guppies",
+            status: "confirmed",
+          },
+        ],
+      }),
+      new Map([["guppies:week-1", "offering-guppies-new"]]),
+      [
+        {
+          id: "r-1",
+          person_id: "person-1",
+          offering_id: "offering-guppies-1",
+          status: "confirmed",
+          clubspot_entry_id: "entry-1",
+        },
+      ],
+    );
+
+    expect(plan).toEqual({
+      toCreate: [],
+      toUpdate: [{ id: "r-1", patch: { offering_id: "offering-guppies-new" } }],
+      toDelete: [],
     });
   });
 

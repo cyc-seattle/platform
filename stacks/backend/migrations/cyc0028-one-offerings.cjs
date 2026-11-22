@@ -9,7 +9,9 @@
 // The schema apply runs after this and refuses a column it didn't make without Directus's record of
 // it, so this makes only the columns it fills, with their records, and the apply adds the rest.
 // Deleting a Clubspot class or session now clears an offering's link instead of deleting it, and an
-// offering with registrations can't be deleted.
+// offering with registrations can't be deleted. An offering of one session that loses its session
+// loses its class too: with the class alone, it would read as the whole class's, and take every
+// session's sailors. A trigger does it, since a foreign key clears only its own column.
 //
 // It's one statement, so Postgres runs it in one transaction. It does nothing once
 // `catalog_offerings` is gone, or on a new database.
@@ -29,6 +31,7 @@ BEGIN
     clubspot_camp_id varchar(255)
       CONSTRAINT registration_forms_clubspot_camp_id_foreign REFERENCES clubspot_camps (id) ON DELETE SET NULL
   );
+  ALTER TABLE offerings ALTER COLUMN clubspot_class_id DROP NOT NULL;
   ALTER TABLE offerings ADD COLUMN name varchar(255);
   ALTER TABLE offerings ADD COLUMN registration_form_id uuid
     CONSTRAINT offerings_registration_form_id_foreign REFERENCES registration_forms (id) ON DELETE RESTRICT;
@@ -69,6 +72,15 @@ BEGIN
   ALTER TABLE registrations DROP CONSTRAINT IF EXISTS registrations_offering_id_foreign;
   ALTER TABLE registrations ADD CONSTRAINT registrations_offering_id_foreign
     FOREIGN KEY (offering_id) REFERENCES offerings (id) ON DELETE RESTRICT;
+  CREATE FUNCTION cyc_unlink_session_offerings() RETURNS trigger AS $unlink$
+  BEGIN
+    UPDATE offerings SET clubspot_class_id = NULL, clubspot_session_id = NULL
+      WHERE clubspot_session_id = OLD.id;
+    RETURN OLD;
+  END
+  $unlink$ LANGUAGE plpgsql;
+  CREATE TRIGGER cyc_unlink_session_offerings BEFORE DELETE ON clubspot_sessions
+    FOR EACH ROW EXECUTE FUNCTION cyc_unlink_session_offerings();
   -- A Clubspot registration entry finds one offering by its class and session.
   CREATE UNIQUE INDEX offerings_clubspot_class_session_unique
     ON offerings (clubspot_class_id, COALESCE(clubspot_session_id, ''))

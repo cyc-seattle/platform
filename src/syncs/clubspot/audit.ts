@@ -6,12 +6,14 @@ import { type DuplicatePersonGroup, type MergePerson } from "./merge.ts";
  * cyc-seattle/isthmia#133, and cyc-seattle/platform#332). Scopes `planAuditFindingWrites` to the rows it owns, so it never resolves a finding some
  * other sync raised - `class_without_program`, also tagged `source: "clubspot-sync"`, is owned and
  * reconciled by gsuite-sync's own audit pass instead. */
-export type AuditFindingKind = "duplicate_person" | "unlinked_participant" | "offering_differs";
+export type AuditFindingKind =
+  "duplicate_person" | "unlinked_participant" | "offering_differs" | "class_without_offering";
 
 export const AUDIT_FINDING_KINDS: readonly AuditFindingKind[] = [
   "duplicate_person",
   "unlinked_participant",
   "offering_differs",
+  "class_without_offering",
 ];
 
 export type ClubspotSyncAuditFinding = AuditFindingInput & { kind: AuditFindingKind };

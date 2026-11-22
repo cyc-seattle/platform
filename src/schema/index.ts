@@ -557,7 +557,7 @@ export interface MedicalProfiles {
 /** What CSC sells: one program for one dated period, such as Guppies week 3 of summer 2027. Clubspot's camps are built from these. */
 export interface Offerings {
   /** Its class in Clubspot. Set once the class is made in Clubspot. */
-  clubspot_class_id: string | ClubspotClasses;
+  clubspot_class_id: string | ClubspotClasses | null;
   /** Its session in Clubspot, for an offering of one session. Empty when the class's limit covers every session. */
   clubspot_session_id: string | ClubspotSessions | null;
   id: string;

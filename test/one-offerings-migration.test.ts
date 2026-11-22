@@ -27,7 +27,7 @@ async function database(): Promise<PGlite> {
       id uuid PRIMARY KEY,
       program_id uuid NOT NULL CONSTRAINT offerings_program_id_foreign REFERENCES programs (id) ON DELETE CASCADE,
       starts_on date, ends_on date, capacity integer,
-      clubspot_class_id varchar(255) CONSTRAINT offerings_clubspot_class_id_foreign REFERENCES clubspot_classes (id) ON DELETE CASCADE,
+      clubspot_class_id varchar(255) NOT NULL CONSTRAINT offerings_clubspot_class_id_foreign REFERENCES clubspot_classes (id) ON DELETE CASCADE,
       clubspot_session_id varchar(255) CONSTRAINT offerings_clubspot_session_id_foreign REFERENCES clubspot_sessions (id) ON DELETE CASCADE
     );
     CREATE TABLE registrations (
@@ -128,16 +128,29 @@ describe("the one offerings migration", { timeout: 30_000 }, () => {
     expect(await rows(db, "SELECT collection FROM directus_presets")).toEqual([]);
   });
 
-  it("clears an offering's Clubspot link when Clubspot deletes its class or session", async () => {
+  it("unlinks an offering whose Clubspot session or class is deleted, so a week never reads as the whole class", async () => {
     const db = await database();
     await up(knex(db));
     await db.exec("DELETE FROM clubspot_sessions WHERE id = 'week2'");
+    expect(
+      await rows(db, `SELECT clubspot_class_id, clubspot_session_id FROM offerings WHERE id = '${id(12)}'`),
+    ).toEqual([{ clubspot_class_id: null, clubspot_session_id: null }]);
+    await db.exec("DELETE FROM clubspot_sessions WHERE id = 'week1'");
     await db.exec("DELETE FROM clubspot_classes WHERE id = 'jpod'");
     expect(await rows(db, "SELECT id, clubspot_class_id, clubspot_session_id FROM offerings ORDER BY id")).toEqual([
-      { id: id(11), clubspot_class_id: "guppies", clubspot_session_id: "week1" },
-      { id: id(12), clubspot_class_id: "guppies", clubspot_session_id: null },
+      { id: id(11), clubspot_class_id: null, clubspot_session_id: null },
+      { id: id(12), clubspot_class_id: null, clubspot_session_id: null },
       { id: id(13), clubspot_class_id: null, clubspot_session_id: null },
       { id: id(31), clubspot_class_id: null, clubspot_session_id: null },
+    ]);
+  });
+
+  it("lets staff make an offering not linked to Clubspot yet", async () => {
+    const db = await database();
+    await up(knex(db));
+    await db.exec(`INSERT INTO offerings (id, program_id, name) VALUES ('${id(41)}', '${id(1)}', 'Week 1')`);
+    expect(await rows(db, `SELECT clubspot_class_id FROM offerings WHERE id = '${id(41)}'`)).toEqual([
+      { clubspot_class_id: null },
     ]);
   });
 

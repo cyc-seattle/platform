@@ -192,11 +192,14 @@ sailors' registrations gave. It never replaces a value (`src/syncs/clubspot/shar
 **The sync registers sailors in the catalog's offerings, and never makes one.** Staff link each
 catalog offering to its Clubspot class and session (cyc-seattle/platform#332). After the camp loop and the
 merges, the sync makes each registration in the offering its entry's class and session are linked to,
-or the class's when the offering covers every session. An entry with no linked offering waits. The
-same pass writes each offering's `confirmed_count`, sets each class's `program_id` to its offerings'
+or the class's when the offering covers every session. An entry with no linked offering waits, and
+`class_without_offering` reports its class, in a camp that isn't archived or over, so the rosters miss
+those sailors until staff link it. A cleared or changed link never deletes a registration: it keeps
+its offering until the entry is linked again, and goes only when its Clubspot entry does. The same
+pass writes each offering's `confirmed_count`, sets each class's `program_id` to its offerings'
 program for gsuite-sync, and raises `offering_differs` for an offering, not archived or over, whose
 dates or cap aren't Clubspot's. The catalog is right, so the fix is in Clubspot or the link. If the
-pass fails, its open `offering_differs` findings are left alone (`src/syncs/clubspot/offerings.ts`).
+pass fails, its open findings are left alone (`src/syncs/clubspot/offerings.ts`).
 
 **A person reference is pinned, not gap-filled.** `clubspot_participants.person_id` and `contacts.contact_id`
 are set once, at creation, and never re-resolved. That is what makes a manual merge durable: staff

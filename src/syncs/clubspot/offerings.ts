@@ -23,9 +23,9 @@ import { type ClubspotSyncAuditFinding } from "./audit.ts";
  */
 
 export interface Mirrors {
-  camps: readonly Pick<CampRow, "id" | "start_date" | "end_date">[];
+  camps: readonly Pick<CampRow, "id" | "name" | "start_date" | "end_date" | "archived">[];
   sessions: readonly Pick<SessionRow, "id" | "camp_id" | "start_date" | "end_date" | "archived">[];
-  classes: readonly Pick<ClassRow, "id" | "camp_id" | "program_id">[];
+  classes: readonly Pick<ClassRow, "id" | "camp_id" | "name" | "program_id">[];
   sessionClasses: readonly Pick<SessionClassRow, "session_id" | "class_id">[];
   entryCaps: readonly Pick<EntryCapRow, "class_id" | "session_id" | "cap">[];
   entries: readonly Pick<RegistrationEntryRow, "id" | "registration_id" | "session_id" | "class_id" | "status">[];
@@ -212,7 +212,10 @@ export function findOfferingDifferences(
 
 /**
  * One registration for each registration entry in an offering, for the person its participant is
- * linked to. An entry whose participant has no person yet waits for the match.
+ * linked to. An entry whose participant has no person yet waits for the match, and one whose class and
+ * session have no offering waits for the link. A link that's cleared or changed never deletes a
+ * registration: it keeps its offering until the entry is linked again, and `findClassesWithoutOffering`
+ * reports it.
  */
 export function planRegistrations(
   mirrors: Mirrors,
@@ -221,22 +224,6 @@ export function planRegistrations(
 ): RowPlan<CrmRegistrationRow> {
   const participantByRegistration = new Map(mirrors.registrations.map((r) => [r.id, r.participant_id]));
   const personByParticipant = new Map(mirrors.participants.map((p) => [p.id, p.person_id]));
-  const desired = new Map<string, Omit<CrmRegistrationRow, "id">>();
-
-  for (const entry of mirrors.entries) {
-    const participantId = participantByRegistration.get(entry.registration_id);
-    const personId = participantId === undefined ? null : (personByParticipant.get(participantId) ?? null);
-    const offeringId =
-      offeringIdByKey.get(offeringKey(entry.class_id, null)) ??
-      offeringIdByKey.get(offeringKey(entry.class_id, entry.session_id));
-    if (personId === null || offeringId === undefined) continue;
-    desired.set(entry.id, {
-      person_id: personId,
-      offering_id: offeringId,
-      status: entry.status as CrmRegistrationRow["status"],
-      clubspot_entry_id: entry.id,
-    });
-  }
 
   const classIds = new Set(mirrors.classes.map((cls) => cls.id));
   const sessionIds = new Set(mirrors.sessions.map((session) => session.id));
@@ -248,8 +235,67 @@ export function planRegistrations(
     const participantId = participantByRegistration.get(entry.registration_id);
     return participantId !== undefined && personByParticipant.has(participantId);
   });
+  const judgedByEntry = new Map(judged.map((row) => [row.clubspot_entry_id, row]));
+
+  const desired = new Map<string, Omit<CrmRegistrationRow, "id">>();
+  for (const entry of mirrors.entries) {
+    const participantId = participantByRegistration.get(entry.registration_id);
+    const personId = participantId === undefined ? null : (personByParticipant.get(participantId) ?? null);
+    if (personId === null) continue;
+    const offeringId = offeringIdOf(offeringIdByKey, entry) ?? judgedByEntry.get(entry.id)?.offering_id;
+    if (offeringId === undefined) continue;
+    desired.set(entry.id, {
+      person_id: personId,
+      offering_id: offeringId,
+      status: entry.status as CrmRegistrationRow["status"],
+      clubspot_entry_id: entry.id,
+    });
+  }
   const { toCreate, toUpdate, toDelete } = reconcile(judged, desired, (row) => row.clubspot_entry_id);
   return { toCreate, toUpdate, toDelete };
+}
+
+/** The offering an entry's class is linked to as a whole, or else its class and session. */
+function offeringIdOf(
+  offeringIdByKey: ReadonlyMap<string, string>,
+  entry: Pick<RegistrationEntryRow, "class_id" | "session_id">,
+): string | undefined {
+  return (
+    offeringIdByKey.get(offeringKey(entry.class_id, null)) ??
+    offeringIdByKey.get(offeringKey(entry.class_id, entry.session_id))
+  );
+}
+
+/**
+ * `class_without_offering` findings: a class, in a camp that isn't archived or over by `today`, with a
+ * sailor in a class and session no offering is linked to. Their registration waits for the link, so the
+ * rosters don't show them yet.
+ */
+export function findClassesWithoutOffering(
+  mirrors: Mirrors,
+  offeringIdByKey: ReadonlyMap<string, string>,
+  today: string,
+): ClubspotSyncAuditFinding[] {
+  const campById = new Map(mirrors.camps.map((camp) => [camp.id, camp]));
+  const waiting = new Map<string, number>();
+  for (const entry of mirrors.entries) {
+    if (entry.status === "cancelled" || offeringIdOf(offeringIdByKey, entry) !== undefined) continue;
+    waiting.set(entry.class_id, (waiting.get(entry.class_id) ?? 0) + 1);
+  }
+  return mirrors.classes.flatMap((cls) => {
+    const sailors = waiting.get(cls.id);
+    const camp = campById.get(cls.camp_id);
+    if (sailors === undefined || camp === undefined || camp.archived) return [];
+    if (camp.end_date !== null && camp.end_date < today) return [];
+    return [
+      {
+        source: "clubspot-sync",
+        kind: "class_without_offering" as const,
+        subject: cls.id,
+        detail: `Class "${cls.name}" in "${camp.name}" (${cls.id}): ${sailors} sign-ups in no offering`,
+      },
+    ];
+  });
 }
 
 export interface OfferingSyncResult {
@@ -346,7 +392,7 @@ export async function syncOfferings(directus: DirectusClient, today: string): Pr
     [
       directus.readItems<Mirrors["camps"][number]>("clubspot_camps", {
         ...all,
-        fields: ["id", "start_date", "end_date"],
+        fields: ["id", "name", "start_date", "end_date", "archived"],
       }),
       directus.readItems<Mirrors["sessions"][number]>("clubspot_sessions", {
         ...all,
@@ -354,7 +400,7 @@ export async function syncOfferings(directus: DirectusClient, today: string): Pr
       }),
       directus.readItems<Mirrors["classes"][number]>("clubspot_classes", {
         ...all,
-        fields: ["id", "camp_id", "program_id"],
+        fields: ["id", "camp_id", "name", "program_id"],
       }),
       directus.readItems<Mirrors["sessionClasses"][number]>("clubspot_session_classes", {
         ...all,
@@ -403,11 +449,8 @@ export async function syncOfferings(directus: DirectusClient, today: string): Pr
       "archived_at",
     ],
   });
-  const plan = planRegistrations(
-    mirrors,
-    offeringIdsByKey(offerings),
-    await directus.readItems<CrmRegistrationRow>("registrations", all),
-  );
+  const linked = offeringIdsByKey(offerings);
+  const plan = planRegistrations(mirrors, linked, await directus.readItems<CrmRegistrationRow>("registrations", all));
   const registrationsWritten = await apply(directus, "registrations", plan);
 
   let offeringsWritten = 0;
@@ -424,6 +467,9 @@ export async function syncOfferings(directus: DirectusClient, today: string): Pr
   return {
     offeringsWritten,
     registrationsWritten,
-    findings: findOfferingDifferences(offerings, clubspotOfferings(mirrors), today),
+    findings: [
+      ...findOfferingDifferences(offerings, clubspotOfferings(mirrors), today),
+      ...findClassesWithoutOffering(mirrors, linked, today),
+    ],
   };
 }
