@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   dev:
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.1.0
     permissions:
       id-token: write
       contents: read
@@ -23,10 +23,12 @@ jobs:
       environment: dev
       task: none
       integration: true
+      # Dev's post-deploy run takes about 9 minutes, so a hang fails well before the shared default of 60.
+      integration-timeout: 20
   report:
     needs: dev
     if: always() && needs.dev.outputs.skipped != 'true'
-    uses: cyc-seattle/.github/.github/workflows/nightly-report.yml@v4.0.0
+    uses: cyc-seattle/.github/.github/workflows/nightly-report.yml@v4.1.0
     permissions:
       actions: read
       contents: read
