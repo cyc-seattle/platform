@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { withCrew } from "./crew-seed.ts";
 import { type AuditFindingRow, DirectusClient, fingerprintFinding } from "../../../src/syncs/runtime/index.ts";
 import { type Group, type GroupMember, type GroupSettings } from "@cyc-seattle/gsuite-sdk";
 import { type SettingsReader } from "../../../src/syncs/gsuite/audit-settings.ts";
@@ -33,7 +34,7 @@ function jsonResponse(status: number, body: unknown) {
  */
 function makeDirectusStore(seed: Partial<Record<string, Record<string, unknown>[]>> = {}) {
   const tables = new Map<string, Record<string, unknown>[]>(
-    Object.entries(seed).map(([collection, rows]) => [collection, (rows ?? []).map((row) => ({ ...row }))]),
+    Object.entries(withCrew(seed)).map(([collection, rows]) => [collection, (rows ?? []).map((row) => ({ ...row }))]),
   );
   let nextId = 1;
 
@@ -130,7 +131,7 @@ describe("runAudit", () => {
       google_groups: [{ id: "group-1", email: "class@cyccommunitysailing.org" }],
       programs: [{ id: "program-1", name: "Double-handed", google_group_id: "group-1", product_id: "product-1" }],
       products: [{ id: "product-1", kind: "program", revenue_account_id: null }],
-      program_role_assignments: [
+      program_terms: [
         {
           id: "pra-1",
           person_id: "coordinator",

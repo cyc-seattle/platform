@@ -79,7 +79,7 @@ export interface AccessGroupPlan {
 }
 
 /** A member who is one person with an address: not a nested group, nor a whole domain (CUSTOMER). */
-function isPerson(member: GroupMember): boolean {
+export function isPerson(member: GroupMember): boolean {
   return Boolean(member.email) && (member.type === undefined || member.type === "USER" || member.type === "EXTERNAL");
 }
 

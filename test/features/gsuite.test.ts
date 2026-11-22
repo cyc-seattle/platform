@@ -50,17 +50,35 @@ function programWithGroup() {
       programId = program.id;
     },
 
-    /** A person with a program role in the program, and their email. */
-    async roleHolder(roleName: string): Promise<{ id: string; email: string }> {
-      const email = `${roleName.toLowerCase()}.${runId}@example.test`;
-      const person = await asAdmin("POST", "/items/people", { first_name: roleName, last_name: runId, email });
-      const role = await asAdmin("POST", "/items/program_roles", { name: `${roleName} ${runId}` });
-      await asAdmin("POST", "/items/program_role_assignments", {
-        person_id: person.id,
+    /** A person on Crew with a term for the program in `positionName`, from and to the given days. */
+    async termHolder(
+      positionName: string,
+      dates: { starts_on?: string; ends_on?: string } = {},
+    ): Promise<{ id: string; email: string }> {
+      const email = `${positionName.toLowerCase()}.${runId}@example.test`;
+      const person = await asAdmin("POST", "/items/people", { first_name: positionName, last_name: runId, email });
+      const member = await asAdmin("POST", "/items/crew_members", { person_id: person.id });
+      const position = await asAdmin("POST", "/items/crew_positions", { name: `${positionName} ${runId}` });
+      await asAdmin("POST", "/items/crew_terms", {
+        crew_member_id: member.id,
+        position_id: position.id,
         program_id: programId,
-        program_role_id: role.id,
+        ...dates,
       });
       return { id: person.id, email };
+    },
+    /** Someone put in the Google group by hand, as the sync would have when their term began. */
+    async addToGroup(email: string): Promise<void> {
+      await proxyOk(
+        "workspace-fake",
+        8080,
+        "POST",
+        `/admin/directory/v1/groups/${encodeURIComponent(groupEmail)}/members`,
+        {
+          email,
+          role: "MEMBER",
+        },
+      );
     },
 
     async members(): Promise<string[]> {
@@ -176,7 +194,45 @@ function crmGroupWithGoogleGroup() {
   };
 }
 
+/** A day `days` from today, as a date. */
+function daysFromNow(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60_000).toISOString().slice(0, 10);
+}
+
+Step(
+  "it can see only each term's crew member, program, program area, and dates, and each crew member's person",
+  async () => {
+    await readOnly("crew_terms", ["id", "crew_member_id", "program_id", "program_area_id", "starts_on", "ends_on"]);
+    await readOnly("crew_members", ["id", "person_id"]);
+  },
+);
+
 describeAccessFeature("gsuite.feature", {
+  "A coach whose term starts next month isn't added yet": ({ Given, And, When, Then }) => {
+    const program = programWithGroup();
+    let coach: { email: string };
+    Given("a program with a Google group", () => program.create());
+    And("a coach whose term for the program starts next month", async () => {
+      coach = await program.termHolder("Coach", { starts_on: daysFromNow(30) });
+    });
+    When("the Google sync runs", () => program.sync());
+    Then("they're not in the group", async () => {
+      expect(await program.members()).not.toContain(coach.email);
+    });
+  },
+  "A coach whose term ended leaves the group": ({ Given, And, When, Then }) => {
+    const program = programWithGroup();
+    let coach: { email: string };
+    Given("a program with a Google group", () => program.create());
+    And("a coach in the group, whose term for the program ended last month", async () => {
+      coach = await program.termHolder("Coach", { starts_on: daysFromNow(-120), ends_on: daysFromNow(-30) });
+      await program.addToGroup(coach.email);
+    });
+    When("the Google sync runs", () => program.sync());
+    Then("they're not in the group", async () => {
+      expect(await program.members()).not.toContain(coach.email);
+    });
+  },
   "A new board member gets the board's email": ({ Given, When, And, Then }) => {
     const group = crmGroupWithGoogleGroup();
     let added: { email: string };
@@ -261,7 +317,7 @@ describeAccessFeature("gsuite.feature", {
 
     Given("a program with a Google group", () => program.create());
     And("a coach in the program", async () => {
-      coach = await program.roleHolder("Coach");
+      coach = await program.termHolder("Coach");
     });
     When("the Google sync runs", () => program.syncAsJob());
     Then("they're in the group", async () => {
@@ -280,7 +336,7 @@ describeAccessFeature("gsuite.feature", {
     // The Workspace fake can't remove a member, so the person is out of the group from the start,
     // while the CRM still notes that gsuite-sync added them.
     And("a coach in the program who has left the group", async () => {
-      leaver = await program.roleHolder("Coach");
+      leaver = await program.termHolder("Coach");
       await program.recordMembership(leaver.id, leaver.email, addedAt);
     });
 
