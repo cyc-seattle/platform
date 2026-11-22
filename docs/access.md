@@ -179,7 +179,10 @@ person, bio, photo, and `show_full_name` while they're on the website, their cur
 position's name: never their pay or qualifications. Of People it reads only `first_name` and
 `last_name`, and only of a person whose crew member is on the website, through the `crew_members`
 list on people. The site shows the first name alone unless `show_full_name` is set. It can't read
-anyone else in the CRM, or any other field of theirs.
+anyone else in the CRM, or any other field of theirs. Of the catalog it reads what's on sale: each
+program's name and ages, each offering that isn't archived (its dates, price, capacity, confirmed count
+and form, never its registrations or its link to Clubspot), each registration form that isn't archived,
+and, of a Clubspot camp that's public, whether it takes registrations and hides spots left.
 `features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.

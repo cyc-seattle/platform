@@ -166,14 +166,63 @@ export const WEBSITE_FILE_FIELDS = [
 ];
 
 /**
+ * What the site reads outside the website's own collections (cyc-seattle/platform#332): what's on sale, so a
+ * program page shows its dates, price, ages, and whether it takes registrations. Only these fields, and
+ * only the rows the filters let through: never a registration, an offering's link to Clubspot, or a
+ * program's money. Each row filter's field is watched too, so a change that adds or drops a row publishes.
+ */
+export const WEBSITE_CATALOG_READS: {
+  collection: string;
+  fields: string[];
+  permissions?: Record<string, unknown>;
+  watch: string[];
+}[] = [
+  { collection: "programs", fields: ["id", "name", "min_age", "max_age"], watch: [] },
+  {
+    collection: "offerings",
+    fields: [
+      "id",
+      "program_id",
+      "name",
+      "registration_form_id",
+      "starts_on",
+      "ends_on",
+      "price_cents",
+      "capacity",
+      "confirmed_count",
+    ],
+    permissions: { archived_at: { _null: true } },
+    watch: ["archived_at"],
+  },
+  {
+    collection: "registration_forms",
+    fields: ["id", "name", "opens_on", "clubspot_camp_id"],
+    permissions: { archived_at: { _null: true } },
+    watch: ["archived_at"],
+  },
+  {
+    collection: "clubspot_camps",
+    fields: ["id", "registration_closed", "hide_spots_left"],
+    permissions: { public: { _eq: true } },
+    watch: ["public"],
+  },
+];
+
+/**
  * The csc-website build's rules (cyc-seattle/platform#150): the website's collections, Crew's public
- * profiles, and the files in the Website folder, which its images are. Nothing else, so the public
- * site can't show CRM data.
+ * profiles, what's on sale (`WEBSITE_CATALOG_READS`), and the files in the Website folder, which its images
+ * are. Nothing else, so the public site can't show CRM data.
  */
 export function websiteBuildRules(schemas: LoadedSchema[]): PermissionRuleInput[] {
   return [
     ...websiteCollections(schemas).map((collection) => ({ collection, action: "read" as const })),
     ...WEBSITE_CREW_RULES,
+    ...WEBSITE_CATALOG_READS.map(({ collection, fields, permissions }) => ({
+      collection,
+      action: "read" as const,
+      fields,
+      ...(permissions && { permissions }),
+    })),
     {
       collection: "directus_files",
       action: "read",
@@ -711,6 +760,8 @@ export function frozenPlansConfig(
 export interface WebsitePublishConfig {
   /** The collections whose writes publish the site. */
   collections: string[];
+  /** Collections the site reads only some fields of, which publish it when a row comes or goes, or one of these fields changes. */
+  watched: Record<string, string[]>;
   /** The files folder whose writes publish it too. */
   folder: string;
   /** The workflow to start: its repository, file, and branch. */
@@ -725,6 +776,9 @@ export interface WebsitePublishConfig {
 export function websitePublishConfig(schemas: LoadedSchema[], appId?: string): WebsitePublishConfig {
   return {
     collections: [...websiteCollections(schemas), ...WEBSITE_CREW_COLLECTIONS],
+    watched: Object.fromEntries(
+      WEBSITE_CATALOG_READS.map(({ collection, fields, watch }) => [collection, [...fields, ...watch]]),
+    ),
     folder: WEBSITE_FOLDER,
     repository: "cyc-seattle/csc-website",
     workflow: "publish.yml",
