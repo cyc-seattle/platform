@@ -67,7 +67,7 @@ function programWithGroup() {
       });
       return { id: person.id, email };
     },
-    /** Someone put in the Google group by hand, as the sync would have when their term began. */
+    /** Someone put in the Google group directly in Workspace. */
     async addToGroup(email: string): Promise<void> {
       await proxyOk(
         "workspace-fake",
@@ -199,13 +199,10 @@ function daysFromNow(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60_000).toISOString().slice(0, 10);
 }
 
-Step(
-  "it can see only each term's crew member, program, program area, and dates, and each crew member's person",
-  async () => {
-    await readOnly("crew_terms", ["id", "crew_member_id", "program_id", "program_area_id", "starts_on", "ends_on"]);
-    await readOnly("crew_members", ["id", "person_id"]);
-  },
-);
+Step("it can see only each term's crew member, program, and dates, and each crew member's person", async () => {
+  await readOnly("crew_terms", ["id", "crew_member_id", "program_id", "starts_on", "ends_on"]);
+  await readOnly("crew_members", ["id", "person_id"]);
+});
 
 describeAccessFeature("gsuite.feature", {
   "A coach whose term starts next month isn't added yet": ({ Given, And, When, Then }) => {
@@ -222,11 +219,17 @@ describeAccessFeature("gsuite.feature", {
   },
   "A coach whose term ended leaves the group": ({ Given, And, When, Then }) => {
     const program = programWithGroup();
-    let coach: { email: string };
+    let coach: { id: string; email: string };
     Given("a program with a Google group", () => program.create());
+    // In the group, and noted in the CRM, as the Google sync left them when their term began.
     And("a coach in the group, whose term for the program ended last month", async () => {
       coach = await program.termHolder("Coach", { starts_on: daysFromNow(-120), ends_on: daysFromNow(-30) });
       await program.addToGroup(coach.email);
+      await program.recordMembership(
+        coach.id,
+        coach.email,
+        new Date(Date.now() - 120 * 24 * 60 * 60_000).toISOString(),
+      );
     });
     When("the Google sync runs", () => program.sync());
     Then("they're not in the group", async () => {

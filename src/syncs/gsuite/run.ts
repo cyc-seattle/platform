@@ -181,6 +181,7 @@ async function syncProgramMembers(
   );
   const removals = planProgramGroupRemovals(sharing, program.google_group_id, tables, liveMembers, membershipRows, now);
   const removed = new Set<string>();
+  logPlannedRemovals(group.email, removals.remove, removals.massRemoval && !allowMassRemoval);
   if (removals.massRemoval && !allowMassRemoval) {
     // The audit raises `google_group_mass_removal` for it.
     winston.warn("Not taking so many out of a program's Google Group without --allow-mass-removal", {
@@ -279,6 +280,14 @@ export async function enqueueDueProgramGroups(
   return taskIds;
 }
 
+/**
+ * One line per Google Group with who a run would take out, so a `--dry-run` lists them by group
+ * before a change, such as moving program roles into Crew, takes anyone out for real.
+ */
+function logPlannedRemovals(group: string, remove: readonly string[], heldBack: boolean): void {
+  if (remove.length > 0) winston.info("Planned removals", { group, remove, heldBack });
+}
+
 /** Makes a CRM group's Google Group hold exactly its members, taking out only plain members. */
 async function syncAccessGroupMembers(
   groupId: string,
@@ -306,6 +315,7 @@ async function syncAccessGroupMembers(
     googleGroup.email,
     directory,
   );
+  logPlannedRemovals(googleGroup.email, plan.remove, plan.massRemoval && !allowMassRemoval);
   if (plan.massRemoval && !allowMassRemoval) {
     // The audit raises `google_group_mass_removal` for it. Adding is still safe.
     winston.warn("Not taking so many out of a Google Group without --allow-mass-removal", {

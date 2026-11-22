@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { planMembershipWrites, removedPersonIds } from "../../../src/syncs/gsuite/group-memberships.ts";
+import {
+  planMembershipWrites,
+  planProgramGroupRemovals,
+  removedPersonIds,
+} from "../../../src/syncs/gsuite/group-memberships.ts";
+import { type MembershipTables } from "../../../src/syncs/gsuite/membership.ts";
 import { type GoogleGroupMembershipRow } from "../../../src/syncs/gsuite/schema.ts";
 
 const now = new Date("2026-10-24T12:00:00Z");
@@ -201,5 +206,51 @@ describe("removedPersonIds", () => {
       row("m3", "elsewhere", "elsewhere@example.com", earlier, "group-2"),
     ];
     expect(removedPersonIds("group-1", rows)).toEqual(new Set(["left"]));
+  });
+});
+
+describe("planProgramGroupRemovals", () => {
+  const leavers = ["synced", "by-hand", "left", "renamed"];
+  const tables: MembershipTables = {
+    classes: [],
+    camps: [],
+    registrationEntries: [],
+    registrations: [],
+    participants: [],
+    people: leavers.map((id) => ({ id, email: `${id}@example.com` })) as unknown as MembershipTables["people"],
+    contacts: [],
+    crewTerms: leavers.map((id) => ({
+      crew_member_id: `crew-${id}`,
+      program_id: "program-1",
+      starts_on: null,
+      ends_on: "2026-09-30",
+    })),
+    crewMembers: leavers.map((id) => ({ id: `crew-${id}`, person_id: id })),
+  };
+  const live = [
+    ...leavers.map((id) => ({ email: `${id}@example.com`, role: "MEMBER" as const, type: "USER" as const })),
+    { email: "old-renamed@example.com", role: "MEMBER" as const, type: "USER" as const },
+  ];
+
+  it("takes out only a leaver the sync added, at the address its open row records, and forgets that row", () => {
+    const removals = planProgramGroupRemovals(
+      ["program-1"],
+      "group-1",
+      tables,
+      live,
+      [
+        row("r-synced", "synced", "synced@example.com"),
+        row("r-left", "left", "left@example.com", earlier),
+        row("r-renamed", "renamed", "old-renamed@example.com"),
+        row("r-other-group", "by-hand", "by-hand@example.com", null, "group-2"),
+      ],
+      now,
+    );
+
+    expect(removals).toEqual({
+      remove: ["old-renamed@example.com", "synced@example.com"],
+      forget: ["r-synced", "r-renamed"],
+      massRemoval: false,
+    });
   });
 });

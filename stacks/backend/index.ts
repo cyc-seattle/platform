@@ -553,7 +553,7 @@ permissionRule(
 for (const [collection, fields] of [
   ["groups", ["id", "name", "google_group_id"]],
   // A term's program and dates put its holder in the program's group. Never a term's pay.
-  ["crew_terms", ["id", "crew_member_id", "program_id", "program_area_id", "starts_on", "ends_on"]],
+  ["crew_terms", ["id", "crew_member_id", "program_id", "starts_on", "ends_on"]],
   ["crew_members", ["id", "person_id"]],
   ["group_members", ["id", "group_id", "person_id"]],
   ["products", ["id", "name", "kind", "revenue_account_id", "program_area_id"]],

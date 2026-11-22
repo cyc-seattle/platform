@@ -148,9 +148,11 @@ export interface ProgramGroupRemovals {
 
 /**
  * The plain members to take out of a Google Group because their last term for a program that fills
- * it has ended. `programIds` is every program that fills the group, since they share it. Someone
- * still there as a family, on any of those programs' rosters past or present, or with a current term
- * for any of them, stays. So does a manager, an owner, or anyone the sync didn't plan.
+ * it has ended. `programIds` is every program that fills the group, since they share it. Only someone
+ * the sync added, whose `google_group_memberships` row for the group is still open, goes, at the
+ * address that row records: someone added by hand stays. So does anyone still there as a family, on
+ * any of those programs' rosters past or present, or with a current term for any of them, and a
+ * manager or an owner.
  */
 export function planProgramGroupRemovals(
   programIds: readonly string[],
@@ -163,27 +165,24 @@ export function planProgramGroupRemovals(
   const keep = new Set(
     programIds.flatMap((programId) => planProgramMembers(programId, tables, now, { includeInactiveCamps: true })),
   );
-  const leavers = new Map<string, Set<string>>();
-  for (const programId of programIds) {
-    for (const person of programLeavers(programId, tables, now)) {
-      if (!person.id || !person.email || !isValidEmail(person.email)) continue;
-      const email = normalizeEmail(person.email);
-      leavers.set(email, new Set([...(leavers.get(email) ?? []), person.id]));
-    }
-  }
+  const leavers = new Set(
+    programIds.flatMap((programId) => programLeavers(programId, tables, now).flatMap((person) => person.id ?? [])),
+  );
   const plain = new Set(
     live.filter((member) => member.role === "MEMBER" && isPerson(member)).map((member) => normalizeEmail(member.email)),
   );
-  const remove = [...leavers.keys()].filter((email) => plain.has(email) && !keep.has(email)).sort();
-  const removed = new Set(remove);
-  const forget = rows
-    .filter(
-      (row) =>
-        row.id &&
-        row.group_id === groupId &&
-        removed.has(normalizeEmail(row.email)) &&
-        leavers.get(normalizeEmail(row.email))?.has(row.person_id),
-    )
-    .map((row) => row.id as string);
-  return { remove, forget, massRemoval: remove.length > MASS_REMOVAL_LIMIT };
+  const added = rows.filter(
+    (row) =>
+      row.id &&
+      row.group_id === groupId &&
+      row.removed_at == null &&
+      leavers.has(row.person_id) &&
+      plain.has(normalizeEmail(row.email)) &&
+      !keep.has(normalizeEmail(row.email)),
+  );
+  return {
+    remove: [...new Set(added.map((row) => normalizeEmail(row.email)))].sort(),
+    forget: added.map((row) => row.id as string),
+    massRemoval: new Set(added.map((row) => normalizeEmail(row.email))).size > MASS_REMOVAL_LIMIT,
+  };
 }

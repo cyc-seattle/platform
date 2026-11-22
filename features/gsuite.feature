@@ -142,7 +142,7 @@ Feature: Google Groups for programs and groups
 
     Example: The Google sync looks up Crew's terms
       Given the Google sync's service account
-      Then it can see only each term's crew member, program, program area, and dates, and each crew member's person
+      Then it can see only each term's crew member, program, and dates, and each crew member's person
 
   Rule: The Google sync can see products and their revenue accounts, to check that classes Clubspot sells together book their money to one revenue account
 
