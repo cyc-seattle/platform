@@ -104,13 +104,16 @@ export function crewCollections(schemas: LoadedSchema[]): string[] {
 /** A term's pay, which only Crew Writers and the planners read (cyc-seattle/platform#125). */
 export const CREW_PAY_FIELDS = ["staff_level_id", "hourly_rate_cents", "profit_share"];
 
-/** What the website reads of Crew: a profile only while it's on the website, and only current terms. */
+/**
+ * What the website reads of Crew: a profile only while it's on the website, only current terms, and
+ * only the first and last name of a person on the website.
+ */
 export const WEBSITE_CREW_RULES: PermissionRuleInput[] = [
   {
     collection: "crew_members",
     action: "read",
     permissions: { on_website: { _eq: true } },
-    fields: ["id", "website_bio", "website_photo"],
+    fields: ["id", "person_id", "show_full_name", "website_bio", "website_photo"],
   },
   {
     collection: "crew_terms",
@@ -126,6 +129,13 @@ export const WEBSITE_CREW_RULES: PermissionRuleInput[] = [
     fields: ["id", "crew_member_id", "position_id", "starts_on", "ends_on"],
   },
   { collection: "crew_positions", action: "read", fields: ["id", "name"] },
+  // The site applies show_full_name itself. A person's other fields stay out of reach.
+  {
+    collection: "people",
+    action: "read",
+    permissions: { crew_members: { on_website: { _eq: true } } },
+    fields: ["id", "first_name", "last_name"],
+  },
 ];
 
 /** The Crew collections whose writes change what the website shows. */

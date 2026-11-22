@@ -445,6 +445,8 @@ export interface CrewMembers {
   website_photo: string | null;
   /** Shows them on the website's crew lists while they hold a position listed there. */
   on_website: boolean;
+  /** Shows their first and last name on the website. Off shows their first name only. */
+  show_full_name: boolean;
   terms: (string | CrewTerms)[];
   qualifications: (string | CrewQualifications)[];
 }
@@ -683,6 +685,8 @@ export interface People {
   logins: string[];
   /** The Clubspot participants linked to this person. */
   participant_links: (string | ClubspotParticipants)[];
+  /** Their place on Crew, if they have one. */
+  crew_members: (string | CrewMembers)[];
   id: string;
   first_name: string;
   last_name: string | null;

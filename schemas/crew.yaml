@@ -374,6 +374,48 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: crew_members
+    field: show_full_name
+    type: boolean
+    meta:
+      collection: crew_members
+      conditions: null
+      display: null
+      display_options: null
+      field: show_full_name
+      group: null
+      hidden: false
+      interface: boolean
+      note: Shows their first and last name on the website. Off shows their first name only.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Full name on the website
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: show_full_name
+      table: crew_members
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: crew_members
     field: terms
     type: alias
     meta:
@@ -1473,6 +1515,35 @@ fields:
       has_auto_increment: false
       foreign_key_table: qualifications
       foreign_key_column: id
+  - collection: people
+    field: crew_members
+    type: alias
+    meta:
+      collection: people
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{show_full_name}}"
+      field: crew_members
+      group: null
+      hidden: true
+      interface: list-o2m
+      note: Their place on Crew, if they have one.
+      options:
+        enableCreate: false
+        template: "{{show_full_name}}"
+      readonly: true
+      required: false
+      searchable: true
+      sort: 30
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Crew
+      validation: null
+      validation_message: null
+      width: full
 relations:
   - collection: crew_members
     field: person_id
@@ -1485,7 +1556,7 @@ relations:
       one_collection: people
       one_collection_field: null
       one_deselect_action: nullify
-      one_field: null
+      one_field: crew_members
       sort_field: null
     schema:
       table: crew_members

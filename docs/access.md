@@ -173,8 +173,11 @@ cyc-seattle/csc-website builds the public website from Directus ([website.md](we
 signs in as the Website Build machine user, with a static token `backend` generates. Its policy reads
 every `website_*` collection whole, Crew's public profiles, and the files in the Website folder, and
 nothing else: anything it can read could end up on the public site. Of Crew it reads a crew member's
-website name, bio, and photo while they're on the website, their current terms, and each position's
-name and title: never who they are in the CRM, their pay, or their qualifications.
+person, bio, photo, and `show_full_name` while they're on the website, their current terms, and each
+position's name: never their pay or qualifications. Of People it reads only `first_name` and
+`last_name`, and only of a person whose crew member is on the website, through the `crew_members`
+list on people. The site shows the first name alone unless `show_full_name` is set. It can't read
+anyone else in the CRM, or any other field of theirs.
 `features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.

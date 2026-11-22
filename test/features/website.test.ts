@@ -78,7 +78,14 @@ Step("it can't see anything outside the website and crew's public profiles", asy
   const everything: { collection: string; schema: unknown }[] = await (
     await admin()
   ).ok("GET", "/collections?limit=-1");
-  const allowed = new Set(["directus_files", "directus_folders", "crew_members", "crew_terms", "crew_positions"]);
+  const allowed = new Set([
+    "directus_files",
+    "directus_folders",
+    "crew_members",
+    "crew_terms",
+    "crew_positions",
+    "people",
+  ]);
   const seen: string[] = [];
   for (const { collection, schema } of everything) {
     // A folder in the Data Studio has no table.
@@ -140,7 +147,7 @@ Step("it searches the sponsors by their logo's file name", async () => {
 });
 
 // Crew. Each crew member has a person of their own, and a term in a position of their own.
-let crew: { memberId: string; termId: string; qualificationId: string } | undefined;
+let crew: { memberId: string; termId: string; qualificationId: string; personId: string } | undefined;
 onEachScenario(() => {
   crew = undefined;
 });
@@ -158,7 +165,7 @@ async function aCrewMember(onWebsite: boolean, position: string, ends_on: string
     "crew_qualifications",
     await newRow("crew_qualifications", { crew_member_id: member.id }),
   );
-  crew = { memberId: member.id, termId: term.id, qualificationId: held.id };
+  crew = { memberId: member.id, termId: term.id, qualificationId: held.id, personId: member["person_id"] as string };
 }
 Step("a crew member on the website, with a current term as Head Coach", () => aCrewMember(true, "Head Coach", null));
 Step("a crew member who isn't on the website, with a current term as Head Coach", () =>
@@ -172,18 +179,38 @@ const read = async (path: string) => (await theirSession()).request("GET", path)
 const byId = (collection: string, id: string, fields = "id") =>
   `/items/${collection}?fields=${fields}&filter=${encodeURIComponent(JSON.stringify({ id: { _eq: id } }))}`;
 
-Step("it can see their name, bio and photo for the website", async () => {
-  const { status, body } = await read(`/items/crew_members/${crew!.memberId}?fields=id,website_bio,website_photo`);
+Step("it can see their first and last name, whether to show both, and their bio and photo", async () => {
+  const fields = "id,show_full_name,website_bio,website_photo,person_id.first_name,person_id.last_name";
+  const { status, body } = await read(`/items/crew_members/${crew!.memberId}?fields=${fields}`);
   expect(status, JSON.stringify(body)).toBe(200);
+  expect(body.data.person_id).toEqual({ first_name: "Casey", last_name: expect.any(String) });
+  expect(body.data.show_full_name).toBe(false);
 });
 Step("it can see their term as Head Coach", async () => {
   const { status, body } = await read(`/items/crew_terms/${crew!.termId}?fields=id,position_id.name`);
   expect(status, JSON.stringify(body)).toBe(200);
   expect(body.data.position_id.name).toBe(`Head Coach ${runId}`);
 });
-Step("it can't see which person they are", async () => {
-  const { status, body } = await read(`/items/crew_members/${crew!.memberId}?fields=person_id`);
-  expect(status, JSON.stringify(body)).toBe(403);
+// The person's id comes with their crew member, but nothing about them but their name.
+Step("it can't see anything else about them in the CRM", async () => {
+  const { body } = await read(`/items/crew_members/${crew!.memberId}?fields=person_id`);
+  for (const field of ["email", "phone", "date_of_birth", "street", "household_id"]) {
+    const { status } = await read(`/items/people/${body.data.person_id}?fields=${field}`);
+    expect(status, field).toBe(403);
+  }
+});
+Step("it can't see their name", async () => {
+  const filter = encodeURIComponent(JSON.stringify({ id: { _eq: crew!.personId } }));
+  const { status, body } = await read(`/items/people?fields=id,first_name,last_name&filter=${filter}`);
+  if (status !== 403) {
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect(body.data).toEqual([]);
+  }
+});
+Step("a person in the CRM who isn't on Crew", async () => {
+  await runRows();
+  const person = await adminCreate("people", await newRow("people", { first_name: "Robin" }));
+  crew = { memberId: "", termId: "", qualificationId: "", personId: person.id };
 });
 Step("it can't see their qualifications or pay", async () => {
   const held = await read(`/items/crew_qualifications/${crew!.qualificationId}`);

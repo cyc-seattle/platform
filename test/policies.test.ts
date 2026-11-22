@@ -519,10 +519,8 @@ describe("the csc-website build's rules", () => {
     expect(new Set(rules.map((rule) => rule.action))).toEqual(new Set(["read"]));
   });
 
-  it("read every website collection whole, and no other collection but Crew's public profiles", () => {
-    const own = rules.filter(
-      (rule) => !rule.collection.startsWith("directus_") && !rule.collection.startsWith("crew_"),
-    );
+  it("read every website collection whole, and no other collection but Crew's public profiles and names", () => {
+    const own = rules.filter((rule) => !rule.collection.startsWith("directus_") && !WEBSITE_CREW_RULES.includes(rule));
     expect(own.every((rule) => rule.collection.startsWith("website_"))).toBe(true);
     expect(own.every((rule) => rule.permissions === undefined && rule.fields === undefined)).toBe(true);
     expect(own.map((rule) => rule.collection)).toEqual(
@@ -531,15 +529,22 @@ describe("the csc-website build's rules", () => {
   });
 
   it("read a crew member's website fields only while they're on it, and only their current terms", () => {
-    expect(rules.filter((rule) => rule.collection.startsWith("crew_"))).toEqual(WEBSITE_CREW_RULES);
-    const [members, terms, positions] = WEBSITE_CREW_RULES;
-    expect(members!.fields).toEqual(["id", "website_bio", "website_photo"]);
+    expect(rules.filter((rule) => rule.collection.startsWith("crew_") || rule.collection === "people")).toEqual(
+      WEBSITE_CREW_RULES,
+    );
+    const [members, terms, positions, people] = WEBSITE_CREW_RULES;
+    expect(members!.fields).toEqual(["id", "person_id", "show_full_name", "website_bio", "website_photo"]);
     expect(members!.permissions).toEqual({ on_website: { _eq: true } });
     expect(terms!.fields).not.toEqual(expect.arrayContaining(CREW_PAY_FIELDS));
     expect(JSON.stringify(terms!.permissions)).toContain("on_website");
     expect(positions!.fields).toEqual(["id", "name"]);
+    expect(people).toEqual({
+      collection: "people",
+      action: "read",
+      permissions: { crew_members: { on_website: { _eq: true } } },
+      fields: ["id", "first_name", "last_name"],
+    });
     for (const rule of WEBSITE_CREW_RULES) {
-      expect(rule.fields).not.toContain("person_id");
       expect(rule.fields).not.toContain("*");
     }
   });

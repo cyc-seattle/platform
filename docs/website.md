@@ -26,8 +26,9 @@ Storage bucket ([backend.md](backend.md)).
 
 The site's crew come from Crew ([crew-schema.md](crew-schema.md)). A list on Our Crew shows, for each
 of its positions in order, the crew members in it today who are on the website, by name. A category's
-Meet Our Crew shows the list it names. The build reads a crew member's website name, bio, and photo,
-never who they are in the CRM.
+Meet Our Crew shows the list it names. The build reads a crew member's bio, photo, and first and last
+name, and shows the first name alone unless staff chose to show their full name
+([crew-schema.md](crew-schema.md)). It reads nothing else about them in the CRM.
 
 The site's build reads them as the Website Build user ([access.md](access.md#the-website-build)).
 
