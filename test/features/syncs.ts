@@ -90,9 +90,13 @@ async function runGoogleSyncFor(
 ): Promise<void> {
   const env = await cronJobEnv("gsuite-sync");
   const client = await directus(env["DIRECTUS_TOKEN"]!);
-  // The Workspace fake ignores auth, and the forwarder sends the cluster's token in its place.
+  // The Workspace fake ignores auth, and dev's forwarder sends the cluster's token in its place. A fixed
+  // token, since a GoogleAuth of its own would look for credentials the CI runner hasn't got.
+  const unused = new google.auth.OAuth2();
+  unused.setCredentials({ access_token: "unused" });
   const { directory, settingsReader } = googleClients(
-    new google.auth.GoogleAuth({ apiKey: "unused" }),
+    // Any client does for the fake; googleClients is typed for the real sync's.
+    new google.auth.GoogleAuth({ authClient: unused }) as unknown as Parameters<typeof googleClients>[0],
     await reachable(env["GSUITE_ROOT_URL"]!),
   );
   const result = await oneAtATime("gsuite-sync", () =>
