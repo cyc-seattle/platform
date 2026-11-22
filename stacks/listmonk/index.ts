@@ -133,7 +133,9 @@ async function deploy() {
     hostname,
     image,
     port,
-    requests: { cpu: "100m", memory: "128Mi" },
+    // It sits near 0 between campaigns, and the limit lets a send use more (#171).
+    requests: { cpu: "50m", memory: "128Mi" },
+    limits: { cpu: "250m" },
     readinessProbe: { httpGet: { path: "/health", port } },
     // The image's entrypoint makes a user and changes owners, which a non-root, read-only pod can't.
     command: ["./listmonk"],

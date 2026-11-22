@@ -128,6 +128,14 @@ describe("cluster", () => {
     expect(cluster().gatewayApiConfig).toEqual({ channel: "CHANNEL_STANDARD" });
   });
 
+  it("sends only GKE's free system metrics, none billed as Managed Prometheus samples", () => {
+    expect(cluster().monitoringConfig).toEqual({
+      enableComponents: ["SYSTEM_COMPONENTS"],
+      managedPrometheus: { enabled: true },
+      advancedDatapathObservabilityConfig: { enableMetrics: false, enableRelay: false },
+    });
+  });
+
   it("uses the cluster subnet and its ranges", () => {
     expect(cluster()).toMatchObject({
       network: "substrate_id",
@@ -652,12 +660,12 @@ describe("uptime checks", () => {
 describe("Artifact Registry", () => {
   const repository = () => byName("gcp:artifactregistry/repository:Repository", "artifact-repository");
 
-  it("keeps each image's 20 newest versions and deletes the rest after 30 days, as a dry run", () => {
+  it("keeps each image's 10 newest versions and deletes the rest after 7 days", () => {
     expect(repository().cleanupPolicies).toEqual([
-      { id: "delete-old", action: "DELETE", condition: { tagState: "ANY", olderThan: "30d" } },
-      { id: "keep-recent", action: "KEEP", mostRecentVersions: { keepCount: 20 } },
+      { id: "delete-old", action: "DELETE", condition: { tagState: "ANY", olderThan: "7d" } },
+      { id: "keep-recent", action: "KEEP", mostRecentVersions: { keepCount: 10 } },
     ]);
-    expect(repository().cleanupPolicyDryRun).toBe(true);
+    expect(repository().cleanupPolicyDryRun).toBeUndefined();
   });
 });
 

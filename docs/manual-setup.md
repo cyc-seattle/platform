@@ -444,6 +444,15 @@ Listmonk sends the newsletter through Amazon SES ([newsletter.md](newsletter.md)
         `stacks/listmonk`), set the logo, colors, and the confirmation email's words under **Settings →
         Appearance** and **Campaigns → Templates**. Settings that live in code are written again at each start.
 
+## 13. The monthly budget
+
+`bootstrap` sets a $150 monthly budget on the project's billing account (#171). Its emails go to the
+account's Billing Account Administrators and Users.
+
+- [ ] A Billing Account Administrator grants whoever applies `bootstrap` **Billing Account Costs Manager**
+      (`roles/billing.costsManager`) on the billing account, under **Billing → Account management**. It
+      manages budgets and reads costs, and can't change payment or link projects.
+
 ## When you add a new manual step
 
 If you add infrastructure that needs an out-of-band action, add it here.
