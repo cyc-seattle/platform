@@ -23,8 +23,8 @@ Feature: Registrations from Clubspot
   as a sailor's school, get copied onto a person's details.
 
   A person's details are their name, email, and phone, any extra emails and phone numbers, and who
-  their parents and emergency contacts are. A person's program roles are the roles they have in
-  programs, such as coach or Parent Coordinator. To change something means to add, edit, or delete
+  their parents and emergency contacts are. A person's place on Crew is what they do for CSC,
+  such as coaching or being a program's Parent Coordinator. To change something means to add, edit, or delete
   it.
 
   Rule: Each sailor and parent on a registration becomes a person in the CRM
@@ -115,7 +115,7 @@ Feature: Registrations from Clubspot
       Given the Clubspot sync's service account
       Then it can't add or see programs
 
-  Rule: When the Clubspot sync merges two people, the person kept takes over the duplicate's program roles
+  Rule: When the Clubspot sync merges two people, the person kept takes over the duplicate's place on Crew
 
     @smoke
     Example: The person kept becomes the coach
@@ -125,13 +125,13 @@ Feature: Registrations from Clubspot
       Then the person kept is the coach
       And the duplicate is gone
 
-  Rule: The Clubspot sync can move a person's program roles and which Google groups they're in to someone else, but can't add or delete them
+  Rule: The Clubspot sync can move a person's place on Crew and which Google groups they're in to someone else, but can't add or delete them
 
     Example: The Clubspot sync can only move what a person takes part in
       Given the Clubspot sync's service account
-      Then it can see people's program roles and which Google groups they're in
-      And it can move people's program roles and which Google groups they're in to another person
-      But it can't add or delete people's program roles or which Google groups they're in
+      Then it can see people's places on Crew and which Google groups they're in
+      And it can move people's places on Crew and which Google groups they're in to another person
+      But it can't add or delete people's places on Crew or which Google groups they're in
 
   Rule: A CRM Writer can change which sign-up answers get copied
 

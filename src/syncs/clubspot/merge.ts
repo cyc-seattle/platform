@@ -25,8 +25,6 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   { collection: "contacts", field: "subject_id" },
   { collection: "contacts", field: "contact_id" },
   { collection: "medical_profiles", field: "person_id" },
-  { collection: "program_role_assignments", field: "person_id" },
-  { collection: "program_area_role_assignments", field: "person_id" },
   { collection: "contact_points", field: "person_id" },
   { collection: "registrations", field: "person_id" },
   { collection: "google_group_memberships", field: "person_id" },
@@ -140,8 +138,6 @@ export interface MergeRelatedData {
   medicalProfiles: readonly MergeMedicalProfile[];
   contacts: readonly MergeContact[];
   contactPoints: readonly MergeContactPoint[];
-  programRoleAssignments: readonly MergePersonReference[];
-  programAreaRoleAssignments: readonly MergePersonReference[];
   registrations: readonly MergePersonReference[];
   googleGroupMemberships: readonly MergePersonReference[];
   crewMembers: readonly MergePersonReference[];
@@ -472,10 +468,6 @@ export function planPersonMerge(
   steps.push(...planMedicalProfileMerge(keeper, related.medicalProfiles));
   steps.push(...planContactMerge(keeper.id, duplicateIds, related.contacts));
   steps.push(...planContactPointMerge(keeper.id, duplicateIds, related.contactPoints));
-  steps.push(...planSimpleRepoint("program_role_assignments", keeper.id, duplicateIds, related.programRoleAssignments));
-  steps.push(
-    ...planSimpleRepoint("program_area_role_assignments", keeper.id, duplicateIds, related.programAreaRoleAssignments),
-  );
   steps.push(...planSimpleRepoint("registrations", keeper.id, duplicateIds, related.registrations));
   steps.push(...planSimpleRepoint("google_group_memberships", keeper.id, duplicateIds, related.googleGroupMemberships));
   steps.push(...planSimpleRepoint("directus_users", keeper.id, duplicateIds, related.logins));

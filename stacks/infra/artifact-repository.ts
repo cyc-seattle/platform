@@ -16,13 +16,11 @@ export const artifactRepository = new gcp.artifactregistry.Repository(
       immutableTags: false,
     },
     // Every dev deploy pushes each image under a new commit tag, and nothing deleted them (#72). A
-    // KEEP outranks a DELETE, so the 20 newest versions of each image stay for a prod rollback.
+    // KEEP outranks a DELETE, so the 10 newest versions of each image stay for a prod rollback (#171).
     cleanupPolicies: [
-      { id: "delete-old", action: "DELETE", condition: { tagState: "ANY", olderThan: "30d" } },
-      { id: "keep-recent", action: "KEEP", mostRecentVersions: { keepCount: 20 } },
+      { id: "delete-old", action: "DELETE", condition: { tagState: "ANY", olderThan: "7d" } },
+      { id: "keep-recent", action: "KEEP", mostRecentVersions: { keepCount: 10 } },
     ],
-    // Logs what it would delete without deleting it. Check that list against prod's images first.
-    cleanupPolicyDryRun: true,
   },
   { dependsOn: artifactRegistryApi },
 );

@@ -589,8 +589,32 @@ describe("deletePermission", () => {
     await expect(deletePermission(baseUrl, token, "42")).resolves.toBeUndefined();
   });
 
-  it("still throws on a non-404 failure", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(403, { errors: [{ message: "forbidden" }] }));
+  it("treats a 403 as success when the row is gone, as one a migration dropped is", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(403, { errors: [{ message: "forbidden" }] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(deletePermission(baseUrl, token, "42")).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringContaining(`${baseUrl}/permissions?fields=id&filter=`),
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("still throws a 403 when the row is there", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(403, { errors: [{ message: "forbidden" }] }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 42 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(deletePermission(baseUrl, token, "42")).rejects.toThrow(/403/);
+  });
+
+  it("still throws a 403 when it can't list permissions either", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(403, { errors: [{ message: "forbidden" }] }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(deletePermission(baseUrl, token, "42")).rejects.toThrow(/403/);

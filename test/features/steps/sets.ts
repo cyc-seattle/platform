@@ -37,11 +37,7 @@ const SESSIONS_CLASSES_AND_REGISTRATIONS = plain(
   "clubspot_registration_billing",
 );
 
-const PROGRAM_ROLES_STAFFING_AND_GROUPS = plain(
-  "program_role_assignments",
-  "program_area_role_assignments",
-  "google_group_memberships",
-);
+const CREW_AND_GROUPS = plain("crew_members", "google_group_memberships");
 
 const sets: Record<string, Target[]> = {
   // A person's details, as crm.feature defines them. Medical information is granted apart.
@@ -82,8 +78,8 @@ const sets: Record<string, Target[]> = {
     "contact_points",
     "medical_profiles",
   ),
-  "people's program roles and which Google groups they're in": PROGRAM_ROLES_STAFFING_AND_GROUPS,
-  "people's program roles or which Google groups they're in": PROGRAM_ROLES_STAFFING_AND_GROUPS,
+  "people's places on Crew and which Google groups they're in": CREW_AND_GROUPS,
+  "people's places on Crew or which Google groups they're in": CREW_AND_GROUPS,
   "its notes": plain("sync_tasks", "audit_findings"),
   "its run logs": plain("sync_runs"),
   "which sign-up answers get copied": plain("clubspot_promoted_fields"),

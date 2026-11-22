@@ -148,7 +148,8 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
     hostname,
     image,
     port: 8080,
-    requests: { cpu: "250m", memory: "512Mi" },
+    // It averages under 50m in both environments; the limit covers its migrations and cron (#171).
+    requests: { cpu: "100m", memory: "512Mi" },
     limits: { cpu: "500m" },
     readinessProbe: { httpGet: { path: "/login", port: 8080 }, periodSeconds: 30, timeoutSeconds: 10 },
     // FreeScout answers 403 to any other Host (GHSA-822g-7rw5-53xj).
