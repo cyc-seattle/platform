@@ -8,7 +8,17 @@ import { docsDir, remarkDocs } from "./src/plugins/remark-docs.ts";
 
 const base = "/platform";
 
-const platform = ["architecture", "backend", "access", "syncs", "backups", "website", "inbox", "manual-setup"];
+const platform = [
+  "architecture",
+  "backend",
+  "access",
+  "syncs",
+  "backups",
+  "website",
+  "inbox",
+  "newsletter",
+  "manual-setup",
+];
 const dataModel = ["crm-schema", "hr-schema", "planning-schema", "planning-engine"];
 // A new page lands here until it's given a section.
 const reference = fs

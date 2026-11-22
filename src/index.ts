@@ -11,4 +11,4 @@ export {
 export { ScheduledJob, type ScheduledJobArgs } from "./scheduled-job.ts";
 export { enableService } from "./services.ts";
 export { WebService, type WebServiceArgs } from "./web-service.ts";
-export { Workload, type PodArgs, type WorkloadArgs, type WorkloadVolume } from "./workload.ts";
+export { Workload, type InitContainer, type PodArgs, type WorkloadArgs, type WorkloadVolume } from "./workload.ts";

@@ -12,6 +12,7 @@ How CYC's shared Google Cloud platform is built and run, for anyone who works on
 - [Backups and restores](backups.md): what's copied, the restore drill, and a real restore
 - [The public website's content](website.md)
 - [The shared inbox](inbox.md): FreeScout, for info@
+- [The newsletter and the website's forms](newsletter.md): Listmonk, Amazon SES, and the contact form
 - [Manual setup steps](manual-setup.md): what Pulumi can't do
 
 ## Data model

@@ -23,6 +23,8 @@ export const uptimeTargets: UptimeTarget[] = [
   { host: `login.${internalDomain}`, path: "/-/health/live/" },
   { host: externalDomain, path: "/", redirect: true },
   { host: `www.${externalDomain}`, path: "/", redirect: true },
+  // Listmonk; /health doesn't touch its database.
+  { host: `mail.${externalDomain}`, path: "/health" },
 ];
 
 /** The days a certificate may have left before it alerts. Google renews at 30. */

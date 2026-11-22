@@ -76,3 +76,17 @@ export function directusEnv({
   };
   return Object.entries(values).map(([name, value]) => ({ name, value }));
 }
+
+/** Directus's mail settings: the Workspace SMTP relay, or Mailpit in dev. */
+export function mailEnv(dev: boolean): EnvVar[] {
+  const values: Record<string, string> = {
+    EMAIL_TRANSPORT: "smtp",
+    EMAIL_FROM: "noreply@cyccommunitysailing.org",
+    ...(dev
+      ? { EMAIL_SMTP_HOST: "mailpit", EMAIL_SMTP_PORT: "1025", EMAIL_SMTP_IGNORE_TLS: "true" }
+      : // The relay admits by IP, so it needs no password, and takes STARTTLS on 587.
+        { EMAIL_SMTP_HOST: "smtp-relay.gmail.com", EMAIL_SMTP_PORT: "587", EMAIL_SMTP_SECURE: "false" }),
+    EMAIL_SMTP_POOL: "false",
+  };
+  return Object.entries(values).map(([name, value]) => ({ name, value }));
+}

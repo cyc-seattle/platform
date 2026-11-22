@@ -102,6 +102,14 @@ beforeAll(async () => {
   });
   new ScheduledJob("suspended-sync", { ...jobArgs("dev"), suspend: true });
   new Workload("bursty-worker", { ...workloadArgs("prod"), limits: { cpu: "1" } });
+  new Workload("migrating", {
+    ...workloadArgs("prod"),
+    volumes: [{ name: "tmp", mountPath: "/tmp", emptyDir: {} }],
+    initContainers: [
+      { name: "migrate", command: ["./app", "--migrate"] },
+      { name: "seed", image: "postgres:17-alpine", command: ["psql"], env: [{ name: "HOME", value: "/tmp" }] },
+    ],
+  });
   new Workload("disk-worker", {
     ...workloadArgs("prod"),
     volumes: [{ name: "data", mountPath: "/data", persistentVolumeClaim: "worker-data" }],
@@ -276,6 +284,20 @@ describe("Workload", () => {
       { name: "certs", mountPath: "/certs", readOnly: true },
       { name: "later", mountPath: "/later" },
     ]);
+  });
+
+  it("runs each init container before the container, with its requests, mounts, and security", () => {
+    const spec = podSpec("migrating");
+    const [migrate, seed] = spec.initContainers;
+    const container = spec.containers[0];
+    expect(migrate).toMatchObject({ name: "migrate", image: container.image, command: ["./app", "--migrate"] });
+    expect(seed).toMatchObject({ name: "seed", image: "postgres:17-alpine", env: [{ name: "HOME", value: "/tmp" }] });
+    for (const init of spec.initContainers) {
+      expect(init.resources).toEqual(container.resources);
+      expect(init.volumeMounts).toEqual(container.volumeMounts);
+      expect(init.securityContext).toEqual(container.securityContext);
+    }
+    expect(podSpec("dev-worker")).not.toHaveProperty("initContainers");
   });
 
   it("runs as the given user and group", () => {
