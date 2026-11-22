@@ -1,15 +1,20 @@
 // A Directus custom migration, mounted into Directus's migrations folder. Directus runs it once, at
 // start, before it serves, and records it in directus_migrations. CommonJS, with no imports.
 //
-// Program roles become Crew (cyc-seattle/platform#263). Each program role becomes a position, or
-// joins the position already named the same. Each person with an assignment becomes a crew member,
+// Program roles become Crew (cyc-seattle/platform#263). Program roles named the same, whatever the
+// case, become one position, or join the position already named the same. Each person with an assignment becomes a crew member,
 // off the website, unless they're one already. Each assignment becomes a term with its own id, in
 // its program or program area, with its dates. Then it drops the three collections and Directus's
 // records of them, since the schema apply never deletes. It fails, changing nothing, if any
 // assignment didn't copy.
 //
 // It's one statement, so Postgres runs it in one transaction. It does nothing once the assignments
-// are gone, or before Crew exists, or on a new database.
+// are gone, or on a new database.
+//
+// Directus runs migrations before the schema apply, so Crew's tables must already exist: prod gets
+// cyc-seattle/platform#341 in an earlier release. If they don't and there are assignments to copy,
+// it fails rather than be recorded as done with nothing copied. Directus then won't start, so the
+// fix is to deploy the release before this one, then the one with Crew, then this one again.
 
 const SQL = `
 DO $migration$
@@ -18,50 +23,59 @@ DECLARE
   assigned integer;
   copied integer;
 BEGIN
-  IF to_regclass('program_role_assignments') IS NULL OR to_regclass('crew_terms') IS NULL THEN
+  IF to_regclass('program_role_assignments') IS NULL THEN
     RETURN;
   END IF;
+  IF to_regclass('crew_terms') IS NULL THEN
+    IF EXISTS (SELECT 1 FROM program_role_assignments) OR EXISTS (SELECT 1 FROM program_area_role_assignments) THEN
+      RAISE EXCEPTION 'cyc0028: program role assignments to copy, but Crew''s tables don''t exist yet. Deploy the release with Crew (cyc-seattle/platform#341) first.';
+    END IF;
+  ELSE
+    -- One position per name, whatever its case: the first role's name and description, by id.
+    CREATE TEMP TABLE position_names ON COMMIT DROP AS
+      SELECT DISTINCT ON (lower(role.name)) lower(role.name) AS key, role.name, role.description,
+        COALESCE(
+          (SELECT position.id FROM crew_positions position
+            WHERE lower(position.name) = lower(role.name) ORDER BY position.id LIMIT 1),
+          gen_random_uuid()
+        ) AS position_id
+      FROM program_roles role ORDER BY lower(role.name), role.id;
+    CREATE TEMP TABLE role_positions ON COMMIT DROP AS
+      SELECT role.id AS role_id, names.position_id
+      FROM program_roles role JOIN position_names names ON names.key = lower(role.name);
+    INSERT INTO crew_positions (id, name, description)
+      SELECT position_id, name, description FROM position_names
+      WHERE NOT EXISTS (SELECT 1 FROM crew_positions position WHERE position.id = position_names.position_id);
 
-  CREATE TEMP TABLE role_positions ON COMMIT DROP AS
-    SELECT role.id AS role_id, role.name, role.description,
-      COALESCE(
-        (SELECT position.id FROM crew_positions position
-          WHERE lower(position.name) = lower(role.name) ORDER BY position.id LIMIT 1),
-        gen_random_uuid()
-      ) AS position_id
-    FROM program_roles role;
-  INSERT INTO crew_positions (id, name, description)
-    SELECT position_id, name, description FROM role_positions
-    WHERE NOT EXISTS (SELECT 1 FROM crew_positions position WHERE position.id = role_positions.position_id);
+    INSERT INTO crew_members (id, person_id, on_website)
+      SELECT gen_random_uuid(), person_id, false FROM (
+        SELECT person_id FROM program_role_assignments
+        UNION SELECT person_id FROM program_area_role_assignments
+      ) assigned_people
+      WHERE NOT EXISTS (SELECT 1 FROM crew_members member WHERE member.person_id = assigned_people.person_id);
 
-  INSERT INTO crew_members (id, person_id, on_website)
-    SELECT gen_random_uuid(), person_id, false FROM (
-      SELECT person_id FROM program_role_assignments
-      UNION SELECT person_id FROM program_area_role_assignments
-    ) assigned_people
-    WHERE NOT EXISTS (SELECT 1 FROM crew_members member WHERE member.person_id = assigned_people.person_id);
+    INSERT INTO crew_terms (id, crew_member_id, position_id, program_id, starts_on, ends_on)
+      SELECT assignment.id, member.id, role.position_id, assignment.program_id, assignment.starts_on, assignment.ends_on
+      FROM program_role_assignments assignment
+      JOIN crew_members member ON member.person_id = assignment.person_id
+      JOIN role_positions role ON role.role_id = assignment.program_role_id
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO crew_terms (id, crew_member_id, position_id, program_area_id, starts_on, ends_on)
+      SELECT assignment.id, member.id, role.position_id, assignment.program_area_id, assignment.starts_on, assignment.ends_on
+      FROM program_area_role_assignments assignment
+      JOIN crew_members member ON member.person_id = assignment.person_id
+      JOIN role_positions role ON role.role_id = assignment.program_role_id
+      ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO crew_terms (id, crew_member_id, position_id, program_id, starts_on, ends_on)
-    SELECT assignment.id, member.id, role.position_id, assignment.program_id, assignment.starts_on, assignment.ends_on
-    FROM program_role_assignments assignment
-    JOIN crew_members member ON member.person_id = assignment.person_id
-    JOIN role_positions role ON role.role_id = assignment.program_role_id
-    ON CONFLICT (id) DO NOTHING;
-  INSERT INTO crew_terms (id, crew_member_id, position_id, program_area_id, starts_on, ends_on)
-    SELECT assignment.id, member.id, role.position_id, assignment.program_area_id, assignment.starts_on, assignment.ends_on
-    FROM program_area_role_assignments assignment
-    JOIN crew_members member ON member.person_id = assignment.person_id
-    JOIN role_positions role ON role.role_id = assignment.program_role_id
-    ON CONFLICT (id) DO NOTHING;
-
-  SELECT (SELECT count(*) FROM program_role_assignments) + (SELECT count(*) FROM program_area_role_assignments)
-    INTO assigned;
-  SELECT count(*) INTO copied FROM crew_terms
-    WHERE id IN (SELECT id FROM program_role_assignments UNION SELECT id FROM program_area_role_assignments);
-  IF copied <> assigned THEN
-    RAISE EXCEPTION 'cyc0028: copied % of % program role assignments to Crew', copied, assigned;
+    SELECT (SELECT count(*) FROM program_role_assignments) + (SELECT count(*) FROM program_area_role_assignments)
+      INTO assigned;
+    SELECT count(*) INTO copied FROM crew_terms
+      WHERE id IN (SELECT id FROM program_role_assignments UNION SELECT id FROM program_area_role_assignments);
+    IF copied <> assigned THEN
+      RAISE EXCEPTION 'cyc0028: copied % of % program role assignments to Crew', copied, assigned;
+    END IF;
+    RAISE NOTICE 'cyc0028: copied % program role assignments to Crew', copied;
   END IF;
-  RAISE NOTICE 'cyc0028: copied % program role assignments to Crew', copied;
 
   -- Nested, because PL/pgSQL prepares a statement only when it reaches it.
   IF to_regclass('directus_relations') IS NOT NULL THEN

@@ -177,7 +177,41 @@ describe("the program roles to Crew migration", { timeout: 30_000 }, () => {
     expect(await left("SELECT collection FROM directus_presets")).toEqual([]);
   });
 
-  it("does nothing before Crew exists, or on a new database", async () => {
+  it("treats program roles named the same, whatever their case, as one position", async () => {
+    const db = await withProgramRoles();
+    await db.exec(`
+      INSERT INTO program_roles VALUES ('00000000-0000-4000-8000-000000000032', 'PARENT COORDINATOR', null);
+      INSERT INTO program_role_assignments VALUES
+        ('00000000-0000-4000-8000-000000000102', '${PERSON}', '${PROGRAM}', '00000000-0000-4000-8000-000000000032', null, null);
+    `);
+    await migrate(db);
+    const { rows } = await db.query<{ name: string }>("SELECT name FROM crew_positions ORDER BY name");
+    expect(rows.map(({ name }) => name)).toEqual(["Director", "Head Coach", "Parent Coordinator"]);
+    const positions = await db.query("SELECT DISTINCT position_id FROM crew_terms WHERE program_id IS NOT NULL");
+    expect(positions.rows).toHaveLength(1);
+  });
+
+  it("refuses, changing nothing, when there are assignments to copy but Crew's tables don't exist", async () => {
+    const db = await PGlite.create();
+    await db.exec(`
+      CREATE TABLE people (id uuid PRIMARY KEY);
+      CREATE TABLE program_roles (id uuid PRIMARY KEY, name varchar(255), description text);
+      CREATE TABLE program_role_assignments (
+        id uuid PRIMARY KEY, person_id uuid, program_id uuid, program_role_id uuid, starts_on date, ends_on date
+      );
+      CREATE TABLE program_area_role_assignments (id uuid PRIMARY KEY);
+      INSERT INTO program_role_assignments VALUES ('00000000-0000-4000-8000-000000000100', '${PERSON}', null, null, null, null);
+    `);
+    await expect(migrate(db)).rejects.toThrow(/Crew's tables don't exist yet/);
+    expect(await tables(db)).toEqual([
+      "people",
+      "program_area_role_assignments",
+      "program_role_assignments",
+      "program_roles",
+    ]);
+  });
+
+  it("drops empty program roles even before Crew exists, and does nothing on a new database", async () => {
     const before = await PGlite.create();
     await before.exec(`
       CREATE TABLE program_roles (id uuid PRIMARY KEY, name varchar(255), description text);
@@ -185,11 +219,7 @@ describe("the program roles to Crew migration", { timeout: 30_000 }, () => {
       CREATE TABLE program_area_role_assignments (id uuid PRIMARY KEY);
     `);
     await migrate(before);
-    expect(await tables(before)).toEqual([
-      "program_area_role_assignments",
-      "program_role_assignments",
-      "program_roles",
-    ]);
+    expect(await tables(before)).toEqual([]);
 
     const fresh = await PGlite.create();
     await migrate(fresh);
