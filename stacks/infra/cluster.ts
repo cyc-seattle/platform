@@ -28,6 +28,14 @@ export const cluster = new gcp.container.Cluster(
       ipEndpointsConfig: { enabled: false },
     },
     gatewayApiConfig: { channel: "CHANNEL_STANDARD" },
+    // GKE's default cAdvisor, kubelet and kube-state packages bill as Managed Prometheus samples, about
+    // $39 a month, mostly for kube-system, and nothing reads them (#171). Autopilot needs Managed
+    // Prometheus on; with no PodMonitorings, it ingests nothing.
+    monitoringConfig: {
+      enableComponents: ["SYSTEM_COMPONENTS"],
+      managedPrometheus: { enabled: true },
+      advancedDatapathObservabilityConfig: { enableMetrics: false, enableRelay: false },
+    },
     // Autopilot takes the node service account here; the default Compute Engine one holds Editor.
     clusterAutoscaling: {
       autoProvisioningDefaults: {

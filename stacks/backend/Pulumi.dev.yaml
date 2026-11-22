@@ -9,8 +9,8 @@ config:
     - http://localhost:4321
   gcp:project: cyc-admin-scripts
   gcp:region: us-west1
-  # Resets burst to the 1 vCPU limit; this keeps half of it when the node is busy.
-  backend:directusCpu: 500m
+  # Resets burst to the 1 vCPU limit; dev averages under 100m (#171).
+  backend:directusCpu: 250m
   backend:licensed: true
   backend:mcp: true
   # Lets the integration tests delete the frozen Financial Plans they make. Never set in prod.

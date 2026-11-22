@@ -114,9 +114,10 @@ export async function deployAuthentik(
   // Autopilot bills the requests, and the CPU limits let a startup or a burst of sign-ins use a
   // node's spare CPU. Memory stays above each environment's peak (cyc-seattle/isthmia#264). At 250m, a fresh instance's
   // worker took over 15 minutes to apply the built-in blueprints, so it can burst to 500m. Prod's
-  // server, which Autopilot won't evict (below), gets at least 500m from it, so it asks for that.
+  // server, which Autopilot won't evict (below), gets at least 500m from it, so it asks for that. Dev's
+  // averages 11m; 125m is the least Autopilot allows beside 768Mi (#171).
   const sizes = {
-    server: { requests: { cpu: isDev ? "250m" : "500m", memory: isDev ? "768Mi" : "1Gi" }, limits: { cpu: "1" } },
+    server: { requests: { cpu: isDev ? "125m" : "500m", memory: isDev ? "768Mi" : "1Gi" }, limits: { cpu: "1" } },
     worker: { requests: { cpu: "100m", memory: "512Mi" }, limits: { cpu: "500m" } },
   };
   // Everything that goes into each pod, in one place, so the readiness check below re-runs whenever
