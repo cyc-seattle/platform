@@ -575,7 +575,6 @@ async function createRows(): Promise<void> {
     ["organizations", () => ({})],
     ["venues", () => ({})],
     ["programs", () => ({})],
-    ["catalog_offerings", () => ({})],
     ["clubspot_camps", () => ({})],
     ["clubspot_sessions", () => ({})],
     ["clubspot_classes", () => ({})],
