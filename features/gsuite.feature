@@ -1,14 +1,18 @@
-Feature: Google Groups for programs
+Feature: Google Groups for programs and groups
   Each program has a Google group, and everyone with a program role in it, such as a coach or a
   Parent Coordinator, belongs to the group. A program role is a role someone has in one program. The
-  Google sync adds them to the group. The CRM has a copy of each Google group and its members, and
+  Google sync adds them to the group. A group in the CRM, such as the Board of Directors, can fill a
+  Google group too: the Google sync makes its members exactly the group's members, taking out
+  anyone who isn't in the group, but never the Google group's managers. It won't take out everyone,
+  or more than five people at once, until someone allows it. The CRM has a copy of each Google group and its members, and
   records who the sync added. If someone leaves a group, the Google sync doesn't add them back until
   staff let them back in. The Google sync also reports problems for staff to fix, such as classes
   that Clubspot sells together whose programs book their money to different revenue accounts.
 
   The Google sync signs in to the CRM with an account of its own, called a service account. It can
   see only what it needs. To fill the groups, it can see the programs, their rosters, who has a
-  program role in each, and people's extra emails and phone numbers. A program's roster is everyone
+  program role in each, the CRM's groups and who is in each, and people's extra emails and phone
+  numbers. A program's roster is everyone
   signed up for it, and each sign-up is a registration. To check the revenue accounts, it can see
   products and their revenue accounts. It writes notes in the CRM: a list of tasks, and reports of
   problems for staff to fix. To change something means to add, edit, or delete it.
@@ -32,12 +36,59 @@ Feature: Google Groups for programs
       And the Google sync runs again
       Then they're in the group again
 
+  Rule: A group in the CRM makes its Google group's members exactly its own
+
+    Example: A new board member gets the board's email
+      Given a group in the CRM that fills a Google group
+      When an admin adds someone to the group
+      And the Google sync runs for the group
+      Then they're in the Google group
+
+    Example: Someone taken out of the group leaves the Google group
+      Given a member of a group in the CRM that fills a Google group
+      When an admin takes them out of the group
+      And the Google sync runs for the group
+      Then they're not in the Google group
+
+    Example: Someone added to the Google group by hand is taken out
+      Given a group in the CRM that fills a Google group
+      And someone not in the group, added to the Google group by hand
+      When the Google sync runs for the group
+      Then they're not in the Google group
+
+    Example: The Google sync won't empty a Google group by itself
+      Given a Google group with members, which a group in the CRM with no one in it starts to fill
+      When the Google sync runs for the group
+      Then they're all still in the Google group
+
+    Example: The Google group's manager stays
+      Given a group in the CRM that fills a Google group
+      And a manager of the Google group who isn't in the group
+      When the Google sync runs for the group
+      Then they're still a manager of the Google group
+
+  Rule: A Google group that a group in the CRM fills along with anything else is filled by neither
+
+    Example: A program and a group fill the same Google group
+      Given a group in the CRM that fills a Google group
+      And a program whose Google group is the same one
+      When an admin adds someone to the group
+      And the Google sync runs for the group
+      Then they're not in the Google group
+
   Rule: The Google sync can see what it uses to fill groups, but can't change it
 
     Example: The Google sync looks up programs, rosters, and program roles
       Given the Google sync's service account
       Then it can see what it uses to fill groups
       But it can't change what it uses to fill groups
+
+  Rule: The Google sync can see each group's name, its Google group, and who is in it, but not what it gives
+
+    Example: The Google sync looks up the CRM's groups
+      Given the Google sync's service account
+      Then it can see only each group's name and Google group, and who is in it
+      And it can't see what each group gives
 
   Rule: The Google sync can see which sailor a registration is for, but nothing else about it
 

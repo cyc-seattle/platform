@@ -3,10 +3,12 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { DirectusSession } from "../directus.ts";
 import { devDirectusLicensed } from "../directus.ts";
 import { deploymentEnv, devPlatform, feature, optionalDeploymentEnv } from "../support.ts";
+import { addToSignInGroup, authentikAccount, deleteAccounts, signInGroupMembers } from "./authentik.ts";
 import {
   addToGroup,
   createUser,
   deleteUsers,
+  eventually,
   forget,
   hasPolicies,
   hasRole,
@@ -14,6 +16,7 @@ import {
   newPerson,
   personFor,
   policiesOf,
+  policyId,
   policyNames,
   removeFromGroup,
   roleNames,
@@ -80,6 +83,7 @@ parameter("policy", policyNames);
 parameter("role", roleNames);
 parameter("service", serviceNames);
 parameter("records", recordNames);
+parameter("app", ["FreeScout", "Listmonk"]);
 
 // Dollars, such as $1,000 or -$20,000, and a share, such as 2%.
 pattern("money", /-?\$[\d,]+(?:\.\d\d)?/);
@@ -354,6 +358,7 @@ export async function readOnly(collection: string, allowed: string[]): Promise<v
   expect(all.status, JSON.stringify(all.body)).toBe(200);
   expect(Object.keys(all.body.data[0] ?? {}).sort()).toEqual([...allowed].sort());
   const others = Object.keys(fixture[collection] ?? {}).filter((field) => !allowed.includes(field));
+  if (others.length === 0) return;
   const denied = await user.request("GET", readQuery(target, others.join(",")));
   expect(denied.status, JSON.stringify(denied.body)).toBe(403);
 }
@@ -443,6 +448,10 @@ async function aNewcomer(policies: string[]): Promise<void> {
   newcomer = { email: signIn, personId, policies };
 }
 Step("a person in the CRM who has never signed in", () => aNewcomer([]));
+Step("a crew member in the CRM who has never signed in", async () => {
+  await aNewcomer([]);
+  await adminCreate("crew_members", await newRow("crew_members", { person_id: newcomer!.personId }));
+});
 Step("a person in the CRM who has never signed in, in a group that gives the {policy} policy", (_, policy: string) =>
   aNewcomer([policy]),
 );
@@ -474,8 +483,8 @@ Step("they sign in again", async () => {
   setThey({ session: async () => again, userId: async () => userId });
 });
 
-async function aMemberOf(groups: number, policy: string): Promise<void> {
-  const user = await createUser(email("volunteer"), "Crew");
+async function aMemberOf(groups: number, policy: string, signIn = email("volunteer")): Promise<void> {
+  const user = await createUser(signIn, "Crew");
   const personId = await personFor(user);
   for (let i = 0; i < groups; i++) {
     await join(personId, policy);
@@ -486,6 +495,53 @@ async function aMemberOf(groups: number, policy: string): Promise<void> {
 }
 Step("a user in a group that gives the {policy} policy", (_, policy: string) => aMemberOf(1, policy));
 Step("a user in two groups that each give the {policy} policy", (_, policy: string) => aMemberOf(2, policy));
+
+// Sign-in policies, which the group-policies hook copies into Authentik's groups of the same name.
+// Someone has an Authentik account from their first sign-in, before Directus has a login for them.
+const apps: Record<string, string> = { FreeScout: "FreeScout Agent", Listmonk: "Listmonk Send" };
+let account: number | undefined;
+onEachScenario(() => {
+  account = undefined;
+});
+Step("someone who has signed in, in a group that gives the {policy} policy", async (_, policy: string) => {
+  const signIn = email("volunteer");
+  account = await authentikAccount(signIn);
+  await aMemberOf(1, policy, signIn);
+});
+Step("someone who has signed in with the {role} role, in no group", async (_, role: string) => {
+  const signIn = email("signed-in");
+  account = await authentikAccount(signIn);
+  const user = await createUser(signIn, role);
+  await personFor(user);
+  setThey(as(user));
+});
+Step("an Authentik admin adds them by hand to the people who can sign in to {app}", async (_, app: string) => {
+  await addToSignInGroup(apps[app]!, account!);
+  expect(await signInGroupMembers(apps[app]!)).toContain(account);
+});
+// Any change to a group sets the hook off, as its 15-minute run would.
+Step("the access sync runs", async () => {
+  await newGroup();
+  await new Promise((resolve) => setTimeout(resolve, 3_000));
+});
+Step("they can sign in to {app}", async (_, app: string) => {
+  await eventually(async () => expect(await signInGroupMembers(apps[app]!)).toContain(account));
+});
+Step("they can't sign in to {app}", async (_, app: string) => {
+  await eventually(async () => expect(await signInGroupMembers(apps[app]!)).not.toContain(account));
+});
+// A role's own policy has the role's name.
+Step("an admin links the {role} role's policy straight to their login", async (_, policy: string) => {
+  const they = current();
+  const userId = await they.userId();
+  if (they.actor !== undefined) {
+    const user = await userFor(they.actor);
+    forget(they.actor);
+    setThey(as(user));
+  }
+  await (await admin()).ok("POST", "/access", { user: userId, policy: await policyId(policy) });
+  await afterTheHook([]);
+});
 
 Step("an admin adds them to a group that gives the {policy} policy", async (_, policy: string) => {
   const they = current();
@@ -579,7 +635,7 @@ export function describeAccessFeature(name: string, ownSteps: Record<string, Sce
   // vitest-cucumber runs AfterAllScenarios after each Rule, so cleanup waits for the whole file.
   afterAll(async () => {
     // Rows first: a person's row points at its user.
-    const failures = [...(await deleteRows()), ...(await deleteUsers())];
+    const failures = [...(await deleteRows()), ...(await deleteUsers()), ...(await deleteAccounts())];
     if (failures.length > 0) {
       throw new Error(`Couldn't clean up:\n${failures.join("\n")}`);
     }

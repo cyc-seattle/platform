@@ -3,7 +3,8 @@ import path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import { location, projectId } from "../../src/config.ts";
-import { directusFilesBucket, stateBucket } from "../../src/outputs.ts";
+import { directusFilesBucket, listmonkMediaBucket, stateBucket } from "../../src/outputs.ts";
+import { listmonkMedia } from "./listmonk.ts";
 import { ServiceAccount } from "../../src/service-account.ts";
 import { enableService } from "../../src/services.ts";
 import { humanDeployers } from "./human-deployers.ts";
@@ -25,7 +26,14 @@ export const monthlyDays = 396;
 export const fileVersionDays = 90;
 
 /** The buckets copied to the files bucket each run, by name. */
-export const backedUpBuckets = [directusFilesBucket(projectId, "prod"), stateBucket(projectId, "prod")];
+export const backedUpBuckets = [
+  directusFilesBucket(projectId, "prod"),
+  stateBucket(projectId, "prod"),
+  listmonkMediaBucket(projectId),
+];
+
+/** The backed-up buckets this stack makes itself, so their grants wait for them. */
+const madeHere: Record<string, pulumi.Resource> = { [listmonkMediaBucket(projectId)]: listmonkMedia };
 
 const main = gcp.organizations.getProjectOutput({ projectId });
 
@@ -191,12 +199,14 @@ function copyProd(): void {
       new gcp.storage.BucketIAMMember(
         `${source}-transfer-${role.replace("roles/storage.", "")}`,
         { bucket: source, role, member: transferMember },
-        iamOpts,
+        { ...iamOpts, dependsOn: madeHere[source] ?? [] },
       );
     }
     const job = new gcp.storage.TransferJob(
       `backup-${source}`,
       {
+        // Pulumi's automatic name has a random suffix and no "transferJobs/" prefix, which Google refuses.
+        name: `transferJobs/backup-${source}`,
         description: `Copies ${source} to the backups project`,
         transferSpec: {
           gcsDataSource: { bucketName: source },

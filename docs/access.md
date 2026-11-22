@@ -87,12 +87,20 @@ can give, attached to no role:
 | Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                        |
 | Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does        |
 | Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same |
+| Crew Reader         | Reads Crew, but a term's pay ([crew-schema.md](crew-schema.md))                                                        |
+| Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                       |
 | Link Writer         | Changes Sail Team's links, but not their previews                                                                      |
 | Announcement Writer | Changes Sail Team's announcements                                                                                      |
+| FreeScout Agent     | Signs in to FreeScout, the shared inbox. Nothing in Directus                                                           |
+| Listmonk Write      | Signs in to Listmonk with its Write role: writes and tests newsletters, and manages subscribers. Nothing in Directus   |
+| Listmonk Send       | Signs in to Listmonk with its Send role: Listmonk Write's, and sends newsletters. Nothing in Directus                  |
 
-They're coarse: whole collections, with no row filters and no hidden fields, but for users and link
-previews: a Plan policy reads only each user's first and last name, so a frozen Financial Plan names
-who froze it, and a Link Writer can't write a link's preview.
+They're coarse: whole collections, with no row filters and no hidden fields, but for users, people,
+link previews, and Crew: a Plan policy reads only each user's and person's first and last name, so a
+frozen Financial Plan names who froze it and a term names who holds it, and a Link Writer can't write
+a link's preview. A term's pay is read only by Crew Writers and the Plan policies, and the CRM
+policies read who holds which position without it. A Crew policy reads only a person's name and
+email.
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
 Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `plan_id.kind`, and none of the collections only an Operations Plan uses
@@ -165,8 +173,14 @@ narrower, since it lets its holder impersonate a superuser.
 
 cyc-seattle/csc-website builds the public website from Directus ([website.md](website.md)). Its build
 signs in as the Website Build machine user, with a static token `backend` generates. Its policy reads
-every `website_*` collection whole, and the files in the Website folder, and nothing else: anything it
-can read could end up on the public site. `features/website.feature` gives the rule.
+every `website_*` collection whole, Crew's public profiles, and the files in the Website folder, and
+nothing else: anything it can read could end up on the public site. Of Crew it reads a crew member's
+person, bio, photo, and `show_full_name` while they're on the website, their current terms, and each
+position's name: never their pay or qualifications. Of People it reads only `first_name` and
+`last_name`, and only of a person whose crew member is on the website, through the `crew_members`
+list on people. The site shows the first name alone unless `show_full_name` is set. It can't read
+anyone else in the CRM, or any other field of theirs.
+`features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.
 
@@ -182,7 +196,10 @@ can't write a secret. The site has no PR previews, so no build reads dev's.
 - `group_members`: who is in each group, as people in the CRM
 - `group_policies`: which policies each group gives
 
-Only admins can see or change them. A group never sets a role.
+Only admins can see or change them. A group never sets a role. A group can also fill a Google
+Group, which the Google sync keeps equal to its members ([syncs.md](syncs.md#gsuite-sync)). A
+committee, such as the Finance Committee, is a group like any other, and holding a position in Crew
+doesn't put anyone in one ([crew-schema.md](crew-schema.md)).
 
 An admin changes a group from its own page in the Data Studio. Members and Policies are
 many-to-many lists: "Add existing" picks a person, or one of the policies a group can give. Neither
@@ -217,6 +234,8 @@ minutes, to catch a change that emitted no event, such as a cascade.
 - It gives each user their person's first and last name, so the Data Studio, comments, and
   revisions show a name, not an email. People is the source of truth, so the next run puts back a
   name changed on the user.
+- It removes any other policy linked straight to one of those users, so a policy comes only from a
+  role or a group.
 - It refuses a `group_policies` row that names any other policy.
 - It changes links through Directus's `AccessService`, which clears Directus's permission caches.
 
@@ -224,6 +243,31 @@ A person merge stops while a duplicate is still in a group, since moving a membe
 has access. An admin moves the membership by hand, and the next sync finishes the merge. For the
 same reason the Clubspot sync never changes the email of someone in a group. It logs the new
 address, which it still keeps among the person's other emails.
+
+## Signing in to other apps
+
+Who may sign in to another app is a policy, named for what it lets someone do there, and an admin
+gives it through a group like any other: FreeScout Agent, Listmonk Write, and Listmonk Send
+(`SIGN_IN_POLICIES` in `stacks/backend/policies.ts`). It allows nothing in Directus. No role gives
+one, Admin included.
+
+The `authentik` stack makes an Authentik group of each one's name, and each app lets in only its
+groups. The `group-policies` hook keeps each group's members equal to the active logins whose person
+holds the policy, on the same passes as the policy links, so someone added to a group in Authentik by
+hand is taken out, and so is a suspended login. It matches an Authentik account by its email, so
+someone who has never signed in has none, and joins on the first pass after they do. It takes people
+out of a group before adding anyone. Authentik is a copy: a group it can't update is logged, the
+others still are, and the next pass catches it up. If Directus has none of the policies a group can
+give, the hook changes no links and no sign-in group, and warns.
+
+Any change to a sign-in group in the `authentik` stack, such as a new name, replaces it with an
+empty one, which the hook fills on its next pass, within 15 minutes. Updating it in place would send
+back the members Pulumi last saw.
+
+The hook signs in to Authentik as the `directus-access-sync` service account, whose token the
+`authentik` stack writes to the `directus-authentik-access` Secret. Directus mounts the Secret
+optionally, since `backend` deploys first, and the hook reads it on each pass. The account sees
+users, and adds to and takes out of only the sign-in groups: it can't touch a superuser group.
 
 ## The query guard
 

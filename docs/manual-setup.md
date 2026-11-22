@@ -318,8 +318,9 @@ the organization needs more than project Owner.
        FreeScout, check the reply comes from info@ with `spf=pass` and `dmarc=pass` in its headers,
        answer it, and check the answer joins the conversation.
 
-8. [ ] **Let people in**: add each person to the group `authentik:inboxGroup` names (`FreeScout sign-in` by default) in Authentik's admin, under
-       Directory → Groups. They need to have signed in to something once, so Authentik knows them.
+8. [ ] **Let people in**: in the Data Studio, under Access → Groups, make a group such as Office that
+       gives the FreeScout Agent policy, and add each person to it. They need to have signed in to
+       something once, so Authentik knows them.
        After their first sign-in to FreeScout, put them on the mailbox under Manage → Mailboxes →
        info@ → Permissions.
 
@@ -330,6 +331,118 @@ the organization needs more than project Owner.
    3. Directory → Users → inbox@ → User information → Alternate email addresses (email aliases) →
       add `info`. Mail to info@ now lands in inbox@ directly.
    4. Email info@ again, and check it arrives in FreeScout and a reply still goes out from info@.
+
+## 12. The newsletter: AWS, SES, and Listmonk
+
+Listmonk sends the newsletter through Amazon SES ([newsletter.md](newsletter.md)). Do these in order. Apply
+`bootstrap` and `infra` from the branch that adds them, as for any new output.
+
+1. [ ] **The AWS account.** CSC's own, with a Google Group, such as `aws@<external domain>`, as its root email:
+       the maintainer and one other board member are members, and anyone on the web may post to it. Sign up at
+       <https://signin.aws.amazon.com/signup?request_type=register> as a Business, with CSC's card, on the free
+       Basic support plan.
+2. [ ] **Lock down root.** Under **Security credentials**, add two MFA devices, one held by the other board member.
+       Never make an access key for root.
+3. [ ] **A login for the maintainer.** **IAM → Users → Create user**, with console access and
+       `AdministratorAccess`, then add MFA to it. Use it, not root, from now on.
+4. [ ] **Billing alerts.** As root, **Account → IAM user and role access to Billing information → Activate**.
+       Then **Budgets → Create budget → Monthly cost budget** for a few dollars, emailing the Google Group, and
+       turn on **Receive AWS Free Tier alerts** under **Billing preferences**.
+5. [ ] **SES's plan.** In **US West (Oregon) us-west-2**, **Amazon SES → Account dashboard**: if it shows
+       **Essentials**, switch to **pay as you go**. Neither has a monthly fee.
+6. [ ] **The role Pulumi uses.** Get `deploy-runner`'s unique ID:
+
+   ```sh
+   gcloud iam service-accounts describe deploy-runner@<project>.iam.gserviceaccount.com --format='value(uniqueId)'
+   ```
+
+   **IAM → Roles → Create role → Custom trust policy**, with `<UNIQUE_ID>` filled in:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": { "Federated": "accounts.google.com" },
+         "Action": "sts:AssumeRoleWithWebIdentity",
+         "Condition": {
+           "StringEquals": {
+             "accounts.google.com:aud": "<UNIQUE_ID>",
+             "accounts.google.com:sub": "<UNIQUE_ID>",
+             "accounts.google.com:oaud": "sts.amazonaws.com"
+           }
+         }
+       }
+     ]
+   }
+   ```
+
+   Name it `pulumi-deploy-runner`, with no managed policies. Then **Add permissions → Create inline policy →
+   JSON**, with `<ACCOUNT_ID>` filled in, named `ses-and-listmonk-smtp`:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "Ses",
+         "Effect": "Allow",
+         "Action": "ses:*",
+         "Resource": "*",
+         "Condition": { "StringEquals": { "aws:RequestedRegion": "us-west-2" } }
+       },
+       {
+         "Sid": "FeedbackTopic",
+         "Effect": "Allow",
+         "Action": "sns:*",
+         "Resource": "arn:aws:sns:us-west-2:<ACCOUNT_ID>:ses-feedback"
+       },
+       {
+         "Sid": "SmtpUser",
+         "Effect": "Allow",
+         "Action": [
+           "iam:GetUser",
+           "iam:CreateUser",
+           "iam:DeleteUser",
+           "iam:TagUser",
+           "iam:UntagUser",
+           "iam:ListGroupsForUser",
+           "iam:ListUserPolicies",
+           "iam:ListAttachedUserPolicies",
+           "iam:GetUserPolicy",
+           "iam:PutUserPolicy",
+           "iam:DeleteUserPolicy",
+           "iam:CreateAccessKey",
+           "iam:DeleteAccessKey",
+           "iam:ListAccessKeys",
+           "iam:UpdateAccessKey"
+         ],
+         "Resource": "arn:aws:iam::<ACCOUNT_ID>:user/listmonk-smtp"
+       }
+     ]
+   }
+   ```
+
+7. [ ] **`bootstrap`**: `mise run preview-bootstrap`, then `mise run deploy-bootstrap`. It lets deploy-runner make its
+       own ID token, which is all the role trusts, and makes Listmonk's pictures bucket and its key.
+8. [ ] **`infra`**: set `infra:awsRoleArn` in `stacks/infra/Pulumi.prod.yaml` to the role's ARN, in a PR. Its prod
+       deploy verifies the domain in SES and adds the DKIM and `bounce.` records. **Amazon SES → Identities** shows
+       the domain verified within the hour.
+9. [ ] **Leave SES's sandbox.** **Amazon SES → Account dashboard → Request production access**: Marketing, the
+       website's address, and how signups are confirmed and bounces handled. AWS answers within 4 days.
+10. [ ] **Listmonk's stacks**, as for the inbox's (§11 step 1), with `--cwd stacks/listmonk`, before the PR that
+        adds them merges. Commit the `encryptedkey` line each adds.
+11. [ ] **Send through SES.** Once SES is out of its test mode, set `listmonk:ses: true` in
+        `stacks/listmonk/Pulumi.prod.yaml`, and once `bootstrap` has made the pictures bucket,
+        `listmonk:mediaBucket: true`. Until then prod sends its confirmations through the Workspace relay, and keeps
+        pictures in the pod.
+12. [ ] **Bounces back to Listmonk.** Once `https://mail.<external domain>/health` answers, set
+        `infra:listmonkFeedback: true` in a PR. Listmonk confirms SNS's subscription itself:
+        **Amazon SNS → Subscriptions** shows it confirmed.
+13. [ ] **Listmonk's look.** Signed in as `admin` (`pulumi stack output adminPassword --show-secrets` in
+        `stacks/listmonk`), set the logo, colors, and the confirmation email's words under **Settings →
+        Appearance** and **Campaigns → Templates**. Settings that live in code are written again at each start.
 
 ## When you add a new manual step
 

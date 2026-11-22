@@ -194,6 +194,7 @@ describe("Gateway", () => {
     ["https-dev-wildcard", "*.dev.example.team", "dev"],
     ["https-prod", "example.team", "prod"],
     ["https-prod-wildcard", "*.example.team", "prod"],
+    ["https-prod-mail", "mail.example.org", "prod"],
   ])("admits %s routes only from namespaces labeled %s", (name: string, hostname: string, environment: string) => {
     expect(listener(name)).toEqual({
       name,
@@ -214,6 +215,7 @@ describe("Gateway", () => {
       "https-dev-wildcard",
       "https-prod",
       "https-prod-wildcard",
+      "https-prod-mail",
     ]);
   });
 });
@@ -608,6 +610,7 @@ describe("uptime checks", () => {
       "login.example.team": "/-/health/live/",
       "example.org": "/",
       "www.example.org": "/",
+      "mail.example.org": "/health",
     });
     for (const { inputs } of checks()) {
       expect(inputs.httpCheck).toMatchObject({ port: 443, useSsl: true, validateSsl: true });
@@ -672,8 +675,24 @@ describe("log exclusions", () => {
 });
 
 describe("external zone", () => {
-  const records = () =>
+  const zoneRecords = () =>
     created.filter((r) => r.type === "gcp:dns/recordSet:RecordSet" && r.inputs.managedZone === "external_name");
+  const records = () => zoneRecords().filter((r) => !r.name.startsWith("prod-mail"));
+
+  it("points mail. at the Gateway, with a certificate for it alone", () => {
+    expect(byName("gcp:dns/recordSet:RecordSet", "prod-mail")).toMatchObject({
+      name: "mail.example.org.",
+      type: "A",
+      rrdatas: ["203.0.113.10"],
+    });
+    expect(zoneRecords().map((r) => r.name)).toContain("prod-mail-dns-authorization");
+    expect(byName("gcp:certificatemanager/certificate:Certificate", "prod-mail").managed.domains).toEqual([
+      "mail.example.org",
+    ]);
+    expect(byName("gcp:certificatemanager/certificateMapEntry:CertificateMapEntry", "prod-mail").hostname).toBe(
+      "mail.example.org",
+    );
+  });
 
   it("answers what Porkbun does: Wix's web records, Google mail, and Mailchimp's DKIM", () => {
     expect(Object.fromEntries(records().map((r) => [`${r.inputs.name} ${r.inputs.type}`, r.inputs.rrdatas]))).toEqual({

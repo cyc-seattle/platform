@@ -6,6 +6,7 @@ import { discoverSchemaFiles } from "../src/directus/client.ts";
 import { familyPolicies } from "../stacks/backend/community-rules.ts";
 import {
   ADMIN_ONLY_FIELDS,
+  CREW_PAY_FIELDS,
   crewRules,
   fieldsIn,
   groupPolicies,
@@ -17,6 +18,7 @@ import {
   WEBSITE_BUILD,
   WEBSITE_FILE_FIELDS,
   websiteBuildRules,
+  WEBSITE_CREW_RULES,
 } from "../stacks/backend/policies.ts";
 import { WEBSITE_FOLDER } from "../stacks/backend/migrations/cyc0007-website-folder.cjs";
 
@@ -41,14 +43,19 @@ describe("the group-policies hook", () => {
 });
 
 describe("the policies a group can give", () => {
-  it("are the CRM, Medical, Catalog, Plan, and Sail Team writer policies", () => {
+  it("are the CRM, Medical, Catalog, Crew, Plan, Sail Team writer, and sign-in policies", () => {
     expect(groupPoliciesConfig(policies).grantable).toEqual([
       "Announcement Writer",
       "CRM Reader",
       "CRM Writer",
       "Catalog Reader",
       "Catalog Writer",
+      "Crew Reader",
+      "Crew Writer",
+      "FreeScout Agent",
       "Link Writer",
+      "Listmonk Send",
+      "Listmonk Write",
       "Medical Reader",
       "Medical Writer",
       "Plan Admin",
@@ -72,12 +79,17 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters but the planners' by kind of plan, and no field lists but a person's writable fields, CRM Writer's hand-set one, and the catalog fields the sync keeps", () => {
+  it("are coarse: no row filters but the planners' by kind of plan and Crew's photos, and no field lists but a person's writable fields, CRM Writer's hand-set one, Crew's, and the catalog fields the sync keeps", () => {
     const planners = ["Plan Writer", "Plan Admin"];
-    for (const rule of policies.filter(({ name }) => !planners.includes(name)).flatMap((policy) => policy.rules)) {
-      expect(rule.permissions).toBeUndefined();
+    for (const { name, rules } of policies.filter(({ name }) => !planners.includes(name))) {
+      for (const rule of rules) {
+        if (name === "Crew Writer" && rule.collection === "directus_files") continue;
+        expect(rule.permissions).toBeUndefined();
+      }
     }
-    const fielded = named("CRM Writer").rules.filter((rule) => rule.fields && rule.collection !== "people");
+    const fielded = named("CRM Writer").rules.filter(
+      (rule) => rule.fields && rule.collection !== "people" && !rule.collection.startsWith("crew_"),
+    );
     expect(fielded.map(({ collection, fields }) => `${collection}.${fields}`)).toEqual([
       "clubspot_participants.person_id",
     ]);
@@ -119,6 +131,54 @@ describe("the policies a group can give", () => {
     expect(collections("CRM Writer", "update").has("people")).toBe(true);
     expect(collections("CRM Writer", "update").has("clubspot_registrations")).toBe(false);
     expect(collections("CRM Reader", "read")).toEqual(collections("CRM Writer", "read"));
+  });
+});
+
+describe("the Crew policies", () => {
+  const crew = ["crew_members", "crew_positions", "crew_terms", "crew_qualifications", "crew_position_qualifications"];
+
+  it("let a Crew Writer change every Crew collection, pay included", () => {
+    for (const action of ["create", "read", "update", "delete"]) {
+      expect([...collections("Crew Writer", action)].filter((c) => c.startsWith("crew_")).sort()).toEqual(
+        [...crew].sort(),
+      );
+    }
+    expect(named("Crew Writer").rules.filter((rule) => rule.collection === "crew_terms")).toEqual(
+      ["create", "read", "update", "delete"].map((action) => ({ collection: "crew_terms", action })),
+    );
+  });
+
+  it("let a Crew Reader see Crew but not pay, and change nothing", () => {
+    expect(named("Crew Reader").rules.every((rule) => rule.action === "read")).toBe(true);
+    const [terms] = named("Crew Reader").rules.filter((rule) => rule.collection === "crew_terms");
+    expect(terms!.fields).toEqual(fieldsOf("crew_terms").filter((field) => !CREW_PAY_FIELDS.includes(field)));
+  });
+
+  it("show the CRM policies who holds which position, but not pay or qualifications", () => {
+    for (const name of ["CRM Reader", "CRM Writer"]) {
+      const rules = named(name).rules.filter((rule) => rule.collection.startsWith("crew_"));
+      expect(rules.every((rule) => rule.action === "read")).toBe(true);
+      expect(rules.map((rule) => rule.collection)).toEqual(["crew_members", "crew_positions", "crew_terms"]);
+      expect(rules.find((rule) => rule.collection === "crew_terms")!.fields).not.toEqual(
+        expect.arrayContaining(CREW_PAY_FIELDS),
+      );
+    }
+  });
+
+  it("show each Crew policy a person's name and email, and nothing else of theirs", () => {
+    for (const name of ["Crew Reader", "Crew Writer"]) {
+      expect(named(name).rules.filter((rule) => rule.collection === "people")).toEqual([
+        { collection: "people", action: "read", fields: ["id", "first_name", "last_name", "email"] },
+      ]);
+    }
+  });
+
+  it("let a Crew Writer upload only into the Website folder", () => {
+    const files = named("Crew Writer").rules.filter((rule) => rule.collection === "directus_files");
+    expect(files.map((rule) => rule.action)).toEqual(["create", "read", "update"]);
+    for (const rule of files) {
+      expect(rule.permissions).toEqual({ folder: { _eq: WEBSITE_FOLDER } });
+    }
   });
 });
 
@@ -242,8 +302,9 @@ describe("the Plan policies", () => {
   const catalog = collections("Catalog Reader", "read");
 
   it("let each see every plan and the catalog, with no field held back", () => {
+    const names = new Set(["directus_users", "people", "crew_members", "crew_terms", "crew_positions"]);
     for (const name of ["Plan Reader", "Plan Writer", "Plan Admin"]) {
-      const rules = named(name).rules.filter((rule) => rule.collection !== "directus_users");
+      const rules = named(name).rules.filter((rule) => !names.has(rule.collection));
       expect(
         [...new Set(rules.filter((rule) => rule.action === "read").map((rule) => rule.collection))].sort(),
       ).toEqual([...plans, ...catalog].sort());
@@ -255,6 +316,20 @@ describe("the Plan policies", () => {
     for (const name of ["Plan Reader", "Plan Writer", "Plan Admin"]) {
       expect(named(name).rules.filter((rule) => rule.collection === "directus_users")).toEqual([
         { collection: "directus_users", action: "read", fields: ["id", "first_name", "last_name"] },
+      ]);
+    }
+  });
+
+  it("let each see who holds a paid position, and their pay, but nothing of a person but their name", () => {
+    for (const name of ["Plan Reader", "Plan Writer", "Plan Admin"]) {
+      const crew = named(name).rules.filter(
+        (rule) => rule.collection === "people" || rule.collection.startsWith("crew_"),
+      );
+      expect(crew).toEqual([
+        { collection: "crew_terms", action: "read" },
+        { collection: "crew_members", action: "read", fields: ["id", "person_id"] },
+        { collection: "crew_positions", action: "read", fields: ["id", "name"] },
+        { collection: "people", action: "read", fields: ["id", "first_name", "last_name"] },
       ]);
     }
   });
@@ -450,13 +525,34 @@ describe("the csc-website build's rules", () => {
     expect(new Set(rules.map((rule) => rule.action))).toEqual(new Set(["read"]));
   });
 
-  it("read every website collection whole, and no other collection", () => {
-    const own = rules.filter((rule) => !rule.collection.startsWith("directus_"));
+  it("read every website collection whole, and no other collection but Crew's public profiles and names", () => {
+    const own = rules.filter((rule) => !rule.collection.startsWith("directus_") && !WEBSITE_CREW_RULES.includes(rule));
     expect(own.every((rule) => rule.collection.startsWith("website_"))).toBe(true);
     expect(own.every((rule) => rule.permissions === undefined && rule.fields === undefined)).toBe(true);
     expect(own.map((rule) => rule.collection)).toEqual(
       expect.arrayContaining(["website_settings", "website_programs"]),
     );
+  });
+
+  it("read a crew member's website fields only while they're on it, and only their current terms", () => {
+    expect(rules.filter((rule) => rule.collection.startsWith("crew_") || rule.collection === "people")).toEqual(
+      WEBSITE_CREW_RULES,
+    );
+    const [members, terms, positions, people] = WEBSITE_CREW_RULES;
+    expect(members!.fields).toEqual(["id", "person_id", "show_full_name", "website_bio", "website_photo"]);
+    expect(members!.permissions).toEqual({ on_website: { _eq: true } });
+    expect(terms!.fields).not.toEqual(expect.arrayContaining(CREW_PAY_FIELDS));
+    expect(JSON.stringify(terms!.permissions)).toContain("on_website");
+    expect(positions!.fields).toEqual(["id", "name"]);
+    expect(people).toEqual({
+      collection: "people",
+      action: "read",
+      permissions: { crew_members: { on_website: { _eq: true } } },
+      fields: ["id", "first_name", "last_name"],
+    });
+    for (const rule of WEBSITE_CREW_RULES) {
+      expect(rule.fields).not.toContain("*");
+    }
   });
 
   it("read only the files in the Website folder, and that folder", () => {

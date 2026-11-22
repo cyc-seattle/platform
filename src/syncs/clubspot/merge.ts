@@ -36,6 +36,10 @@ export const HANDLED_PEOPLE_FOREIGN_KEYS: readonly HandledPeopleForeignKey[] = [
   // Never repointed: a group gives access, so an admin moves a duplicate's memberships by hand, and
   // until then the merge stops on the final delete.
   { collection: "group_members", field: "person_id" },
+  // Moved to the keeper only when no one else in the group is on Crew, since a person is on Crew once.
+  { collection: "crew_members", field: "person_id" },
+  // Never repointed: a frozen Financial Plan never changes, so a merge stops on a duplicate named in one.
+  { collection: "plan_salaried_positions", field: "person_id" },
 ];
 
 /** A `people` row as the merge needs it: every scalar column. */
@@ -140,6 +144,7 @@ export interface MergeRelatedData {
   programAreaRoleAssignments: readonly MergePersonReference[];
   registrations: readonly MergePersonReference[];
   googleGroupMemberships: readonly MergePersonReference[];
+  crewMembers: readonly MergePersonReference[];
   /** `directus_users` rows, each a login of someone in the group. */
   logins: readonly MergePersonReference[];
 }
@@ -399,6 +404,20 @@ function planSimpleRepoint(
 }
 
 /**
+ * A duplicate's crew member moves to the keeper when it's the group's only one. When two people in
+ * the group are on Crew, nothing moves, and the merge stops on the final delete for an admin to settle.
+ */
+function planCrewMemberMerge(
+  keeperId: string,
+  duplicateIds: ReadonlySet<string>,
+  rows: readonly MergePersonReference[],
+): MergeStep[] {
+  const [only, ...others] = rows;
+  if (only === undefined || others.length > 0 || !duplicateIds.has(only.person_id)) return [];
+  return [{ type: "update", collection: "crew_members", id: only.id, patch: { person_id: keeperId } }];
+}
+
+/**
  * The keeper's own row: its non-null scalars win, a duplicate's non-null value fills only a null
  * one, taken in the given order.
  */
@@ -460,6 +479,7 @@ export function planPersonMerge(
   steps.push(...planSimpleRepoint("registrations", keeper.id, duplicateIds, related.registrations));
   steps.push(...planSimpleRepoint("google_group_memberships", keeper.id, duplicateIds, related.googleGroupMemberships));
   steps.push(...planSimpleRepoint("directus_users", keeper.id, duplicateIds, related.logins));
+  steps.push(...planCrewMemberMerge(keeper.id, duplicateIds, related.crewMembers));
 
   const personPatch = buildKeeperPersonPatch(keeper, duplicates);
   if (Object.keys(personPatch).length > 0) {

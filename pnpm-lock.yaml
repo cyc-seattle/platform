@@ -31,8 +31,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.2
       '@cyc-seattle/gsuite-sdk':
-        specifier: ^0.3.0
-        version: 0.3.0(google-auth-library@11.3.2)
+        specifier: ^1.2.0
+        version: 1.2.0
       '@cyc-seattle/ts-config':
         specifier: ^0.1.2
         version: 0.1.2(@types/node@22.20.5)(eslint@9.39.5)(prettier@3.9.10)(typescript@5.9.3)(vitest@5.0.5(@opentelemetry/api@1.10.0)(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(yaml@2.9.1)))
@@ -42,6 +42,9 @@ importers:
       '@pulumi/authentik':
         specifier: file:./generated/authentik
         version: file:generated/authentik
+      '@pulumi/aws':
+        specifier: 7.55.0
+        version: 7.55.0(typescript@5.9.3)
       '@pulumi/command':
         specifier: 1.3.0
         version: 1.3.0(typescript@5.9.3)
@@ -454,8 +457,8 @@ packages:
     resolution: {integrity: sha512-o0lB9gCNh4pMgN3BOPsSw/IavULf5chaMS9ri439VucyrjyLc8KDeDxWLaftHmlIWZp5EyPJLMwjjLQCP7wRDA==}
     engines: {node: '>=22'}
 
-  '@cyc-seattle/gsuite-sdk@0.3.0':
-    resolution: {integrity: sha512-dEJf0TE3eXnpQKHRplqaNep3eybBj7kFISCmR1pUFAY6S9WxTW3XYOaChJILxhNtn99gFdk7K0Pi1clKkDEtWA==}
+  '@cyc-seattle/gsuite-sdk@1.2.0':
+    resolution: {integrity: sha512-tjh5iMd9uiJvLix8hV03lupYK5X4xFsK6+ugXdXmY//XhX4FHoP9xHQoUP2kBcRrKaX2KQmFgohLD6RnAKOoBQ==}
     engines: {node: '>=22'}
 
   '@cyc-seattle/ts-config@0.1.2':
@@ -1210,6 +1213,9 @@ packages:
 
   '@pulumi/authentik@file:generated/authentik':
     resolution: {directory: generated/authentik, type: directory}
+
+  '@pulumi/aws@7.55.0':
+    resolution: {integrity: sha512-lrCwgPGi6o10FR70UZrtvAkqYi9mgoK72z77iStfntHK1V+MH+R3+ZhlWMjpriKwtRADlffUwnmp6bQsNpSa4w==}
 
   '@pulumi/command@1.3.0':
     resolution: {integrity: sha512-KrRVG/CmN9yCYJ1Rqn5mkond5wbeLNbgrclityNNN8hgltjSVZ2xwlxAw84fApNk9Bu3AV1bwN5Q/XD56Kisvg==}
@@ -3345,6 +3351,11 @@ packages:
   micromark@4.0.3:
     resolution: {integrity: sha512-oGYfQzHSG5dOMovQcJ3fyTmZlWAWpi0XA0sJwJs+i6OT88o1+Jtw/8z0CmdowSLxGhhFK89rQ/oXph/wN02PNw==}
 
+  mime@2.6.0:
+    resolution: {integrity: sha512-USPkMeET31rOMiarsBNIHZKLGgvKc/LrjofAnBlOttf5ajRvqiRA8QsenbcooctK6d6Ts6aqZXBA+XbkKthiQg==}
+    engines: {node: '>=4.0.0'}
+    hasBin: true
+
   mimic-fn@2.1.0:
     resolution: {integrity: sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg==}
     engines: {node: '>=6'}
@@ -4802,16 +4813,13 @@ snapshots:
       winston: 3.19.0
       winston-console-format: 1.0.8
 
-  '@cyc-seattle/gsuite-sdk@0.3.0(google-auth-library@11.3.2)':
+  '@cyc-seattle/gsuite-sdk@1.2.0':
     dependencies:
       exponential-backoff: 3.1.3
-      google-spreadsheet: 5.3.0(google-auth-library@11.3.2)
       googleapis: 144.0.0
-      luxon: 3.7.2
       winston: 3.19.0
     transitivePeerDependencies:
       - encoding
-      - google-auth-library
       - supports-color
 
   '@cyc-seattle/ts-config@0.1.2(@types/node@22.20.5)(eslint@9.39.5)(prettier@3.9.10)(typescript@5.9.3)(vitest@5.0.5(@opentelemetry/api@1.10.0)(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(yaml@2.9.1)))':
@@ -5564,6 +5572,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - ts-node
+
+  '@pulumi/aws@7.55.0(typescript@5.9.3)':
+    dependencies:
+      '@pulumi/pulumi': 3.273.0(typescript@5.9.3)
+      mime: 2.6.0
+    transitivePeerDependencies:
+      - supports-color
+      - ts-node
+      - typescript
 
   '@pulumi/command@1.3.0(typescript@5.9.3)':
     dependencies:
@@ -8285,6 +8302,8 @@ snapshots:
       micromark-util-types: 2.0.3
     transitivePeerDependencies:
       - supports-color
+
+  mime@2.6.0: {}
 
   mimic-fn@2.1.0: {}
 

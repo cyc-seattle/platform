@@ -9,8 +9,10 @@ import { WebService } from "../../src/index.ts";
 import { directusFilesBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
-import { directusEnv } from "./workloads.ts";
+import { directusEnv, mailEnv } from "./workloads.ts";
+import { AUTHENTIK_ACCESS_SECRET } from "./policies.ts";
 import type { GroupPoliciesConfig, QueryGuardConfig, FrozenPlansConfig, WebsitePublishConfig } from "./policies.ts";
+import type { FormsConfig } from "./forms.cjs";
 
 // Directus on the cluster (cyc-seattle/isthmia#231). Its uploaded files are in a bucket infra makes.
 
@@ -49,6 +51,9 @@ export interface DirectusExtensions {
   groupPolicies: GroupPoliciesConfig;
   frozenPlans: FrozenPlansConfig;
   websitePublish: WebsitePublishConfig;
+  forms: FormsConfig;
+  /** Where the website's forms post: Listmonk's public address, which the Gateway shares with Directus. */
+  formsHostname: string;
   /** The planning engine's modules, which the frozen-plans hook loads (./engine-files.ts). */
   engine: Record<string, string>;
 }
@@ -113,7 +118,12 @@ export async function deployDirectus(
 
   // Directus loads extensions only at start. Unnamed, so a change replaces it under a new name, and
   // the Deployment rolls.
-  const extension = (name: string, type: "hook" | "display", source: string, files: Record<string, string> = {}) => {
+  const extension = (
+    name: string,
+    type: "hook" | "display" | "endpoint",
+    source: string,
+    files: Record<string, string> = {},
+  ) => {
     const configMap = new k8s.core.v1.ConfigMap(
       `directus-${name}`,
       {
@@ -142,6 +152,7 @@ export async function deployDirectus(
     hook("link-preview", "link-preview.cjs", {}),
     hook("website-publish", "website-publish.cjs", extensions.websitePublish),
     extension("cents-as-dollars", "display", "cents-display.mjs"),
+    extension("forms", "endpoint", "forms.cjs", { "config.json": JSON.stringify(extensions.forms) }),
   ];
   // Directus runs each migration it hasn't recorded at start, before it serves.
   const migrationsDir = path.resolve(import.meta.dirname, "migrations");
@@ -185,6 +196,9 @@ export async function deployDirectus(
         filesBucket: directusFilesBucket(platform.project, pulumi.getStack()),
       }),
       secretEnv("DB_PASSWORD", db.secret, "password"),
+      // The contact form's mail (./forms.cjs): the Workspace relay, which admits the cluster's address, or
+      // dev's Mailpit, which Authentik runs.
+      ...mailEnv(isDev),
       // Dev's tests log every request, more than any other pod; its warnings and errors stay.
       ...(isDev ? [{ name: "LOG_LEVEL", value: "warn" }] : []),
     ],
@@ -201,6 +215,15 @@ export async function deployDirectus(
         readOnly: true,
       })),
       { name: "migrations", mountPath: "/directus/migrations", configMap: migrations.metadata.name, readOnly: true },
+      // The `authentik` stack writes it, after this one deploys. A mounted Secret follows its changes, so
+      // the group-policies hook picks it up without a restart.
+      {
+        name: "authentik-access",
+        mountPath: extensions.groupPolicies.authentikDir,
+        secret: AUTHENTIK_ACCESS_SECRET,
+        optional: true,
+        readOnly: true,
+      },
     ],
     // The image's user is `node`, a name, which runAsNonRoot can't check.
     runAsUser: 1000,
@@ -210,6 +233,28 @@ export async function deployDirectus(
       podAnnotations: { "cluster-autoscaler.kubernetes.io/safe-to-evict": "false" },
     }),
   });
+
+  // The website's forms post to <formsHostname>/forms/, on the public domain, and Listmonk serves the rest
+  // of that address (cyc-seattle/csc-website#9). The longer path wins.
+  new k8s.apiextensions.CustomResource(
+    "directus-forms",
+    {
+      apiVersion: "gateway.networking.k8s.io/v1",
+      kind: "HTTPRoute",
+      metadata: { name: "directus-forms", namespace: platform.namespace },
+      spec: {
+        parentRefs: [{ name: platform.gateway.name, namespace: platform.gateway.namespace }],
+        hostnames: [extensions.formsHostname],
+        rules: [
+          {
+            matches: [{ path: { type: "PathPrefix", value: "/forms/" } }],
+            backendRefs: [{ name: "directus", port: 80 }],
+          },
+        ],
+      },
+    },
+    { provider, dependsOn: directus },
+  );
 
   // Dev's hostnames fall under platform's wildcard record. Prod's moves from the VM (./prod-state.ts).
   const record = isDev ? [] : [dnsRecord("directus-a", `directus.${domain}`, platform.gatewayAddress)];

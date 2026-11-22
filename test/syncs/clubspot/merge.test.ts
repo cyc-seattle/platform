@@ -41,6 +41,7 @@ function related(overrides: Partial<MergeRelatedData> = {}): MergeRelatedData {
     registrations: [],
     googleGroupMemberships: [],
     logins: [],
+    crewMembers: [],
     ...overrides,
   };
 }
@@ -355,6 +356,41 @@ describe("planPersonMerge", () => {
         patch: { person_id: "keep" },
       })),
     );
+    expect(steps.at(-1)).toEqual({ type: "delete", collection: "people", ids: ["dup1", "dup2"] });
+  });
+
+  it("moves a duplicate's crew member to the keeper when no one else in the group is on Crew", () => {
+    const keeper = person({ id: "keep" });
+    const duplicates = [person({ id: "dup" })];
+    const crewMembers = [{ id: "crew-dup", person_id: "dup" }];
+    const steps = planPersonMerge(keeper, duplicates, related({ crewMembers }));
+
+    expect(steps.filter((step) => step.collection === "crew_members")).toEqual([
+      { type: "update", collection: "crew_members", id: "crew-dup", patch: { person_id: "keep" } },
+    ]);
+  });
+
+  it.each([
+    [
+      "the keeper and a duplicate",
+      [
+        { id: "crew-keep", person_id: "keep" },
+        { id: "crew-dup", person_id: "dup1" },
+      ],
+    ],
+    [
+      "two duplicates",
+      [
+        { id: "crew-dup1", person_id: "dup1" },
+        { id: "crew-dup2", person_id: "dup2" },
+      ],
+    ],
+  ])("moves no crew member when %s are on Crew, so the final delete stops the merge", (_, crewMembers) => {
+    const keeper = person({ id: "keep" });
+    const duplicates = [person({ id: "dup1" }), person({ id: "dup2" })];
+    const steps = planPersonMerge(keeper, duplicates, related({ crewMembers }));
+
+    expect(steps.filter((step) => step.collection === "crew_members")).toEqual([]);
     expect(steps.at(-1)).toEqual({ type: "delete", collection: "people", ids: ["dup1", "dup2"] });
   });
 

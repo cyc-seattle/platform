@@ -7,6 +7,7 @@ config:
     - directus
     - clubspot_fake
     - inbox
+    - listmonk
   infra:externalDomain: cyccommunitysailing.org
   infra:internalDomain: cycsail.team
   infra:shortDomain: cycsailing.center

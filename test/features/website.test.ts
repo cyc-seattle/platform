@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect } from "vitest";
 import { WEBSITE_FOLDER } from "../../stacks/backend/migrations/cyc0007-website-folder.cjs";
 import { describeAccessFeature, onEachScenario, Step, theirSession } from "./steps/index.ts";
-import { admin, adminCreate, row, runId, runRows } from "./steps/rows.ts";
+import { admin, adminCreate, newRow, row, runId, runRows } from "./steps/rows.ts";
 
 // A 1x1 transparent PNG.
 const PICTURE = Buffer.from(
@@ -74,11 +74,18 @@ Step("it can't see the picture", async () => {
 
 // Every collection, the system's own included, read through its own route. A route Directus doesn't
 // serve, such as its migrations', is skipped.
-Step("it can't see anything outside the website", async () => {
+Step("it can't see anything outside the website and crew's public profiles", async () => {
   const everything: { collection: string; schema: unknown }[] = await (
     await admin()
   ).ok("GET", "/collections?limit=-1");
-  const allowed = new Set(["directus_files", "directus_folders"]);
+  const allowed = new Set([
+    "directus_files",
+    "directus_folders",
+    "crew_members",
+    "crew_terms",
+    "crew_positions",
+    "people",
+  ]);
   const seen: string[] = [];
   for (const { collection, schema } of everything) {
     // A folder in the Data Studio has no table.
@@ -137,6 +144,96 @@ Step("a sponsor whose logo is kept outside the website's folder", async () => {
 Step("it searches the sponsors by their logo's file name", async () => {
   const filter = encodeURIComponent(JSON.stringify({ logo: { filename_download: { _nnull: true } } }));
   refused = await (await theirSession()).request("GET", `/items/website_sponsors?filter=${filter}`);
+});
+
+// Crew. Each crew member has a person of their own, and a term in a position of their own.
+let crew: { memberId: string; termId: string; qualificationId: string; personId: string } | undefined;
+onEachScenario(() => {
+  crew = undefined;
+});
+const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+
+async function aCrewMember(onWebsite: boolean, position: string, ends_on: string | null): Promise<void> {
+  await runRows();
+  const member = await adminCreate("crew_members", await newRow("crew_members", { on_website: onWebsite }));
+  const positionId = (await adminCreate("crew_positions", { id: randomUUID(), name: `${position} ${runId}` })).id;
+  const term = await adminCreate(
+    "crew_terms",
+    await newRow("crew_terms", { crew_member_id: member.id, position_id: positionId, starts_on: daysAgo(60), ends_on }),
+  );
+  const held = await adminCreate(
+    "crew_qualifications",
+    await newRow("crew_qualifications", { crew_member_id: member.id }),
+  );
+  crew = { memberId: member.id, termId: term.id, qualificationId: held.id, personId: member["person_id"] as string };
+}
+Step("a crew member on the website, with a current term as Head Coach", () => aCrewMember(true, "Head Coach", null));
+Step("a crew member who isn't on the website, with a current term as Head Coach", () =>
+  aCrewMember(false, "Head Coach", null),
+);
+Step("a crew member on the website whose term as Treasurer ended yesterday", () =>
+  aCrewMember(true, "Treasurer", daysAgo(1)),
+);
+
+const read = async (path: string) => (await theirSession()).request("GET", path);
+const byId = (collection: string, id: string, fields = "id") =>
+  `/items/${collection}?fields=${fields}&filter=${encodeURIComponent(JSON.stringify({ id: { _eq: id } }))}`;
+
+Step("it can see their first and last name, whether to show both, and their bio and photo", async () => {
+  const fields = "id,show_full_name,website_bio,website_photo,person_id.first_name,person_id.last_name";
+  const { status, body } = await read(`/items/crew_members/${crew!.memberId}?fields=${fields}`);
+  expect(status, JSON.stringify(body)).toBe(200);
+  expect(body.data.person_id).toEqual({ first_name: "Casey", last_name: expect.any(String) });
+  expect(body.data.show_full_name).toBe(false);
+});
+Step("it can see their term as Head Coach", async () => {
+  const { status, body } = await read(`/items/crew_terms/${crew!.termId}?fields=id,position_id.name`);
+  expect(status, JSON.stringify(body)).toBe(200);
+  expect(body.data.position_id.name).toBe(`Head Coach ${runId}`);
+});
+// The person's id comes with their crew member, but nothing about them but their name.
+Step("it can't see anything else about them in the CRM", async () => {
+  const { body } = await read(`/items/crew_members/${crew!.memberId}?fields=person_id`);
+  for (const field of ["email", "phone", "date_of_birth", "street", "household_id"]) {
+    const { status } = await read(`/items/people/${body.data.person_id}?fields=${field}`);
+    expect(status, field).toBe(403);
+  }
+});
+Step("it can't see their name", async () => {
+  const filter = encodeURIComponent(JSON.stringify({ id: { _eq: crew!.personId } }));
+  const { status, body } = await read(`/items/people?fields=id,first_name,last_name&filter=${filter}`);
+  if (status !== 403) {
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect(body.data).toEqual([]);
+  }
+});
+Step("a person in the CRM who isn't on Crew", async () => {
+  await runRows();
+  const person = await adminCreate("people", await newRow("people", { first_name: "Robin" }));
+  crew = { memberId: "", termId: "", qualificationId: "", personId: person.id };
+});
+Step("it can't see their qualifications or pay", async () => {
+  const held = await read(`/items/crew_qualifications/${crew!.qualificationId}`);
+  expect(held.status, JSON.stringify(held.body)).toBe(403);
+  const pay = await read(`/items/crew_terms/${crew!.termId}?fields=hourly_rate_cents`);
+  expect(pay.status, JSON.stringify(pay.body)).toBe(403);
+});
+// A row its rule hides reads as nothing, not a refusal.
+async function seesNothing(path: string): Promise<void> {
+  const { status, body } = await read(path);
+  if (status !== 403) {
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect(body.data, path).toEqual([]);
+  }
+}
+Step("it can't see them or their terms", async () => {
+  await seesNothing(byId("crew_members", crew!.memberId));
+  await seesNothing(byId("crew_terms", crew!.termId));
+});
+Step("it can't see that term", () => seesNothing(byId("crew_terms", crew!.termId)));
+Step("it searches crew members by their person's email", async () => {
+  const filter = encodeURIComponent(JSON.stringify({ person_id: { email: { _nnull: true } } }));
+  refused = await read(`/items/crew_members?filter=${filter}`);
 });
 
 Step("it isn't allowed", () => {

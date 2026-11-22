@@ -11,6 +11,7 @@ import {
 } from "../../model/crm/index.ts";
 import { type AuditFindingInput } from "../runtime/index.ts";
 import { type GroupMember } from "@cyc-seattle/gsuite-sdk";
+import { type AccessGroupRow, contestedGoogleGroups, googleGroupLabel, type GroupSource } from "./access-groups.ts";
 import { removedPersonIds } from "./group-memberships.ts";
 import { type MembershipTables, planProgramMemberPeople, planProgramMembers } from "./membership.ts";
 import { planGroupNesting } from "./nesting.ts";
@@ -34,7 +35,9 @@ export type AuditFindingKind =
   | "program_without_product"
   | "program_product_wrong_kind"
   | "revenue_account_differs_from_area"
-  | "invalid_email";
+  | "invalid_email"
+  | "google_group_filled_twice"
+  | "google_group_mass_removal";
 
 /** Every kind this pass can raise. Scopes `planAuditFindingWrites` to the rows it owns, so it
  * never resolves a finding some other sync raised. */
@@ -53,6 +56,8 @@ export const AUDIT_FINDING_KINDS: readonly AuditFindingKind[] = [
   "program_product_wrong_kind",
   "revenue_account_differs_from_area",
   "invalid_email",
+  "google_group_filled_twice",
+  "google_group_mass_removal",
 ];
 
 /** An `audit_findings` input narrowed to the kinds this pass raises - `AuditFindingInput` itself
@@ -251,6 +256,48 @@ export function candidateMemberPeople(tables: AuditTables, now: Date): PersonRow
     }
   }
   return [...people.values()];
+}
+
+/**
+ * `google_group_filled_twice` findings: a Google Group a CRM group fills along with a program or
+ * another group. The sync fills it from none of them, so it waits for someone to pick one.
+ */
+export function findContestedGoogleGroups(
+  groups: readonly GoogleGroupRow[],
+  sources: ReadonlyMap<string, GroupSource[]>,
+  programs: readonly Pick<ProgramWithGoogleGroup, "id" | "name">[],
+  accessGroups: readonly AccessGroupRow[],
+): GsuiteAuditFinding[] {
+  const name = (source: GroupSource): string =>
+    "program" in source
+      ? `the program ${programs.find((program) => program.id === source.program)?.name ?? source.program}`
+      : `the group ${accessGroups.find((group) => group.id === source.group)?.name ?? source.group}`;
+  return [...contestedGoogleGroups(sources)].sort().map((id) => {
+    const label = googleGroupLabel(groups, id);
+    return {
+      source: GSUITE_SYNC_SOURCE,
+      kind: "google_group_filled_twice" as const,
+      subject: label,
+      detail: `${label} is filled by ${(sources.get(id) ?? []).map(name).join(" and ")}, so the Google sync fills it from neither until only one does`,
+    };
+  });
+}
+
+/**
+ * `google_group_mass_removal` finding: a CRM group whose Google Group the sync would take so many
+ * out of that it waits for someone to run it with `--allow-mass-removal`, or fix the group.
+ */
+export function findMassRemoval(
+  group: Pick<GoogleGroupRow, "email">,
+  accessGroup: Pick<AccessGroupRow, "name">,
+  remove: readonly string[],
+): GsuiteAuditFinding {
+  return {
+    source: GSUITE_SYNC_SOURCE,
+    kind: "google_group_mass_removal",
+    subject: group.email,
+    detail: `The group ${accessGroup.name} would take ${remove.length} out of ${group.email} (${remove.join(", ")}), so the Google sync waits for someone to allow it`,
+  };
 }
 
 /**

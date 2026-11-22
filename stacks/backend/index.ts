@@ -118,6 +118,13 @@ const app = deployDirectus(
     frozenPlans,
     // Set once the GitHub App exists (docs/manual-setup.md §6). Dev has none, so only prod publishes.
     websitePublish: websitePublishConfig(loadedSchemas, config.get("websitePublishAppId")),
+    forms: {
+      to: config.require("contactTo"),
+      allowedOrigins: config.requireObject<string[]>("formsOrigins"),
+      siteUrl: `https://${config.require("externalDomain")}`,
+      perIp: config.getNumber("formsPerIp") ?? 10,
+    },
+    formsHostname: config.require("formsHostname"),
     engine,
   },
   prod?.values,
@@ -471,6 +478,21 @@ for (const collection of ["program_role_assignments", "program_area_role_assignm
   }
 }
 
+// A person merge moves a duplicate's crew member to the person kept, when it's the group's only one.
+for (const action of ["read", "update"] as const) {
+  permissionRule(
+    `crm-clubspot-sync-crew_members-${action}`,
+    {
+      ...auth,
+      policyId: clubspotSyncPolicyId,
+      collection: "crew_members",
+      action,
+      fields: action === "read" ? ["id", "person_id"] : ["person_id"],
+    },
+    { dependsOn: crmSchema },
+  );
+}
+
 // A person merge stops while a duplicate is still in a group (src/syncs/clubspot/merge.ts), so
 // it reads who is in each one, and changes none of them.
 permissionRule(
@@ -539,8 +561,11 @@ permissionRule(
 );
 
 // The audit checks each program's product is a program, and that a camp's classes book to one
-// revenue account, so it reads only the fields that link a program to its account.
+// revenue account, so it reads only the fields that link a program to its account. A group that
+// fills a Google Group needs only its name, its Google Group, and who's in it, never its policies.
 for (const [collection, fields] of [
+  ["groups", ["id", "name", "google_group_id"]],
+  ["group_members", ["id", "group_id", "person_id"]],
   ["products", ["id", "name", "kind", "revenue_account_id", "program_area_id"]],
   ["program_areas", ["id", "name", "revenue_account_id"]],
   ["accounts", ["id", "number"]],

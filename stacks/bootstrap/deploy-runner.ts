@@ -57,6 +57,12 @@ export const deployerRole = new gcp.projects.IAMCustomRole("deployer", {
     "logging.logMetrics.get",
     "logging.logMetrics.list",
     "logging.logMetrics.update",
+    // A log-based alert policy, such as backups' backup-failed alert (#335), makes a notification rule.
+    "logging.notificationRules.create",
+    "logging.notificationRules.delete",
+    "logging.notificationRules.get",
+    "logging.notificationRules.list",
+    "logging.notificationRules.update",
     // The infra stack's log exclusions on the `_Default` sink (cyc-seattle/isthmia#264).
     "logging.exclusions.create",
     "logging.exclusions.delete",

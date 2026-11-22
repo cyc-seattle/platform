@@ -36,6 +36,11 @@ export function directusFilesBucket(project: string, environment: string): strin
   return `${project}-directus-files-${environment}`;
 }
 
+/** The public bucket of prod's newsletter pictures, as `stacks/infra/listmonk.ts` names it. */
+export function listmonkMediaBucket(project: string): string {
+  return `${project}-listmonk-media-prod`;
+}
+
 /** Parses and validates the outputs file's text. `source` names the file in error messages. */
 export function parsePlatformOutputs(text: string, source: string): PlatformOutputs {
   let json: unknown;

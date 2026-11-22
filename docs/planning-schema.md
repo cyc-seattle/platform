@@ -421,6 +421,7 @@ erDiagram
     plans ||--o{ plan_revenue_charges : contains
     accounts ||--o{ plan_revenue_charges : "booked to"
     plan_salaried_positions }o--o| plan_pools : "rest of salary to"
+    people |o--o{ plan_salaried_positions : "in the position"
     plan_bonus_owners ||--o{ plan_bonus_owner_products : owns
     products ||--o{ plan_bonus_owner_products : "owned by"
 
@@ -444,6 +445,7 @@ erDiagram
         decimal ga_share
         uuid remainder_pool_id FK
         int hourly_coaching_rate_cents "its own rate, when paid by the hour"
+        uuid person_id FK "the person in it"
     }
     plan_salaried_bookings {
         uuid position_id FK
@@ -509,6 +511,11 @@ The plans don't say how many boats the organization has: the [asset list](#core-
 The Operations Plan also holds the offerings of products in no area: merchandise, storage and charters. It also holds each program area's storage rent, such as the dinghy float, as a line charged to the area and booked to the Storage account under 7350 Occupancy/Rent, which sail-team's Storage tab reads (cyc-seattle/platform#251).
 
 A salaried booking names a product, or a program area whose offerings share it by MTDC.
+
+A salaried position can name the person in it. The engine doesn't read it. Plans budget hourly staff
+by staff level and name no one; who holds a job, and what they're paid, is a Crew term
+([crew-schema.md](crew-schema.md)). A person merge stops on a duplicate named in a position, since a
+frozen Financial Plan never changes.
 
 A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. The programs pay toward the pools at their indirect cost rates, and what the rates leave unallocated stays with the organization ([Indirect costs](planning-engine.md#indirect-costs)).
 

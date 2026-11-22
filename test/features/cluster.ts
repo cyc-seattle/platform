@@ -101,6 +101,20 @@ async function forward(service: string, port: number): Promise<string> {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
+/** A dev Secret's keys and values. */
+export async function secretData(name: string): Promise<Record<string, string>> {
+  const secret = await devKube("GET", `${await namespaced("", "secrets")}/${name}`);
+  if (secret.status !== 200) {
+    throw new Error(`Can't read the Secret ${name}: ${secret.status}`);
+  }
+  return Object.fromEntries(
+    Object.entries<string>(secret.body.data ?? {}).map(([key, value]) => [
+      key,
+      Buffer.from(value, "base64").toString("utf8"),
+    ]),
+  );
+}
+
 /** The env a CronJob's container gets: its own values, and every key of the Secrets it reads. */
 export async function cronJobEnv(cronJob: string): Promise<Record<string, string>> {
   const cron = await devKube("GET", `${await namespaced("batch/v1", "cronjobs")}/${cronJob}`);
