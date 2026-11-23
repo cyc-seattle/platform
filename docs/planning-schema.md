@@ -85,6 +85,7 @@ erDiagram
         uuid id PK
         uuid product_id FK "unique, required, kind program"
         bool team "a team, such as a race team"
+        int sort "optional, its place in lists; none come after, by name"
     }
     program_boat_classes {
         uuid id PK
