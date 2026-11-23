@@ -1202,15 +1202,15 @@ async function read(collection: string, filter: object, fields = "*"): Promise<R
 const one = async (collection: string, id: unknown, fields = "*"): Promise<Row> =>
   (await admin()).ok("GET", `${itemPath(collection, id)}?fields=${fields}`);
 
-/** A new Financial Plan for the year, as "they": for `parent`'s organization, or else the scenario's. */
-async function theyStart(name: string, parent?: string): Promise<string> {
+/** A new Financial Plan for `year`, as "they": for `parent`'s organization, or else the scenario's. */
+async function theyStart(name: string, parent?: string, year = PLAN_YEAR): Promise<string> {
   const id = randomUUID();
   const organization = parent ? (await one("financial_plans", parent, "organization_id"))["organization_id"] : null;
   expectOk(
     await theyWrite("POST", "/items/financial_plans", {
       id,
       organization_id: organization ?? (await p.organization()),
-      fiscal_year: PLAN_YEAR,
+      fiscal_year: year,
       name,
       ...(parent && { parent_id: parent }),
     }),
@@ -1358,6 +1358,10 @@ for (const text of [
     await copied(started);
   });
 }
+Step("they start a Financial Plan for the year after from {string}", async (_, name: string) => {
+  started = await theyStart(`After ${name} ${runId}`, named[name], PLAN_YEAR + 1);
+  await copied(started);
+});
 Step("the new Financial Plan has the same offering at {money} a sailor", async (_, money: string) => {
   const copy = await copyOf(offering!, started!);
   expect(copy).toMatchObject({ key: offering!["key"], price_cents: cents(money) });

@@ -33,7 +33,7 @@ const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
 const SET_STAYS =
   "A frozen Financial Plan can't be changed, apart from its name, its note, the date it's active from, and whether it's archived. Start a new one from it.";
 const SET_FIXED = "A Financial Plan's organization, year, and parent can't change.";
-const PARENT_SAME_YEAR = "A Financial Plan can only start from one for the same organization and year.";
+const PARENT_SAME_ORGANIZATION = "A Financial Plan can only start from one for the same organization.";
 const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's frozen.";
 const PLANS_FIXED = "A frozen Financial Plan's plans can't change. Start a new Financial Plan from it.";
 const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
@@ -63,7 +63,7 @@ const REASONS = {
   [AREA_NAMED]: 400,
   [NEW_SET_DRAFT]: 400,
   [SET_FIXED]: 400,
-  [PARENT_SAME_YEAR]: 400,
+  [PARENT_SAME_ORGANIZATION]: 400,
   [NEEDS_OPERATIONS]: 400,
   [ONE_PER_AREA]: 400,
   [ONE_PER_DATE]: 400,
@@ -377,9 +377,9 @@ BEGIN
       ${raise(NEW_SET_DRAFT)};
     END IF;
     IF NEW.parent_id IS NOT NULL THEN
-      SELECT s.organization_id, s.fiscal_year INTO parent FROM ${SETS} s WHERE s.id = NEW.parent_id;
-      IF (parent.organization_id, parent.fiscal_year) IS DISTINCT FROM (NEW.organization_id, NEW.fiscal_year) THEN
-        ${raise(PARENT_SAME_YEAR)};
+      SELECT s.organization_id INTO parent FROM ${SETS} s WHERE s.id = NEW.parent_id;
+      IF parent.organization_id IS DISTINCT FROM NEW.organization_id THEN
+        ${raise(PARENT_SAME_ORGANIZATION)};
       END IF;
     END IF;
     RETURN NEW;

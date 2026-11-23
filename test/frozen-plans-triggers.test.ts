@@ -521,16 +521,25 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(await w.update("financial_plans", draftSet, { name: "Three coaches" })).toBeUndefined();
     });
 
-    it("start only from one for the same organization and year", async () => {
+    it("start only from one for the same organization, from any year", async () => {
       const { organization, set } = await plans(db, 2309);
+      const other = await plans(db, 2309);
       expect(
         await w.refusedInsert("financial_plans", {
+          organization_id: other.organization,
+          fiscal_year: 2309,
+          status: "draft",
+          parent_id: set,
+        }),
+      ).toEqual(refusal("A Financial Plan can only start from one for the same organization."));
+      expect(
+        await w.insert("financial_plans", {
           organization_id: organization,
           fiscal_year: 2310,
           status: "draft",
           parent_id: set,
         }),
-      ).toEqual(refusal("A Financial Plan can only start from one for the same organization and year."));
+      ).toEqual(expect.any(String));
     });
 
     it("allow several drafts for one year", async () => {
