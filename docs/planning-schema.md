@@ -207,7 +207,7 @@ erDiagram
         string note "at most 280 characters, can change after it's frozen"
         string status "draft|frozen"
         date effective_from "active from, one per organization, year, and date"
-        uuid parent_id FK "the Financial Plan it started from, this year's or the year before's"
+        uuid parent_id FK "the Financial Plan it started from"
         uuid frozen_by
         timestamp frozen_at
         timestamp archived_at "hides it from Planning's list"
@@ -227,7 +227,7 @@ A plan's `notes` hold what the planner wants that the plan's numbers don't captu
 
 Every `note` a person writes, on a Financial Plan, an offering, a line, a charge, a capital item or an asset, holds at most 280 characters, with inline markdown only: bold, italic, code and links.
 
-A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization and year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. The parent can also be the organization's Financial Plan for the year before. Next year's then starts empty, since its dates differ, and the planner's AI fills it in from the parent. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
+A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization, from any year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. Started from last year's, next year's plan starts with last year's dates, for the planner's AI to move. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
 
 A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook works out the results again ([A Financial Plan's results](#a-financial-plans-results)), and they record the engine that did. A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan of the same Financial Plan.
 

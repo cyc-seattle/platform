@@ -182,23 +182,12 @@ Feature: Plans
       When they change the offering's price to $1,200 a sailor in the new Financial Plan
       Then "Budget" still has the offering at $1,000 a sailor
 
-  Rule: Next year's Financial Plan can start from this year's, and starts empty
-
-    Next year's dates differ, such as the weeks schools are out, so nothing is copied. The planner's
-    AI fills in next year's plan from the one it started from.
-
-    Example: Starting next year's plan from this year's
+    Example: Next year's plan starts as a copy of this year's
       Given a user with the Plan Writer policy
       And a frozen Financial Plan named "Budget" with an offering at $1,000 a sailor
       When they start a Financial Plan for the year after from "Budget"
-      Then its parent is "Budget"
-      And the new Financial Plan has no plans
-
-    Example: A plan can't start from one two years before
-      Given a user with the Plan Writer policy
-      And a frozen Financial Plan named "Budget" with an offering at $1,000 a sailor
-      When they try to start a Financial Plan for two years after from "Budget"
-      Then they're told a Financial Plan starts from one for its own year or the year before
+      Then the new Financial Plan has the same offering at $1,000 a sailor
+      And its parent is "Budget"
 
   Rule: Each Program Plan sets its programs' staff levels and how many sailors each coach can take
 

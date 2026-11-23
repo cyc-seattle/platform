@@ -6,7 +6,7 @@
 // whether it's archived. Its filters refuse such a request with a clear 403, and stamp who froze a
 // Financial Plan. Directus skips filters on some paths, such as a flow's data steps, so the
 // database triggers it installs refuse the same writes on every path.
-// It also copies a new Financial Plan's parent into it when both are for the same year, and works out its results: a draft's again
+// It also copies a new Financial Plan's parent into it, and works out its results: a draft's again
 // after each change to what they're worked out from, and a frozen one's once, when it's frozen.
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Directus loads this file as CommonJS.
@@ -33,8 +33,7 @@ const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
 const SET_STAYS =
   "A frozen Financial Plan can't be changed, apart from its name, its note, the date it's active from, and whether it's archived. Start a new one from it.";
 const SET_FIXED = "A Financial Plan's organization, year, and parent can't change.";
-const PARENT_YEAR =
-  "A Financial Plan can only start from one for the same organization, for its own year or the year before.";
+const PARENT_SAME_ORGANIZATION = "A Financial Plan can only start from one for the same organization.";
 const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's frozen.";
 const PLANS_FIXED = "A frozen Financial Plan's plans can't change. Start a new Financial Plan from it.";
 const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
@@ -64,7 +63,7 @@ const REASONS = {
   [AREA_NAMED]: 400,
   [NEW_SET_DRAFT]: 400,
   [SET_FIXED]: 400,
-  [PARENT_YEAR]: 400,
+  [PARENT_SAME_ORGANIZATION]: 400,
   [NEEDS_OPERATIONS]: 400,
   [ONE_PER_AREA]: 400,
   [ONE_PER_DATE]: 400,
@@ -378,10 +377,9 @@ BEGIN
       ${raise(NEW_SET_DRAFT)};
     END IF;
     IF NEW.parent_id IS NOT NULL THEN
-      SELECT s.organization_id, s.fiscal_year INTO parent FROM ${SETS} s WHERE s.id = NEW.parent_id;
-      IF parent.organization_id IS DISTINCT FROM NEW.organization_id
-        OR parent.fiscal_year IS NULL OR parent.fiscal_year NOT IN (NEW.fiscal_year, NEW.fiscal_year - 1) THEN
-        ${raise(PARENT_YEAR)};
+      SELECT s.organization_id INTO parent FROM ${SETS} s WHERE s.id = NEW.parent_id;
+      IF parent.organization_id IS DISTINCT FROM NEW.organization_id THEN
+        ${raise(PARENT_SAME_ORGANIZATION)};
       END IF;
     END IF;
     RETURN NEW;
@@ -928,15 +926,12 @@ function asWritten(row) {
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each of the parent's plans, with
  * every row, each keeping its `key`, and each link pointing at the copy of the row it linked to.
- * Does nothing if the Financial Plan has no parent, already has plans, or starts from the year
- * before: next year's plan starts empty, for a planner's agent to fill in with next year's dates.
+ * Does nothing if the Financial Plan has no parent, or already has plans.
  */
 async function copyParent(config, db, setId) {
   return db.transaction(async (trx) => {
     const set = await trx(SETS).where("id", setId).first();
     if (!set?.parent_id) return false;
-    const parent = await trx(SETS).where("id", set.parent_id).first();
-    if (parent?.fiscal_year !== set.fiscal_year) return false;
     if (await trx(PLANS).where("financial_plan_id", setId).first()) return false;
     const copyOf = new Map();
     for (const source of await trx(PLANS).where("financial_plan_id", set.parent_id).select("*")) {
