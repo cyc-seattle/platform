@@ -1165,6 +1165,8 @@ Step("{money} of office costs in a pool named {string}", async (_, money: string
 });
 // Financial Plans: each holds an Operations Plan and Program Plans, frozen together.
 const NEEDS_OPERATIONS = "A Financial Plan needs an Operations Plan before it's frozen.";
+const PARENT_YEAR =
+  "A Financial Plan can only start from one for the same organization, for its own year or the year before.";
 const ONE_PER_AREA = "A Financial Plan holds one Operations Plan, and at most one Program Plan for each program area.";
 
 /** The Financial Plans a scenario made, by name, and the one it's about. */
@@ -1202,20 +1204,21 @@ async function read(collection: string, filter: object, fields = "*"): Promise<R
 const one = async (collection: string, id: unknown, fields = "*"): Promise<Row> =>
   (await admin()).ok("GET", `${itemPath(collection, id)}?fields=${fields}`);
 
-/** A new Financial Plan for the year, as "they": for `parent`'s organization, or else the scenario's. */
-async function theyStart(name: string, parent?: string): Promise<string> {
+/** A new Financial Plan for `year`, as "they": for `parent`'s organization, or else the scenario's. */
+async function theyStart(name: string, parent?: string, year = PLAN_YEAR): Promise<string> {
   const id = randomUUID();
-  const organization = parent ? (await one("financial_plans", parent, "organization_id"))["organization_id"] : null;
-  expectOk(
-    await theyWrite("POST", "/items/financial_plans", {
-      id,
-      organization_id: organization ?? (await p.organization()),
-      fiscal_year: PLAN_YEAR,
-      name,
-      ...(parent && { parent_id: parent }),
-    }),
-  );
+  expectOk(await theyTryStart(id, name, parent, year));
   return id;
+}
+async function theyTryStart(id: string, name: string, parent: string | undefined, year: number) {
+  const organization = parent ? (await one("financial_plans", parent, "organization_id"))["organization_id"] : null;
+  return theyWrite("POST", "/items/financial_plans", {
+    id,
+    organization_id: organization ?? (await p.organization()),
+    fiscal_year: year,
+    name,
+    ...(parent && { parent_id: parent }),
+  });
 }
 
 /** A new Financial Plan started from `parent`, as the admin, once its plans are copied in. */
@@ -1363,6 +1366,20 @@ Step("the new Financial Plan has the same offering at {money} a sailor", async (
   expect(copy).toMatchObject({ key: offering!["key"], price_cents: cents(money) });
   expect(copy["id"]).not.toBe(offering!["id"]);
 });
+Step("they start a Financial Plan for the year after from {string}", async (_, name: string) => {
+  started = await theyStart(`After ${name} ${runId}`, named[name], PLAN_YEAR + 1);
+});
+Step("the new Financial Plan has no plans", async () => {
+  // The hook would copy within a moment, so give it one before checking it didn't.
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  expect(await read("plans", { financial_plan_id: { _eq: started } }, "id")).toEqual([]);
+});
+Step("they try to start a Financial Plan for two years after from {string}", async (_, name: string) => {
+  await theyTryStart(randomUUID(), `Two after ${name} ${runId}`, named[name], PLAN_YEAR + 2);
+});
+Step("they're told a Financial Plan starts from one for its own year or the year before", () =>
+  expectTold(PARENT_YEAR),
+);
 Step("its parent is {string}", async (_, name: string) => {
   expect(await one("financial_plans", started, "parent_id")).toEqual({ parent_id: named[name] });
 });

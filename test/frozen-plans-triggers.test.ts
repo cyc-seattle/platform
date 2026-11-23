@@ -521,16 +521,20 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(await w.update("financial_plans", draftSet, { name: "Three coaches" })).toBeUndefined();
     });
 
-    it("start only from one for the same organization and year", async () => {
+    it("start only from one for the same organization, for its own year or the year before", async () => {
       const { organization, set } = await plans(db, 2309);
+      const other = await plans(db, 2309);
+      const told = refusal(
+        "A Financial Plan can only start from one for the same organization, for its own year or the year before.",
+      );
+      const start = { organization_id: organization, status: "draft", parent_id: set };
+      for (const fiscal_year of [2308, 2311]) {
+        expect(await w.refusedInsert("financial_plans", { ...start, fiscal_year }), String(fiscal_year)).toEqual(told);
+      }
       expect(
-        await w.refusedInsert("financial_plans", {
-          organization_id: organization,
-          fiscal_year: 2310,
-          status: "draft",
-          parent_id: set,
-        }),
-      ).toEqual(refusal("A Financial Plan can only start from one for the same organization and year."));
+        await w.refusedInsert("financial_plans", { ...start, organization_id: other.organization, fiscal_year: 2309 }),
+      ).toEqual(told);
+      expect(await w.insert("financial_plans", { ...start, fiscal_year: 2310 })).toEqual(expect.any(String));
     });
 
     it("allow several drafts for one year", async () => {
@@ -853,6 +857,20 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
     expect((await w.read("plan_offerings", frozenOffering))!["name"]).toBe("Offering");
     // A second try copies nothing more.
     expect(await copyParent(config(false), knexOver(db), child)).toBe(false);
+  });
+
+  it("copies nothing into next year's Financial Plan started from this year's", async () => {
+    const db = await database(config(false));
+    const { organization, set } = await plans(db, 2603);
+    const w = writer(db);
+    const next = await w.insert("financial_plans", {
+      organization_id: organization,
+      fiscal_year: 2604,
+      status: "draft",
+      parent_id: set,
+    });
+    expect(await copyParent(config(false), knexOver(db), next)).toBe(false);
+    expect((await db.query(`SELECT id FROM plans WHERE financial_plan_id = $1`, [next])).rows).toEqual([]);
   });
 
   it("does nothing for a Financial Plan with no parent", async () => {
