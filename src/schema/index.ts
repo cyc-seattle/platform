@@ -1324,6 +1324,8 @@ export interface Programs {
   min_age: number | null;
   /** The oldest a sailor can be. Empty means no maximum, as for adults. */
   max_age: number | null;
+  /** Where it comes in lists of programs, lowest first. Programs with none come after, by name. */
+  sort: number | null;
   /** The program's Google Group, if it has one. Most programs don't. */
   google_group_id: string | GoogleGroups | null;
 }
