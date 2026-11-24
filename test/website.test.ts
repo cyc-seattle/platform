@@ -144,16 +144,10 @@ describe("csc-website's environments", () => {
     }
   });
 
-  it.each([
-    ["prod", "csc-website-directus-token"],
-    ["publish", "csc-website-directus-token"],
-  ])("points %s at deploy-website, the site, and %s", (name, secret) => {
+  it.each(["prod", "publish"])("points %s at deploy-website, and nothing else", (name) => {
     expect(variables(name)).toEqual({
       GCP_WORKLOAD_IDENTITY_PROVIDER: providerName,
       GCP_SERVICE_ACCOUNT: email("deploy-website"),
-      FIREBASE_PROJECT: "example-project",
-      FIREBASE_SITE: "csc-website",
-      DIRECTUS_TOKEN_SECRET: secret,
     });
   });
 });
