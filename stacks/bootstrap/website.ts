@@ -109,12 +109,10 @@ for (const env of environments) {
     { parent: environment },
   );
 
+  // deploy.yml reads only these. csc-website's mise.toml sets the project, site and secret (#212).
   const variables = {
     GCP_WORKLOAD_IDENTITY_PROVIDER: provider.name,
     GCP_SERVICE_ACCOUNT: deployWebsite.email,
-    FIREBASE_PROJECT: firebaseProject.project,
-    FIREBASE_SITE: websiteSiteId,
-    DIRECTUS_TOKEN_SECRET: directusTokenSecret,
   };
   for (const [variableName, value] of Object.entries(variables)) {
     new github.ActionsEnvironmentVariable(
