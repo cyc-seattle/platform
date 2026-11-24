@@ -1,7 +1,7 @@
 # FreeScout, run as a non-root user on a read-only root filesystem (cyc-seattle/platform#182).
 # Everything FreeScout writes is under /data (the disk) or /cache (scratch); see freescout-start.
 
-FROM php:8.3-fpm-alpine3.22 AS php
+FROM php:8.5-fpm-alpine3.22 AS php
 
 RUN apk add --no-cache nginx icu-libs libpng libjpeg-turbo freetype libzip libpq \
   && apk add --no-cache --virtual .build icu-dev libpng-dev libjpeg-turbo-dev freetype-dev libzip-dev postgresql-dev \
@@ -9,7 +9,7 @@ RUN apk add --no-cache nginx icu-libs libpng libjpeg-turbo freetype libzip libpq
   && docker-php-ext-install -j"$(nproc)" gd intl pcntl pdo_pgsql zip \
   && apk del .build
 
-FROM alpine:3.22 AS source
+FROM alpine:3.24 AS source
 # renovate: datasource=github-tags depName=freescout-help-desk/freescout
 ARG FREESCOUT_VERSION=1.8.252
 RUN wget -qO- "https://github.com/freescout-help-desk/freescout/archive/refs/tags/${FREESCOUT_VERSION}.tar.gz" \

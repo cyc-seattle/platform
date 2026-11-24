@@ -71,5 +71,5 @@ services:
       interval: 2s
       retries: 30
   mailpit:
-    image: axllent/mailpit:v1.31.5
+    image: axllent/mailpit:v1.34.0
     ports: ["8025:8025"]
