@@ -14,7 +14,7 @@ permissions:
 jobs:
   # Before the deploys, so the planning engine's stamp names the release that ships it (#305).
   release:
-    uses: cyc-seattle/.github/.github/workflows/release.yml@v4.0.1
+    uses: cyc-seattle/.github/.github/workflows/release.yml@v4.1.0
     permissions:
       contents: write
       id-token: write
@@ -22,7 +22,7 @@ jobs:
   dev:
     needs: release
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.1.0
     permissions:
       id-token: write
       contents: read
@@ -44,7 +44,7 @@ jobs:
   # main requires a reviewed PR (cyc-seattle/isthmia#215).
   prod-preview:
     needs: dev
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.1.0
     permissions:
       id-token: write
       contents: read
@@ -55,7 +55,7 @@ jobs:
   prod:
     needs: prod-preview
     if: needs.prod-preview.outputs.changes == 'true'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.0.0
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.1.0
     permissions:
       id-token: write
       contents: read
