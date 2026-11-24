@@ -42,7 +42,8 @@ const authentikUsers: number[] = [];
  * them in Authentik's group of that name.
  */
 export async function newAuthentikUser(runId: string, allowed: boolean): Promise<number> {
-  const email = `inbox-${runId}@example.test`;
+  // Not example.test: Directus refuses a login whose email has a TLD it doesn't know.
+  const email = `inbox-${runId}@example.com`;
   const user = await authentik("POST", "/core/users/", {
     username: `inbox-${runId}`,
     name: `Inbox test ${runId}`,
