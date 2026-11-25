@@ -74,19 +74,3 @@ export const postgres = new PostgresInstance(
   { network: network.id },
   { dependsOn: [privateServicesConnection, sqlApi] },
 );
-
-// Dev's instance (#215). Its data is disposable. Its fixed name keeps it out of db-tunnel's filter.
-export const devPostgres = new PostgresInstance(
-  "cyc-dev",
-  {
-    network: network.id,
-    name: "cyc-dev",
-    tier: "db-f1-micro",
-    pointInTimeRecovery: false,
-    retainedBackups: 7,
-    deletionProtection: false,
-    // The micro tier's default of 25 runs out during integration runs (cyc-seattle/isthmia#268).
-    maxConnections: 50,
-  },
-  { dependsOn: [privateServicesConnection, sqlApi] },
-);

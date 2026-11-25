@@ -17,18 +17,3 @@ Feature: The shared inbox
     Example: A parent who isn't allowed to use the shared inbox can't sign in
       Given a parent who isn't allowed to use the shared inbox
       Then they can't sign in to the shared inbox
-
-  @api
-  Rule: An email to info@ becomes a conversation, and a reply goes back from info@
-
-    Example: A volunteer takes an email to info@ and answers it
-      Given someone has emailed info@
-      And a volunteer on the info@ mailbox
-      When the volunteer takes the email and replies
-      Then the sender gets the reply from info@
-      And the conversation shows the volunteer has it
-
-    Example: The sender's answer joins the same conversation
-      Given a volunteer has answered an email to info@
-      When the sender answers the reply
-      Then the sender's answer is in the same conversation

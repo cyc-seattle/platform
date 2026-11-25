@@ -118,7 +118,7 @@ describe("csc-website's environments", () => {
         .map((v) => [v.inputs.variableName, v.inputs.value]),
     );
 
-  it("has exactly prod and publish, with no dev for previews", () => {
+  it("has exactly prod and publish, with none for previews", () => {
     expect(
       ofType("github:index/repositoryEnvironment:RepositoryEnvironment")
         .filter((e) => e.inputs.repository === "csc-website")

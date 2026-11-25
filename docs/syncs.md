@@ -28,12 +28,15 @@ Directus instance (`src/model/crm/`). Replaces the spreadsheet-backed reports in
 
 ### Running locally
 
-Run the CLI against dev's Directus, with a token for a user that may write the CRM:
+Run the CLI against a CI stack's Directus and Clubspot fake ([testing.md](testing.md)). In
+`.ci-stack/target.json`, `cronJobs["clubspot-sync"]` holds the sync's env, `directus.url` Directus's
+address, and `services["clubspot-fake:1337"]` the fake's address on the runner, in place of the env's
+in-cluster one:
 
 ```sh
-CLUBSPOT_EMAIL=... CLUBSPOT_PASSWORD=... \
-DIRECTUS_URL=https://directus.<dev domain> DIRECTUS_TOKEN=... \
-node src/syncs/clubspot/main.ts --club <clubspot-club-id> --dry-run
+CLUBSPOT_SERVER_URL=<clubspot-fake>/parse CLUBSPOT_EMAIL=... CLUBSPOT_PASSWORD=... \
+DIRECTUS_URL=<directus.url> DIRECTUS_TOKEN=... \
+node src/syncs/clubspot/main.ts --club seedClub01 --dry-run
 ```
 
 Options:
@@ -271,16 +274,18 @@ programs only - a class has no group of its own.
 
 ### Running locally
 
-Run the CLI against dev's Directus. The discovery pass populates `google_groups` from Workspace;
+Run the CLI against a CI stack's Directus and Workspace fake, as for clubspot-sync, with the env in
+`cronJobs["gsuite-sync"]` and the fake at `services["workspace-fake:8080"]`. The discovery pass populates `google_groups` from Workspace;
 nothing needs to be entered there by hand. What staff still set by hand is the link from a program to its group
 (`programs.google_group_id`) - discovery can't infer that.
 
 ```sh
-DIRECTUS_URL=https://directus.<dev domain> DIRECTUS_TOKEN=... \
+GSUITE_ROOT_URL=<workspace-fake> GSUITE_SYNC_GROUP_OWNERS=... GSUITE_SYNC_CUSTOMER=... \
+DIRECTUS_URL=<directus.url> DIRECTUS_TOKEN=... \
 node src/syncs/gsuite/main.ts --dry-run
 ```
 
-Google API calls authenticate with Application Default Credentials — run the workplace's `mise run auth-adc` first.
+Against Google, API calls authenticate with Application Default Credentials — run the workplace's `mise run auth-adc` first.
 
 Options:
 

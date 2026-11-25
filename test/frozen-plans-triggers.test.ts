@@ -694,7 +694,7 @@ describe("installing the frozen-plans triggers", { timeout: 30_000 }, () => {
     // A table a schema apply made again has lost its trigger.
     await db.exec(`DROP TRIGGER cyc_frozen_plans ON plan_trips`);
     expect(await again()).toEqual({ missing: [], installed: true });
-    // So has a config that changed, such as dev's flag.
+    // So has a config that changed, such as the CI stack's flag.
     expect(await db.transaction((tx) => installTriggers(config(true), connect(tx)))).toEqual({
       missing: [],
       installed: true,
@@ -731,7 +731,7 @@ describe("installing the frozen-plans triggers", { timeout: 30_000 }, () => {
   });
 });
 
-describe("the frozen-plans triggers with dev's flag", { timeout: 30_000 }, () => {
+describe("the frozen-plans triggers with the CI stack's flag", { timeout: 30_000 }, () => {
   it("let an active frozen Financial Plan be deleted, with its plans and rows, but not changed", async () => {
     const db = await database(config(true));
     const w = writer(db);

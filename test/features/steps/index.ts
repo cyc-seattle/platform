@@ -1,8 +1,7 @@
 import { defineParameterExpression, defineSteps, describeFeature } from "@amiceli/vitest-cucumber";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, expect } from "vitest";
 import type { DirectusSession } from "../directus.ts";
-import { devDirectusLicensed } from "../directus.ts";
-import { deploymentEnv, devPlatform, feature, optionalDeploymentEnv } from "../support.ts";
+import { feature } from "../support.ts";
 import { addToSignInGroup, authentikAccount, deleteAccounts, forgetAccount, signInGroupMembers } from "./authentik.ts";
 import { signInByEmail } from "../browser.ts";
 import {
@@ -46,7 +45,7 @@ import {
   type Row,
 } from "./rows.ts";
 import { recordNames, targets, type Target } from "./sets.ts";
-import { localTarget, targetTags } from "../target.ts";
+import { localTarget } from "../target.ts";
 
 // The steps the features share: who "they" are, and what they can see and change. A feature's test
 // file imports this, adds its own steps with `Step`, and calls `describeAccessFeature`.
@@ -473,10 +472,7 @@ Step("they sign in for the first time", async () => {
   if (newcomer === undefined) {
     throw new Error("No Given has made the person who signs in.");
   }
-  const defaultRole =
-    localTarget()?.directus.communityRoleId ??
-    (await deploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_DEFAULT_ROLE_ID"));
-  const user = await createUser(newcomer.email, { id: defaultRole });
+  const user = await createUser(newcomer.email, { id: localTarget().directus.communityRoleId });
   await hasPolicies(user.userId, newcomer.policies);
   if (newcomer.policies.length > 0) {
     // Stored, so a later change to the person's email can't move their access to someone else.
@@ -493,8 +489,8 @@ onEachScenario(() => {
 });
 Step("they sign in to an app with the link they're emailed", async () => {
   const target = localTarget();
-  if (target === undefined || newcomer === undefined) {
-    throw new Error("Only the CI stack signs in through Authentik, and a Given makes the person who signs in.");
+  if (newcomer === undefined) {
+    throw new Error("No Given has made the person who signs in.");
   }
   const appUrl = target.directus.redirects[0] ?? `${target.directus.url}/`;
   const signIn = newcomer.email;
@@ -546,11 +542,6 @@ Step("the app has them signed in", async () => {
 
 // Directus's OpenID driver sets the role on a later sign-in only when a role mapping is set.
 Step("they sign in again", async () => {
-  // The CI stack has no Authentik, and so no mapping.
-  if (!localTarget()) {
-    const mapping = await optionalDeploymentEnv(await devPlatform(), "directus", "AUTH_AUTHENTIK_ROLE_MAPPING");
-    expect(mapping, "AUTH_AUTHENTIK_ROLE_MAPPING would reset the role on every sign-in").toBeUndefined();
-  }
   const again = (await session()).again();
   await again.ok("GET", "/users/me");
   const userId = await current().userId();
@@ -719,20 +710,6 @@ export function describeParsedFeature(
       }
     });
   }
-  if (parsed.tags.has("licensed") && !devDirectusLicensed()) {
-    describe.skip(`Feature: ${parsed.name}`, () => {
-      it("is skipped: dev's Directus is unlicensed (backend:licensed is false in stacks/backend/Pulumi.dev.yaml)", () => {});
-    });
-    return;
-  }
-
-  const tags = targetTags();
-  // A Rule is filtered before its scenarios, so it carries what dev picks any of them by.
-  for (const rule of parsed.rules) {
-    for (const tag of tags.includeTags ?? []) {
-      if (rule.scenarii.some((scenario) => scenario.tags.has(tag))) rule.tags.add(tag);
-    }
-  }
   // vitest-cucumber runs AfterAllScenarios after each Rule, so cleanup waits for the whole file.
   // vitest passes the file second, and refuses a first argument that isn't a destructured context.
   // eslint-disable-next-line no-empty-pattern
@@ -782,6 +759,6 @@ export function describeParsedFeature(
         });
       }
     },
-    { ...tags, excludeTags: ["pending", "other-shard", ...tags.excludeTags] },
+    { excludeTags: ["pending", "other-shard"] },
   );
 }

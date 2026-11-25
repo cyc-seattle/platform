@@ -1,4 +1,4 @@
-// The images dev runs, which the CI stack (scripts/ci-stack) runs too. Plain data, no `@pulumi/*` import.
+// The images the cluster and the CI stack (scripts/ci-stack) run. Plain data, no `@pulumi/*` import.
 
 export const directusImage = "directus/directus:12.3.1";
 // Renovate bumps each fake with its SDK, which publishes it (renovate.json).

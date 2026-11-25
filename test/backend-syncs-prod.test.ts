@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requestsAutopilotRaises } from "./autopilot.ts";
 
-// The syncs in backend's prod stack. backend-syncs-dev.test.ts covers dev.
+// The syncs in backend's prod stack.
 
 const platform = {
   project: "test-project",
@@ -139,8 +139,8 @@ describe("The syncs on prod's cluster", () => {
   });
 
   it("run on regular capacity, not Spot", () => {
-    expect(cronJob("clubspot-sync").jobTemplate.spec.template.spec.nodeSelector).toEqual({});
-    expect(cronJob("gsuite-sync").jobTemplate.spec.template.spec.nodeSelector).toEqual({});
+    expect(cronJob("clubspot-sync").jobTemplate.spec.template.spec).not.toHaveProperty("nodeSelector");
+    expect(cronJob("gsuite-sync").jobTemplate.spec.template.spec).not.toHaveProperty("nodeSelector");
   });
 
   it("reach Directus inside the namespace", () => {

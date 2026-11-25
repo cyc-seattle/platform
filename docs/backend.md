@@ -19,9 +19,8 @@ projects with their resource names unchanged, and their states moved over with `
 - Directus's OIDC client at Authentik
 - the MCP settings
 - the clubspot-sync and gsuite-sync CronJobs, their images, and the Secrets that hold their tokens
-- in dev, the Clubspot and Workspace fakes the syncs talk to
 
-`infra` makes each environment's files bucket, `<project>-directus-files-<environment>`, and lets
+`infra` makes prod's files bucket, `<project>-directus-files-prod`, and lets
 Directus's pod use it through Workload Identity, since neither deploy identity may. The bucket is
 private and versioned, and keeps a deleted or replaced file for 30 days.
 
@@ -36,7 +35,7 @@ A push to `main` deploys it to prod, after `infra`.
 | `directusAdmins`           | `authentik`, to make them superusers        |
 
 `backend` owns the OIDC client and Authentik registers it, so platform never reads isthmia's
-outputs. Dev's client is generated here. Prod's is the one Authentik generated before
+outputs. Its client is the one Authentik generated before
 cyc-seattle/workplace#6: client ID `directus`, and the secret `directus-oidc-client-secret`, whose
 state moved into `backend`. While Authentik and Directus hold different clients, signing in to
 Directus through Authentik fails. The built-in admin still signs in.
@@ -93,7 +92,7 @@ Directus 12.3.1 serves MCP at `/mcp`. It needs both:
   `mcp_oauth_enabled`, `mcp_oauth_cimd_enabled`, `mcp_oauth_dcr_enabled`, and `mcp_allow_deletes`
 
 `backend` sets both. The `DirectusSettings` resource writes the settings row through the admin API.
-`backend:mcp` turns MCP on, and it's off when unset. Dev and prod set it. Deletes are allowed, and
+`backend:mcp` turns MCP on, and it's off when unset. Prod sets it. Deletes are allowed, and
 dynamic client registration is always off.
 
 A client registers by its metadata document (CIMD). Both the document and the redirects must be on
@@ -134,10 +133,8 @@ never builds one. A commit that doesn't change the syncs changes neither image,
 and its prod deploy is skipped (cyc-seattle/platform#72). Each CronJob reads its machine user's Directus token
 from its own Secret, which `backend` writes from the token it generates.
 
-In prod they run hourly, clubspot-sync on the hour and gsuite-sync at half past. In dev the
-CronJobs are suspended, and only Jobs made from them run, one scenario's in each sync's feature. So a scheduled run never collides with a test's, and a test never waits for one
-(cyc-seattle/isthmia#271). The features' other scenarios run the sync in the test's own process,
-with the CronJob's config, on just their own camp or program. `kubectl create job --from=cronjob/<name>`
-runs one by hand.
+In prod they run hourly, clubspot-sync on the hour and gsuite-sync at half past.
+`kubectl create job --from=cronjob/<name>` runs one by hand. The features run each sync in the test's
+own process, against the fakes, on just their own camp or program ([testing.md](testing.md)).
 
 Their config keeps the `clubspot-sync:` and `gsuite-sync:` keys it had in isthmia's projects.

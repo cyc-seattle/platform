@@ -104,11 +104,6 @@ The rest, marked below, are internal keys with no meaningful human choice. Pulum
 | `inbox-oauth-licence`               | nobody        | The OAuth & Social Login module's licence key, kept for a rebuild (§11)                                |
 | `inbox-api-licence`                 | nobody        | The API & Webhooks module's licence key, kept for a rebuild (§11)                                      |
 
-Dev reads only `dev-directus-license-key`, set by hand to the same grant key, and the
-`dev-db-<name>-password` and `dev-csc-website-directus-token` secrets that the `infra` stack
-creates. The integration tests read `dev-inbox-api-key` (§11). Its fakes take the place of the
-Clubspot and Google credentials, and it has no Google sign-in.
-
 ## 6. Directus (`directus.<domain>`)
 
 [backend.md](backend.md) describes what the `backend` stack deploys. Directus authenticates through
@@ -118,8 +113,7 @@ down.
 
 - [ ] Create a `clubspot_promoted_fields` row with `target_field: school` and the Clubspot labels to match
       (see [syncs.md](syncs.md#clubspot-sync)).
-- [ ] Set `directus-license-key` (§5), or `dev-directus-license-key` in dev, before Directus first
-      boots, and renew the grant each year.
+- [ ] Set `directus-license-key` (§5) before Directus first boots, and renew the grant each year.
 - [ ] Make the GitHub App that publishes the website when its content changes
       ([website.md](website.md#publishing)), in prod only:
   1. In the `cyc-seattle` organization's settings, under **Developer settings → GitHub Apps**, create
@@ -249,12 +243,10 @@ the organization needs more than project Owner.
        creates one. A deployer runs, from the repo root:
 
    ```sh
-   PULUMI_STACK=dev mise exec -- pulumi stack init dev --cwd stacks/inbox --secrets-provider gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-dev
    mise exec -- pulumi stack init prod --cwd stacks/inbox --secrets-provider gcpkms://projects/cyc-admin-scripts/locations/us-west1/keyRings/pulumi/cryptoKeys/state-prod
    ```
 
-   Each adds an `encryptedkey` line to its `Pulumi.<stack>.yaml`. Commit both. Apply prod `infra`
-   from the branch too, since it makes dev's `inbox` database.
+   It adds an `encryptedkey` line to `Pulumi.prod.yaml`. Commit it.
 
 2. [ ] **Make the mailbox user**, as a Workspace super-admin, in the Admin console:
    1. Billing → Subscriptions: check it's Google Workspace for Nonprofits, so a new user is free.
@@ -275,19 +267,18 @@ the organization needs more than project Owner.
       Manage third-party app access → Configure new app: paste the client ID, and choose Trusted.
    4. Keep the client ID and secret for step 6. FreeScout keeps them, encrypted, in its database.
 
-4. [ ] **Buy the modules**, at freescout.net, one licence each for prod and dev, since a licence
-       covers one instance: OAuth & Social Login ($8) and API & Webhooks ($12.99). Keep prod's keys
-       for a rebuild:
+4. [ ] **Buy the modules**, at freescout.net: OAuth & Social Login ($8) and API & Webhooks
+       ($12.99). A licence covers one instance. Keep the keys for a rebuild:
 
    ```sh
    printf %s '<key>' | gcloud secrets versions add inbox-oauth-licence --data-file=- --project cyc-admin-scripts
    printf %s '<key>' | gcloud secrets versions add inbox-api-licence --data-file=- --project cyc-admin-scripts
    ```
 
-5. [ ] **Install the modules**, once each environment is deployed. Sign in at `/login` as the
+5. [ ] **Install the modules**, once prod is deployed. Sign in at `/login` as the
        break-glass admin, `inbox:adminEmail`, with its password:
        `gcloud secrets versions access latest --secret inbox-admin-password --project cyc-admin-scripts`.
-       Dev's is the `inbox` stack's `adminPassword` output. Then:
+       Then:
    1. Manage → Modules: paste each licence key, then Install, then Activate.
    2. Manage → Settings → OAuth: add a provider named Sign in, with Authentik's URLs
       (`https://login.<domain>/application/o/authorize/`, `.../token/`, and `.../userinfo/`), the
@@ -296,13 +287,6 @@ the organization needs more than project Owner.
       automatically, and Force OAuth Login.
    3. Once you know the module's callback path, tighten `inboxRedirectUriPattern` in
       `stacks/authentik/naming.ts` to it.
-   4. In dev only: Manage → API & Webhooks, copy the API key into `dev-inbox-api-key`, and set
-      `inbox:apiModule: true` in `stacks/inbox/Pulumi.dev.yaml`, so the integration tests run the
-      scenarios that need it:
-
-      ```sh
-      printf %s '<key>' | gcloud secrets versions add dev-inbox-api-key --data-file=- --project cyc-admin-scripts
-      ```
 
 6. [ ] **Connect info@**, in prod's FreeScout: Manage → Mailboxes → New mailbox, with the email
        `info@cyccommunitysailing.org` and the name CYC Community Sailing Center. Then, in its
@@ -432,7 +416,7 @@ Listmonk sends the newsletter through Amazon SES ([newsletter.md](newsletter.md)
 9. [ ] **Leave SES's sandbox.** **Amazon SES → Account dashboard → Request production access**: Marketing, the
        website's address, and how signups are confirmed and bounces handled. AWS answers within 4 days.
 10. [ ] **Listmonk's stacks**, as for the inbox's (§11 step 1), with `--cwd stacks/listmonk`, before the PR that
-        adds them merges. Commit the `encryptedkey` line each adds.
+        adds them merges. Commit the `encryptedkey` line it adds.
 11. [ ] **Send through SES.** Once SES is out of its test mode, set `listmonk:ses: true` in
         `stacks/listmonk/Pulumi.prod.yaml`, and once `bootstrap` has made the pictures bucket,
         `listmonk:mediaBucket: true`. Until then prod sends its confirmations through the Workspace relay, and keeps

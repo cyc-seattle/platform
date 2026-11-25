@@ -2,11 +2,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as command from "@pulumi/command";
 import * as k8s from "@pulumi/kubernetes";
-import * as random from "@pulumi/random";
 import { WebService } from "../../src/index.ts";
 import { checkHostname } from "../../src/web-service.ts";
 import { directusFilesBucket } from "../../src/outputs.ts";
-import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
+import { appDatabase, appSecret, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { directusEnv, mailEnv } from "./workloads.ts";
 import { AUTHENTIK_ACCESS_SECRET } from "./policies.ts";
@@ -38,25 +37,20 @@ export interface ExistingDirectus {
   oidcClientSecret: pulumi.Output<string>;
 }
 
-function generated(name: string, length: number): pulumi.Output<string> {
-  return new random.RandomPassword(name, { length, special: false }).result;
-}
-
 /**
- * `licensed` false runs Directus on its unlicensed Core tier, with no `LICENSE_KEY`. Given `existing`,
- * Directus keeps prod's keys, database, Community role, and OIDC client; otherwise this generates
- * its own.
+ * `licensed` false runs Directus on its unlicensed Core tier, with no `LICENSE_KEY`. Directus keeps
+ * `existing`'s keys, database, Community role, and OIDC client.
  */
 export async function deployDirectus(
   adminEmail: string,
   licensed: boolean,
   extensions: DirectusExtensions,
-  existing?: ExistingDirectus,
+  existing: ExistingDirectus,
 ): Promise<DirectusOnCluster> {
-  // Only so dev's tests can clean up the frozen Financial Plans they make (docs/planning-schema.md).
-  if (extensions.frozenPlans.deletable && !isDev) {
+  // Only so the CI stack's tests can clean up the frozen Financial Plans they make (docs/planning-schema.md).
+  if (extensions.frozenPlans.deletable) {
     throw new Error(
-      "backend: frozenPlansDeletable is for dev's tests only. A frozen Financial Plan never changes in prod.",
+      "backend: frozenPlansDeletable is for the CI stack's tests only. A frozen Financial Plan never changes in prod.",
     );
   }
   const config = new pulumi.Config();
@@ -65,16 +59,12 @@ export async function deployDirectus(
   const domain = platform.domain;
   const baseUrl = `https://directus.${domain}`;
 
-  const db = appDatabase(cluster, "directus", existing?.dbPassword);
-  const adminPassword = existing ? existing.adminPassword : generated("directus-admin-password", 32);
-  const communityRoleId = existing
-    ? existing.communityRoleId
-    : new random.RandomUuid("directus-community-role-id").result;
-  // Set by hand in Secret Manager; dev's has its own name (cyc-seattle/isthmia#172). The Access variant needs only the
-  // accessor role, which is all deploy-dev holds.
+  const db = appDatabase(cluster, "directus", existing.dbPassword);
+  const { adminPassword, communityRoleId, oidcClientId } = existing;
+  // Set by hand in Secret Manager (cyc-seattle/isthmia#172).
   const licenseKey = licensed
     ? gcp.secretmanager
-        .getSecretVersionAccessOutput({ secret: `${isDev ? "dev-" : ""}directus-license-key` })
+        .getSecretVersionAccessOutput({ secret: "directus-license-key" })
         .apply((version) => version.secretData)
     : undefined;
   // The website-publish hook's GitHub App key, set by hand in Secret Manager (docs/manual-setup.md §6).
@@ -84,16 +74,11 @@ export async function deployDirectus(
       : gcp.secretmanager
           .getSecretVersionAccessOutput({ secret: "csc-website-publish-key" })
           .apply((version) => version.secretData);
-  const oidcClientId = existing
-    ? existing.oidcClientId
-    : new random.RandomString("directus-oidc-client-id", { length: 40, special: false }).result;
-  const oidcClientSecret = pulumi.secret(
-    existing ? existing.oidcClientSecret : generated("directus-oidc-client-secret", 64),
-  );
+  const oidcClientSecret = pulumi.secret(existing.oidcClientSecret);
 
   const secret = appSecret(cluster, "directus", {
-    KEY: existing ? existing.key : generated("directus-key", 64),
-    SECRET: existing ? existing.secret : generated("directus-secret", 64),
+    KEY: existing.key,
+    SECRET: existing.secret,
     ADMIN_PASSWORD: adminPassword,
     ...(licenseKey && { LICENSE_KEY: pulumi.secret(licenseKey) }),
     AUTH_AUTHENTIK_CLIENT_SECRET: oidcClientSecret,
@@ -129,9 +114,7 @@ export async function deployDirectus(
     // Directus 12 answers /server/health only to a signed-in caller, so probes would never pass.
     readinessProbe: { httpGet: { path: "/server/ping", port: 8055 } },
     env: [
-      // 10 is Directus's default. Dev's instance allows 50 connections, and Authentik holds up to about
-      // 12, so even a rollout's two pods fit. A smaller pool queued the tests' requests past the load
-      // balancer's 30 s timeout.
+      // 10 is Directus's default. A smaller pool queued requests past the load balancer's 30 s timeout.
       ...directusEnv({
         domain,
         adminEmail,
@@ -142,11 +125,8 @@ export async function deployDirectus(
         filesBucket: directusFilesBucket(platform.project, pulumi.getStack()),
       }),
       secretEnv("DB_PASSWORD", db.secret, "password"),
-      // The contact form's mail (./forms.cjs): the Workspace relay, which admits the cluster's address, or
-      // dev's Mailpit, which Authentik runs.
-      ...mailEnv(isDev),
-      // Dev's tests log every request, more than any other pod; its warnings and errors stay.
-      ...(isDev ? [{ name: "LOG_LEVEL", value: "warn" }] : []),
+      // The contact form's mail (./forms.cjs): the Workspace relay, which admits the cluster's address.
+      ...mailEnv(false),
     ],
     envFrom: [{ secretRef: { name: secret.metadata.name, optional: false } }],
     // Where Directus writes: pm2's state, uploads, and the bundled app extensions.
@@ -202,8 +182,8 @@ export async function deployDirectus(
     { provider, dependsOn: directus },
   );
 
-  // Dev's hostnames fall under platform's wildcard record. Prod's moves from the VM (./prod-state.ts).
-  const record = isDev ? [] : [dnsRecord("directus-a", `directus.${domain}`, platform.gatewayAddress)];
+  // The record moves from the VM (./prod-state.ts).
+  const record = [dnsRecord("directus-a", `directus.${domain}`, platform.gatewayAddress)];
 
   // The load balancer takes minutes to admit a new route, longer than the Directus resources wait. In
   // prod, the record moves in the same update, so this also waits out the old answer's TTL.

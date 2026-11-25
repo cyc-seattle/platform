@@ -1495,7 +1495,7 @@ Step("they change the offering to take in {money}", async (_, money: string) => 
   // The offering has one sailor, so its price is what it takes in.
   expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { price_cents: cents(money) }));
 });
-// A change to the catalog queues every draft on dev to be worked out again, one at a time, so under a
+// A change to the catalog queues every draft to be worked out again, one at a time, so under a
 // whole run's writes a draft's new P&L can take well over a minute.
 const DRAFT_RESULTS = { timeout: 180_000, interval: 1000 };
 Step("they see that the Financial Plan's P&L shows the offering takes in {money}", async (_, money: string) => {

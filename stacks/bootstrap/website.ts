@@ -79,8 +79,8 @@ interface WebsiteEnvironment {
 }
 
 // csc-website's workflows call the org's deploy.yml, the only workflow the WIF provider trusts, and
-// its `deploy` task deploys the live site. It has no PR previews (cyc-seattle/csc-website#11), so no
-// `dev`, and both environments deploy only from `main`.
+// its `deploy` task deploys the live site. It has no PR previews (cyc-seattle/csc-website#11), and
+// both environments deploy only from `main`.
 const environments: WebsiteEnvironment[] = [
   // Code changes, after a maintainer approves.
   { name: "prod", approval: true },

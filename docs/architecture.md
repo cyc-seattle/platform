@@ -102,7 +102,7 @@ secrets.
 - **Generated values** (database passwords, Directus's key and secret, tokens, OIDC client secrets) are `random`
   resources in the owning project's state, encrypted by that environment's KMS key.
 - **Hand-set values** (the Directus license key, the Google OAuth client, the Clubspot login) stay in Secret
-  Manager, set out of band. The deploy reads them. Dev's have a `dev-` prefix.
+  Manager, set out of band. The deploy reads them.
 
 Nothing sensitive is in git. [Manual setup](manual-setup.md) §5 and
 [isthmia's manual setup](https://github.com/cyc-seattle/isthmia/blob/main/docs/manual-setup.md) §3 list each secret.
@@ -147,9 +147,9 @@ Light; you're already in GCP.
   ([cyc-seattle/workplace#6](https://github.com/cyc-seattle/workplace/issues/6)). Actions runs the tests on every pull request, and deploys
   `main` to prod after a maintainer approves. Prod builds an image only when its tag isn't in the registry yet.
 - **Scheduled jobs** (the syncs) are Kubernetes CronJobs, hourly.
-- **Environments.** `prod` and `dev` are namespaces in the one cluster. Nothing deploys to dev any more, and it's
-  being removed ([cyc-seattle/platform#171](https://github.com/cyc-seattle/platform/issues/171)). Prod runs on regular capacity, dev on Spot
-  pods, with synthetic data, Mailpit, and the Clubspot and Workspace fakes.
+- **Environments.** `prod` is the one environment, a namespace in the cluster on regular capacity. The integration
+  tests run on a throwaway stack instead, with synthetic data, Mailpit, and the Clubspot and Workspace fakes
+  ([testing.md](testing.md), [cyc-seattle/platform#171](https://github.com/cyc-seattle/platform/issues/171)).
 - **Availability.** sail-team runs two replicas in prod. Directus and Authentik's server run one each, which
   Autopilot won't move to consolidate nodes. A second Directus needs Redis, to share its caches ([cyc-seattle/isthmia#253](https://github.com/cyc-seattle/isthmia/issues/253)).
 
@@ -166,7 +166,7 @@ job is the seam that makes an eventual Clubspot replacement a contained change r
 **Directus** on top of the CRM database — the permission engine, the staff admin UI, and the REST/GraphQL API
 everything else calls. The data model lives in [crm-schema.md](crm-schema.md).
 
-The relationship rules need a Directus license ([cyc-seattle/isthmia#172](https://github.com/cyc-seattle/isthmia/issues/172)), which both prod and dev hold. A hook extension,
+The relationship rules need a Directus license ([cyc-seattle/isthmia#172](https://github.com/cyc-seattle/isthmia/issues/172)), which prod and the CI stack hold. A hook extension,
 `community-query-guard` (`stacks/backend/`), rejects a query that filters or sorts on a field the viewer can't read on
 every row, since Directus's own checks would let it probe hidden values ([access.md](access.md#the-query-guard)).
 

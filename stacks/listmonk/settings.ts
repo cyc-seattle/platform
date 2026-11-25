@@ -11,7 +11,7 @@ export const listmonkImage = "listmonk/listmonk:v6.2.0";
 export interface SmtpServer {
   host: string;
   port: number;
-  /** `none` only for dev's Mailpit, which speaks plain SMTP inside the namespace. */
+  /** `none` only for the CI stack's Mailpit, which speaks plain SMTP. */
   tls: "STARTTLS" | "none";
   username: string;
   password: string;
@@ -82,7 +82,7 @@ export const ACCESS_SYNC: ApiLogin = {
   permissions: ["users:get", "users:manage", "roles:get"],
 };
 
-/** Dev's integration tests, which read whether a signup is on the list. Dev only. */
+/** The CI stack's integration tests, which read whether a signup is on the list. */
 export const TESTS: ApiLogin = {
   username: "integration-tests",
   role: "Integration tests",

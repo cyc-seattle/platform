@@ -19,7 +19,6 @@ Feature: Google Groups for programs and groups
 
   Rule: Everyone with a current term for a program is in that program's Google group
 
-    @smoke
     Example: A coach joins their program's group
       Given a program with a Google group
       And a coach in the program

@@ -7,7 +7,7 @@ import {
   UnverifiedEmailUserWriteStage,
   VerifiedEmailUserWriteStage,
 } from "./resources.ts";
-import { appSecret, isDev, loadCluster, siblingList, siblingOutput, siblingSecret } from "../../src/app/cluster.ts";
+import { appSecret, loadCluster, siblingList, siblingOutput, siblingSecret } from "../../src/app/cluster.ts";
 import { AUTHENTIK_ACCESS_SECRET, SIGN_IN_POLICIES } from "../backend/policies.ts";
 import { adminGroup } from "./admins.ts";
 import { deployAuthentik } from "./cluster.ts";
@@ -55,8 +55,7 @@ const config = new pulumi.Config();
 // An Authentik the CI job runs in containers (scripts/ci-stack), not one on the cluster: no GCP, no Kubernetes.
 const local = config.getBoolean("local") ?? false;
 
-const existing = isDev || local ? undefined : prodSecrets();
-const app = local ? localAuthentik() : deployAuthentik(existing);
+const app = local ? localAuthentik() : deployAuthentik(prodSecrets());
 
 const sibling = (project: string, output: string) =>
   local ? pulumi.output(localSibling(project, output)) : siblingOutput(project, output);
@@ -104,9 +103,8 @@ const apiToken = new authentik.Token(
 );
 const authentikToken = apiToken.key;
 
-// Prod keeps a copy in Secret Manager, beside its other Authentik secrets. Dev shares the project, so
-// it keeps none.
-if (!isDev && !local) {
+// Prod keeps a copy in Secret Manager, beside its other Authentik secrets.
+if (!local) {
   const apiTokenSecret = new Secret("authentik-api-token");
   new gcp.secretmanager.SecretVersion(
     "authentik-api-token-version",
@@ -133,7 +131,7 @@ function whenReady(value: string): pulumi.Input<string> {
   return readyMarker.apply(() => value);
 }
 
-// Off by default only where there's no OAuth client for it, as in dev.
+// Off only where there's no OAuth client for it, as on the CI stack.
 const googleSignIn = config.getBoolean("googleSignIn") ?? true;
 
 // Terraform ids are always strings, but a handful of Authentik fields (an Application's
@@ -155,7 +153,7 @@ const sourceAuthenticationFlow = authentik.getFlowOutput({ slug: whenReady(SOURC
 const signingCertificate = authentik.getCertificateKeyPairOutput({ name: whenReady(SIGNING_CERTIFICATE) }, invokeOpts);
 
 function googleSignInSource(): GoogleSource {
-  // Set by hand. Dev has no OAuth client yet.
+  // Set by hand.
   new Secret("google-oauth-client-id");
   new Secret("google-oauth-client-secret");
 

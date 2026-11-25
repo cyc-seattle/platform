@@ -3,7 +3,7 @@ import { WEBSITE_BUILD } from "./names.ts";
 import { DirectusRole, DirectusUser } from "./resources.ts";
 
 // The CRM's roles and the users assigned to them. `backend` declares them for prod's existing Directus
-// and for dev's, so both call this.
+// and for the CI stack's, so both call this.
 
 export interface CrmIdentityArgs {
   auth: { baseUrl: pulumi.Input<string>; adminEmail: pulumi.Input<string>; adminPassword: pulumi.Input<string> };

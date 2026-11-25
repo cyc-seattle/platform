@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { newRunId, oneAtATime } from "../cluster.ts";
-import { devDirectusAdmin, type DirectusSession } from "../directus.ts";
+import { directusAdmin, type DirectusSession } from "../directus.ts";
 
 // The rows every access feature works on: a row in each of the catalog's collections, a camp with one session and class, and a child
 // registered in it, with one guardian and a medical profile. A second child, in another family, is
@@ -20,7 +20,7 @@ export const email = (name: string) => `${name}.${runId}-${++serial}@example.com
 const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
 let adminSession: Promise<DirectusSession> | undefined;
-export const admin = () => (adminSession ??= devDirectusAdmin());
+export const admin = () => (adminSession ??= directusAdmin());
 
 /** Every row this run created, in order, so cleanup can delete them in reverse. */
 export const created: { collection: string; id: unknown }[] = [];

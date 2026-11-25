@@ -265,7 +265,7 @@ Together they refuse:
 
 A row's link to a catalog row restricts delete, so deleting a catalog row a plan uses fails instead of reaching into a frozen plan. A row's link to its plan, and a plan's to its Financial Plan, cascade, so deleting a draft takes everything in it. Links between rows of one plan, such as an activity's block, are checked at the end of the statement, so a cascade can delete both.
 
-An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. In dev, `backend:frozenPlansDeletable` lets the integration tests delete a frozen Financial Plan, with its plans, their rows, and its results, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in dev's database they allow those deletes on every path. The prod stack refuses that flag.
+An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. On the CI stack, `backend:frozenPlansDeletable` lets the integration tests delete a frozen Financial Plan, with its plans, their rows, and its results, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in the CI stack's database they allow those deletes on every path. The prod stack refuses that flag.
 
 ### Program Plan
 

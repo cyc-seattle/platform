@@ -1,9 +1,9 @@
 import { newRunId, proxyOk } from "../cluster.ts";
 
-// The sync scenarios seed dev's Clubspot fake through Parse's REST API. Their camps and people carry
+// The sync scenarios seed the Clubspot fake through Parse's REST API. Their camps and people carry
 // the run's ID, so runs never depend on each other (cyc-seattle/isthmia#185).
 
-// The fake's seed, which the dev stack's clubspot-sync config names (contract: public test values).
+// The fake's seed, which clubspot-sync's config names (contract: public test values).
 const CLUB_ID = "seedClub01";
 const parseHeaders = {
   "x-parse-application-id": "myclubspot2017",

@@ -1,7 +1,7 @@
 name: integration-ci
 
 # The integration tests, on a throwaway stack in each job: Directus, its database, Mailpit, the fakes,
-# Authentik and Listmonk in containers on the runner (scripts/ci-stack, docs/testing.md). Nothing touches GCP or dev's lock.
+# Authentik and Listmonk in containers on the runner (scripts/ci-stack, docs/testing.md). Nothing touches GCP.
 on:
   pull_request:
     types: [opened, synchronize, reopened]

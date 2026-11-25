@@ -96,12 +96,9 @@ describe("WebService security defaults", () => {
 });
 
 describe("WebService placement", () => {
-  it("uses Spot pods in dev", () => {
-    expect(podSpec("dev-web").nodeSelector).toEqual({ "cloud.google.com/gke-spot": "true" });
-  });
-
-  it("doesn't use Spot pods in prod", () => {
-    expect(podSpec("prod-web").nodeSelector).toEqual({});
+  it("runs on regular capacity, not Spot", () => {
+    expect(podSpec("dev-web")).not.toHaveProperty("nodeSelector");
+    expect(podSpec("prod-web")).not.toHaveProperty("nodeSelector");
   });
 
   it("puts every resource in the environment's namespace", () => {

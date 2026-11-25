@@ -188,9 +188,7 @@ and, of a Clubspot camp that's public, whether it takes registrations and hides 
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.
 
-The token is in Secret Manager for the build to read: `csc-website-directus-token`. Dev's Website
-Build user has its own, `dev-csc-website-directus-token`, which `infra` generates, since `deploy-dev`
-can't write a secret. The site has no PR previews, so no build reads dev's.
+The token is in Secret Manager for the build to read: `csc-website-directus-token`.
 
 ## Groups
 

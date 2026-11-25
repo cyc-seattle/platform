@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import { location, projectId } from "../../src/config.ts";
-import { deployDevMember, deployRunnerMember, gkeNodesMember } from "./identities.ts";
+import { deployRunnerMember, gkeNodesMember } from "./identities.ts";
 import { enableService } from "../../src/services.ts";
 
 const artifactRegistryApi = enableService("artifactregistry.googleapis.com");
@@ -15,7 +15,7 @@ export const artifactRepository = new gcp.artifactregistry.Repository(
     dockerConfig: {
       immutableTags: false,
     },
-    // Every dev deploy pushes each image under a new commit tag, and nothing deleted them (#72). A
+    // Each deploy pushed every image under a new commit tag, and nothing deleted them (#72). A
     // KEEP outranks a DELETE, so the 10 newest versions of each image stay for a prod rollback (#171).
     cleanupPolicies: [
       { id: "delete-old", action: "DELETE", condition: { tagState: "ANY", olderThan: "7d" } },
@@ -36,20 +36,8 @@ new gcp.artifactregistry.RepositoryIamMember("artifact-member-deploy-runner", {
   member: deployRunnerMember,
 });
 
-// Dev deploys push their images; the cluster's nodes pull them (#215). An IAM member is
-// read-modify-write against one shared policy, so a default replacement strips it (#153).
-new gcp.artifactregistry.RepositoryIamMember(
-  "artifact-member-deploy-dev",
-  {
-    project: artifactRepository.project,
-    location: artifactRepository.location,
-    repository: artifactRepository.name,
-    role: "roles/artifactregistry.writer",
-    member: deployDevMember,
-  },
-  { deleteBeforeReplace: true },
-);
-
+// The cluster's nodes pull the images (#215). An IAM member is read-modify-write against one shared
+// policy, so a default replacement strips it (#153).
 new gcp.artifactregistry.RepositoryIamMember(
   "artifact-member-gke-nodes",
   {

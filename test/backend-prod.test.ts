@@ -4,9 +4,9 @@ import * as pulumi from "@pulumi/pulumi";
 import * as yaml from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requestsAutopilotRaises } from "./autopilot.ts";
+import type { ExistingDirectus } from "../stacks/backend/cluster.ts";
 
 // Prod's Directus on the cluster keeps what it had on the VM (cyc-seattle/isthmia#231).
-// backend-dev.test.ts covers dev.
 
 const platform = {
   project: "test-project",
@@ -122,6 +122,8 @@ const extensions = {
   engine: { "planning-index.mjs": "" },
 };
 
+let existing: ExistingDirectus;
+
 beforeAll(async () => {
   const { prodDirectus } = await import("../stacks/backend/prod-state.ts");
   const { deployDirectus } = await import("../stacks/backend/cluster.ts");
@@ -131,7 +133,8 @@ beforeAll(async () => {
     externalDomain: "example.org",
     baseUrl: "https://directus.example.com",
   });
-  await deployDirectus("admin@example.com", true, extensions, prod.values);
+  existing = prod.values;
+  await deployDirectus("admin@example.com", true, extensions, existing);
   await settle();
 });
 
@@ -200,7 +203,7 @@ describe("prod's Directus on the cluster", () => {
   });
 
   it("runs on regular capacity, bursting to 1 vCPU", () => {
-    expect(container().nodeSelector).toEqual({});
+    expect(container()).not.toHaveProperty("nodeSelector");
     expect(container().containers[0].resources).toEqual({
       requests: { cpu: "500m", memory: "768Mi" },
       limits: { cpu: "1", memory: "768Mi" },
@@ -230,10 +233,12 @@ describe("prod's Directus on the cluster", () => {
 });
 
 describe("prod's saved plan versions", () => {
-  it("can't be deleted: the stack refuses the flag that lets dev's tests delete them", async () => {
+  it("can't be deleted: the stack refuses the flag that lets the CI stack's tests delete them", async () => {
     const { deployDirectus } = await import("../stacks/backend/cluster.ts");
     const deletable = { ...extensions, frozenPlans: { ...extensions.frozenPlans, deletable: true } };
-    await expect(deployDirectus("admin@example.com", true, deletable)).rejects.toThrow(/dev's tests only/);
+    await expect(deployDirectus("admin@example.com", true, deletable, existing)).rejects.toThrow(
+      /the CI stack's tests only/,
+    );
   });
 
   it("aren't made deletable by prod's config", () => {

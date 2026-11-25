@@ -14,9 +14,6 @@ const internalZoneName = internalZone.name;
 /** Prod's base domain. Its apps are it and its subdomains. */
 export const prodDomain = internalDomain;
 
-/** Dev's base domain. Its apps are its subdomains. */
-export const devDomain = pulumi.interpolate`dev.${prodDomain}`;
-
 // Protected: the DNS records point at it.
 export const address = new gcp.compute.GlobalAddress("gateway", { addressType: "EXTERNAL" }, { protect: true });
 
@@ -28,10 +25,9 @@ export const certificateMap = new gcp.certificatemanager.CertificateMap(
 
 /**
  * Serves an environment's domain and its subdomains through the Gateway: a DNS-authorized
- * certificate for both, their certificate map entries, and, with `records`, A records pointing at
- * the Gateway.
+ * certificate for both, and their certificate map entries. Each app owns its own A record.
  */
-function serveEnvironment(environment: string, domain: pulumi.Input<string>, records: boolean): void {
+function serveEnvironment(environment: string, domain: pulumi.Input<string>): void {
   const authorization = new gcp.certificatemanager.DnsAuthorization(
     environment,
     { domain, description: pulumi.interpolate`Authorizes certificates for ${domain}` },
@@ -62,21 +58,11 @@ function serveEnvironment(environment: string, domain: pulumi.Input<string>, rec
       hostname,
       certificates: [certificate.id],
     });
-    if (records) {
-      new gcp.dns.RecordSet(`${environment}${suffix}`, {
-        managedZone: internalZoneName,
-        name: pulumi.interpolate`${hostname}.`,
-        type: "A",
-        ttl: 300,
-        rrdatas: [address.address],
-      });
-    }
   }
 }
 
-serveEnvironment("dev", devDomain, true);
 // Each prod app owns its own record, and moves it from the VM to the Gateway at its cutover (#231).
-serveEnvironment("prod", prodDomain, false);
+serveEnvironment("prod", prodDomain);
 
 /**
  * A prod app on the public domain, which subscribers see: its own certificate, map entry and A record.
@@ -143,7 +129,6 @@ export const gateway = new k8s.apiextensions.CustomResource(
       listeners: [
         // Only the redirect route below, in this namespace, attaches to it.
         { name: "http", protocol: "HTTP", port: 80, allowedRoutes: { namespaces: { from: "Same" } } },
-        ...httpsListeners("dev", devDomain),
         ...httpsListeners("prod", prodDomain),
         ...prodPublicHostnames.map(({ name, hostname }) => httpsListener("prod", `https-${name}`, hostname)),
       ],

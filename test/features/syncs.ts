@@ -8,7 +8,6 @@ import { googleClients } from "../../src/syncs/gsuite/main.ts";
 import { runGroupSync } from "../../src/syncs/gsuite/run.ts";
 import { DirectusClient, SyncQueue } from "../../src/syncs/runtime/index.ts";
 import { cronJobEnv, oneAtATime, serviceUrl } from "./cluster.ts";
-import { devPlatform } from "./support.ts";
 import { localTarget } from "./target.ts";
 
 // The syncs, run in the test's own process with their CronJob's config, and scoped to one scenario's
@@ -21,19 +20,15 @@ winston.configure({
   transports: new winston.transports.Stream({ stream: process.stderr }),
 });
 
-/**
- * Dev's Directus, in place of the CronJob's in-namespace `http://directus`. The API's service proxy
- * would take the sync's token for its own, so the sync reaches it through the Gateway, as the steps do.
- */
-async function directus(token: string): Promise<DirectusClient> {
-  const url = localTarget()?.directus.url ?? `https://directus.${(await devPlatform()).domain}`;
-  return new DirectusClient(url, token);
+/** The CI stack's Directus, in place of the CronJob's in-cluster `http://directus`. */
+function directus(token: string): DirectusClient {
+  return new DirectusClient(localTarget().directus.url, token);
 }
 
-/** A fake's URL in dev's namespace, such as `http://workspace-fake:8080`, as this process reaches it. */
-async function reachable(inCluster: string): Promise<string> {
+/** A fake's in-cluster URL, such as `http://workspace-fake:8080`, as this process reaches it. */
+function reachable(inCluster: string): string {
   const url = new URL(inCluster);
-  const base = await serviceUrl(url.hostname, Number(url.port || 80));
+  const base = serviceUrl(url.hostname, Number(url.port || 80));
   return `${base}${url.pathname.replace(/\/$/, "")}`;
 }
 
@@ -42,8 +37,8 @@ let clubspotEnv: Promise<Record<string, string>> | undefined;
 /** Signs in to the Clubspot fake once per test file, since the Parse SDK keeps one session per process. */
 function clubspotSignIn(): Promise<Record<string, string>> {
   clubspotEnv ??= (async () => {
-    const env = await cronJobEnv("clubspot-sync");
-    const clubspot = new Clubspot({ serverUrl: await reachable(env["CLUBSPOT_SERVER_URL"]!) });
+    const env = cronJobEnv("clubspot-sync");
+    const clubspot = new Clubspot({ serverUrl: reachable(env["CLUBSPOT_SERVER_URL"]!) });
     await clubspot.initialize(env["CLUBSPOT_EMAIL"]!, env["CLUBSPOT_PASSWORD"]!);
     return env;
   })();
@@ -53,7 +48,7 @@ function clubspotSignIn(): Promise<Record<string, string>> {
 /** Runs clubspot-sync for one camp, as `--camp` does, and fails if the run does. */
 export async function runClubspotSync(campId: string): Promise<void> {
   const env = await clubspotSignIn();
-  const client = await directus(env["DIRECTUS_TOKEN"]!);
+  const client = directus(env["DIRECTUS_TOKEN"]!);
   const result = await oneAtATime("clubspot-sync", () =>
     runSync({
       clubId: env["CLUBSPOT_CLUB_ID"]!,
@@ -81,16 +76,15 @@ export function runGoogleSyncForGroup(accessGroupId: string): Promise<void> {
 }
 
 async function runGoogleSyncFor(target: { programId: string } | { accessGroupId: string }): Promise<void> {
-  const env = await cronJobEnv("gsuite-sync");
-  const client = await directus(env["DIRECTUS_TOKEN"]!);
-  // The Workspace fake ignores auth, and dev's forwarder sends the cluster's token in its place. A fixed
-  // token, since a GoogleAuth of its own would look for credentials the CI runner hasn't got.
+  const env = cronJobEnv("gsuite-sync");
+  const client = directus(env["DIRECTUS_TOKEN"]!);
+  // The Workspace fake ignores auth. A fixed token, since a GoogleAuth of its own would look for credentials the CI runner hasn't got.
   const unused = new google.auth.OAuth2();
   unused.setCredentials({ access_token: "unused" });
   const { directory, settingsReader } = googleClients(
     // Any client does for the fake; googleClients is typed for the real sync's.
     new google.auth.GoogleAuth({ authClient: unused }) as unknown as Parameters<typeof googleClients>[0],
-    await reachable(env["GSUITE_ROOT_URL"]!),
+    reachable(env["GSUITE_ROOT_URL"]!),
   );
   const result = await oneAtATime("gsuite-sync", () =>
     runGroupSync({

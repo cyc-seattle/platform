@@ -358,7 +358,7 @@ Step("a program that isn't a team, with a Google Group", async () => {
 
 // Whens: what they look at, or change.
 
-// Every row, past Directus's default of 100: Crew and Team read rows other runs left on dev too.
+// Every row, past Directus's default of 100: Crew and Team read rows other runs left too.
 async function read(session: DirectusSession, collection: string, query = "?limit=-1"): Promise<Row[]> {
   const { status, body } = await session.request("GET", `/items/${collection}${query}`);
   return status === 200 ? body.data : [];

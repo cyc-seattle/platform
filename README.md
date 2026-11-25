@@ -9,15 +9,14 @@ platform is built, its data model, and the planning engine.
 
 ## Stacks
 
-| Stack                           | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Applied by                                                                                             |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, the org's GitHub repos and settings, Firebase on the project, and Listmonk's public pictures bucket and its key                                                                                                                                                                                                                                                                                                                                                                                                           | A human with project Owner and `gh` `admin:org`. Never CI.                                             |
-| [`infra`](stacks/infra)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod and dev Cloud SQL instances, the DNS zones, Artifact Registry and its cleanup policy, the GKE Autopilot cluster, the shared Gateway, its address, certificates, and dev's DNS records, the `dev` and `prod` namespaces with their quotas and network policies, dev's RBAC, the prod Job alerts, the log exclusions, the public website's Firebase Hosting site, Amazon SES for the newsletter and `mail.<external domain>`'s certificate, and each environment's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass. |
-| [`smoke`](stacks/smoke)         | One `WebService` in dev, at `smoke.dev.cycsail.team`, for the integration tests                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Nothing, until dev is destroyed (#171).                                                                |
-| [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync and website build machine users, its OIDC client, and MCP, and the clubspot-sync and gsuite-sync CronJobs, with dev's Clubspot and Workspace fakes                                                                                                                                                                                                                                                                                                                                            | `deploy-runner`, from Actions on a push to `main`, after `infra`.                                      |
-| [`inbox`](stacks/inbox)         | FreeScout, the shared inbox at `inbox.<domain>`, from our own image: its database, disk, secrets, OIDC client, and A record, and dev's GreenMail                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `deploy-runner`, from Actions on a push to `main`, after `backend`.                                    |
-| [`listmonk`](stacks/listmonk)   | Listmonk, the newsletter at `mail.<external domain>`, and `mail.dev.cycsail.team` in dev: its database, and the settings, roles, list and API logins it writes before each start. It sends through SES in prod and to Mailpit in dev ([docs/newsletter.md](docs/newsletter.md))                                                                                                                                                                                                                                                                                                                    | `deploy-runner`, from Actions on a push to `main`, after `inbox`.                                      |
-| [`authentik`](stacks/authentik) | Authentik, the sign-in at `login.<domain>`: its server and worker, database, secrets, and A record, dev's Mailpit, and its own configuration: flows, stages, policies, the Google source, the `staff` group and the shared inbox's sign-in group, the `Admins` superuser group, the Directus and Inbox OIDC and portal proxy applications, and Listmonk's OIDC application                                                                                                                                                                                                                         | `deploy-runner`, from Actions on a push to `main`, after `listmonk`.                                   |
+| Stack                           | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Applied by                                                                                             |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [`bootstrap`](stacks/bootstrap) | Service accounts and project IAM, the Pulumi state buckets and KMS keys, the org's GitHub repos and settings, Firebase on the project, and Listmonk's public pictures bucket and its key                                                                                                                                                                                                                                                                                                                                      | A human with project Owner and `gh` `admin:org`. Never CI.                                             |
+| [`infra`](stacks/infra)         | The VPC, the cluster subnet and its Cloud NAT on a static address, the private services peering, the prod Cloud SQL instance, the DNS zones, Artifact Registry and its cleanup policy, the GKE Autopilot cluster, the shared Gateway, its address and certificates, the `prod` namespace with its quota and network policy, the prod Job alerts, the log exclusions, the public website's Firebase Hosting site, Amazon SES for the newsletter and `mail.<external domain>`'s certificate, and prod's `platform/outputs.json` | `deploy-runner`, from Actions after approval. A deployer, with `mise run deploy`, when breaking glass. |
+| [`backend`](stacks/backend)     | Directus, with the schema apply from `schemas/`, its roles, policies, and permission rules, the sync and website build machine users, its OIDC client, and MCP, and the clubspot-sync and gsuite-sync CronJobs                                                                                                                                                                                                                                                                                                                | `deploy-runner`, from Actions on a push to `main`, after `infra`.                                      |
+| [`inbox`](stacks/inbox)         | FreeScout, the shared inbox at `inbox.<domain>`, from our own image: its database, disk, secrets, OIDC client, and A record                                                                                                                                                                                                                                                                                                                                                                                                   | `deploy-runner`, from Actions on a push to `main`, after `backend`.                                    |
+| [`listmonk`](stacks/listmonk)   | Listmonk, the newsletter at `mail.<external domain>`: its database, and the settings, roles, list and API logins it writes before each start. It sends through SES ([docs/newsletter.md](docs/newsletter.md))                                                                                                                                                                                                                                                                                                                 | `deploy-runner`, from Actions on a push to `main`, after `inbox`.                                      |
+| [`authentik`](stacks/authentik) | Authentik, the sign-in at `login.<domain>`: its server and worker, database, secrets, and A record, and its own configuration: flows, stages, policies, the Google source, the `staff` group and the shared inbox's sign-in group, the `Admins` superuser group, the Directus and Inbox OIDC and portal proxy applications, and Listmonk's OIDC application                                                                                                                                                                   | `deploy-runner`, from Actions on a push to `main`, after `listmonk`.                                   |
 
 ## @cyc-seattle/platform
 
@@ -26,8 +25,8 @@ platform is built, its data model, and the planning engine.
 - `getPlatformOutputs()` reads an environment's `platform/outputs.json` from its state bucket. The
   `infra` stack writes it. It holds the environment's namespace and domain, the Gateway and its
   address (`gatewayAddress`, for an app's own DNS records), and the Cloud SQL instance's connection
-  name and private IP (`sqlHost`). Dev stacks can't read prod's backend, so this replaces a
-  StackReference for platform values (cyc-seattle/isthmia#215).
+  name and private IP (`sqlHost`). It lets an app's stack read the platform's values without a
+  StackReference to `infra` (cyc-seattle/isthmia#215).
 - `clusterProvider(platform)` builds a Kubernetes provider for the cluster. Its kubeconfig runs
   `gke-gcloud-auth-plugin` with Application Default Credentials, so Pulumi must run under mise,
   where `mise run install` puts the plugin on `PATH`.
@@ -46,7 +45,7 @@ platform is built, its data model, and the planning engine.
 - `ScheduledJob` runs a CronJob on `schedule`, in `America/Los_Angeles` unless `timeZone` says
   otherwise. A run never overlaps the one before it, gets an hour, and doesn't retry, by default.
 - All three run non-root with a read-only root filesystem, no capabilities, and no service account
-  token, on Spot pods in dev only. Their limits equal their requests, unless `limits` raises one,
+  token. Their limits equal their requests, unless `limits` raises one,
   such as CPU to burst. Their pods get no IAM; grant roles to `member`, a Workload Identity
   principal, or set `serviceAccountAnnotations` to run as a Google service account.
 - `enableService` enables a Google Cloud API.
@@ -57,29 +56,17 @@ it deploys.
 
 ## Environments
 
-Every app runs on the one GKE Autopilot cluster, in its environment's namespace. Prod runs on
-regular capacity, and dev on Spot pods. isthmia's portal and platform's `authentik` and `backend`
-(Directus and the two syncs as CronJobs) run in both, and dev adds Mailpit and the Clubspot
-and Workspace fakes. Dev's sync CronJobs are suspended: one scenario in each sync's feature runs them as Jobs
-(cyc-seattle/isthmia#271). Nothing deploys to dev any more, and it's being removed (#171).
+Every app runs on the one GKE Autopilot cluster, in its environment's namespace, on regular
+capacity. isthmia's portal and platform's `authentik` and `backend` (Directus and the two syncs as
+CronJobs) run in prod. There's no other deployed environment: the integration tests run on a
+throwaway stack in each CI job ([docs/testing.md](docs/testing.md), #171).
 
-| Stack  | Namespace | Domain             | Deploy identity |
-| ------ | --------- | ------------------ | --------------- |
-| `dev`  | `dev`     | `dev.cycsail.team` | `deploy-dev`    |
-| `prod` | `prod`    | `cycsail.team`     | `deploy-runner` |
+| Stack  | Namespace | Domain         | Deploy identity |
+| ------ | --------- | -------------- | --------------- |
+| `prod` | `prod`    | `cycsail.team` | `deploy-runner` |
 
-Each namespace denies ingress from other namespaces except the load balancer's. Dev also admits the
-Kubernetes API's service proxy, which the integration tests use, and denies egress to the mail ports
-(25, 465, 587) outside the cluster. `infra` writes dev's A records; each prod app writes its own,
-pointing at `gatewayAddress`.
-
-`deploy-dev` reads Secret Manager secrets whose IDs start with `dev-`. Read them with
-`gcp.secretmanager.getSecretVersionAccess`, which needs only the accessor role.
-
-`infra` creates each app's dev database, user, and password secret (`dev-db-<name>-password`) on
-`cyc-dev`, for each name in `infra:devDatabases`. To add an app's dev database, add its name there in a
-platform PR: Cloud SQL ignores IAM conditions on its user and database calls, so `deploy-dev` can't
-hold a role scoped to `cyc-dev`.
+Each namespace denies ingress from other namespaces except the load balancer's. Each app writes its
+own A records, pointing at `gatewayAddress`.
 
 A Job that fails in `prod`, or a CronJob there with no successful Job in 3 hours, raises an alert.
 It emails each address in `infra:alertEmails`, a secret in the stack's config, which holds the
@@ -123,7 +110,7 @@ which keeps the tag in the registry, so the next merge asks for approval even if
 else.
 
 `PULUMI_STACK` picks what the tasks run (`scripts/each-stack`): `prod` is `infra`, `backend`, `inbox`,
-`listmonk`, then `authentik`. Its `dev` list stays only until dev's stacks are destroyed.
+`listmonk`, then `authentik`.
 
 `bootstrap` is never deployed from Actions (cyc-seattle/isthmia#118). It holds the identities that
 CI assumes, and a human with project Owner and `gh` `admin:org` applies it with the tasks below.
@@ -140,8 +127,8 @@ mise run deploy
 ```
 
 `mise run deploy` applies `infra`, `backend`, `inbox`, `listmonk`, then `authentik`. isthmia's prod stacks read its outputs through a StackReference.
-Dev stacks can't read prod state, so `infra` writes each environment's platform
-values to `platform/outputs.json` in that environment's state bucket.
+`infra` also writes prod's platform values to `platform/outputs.json` in prod's state bucket, which
+`getPlatformOutputs()` reads.
 
 `bootstrap`'s GitHub provider uses `gh auth token`, so log `gh` in as a cyc-seattle org owner with
 the `admin:org` scope: `gh auth refresh -h github.com -s admin:org`. Deploys refresh first, so they

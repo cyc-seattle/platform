@@ -120,7 +120,7 @@ describe("Authentik on prod's cluster", () => {
     expect(env("authentik-server")).not.toHaveProperty("AUTHENTIK_POSTGRESQL__CONN_HEALTH_CHECKS");
   });
 
-  it("checks the server's readiness at dev's cadence, to cut its database load", () => {
+  it("checks the server's readiness less often, to cut its database load", () => {
     const probe = find("kubernetes:apps/v1:Deployment", "authentik-server").inputs["spec"].template.spec.containers[0]
       .readinessProbe;
     expect(probe).toEqual({ httpGet: { path: "/-/health/ready/", port: 9000 }, periodSeconds: 30, timeoutSeconds: 10 });

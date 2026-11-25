@@ -717,7 +717,7 @@ export interface FrozenPlansConfig {
   decimals: Record<string, string[]>;
   /** Each of those collections' links to another one's rows, by field, which must be in the same plan. */
   links: Record<string, Record<string, string>>;
-  /** Whether the first admin account may delete a frozen Financial Plan, so the tests can clean up. Dev only. */
+  /** Whether the first admin account may delete a frozen Financial Plan, so the CI stack's tests can clean up. */
   deletable: boolean;
 }
 

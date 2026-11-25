@@ -4,8 +4,7 @@ import { describeAccessFeature, readOnly, Step } from "./steps/index.ts";
 import { runGoogleSync, runGoogleSyncForGroup } from "./syncs.ts";
 
 // The sync scenarios set up a program and its role holders in the CRM, run gsuite-sync on that
-// program, and read the Workspace fake's Directory API, on dev through the Kubernetes API's service
-// proxy. Their groups and people carry a run ID, so runs never depend on each other.
+// program, and read the Workspace fake's Directory API. Their groups and people carry a run ID, so runs never depend on each other.
 
 interface MembershipRow {
   id: string;

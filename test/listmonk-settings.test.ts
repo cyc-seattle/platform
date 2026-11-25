@@ -73,7 +73,7 @@ describe("Listmonk's settings", () => {
     });
   });
 
-  it("puts pictures in the public bucket, or in the pod in dev", () => {
+  it("puts pictures in the public bucket, or in the pod", () => {
     expect(listmonkSettings(args)).toMatchObject({
       "upload.provider": "s3",
       "upload.s3.url": "https://storage.googleapis.com",
@@ -81,12 +81,12 @@ describe("Listmonk's settings", () => {
       "upload.s3.bucket": "media-prod",
       "upload.s3.bucket_type": "public",
     });
-    const dev = listmonkSettings({ ...args, media: { provider: "filesystem" } });
-    expect(dev["upload.provider"]).toBe("filesystem");
-    expect(dev).not.toHaveProperty("upload.s3.bucket");
+    const inPod = listmonkSettings({ ...args, media: { provider: "filesystem" } });
+    expect(inPod["upload.provider"]).toBe("filesystem");
+    expect(inPod).not.toHaveProperty("upload.s3.bucket");
   });
 
-  it("sends through SMTP with STARTTLS, or plain to dev's Mailpit", () => {
+  it("sends through SMTP with STARTTLS, or plain to the CI stack's Mailpit", () => {
     const relay = listmonkSettings({
       ...args,
       smtp: { host: "smtp-relay.gmail.com", port: 587, tls: "STARTTLS", username: "", password: "" },
@@ -95,16 +95,16 @@ describe("Listmonk's settings", () => {
     expect(listmonkSettings(args)["smtp"]).toEqual([
       expect.objectContaining({ host: args.smtp.host, port: 587, tls_type: "STARTTLS", auth_protocol: "login" }),
     ]);
-    const dev = listmonkSettings({
+    const mailpit = listmonkSettings({
       ...args,
       smtp: { host: "mailpit", port: 1025, tls: "none", username: "", password: "" },
     });
-    expect(dev["smtp"]).toEqual([expect.objectContaining({ tls_type: "none", auth_protocol: "none" })]);
+    expect(mailpit["smtp"]).toEqual([expect.objectContaining({ tls_type: "none", auth_protocol: "none" })]);
   });
 });
 
 describe("The access sync's login", () => {
-  it("lets dev's tests read only subscribers and lists", () => {
+  it("lets the CI stack's tests read only subscribers and lists", () => {
     expect(TESTS.permissions).toEqual(["subscribers:get_all", "lists:get_all"]);
   });
 

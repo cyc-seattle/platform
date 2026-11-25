@@ -4,11 +4,11 @@ CSC's newsletter goes out from [Listmonk](https://listmonk.app), sending through
 Mailchimp ([cyc-seattle/platform#180](https://github.com/cyc-seattle/platform/issues/180)). The public website's
 two forms post under the same address ([cyc-seattle/csc-website#9](https://github.com/cyc-seattle/csc-website/issues/9)).
 
-|                        | Prod                                   | Dev                                   |
-| ---------------------- | -------------------------------------- | ------------------------------------- |
-| Listmonk               | `https://mail.cyccommunitysailing.org` | `https://mail.dev.cycsail.team`       |
-| Mail goes out through  | Amazon SES, us-west-2                  | Mailpit, which Authentik's stack runs |
-| Bounces and complaints | SES → SNS → Listmonk                   | none                                  |
+|                        | Prod                                   |
+| ---------------------- | -------------------------------------- |
+| Listmonk               | `https://mail.cyccommunitysailing.org` |
+| Mail goes out through  | Amazon SES, us-west-2                  |
+| Bounces and complaints | SES → SNS → Listmonk                   |
 
 ## Signing up
 
@@ -28,8 +28,8 @@ and the rest of the address to Listmonk. `stacks/backend/forms.cjs` answers it:
 - It turns away a form from anywhere but the website (`backend:formsOrigins`), and drops one whose hidden
   `website` field a bot filled in, while telling the bot it was sent.
 - It allows 3 messages an hour from one address, and `backend:formsPerIp` (10) from one IP. It keeps the counts in
-  the Directus pod's memory, so they're gone after an hour or a restart. Dev allows 1,000 per IP, since every
-  integration test posts from one runner.
+  the Directus pod's memory, so they're gone after an hour or a restart. The CI stack allows 1,000 per IP, since
+  every integration test posts from one runner.
 - It emails `backend:contactTo`, info@, through the Workspace SMTP relay, from `noreply@` and with the visitor as
   Reply-To, then sends them to "Message sent". Nothing else keeps the message.
 
@@ -50,7 +50,7 @@ A first sign-in makes an account with the Write role. access-334's sync
 policies give, and turns off an account whose policies are gone. It signs in to Listmonk's API with the
 `listmonk-access-sync` Secret: `LISTMONK_URL`, `LISTMONK_API_USER`, and `LISTMONK_API_TOKEN`, sent as
 `Authorization: token <user>:<token>`. Its role, Access sync, may only read and change accounts and read roles.
-Look a role's ID up by name with `GET /api/roles/users`, since it differs between dev and prod.
+Look a role's ID up by name with `GET /api/roles/users`, since it differs from one instance to another.
 
 Neither staff role changes Listmonk's settings or accounts. The built-in `admin` does, as the break-glass login:
 `pulumi stack output adminPassword --show-secrets` in `stacks/listmonk`.
@@ -63,12 +63,12 @@ its pod runs two steps: Listmonk's own install and upgrade, both safe to run aga
 
 - Listmonk's address, its From, and the SMTP server
 - signing in through Authentik, with new accounts on the Write role
-- the Write, Send, and API login roles, and the API logins: `access-sync`, and in dev `integration-tests`, which
-  reads subscribers for the integration tests
+- the Write, Send, and API login roles, and the API logins: `access-sync`, and on the CI stack `integration-tests`,
+  which reads subscribers for the integration tests
 - the CSC Newsletter list, public and double opt-in. Staff may rename it.
 - bounces: one hard bounce or complaint blocks an address, and soft bounces only count
 - pictures in the public bucket `<project>-listmonk-media-prod`, through Cloud Storage's S3 API, which
-  `bootstrap` gives a key. Dev keeps them in the pod.
+  `bootstrap` gives a key. Until `listmonk:mediaBucket` is set, they're kept in the pod.
 
 A change to any of them rolls the pod, which writes them again. Templates, the look of Listmonk's pages, and
 everything staff make stay in Listmonk.
