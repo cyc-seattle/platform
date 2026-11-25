@@ -1,0 +1,20 @@
+# authentik's config for the throwaway CI stack (./index.ts copies it to stacks/authentik, with its
+# own address in localUrl): Authentik in containers on the runner, not on the cluster.
+config:
+  authentik:local: true
+  authentik:localUrl: http://localhost:9000
+  # ./index.ts starts Authentik with it.
+  authentik:localBootstrapToken: ci-authentik-bootstrap-token
+  authentik:googleSignIn: false
+  # What the sibling stacks would give. Nothing in the CI stack signs in through these clients.
+  authentik:localSiblings:
+    backend.directusOidcClientId: ci-directus
+    backend.directusOidcClientSecret: ci-directus-secret
+    inbox.oidcClientId: ci-inbox
+    inbox.oidcClientSecret: ci-inbox-secret
+    listmonk.oidcClientId: ci-listmonk
+    listmonk.oidcClientSecret: ci-listmonk-secret
+    listmonk.url: http://localhost:9000
+  # src/config.ts reads these when it loads. Nothing in a local stack calls Google Cloud.
+  gcp:project: ci-no-project
+  gcp:region: us-west1

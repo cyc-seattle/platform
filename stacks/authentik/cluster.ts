@@ -7,14 +7,13 @@ import * as random from "@pulumi/random";
 import { WebService, Workload } from "../../src/index.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
-import { authentikEnv, loginRedirectRoute } from "./workloads.ts";
+import { authentikEnv, authentikImage as image, loginRedirectRoute } from "./workloads.ts";
 import { builtInQueries } from "./naming.ts";
 import type { AuthentikSecrets } from "./prod-secrets.ts";
 
 // Authentik on the cluster (cyc-seattle/isthmia#231): its database, its generated secrets, the server and worker, and
 // in dev, Mailpit in place of the Workspace relay.
 
-const image = "ghcr.io/goauthentik/server:2026.8.3";
 const mailpitImage = "axllent/mailpit:v1.31.5";
 
 export interface AuthentikOnCluster {

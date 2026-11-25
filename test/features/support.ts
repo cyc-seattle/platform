@@ -91,29 +91,6 @@ export async function kube(
   return { status: response.status, body: json && text ? JSON.parse(text) : text || undefined };
 }
 
-/** Whether the caller may create `resource` (`name.group`, as kubectl writes it) in `namespace`. */
-export async function canCreate(platform: PlatformOutputs, resource: string, namespace?: string): Promise<boolean> {
-  const [name, ...group] = resource.split(".");
-  const review = await kube(platform, "POST", "/apis/authorization.k8s.io/v1/selfsubjectaccessreviews", {
-    apiVersion: "authorization.k8s.io/v1",
-    kind: "SelfSubjectAccessReview",
-    spec: { resourceAttributes: { verb: "create", resource: name, group: group.join("."), namespace } },
-  });
-  if (review.status !== 201) {
-    throw new Error(`The access review failed: ${review.status} ${JSON.stringify(review.body)}`);
-  }
-  return review.body.status.allowed === true;
-}
-
-/** The caller's Kubernetes username, for failure messages. */
-export async function whoami(platform: PlatformOutputs): Promise<string> {
-  const review = await kube(platform, "POST", "/apis/authentication.k8s.io/v1/selfsubjectreviews", {
-    apiVersion: "authentication.k8s.io/v1",
-    kind: "SelfSubjectReview",
-  });
-  return review.body?.status?.userInfo?.username ?? "an unknown user";
-}
-
 /** One key of a Secret in dev's namespace. */
 export async function secretValue(platform: PlatformOutputs, name: string, key: string): Promise<string> {
   const response = await kube(platform, "GET", `/api/v1/namespaces/${platform.namespace}/secrets/${name}`);

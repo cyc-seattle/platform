@@ -2,7 +2,10 @@ import type * as k8s from "@pulumi/kubernetes";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
-// Pure builders for the on-cluster Authentik (./cluster.ts), testable without Pulumi.
+// Pure builders for the on-cluster Authentik (./cluster.ts), testable without Pulumi. The CI stack
+// (scripts/ci-stack) runs the same image with the same env.
+
+export const authentikImage = "ghcr.io/goauthentik/server:2026.8.3";
 
 /**
  * The defaults plus the Google load balancer's proxy ranges. Authentik trusts X-Forwarded-Proto only

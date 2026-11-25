@@ -1,9 +1,8 @@
 import { readFileSync } from "node:fs";
 
 // Where the features run: the CI stack on the runner (scripts/ci-stack), which describes itself in the
-// file CI_STACK_TARGET names, or dev after each deploy. The CI stack runs every scenario but those
-// tagged @dev, which need what only dev has. Dev runs those, and the ones tagged @smoke, which prove
-// the deploy (docs/testing.md).
+// file CI_STACK_TARGET names, or dev after each deploy. The CI stack runs every scenario. Dev runs only
+// those tagged @smoke, which prove the deploy (docs/testing.md).
 
 export interface LocalTarget {
   directus: { url: string; adminEmail: string; adminPassword: string; communityRoleId: string };
@@ -11,6 +10,10 @@ export interface LocalTarget {
   formsUrl: string;
   /** Each Service's URL as this process reaches it, by its in-cluster `name:port`. */
   services: Record<string, string>;
+  /** Authentik's address, and its bootstrap token. */
+  authentik: { url: string; token: string };
+  /** Listmonk's address, the newsletter list's ID, and the tests' API login. */
+  listmonk: { url: string; listId: string; apiUser: string; apiToken: string };
   /** Each sync's env, as dev's CronJob gives it. */
   cronJobs: Record<string, Record<string, string>>;
 }
@@ -31,12 +34,12 @@ export function localTarget(): LocalTarget | undefined {
 export function localService(target: LocalTarget, service: string, port: number): string {
   const url = target.services[`${service}:${port}`];
   if (url === undefined) {
-    throw new Error(`The CI stack doesn't run ${service}:${port}. Tag the scenario @dev.`);
+    throw new Error(`The CI stack doesn't run ${service}:${port}.`);
   }
   return url;
 }
 
 /** The tags a feature's scenarios are picked by, here. */
 export function targetTags(): { includeTags?: string[]; excludeTags: string[] } {
-  return localTarget() ? { excludeTags: ["dev"] } : { includeTags: ["dev", "smoke"], excludeTags: [] };
+  return localTarget() ? { excludeTags: [] } : { includeTags: ["smoke"], excludeTags: [] };
 }

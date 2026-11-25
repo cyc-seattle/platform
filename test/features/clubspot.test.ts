@@ -1,13 +1,12 @@
 import { expect } from "vitest";
-import { asAdmin, runCronJob } from "./cluster.ts";
+import { asAdmin } from "./cluster.ts";
 import { type ClubspotRun, clubspotRun, seedClass, seedSailor } from "./steps/clubspot.ts";
 import { canSet, describeAccessFeature, Step } from "./steps/index.ts";
 import { admin, adminCreate, itemPath, key, newRow, type Row } from "./steps/rows.ts";
 import { runClubspotSync } from "./syncs.ts";
 
-// The sync scenarios seed dev's CRM and its Clubspot fake, run clubspot-sync on their own camp, and
-// read the result through Directus's REST API. The merge scenario runs the CronJob as a Job instead,
-// which proves the deployed image and its config.
+// The sync scenarios seed the CRM and the Clubspot fake, run clubspot-sync on their own camp, and
+// read the result through Directus's REST API.
 
 /**
  * A catalog offering of a new program, linked to the run's class and session, as staff would link it. It
@@ -189,11 +188,10 @@ describeAccessFeature("clubspot.feature", {
       });
     });
 
-    // The merge is club-wide, so it runs whatever the camp. Every other camp in dev's Clubspot fake
-    // would take the Job past its timeout.
+    // The merge is club-wide, so it runs whatever the camp.
     When("the Clubspot sync runs", async () => {
       await seedClass(run);
-      await runCronJob("clubspot-sync", runId, { CLUBSPOT_CAMP_ID: run.id("cmp") });
+      await runClubspotSync(run.id("cmp"));
     });
 
     Then("the person kept is the coach", async () => {

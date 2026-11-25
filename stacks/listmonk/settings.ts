@@ -5,6 +5,9 @@
 // so a start-up step writes them there (./index.ts). Anything left out, such as templates and the look of
 // its public pages, stays where staff change it, in Listmonk.
 
+/** Also what the CI stack (scripts/ci-stack) runs. */
+export const listmonkImage = "listmonk/listmonk:v6.2.0";
+
 export interface SmtpServer {
   host: string;
   port: number;

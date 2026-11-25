@@ -4,9 +4,9 @@ The Gherkin features in `features/` are the integration tests, with their steps 
 run in two places:
 
 - **On a throwaway stack in CI**, on every PR and every push to `main` (`.github/workflows/integration-ci.yml`).
-  This is where nearly every scenario runs.
-- **On dev, after each deploy and each night** (`integration.yml`, `nightly.yml`), only the scenarios that need
-  dev or that prove the deploy.
+  Every scenario runs here.
+- **On dev, after each deploy and each night** (`integration.yml`, `nightly.yml`), only the scenarios tagged
+  `@smoke`, which prove the deploy.
 
 ## The CI stack
 
@@ -14,18 +14,33 @@ run in two places:
 
 - Directus, from the same image, env, extensions and migrations as dev's, with `backend`'s config applied by
   `backend`'s own Pulumi program in its local mode (`backend:local`), so nothing calls Google Cloud or the cluster.
-- Its Postgres, which also holds the Clubspot fake's database.
+- Its Postgres, which also holds the Clubspot fake's, Authentik's and Listmonk's databases.
 - The Clubspot and Workspace fakes, from the images dev runs (`stacks/backend/images.ts`), and Mailpit.
+- Authentik, from the image and env dev runs, with `authentik`'s config applied by its own Pulumi program in
+  its local mode (`authentik:local`). Its mail, such as a sign-in link, lands in Mailpit. Directus's
+  group-policies hook fills its sign-in groups, as on dev.
+- Listmonk, installed and configured with the `listmonk` stack's own settings (`stacks/listmonk/settings.ts`),
+  sending to Mailpit, with the read-only API login the tests check the list with.
 
-The syncs run in the test's own process against the fakes, as they mostly do on dev. The contact form posts to
+It doesn't run FreeScout: only the shared inbox's `@api` scenarios would reach it, and they need FreeScout's
+API module, which is bought and installed by hand (`docs/inbox.md`). They wait for it, on dev and here alike.
+Nothing checks the cluster itself here: `test/cluster.test.ts` checks the namespaces' network policies, the
+Gateway's listeners, and what each deploy identity may do.
+
+The syncs run in the test's own process against the fakes, here and on dev. The contact form posts to
 Directus's forms endpoint, and its mail lands in Mailpit.
 
-Applying the config takes about 6 minutes, so the configured database is cached, keyed on a hash of
-`schemas/`, `stacks/backend`, `src/directus`, `scripts/ci-stack` and the lockfile. A run that hits the cache
+Each checkout's stack has its own Docker Compose project and host ports, both from a hash of its path, so
+two checkouts on one machine can each run one. `CI_STACK_PORT` picks the first port instead. The ports
+are in `.ci-stack/target.json`.
+
+Applying the config takes about 6 minutes, so the configured databases, Directus's and Authentik's, are
+cached, keyed on a hash of `schemas/`, `stacks/backend`, `stacks/authentik`, `src/directus`, `src/app`,
+`scripts/ci-stack` and the lockfile. A run that hits the cache
 restores it in seconds. The cache never holds the license: Actions shares `main`'s caches with every PR.
 
-The suite is split across 4 jobs, each with its own stack. Each job takes 5 to 8 minutes with a cached stack,
-and about 6 more when it applies the config.
+The suite is split across 4 jobs, each with its own stack. Each job takes about 3 minutes with a cached stack,
+and 10 to 15 when it applies the config.
 
 ### The license
 
@@ -37,15 +52,9 @@ time out after 30 minutes. A PR from a fork gets no secrets, so its integration 
 
 ## What runs on dev
 
-Two tags pick the scenarios dev runs:
-
-- `@dev`: needs what only dev has, such as Authentik, FreeScout, or the cluster itself. It never runs on the CI
-  stack. `smoke`, `isolation`, `inbox` and `newsletter` are wholly `@dev`.
-- `@smoke`: runs on the CI stack, and also on dev to prove the deploy, such as a sync's scenario that runs its
-  CronJob as a Job on dev, and in-process on the CI stack.
-
-`vitest.integration.config.ts` lists the files that hold either tag. Add a file there when you tag one of its
-scenarios.
+Only the scenarios tagged `@smoke` run on dev, with the syncs in the test's own process, reaching dev's fakes
+through the cluster's API. `vitest.integration.config.ts` lists the files that hold one. Add a file there when
+you tag one of its scenarios.
 
 ## Running them
 
