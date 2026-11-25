@@ -271,7 +271,7 @@ export const sailTeam = new StandardRepository("sail-team", {
   autoInit: true,
   licenseTemplate: "apache-2.0",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title"],
+  requiredChecks: ["ci / ci", "pr-title / pr-title", "integration"],
   // Its Storybook, which its storybook.yml publishes from main.
   pages: { buildType: "workflow" },
 });
