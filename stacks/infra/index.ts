@@ -16,6 +16,8 @@ import { enableService } from "../../src/services.ts";
 
 // Every app's secrets need it. isthmia's retired `infrastructure` stack enabled it before.
 enableService("secretmanager.googleapis.com");
+// FreeScout reads the shared inbox over IMAP with an OAuth client in this project (docs/manual-setup.md §11).
+enableService("gmail.googleapis.com");
 
 // What the app stacks read through a StackReference.
 export const networkId = network.id;
