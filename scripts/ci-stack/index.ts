@@ -15,6 +15,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import * as yaml from "js-yaml";
+import type { CiStackTarget } from "../../src/ci-stack.ts";
 import { discoverSchemaFiles } from "../../src/directus/client.ts";
 import { authentikEnv, authentikImage } from "../../stacks/authentik/workloads.ts";
 import { extensionDirs, migrationFiles } from "../../stacks/backend/directus-files.ts";
@@ -317,6 +318,11 @@ function startAll(): void {
   }
 }
 
+// The built-in admin's static token, for another repo's tests that call Directus as its admin.
+const adminToken = "ci-admin-token";
+const setAdminToken = () =>
+  psql(`UPDATE directus_users SET token = '${adminToken}' WHERE email = '${get<string>("directusAdminEmail")}'`);
+
 interface Tokens {
   clubspot: string;
   gsuite: string;
@@ -348,6 +354,7 @@ async function up(): Promise<void> {
     psql("UPDATE directus_settings SET project_id = gen_random_uuid(), license_key = NULL, license_token = NULL");
     tokens = JSON.parse(fs.readFileSync(tokensFile, "utf8"));
     writeAuthentikAccess(tokens.authentikAccess);
+    setAdminToken();
     startAll();
     console.log(`Restored ${key} and started the stack in ${elapsed()}.`);
   } else {
@@ -384,16 +391,18 @@ async function up(): Promise<void> {
       }
     }
     fs.writeFileSync(tokensFile, JSON.stringify(tokens));
+    setAdminToken();
     startAll();
     console.log(`Cached the configured databases and restarted the stack in ${elapsed()}.`);
   }
 
   // What the tests reach, in place of dev's (test/features/target.ts).
-  const target = {
+  const target: CiStackTarget = {
     directus: {
       url: directusUrl,
       adminEmail: get<string>("directusAdminEmail"),
       adminPassword: get<string>("localAdminPassword"),
+      adminToken,
       communityRoleId: get<string>("communityRoleId"),
     },
     formsUrl: directusUrl,

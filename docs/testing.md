@@ -50,6 +50,50 @@ makes its own activation, which stays pending and never counts as long as the in
 ([Directus's pending activations](https://directus.com/docs/licensing/overview#pending-activations)). The jobs
 time out after 30 minutes. A PR from a fork gets no secrets, so its integration tests don't run.
 
+## From another repo
+
+Another repo, such as sail-team, runs its own tests against the same stack: platform at the release its
+`@cyc-seattle/platform` dependency names, checked out beside its own code. Its Directus has the schema,
+roles and policies that release deploys. In a workflow:
+
+```yaml
+- uses: actions/checkout@<sha> # the repo's own code
+- id: platform
+  run: echo "version=$(node -p 'require("@cyc-seattle/platform/package.json").version')" >> "$GITHUB_OUTPUT"
+- uses: actions/checkout@<sha>
+  with:
+    repository: cyc-seattle/platform
+    ref: v${{ steps.platform.outputs.version }}
+    path: .platform
+    # The planning engine is stamped with the latest release tag (stacks/backend/engine-files.ts).
+    fetch-depth: 0
+- uses: jdx/mise-action@<sha>
+  with:
+    working_directory: .platform
+- run: mise run install
+  working-directory: .platform
+- id: key
+  run: echo "key=$(mise exec -- node scripts/ci-stack/index.ts key)" >> "$GITHUB_OUTPUT"
+  working-directory: .platform
+- uses: actions/cache@<sha>
+  with:
+    path: .platform/.ci-stack-cache
+    key: ${{ steps.key.outputs.key }}
+- run: mise run ci-stack
+  working-directory: .platform
+  env:
+    DIRECTUS_LICENSE_KEY: ${{ secrets.DIRECTUS_LICENSE_KEY }}
+```
+
+The `node -p` step runs after the repo's own install, which puts the package in `node_modules`. The repo needs
+the `DIRECTUS_LICENSE_KEY` secret, and a job timeout under 24 hours, as here.
+
+The stack describes itself in `.platform/.ci-stack/target.json`, which `CiStackTarget` from
+`@cyc-seattle/platform` types: Directus's address with its admin's email, password and static token,
+Authentik's address and bootstrap token, Listmonk's, Mailpit's and the fakes' addresses, and the syncs' tokens.
+Its ports differ from one checkout to another, so read them there. `mise run ci-stack-down`, in `.platform`,
+stops it.
+
 ## What runs on dev
 
 Only the scenarios tagged `@smoke` run on dev, with the syncs in the test's own process, reaching dev's fakes
