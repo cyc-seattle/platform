@@ -69,7 +69,8 @@ export interface User {
  */
 export async function createUser(signIn: string, role: string | { id: string }): Promise<User> {
   const session = await admin();
-  const password = `password-${randomBytes(12).toString("hex")}`;
+  // The seed's users share one password, so a person can sign in as them.
+  const password = process.env["SEED_PASSWORD"] ?? `password-${randomBytes(12).toString("hex")}`;
   // A password sign-in costs Directus a hash and a session row, so a user signs in with a static token,
   // unless the email is typed differently from how it's stored, which only a real sign-in can check.
   const token = signIn === signIn.toLowerCase() ? randomBytes(24).toString("hex") : undefined;
