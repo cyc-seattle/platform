@@ -59,6 +59,9 @@ jobs:
           key: ${{ steps.key.outputs.key }}
       - run: mise run ci-stack
         if: steps.license.outputs.skip != 'true'
+        env:
+          # An app on another port, which authentication.feature signs in to (docs/testing.md).
+          CI_STACK_REDIRECTS: http://localhost:5173/
       - run: mise run integration-ci -- --shard=${{ matrix.shard }}/4
         if: steps.license.outputs.skip != 'true'
       - name: The stack's logs

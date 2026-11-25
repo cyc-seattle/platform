@@ -32,6 +32,14 @@ Feature: Signing in
       When they sign in for the first time
       Then they have the Community role
 
+  Rule: Someone signs in to an app with a link they're emailed, and comes back to the app signed in
+
+    Example: A parent signs in to an app for the first time
+      Given a person in the CRM who has never signed in
+      When they sign in to an app with the link they're emailed
+      Then the app has them signed in
+      And they have the Community role
+
   Rule: Signing in again doesn't change a person's role
 
     Example: A Crew member signs in again

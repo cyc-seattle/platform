@@ -18,6 +18,11 @@ export async function localAuthentik(): Promise<AuthentikOnCluster> {
   return { domain: "localhost", url, bootstrapToken, ready };
 }
 
+/** The host and port the CI stack's browser reaches Authentik at, from `authentik:localUrl`. */
+export function localLoginHost(): string {
+  return new URL(new pulumi.Config().require("localUrl")).host;
+}
+
 /**
  * In place of a sibling stack's output, the value `authentik:localSiblings` gives as `<project>.<output>`.
  * The CI stack has no `backend`, `inbox` or `listmonk` stack of its own for Authentik to read.
