@@ -25,7 +25,7 @@ projects with their resource names unchanged, and their states moved over with `
 Directus's pod use it through Workload Identity, since neither deploy identity may. The bucket is
 private and versioned, and keeps a deleted or replaced file for 30 days.
 
-A push to `main` deploys it to dev, and then to prod after `infra`.
+A push to `main` deploys it to prod, after `infra`.
 
 ## Outputs
 
@@ -129,14 +129,13 @@ create or an update. So the guard checks an MCP tool call's filter, sort, group,
 clubspot-sync and gsuite-sync live in `src/syncs/`, and [syncs.md](syncs.md) describes them. The root
 `Dockerfile` bundles each into one file with esbuild, so its image has no `node_modules`. An image's
 tag is a hash of what it's built from (`stacks/backend/sync-image.ts`), and each tag is pushed once.
-A deploy runs the tag from the registry if it's there. If it isn't, dev builds it and prod fails, so
-deploy a commit to dev before prod. A commit that doesn't change the syncs changes neither image,
+A deploy runs the tag from the registry if it's there, and builds and pushes it if it isn't. A preview
+never builds one. A commit that doesn't change the syncs changes neither image,
 and its prod deploy is skipped (cyc-seattle/platform#72). Each CronJob reads its machine user's Directus token
 from its own Secret, which `backend` writes from the token it generates.
 
 In prod they run hourly, clubspot-sync on the hour and gsuite-sync at half past. In dev the
-CronJobs are suspended, and only Jobs made from them run: one scenario's in each sync's feature, and
-`mise run reset`'s. So a scheduled run never collides with a test's, and a test never waits for one
+CronJobs are suspended, and only Jobs made from them run, one scenario's in each sync's feature. So a scheduled run never collides with a test's, and a test never waits for one
 (cyc-seattle/isthmia#271). The features' other scenarios run the sync in the test's own process,
 with the CronJob's config, on just their own camp or program. `kubectl create job --from=cronjob/<name>`
 runs one by hand.

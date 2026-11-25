@@ -1,7 +1,8 @@
 name: release
 
-# Each push to main releases, deploys dev, starts the integration tests, and then previews and
-# deploys prod (#280). npm's trusted publisher names this file, so the release must run from it.
+# Each push to main releases, then previews and deploys prod. Every integration test has already run
+# before the merge, in integration-ci.yml (#171). npm's trusted publisher names this file, so the
+# release must run from it.
 on:
   push:
     branches: [main]
@@ -14,37 +15,17 @@ permissions:
 jobs:
   # Before the deploys, so the planning engine's stamp names the release that ships it (#305).
   release:
-    uses: cyc-seattle/.github/.github/workflows/release.yml@v4.1.0
+    uses: cyc-seattle/.github/.github/workflows/release.yml@v5.0.0
     permissions:
       contents: write
       id-token: write
   # A failed release still deploys, so it can't hold back a fix. The stamp then names the release before.
-  dev:
-    needs: release
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.1.0
-    permissions:
-      id-token: write
-      contents: read
-    with:
-      environment: dev
-      task: deploy
-  # A run started with GITHUB_TOKEN may start only a workflow_dispatch, so the tests run in a
-  # workflow of their own, which keeps them out of this run.
-  integration:
-    needs: dev
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - run: gh workflow run integration.yml -R "$GITHUB_REPOSITORY" --ref main
-        env:
-          GH_TOKEN: ${{ github.token }}
   # Runs merged code with prod credentials before anyone approves, which is safe only because
   # main requires a reviewed PR (cyc-seattle/isthmia#215).
   prod-preview:
-    needs: dev
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.1.0
+    needs: release
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v5.0.0
     permissions:
       id-token: write
       contents: read
@@ -54,8 +35,8 @@ jobs:
   # Skipped when the preview shows no changes, so a no-op deploy never asks for approval.
   prod:
     needs: prod-preview
-    if: needs.prod-preview.outputs.changes == 'true'
-    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v4.1.0
+    if: ${{ !cancelled() && needs.prod-preview.outputs.changes == 'true' }}
+    uses: cyc-seattle/.github/.github/workflows/deploy.yml@v5.0.0
     permissions:
       id-token: write
       contents: read

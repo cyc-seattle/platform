@@ -8,7 +8,7 @@ lefthook = "2"
 pulumi = "3.277.0"
 # Needs a system Python on macOS.
 gcloud = "latest"
-# For scripts/reset.
+# For scripts/cluster-sql and scripts/wait-for-authentik.
 jq = "latest"
 kubectl = "1.36"
 
@@ -68,8 +68,8 @@ run = "pulumi preview --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\"
 description = "Apply the bootstrap stack"
 run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
 
-# scripts/each-stack picks the projects from PULUMI_STACK: dev is smoke, backend, inbox, then authentik, and
-# prod is infra, backend, inbox, then authentik.
+# scripts/each-stack picks the projects from PULUMI_STACK: prod is infra, backend, inbox, listmonk, then
+# authentik. Dev's list stays only until its stacks are destroyed (#171).
 [tasks.preview]
 description = "Show the diff `mise run deploy` would apply to $PULUMI_STACK"
 run = "./scripts/each-stack preview"
@@ -91,10 +91,6 @@ run = "node scripts/schema-types.ts"
 description = "Sync a spreadsheet's events into Google Calendar"
 run = "node src/syncs/calendar/main.ts"
 
-[tasks.reset]
-description = "Empty dev's CRM, reseed its fakes, and run both syncs, keeping Directus's database and activation"
-run = "./scripts/reset"
-
 # Before delegating the external domain to Cloud DNS (docs/manual-setup.md): exits 1 on any difference.
 [tasks.compare-dns]
 description = "Compare the external domain's Cloud DNS zone with the name servers it's delegated to"
@@ -109,14 +105,6 @@ run = "node scripts/load-website.ts"
 [tasks.restore-drill]
 description = "Restore the latest prod backups into a throwaway instance, check Directus starts on them, and delete it"
 run = "./scripts/restore-drill"
-
-# Needs the dev deploy, so it isn't part of ci. deploy.yml calls it after each dev deploy.
-[tasks.integration]
-description = "Run the @smoke features against dev"
-run = "pnpm exec vitest run --config vitest.integration.config.ts"
-# Node gives each address only 250 ms before trying the next. Its IPv6 fallback fails at once on
-# Actions' runners, so a slow connect to the cluster's endpoint failed the run.
-env.NODE_OPTIONS = "--dns-result-order=ipv4first --no-network-family-autoselection"
 
 # Needs Docker and DIRECTUS_LICENSE_KEY (docs/testing.md).
 [tasks.ci-stack]

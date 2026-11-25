@@ -75,7 +75,7 @@ describe("the shared inbox in prod", () => {
     expect(find("gcp:sql/user:User", "inbox-db-user").inputs).toMatchObject({ name: "inbox" });
   });
 
-  it("runs the image dev built, by digest", () => {
+  it("runs the image from the registry, by digest", () => {
     const container = find("kubernetes:apps/v1:Deployment", "inbox").inputs["spec"].template.spec.containers[0];
     expect(container.image).toBe("us-west1-docker.pkg.dev/test-project/images/freescout@sha256:abc");
   });

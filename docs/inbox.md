@@ -18,8 +18,8 @@ gives the rules.
 ## What `stacks/inbox` holds
 
 - FreeScout, as a `WebService`, from our own image (`stacks/inbox/image`): PHP-FPM, nginx, and
-  FreeScout's scheduler in one container, as www-data, on a read-only root filesystem. Dev builds the
-  image, and prod runs the digest dev built, as for the syncs.
+  FreeScout's scheduler in one container, as www-data, on a read-only root filesystem. A deploy builds the
+  image when its tag isn't in the registry, and runs it by digest, as for the syncs.
 - Its database, `inbox`, on the environment's Cloud SQL instance. FreeScout supports PostgreSQL,
   though MySQL is its first choice, so try every module on dev before prod.
 - Its disk, the PersistentVolumeClaim `inbox-data` (10 GiB, `standard-rwo`), mounted at `/data`: attachments,

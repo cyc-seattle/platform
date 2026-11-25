@@ -10,7 +10,7 @@ opens in random order, shows IDs instead of names, or calls a field "Ga Share". 
 `schemas/*.yaml` is also a change to what staff see, so write it for them.
 
 `test/data-studio.test.ts` checks every rule below that the YAML can show, and `mise run ci` runs
-it. The rest are for you and the reviewer, who checks them in dev's Data Studio after the PR deploys.
+it. The rest are for you and the reviewer, who checks them in a CI stack's Data Studio before the PR merges.
 
 ## Name each row
 
@@ -90,10 +90,11 @@ An exception goes in the matching list at the top of `test/data-studio.test.ts`,
 saying why. Prefer fixing the schema. Add an exception only when the rule would make the Data
 Studio worse, such as hiding the only way into a table.
 
-## Check it in dev
+## Check it on a CI stack
 
-After the PR deploys to dev, open each changed collection in the Data Studio, signed in as a
-staffer who hasn't saved their own view of it:
+Start a CI stack from the PR's branch with sample data (`mise run ci-stack`, then `mise run ci-seed`,
+as [docs/testing.md](../../../docs/testing.md) says), and open each changed collection in its Data
+Studio, signed in as a staffer who hasn't saved their own view of it:
 
 - The table opens in a sensible order, with the columns staff need and names in place of IDs.
 - Each link and list shows names, and "Add existing" offers the real rows.

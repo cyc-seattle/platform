@@ -1,12 +1,9 @@
 # Integration tests
 
-The Gherkin features in `features/` are the integration tests, with their steps in `test/features/`. They
-run in two places:
-
-- **On a throwaway stack in CI**, on every PR and every push to `main` (`.github/workflows/integration-ci.yml`).
-  Every scenario runs here.
-- **On dev, after each deploy and each night** (`integration.yml`, `nightly.yml`), only the scenarios tagged
-  `@smoke`, which prove the deploy.
+The Gherkin features in `features/` are the integration tests, with their steps in `test/features/`. Every
+scenario runs on a throwaway stack in CI, on every PR and every push to `main`
+(`.github/workflows/integration-ci.yml`). Its `integration` check is required, so a PR merges only once they
+pass, and a merge then deploys straight to prod.
 
 ## The CI stack
 
@@ -116,9 +113,9 @@ CI_STACK_REDIRECTS=http://localhost:5173/,http://localhost:5173/plans mise run c
 
 ## What runs on dev
 
-Only the scenarios tagged `@smoke` run on dev, with the syncs in the test's own process, reaching dev's fakes
-through the cluster's API. `vitest.integration.config.ts` lists the files that hold one. Add a file there when
-you tag one of its scenarios.
+Nothing. Dev is being removed ([cyc-seattle/platform#171](https://github.com/cyc-seattle/platform/issues/171)),
+and no workflow deploys or tests it. The `@smoke` tags and `vitest.integration.config.ts`'s dev branch go with
+it.
 
 ## Running them
 
@@ -132,8 +129,6 @@ mise run ci-stack-down
 
 `mise run integration-ci -- test/features/planning-1.test.ts` runs one file. Stop the stack when you're done:
 a local Directus left running for 24 hours spends an activation.
-
-On dev, as deploy.yml does: `PULUMI_STACK=dev mise run integration`.
 
 ## Screenshots and demos
 
