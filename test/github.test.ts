@@ -263,11 +263,12 @@ describe("platform", () => {
     }
   });
 
-  it("merges once CI and the PR title pass, with no queue and no dev deploy first", () => {
+  it("merges once CI, the PR title and the integration tests pass, with no queue and no dev deploy first", () => {
     expect(main().inputs.rules.mergeQueue).toBeUndefined();
     expect(main().inputs.rules.requiredStatusChecks.requiredChecks).toEqual([
       { context: "ci / ci" },
       { context: "pr-title / pr-title" },
+      { context: "integration" },
     ]);
   });
 });

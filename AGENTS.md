@@ -63,7 +63,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 
 ## Branches and merges
 
-- There's no merge queue (#280). A PR merges once `ci / ci` and `pr-title / pr-title` pass, and only
+- There's no merge queue (#280). A PR merges once `ci / ci`, `pr-title / pr-title` and `integration` pass, and only
   org admins and `maintainers` can merge it. `contributors` push branches and open PRs. Even a
   maintainer merges by bypassing the rule, with `gh pr merge --squash --admin` once checks pass, so
   auto-merge never fires.
