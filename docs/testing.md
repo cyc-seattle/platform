@@ -39,8 +39,8 @@ cached, keyed on a hash of `schemas/`, `stacks/backend`, `stacks/authentik`, `sr
 `scripts/ci-stack` and the lockfile. A run that hits the cache
 restores it in seconds. The cache never holds the license: Actions shares `main`'s caches with every PR.
 
-The suite is split across 4 jobs, each with its own stack. Each job takes 5 to 8 minutes with a cached stack,
-and about 6 more when it applies the config.
+The suite is split across 4 jobs, each with its own stack. Each job takes about 3 minutes with a cached stack,
+and 10 to 15 when it applies the config.
 
 ### The license
 
