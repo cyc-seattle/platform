@@ -259,7 +259,7 @@ the organization needs more than project Owner.
       organizational unit.
 
 3. [ ] **Make the Google sign-in for the mailbox**, in the Cloud console for `cyc-admin-scripts`:
-   1. APIs & Services → Library → Gmail API → Enable.
+   1. The Gmail API is enabled by the `infra` stack.
    2. Credentials → Create credentials → OAuth client ID → Web application, named
       `FreeScout inbox`, with the authorized redirect URI `https://inbox.cycsail.team/mailbox/oauth`.
    3. The consent screen is External, for families' Google sign-in (§8), so Google treats the mail
