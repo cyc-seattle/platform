@@ -1,6 +1,7 @@
 #!/bin/sh
-# Prepares /data and /cache, migrates the database, then runs php-fpm, nginx, and FreeScout's
-# scheduler side by side. If any of them exits, so does the container, and Kubernetes restarts it.
+# Prepares /data and /cache, migrates the database, then runs php-fpm, nginx, FreeScout's scheduler,
+# and its queue worker side by side. If any of them exits, so does the container, and Kubernetes
+# restarts it.
 set -eu
 
 # /data is the disk: attachments, sessions, installed modules, and the .env FreeScout edits.
@@ -27,13 +28,21 @@ php-fpm &
 fpm=$!
 nginx -e /dev/stderr -g 'daemon off;' &
 web=$!
-# FreeScout's scheduler fetches mail, sends it, and starts its own queue worker. Laravel 5.5 has no
-# schedule:work, so this is cron's every minute.
+# FreeScout's scheduler fetches mail. Laravel 5.5 has no schedule:work, so this is cron's every minute.
+# With --no-interaction it starts no queue worker, which would block the next run.
 (while true; do php artisan schedule:run --no-interaction >/dev/null; sleep 60; done) &
 scheduler=$!
+# The queue worker sends replies and notifications. FreeScout stops it to restart it, after a module
+# install for one. The md5 of the app key is FreeScout's own queue, and how it finds its worker.
+worker_queue="emails,default,$(printf %s "$APP_KEY" | md5sum | cut -d' ' -f1)"
+(while true; do
+  php artisan queue:work --queue="$worker_queue" --sleep=5 --tries=1 --timeout=1800 --no-interaction
+  sleep 5
+done) &
+worker=$!
 
-trap 'kill "$fpm" "$web" "$scheduler" 2>/dev/null; exit 0' TERM INT
-while kill -0 "$fpm" && kill -0 "$web" && kill -0 "$scheduler"; do
+trap 'kill "$fpm" "$web" "$scheduler" "$worker" 2>/dev/null; exit 0' TERM INT
+while kill -0 "$fpm" && kill -0 "$web" && kill -0 "$scheduler" && kill -0 "$worker"; do
   sleep 5
 done 2>/dev/null
 exit 1
