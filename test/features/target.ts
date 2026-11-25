@@ -1,22 +1,12 @@
 import { readFileSync } from "node:fs";
+import type { CiStackTarget } from "../../src/ci-stack.ts";
 
 // Where the features run: the CI stack on the runner (scripts/ci-stack), which describes itself in the
 // file CI_STACK_TARGET names, or dev after each deploy. The CI stack runs every scenario. Dev runs only
 // those tagged @smoke, which prove the deploy (docs/testing.md).
 
-export interface LocalTarget {
-  directus: { url: string; adminEmail: string; adminPassword: string; communityRoleId: string };
-  /** Where the website's forms post, in place of dev's `https://mail.<domain>`. */
-  formsUrl: string;
-  /** Each Service's URL as this process reaches it, by its in-cluster `name:port`. */
-  services: Record<string, string>;
-  /** Authentik's address, and its bootstrap token. */
-  authentik: { url: string; token: string };
-  /** Listmonk's address, the newsletter list's ID, and the tests' API login. */
-  listmonk: { url: string; listId: string; apiUser: string; apiToken: string };
-  /** Each sync's env, as dev's CronJob gives it. */
-  cronJobs: Record<string, Record<string, string>>;
-}
+/** The CI stack, as `CiStackTarget` describes it. */
+export type LocalTarget = CiStackTarget;
 
 let loaded: LocalTarget | undefined;
 

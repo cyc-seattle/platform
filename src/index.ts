@@ -1,3 +1,4 @@
+export type { CiStackTarget } from "./ci-stack.ts";
 export { clusterProvider, type ClusterProviderArgs } from "./kubernetes.ts";
 export {
   getPlatformOutputs,
