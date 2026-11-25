@@ -272,3 +272,14 @@ describe("platform", () => {
     ]);
   });
 });
+
+describe("sail-team", () => {
+  it("merges once CI, the PR title and the integration tests pass", () => {
+    const main = ofType("github:index/repositoryRuleset:RepositoryRuleset").find((r) => r.name === "sail-team-main")!;
+    expect(main.inputs.rules.requiredStatusChecks.requiredChecks).toEqual([
+      { context: "ci / ci" },
+      { context: "pr-title / pr-title" },
+      { context: "integration" },
+    ]);
+  });
+});
