@@ -268,7 +268,8 @@ the organization needs more than project Owner.
    4. Keep the client ID and secret for step 6. FreeScout keeps them, encrypted, in its database.
 
 4. [ ] **Buy the modules**, at freescout.net: OAuth & Social Login ($8) and API & Webhooks
-       ($12.99). A licence covers one instance. Keep the keys for a rebuild:
+       ($12.99). A licence covers one instance. Keep the keys for a rebuild, in the two secrets the `inbox`
+       stack makes. Run these in your own terminal, so the key isn't echoed anywhere else:
 
    ```sh
    printf %s '<key>' | gcloud secrets versions add inbox-oauth-licence --data-file=- --project cyc-admin-scripts
