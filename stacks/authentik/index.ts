@@ -201,7 +201,7 @@ const sourceAuthenticationFlow = new authentik.Flow(
   {
     name: "Google sign-in",
     slug: "google-authentication",
-    title: "Sign in",
+    title: "Welcome to CYC Sail Team",
     designation: "authentication",
     authentication: "require_unauthenticated",
     ...pageLook,
