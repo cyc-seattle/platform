@@ -67,6 +67,11 @@ const generated = {
 
 const internalDomain = pulumi.output(app.then(({ domain }) => domain));
 
+// The sign-in page's pictures, which Sail Team serves from its `public/` at the domain's root. The CI stack has no
+// Sail Team, so it keeps Authentik's own.
+const sailTeamFile = (path: string) =>
+  local ? undefined : internalDomain.apply((domain) => `https://${domain}/${path}`);
+
 const authentikUrl = pulumi.output(app.then(({ url }) => url));
 const bootstrapToken = pulumi.secret(generated.bootstrapToken);
 
@@ -207,6 +212,8 @@ function googleSignInSource(): GoogleSource {
       authenticationFlow: sourceAuthenticationFlow.id,
       enrollmentFlow: googleEnrollmentFlow.uuid,
       propertyMappings: [googleUserProperties.id],
+      // A full-width "Continue with Google" button, in place of a bare "G" icon.
+      promoted: true,
     },
     opts,
   );
@@ -229,6 +236,8 @@ const emailCodeFlow = new authentik.Flow(
     slug: "email-code-authentication",
     title: "Sign in",
     designation: "authentication",
+    layout: "sidebar_left",
+    background: sailTeamFile("sign-in/background.jpg"),
   },
   opts,
 );
@@ -354,10 +363,13 @@ new authentik.Brand(
     flowAuthentication: emailCodeFlow.uuid,
     // Unset, Authentik picks the first sign-out flow by slug, which only happens to be this one.
     flowInvalidation: invalidationFlow.id,
+    brandingTitle: "CYC Sail Team",
+    brandingLogo: sailTeamFile("sign-in/logo.png"),
+    brandingFavicon: sailTeamFile("favicon.svg"),
   },
-  // Authentik fills in its default images, and the provider diffs them against the empty input,
-  // the same bug as goauthentik/terraform-provider-authentik#981.
-  { ...opts, ignoreChanges: ["brandingFavicon", "brandingLogo"] },
+  // Left unset, Authentik fills in its default images, and the provider diffs them against the empty
+  // input, the same bug as goauthentik/terraform-provider-authentik#981.
+  local ? { ...opts, ignoreChanges: ["brandingFavicon", "brandingLogo"] } : opts,
 );
 
 // --- 4. Users cannot change their own email. Already Authentik's shipped default; declared
@@ -522,9 +534,10 @@ const directusProvider = new ConfidentialOidcProvider(
   opts,
 );
 
+// Sail Team signs in through Directus, so this name is the one the sign-in page says you're continuing to.
 const directusApplication = new authentik.Application(
   "directus",
-  { name: "Directus", slug: "directus", protocolProvider: numericId(directusProvider.providerOauth2Id) },
+  { name: "CYC Sail Team", slug: "directus", protocolProvider: numericId(directusProvider.providerOauth2Id) },
   opts,
 );
 
