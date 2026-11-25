@@ -132,10 +132,6 @@ describe("embeddedOutpostConfig", () => {
 describe("builtInQueries", () => {
   it("finds each built-in object by the key the program looks it up by", () => {
     expect(builtInQueries()).toEqual([
-      "flows/instances/?slug=default-provider-authorization-implicit-consent",
-      "flows/instances/?slug=default-provider-invalidation-flow",
-      "flows/instances/?slug=default-invalidation-flow",
-      "flows/instances/?slug=default-source-authentication",
       "crypto/certificatekeypairs/?name=authentik%20Self-signed%20Certificate",
       "propertymappings/provider/scope/?managed=goauthentik.io%2Fproviders%2Foauth2%2Fscope-openid",
       "propertymappings/provider/scope/?managed=goauthentik.io%2Fproviders%2Foauth2%2Fscope-profile",

@@ -2,10 +2,6 @@
 // are each testable without standing up Pulumi or a live Authentik instance.
 
 /** Authentik's built-in objects this project looks up rather than manages. */
-export const IMPLICIT_CONSENT_FLOW = "default-provider-authorization-implicit-consent";
-export const PROVIDER_INVALIDATION_FLOW = "default-provider-invalidation-flow";
-export const INVALIDATION_FLOW = "default-invalidation-flow";
-export const SOURCE_AUTHENTICATION_FLOW = "default-source-authentication";
 export const SIGNING_CERTIFICATE = "authentik Self-signed Certificate";
 export const OPENID_SCOPE_MAPPING = "goauthentik.io/providers/oauth2/scope-openid";
 export const PROFILE_SCOPE_MAPPING = "goauthentik.io/providers/oauth2/scope-profile";
@@ -14,9 +10,6 @@ export const PROFILE_SCOPE_MAPPING = "goauthentik.io/providers/oauth2/scope-prof
 export function builtInQueries(): string[] {
   const query = (path: string, key: string, value: string) => `${path}?${key}=${encodeURIComponent(value)}`;
   return [
-    ...[IMPLICIT_CONSENT_FLOW, PROVIDER_INVALIDATION_FLOW, INVALIDATION_FLOW, SOURCE_AUTHENTICATION_FLOW].map((slug) =>
-      query("flows/instances/", "slug", slug),
-    ),
     query("crypto/certificatekeypairs/", "name", SIGNING_CERTIFICATE),
     ...[OPENID_SCOPE_MAPPING, PROFILE_SCOPE_MAPPING].map((managed) =>
       query("propertymappings/provider/scope/", "managed", managed),
