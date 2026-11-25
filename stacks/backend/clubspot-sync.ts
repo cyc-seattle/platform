@@ -43,7 +43,7 @@ export async function deployClubspotSync(cluster: Cluster, directusToken: pulumi
     // Hourly matches BASE_INTERVAL_MS in backoff.ts, so a camp that just wrote something is due again
     // on the very next run.
     schedule: "0 * * * *",
-    // Dev runs only the Jobs the features and `mise run reset` make from it, so a scheduled run never
+    // Dev runs only the Jobs the features make from it, so a scheduled run never
     // collides with a test's (cyc-seattle/isthmia#271).
     ...(isDev && { suspend: true }),
     requests: { cpu: "250m", memory: "512Mi" },

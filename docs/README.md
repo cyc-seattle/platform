@@ -14,7 +14,7 @@ How CYC's shared Google Cloud platform is built and run, for anyone who works on
 - [The shared inbox](inbox.md): FreeScout, for info@
 - [The newsletter and the website's forms](newsletter.md): Listmonk, Amazon SES, and the contact form
 - [Manual setup steps](manual-setup.md): what Pulumi can't do
-- [Integration tests](testing.md): the throwaway stack in CI, and what still runs on dev
+- [Integration tests](testing.md): the throwaway stack in CI that every scenario runs on
 
 ## Data model
 

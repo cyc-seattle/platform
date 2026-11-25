@@ -32,15 +32,19 @@ pulumi.runtime.setMocks(
   {
     newResource: ({ type, name, inputs }) => {
       resources.push({ type, name, inputs });
-      return { id: `${name}-id`, state: inputs };
+      const state =
+        type === "docker-build:index:Image" ? { ...inputs, ref: `${inputs["tags"][0]}@sha256:built` } : inputs;
+      return { id: `${name}-id`, state };
     },
     call: ({ token, inputs }) => {
       calls.push({ token, inputs });
       if (token === "gcp:storage/getBucketObjectContent:getBucketObjectContent") {
         return { ...inputs, content: JSON.stringify(platform) };
       }
+      // gsuite-sync's image is already in the registry, and clubspot-sync's isn't.
       if (token === "gcp:artifactregistry/getDockerImage:getDockerImage") {
         const name = String(inputs["imageName"]).split(":")[0];
+        if (name !== "gsuite-sync") throw new Error("not found");
         return { ...inputs, selfLink: `${platform.registry}/${name}@sha256:abc` };
       }
       if (token === "gcp:secretmanager/getSecretVersionAccess:getSecretVersionAccess") {
@@ -96,16 +100,27 @@ beforeAll(async () => {
 });
 
 describe("The syncs on prod's cluster", () => {
-  it("run the images dev built from these inputs, by digest, building none", async () => {
+  it("look up the images built from these inputs", async () => {
     const { syncImageTag } = await import("../stacks/backend/sync-image.ts");
     const looked = calls.filter((c) => c.token === "gcp:artifactregistry/getDockerImage:getDockerImage");
     expect(looked.map((c) => c.inputs["imageName"]).sort()).toEqual([
       `clubspot-sync:${syncImageTag}`,
       `gsuite-sync:${syncImageTag}`,
     ]);
-    expect(container("clubspot-sync").image).toBe(`${platform.registry}/clubspot-sync@sha256:abc`);
+  });
+
+  it("build an image the registry doesn't have, and run it by digest", async () => {
+    const { syncImageTag } = await import("../stacks/backend/sync-image.ts");
+    expect(find("docker-build:index:Image", "clubspot-sync").inputs).toMatchObject({
+      target: "clubspot-sync",
+      tags: [`${platform.registry}/clubspot-sync:${syncImageTag}`],
+    });
+    expect(container("clubspot-sync").image).toBe(`${platform.registry}/clubspot-sync@sha256:built`);
+  });
+
+  it("reuse an image the registry has, building none", () => {
+    expect(resources.find((r) => r.type === "docker-build:index:Image" && r.name === "gsuite-sync")).toBeUndefined();
     expect(container("gsuite-sync").image).toBe(`${platform.registry}/gsuite-sync@sha256:abc`);
-    expect(resources.find((r) => r.type === "docker-build:index:Image")).toBeUndefined();
   });
 
   it("start no fakes", () => {

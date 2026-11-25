@@ -198,16 +198,15 @@ export function appImage({ platform }: Cluster, name: string, args: AppImageArgs
         },
       ],
     },
-    // The provider deletes an image's tags with it. A dev deploy drops the resource once its tag is
-    // in the registry, and prod may run that tag (cyc-seattle/platform#72).
+    // The provider deletes an image's tags with it. A deploy drops the resource once its tag is in
+    // the registry, and every later deploy runs that tag (cyc-seattle/platform#72).
     { retainOnDelete: true },
   );
 }
 
 /**
  * The image `<name>:<tag>`, as `<registry>/<name>@<digest>`. Each tag is pushed once: if it's in the
- * registry, every environment runs it as it is. Otherwise dev builds it, and prod fails, so prod
- * runs what dev ran (cyc-seattle/isthmia#231).
+ * registry, every environment runs it as it is. Otherwise the deploy builds it (cyc-seattle/isthmia#231).
  */
 export async function deployedImage(
   cluster: Cluster,
@@ -217,7 +216,6 @@ export async function deployedImage(
   const { registry } = cluster.platform;
   const [host = "", project = "", repositoryId = ""] = registry.split("/");
   const byDigest = (image: string) => `${registry}/${name}@${image.slice(image.indexOf("@") + 1)}`;
-  let error: unknown;
   const found = await gcp.artifactregistry
     .getDockerImage({
       location: host.replace(/-docker\.pkg\.dev$/, ""),
@@ -227,18 +225,10 @@ export async function deployedImage(
     })
     .then(
       (image) => image.selfLink,
-      (reason: unknown) => {
-        error = reason;
-        return undefined;
-      },
+      () => undefined,
     );
   if (found !== undefined) {
     return pulumi.output(byDigest(found));
-  }
-  if (!isDev) {
-    throw new Error(
-      `Can't find ${registry}/${name}:${args.tag}. Dev builds it: deploy this commit to dev first. (${String(error)})`,
-    );
   }
   return appImage(cluster, name, args).ref.apply(byDigest);
 }

@@ -144,10 +144,11 @@ Light; you're already in GCP.
   and `infra` stacks.
 - **Apps** are Pulumi projects, each deploying its workloads to the cluster. `authentik` is this repo's `stacks/authentik`, and
   sail-team's app is its own repo's `stacks/app`. Directus, its schema and roles, and the syncs are this repo's `backend` stack
-  ([cyc-seattle/workplace#6](https://github.com/cyc-seattle/workplace/issues/6)). Actions deploys dev on every pull request, and prod from `main` after a maintainer
-  approves. Prod runs the image digest dev built for the same commit.
+  ([cyc-seattle/workplace#6](https://github.com/cyc-seattle/workplace/issues/6)). Actions runs the tests on every pull request, and deploys
+  `main` to prod after a maintainer approves. Prod builds an image only when its tag isn't in the registry yet.
 - **Scheduled jobs** (the syncs) are Kubernetes CronJobs, hourly.
-- **Environments.** `prod` and `dev` are namespaces in the one cluster. Prod runs on regular capacity, dev on Spot
+- **Environments.** `prod` and `dev` are namespaces in the one cluster. Nothing deploys to dev any more, and it's
+  being removed ([cyc-seattle/platform#171](https://github.com/cyc-seattle/platform/issues/171)). Prod runs on regular capacity, dev on Spot
   pods, with synthetic data, Mailpit, and the Clubspot and Workspace fakes.
 - **Availability.** sail-team runs two replicas in prod. Directus and Authentik's server run one each, which
   Autopilot won't move to consolidate nodes. A second Directus needs Redis, to share its caches ([cyc-seattle/isthmia#253](https://github.com/cyc-seattle/isthmia/issues/253)).

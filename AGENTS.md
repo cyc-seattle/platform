@@ -20,8 +20,8 @@ single app owns it. The apps live in their own repos and depend on this one, nev
 - `schemas/<domain>.yaml` is the Directus data model, one file per domain. `src/directus/` merges
   them into one snapshot and applies it. `src/schema/index.ts` is their TypeScript types, published
   as `@cyc-seattle/platform/schema` for apps to pass to `@directus/sdk`. It's generated: after a
-  schema change, run `mise run schema-types`, and CI fails until you do. The `backend` stack deploys Directus with them, in dev and
-  prod. A schema change reaches dev only once it merges to `main`.
+  schema change, run `mise run schema-types`, and CI fails until you do. The `backend` stack deploys Directus with them
+  to prod once the change merges to `main`.
 - `src/planning/` is the planning engine, published as `@cyc-seattle/platform/planning` so an app can
   load it without Pulumi. [`docs/planning-engine.md`](https://cyc-seattle.github.io/platform/planning-engine/) gives its rules.
 - `src/app/` holds the deploy helpers the app stacks share, such as `appSecret` and `appDatabase`.
@@ -37,7 +37,7 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   goes in a section of `docs-site/astro.config.ts`'s sidebar, and in `docs/README.md`.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run on
   a throwaway stack in each CI job (`integration-ci.yml`, `mise run ci-stack` then
-  `mise run integration-ci`), and only those tagged `@smoke` run against dev after a deploy.
+  `mise run integration-ci`). Its `integration` check is required, so they all pass before a merge.
   [`docs/testing.md`](https://cyc-seattle.github.io/platform/testing/) explains. A feature is living documentation of
   business rules, so write and review one with the `write-feature` skill from
   [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills). Here, the `Step` helper
@@ -68,43 +68,33 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   maintainer merges by bypassing the rule, with `gh pr merge --squash --admin` once checks pass, so
   auto-merge never fires.
 - Never force-push. To bring a branch up to date, merge `origin/main` into it.
-- Dev's environments take only `main`, so a branch can't deploy to dev, by hand or otherwise.
-- When a dev deploy or its tests fail, reproduce the failure locally against dev before you push a fix:
-  `PULUMI_STACK=dev mise run integration`, or `PULUMI_STACK=dev mise run preview` for a deploy.
+- Nothing deploys to dev or tests it any more, and it's being removed (#171). Don't add to it.
+- When an integration test fails, reproduce it locally on a CI stack before you push a fix:
+  `mise run ci-stack`, then `mise run integration-ci`.
 
 ## Deploys
 
-- `infra`, `smoke`, and `backend` deploy from Actions (`.github/workflows/release.yml`), through
-  the org's reusable `deploy.yml` pinned to a tag, which the WIF provider requires. A PR's push runs
-  only CI. Each push to `main` deploys dev, then previews prod and applies it once a maintainer
-  approves. `prod` waits for dev, so a broken deploy stops there, and is skipped when the preview
-  shows no changes.
-- After each dev deploy, `integration.yml` runs the `@smoke` features against dev. One run goes at
-  a time, and a newer one replaces any that's waiting, so pushes during a run are tested together.
-  A waiting deploy goes ahead of a test run. A failure opens or comments on the issue
-  `Integration tests failed on dev`, listing the PRs merged since the last green run, and a green
-  run closes it.
-- The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `dev` is `smoke`, `backend`,
-  `inbox`, `listmonk`, then `authentik`, and `prod` is `infra`, `backend`, `inbox`, `listmonk`, then `authentik`. `DEPLOY_PROJECTS` narrows the list. Its preview
-  appends each project's `true` or `false` to `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip
-  a no-op prod deploy. The workflow calls `preview`, `deploy`, `integration`, and `install`, so keep
-  those names.
-- `nightly.yml` deploys `main` to dev each night and runs the integration tests, under the same dev
-  lock as the deploys. It tests platform and sail-team together, so it keeps its own issue: a failed
-  night opens or comments on the `Nightly integration run failed` issue,
-  assigned to the maintainer, and a green night closes it. Run it early with `gh workflow run nightly.yml`.
+- `infra`, `backend`, `inbox`, `listmonk` and `authentik` deploy from Actions
+  (`.github/workflows/release.yml`), through the org's reusable `deploy.yml` pinned to a tag, which
+  the WIF provider requires. A PR's push runs only CI and the integration tests. Each push to `main`
+  releases, previews prod, and applies it once a maintainer approves. `prod` is skipped when the
+  preview shows no changes.
+- A deploy builds and pushes an image whose tag isn't in the registry yet. A preview never builds one.
+- The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `prod` is `infra`, `backend`,
+  `inbox`, `listmonk`, then `authentik`. Its `dev` list stays only until dev's stacks are destroyed.
+  `DEPLOY_PROJECTS` narrows the list. Its preview appends each project's `true` or `false` to
+  `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow calls
+  `preview`, `deploy`, and `install`, so keep those names.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
   (cyc-seattle/isthmia#118). Use `preview-bootstrap` and `deploy-bootstrap`.
 - Local deploys are the break-glass path. `mise.toml` leaves `GOOGLE_APPLICATION_CREDENTIALS` alone
   when it's set, because Actions' auth step sets it.
 - Preview before every apply. Every preview of an unchanged stack must show no changes.
-- A new field in `platform/outputs.json` breaks the dev deploy until `infra` writes it, and
-  `infra` applies only after dev passes. Apply `infra` from the branch first.
+- A new field in `platform/outputs.json` is missing from prod's previews until `infra` writes it.
+  Merge the `infra` change first, and the stacks that read it after it deploys.
 - The Kubernetes provider execs `gke-gcloud-auth-plugin` with Application Default Credentials, in place
   of an access token that would change its kubeconfig on every run. `mise run install` installs the
   plugin into mise's gcloud, so run `pulumi` under mise.
-- Adding an app's dev database means adding its name to `infra:devDatabases` in a platform PR. Cloud SQL
-  ignores IAM conditions on its user and database calls, so `deploy-dev` can't create them itself.
 - Run `pulumi` under mise. Without mise's env, it uses whatever backend it last logged in to.
 
 ## Shared stacks, the cluster, and Directus
