@@ -36,6 +36,27 @@ services:
         ]
       interval: 2s
       retries: 90
+  # Authentik at its host port inside Directus's network namespace, so Directus reaches the issuer at the same
+  # http://localhost address a browser signs in at, and the two agree on every URL Authentik builds.
+  authentik-proxy:
+    image: ${DIRECTUS_IMAGE}
+    network_mode: service:directus
+    depends_on: [directus]
+    environment:
+      PORT: ${AUTHENTIK_PORT}
+    entrypoint:
+      - node
+      - -e
+      - |
+        const net = require("node:net");
+        net
+          .createServer((client) => {
+            const upstream = net.connect(9000, "authentik-server");
+            client.pipe(upstream).pipe(client);
+            client.on("error", () => upstream.destroy());
+            upstream.on("error", () => client.destroy());
+          })
+          .listen(Number(process.env.PORT));
   # The fakes dev runs (stacks/backend/clubspot-sync.ts, gsuite-sync.ts), with the same images.
   clubspot-fake:
     image: ${CLUBSPOT_FAKE_IMAGE}

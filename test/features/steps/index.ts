@@ -3,12 +3,14 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { DirectusSession } from "../directus.ts";
 import { devDirectusLicensed } from "../directus.ts";
 import { deploymentEnv, devPlatform, feature, optionalDeploymentEnv } from "../support.ts";
-import { addToSignInGroup, authentikAccount, deleteAccounts, signInGroupMembers } from "./authentik.ts";
+import { addToSignInGroup, authentikAccount, deleteAccounts, forgetAccount, signInGroupMembers } from "./authentik.ts";
+import { signInByEmail } from "../browser.ts";
 import {
   addToGroup,
   createUser,
   deleteUsers,
   eventually,
+  userIds,
   forget,
   hasPolicies,
   hasRole,
@@ -482,6 +484,64 @@ Step("they sign in for the first time", async () => {
     expect(login.person_id).toBe(newcomer.personId);
   }
   setThey(as(user));
+});
+
+// An app the CI stack's Directus sends a sign-in back to: CI_STACK_REDIRECTS's first, or Directus itself.
+let app: { landed: URL; check: () => Promise<void> } | undefined;
+onEachScenario(() => {
+  app = undefined;
+});
+Step("they sign in to an app with the link they're emailed", async () => {
+  const target = localTarget();
+  if (target === undefined || newcomer === undefined) {
+    throw new Error("Only the CI stack signs in through Authentik, and a Given makes the person who signs in.");
+  }
+  const appUrl = target.directus.redirects[0] ?? `${target.directus.url}/`;
+  const signIn = newcomer.email;
+  try {
+    const { browser, landed } = await signInByEmail(target, signIn, appUrl);
+    const origin = new URL(appUrl).origin;
+    app = {
+      landed,
+      // What the app's own calls need: its session cookie, and Directus allowing its origin with credentials.
+      check: async () => {
+        const preflight = await browser.request(`${target.directus.url}/users/me`, {
+          method: "OPTIONS",
+          headers: {
+            origin,
+            "access-control-request-method": "PATCH",
+            "access-control-request-headers": "content-type",
+          },
+        });
+        expect(preflight.headers.get("access-control-allow-origin")).toBe(origin);
+        const me = await browser.request(`${target.directus.url}/users/me?fields=email`, { headers: { origin } });
+        expect(me.status).toBe(200);
+        expect(((await me.json()) as { data: { email: string } }).data.email).toBe(signIn);
+        expect(me.headers.get("access-control-allow-origin")).toBe(origin);
+        expect(me.headers.get("access-control-allow-credentials")).toBe("true");
+      },
+    };
+  } finally {
+    await forgetAccount(signIn);
+  }
+  const filter = encodeURIComponent(JSON.stringify({ email: { _eq: signIn } }));
+  const [user] = await (await admin()).ok("GET", `/users?filter=${filter}&fields=id`);
+  if (!user) {
+    throw new Error(`Signing in made no Directus user for ${signIn}.`);
+  }
+  userIds.push(user.id);
+  setThey({
+    session: () =>
+      Promise.reject(new Error("They signed in through a browser, which the steps don't call Directus as.")),
+    userId: async () => user.id,
+  });
+});
+Step("the app has them signed in", async () => {
+  if (app === undefined) {
+    throw new Error("No When has signed them in to an app.");
+  }
+  expect(app.landed.searchParams.get("reason"), `Directus sent them back to ${app.landed}`).toBeNull();
+  await app.check();
 });
 
 // Directus's OpenID driver sets the role on a later sign-in only when a role mapping is set.

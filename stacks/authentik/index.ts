@@ -12,12 +12,13 @@ import { AUTHENTIK_ACCESS_SECRET, SIGN_IN_POLICIES } from "../backend/policies.t
 import { adminGroup } from "./admins.ts";
 import { deployAuthentik } from "./cluster.ts";
 import { EmbeddedOutpost } from "./embedded-outpost.ts";
-import { localAuthentik, localSibling } from "./local.ts";
+import { localAuthentik, localLoginHost, localSibling } from "./local.ts";
 import { prodSecrets } from "./prod-secrets.ts";
 import { Secret } from "../../src/app/secret.ts";
 import {
   loginHost,
   directusRedirectUri,
+  LOCAL_DIRECTUS_REDIRECT_URI_PATTERN,
   listmonkRedirectUri,
   inboxRedirectUriPattern,
   lowercaseEmailScopeExpression,
@@ -349,7 +350,9 @@ new authentik.PolicyBinding(
 new authentik.Brand(
   "login",
   {
-    domain: internalDomain.apply((domain) => loginHost(domain)),
+    // Authentik matches a Brand on the request's host and port, and the CI stack's browser reaches it at
+    // `localUrl`, so scripts/ci-stack rewrites this when a restored cache came from another port.
+    domain: local ? localLoginHost() : internalDomain.apply((domain) => loginHost(domain)),
     flowAuthentication: emailCodeFlow.uuid,
     // Unset, Authentik picks the first sign-out flow by slug, which only happens to be this one.
     flowInvalidation: invalidationFlow.id,
@@ -508,11 +511,13 @@ const directusProvider = new ConfidentialOidcProvider(
     // matching_mode/url are Terraform's own snake_case keys for this field - the bridge passes a
     // Map(String) through verbatim rather than camelCasing its contents.
     allowedRedirectUris: [
-      {
-        matching_mode: "strict",
-        redirect_uri_type: "authorization",
-        url: internalDomain.apply((domain) => directusRedirectUri(domain)),
-      },
+      local
+        ? { matching_mode: "regex", redirect_uri_type: "authorization", url: LOCAL_DIRECTUS_REDIRECT_URI_PATTERN }
+        : {
+            matching_mode: "strict",
+            redirect_uri_type: "authorization",
+            url: internalDomain.apply((domain) => directusRedirectUri(domain)),
+          },
     ],
     propertyMappings: [openidScopeMapping.id, profileScopeMapping.id, directusEmailScopeMapping.id],
   },

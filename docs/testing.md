@@ -17,7 +17,8 @@ run in two places:
 - Its Postgres, which also holds the Clubspot fake's, Authentik's and Listmonk's databases.
 - The Clubspot and Workspace fakes, from the images dev runs (`stacks/backend/images.ts`), and Mailpit.
 - Authentik, from the image and env dev runs, with `authentik`'s config applied by its own Pulumi program in
-  its local mode (`authentik:local`). Its mail, such as a sign-in link, lands in Mailpit. Directus's
+  its local mode (`authentik:local`). Its mail, such as a sign-in link, lands in Mailpit. Directus signs in
+  through it, as on dev. Directus's
   group-policies hook fills its sign-in groups, as on dev.
 - Listmonk, installed and configured with the `listmonk` stack's own settings (`stacks/listmonk/settings.ts`),
   sending to Mailpit, with the read-only API login the tests check the list with.
@@ -94,6 +95,24 @@ Authentik's address and bootstrap token, Listmonk's, Mailpit's and the fakes' ad
 Its ports differ from one checkout to another, so read them there. `mise run ci-stack-down`, in `.platform`,
 stops it.
 
+### A browser app
+
+An app served on `http://localhost:<port>`, such as a dev server, reaches the stack as a browser would.
+Directus allows calls from any origin with credentials, the stack being throwaway and local, and Authentik answers at
+`authentik.url` in `target.json`, for the browser and for Directus alike, so the app needs no host mapping. To
+sign in, the app sends the browser to `<directus.url>/auth/login/<directus.signInProvider>?redirect=<where to
+come back>`. Authentik emails a link, which lands in Mailpit. Following it signs the browser in, and sends it
+back with Directus's session cookie.
+
+Directus sends a sign-in back only to an address it lists, matched on its path too. Give the app's in
+`CI_STACK_REDIRECTS`, comma-separated, when you start the stack:
+
+```sh
+CI_STACK_REDIRECTS=http://localhost:5173/,http://localhost:5173/plans mise run ci-stack
+```
+
+`target.json` lists them in `directus.redirects`. `features/authentication.feature` signs in this way.
+
 ## What runs on dev
 
 Only the scenarios tagged `@smoke` run on dev, with the syncs in the test's own process, reaching dev's fakes
@@ -132,8 +151,10 @@ Plan. Its rows are named "Sample", such as `Camp Sample`. Run again, it finds it
 step fails, it deletes what it made, so you can run it again. It prints the logins it made, which all have the
 password `sample-password`.
 
-Point the app at Directus on `http://localhost:8055`, in place of dev's. Sign in to the Data Studio there as
-`admin@example.com` with `ci-admin-password`, or in the app as one of the sample logins.
+Point the app at Directus at `directus.url` in `.ci-stack/target.json`, in place of dev's, and start the stack
+with the app's address in `CI_STACK_REDIRECTS` ([A browser app](#a-browser-app)). Sign in to the Data Studio
+there as `admin@example.com` with `ci-admin-password`, or in the app as one of the sample logins, whose sign-in
+link lands in Mailpit.
 
 Run `mise run ci-stack-down` the same day you start it. Directus's license allows a throwaway instance only if
 it's gone within 24 hours ([Never destroy it](backend.md#never-destroy-it)), and the next `ci-stack` starts empty.

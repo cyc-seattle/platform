@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   loginHost,
   directusRedirectUri,
+  LOCAL_DIRECTUS_REDIRECT_URI_PATTERN,
   inboxRedirectUriPattern,
   listmonkRedirectUri,
   lowercaseEmailScopeExpression,
@@ -22,6 +23,14 @@ describe("hostnames", () => {
 
   it("builds Directus's OIDC callback URL", () => {
     expect(directusRedirectUri("cycsail.team")).toBe("https://directus.cycsail.team/auth/login/authentik/callback");
+  });
+
+  it("admits the CI stack's Directus callback on any localhost port, and nothing else", () => {
+    const pattern = new RegExp(LOCAL_DIRECTUS_REDIRECT_URI_PATTERN);
+    expect(pattern.test("http://localhost:10234/auth/login/authentik/callback")).toBe(true);
+    expect(pattern.test("http://localhost:10234/auth/login/authentik/callback/evil")).toBe(false);
+    expect(pattern.test("http://localhost.evil.test:1/auth/login/authentik/callback")).toBe(false);
+    expect(pattern.test("https://directus.cycsail.team/auth/login/authentik/callback")).toBe(false);
   });
 
   it("sends Listmonk's sign-in back to its /auth/oidc, with or without a trailing slash", () => {

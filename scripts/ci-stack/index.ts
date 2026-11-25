@@ -45,6 +45,15 @@ const local = (port: number) => `http://localhost:${port}`;
 const directusUrl = local(ports.directus);
 const authentikUrl = local(ports.authentik);
 const listmonkUrl = local(ports.listmonk);
+// Directus reaches Authentik at the browser's address too, through ./compose.yaml's authentik-proxy, so the
+// issuer it discovers is the one a browser signs in at.
+const directusIssuer = `${authentikUrl}/application/o/directus/`;
+// Where an app served on localhost may ask Directus's sign-in to send it back. Directus matches each exactly,
+// path and all, so the app names its own.
+const redirects = (process.env["CI_STACK_REDIRECTS"] ?? "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
 
 function stackConfig(project: string): Record<string, unknown> {
   const file = path.join(import.meta.dirname, `Pulumi.${project}.yaml`);
@@ -53,7 +62,7 @@ function stackConfig(project: string): Record<string, unknown> {
 const backendConfig = stackConfig("backend");
 const get = <T>(key: string) => backendConfig[`backend:${key}`] as T;
 const authentikBootstrapToken = stackConfig("authentik")["authentik:localBootstrapToken"] as string;
-const listmonkClient = stackConfig("authentik")["authentik:localSiblings"] as Record<string, string>;
+const siblings = stackConfig("authentik")["authentik:localSiblings"] as Record<string, string>;
 
 // The newsletter list's ID, as dev's (stacks/listmonk/Pulumi.dev.yaml). Public: the website's form posts it.
 const listId = "6053a494-582f-4f05-a19a-f84a21b8a012";
@@ -154,7 +163,7 @@ function writeFiles(licenseKey: string): void {
       adminEmail: get("directusAdminEmail"),
       dbHost: "postgres",
       communityRoleId: get("communityRoleId"),
-      oidcClientId: "none",
+      oidcClientId: siblings["backend.directusOidcClientId"]!,
       poolMax: 10,
       filesBucket: "none",
     }),
@@ -162,7 +171,7 @@ function writeFiles(licenseKey: string): void {
   ]) {
     env[name as string] = value as string;
   }
-  for (const key of Object.keys(env).filter((key) => /^(STORAGE_GCS_|AUTH_AUTHENTIK_)/.test(key))) {
+  for (const key of Object.keys(env).filter((key) => key.startsWith("STORAGE_GCS_"))) {
     delete env[key];
   }
   Object.assign(env, {
@@ -171,8 +180,13 @@ function writeFiles(licenseKey: string): void {
     KEY: "ci-key",
     SECRET: "ci-secret",
     ADMIN_PASSWORD: get<string>("localAdminPassword"),
-    // The first sign-in still gives the Community role: the tests make those users directly.
-    AUTH_PROVIDERS: "",
+    AUTH_AUTHENTIK_CLIENT_SECRET: siblings["backend.directusOidcClientSecret"]!,
+    AUTH_AUTHENTIK_ISSUER_URL: directusIssuer,
+    // Directus starts before a cold cache's Authentik has its Directus application, and finds it at the first sign-in.
+    AUTH_AUTHENTIK_ISSUER_DISCOVERY_MUST_SUCCEED: "false",
+    AUTH_AUTHENTIK_REDIRECT_ALLOW_LIST: [directusUrl, ...redirects].join(","),
+    // An app on any localhost port, the stack being throwaway and local.
+    CORS_ORIGIN: "true",
     STORAGE_LOCATIONS: "local",
     STORAGE_LOCAL_ROOT: "/directus/uploads",
     LOG_LEVEL: "warn",
@@ -218,8 +232,8 @@ function writeFiles(licenseKey: string): void {
         fromEmail: "CSC Newsletter CI <noreply@cyccommunitysailing.org>",
         smtp: { host: "mailpit", port: 1025, tls: "none", username: "", password: "" },
         oidcIssuer: "http://authentik-server:9000/application/o/listmonk/",
-        oidcClientId: listmonkClient["listmonk.oidcClientId"]!,
-        oidcClientSecret: listmonkClient["listmonk.oidcClientSecret"]!,
+        oidcClientId: siblings["listmonk.oidcClientId"]!,
+        oidcClientSecret: siblings["listmonk.oidcClientSecret"]!,
         trustedUrls: ["https://cyccommunitysailing.org/newsletter/check-your-email"],
         media: { provider: "filesystem" },
         sesBounces: false,
@@ -352,6 +366,16 @@ async function up(): Promise<void> {
     }
     // A project of its own, so each run's activation is its own pending one.
     psql("UPDATE directus_settings SET project_id = gen_random_uuid(), license_key = NULL, license_token = NULL");
+    // Authentik matches its sign-in Brand on host and port, and the cache may come from another checkout's port.
+    run(
+      "docker",
+      [
+        ...psqlArgs("authentik"),
+        "-c",
+        `UPDATE authentik_brands_brand SET domain = '${new URL(authentikUrl).host}' WHERE domain LIKE 'localhost:%'`,
+      ],
+      { env: composeEnv() },
+    );
     tokens = JSON.parse(fs.readFileSync(tokensFile, "utf8"));
     writeAuthentikAccess(tokens.authentikAccess);
     setAdminToken();
@@ -373,8 +397,11 @@ async function up(): Promise<void> {
     };
     writeAuthentikAccess(tokens.authentikAccess);
     console.log(`Applied the config in ${elapsed()}.`);
-    // Stopped, so nothing writes while it's dumped, and Directus doesn't write the license back.
-    run("docker", [...compose, "stop", "directus", "authentik-server", "authentik-worker"], { env: composeEnv() });
+    // Stopped, so nothing writes while it's dumped, and Directus doesn't write the license back. The proxy goes
+    // too: it lives in Directus's network namespace, which a restart replaces.
+    run("docker", [...compose, "stop", "authentik-proxy", "directus", "authentik-server", "authentik-worker"], {
+      env: composeEnv(),
+    });
     psql("UPDATE directus_settings SET license_key = NULL, license_token = NULL");
     fs.mkdirSync(cache, { recursive: true });
     for (const database of cachedDatabases) {
@@ -404,6 +431,8 @@ async function up(): Promise<void> {
       adminPassword: get<string>("localAdminPassword"),
       adminToken,
       communityRoleId: get<string>("communityRoleId"),
+      signInProvider: "authentik",
+      redirects,
     },
     formsUrl: directusUrl,
     services: {
@@ -411,7 +440,7 @@ async function up(): Promise<void> {
       "clubspot-fake:1337": local(ports.clubspotFake),
       "workspace-fake:8080": local(ports.workspaceFake),
     },
-    authentik: { url: authentikUrl, token: authentikBootstrapToken },
+    authentik: { url: authentikUrl, token: authentikBootstrapToken, directusIssuer },
     listmonk: {
       url: listmonkUrl,
       listId,

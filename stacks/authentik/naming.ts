@@ -35,6 +35,12 @@ export function directusRedirectUri(internalDomain: string): string {
   return `https://directus.${internalDomain}/auth/login/authentik/callback`;
 }
 
+/**
+ * Directus's callback on the CI stack (scripts/ci-stack), as a regex. Its port is hashed per checkout, and
+ * the cached configuration serves every checkout, so any port on localhost matches.
+ */
+export const LOCAL_DIRECTUS_REDIRECT_URI_PATTERN = "^http://localhost:[0-9]+/auth/login/authentik/callback$";
+
 /** Where Listmonk expects Authentik to send the browser back, from its root URL. */
 export function listmonkRedirectUri(rootUrl: string): string {
   return `${rootUrl.replace(/\/+$/, "")}/auth/oidc`;

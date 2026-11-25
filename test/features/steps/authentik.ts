@@ -55,6 +55,15 @@ export async function authentikAccount(email: string): Promise<number> {
   return pk;
 }
 
+/** Deletes `email`'s Authentik account with the others, once a real sign-in has made it. */
+export async function forgetAccount(email: string): Promise<void> {
+  const request = await authentik();
+  const { results } = (await request(`/core/users/?email=${encodeURIComponent(email)}`)) as {
+    results: { pk: number }[];
+  };
+  accounts.push(...results.map(({ pk }) => pk));
+}
+
 async function signInGroup(name: string): Promise<{ pk: string; users: number[] }> {
   const request = await authentik();
   const { results } = (await request(`/core/groups/?name=${encodeURIComponent(name)}&include_users=false`)) as {
