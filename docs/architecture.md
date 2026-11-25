@@ -86,7 +86,8 @@ user in through Google or an emailed link. sail-team signs in through Directus.
   someone Crew, and groups give staff the rest ([access.md](access.md)).
 - **The sign-in page** says "CYC Sail Team", with CSC's logo and a sailing photo beside the form. Sail Team serves
   both pictures from its `public/sign-in/`. The page names the app you're continuing to, and Directus's application
-  is named "CYC Sail Team", since Sail Team signs in through it.
+  is named "CYC Sail Team", since Sail Team signs in through it. Every page of signing in and out has that look,
+  because the `authentik` stack owns each flow they use, in place of Authentik's built-in ones.
 
 **Authorization — relationship-based, enforced by Directus.** Access derives from how the signed-in person relates
 to a record, not from a static role alone. A parent can view their own child's medical information, and a race-team

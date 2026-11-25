@@ -28,10 +28,6 @@ import {
   clearPendingVerificationExpression,
   signedInPolicyExpression,
   embeddedOutpostConfig,
-  IMPLICIT_CONSENT_FLOW,
-  PROVIDER_INVALIDATION_FLOW,
-  INVALIDATION_FLOW,
-  SOURCE_AUTHENTICATION_FLOW,
   SIGNING_CERTIFICATE,
   OPENID_SCOPE_MAPPING,
   PROFILE_SCOPE_MAPPING,
@@ -71,6 +67,10 @@ const internalDomain = pulumi.output(app.then(({ domain }) => domain));
 // Sail Team, so it keeps Authentik's own.
 const sailTeamFile = (path: string) =>
   local ? undefined : internalDomain.apply((domain) => `https://${domain}/${path}`);
+const signInPhoto = sailTeamFile("sign-in/background.jpg");
+
+// Every page of signing in and out looks the same: the form in a strip on the left, the photo beside it.
+const pageLook = { layout: "sidebar_left", background: signInPhoto };
 
 const authentikUrl = pulumi.output(app.then(({ url }) => url));
 const bootstrapToken = pulumi.secret(generated.bootstrapToken);
@@ -147,13 +147,87 @@ function numericId(id: pulumi.Input<string>): pulumi.Output<number> {
   return pulumi.output(id).apply((value) => Number(value));
 }
 
-// --- Well-known built-in flows every provider below needs. Looked up rather than managed, so this
-// project never fights Authentik's own first-boot blueprint for objects it doesn't own.
-const implicitConsentFlow = authentik.getFlowOutput({ slug: whenReady(IMPLICIT_CONSENT_FLOW) }, invokeOpts);
-const providerInvalidationFlow = authentik.getFlowOutput({ slug: whenReady(PROVIDER_INVALIDATION_FLOW) }, invokeOpts);
+// --- The flows every provider below needs: copies of Authentik's built-in ones, so each can have the sign-in
+// page's look. Editing the built-ins themselves would fight the blueprints that own them.
+const implicitConsentFlow = new authentik.Flow(
+  "implicit-consent",
+  {
+    name: "Redirect to the app",
+    slug: "implicit-consent",
+    title: "Redirecting to %(app)s",
+    designation: "authorization",
+    authentication: "require_authenticated",
+    ...pageLook,
+  },
+  opts,
+);
+
+const providerInvalidationFlow = new authentik.Flow(
+  "app-sign-out",
+  {
+    name: "Signed out of an app",
+    slug: "app-sign-out",
+    title: "You've logged out of %(app)s.",
+    designation: "invalidation",
+    authentication: "none",
+    ...pageLook,
+  },
+  opts,
+);
+
 // The one that signs out of Authentik itself, ending any impersonation. sail-team's Sign out ends there.
-const invalidationFlow = authentik.getFlowOutput({ slug: whenReady(INVALIDATION_FLOW) }, invokeOpts);
-const sourceAuthenticationFlow = authentik.getFlowOutput({ slug: whenReady(SOURCE_AUTHENTICATION_FLOW) }, invokeOpts);
+const invalidationFlow = new authentik.Flow(
+  "sign-out",
+  {
+    name: "Sign out",
+    slug: "sign-out",
+    title: "Sign out",
+    designation: "invalidation",
+    authentication: "none",
+    ...pageLook,
+  },
+  opts,
+);
+const signOutStage = new authentik.StageUserLogout("sign-out-logout", { name: "Sign out: log out" }, opts);
+new authentik.FlowStageBinding(
+  "sign-out-binding",
+  { target: invalidationFlow.uuid, stage: signOutStage.id, order: 0 },
+  opts,
+);
+
+// Where Google sends back someone who already has an account. Only a source can start it.
+const sourceAuthenticationFlow = new authentik.Flow(
+  "google-authentication",
+  {
+    name: "Google sign-in",
+    slug: "google-authentication",
+    title: "Sign in",
+    designation: "authentication",
+    authentication: "require_unauthenticated",
+    ...pageLook,
+  },
+  opts,
+);
+const sourceLoginStage = new authentik.StageUserLogin(
+  "google-authentication-login",
+  { name: "Google sign-in: login" },
+  opts,
+);
+new authentik.FlowStageBinding(
+  "google-authentication-binding",
+  { target: sourceAuthenticationFlow.uuid, stage: sourceLoginStage.id, order: 0 },
+  opts,
+);
+const sourceOnlyPolicy = new authentik.PolicyExpression(
+  "google-authentication-if-sso",
+  { name: "Google sign-in: only from a source", expression: "return ak_is_sso_flow" },
+  opts,
+);
+new authentik.PolicyBinding(
+  "google-authentication-if-sso-binding",
+  { target: sourceAuthenticationFlow.uuid, policy: sourceOnlyPolicy.id, order: 0 },
+  opts,
+);
 // Without a signing key, ID tokens are HS256-signed with the client secret; Directus accepts RS256 only.
 const signingCertificate = authentik.getCertificateKeyPairOutput({ name: whenReady(SIGNING_CERTIFICATE) }, invokeOpts);
 
@@ -170,7 +244,13 @@ function googleSignInSource(): GoogleSource {
   // stage's own `createUsersAsInactive: false`.
   const googleEnrollmentFlow = new authentik.Flow(
     "google-enrollment",
-    { name: "Google sign-up", slug: "google-enrollment", title: "Create your account", designation: "enrollment" },
+    {
+      name: "Google sign-up",
+      slug: "google-enrollment",
+      title: "Create your account",
+      designation: "enrollment",
+      ...pageLook,
+    },
     opts,
   );
 
@@ -209,7 +289,7 @@ function googleSignInSource(): GoogleSource {
       slug: "google",
       consumerKey: secretValue("google-oauth-client-id"),
       consumerSecret: secretValue("google-oauth-client-secret"),
-      authenticationFlow: sourceAuthenticationFlow.id,
+      authenticationFlow: sourceAuthenticationFlow.uuid,
       enrollmentFlow: googleEnrollmentFlow.uuid,
       propertyMappings: [googleUserProperties.id],
       // A full-width "Continue with Google" button, in place of a bare "G" icon.
@@ -236,8 +316,7 @@ const emailCodeFlow = new authentik.Flow(
     slug: "email-code-authentication",
     title: "Sign in",
     designation: "authentication",
-    layout: "sidebar_left",
-    background: sailTeamFile("sign-in/background.jpg"),
+    ...pageLook,
   },
   opts,
 );
@@ -361,11 +440,13 @@ new authentik.Brand(
     // `localUrl`, so scripts/ci-stack rewrites this when a restored cache came from another port.
     domain: local ? localLoginHost() : internalDomain.apply((domain) => loginHost(domain)),
     flowAuthentication: emailCodeFlow.uuid,
-    // Unset, Authentik picks the first sign-out flow by slug, which only happens to be this one.
-    flowInvalidation: invalidationFlow.id,
+    // Unset, Authentik picks the first sign-out flow by slug, which would be `app-sign-out`.
+    flowInvalidation: invalidationFlow.uuid,
     brandingTitle: "CYC Sail Team",
     brandingLogo: sailTeamFile("sign-in/logo.png"),
     brandingFavicon: sailTeamFile("favicon.svg"),
+    // For any of Authentik's own pages that still show, such as an error.
+    brandingDefaultFlowBackground: signInPhoto,
   },
   // Left unset, Authentik fills in its default images, and the provider diffs them against the empty
   // input, the same bug as goauthentik/terraform-provider-authentik#981.
@@ -516,8 +597,8 @@ const directusProvider = new ConfidentialOidcProvider(
     clientId: directusClient.id,
     clientSecret: directusClient.secret,
     signingKey: signingCertificate.id,
-    authorizationFlow: implicitConsentFlow.id,
-    invalidationFlow: providerInvalidationFlow.id,
+    authorizationFlow: implicitConsentFlow.uuid,
+    invalidationFlow: providerInvalidationFlow.uuid,
     // matching_mode/url are Terraform's own snake_case keys for this field - the bridge passes a
     // Map(String) through verbatim rather than camelCasing its contents.
     allowedRedirectUris: [
@@ -568,8 +649,8 @@ const inboxProvider = new ConfidentialOidcProvider(
     clientId: sibling("inbox", "oidcClientId"),
     clientSecret: secretSibling("inbox", "oidcClientSecret"),
     signingKey: signingCertificate.id,
-    authorizationFlow: implicitConsentFlow.id,
-    invalidationFlow: providerInvalidationFlow.id,
+    authorizationFlow: implicitConsentFlow.uuid,
+    invalidationFlow: providerInvalidationFlow.uuid,
     allowedRedirectUris: [
       {
         matching_mode: "regex",
@@ -604,8 +685,8 @@ const listmonkProvider = new ConfidentialOidcProvider(
     clientId: sibling("listmonk", "oidcClientId"),
     clientSecret: secretSibling("listmonk", "oidcClientSecret"),
     signingKey: signingCertificate.id,
-    authorizationFlow: implicitConsentFlow.id,
-    invalidationFlow: providerInvalidationFlow.id,
+    authorizationFlow: implicitConsentFlow.uuid,
+    invalidationFlow: providerInvalidationFlow.uuid,
     allowedRedirectUris: [
       {
         matching_mode: "strict",
