@@ -10,3 +10,4 @@ export { deployWebsite, websiteSiteId } from "./website.ts";
 export { backupsProject, backupRunner } from "./backups.ts";
 export { listmonkMedia } from "./listmonk.ts";
 export { monthlyBudget } from "./budget.ts";
+export { directusLicenseSecrets } from "./directus-license.ts";

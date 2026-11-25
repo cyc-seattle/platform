@@ -245,7 +245,7 @@ export const platform = new StandardRepository("platform", {
     "Pulumi stacks for CYC's shared Google Cloud platform: identities, the network, databases, and the cluster.",
   visibility: "public",
   hasProjects: false,
-  requiredChecks: ["ci / ci", "pr-title / pr-title"],
+  requiredChecks: ["ci / ci", "pr-title / pr-title", "integration"],
   // Its docs site, which its docs.yml publishes from main.
   pages: { buildType: "workflow" },
 });

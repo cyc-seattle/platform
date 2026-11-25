@@ -45,7 +45,8 @@ and 10 to 15 when it applies the config.
 ### The license
 
 Unlicensed, Directus's Core tier allows only 25 collections and 3 users, so the CI stack needs the license key,
-from the repository secret `DIRECTUS_LICENSE_KEY`. Each run's Directus is new, with its own `project_id`, so it
+from the repository secret `DIRECTUS_LICENSE_KEY`, which the bootstrap stack copies from Secret Manager's
+`directus-license-key`. Each run's Directus is new, with its own `project_id`, so it
 makes its own activation, which stays pending and never counts as long as the instance is gone within 24 hours
 ([Directus's pending activations](https://directus.com/docs/licensing/overview#pending-activations)). The jobs
 time out after 30 minutes. A PR from a fork gets no secrets, so its integration tests don't run.
@@ -86,7 +87,7 @@ roles and policies that release deploys. In a workflow:
 ```
 
 The `node -p` step runs after the repo's own install, which puts the package in `node_modules`. The repo needs
-the `DIRECTUS_LICENSE_KEY` secret, and a job timeout under 24 hours, as here.
+the `DIRECTUS_LICENSE_KEY` secret, from `stacks/bootstrap/directus-license.ts`, and a job timeout under 24 hours, as here.
 
 The stack describes itself in `.platform/.ci-stack/target.json`, which `CiStackTarget` from
 `@cyc-seattle/platform` types: Directus's address with its admin's email, password and static token,
