@@ -61,6 +61,11 @@ export class Browser {
       headers: { accept: "application/json", "content-type": "application/json" },
       ...(body !== undefined && { body: JSON.stringify(body) }),
     });
+    // Authentik's executor answers a stage it accepts with a redirect to itself, for the next one.
+    const location = response.headers.get("location");
+    if (response.status === 302 && location) {
+      return this.json(new URL(location, url).toString());
+    }
     const text = await response.text();
     if (!response.ok) {
       throw new Error(`${url} answered ${response.status}: ${text}`);
@@ -112,7 +117,11 @@ export async function signInByEmail(
     throw new Error(`The sign-in email to ${email} has no link: ${html}`);
   }
   const link = new URL(href.replaceAll("&amp;", "&"), target.authentik.url);
-  const done = await browser.json(flowExecutor(target, link));
+  const linked = flowExecutor(target, link);
+  // The link asks them to confirm before it signs them in, so a mail scanner opening it can't.
+  const confirm = await browser.json(linked);
+  expectStage(confirm, "ak-stage-consent");
+  const done = await browser.json(linked, { component: "ak-stage-consent", token: confirm.token });
   expectStage(done, "xak-flow-redirect");
 
   const app = new URL(appUrl);
