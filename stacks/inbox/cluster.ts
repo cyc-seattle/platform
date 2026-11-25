@@ -49,6 +49,10 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
   keepCopy("inbox-app-key", appKey);
   const adminPassword = pulumi.secret(generated("inbox-admin-password", 32));
   keepCopy("inbox-admin-password", adminPassword);
+  // Set by hand: the licence keys of FreeScout's OAuth & Social Login and API & Webhooks modules, kept
+  // for a rebuild (docs/manual-setup.md §11).
+  new Secret("inbox-oauth-licence");
+  new Secret("inbox-api-licence");
   const oidcClientId = new random.RandomString("inbox-oidc-client-id", { length: 40, special: false }).result;
   const oidcClientSecret = pulumi.secret(generated("inbox-oidc-client-secret", 64));
 
