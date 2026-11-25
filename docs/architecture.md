@@ -84,6 +84,9 @@ user in through Google or an emailed link. sail-team signs in through Directus.
   record by email, once, so authorization rules have an identity to resolve against ([access.md](access.md#groups)).
 - Authenticating is not authorizing. A new login is Community, which sees only its own family. An admin makes
   someone Crew, and groups give staff the rest ([access.md](access.md)).
+- **The sign-in page** says "CYC Sail Team", with CSC's logo and a sailing photo beside the form. Sail Team serves
+  both pictures from its `public/sign-in/`. The page names the app you're continuing to, and Directus's application
+  is named "CYC Sail Team", since Sail Team signs in through it.
 
 **Authorization — relationship-based, enforced by Directus.** Access derives from how the signed-in person relates
 to a record, not from a static role alone. A parent can view their own child's medical information, and a race-team
