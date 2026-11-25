@@ -28,6 +28,9 @@ RUN cd /app \
 
 FROM php
 COPY --from=source /app /app
+# Swift Mailer greets SMTP servers with $_SERVER['SERVER_NAME'], and nginx's would be empty, so
+# FreeScout would say EHLO [127.0.0.1], which Google's relay refuses. php-fpm takes it from the pod's env.
+RUN sed -i '/SERVER_NAME/d' /etc/nginx/fastcgi_params
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY php-fpm.conf /usr/local/etc/php-fpm.d/zz-freescout.conf
 COPY php.ini /usr/local/etc/php/conf.d/zz-freescout.ini

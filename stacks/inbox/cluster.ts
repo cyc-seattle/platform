@@ -99,6 +99,8 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
     fsGroup: WWW_DATA,
     env: [
       { name: "APP_URL", value: url },
+      // The name FreeScout greets SMTP servers with. Google's relay refuses an IP address.
+      { name: "SERVER_NAME", value: hostname },
       // FreeScout's own log file would fill the disk; this sends it to the pod's log.
       { name: "APP_LOG", value: "errorlog" },
       // The Gateway's load balancer is the only way in.
