@@ -3,8 +3,8 @@ import { proxyOk } from "./cluster.ts";
 import { devPlatform } from "./support.ts";
 import { localTarget } from "./target.ts";
 
-// What the mail features share: dev's Mailpit, which catches every email dev sends, read through the
-// Kubernetes API's service proxy, and the address the website's forms and Listmonk answer at.
+// What the mail features share: Mailpit, which catches every email the stack sends, read on dev through
+// the Kubernetes API's service proxy, and the address the website's forms answer at.
 
 export interface Mail {
   ID: string;
@@ -13,7 +13,7 @@ export interface Mail {
   ReplyTo: { Name: string; Address: string }[];
 }
 
-/** `https://mail.<dev domain>`, where dev's Listmonk and the website's forms answer, or the CI stack's Directus. */
+/** `https://mail.<dev domain>`, where the website's forms answer on dev, or the CI stack's Directus. */
 export async function mailUrl(): Promise<string> {
   return localTarget()?.formsUrl ?? `https://mail.${(await devPlatform()).domain}`;
 }

@@ -1,4 +1,3 @@
-@dev
 Feature: The newsletter
   Anyone can sign up for CSC's newsletter on the website. They're on the list only once they confirm
   from the email it sends them, and that click is the record that they asked for it. Staff write and

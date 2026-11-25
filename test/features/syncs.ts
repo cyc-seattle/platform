@@ -80,14 +80,7 @@ export function runGoogleSyncForGroup(accessGroupId: string): Promise<void> {
   return runGoogleSyncFor({ accessGroupId });
 }
 
-/** Runs gsuite-sync for every group, as its CronJob does. */
-export function runWholeGoogleSync(): Promise<void> {
-  return runGoogleSyncFor({});
-}
-
-async function runGoogleSyncFor(
-  target: { programId: string } | { accessGroupId: string } | Record<string, never>,
-): Promise<void> {
+async function runGoogleSyncFor(target: { programId: string } | { accessGroupId: string }): Promise<void> {
   const env = await cronJobEnv("gsuite-sync");
   const client = await directus(env["DIRECTUS_TOKEN"]!);
   // The Workspace fake ignores auth, and dev's forwarder sends the cluster's token in its place. A fixed

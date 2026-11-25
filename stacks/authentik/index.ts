@@ -12,6 +12,7 @@ import { AUTHENTIK_ACCESS_SECRET, SIGN_IN_POLICIES } from "../backend/policies.t
 import { adminGroup } from "./admins.ts";
 import { deployAuthentik } from "./cluster.ts";
 import { EmbeddedOutpost } from "./embedded-outpost.ts";
+import { localAuthentik, localSibling } from "./local.ts";
 import { prodSecrets } from "./prod-secrets.ts";
 import { Secret } from "../../src/app/secret.ts";
 import {
@@ -50,15 +51,23 @@ function secretValue(secret: string): pulumi.Output<string> {
 
 const config = new pulumi.Config();
 
-const existing = isDev ? undefined : prodSecrets();
-const app = deployAuthentik(existing);
+// An Authentik the CI job runs in containers (scripts/ci-stack), not one on the cluster: no GCP, no Kubernetes.
+const local = config.getBoolean("local") ?? false;
+
+const existing = isDev || local ? undefined : prodSecrets();
+const app = local ? localAuthentik() : deployAuthentik(existing);
+
+const sibling = (project: string, output: string) =>
+  local ? pulumi.output(localSibling(project, output)) : siblingOutput(project, output);
+const secretSibling = (project: string, output: string) =>
+  local ? pulumi.secret(localSibling(project, output)) : siblingSecret(project, output);
 const generated = {
   bootstrapToken: pulumi.output(app.then(({ bootstrapToken }) => bootstrapToken)),
 };
 
 const internalDomain = pulumi.output(app.then(({ domain }) => domain));
 
-const authentikUrl = internalDomain.apply((domain) => `https://${loginHost(domain)}`);
+const authentikUrl = pulumi.output(app.then(({ url }) => url));
 const bootstrapToken = pulumi.secret(generated.bootstrapToken);
 
 // Pulumi's own service account and API token, which the `authentik` provider below signs in with in
@@ -96,7 +105,7 @@ const authentikToken = apiToken.key;
 
 // Prod keeps a copy in Secret Manager, beside its other Authentik secrets. Dev shares the project, so
 // it keeps none.
-if (!isDev) {
+if (!isDev && !local) {
   const apiTokenSecret = new Secret("authentik-api-token");
   new gcp.secretmanager.SecretVersion(
     "authentik-api-token-version",
@@ -421,13 +430,16 @@ const accessSyncToken = new authentik.Token(
   },
   opts,
 );
-// Directus mounts it, optionally, since `backend` deploys first.
-void loadCluster().then((cluster) =>
-  appSecret(cluster, AUTHENTIK_ACCESS_SECRET, { url: authentikUrl, token: accessSyncToken.key }),
-);
+// Directus mounts it, optionally, since `backend` deploys first. The CI stack writes it from the output below.
+if (!local) {
+  void loadCluster().then((cluster) =>
+    appSecret(cluster, AUTHENTIK_ACCESS_SECRET, { url: authentikUrl, token: accessSyncToken.key }),
+  );
+}
+export const localAccessToken = local ? pulumi.secret(accessSyncToken.key) : undefined;
 
 // --- 6. Directus's admins, as Authentik superusers.
-adminGroup(siblingList("backend", "directusAdmins"), opts);
+adminGroup(local ? [] : siblingList("backend", "directusAdmins"), opts);
 
 // --- 7. The embedded outpost. It gated isthmia's portal, which is retired (cyc-seattle/sail-team#1), so it
 // serves no provider now. Authentik owns it, so this project only ever updates it.
@@ -480,8 +492,8 @@ const profileScopeMapping = authentik.getPropertyMappingProviderScopeOutput(
 );
 
 const directusClient = {
-  id: siblingOutput("backend", "directusOidcClientId"),
-  secret: siblingSecret("backend", "directusOidcClientSecret"),
+  id: sibling("backend", "directusOidcClientId"),
+  secret: secretSibling("backend", "directusOidcClientSecret"),
 };
 
 const directusProvider = new ConfidentialOidcProvider(
@@ -537,8 +549,8 @@ const inboxProvider = new ConfidentialOidcProvider(
   "inbox-oidc",
   {
     name: "Inbox",
-    clientId: siblingOutput("inbox", "oidcClientId"),
-    clientSecret: siblingSecret("inbox", "oidcClientSecret"),
+    clientId: sibling("inbox", "oidcClientId"),
+    clientSecret: secretSibling("inbox", "oidcClientSecret"),
     signingKey: signingCertificate.id,
     authorizationFlow: implicitConsentFlow.id,
     invalidationFlow: providerInvalidationFlow.id,
@@ -573,8 +585,8 @@ const listmonkProvider = new ConfidentialOidcProvider(
   "listmonk-oidc",
   {
     name: "Listmonk",
-    clientId: siblingOutput("listmonk", "oidcClientId"),
-    clientSecret: siblingSecret("listmonk", "oidcClientSecret"),
+    clientId: sibling("listmonk", "oidcClientId"),
+    clientSecret: secretSibling("listmonk", "oidcClientSecret"),
     signingKey: signingCertificate.id,
     authorizationFlow: implicitConsentFlow.id,
     invalidationFlow: providerInvalidationFlow.id,
@@ -582,7 +594,7 @@ const listmonkProvider = new ConfidentialOidcProvider(
       {
         matching_mode: "strict",
         redirect_uri_type: "authorization",
-        url: siblingOutput("listmonk", "url").apply(listmonkRedirectUri),
+        url: sibling("listmonk", "url").apply(listmonkRedirectUri),
       },
     ],
     // Listmonk finds the account by email, so it gets the same lowercased one as Directus.

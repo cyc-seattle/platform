@@ -37,7 +37,7 @@ single app owns it. The apps live in their own repos and depend on this one, nev
   goes in a section of `docs-site/astro.config.ts`'s sidebar, and in `docs/README.md`.
 - `features/` holds the Gherkin integration tests, with their steps in `test/features/`. They run on
   a throwaway stack in each CI job (`integration-ci.yml`, `mise run ci-stack` then
-  `mise run integration-ci`), and only those tagged `@dev` or `@smoke` run against dev after a deploy.
+  `mise run integration-ci`), and only those tagged `@smoke` run against dev after a deploy.
   [`docs/testing.md`](https://cyc-seattle.github.io/platform/testing/) explains. A feature is living documentation of
   business rules, so write and review one with the `write-feature` skill from
   [`cyc-seattle/agent-skills`](https://github.com/cyc-seattle/agent-skills). Here, the `Step` helper
@@ -79,7 +79,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   only CI. Each push to `main` deploys dev, then previews prod and applies it once a maintainer
   approves. `prod` waits for dev, so a broken deploy stops there, and is skipped when the preview
   shows no changes.
-- After each dev deploy, `integration.yml` runs the `@dev` and `@smoke` features against dev. One run goes at
+- After each dev deploy, `integration.yml` runs the `@smoke` features against dev. One run goes at
   a time, and a newer one replaces any that's waiting, so pushes during a run are tested together.
   A waiting deploy goes ahead of a test run. A failure opens or comments on the issue
   `Integration tests failed on dev`, listing the PRs merged since the last green run, and a green

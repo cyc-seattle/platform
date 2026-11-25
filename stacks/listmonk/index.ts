@@ -8,6 +8,7 @@ import { listmonkMediaBucket } from "../../src/outputs.ts";
 import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import {
   ACCESS_SYNC,
+  listmonkImage as image,
   listmonkSettings,
   settingsSql,
   TESTS,
@@ -19,7 +20,6 @@ import {
 // Listmonk, the newsletter (cyc-seattle/platform#180). Prod sends through SES, whose identity and SMTP
 // user `infra` makes; dev sends to the Mailpit `authentik` runs. `authentik` registers its sign-in.
 
-const image = "listmonk/listmonk:v6.2.0";
 const port = 9000;
 
 const config = new pulumi.Config();

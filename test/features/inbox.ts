@@ -3,27 +3,32 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { TEST_MAILBOX } from "../../stacks/inbox/cluster.ts";
 import { proxyOk } from "./cluster.ts";
+import { authentikAdmin } from "./steps/authentik.ts";
 import { addToGroup, createUser, newGroup, personFor } from "./steps/logins.ts";
-import { accessToken, devPlatform, kube, secretValue } from "./support.ts";
+import { accessToken, devPlatform, kube } from "./support.ts";
+import { localTarget } from "./target.ts";
 
 const FREESCOUT_AGENT = "FreeScout Agent";
 
-// What the shared inbox's feature reaches on dev: Authentik's API as its admin, FreeScout's API with
-// the API module's key, and GreenMail, which stands in for Gmail, through the cluster's API.
+// What the shared inbox's feature reaches: Authentik's API as its admin and, on dev, FreeScout's API
+// with the API module's key, and GreenMail, which stands in for Gmail, through the cluster's API.
 
 /**
- * Whether dev's FreeScout has the API module, from the inbox stack's dev config. It's bought and
+ * Whether FreeScout's API module is there, from the inbox stack's dev config. It's bought and
  * installed by hand (docs/inbox.md), so the scenarios that need it wait for `inbox:apiModule: true`.
+ * The CI stack doesn't run FreeScout: only those scenarios would reach it.
  */
-export function devInboxHasApi(): boolean {
+export function inboxHasApi(): boolean {
+  if (localTarget()) {
+    return false;
+  }
   const config = readFileSync(join(import.meta.dirname, "../../stacks/inbox/Pulumi.dev.yaml"), "utf8");
   return /^\s*inbox:apiModule:\s*true\s*$/m.test(config);
 }
 
 async function authentik(method: string, path: string, body?: unknown): Promise<any> {
-  const platform = await devPlatform();
-  const token = await secretValue(platform, "authentik", "AUTHENTIK_BOOTSTRAP_TOKEN");
-  const response = await fetch(`https://login.${platform.domain}/api/v3${path}`, {
+  const { url, token } = await authentikAdmin();
+  const response = await fetch(`${url}${path}`, {
     method,
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     ...(body !== undefined && { body: JSON.stringify(body) }),

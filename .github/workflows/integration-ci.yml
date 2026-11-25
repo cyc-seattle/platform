@@ -1,7 +1,7 @@
 name: integration-ci
 
-# The integration tests, on a throwaway stack in each job: Directus, its database, Mailpit and the fakes
-# in containers on the runner (scripts/ci-stack, docs/testing.md). Nothing touches GCP or dev's lock.
+# The integration tests, on a throwaway stack in each job: Directus, its database, Mailpit, the fakes,
+# Authentik and Listmonk in containers on the runner (scripts/ci-stack, docs/testing.md). Nothing touches GCP or dev's lock.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -61,9 +61,9 @@ jobs:
         if: steps.license.outputs.skip != 'true'
       - run: mise run integration-ci -- --shard=${{ matrix.shard }}/4
         if: steps.license.outputs.skip != 'true'
-      - name: Directus's log
+      - name: The stack's logs
         if: failure() && steps.license.outputs.skip != 'true'
-        run: docker logs ci-stack-directus-1 2>&1 | tail -200
+        run: mise exec -- node scripts/ci-stack/index.ts logs
 
   # One check to require, whatever the shards are.
   integration:

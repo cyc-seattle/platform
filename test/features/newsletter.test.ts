@@ -3,17 +3,37 @@ import { join } from "node:path";
 import * as yaml from "js-yaml";
 import { expect } from "vitest";
 import { newRunId, secretData } from "./cluster.ts";
-import { countAfterWait, mailUrl, postForm, text, waitForMail } from "./mail.ts";
+import { countAfterWait, postForm, text, waitForMail } from "./mail.ts";
 import { describeAccessFeature, onEachScenario, Step } from "./steps/index.ts";
+import { devPlatform } from "./support.ts";
+import { localTarget } from "./target.ts";
 
-// The newsletter's scenarios sign up through dev's Listmonk as the website's form does, read the
-// confirmation from dev's Mailpit, and check the list through Listmonk's API as dev's read-only test
-// login. Each reader's address carries a run ID, so runs never read each other's.
+// The newsletter's scenarios sign up through Listmonk as the website's form does, read the
+// confirmation from Mailpit, and check the list through Listmonk's API as the read-only test login.
+// Each reader's address carries a run ID, so runs never read each other's.
 
-const stackConfig = yaml.load(
-  readFileSync(join(import.meta.dirname, "../../stacks/listmonk/Pulumi.dev.yaml"), "utf8"),
-) as { config: Record<string, unknown> };
-const listId = stackConfig.config["listmonk:listId"] as string;
+const listId =
+  localTarget()?.listmonk.listId ??
+  ((
+    yaml.load(readFileSync(join(import.meta.dirname, "../../stacks/listmonk/Pulumi.dev.yaml"), "utf8")) as {
+      config: Record<string, unknown>;
+    }
+  ).config["listmonk:listId"] as string);
+
+/** Listmonk's address: the CI stack's, or dev's `https://mail.<domain>`. */
+async function listmonkUrl(): Promise<string> {
+  return localTarget()?.listmonk.url ?? `https://mail.${(await devPlatform()).domain}`;
+}
+
+/** The tests' read-only API login. */
+async function apiLogin(): Promise<{ user: string; token: string }> {
+  const local = localTarget()?.listmonk;
+  if (local) {
+    return { user: local.apiUser, token: local.apiToken };
+  }
+  const { LISTMONK_API_USER, LISTMONK_API_TOKEN } = await secretData("listmonk-tests");
+  return { user: LISTMONK_API_USER!, token: LISTMONK_API_TOKEN! };
+}
 const next = "https://cyccommunitysailing.org/newsletter/check-your-email";
 
 let runId = newRunId();
@@ -27,7 +47,7 @@ const reader = () => `reader-${runId}@example.com`;
 const theirMail = () => `to:"${reader()}"`;
 
 async function signUp(nonce = "") {
-  return postForm(`${await mailUrl()}/subscription/form`, {
+  return postForm(`${await listmonkUrl()}/subscription/form`, {
     email: reader(),
     name: `Reader ${runId}`,
     l: listId,
@@ -38,10 +58,10 @@ async function signUp(nonce = "") {
 
 /** Their subscription to the newsletter list, as Listmonk's API reports it, or undefined. */
 async function subscription(): Promise<string | undefined> {
-  const { LISTMONK_API_USER, LISTMONK_API_TOKEN } = await secretData("listmonk-tests");
+  const { user, token } = await apiLogin();
   // `search`, not `query`: a SQL query needs the permission that reads every subscriber's every field.
-  const response = await fetch(`${await mailUrl()}/api/subscribers?search=${encodeURIComponent(reader())}`, {
-    headers: { authorization: `token ${LISTMONK_API_USER}:${LISTMONK_API_TOKEN}` },
+  const response = await fetch(`${await listmonkUrl()}/api/subscribers?search=${encodeURIComponent(reader())}`, {
+    headers: { authorization: `token ${user}:${token}` },
   });
   expect(response.status, await response.clone().text()).toBe(200);
   const body = (await response.json()) as {
@@ -54,7 +74,8 @@ async function subscription(): Promise<string | undefined> {
 /** The confirmation email's link, once it arrives. */
 async function confirmationLink(): Promise<URL> {
   const body = await text(await waitForMail(theirMail()));
-  const link = body.match(/https:\/\/\S+\/subscription\/optin\/[0-9a-f-]{36}\?\S*/)?.[0];
+  // The CI stack's Listmonk is on plain HTTP.
+  const link = body.match(/https?:\/\/\S+\/subscription\/optin\/[0-9a-f-]{36}\?\S*/)?.[0];
   expect(link, body).toBeDefined();
   return new URL(link!);
 }
@@ -104,7 +125,7 @@ Step("a subscriber on the newsletter list", async () => {
 Step("they leave the list from the link to their preferences in an issue", async () => {
   const subscriber = optin!.pathname.split("/").at(-1);
   const { status } = await postForm(
-    `${await mailUrl()}/subscription/00000000-0000-0000-0000-000000000000/${subscriber}`,
+    `${await listmonkUrl()}/subscription/00000000-0000-0000-0000-000000000000/${subscriber}`,
     { manage: "true", name: `Reader ${runId}` },
   );
   expect(status).toBe(200);

@@ -1,6 +1,7 @@
 import { devPlatform, secretValue } from "../support.ts";
+import { localTarget } from "../target.ts";
 
-// Dev's Authentik, signed in with its bootstrap token, which only the tests and Pulumi's bootstrap
+// Authentik, the CI stack's or dev's, signed in with its bootstrap token, which only the tests and Pulumi's bootstrap
 // provider use. The tests make the Authentik accounts a real sign-in would, and read the sign-in
 // groups the group-policies hook fills.
 
@@ -8,9 +9,7 @@ let api: Promise<(route: string, method?: string, body?: unknown) => Promise<unk
 
 function authentik() {
   api ??= (async () => {
-    const platform = await devPlatform();
-    const url = `https://login.${platform.domain}/api/v3`;
-    const token = await secretValue(platform, "authentik", "AUTHENTIK_BOOTSTRAP_TOKEN");
+    const { url, token } = await authentikAdmin();
     return async (route: string, method = "GET", body?: unknown) => {
       const response = await fetch(`${url}${route}`, {
         method,
@@ -24,6 +23,19 @@ function authentik() {
     };
   })();
   return api;
+}
+
+/** Authentik's API and its bootstrap token. */
+export async function authentikAdmin(): Promise<{ url: string; token: string }> {
+  const local = localTarget()?.authentik;
+  if (local) {
+    return { url: `${local.url}/api/v3`, token: local.token };
+  }
+  const platform = await devPlatform();
+  return {
+    url: `https://login.${platform.domain}/api/v3`,
+    token: await secretValue(platform, "authentik", "AUTHENTIK_BOOTSTRAP_TOKEN"),
+  };
 }
 
 /** Every Authentik account this run made, so cleanup can delete them. */
@@ -50,7 +62,7 @@ async function signInGroup(name: string): Promise<{ pk: string; users: number[] 
   };
   const group = results.find((result) => result.name === name);
   if (!group) {
-    throw new Error(`Dev's Authentik has no ${name} group.`);
+    throw new Error(`Authentik has no ${name} group.`);
   }
   return group;
 }

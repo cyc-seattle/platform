@@ -1,5 +1,5 @@
-# The CI stack (./index.ts): Directus and its database on the runner, for the integration tests.
-name: ci-stack
+# The CI stack (./index.ts): Directus and what the features reach beside it, on the runner, for the
+# integration tests. Each checkout gets its own project name and host ports, so two can run at once.
 services:
   postgres:
     image: postgres:16
@@ -20,10 +20,12 @@ services:
       postgres:
         condition: service_healthy
     env_file: ${CI_STACK_DIR}/directus.env
-    ports: ["8055:8055"]
+    ports: ["${DIRECTUS_PORT}:8055"]
     volumes:
       - ${CI_STACK_DIR}/extensions:/directus/extensions:ro
       - ${CI_STACK_DIR}/migrations:/directus/migrations:ro
+      # The group-policies hook reads Authentik's address and token here, once ./index.ts writes them.
+      - ${CI_STACK_DIR}/authentik-access:/directus/authentik-access:ro
     healthcheck:
       test:
         [
@@ -42,7 +44,7 @@ services:
         condition: service_healthy
     environment:
       PARSE_SERVER_DATABASE_URI: postgres://directus:directus@postgres:5432/clubspot_fake?max=2
-    ports: ["1337:1337"]
+    ports: ["${CLUBSPOT_FAKE_PORT}:1337"]
     tmpfs: /tmp
     healthcheck:
       # 200 only once the seed has finished.
@@ -59,7 +61,7 @@ services:
     image: ${WORKSPACE_FAKE_IMAGE}
     environment:
       NEW_GROUP_DELAY_MS: "0"
-    ports: ["8080:8080"]
+    ports: ["${WORKSPACE_FAKE_PORT}:8080"]
     healthcheck:
       test:
         [
@@ -72,4 +74,62 @@ services:
       retries: 30
   mailpit:
     image: axllent/mailpit:v1.34.0
-    ports: ["8025:8025"]
+    ports: ["${MAILPIT_PORT}:8025"]
+  # As the `authentik` stack runs it (stacks/authentik/cluster.ts), sending its mail to Mailpit.
+  authentik-server:
+    image: ${AUTHENTIK_IMAGE}
+    command: server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: ${CI_STACK_DIR}/authentik.env
+    ports: ["${AUTHENTIK_PORT}:9000"]
+    volumes:
+      - ../../stacks/authentik/templates/email:/templates/email:ro
+    healthcheck:
+      test: ["CMD", "ak", "healthcheck"]
+      interval: 2s
+      retries: 150
+  authentik-worker:
+    image: ${AUTHENTIK_IMAGE}
+    command: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: ${CI_STACK_DIR}/authentik.env
+    volumes:
+      - ../../stacks/authentik/templates/email:/templates/email:ro
+  # As the `listmonk` stack runs it (stacks/listmonk/index.ts): install and upgrade, then its settings.
+  listmonk-install:
+    image: ${LISTMONK_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: ${CI_STACK_DIR}/listmonk.env
+    command:
+      ["sh", "-c", "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config ''"]
+  listmonk-settings:
+    image: postgres:16
+    depends_on:
+      listmonk-install:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      PGDATABASE: listmonk
+      PGUSER: listmonk
+      PGPASSWORD: listmonk
+    command: ["psql", "-q", "-v", "ON_ERROR_STOP=1", "-f", "/settings/settings.sql"]
+    volumes:
+      - ${CI_STACK_DIR}/listmonk:/settings:ro
+  listmonk:
+    image: ${LISTMONK_IMAGE}
+    depends_on:
+      listmonk-settings:
+        condition: service_completed_successfully
+    env_file: ${CI_STACK_DIR}/listmonk.env
+    command: ["./listmonk", "--config", ""]
+    ports: ["${LISTMONK_PORT}:9000"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9000/health"]
+      interval: 2s
+      retries: 30

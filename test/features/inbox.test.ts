@@ -6,9 +6,9 @@ import {
   canSignIn,
   conversationAbout,
   deleteAuthentikUsers,
-  devInboxHasApi,
   eventually,
   freescout,
+  inboxHasApi,
   inboxOf,
   newAuthentikUser,
   sendToInbox,
@@ -145,6 +145,6 @@ describeFeature(
       });
     });
   },
-  // Dev's API module is bought and installed by hand, so these wait until it is.
-  { excludeTags: devInboxHasApi() ? [] : ["api"] },
+  // FreeScout's API module is bought and installed by hand, so these wait until it is.
+  { excludeTags: inboxHasApi() ? [] : ["api"] },
 );
