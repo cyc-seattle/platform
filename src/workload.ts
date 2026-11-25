@@ -129,7 +129,7 @@ export function serviceAccount(
   );
 }
 
-/** A pod spec with the platform's secure defaults: non-root, read-only, no token, and Spot in dev only. */
+/** A pod spec with the platform's secure defaults: non-root, read-only, and no token. */
 export function podSpec(
   name: string,
   args: PodArgs,
@@ -161,12 +161,9 @@ export function podSpec(
       capabilities: { drop: ["ALL"] },
     },
   };
-  // The namespace is the environment's name.
-  return pulumi.output(args.platform).namespace.apply((namespace) => ({
+  return pulumi.output({
     serviceAccountName,
     automountServiceAccountToken: false,
-    // Autopilot schedules a pod with this selector on Spot capacity.
-    nodeSelector: namespace === "dev" ? { "cloud.google.com/gke-spot": "true" } : {},
     securityContext: {
       runAsNonRoot: true,
       seccompProfile: { type: "RuntimeDefault" },
@@ -209,7 +206,7 @@ export function podSpec(
         ...shared,
       },
     ],
-  }));
+  });
 }
 
 const preStopSeconds = 10;

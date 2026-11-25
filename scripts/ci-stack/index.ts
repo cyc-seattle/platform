@@ -1,5 +1,5 @@
 // The CI stack: Directus, its database, Mailpit, the Clubspot and Workspace fakes, Authentik and Listmonk
-// in containers on the runner, with the same images, env, extensions and migrations as dev, and
+// in containers on the runner, with the same images, env, extensions and migrations as prod, and
 // `backend`'s and `authentik`'s config applied through a local Pulumi backend. The integration tests run
 // against it (docs/testing.md).
 //
@@ -64,7 +64,7 @@ const get = <T>(key: string) => backendConfig[`backend:${key}`] as T;
 const authentikBootstrapToken = stackConfig("authentik")["authentik:localBootstrapToken"] as string;
 const siblings = stackConfig("authentik")["authentik:localSiblings"] as Record<string, string>;
 
-// The newsletter list's ID, as dev's (stacks/listmonk/Pulumi.dev.yaml). Public: the website's form posts it.
+// The newsletter list's ID. Public: the website's form posts it.
 const listId = "6053a494-582f-4f05-a19a-f84a21b8a012";
 const listmonkTokens = {
   [ACCESS_SYNC.username]: "ci-listmonk-access-sync-token",
@@ -423,7 +423,7 @@ async function up(): Promise<void> {
     console.log(`Cached the configured databases and restarted the stack in ${elapsed()}.`);
   }
 
-  // What the tests reach, in place of dev's (test/features/target.ts).
+  // What the tests reach (test/features/target.ts).
   const target: CiStackTarget = {
     directus: {
       url: directusUrl,

@@ -60,7 +60,7 @@ export function backendPolicies(schemas: LoadedSchema[], settings: ExtensionSett
       ]),
       groupPolicies: groupPoliciesConfig(grantable),
       frozenPlans,
-      // Set once the GitHub App exists (docs/manual-setup.md §6). Dev has none, so only prod publishes.
+      // Set once the GitHub App exists (docs/manual-setup.md §6).
       websitePublish: websitePublishConfig(schemas, settings.websitePublishAppId),
       forms: {
         to: settings.contactTo,

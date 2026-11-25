@@ -4,29 +4,16 @@ import * as gcp from "@pulumi/gcp";
 import * as command from "@pulumi/command";
 import * as k8s from "@pulumi/kubernetes";
 import * as random from "@pulumi/random";
-import { WebService, Workload } from "../../src/index.ts";
-import {
-  appDatabase,
-  appSecret,
-  deployedImage,
-  inputsTag,
-  isDev,
-  loadCluster,
-  secretEnv,
-} from "../../src/app/cluster.ts";
+import { WebService } from "../../src/index.ts";
+import { appDatabase, appSecret, deployedImage, inputsTag, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import { dnsRecord } from "../../src/app/cloud.ts";
 import { Secret } from "../../src/app/secret.ts";
 
-// FreeScout on the cluster (cyc-seattle/platform#182): its database, its disk, and in dev, GreenMail
-// in place of Gmail. Our own image (./image) runs it as www-data on a read-only root filesystem.
+// FreeScout on the cluster (cyc-seattle/platform#182): its database and its disk. Our own image
+// (./image) runs it as www-data on a read-only root filesystem.
 
-const greenmailImage = "greenmail/standalone:2.1.5";
 /** The image's www-data, by number. */
 const WWW_DATA = 82;
-
-/** Dev's mailbox and the volunteer on it, which the integration tests use. */
-export const TEST_MAILBOX = "info@example.test";
-export const TEST_VOLUNTEER = "volunteer@example.test";
 
 export const imageTag = inputsTag(path.join(import.meta.dirname, "image"), ["."]);
 
@@ -38,22 +25,12 @@ export interface InboxOnCluster {
   adminPassword: pulumi.Output<string>;
 }
 
-/** Where FreeScout sends its own mail, such as notifications. Each mailbox sets its own in the UI. */
-interface Smtp {
-  host: pulumi.Input<string>;
-  port: number;
-  encryption: "tls" | "";
-}
-
 function generated(name: string, length: number): pulumi.Output<string> {
   return new random.RandomPassword(name, { length, special: false }).result;
 }
 
-/** Keeps a generated value in Secret Manager too, for a restore or a break-glass sign-in. Prod only: deploy-dev can't write a secret. */
+/** Keeps a generated value in Secret Manager too, for a restore or a break-glass sign-in. */
 function keepCopy(name: string, value: pulumi.Output<string>): void {
-  if (isDev) {
-    return;
-  }
   const secret = new Secret(name);
   new gcp.secretmanager.SecretVersion(`${name}-version`, { secret: secret.id, secretData: value }, { parent: secret });
 }
@@ -76,49 +53,6 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
   const oidcClientSecret = pulumi.secret(generated("inbox-oidc-client-secret", 64));
 
   const secret = appSecret(cluster, "inbox", { APP_KEY: appKey, INBOX_ADMIN_PASSWORD: adminPassword });
-
-  let smtp: Smtp = { host: "smtp-relay.gmail.com", port: 587, encryption: "tls" };
-  const devEnv: k8s.types.input.core.v1.EnvVar[] = [];
-  if (isDev) {
-    const greenmail = new Workload("greenmail", {
-      platform,
-      provider,
-      image: greenmailImage,
-      ports: [
-        { name: "smtp", port: 3025 },
-        { name: "imap", port: 3143 },
-        { name: "api", port: 8080 },
-      ],
-      requests: { cpu: "100m", memory: "256Mi" },
-      env: [
-        {
-          name: "GREENMAIL_OPTS",
-          // Any login works, and the tests read anyone's mail with it.
-          value: "-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled",
-        },
-      ],
-      readinessProbe: { tcpSocket: { port: 3143 } },
-      volumes: [{ name: "tmp", mountPath: "/tmp", emptyDir: {} }],
-      runAsUser: 999,
-    });
-    smtp = { host: greenmail.host, port: 3025, encryption: "" };
-    // FreeScout refuses a mail server at a private address, checking the name and each address it
-    // resolves to. GreenMail's Service keeps its ClusterIP for its life.
-    const clusterIp = k8s.core.v1.Service.get(
-      "greenmail-service",
-      pulumi.interpolate`${platform.namespace}/greenmail`,
-      {
-        provider,
-        dependsOn: [greenmail],
-      },
-    ).spec.clusterIP;
-    devEnv.push(
-      { name: "APP_REMOTE_HOST_WHITE_LIST", value: pulumi.interpolate`${greenmail.host},${clusterIp}` },
-      // The image makes this mailbox, reading GreenMail, and a volunteer on it, for the tests.
-      { name: "INBOX_TEST_MAILBOX", value: TEST_MAILBOX },
-      { name: "INBOX_TEST_VOLUNTEER", value: TEST_VOLUNTEER },
-    );
-  }
 
   // Attachments and installed modules. A pod's own disk loses them on every restart. Protected, so
   // no deploy deletes it: the storage class deletes the disk with the claim.
@@ -148,7 +82,7 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
     hostname,
     image,
     port: 8080,
-    // It averages under 50m in both environments; the limit covers its migrations and cron (#171).
+    // It averages under 50m; the limit covers its migrations and cron (#171).
     requests: { cpu: "100m", memory: "512Mi" },
     limits: { cpu: "500m" },
     readinessProbe: { httpGet: { path: "/login", port: 8080 }, periodSeconds: 30, timeoutSeconds: 10 },
@@ -175,10 +109,10 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
       { name: "INBOX_ADMIN_EMAIL", value: adminEmail },
       { name: "INBOX_COMPANY_NAME", value: "CYC Community Sailing Center" },
       { name: "INBOX_MAIL_FROM", value: mailFrom },
-      { name: "INBOX_SMTP_HOST", value: smtp.host },
-      { name: "INBOX_SMTP_PORT", value: String(smtp.port) },
-      { name: "INBOX_SMTP_ENCRYPTION", value: smtp.encryption },
-      ...devEnv,
+      // Where FreeScout sends its own mail, such as notifications. Each mailbox sets its own in the UI.
+      { name: "INBOX_SMTP_HOST", value: "smtp-relay.gmail.com" },
+      { name: "INBOX_SMTP_PORT", value: "587" },
+      { name: "INBOX_SMTP_ENCRYPTION", value: "tls" },
     ],
     envFrom: [{ secretRef: { name: secret.metadata.name, optional: false } }],
     volumes: [
@@ -188,8 +122,7 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
     ],
   });
 
-  // Dev's hostnames fall under platform's wildcard record.
-  const record = isDev ? [] : [dnsRecord("inbox-a", hostname, platform.gatewayAddress)];
+  const record = [dnsRecord("inbox-a", hostname, platform.gatewayAddress)];
 
   // The load balancer takes minutes to admit a new route. Waiting for the pod first keeps the
   // migrations out of these 15 minutes.

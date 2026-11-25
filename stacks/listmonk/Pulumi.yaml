@@ -1,5 +1,5 @@
 name: listmonk
-description: Listmonk, the newsletter at mail.<domain> - its database, settings, roles and list, sending through SES in prod and Mailpit in dev.
+description: Listmonk, the newsletter at mail.<domain> - its database, settings, roles and list, sending through SES.
 runtime:
   name: nodejs
   options:

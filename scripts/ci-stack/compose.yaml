@@ -57,7 +57,7 @@ services:
             upstream.on("error", () => client.destroy());
           })
           .listen(Number(process.env.PORT));
-  # The fakes dev runs (stacks/backend/clubspot-sync.ts, gsuite-sync.ts), with the same images.
+  # The fakes, in place of Clubspot and Workspace (stacks/backend/images.ts).
   clubspot-fake:
     image: ${CLUBSPOT_FAKE_IMAGE}
     depends_on:

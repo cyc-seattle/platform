@@ -16,7 +16,7 @@ export interface CiStackTarget {
     /** Where the sign-in may send the browser back besides Directus itself: `CI_STACK_REDIRECTS`, as given. */
     redirects: string[];
   };
-  /** Where the website's forms post, in place of dev's `https://mail.<domain>`. */
+  /** Where the website's forms post, in place of prod's `https://mail.<domain>`. */
   formsUrl: string;
   /** Each Service's URL on the runner, by its in-cluster `name:port`, such as `mailpit:8025`. */
   services: Record<string, string>;
@@ -27,6 +27,6 @@ export interface CiStackTarget {
   authentik: { url: string; token: string; directusIssuer: string };
   /** Listmonk's address, the newsletter list's ID, and the tests' read-only API login. */
   listmonk: { url: string; listId: string; apiUser: string; apiToken: string };
-  /** Each sync's env, as dev's CronJob gives it. */
+  /** Each sync's env, as its CronJob would give it. */
   cronJobs: Record<string, Record<string, string>>;
 }

@@ -15,13 +15,12 @@ import {
   FrozenPlansCheck,
 } from "../../src/directus/resources.ts";
 import * as random from "@pulumi/random";
-import * as gcp from "@pulumi/gcp";
 import { crmIdentities, type CrmIdentities } from "../../src/directus/roles.ts";
 import { prodDirectus } from "./prod-state.ts";
 import { requireStringList } from "../../src/config.ts";
 import { familyPolicies, teamPolicies } from "./community-rules.ts";
 import { crewRules, sailTeamPolicy, type PolicyData } from "./policies.ts";
-import { isDev, loadCluster } from "../../src/app/cluster.ts";
+import { loadCluster } from "../../src/app/cluster.ts";
 import { deployDirectus } from "./cluster.ts";
 import { localDirectus } from "./local.ts";
 import { backendPolicies } from "./extensions.ts";
@@ -74,26 +73,24 @@ const { extensions, frozenPlans, grantable, websiteBuild } = backendPolicies(loa
 });
 
 // Core has no SSO, and refuses a user whose provider isn't `default`, so unlicensed there are none.
-const admins =
-  isDev || local
-    ? licensed
-      ? (config.getObject<string[]>("directusAdmins") ?? [])
-      : []
-    : requireStringList("directusAdmins");
+const admins = local
+  ? licensed
+    ? (config.getObject<string[]>("directusAdmins") ?? [])
+    : []
+  : requireStringList("directusAdmins");
 
 // Prod keeps what its Directus had on the VM (./prod-state.ts).
-const prod =
-  isDev || local
-    ? undefined
-    : prodDirectus({
-        adminEmail: directusAdminEmail,
-        admins,
-        externalDomain: config.require("externalDomain"),
-        // deployDirectus needs prod's values first, so its own baseUrl comes too late.
-        baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
-      });
+const prod = local
+  ? undefined
+  : prodDirectus({
+      adminEmail: directusAdminEmail,
+      admins,
+      externalDomain: config.require("externalDomain"),
+      // deployDirectus needs prod's values first, so its own baseUrl comes too late.
+      baseUrl: pulumi.output(loadCluster().then(({ platform }) => `https://directus.${platform.domain}`)),
+    });
 
-const app = local ? localDirectus() : deployDirectus(directusAdminEmail, licensed, extensions, prod?.values);
+const app = prod ? deployDirectus(directusAdminEmail, licensed, extensions, prod.values) : localDirectus();
 
 function roleIds(roles: CrmIdentities) {
   return {
@@ -117,7 +114,7 @@ function prodIdentities({ auth, roles, clubspotSyncToken, gsuiteSyncToken }: Non
   };
 }
 
-function devIdentities(directus: typeof app) {
+function localIdentities(directus: typeof app) {
   const auth = {
     baseUrl: directus.then(({ baseUrl }) => baseUrl),
     adminEmail: directusAdminEmail,
@@ -134,14 +131,7 @@ function devIdentities(directus: typeof app) {
     externalDomain: config.require("externalDomain"),
     clubspotSyncToken,
     gsuiteSyncToken,
-    // infra generates it, since deploy-dev can only read dev's secrets.
-    websiteBuildToken: local
-      ? token("website-build-directus-token")
-      : pulumi.secret(
-          gcp.secretmanager
-            .getSecretVersionAccessOutput({ secret: "dev-csc-website-directus-token" })
-            .apply((version) => version.secretData),
-        ),
+    websiteBuildToken: token("website-build-directus-token"),
     communityRoleId: pulumi.output(directus.then(({ communityRoleId }) => communityRoleId)),
   });
   return {
@@ -152,7 +142,7 @@ function devIdentities(directus: typeof app) {
   };
 }
 
-const identities = prod ? prodIdentities(prod) : devIdentities(app);
+const identities = prod ? prodIdentities(prod) : localIdentities(app);
 const {
   auth,
   crewPolicyId,

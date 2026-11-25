@@ -44,7 +44,6 @@ beforeAll(async () => {
   pulumi.runtime.setConfig("bootstrap:humanDeployers", JSON.stringify(["user:deployer@example.com"]));
   // The modules build their resources on import, so they load only after the mocks are set.
   await import("../stacks/bootstrap/deploy-runner.ts");
-  await import("../stacks/bootstrap/deploy-dev.ts");
   await import("../stacks/bootstrap/gsuite-sync.ts");
   await new Promise((r) => setImmediate(r));
 });
@@ -54,30 +53,6 @@ describe("gke-nodes", () => {
     expect(projectMembers(`serviceAccount:${email("gke-nodes")}`)).toEqual([
       "roles/container.defaultNodeServiceAccount",
     ]);
-  });
-});
-
-describe("deploy-dev", () => {
-  const member = `serviceAccount:${email("deploy-dev")}`;
-  const grant = (role: string) =>
-    ofType("gcp:projects/iAMMember:IAMMember").find((r) => r.inputs.member === member && r.inputs.role === role)!;
-
-  it("views clusters, and reads secrets only under a condition", () => {
-    expect(projectMembers(member).sort()).toEqual([
-      "roles/container.clusterViewer",
-      "roles/secretmanager.secretAccessor",
-    ]);
-    expect(grant("roles/container.clusterViewer").inputs.condition).toBeUndefined();
-  });
-
-  it("holds no Cloud SQL role, which ignores conditions on user and database calls", () => {
-    expect(projectMembers(member).filter((role) => role.includes("cloudsql"))).toEqual([]);
-  });
-
-  it("reads only secrets whose IDs start with dev-", () => {
-    expect(grant("roles/secretmanager.secretAccessor").inputs.condition.expression).toBe(
-      'resource.name.startsWith("projects/123456789/secrets/dev-")',
-    );
   });
 });
 

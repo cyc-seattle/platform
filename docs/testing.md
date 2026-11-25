@@ -7,25 +7,23 @@ pass, and a merge then deploys straight to prod.
 
 ## The CI stack
 
-`scripts/ci-stack` starts, in containers on the runner, what the features need from dev:
+`scripts/ci-stack` starts, in containers on the runner, what the features need:
 
-- Directus, from the same image, env, extensions and migrations as dev's, with `backend`'s config applied by
+- Directus, from the same image, env, extensions and migrations as prod's, with `backend:frozenPlansDeletable`
+  set, and `backend`'s config applied by
   `backend`'s own Pulumi program in its local mode (`backend:local`), so nothing calls Google Cloud or the cluster.
 - Its Postgres, which also holds the Clubspot fake's, Authentik's and Listmonk's databases.
-- The Clubspot and Workspace fakes, from the images dev runs (`stacks/backend/images.ts`), and Mailpit.
-- Authentik, from the image and env dev runs, with `authentik`'s config applied by its own Pulumi program in
+- The Clubspot and Workspace fakes, from the images in `stacks/backend/images.ts`, and Mailpit.
+- Authentik, from prod's image and env, with `authentik`'s config applied by its own Pulumi program in
   its local mode (`authentik:local`). Its mail, such as a sign-in link, lands in Mailpit. Directus signs in
-  through it, as on dev. Directus's
-  group-policies hook fills its sign-in groups, as on dev.
+  through it, and Directus's group-policies hook fills its sign-in groups.
 - Listmonk, installed and configured with the `listmonk` stack's own settings (`stacks/listmonk/settings.ts`),
   sending to Mailpit, with the read-only API login the tests check the list with.
 
-It doesn't run FreeScout: only the shared inbox's `@api` scenarios would reach it, and they need FreeScout's
-API module, which is bought and installed by hand (`docs/inbox.md`). They wait for it, on dev and here alike.
-Nothing checks the cluster itself here: `test/cluster.test.ts` checks the namespaces' network policies, the
+It doesn't run FreeScout, so the shared inbox's feature checks only who can sign in to it. Nothing checks the cluster itself here: `test/cluster.test.ts` checks the namespaces' network policies, the
 Gateway's listeners, and what each deploy identity may do.
 
-The syncs run in the test's own process against the fakes, here and on dev. The contact form posts to
+The syncs run in the test's own process against the fakes. The contact form posts to
 Directus's forms endpoint, and its mail lands in Mailpit.
 
 Each checkout's stack has its own Docker Compose project and host ports, both from a hash of its path, so
@@ -111,12 +109,6 @@ CI_STACK_REDIRECTS=http://localhost:5173/,http://localhost:5173/plans mise run c
 
 `target.json` lists them in `directus.redirects`. `features/authentication.feature` signs in this way.
 
-## What runs on dev
-
-Nothing. Dev is being removed ([cyc-seattle/platform#171](https://github.com/cyc-seattle/platform/issues/171)),
-and no workflow deploys or tests it. The `@smoke` tags and `vitest.integration.config.ts`'s dev branch go with
-it.
-
 ## Running them
 
 On the CI stack, with Docker and the license key in `DIRECTUS_LICENSE_KEY`:
@@ -147,7 +139,7 @@ Plan. Its rows are named "Sample", such as `Camp Sample`. Run again, it finds it
 step fails, it deletes what it made, so you can run it again. It prints the logins it made, which all have the
 password `sample-password`.
 
-Point the app at Directus at `directus.url` in `.ci-stack/target.json`, in place of dev's, and start the stack
+Point the app at Directus at `directus.url` in `.ci-stack/target.json`, and start the stack
 with the app's address in `CI_STACK_REDIRECTS` ([A browser app](#a-browser-app)). Sign in to the Data Studio
 there as `admin@example.com` with `ci-admin-password`, or in the app as one of the sample logins, whose sign-in
 link lands in Mailpit.

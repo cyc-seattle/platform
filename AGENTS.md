@@ -68,7 +68,6 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   maintainer merges by bypassing the rule, with `gh pr merge --squash --admin` once checks pass, so
   auto-merge never fires.
 - Never force-push. To bring a branch up to date, merge `origin/main` into it.
-- Nothing deploys to dev or tests it any more, and it's being removed (#171). Don't add to it.
 - When an integration test fails, reproduce it locally on a CI stack before you push a fix:
   `mise run ci-stack`, then `mise run integration-ci`.
 
@@ -81,8 +80,7 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
   preview shows no changes.
 - A deploy builds and pushes an image whose tag isn't in the registry yet. A preview never builds one.
 - The tasks pick projects from `PULUMI_STACK` in `scripts/each-stack`: `prod` is `infra`, `backend`,
-  `inbox`, `listmonk`, then `authentik`. Its `dev` list stays only until dev's stacks are destroyed.
-  `DEPLOY_PROJECTS` narrows the list. Its preview appends each project's `true` or `false` to
+  `inbox`, `listmonk`, then `authentik`. `DEPLOY_PROJECTS` narrows the list. Its preview appends each project's `true` or `false` to
   `DEPLOY_CHANGES_FILE`, which `deploy.yml` reads to skip a no-op prod deploy. The workflow calls
   `preview`, `deploy`, and `install`, so keep those names.
 - `bootstrap` is applied by a human with project Owner and `gh` `admin:org`, never by CI
@@ -100,14 +98,13 @@ Run `mise tasks` to list every task. `mise run ci` runs the checks and the tests
 ## Shared stacks, the cluster, and Directus
 
 - Never `pulumi destroy` a shared stack.
-- Prod's Pulumi state is read-only: preview and read it, never write it. Before you change dev's
-  state, back it up with `pulumi stack export --file <path outside the repo>`.
+- Prod's Pulumi state is read-only: preview and read it, never write it.
 - Run `kubectl` only under the workplace's mise env, from the workplace or a checkout in it. Its
   `KUBECONFIG` holds only CYC's cluster. Never change the machine's current kube context.
-- Read dev's Directus logs with `mise exec -- kubectl -n dev logs deploy/directus`, from the
-  workplace. Use `kubectl` on dev only to read.
+- Read prod's Directus logs with `mise exec -- kubectl -n prod logs deploy/directus`, from the
+  workplace. Use `kubectl` on prod only to read.
 - Directus's license allows 5 activations, and each one is bound to the database and `PUBLIC_URL`
-  (cyc-seattle/isthmia#172). Never drop, recreate, or rename Directus's database, in dev or prod,
+  (cyc-seattle/isthmia#172). Never drop, recreate, or rename Directus's database,
   and never change its `PUBLIC_URL`. Ask the maintainer before any change that could activate a
   new Directus that lives past 24 hours. A throwaway one gone sooner, like the CI stack's, spends
   nothing. [`docs/backend.md`](https://cyc-seattle.github.io/platform/backend/) has the rest.

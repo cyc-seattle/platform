@@ -114,10 +114,6 @@ describe("workload identity bindings", () => {
   const subject = (repo: string, env: string) =>
     `principal://iam.googleapis.com/${poolName}/subject/${prefix(repo)}:environment:${env}`;
 
-  it("lets dev's environment on platform and sail-team assume deploy-dev, and nothing else", () => {
-    expect(bindings("deploy-dev")).toEqual(repos.map((repo) => subject(repo, "dev")).sort());
-  });
-
   it("lets the prod environments on platform and sail-team assume deploy-runner, and nothing else", () => {
     expect(bindings("deploy-runner")).toEqual(
       repos.flatMap((repo) => ["prod", "prod-preview"].map((env) => subject(repo, env))).sort(),
@@ -125,7 +121,7 @@ describe("workload identity bindings", () => {
   });
 
   it("binds each subject exactly, with no wildcard", () => {
-    for (const member of [...bindings("deploy-dev"), ...bindings("deploy-runner")]) {
+    for (const member of bindings("deploy-runner")) {
       expect(member).not.toContain("*");
       expect(member).not.toMatch(/\/attribute\.|\/group\//);
     }
@@ -154,17 +150,11 @@ describe.each(repos)("%s's environments", (repo) => {
     );
 
   // Each also publishes a site to Pages: platform its docs, sail-team its Storybook.
-  it("has exactly dev, github-pages, prod-preview, and prod", () => {
+  it("has exactly github-pages, prod-preview, and prod", () => {
     const names = ofType("github:index/repositoryEnvironment:RepositoryEnvironment")
       .filter((e) => e.inputs.repository === repo)
       .map((e) => e.inputs.environment);
-    expect(names.sort()).toEqual(["dev", "github-pages", "prod", "prod-preview"]);
-  });
-
-  it("limits dev to main, with no reviewer", () => {
-    expect(env("dev").reviewers).toBeUndefined();
-    expect(env("dev").deploymentBranchPolicy).toEqual({ protectedBranches: false, customBranchPolicies: true });
-    expect(policies("dev")).toEqual([expect.objectContaining({ branchPattern: "main" })]);
+    expect(names.sort()).toEqual(["github-pages", "prod", "prod-preview"]);
   });
 
   it("limits prod-preview to main, with no reviewer", () => {
@@ -184,17 +174,8 @@ describe.each(repos)("%s's environments", (repo) => {
   });
 
   it("keeps admins from bypassing a protected environment", () => {
-    expect(env("dev").canAdminsBypass).toBe(false);
     expect(env("prod").canAdminsBypass).toBe(false);
     expect(env("prod-preview").canAdminsBypass).toBe(false);
-  });
-
-  it("points dev at deploy-dev and dev's state bucket", () => {
-    expect(variables("dev")).toEqual({
-      GCP_WORKLOAD_IDENTITY_PROVIDER: providerName,
-      GCP_SERVICE_ACCOUNT: email("deploy-dev"),
-      PULUMI_BACKEND_URL: "gs://example-project-pulumi-dev",
-    });
   });
 
   it.each(["prod-preview", "prod"])("points %s at deploy-runner and prod's state bucket", (name) => {

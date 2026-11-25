@@ -10,9 +10,6 @@ import { clusterProvider, readPlatformOutputs, type PlatformOutputs } from "../i
 
 // What every project that runs on the cluster shares (cyc-seattle/isthmia#231).
 
-/** Mailpit and the fakes exist only in dev. */
-export const isDev = pulumi.getStack() === "dev";
-
 export interface Cluster {
   /** Plain values, so a hostname under the domain can be a plain string, as `WebService` takes. */
   platform: PlatformOutputs;
@@ -99,10 +96,8 @@ export function databaseUri(host: string, name: string, password: string): strin
 }
 
 /**
- * A database and its user, both `name`, on the environment's Cloud SQL instance. In dev, platform
- * creates them and keeps the password in Secret Manager: Cloud SQL ignores IAM conditions on user
- * and database calls, so deploy-dev can't make them (cyc-seattle/isthmia#231). Elsewhere this project creates them
- * through the Admin API, so no deploy needs a route to the private IP. Users the API creates belong
+ * A database and its user, both `name`, on the environment's Cloud SQL instance. This project creates
+ * them through the Admin API, so no deploy needs a route to the private IP. Users the API creates belong
  * to `cloudsqlsuperuser`, which owns the databases it creates, so the app can create its tables.
  * Both outlive `pulumi destroy`: Directus's license activation is tied to its database (cyc-seattle/isthmia#172). With
  * `existingPassword`, the database and user exist already, and this writes only the Secret.
@@ -113,10 +108,6 @@ export function appDatabase(cluster: Cluster, name: string, existingPassword?: p
   if (existingPassword) {
     // Prod's databases came from the VM, and its project's state already holds them (./cloud.ts).
     password = existingPassword;
-  } else if (isDev) {
-    password = gcp.secretmanager
-      .getSecretVersionAccessOutput({ secret: `dev-db-${name}-password` })
-      .apply((version) => version.secretData);
   } else {
     const instance = sqlConnectionName.split(":")[2] ?? sqlConnectionName;
     password = new random.RandomPassword(`${name}-db-password`, { length: 32, special: false }).result;

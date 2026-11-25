@@ -61,7 +61,7 @@ describe("the frozen-plans hook", () => {
       }
     });
 
-    it("can be deleted only where dev's tests clean up", async () => {
+    it("can be deleted only where the CI stack's tests clean up", async () => {
       await expect(
         check({ collection: "plan_result_lines", event: "delete", payload: ["frozen"], keys: ["frozen"] }, true),
       ).resolves.toEqual(["frozen"]);
@@ -151,7 +151,7 @@ describe("the frozen-plans hook", () => {
       }
     });
 
-    it("can't be deleted, but where dev's tests clean up", async () => {
+    it("can't be deleted, but where the CI stack's tests clean up", async () => {
       await expect(
         check({ collection: "financial_plans", event: "delete", payload: ["frozen"], keys: ["frozen"] }),
       ).rejects.toThrow(SET_STAYS);
@@ -207,7 +207,7 @@ describe("the frozen-plans hook", () => {
       }
     });
 
-    it("can be deleted only by the user dev lets clean up", async () => {
+    it("can be deleted only by the user the CI stack lets clean up", async () => {
       await expect(
         check({ collection: "plan_offerings", event: "delete", payload: ["frozen"], keys: ["frozen"] }, true),
       ).resolves.toEqual(["frozen"]);

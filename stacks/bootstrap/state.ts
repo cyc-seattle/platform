@@ -1,13 +1,11 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import { location, projectId } from "../../src/config.ts";
-import { deployDev } from "./deploy-dev.ts";
 import { deployRunner } from "./deploy-runner.ts";
 import { humanDeployers } from "./human-deployers.ts";
 import { enableService } from "../../src/services.ts";
 
-// Pulumi state, one bucket and one KMS key per environment (#215). A dev deployer gets only dev's,
-// so it can't edit the state a prod apply reads.
+// Pulumi state: one bucket and one KMS key per environment (#215), now prod's alone (cyc-seattle/platform#171).
 
 const kmsApi = enableService("cloudkms.googleapis.com");
 const storageApi = enableService("storage.googleapis.com");
@@ -48,23 +46,6 @@ export class StateBucket extends gcp.storage.Bucket {
       iamOpts,
     );
   }
-
-  /** Lets a member read and write one object, by name. */
-  grantObject(object: string, member: pulumi.Input<string>, granteeLabel: string): gcp.storage.BucketIAMMember {
-    return new gcp.storage.BucketIAMMember(
-      `${this.plainId}-${granteeLabel}`,
-      {
-        bucket: this.name,
-        role: "roles/storage.objectUser",
-        member,
-        condition: {
-          title: `Only ${object}`,
-          expression: pulumi.interpolate`resource.name == "projects/_/buckets/${this.name}/objects/${object}"`,
-        },
-      },
-      iamOpts,
-    );
-  }
 }
 
 /** The key ring for the state keys. GCP never deletes a key ring. */
@@ -97,22 +78,16 @@ export class StateKey extends gcp.kms.CryptoKey {
 }
 
 const prodBucket = new StateBucket("pulumi-prod");
-const devBucket = new StateBucket("pulumi-dev");
 const prodKey = new StateKey("state-prod");
-const devKey = new StateKey("state-dev");
 
 for (const member of humanDeployers) {
-  for (const resource of [prodBucket, devBucket, prodKey, devKey]) {
+  for (const resource of [prodBucket, prodKey]) {
     resource.grant(member, member);
   }
 }
 
 prodBucket.grant(deployRunner.member, "deploy-runner");
 prodKey.grant(deployRunner.member, "deploy-runner");
-devBucket.grant(deployDev.member, "deploy-dev");
-devKey.grant(deployDev.member, "deploy-dev");
-// The infra stack writes dev's platform values here, from a prod apply.
-devBucket.grantObject("platform/outputs.json", deployRunner.member, "deploy-runner-outputs");
 
 function backend(bucket: StateBucket, key: StateKey) {
   return {
@@ -121,4 +96,4 @@ function backend(bucket: StateBucket, key: StateKey) {
   };
 }
 
-export const stateBackends = { prod: backend(prodBucket, prodKey), dev: backend(devBucket, devKey) };
+export const stateBackends = { prod: backend(prodBucket, prodKey) };

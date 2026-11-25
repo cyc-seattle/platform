@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { deploymentEnv, devPlatform, secretValue } from "./support.ts";
 import { localTarget } from "./target.ts";
 
 export interface DirectusResponse {
@@ -118,8 +115,8 @@ async function send(
       headers: { "content-type": "application/json", ...(token && { authorization: `Bearer ${token}` }) },
       ...(body !== undefined && { body: JSON.stringify(body) }),
     });
-  // Dev's small Directus sheds load with a 503 ("Under pressure"), and the Gateway answers a slow or
-  // restarting Directus with a 502 or 504, or a text body such as "upstream request timeout".
+  // Directus sheds load with a 503 ("Under pressure"). A 502, a 504, or a text body such as "upstream
+  // request timeout" is a proxy's answer for a slow or restarting Directus.
   for (let retry = 0; ; retry++) {
     const response = await attempt();
     const text = await response.text();
@@ -127,7 +124,7 @@ async function send(
     const gatewayError = [502, 503, 504].includes(response.status) || (text !== "" && body === undefined);
     if (!gatewayError) {
       if (retry > 0 && method === "POST" && duplicateOfSentId(body, sent)) {
-        // The Gateway timed out on a create that Directus still made, so this retry found the row.
+        // A create timed out that Directus still made, so this retry found the row.
         return send(baseUrl, token, "GET", `${path}/${encodeURIComponent(String(sent!.id))}`);
       }
       return { status: response.status, body };
@@ -158,27 +155,8 @@ function parseJson(text: string): unknown {
   }
 }
 
-/**
- * Signs in to dev's Directus as its built-in admin, with the password isthmia's `crm` wrote to the
- * `directus` Secret. The deploy identity already reads it, so no test token needs creating.
- */
-export async function devDirectusAdmin(): Promise<DirectusSession> {
-  const local = localTarget();
-  if (local) {
-    return new DirectusSession(local.directus.url, local.directus.adminEmail, local.directus.adminPassword);
-  }
-  const platform = await devPlatform();
-  const email = await deploymentEnv(platform, "directus", "ADMIN_EMAIL");
-  const password = await secretValue(platform, "directus", "ADMIN_PASSWORD");
-  return new DirectusSession(`https://directus.${platform.domain}`, email, password);
-}
-
-/**
- * Whether dev's Directus runs with a license, from the backend stack's dev config. Without one,
- * Directus applies no relational permission rules, so `@licensed` features can't pass
- * (cyc-seattle/isthmia#172).
- */
-export function devDirectusLicensed(): boolean {
-  const config = readFileSync(join(import.meta.dirname, "../../stacks/backend/Pulumi.dev.yaml"), "utf8");
-  return !/^\s*backend:licensed:\s*false\s*$/m.test(config);
+/** Signs in to the CI stack's Directus as its built-in admin. */
+export function directusAdmin(): Promise<DirectusSession> {
+  const { url, adminEmail, adminPassword } = localTarget().directus;
+  return Promise.resolve(new DirectusSession(url, adminEmail, adminPassword));
 }

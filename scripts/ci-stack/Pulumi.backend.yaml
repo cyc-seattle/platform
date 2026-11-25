@@ -9,7 +9,7 @@ config:
   backend:directusAdminEmail: admin@example.com
   backend:licensed: true
   backend:frozenPlansDeletable: true
-  # As dev's (stacks/backend/Pulumi.dev.yaml): contact.feature posts as the website and reads info@'s mail.
+  # contact.feature posts as the website and reads info@'s mail.
   backend:contactTo: info@cyccommunitysailing.org
   backend:formsHostname: mail.localhost
   backend:formsPerIp: 1000

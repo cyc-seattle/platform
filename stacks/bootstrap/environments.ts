@@ -1,7 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as github from "@pulumi/github";
-import { deployDev } from "./deploy-dev.ts";
 import { deployRunner } from "./deploy-runner.ts";
 import { maintainers, platform, sailTeam } from "./github.ts";
 import { stateBackends } from "./state.ts";
@@ -22,13 +21,6 @@ interface Environment {
 }
 
 const environments: Environment[] = [
-  {
-    name: "dev",
-    account: deployDev,
-    accountLabel: "deploy-dev",
-    backendUrl: stateBackends.dev.url,
-    approval: false,
-  },
   {
     name: "prod-preview",
     account: deployRunner,

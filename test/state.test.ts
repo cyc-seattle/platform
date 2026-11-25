@@ -13,7 +13,6 @@ const ofType = (type: string) => created.filter((r) => r.type === type);
 
 const human = "user:deployer@example.com";
 const deployRunner = "serviceAccount:deploy-runner@example-project.iam.gserviceaccount.com";
-const deployDev = "serviceAccount:deploy-dev@example-project.iam.gserviceaccount.com";
 
 beforeAll(async () => {
   await pulumi.runtime.setMocks(
@@ -42,12 +41,16 @@ beforeAll(async () => {
 });
 
 describe("state buckets", () => {
-  it.each(["pulumi-prod", "pulumi-dev"])("names %s after the project", (name: string) => {
-    expect(byName(name).inputs).toMatchObject({ name: `example-project-${name}`, location: "us-west1" });
+  it("are prod's alone", () => {
+    expect(ofType("gcp:storage/bucket:Bucket").map((r) => r.name)).toEqual(["pulumi-prod"]);
   });
 
-  it.each(["pulumi-prod", "pulumi-dev"])("locks %s down and keeps 30 noncurrent versions", (name: string) => {
-    expect(byName(name).inputs).toMatchObject({
+  it("names pulumi-prod after the project", () => {
+    expect(byName("pulumi-prod").inputs).toMatchObject({ name: "example-project-pulumi-prod", location: "us-west1" });
+  });
+
+  it("locks pulumi-prod down and keeps 30 noncurrent versions", () => {
+    expect(byName("pulumi-prod").inputs).toMatchObject({
       uniformBucketLevelAccess: true,
       publicAccessPrevention: "enforced",
       versioning: { enabled: true },
@@ -61,8 +64,16 @@ describe("state keys", () => {
     expect(byName("pulumi").inputs).toMatchObject({ name: "pulumi", location: "us-west1" });
   });
 
-  it.each(["state-prod", "state-dev"])("rotates %s every 90 days", (name: string) => {
-    expect(byName(name).inputs).toMatchObject({ name, keyRing: "pulumi_id", rotationPeriod: "7776000s" });
+  it("are prod's alone", () => {
+    expect(ofType("gcp:kms/cryptoKey:CryptoKey").map((r) => r.name)).toEqual(["state-prod"]);
+  });
+
+  it("rotates state-prod every 90 days", () => {
+    expect(byName("state-prod").inputs).toMatchObject({
+      name: "state-prod",
+      keyRing: "pulumi_id",
+      rotationPeriod: "7776000s",
+    });
   });
 });
 
@@ -86,36 +97,6 @@ describe("state access", () => {
     );
     expect(bucketMembers("pulumi-prod")).toHaveLength(2);
     expect(keyMembers("state-prod")).toEqual([deployRunner, human].sort());
-  });
-
-  it("gives deploy-runner no dev state except the platform outputs object", () => {
-    const devGrants = bucketMembers("pulumi-dev");
-    expect(devGrants).toContainEqual({
-      bucket: "example-project-pulumi-dev",
-      role: "roles/storage.objectUser",
-      member: human,
-    });
-    const runnerGrants = devGrants.filter((g) => g.member === deployRunner);
-    expect(runnerGrants).toEqual([
-      expect.objectContaining({
-        condition: {
-          title: "Only platform/outputs.json",
-          expression: 'resource.name == "projects/_/buckets/example-project-pulumi-dev/objects/platform/outputs.json"',
-        },
-      }),
-    ]);
-    expect(keyMembers("state-dev")).toEqual([deployDev, human].sort());
-  });
-
-  it("gives deploy-dev dev's bucket and key, and nothing in prod", () => {
-    expect(bucketMembers("pulumi-dev")).toContainEqual({
-      bucket: "example-project-pulumi-dev",
-      role: "roles/storage.objectUser",
-      member: deployDev,
-    });
-    expect(bucketMembers("pulumi-prod").map((g) => g.member)).not.toContain(deployDev);
-    expect(keyMembers("state-prod")).not.toContain(deployDev);
-    expect(keyMembers("state-dev")).toContain(deployDev);
   });
 
   it("grants encrypt and decrypt only", () => {

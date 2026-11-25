@@ -155,9 +155,9 @@ describe.each([
     expect(resources.limits).toEqual(resources.requests);
   });
 
-  it("uses Spot pods in dev only", () => {
-    expect(spec(dev).nodeSelector).toEqual({ "cloud.google.com/gke-spot": "true" });
-    expect(spec(prod).nodeSelector).toEqual({});
+  it("runs on regular capacity, not Spot", () => {
+    expect(spec(dev)).not.toHaveProperty("nodeSelector");
+    expect(spec(prod)).not.toHaveProperty("nodeSelector");
   });
 
   it("puts every resource in the environment's namespace", () => {

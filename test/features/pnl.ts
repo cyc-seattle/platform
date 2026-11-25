@@ -14,7 +14,7 @@ import {
   type Row,
 } from "./steps/rows.ts";
 
-// A small plan the P&L examples build in dev, as an app or agent would: rows entered in Directus,
+// A small plan the P&L examples build, as an app or agent would: rows entered in Directus,
 // read back by a planner, and calculated with the engine. Every figure in them is made up.
 
 /** Dollars as the features write them, such as $1,000 or -$20,000, in cents. */

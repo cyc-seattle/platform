@@ -5,20 +5,19 @@ import * as k8s from "@pulumi/kubernetes";
 import * as random from "@pulumi/random";
 import { WebService } from "../../src/index.ts";
 import { listmonkMediaBucket } from "../../src/outputs.ts";
-import { appDatabase, appSecret, isDev, loadCluster, secretEnv } from "../../src/app/cluster.ts";
+import { appDatabase, appSecret, loadCluster, secretEnv } from "../../src/app/cluster.ts";
 import {
   ACCESS_SYNC,
   listmonkImage as image,
   listmonkSettings,
   settingsSql,
-  TESTS,
   type ApiLogin,
   type Media,
   type SmtpServer,
 } from "./settings.ts";
 
-// Listmonk, the newsletter (cyc-seattle/platform#180). Prod sends through SES, whose identity and SMTP
-// user `infra` makes; dev sends to the Mailpit `authentik` runs. `authentik` registers its sign-in.
+// Listmonk, the newsletter (cyc-seattle/platform#180). It sends through SES, whose identity and SMTP
+// user `infra` makes. `authentik` registers its sign-in.
 
 const port = 9000;
 
@@ -44,31 +43,27 @@ async function deploy() {
   const clientSecret = new random.RandomPassword("listmonk-oidc-client-secret", { length: 64, special: false }).result;
   const listUuid = pulumi.output(config.require("listId"));
   const token = (name: string) => new random.RandomPassword(name, { length: 48, special: false }).result;
-  // Each API login's token; the tests' only in dev.
+  // Each API login's token.
   const logins: { login: ApiLogin; secret: string; token: pulumi.Output<string> }[] = [
     { login: ACCESS_SYNC, secret: "listmonk-access-sync", token: token("listmonk-access-sync-token") },
-    ...(isDev ? [{ login: TESTS, secret: "listmonk-tests", token: token("listmonk-tests-token") }] : []),
   ];
   const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
   // Until `infra` has made SES's login (docs/manual-setup.md §12), prod sends through the Workspace relay,
   // which admits the cluster by its address and suits a few confirmation emails, not the newsletter.
   const ses = config.getBoolean("ses") ?? false;
-  const smtp: pulumi.Output<SmtpServer> = isDev
-    ? pulumi.output({ host: "mailpit", port: 1025, tls: "none" as const, username: "", password: "" })
-    : !ses
-      ? pulumi.output({ host: "smtp-relay.gmail.com", port: 587, tls: "STARTTLS" as const, username: "", password: "" })
-      : secretJson<{ username: string; password: string }>("listmonk-ses-smtp").apply(({ username, password }) => ({
-          host: "email-smtp.us-west-2.amazonaws.com",
-          port: 587,
-          tls: "STARTTLS" as const,
-          username,
-          password,
-        }));
+  const smtp: pulumi.Output<SmtpServer> = !ses
+    ? pulumi.output({ host: "smtp-relay.gmail.com", port: 587, tls: "STARTTLS" as const, username: "", password: "" })
+    : secretJson<{ username: string; password: string }>("listmonk-ses-smtp").apply(({ username, password }) => ({
+        host: "email-smtp.us-west-2.amazonaws.com",
+        port: 587,
+        tls: "STARTTLS" as const,
+        username,
+        password,
+      }));
 
-  // Dev's pictures are made up, so they live in the pod and go with it.
-  // Prod's bucket and its key come from `bootstrap`, so until it's applied, prod's are in the pod too.
-  const mediaInPod = isDev || !(config.getBoolean("mediaBucket") ?? false);
+  // The bucket and its key come from `bootstrap`, so until it's applied, the pictures are in the pod.
+  const mediaInPod = !(config.getBoolean("mediaBucket") ?? false);
   const media: pulumi.Output<Media> = mediaInPod
     ? pulumi.output({ provider: "filesystem" as const })
     : secretJson<{ accessId: string; secret: string }>("listmonk-media-hmac").apply(({ accessId, secret }) => ({
@@ -175,8 +170,7 @@ async function deploy() {
     runAsUser: 1000,
   });
 
-  // What each API login signs in with: access-334's sync, to give each account its role, and dev's tests
-  // (docs/newsletter.md).
+  // What each API login signs in with: access-334's sync, to give each account its role (docs/newsletter.md).
   for (const { login, secret, token } of logins) {
     appSecret(cluster, secret, {
       LISTMONK_URL: "http://listmonk",

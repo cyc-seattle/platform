@@ -21,7 +21,7 @@ gives the rules.
   FreeScout's scheduler in one container, as www-data, on a read-only root filesystem. A deploy builds the
   image when its tag isn't in the registry, and runs it by digest, as for the syncs.
 - Its database, `inbox`, on the environment's Cloud SQL instance. FreeScout supports PostgreSQL,
-  though MySQL is its first choice, so try every module on dev before prod.
+  though MySQL is its first choice, so check every module works on PostgreSQL before you install it.
 - Its disk, the PersistentVolumeClaim `inbox-data` (10 GiB, `standard-rwo`), mounted at `/data`: attachments,
   sessions, installed modules, and the `.env` FreeScout edits. It's protected, since the storage
   class deletes the disk with the claim. The Deployment stops the old pod before it starts a new one,
@@ -29,15 +29,10 @@ gives the rules.
 - The app key, which encrypts each mailbox's Google sign-in in the database, and the break-glass
   admin's password. Prod keeps both in Secret Manager too: `inbox-app-key` and `inbox-admin-password`.
 - FreeScout's OIDC client, as outputs that `authentik` registers.
-- In dev, GreenMail in place of Gmail, with a test mailbox, `info@example.test`, and a volunteer on
-  it, which the image makes for the integration tests.
 
 The image sets FreeScout's own mail (notifications and invitations) to the relay on every start
 (`stacks/inbox/image/configure.php`). Each mailbox's connection is set in FreeScout's admin, since it
 signs in to Google as its own user.
-
-FreeScout refuses a mail server at a private address. Dev's env lists GreenMail's name and ClusterIP
-in `APP_REMOTE_HOST_WHITE_LIST`.
 
 ## Signing in
 
@@ -55,15 +50,14 @@ When Authentik is down, the break-glass admin signs in with a password: its emai
 
 ## Modules
 
-Paid modules are bought once for each instance: a licence covers one. Prod and dev each have:
+Paid modules are bought once for each instance: a licence covers one. Prod has:
 
 - **OAuth & Social Login**, for signing in through Authentik
-- **API & Webhooks**, which the integration tests use, and later the contact form
+- **API & Webhooks**, for the contact form later
 
 A module is installed from FreeScout's admin with its licence key, onto the disk, so a restart keeps
 it. No command enters a licence. [manual-setup.md](manual-setup.md#11-the-shared-inbox-inboxdomain)
-has the steps. Until dev's API module is installed and `inbox:apiModule: true` is set in
-`stacks/inbox/Pulumi.dev.yaml`, the scenarios that need it are skipped.
+has the steps.
 
 ## Backups
 

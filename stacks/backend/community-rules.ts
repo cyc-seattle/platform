@@ -2,7 +2,7 @@ import type { PermissionAction } from "../../src/directus/client.ts";
 
 // Plain data (no `@pulumi/*` import) describing the Community and Team roles' policies
 // (cyc-seattle/workplace#6 decisions 26-29). `./index.ts` turns each policy into a `DirectusPolicy`
-// plus its `DirectusPermissionRule` rows, and features/crm.feature checks them on dev. They match the
+// plus its `DirectusPermissionRule` rows, and features/crm.feature checks them. They match the
 // signed-in user by the login the group-policies hook links to their person, not by email.
 
 type Filter = Record<string, unknown>;

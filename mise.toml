@@ -8,7 +8,7 @@ lefthook = "2"
 pulumi = "3.277.0"
 # Needs a system Python on macOS.
 gcloud = "latest"
-# For scripts/cluster-sql and scripts/wait-for-authentik.
+# For scripts/wait-for-authentik.
 jq = "latest"
 kubectl = "1.36"
 
@@ -69,7 +69,7 @@ description = "Apply the bootstrap stack"
 run = "pulumi up --yes --refresh --cwd stacks/bootstrap --stack \"$PULUMI_STACK\""
 
 # scripts/each-stack picks the projects from PULUMI_STACK: prod is infra, backend, inbox, listmonk, then
-# authentik. Dev's list stays only until its stacks are destroyed (#171).
+# authentik.
 [tasks.preview]
 description = "Show the diff `mise run deploy` would apply to $PULUMI_STACK"
 run = "./scripts/each-stack preview"

@@ -1,6 +1,6 @@
 // Fills the CI stack's Directus with sample data for screenshots and demos (docs/testing.md): the Givens
 // in test/seed/sample-data.feature, kept after the run. It reads the stack from CI_STACK_TARGET, so it
-// never reaches dev or prod, and does nothing on a stack it has already seeded.
+// never reaches prod, and does nothing on a stack it has already seeded.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";

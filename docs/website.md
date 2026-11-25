@@ -52,8 +52,7 @@ seconds, and no more than 5 minutes, so a burst of edits is one build. The workf
 publishes anything a failed start missed, and a term that starts or ends that day.
 
 The hook signs in to GitHub as a GitHub App installed only on csc-website, which can only start that
-repo's workflows ([manual-setup.md](manual-setup.md#6-directus-directusdomain)). Dev has no App, so
-an edit in dev publishes nothing.
+repo's workflows ([manual-setup.md](manual-setup.md#6-directus-directusdomain)).
 
 ## Loading the proof of concept
 

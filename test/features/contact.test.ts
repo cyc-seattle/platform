@@ -3,8 +3,8 @@ import { newRunId } from "./cluster.ts";
 import { countAfterWait, mailUrl, postForm, search, text, waitForMail } from "./mail.ts";
 import { describeAccessFeature, onEachScenario, Step } from "./steps/index.ts";
 
-// The contact form's scenarios post to dev's forms endpoint as the website would, and read what it
-// sent to info@ from dev's Mailpit. Each visitor's name carries a run ID, so runs never read each
+// The contact form's scenarios post to the forms endpoint as the website would, and read what it
+// sent to info@ from Mailpit. Each visitor's name carries a run ID, so runs never read each
 // other's mail.
 
 const site = "https://cyccommunitysailing.org";
@@ -30,7 +30,7 @@ const visitor = () => ({
 const theirMail = () => `subject:"Website message from Visitor ${runId}"`;
 
 async function send(form: Record<string, string>, origin = site) {
-  ({ location } = await postForm(`${await mailUrl()}/forms/contact`, form, origin));
+  ({ location } = await postForm(`${mailUrl()}/forms/contact`, form, origin));
 }
 
 Step("a visitor sends a message from the contact form", async () => {

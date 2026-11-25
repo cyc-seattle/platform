@@ -48,7 +48,7 @@ async function idByName(collection: "roles" | "policies", name: string): Promise
   const filter = encodeURIComponent(JSON.stringify({ name: { _eq: name } }));
   const [found] = await (await admin()).ok("GET", `/${collection}?filter=${filter}&fields=id`);
   if (!found) {
-    throw new Error(`Dev's Directus has no ${collection === "roles" ? "role" : "policy"} named ${name}.`);
+    throw new Error(`Directus has no ${collection === "roles" ? "role" : "policy"} named ${name}.`);
   }
   return found.id;
 }
@@ -242,7 +242,7 @@ export async function roleOf(userId: string): Promise<string | undefined> {
   return user.role?.name;
 }
 
-/** Waits until the hook has given a user `role`. It runs after every change the tests make on dev, so give it time. */
+/** Waits until the hook has given a user `role`. It runs after every change the tests make, so give it time. */
 export async function hasRole(userId: string, role: string): Promise<void> {
   await eventually(async () => expect(await roleOf(userId)).toBe(role), 60_000);
 }

@@ -2,8 +2,8 @@ import * as gcp from "@pulumi/gcp";
 import * as pulumi from "@pulumi/pulumi";
 import { z } from "zod";
 
-// The infra stack writes this object to each environment's state bucket, because a StackReference
-// can't cross from a dev stack into prod's backend (cyc-seattle/isthmia#215).
+// The infra stack writes this object to each environment's state bucket, where an app's stack reads it
+// without a StackReference to infra (cyc-seattle/isthmia#215).
 export const platformOutputsSchema = z.object({
   project: z.string().min(1),
   projectNumber: z.string().regex(/^\d+$/),

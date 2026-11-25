@@ -16,16 +16,11 @@ interface Created {
 const created: Created[] = [];
 const byName = (type: string, name: string) => created.find((r) => r.type === type && r.name === name)!.inputs;
 
-const deployDevEmail = "deploy-dev@example-project.iam.gserviceaccount.com";
-const deployDevId = "114358314096459279273";
-
 const stackOutputs: Record<string, Record<string, unknown>> = {
   "organization/bootstrap/prod": {
     gkeNodes: { email: "gke-nodes@example-project.iam.gserviceaccount.com" },
     deployRunner: { member: "serviceAccount:deploy-runner@example-project.iam.gserviceaccount.com" },
-    deployDev: { email: deployDevEmail, uniqueId: deployDevId },
     stateBackends: {
-      dev: { url: "gs://example-project-pulumi-dev" },
       prod: { url: "gs://example-project-pulumi-prod" },
     },
   },
@@ -33,7 +28,6 @@ const stackOutputs: Record<string, Record<string, unknown>> = {
 
 const instances: Record<string, [string, string]> = {
   substrate: ["example-project:us-west1:substrate-1234", "10.159.0.5"],
-  "cyc-dev": ["example-project:us-west1:cyc-dev", "10.159.0.6"],
 };
 
 beforeAll(async () => {
@@ -204,8 +198,6 @@ describe("Gateway", () => {
   });
 
   it.each([
-    ["https-dev", "dev.example.team", "dev"],
-    ["https-dev-wildcard", "*.dev.example.team", "dev"],
     ["https-prod", "example.team", "prod"],
     ["https-prod-wildcard", "*.example.team", "prod"],
     ["https-prod-mail", "mail.example.org", "prod"],
@@ -225,40 +217,10 @@ describe("Gateway", () => {
   it("has no other listeners", () => {
     expect(gateway().spec.listeners.map((l: { name: string }) => l.name)).toEqual([
       "http",
-      "https-dev",
-      "https-dev-wildcard",
       "https-prod",
       "https-prod-wildcard",
       "https-prod-mail",
     ]);
-  });
-});
-
-describe("dev certificate and DNS", () => {
-  it("covers the domain and its subdomains", () => {
-    expect(byName("gcp:certificatemanager/certificate:Certificate", "dev")).toMatchObject({
-      managed: { domains: ["dev.example.team", "*.dev.example.team"], dnsAuthorizations: ["dev_id"] },
-    });
-  });
-
-  it("proves control of the domain with the authorization's CNAME", () => {
-    expect(byName("gcp:dns/recordSet:RecordSet", "dev-dns-authorization")).toMatchObject({
-      managedZone: "internal_name",
-      name: "_acme-challenge.dev.example.team.",
-      type: "CNAME",
-      rrdatas: ["challenge.example."],
-    });
-  });
-
-  it.each([
-    ["dev", "dev.example.team."],
-    ["dev-wildcard", "*.dev.example.team."],
-  ])("points %s at the Gateway's address", (name: string, dnsName: string) => {
-    expect(byName("gcp:dns/recordSet:RecordSet", name)).toMatchObject({
-      managedZone: "internal_name",
-      name: dnsName,
-      type: "A",
-    });
   });
 });
 
@@ -293,171 +255,7 @@ describe("prod certificate and DNS", () => {
       (r) =>
         r.type === "gcp:dns/recordSet:RecordSet" && r.inputs.managedZone === "internal_name" && r.inputs.type === "A",
     );
-    expect(records.map((r) => r.name).sort()).toEqual(["dev", "dev-wildcard"]);
-  });
-});
-
-describe("dev namespace", () => {
-  const ofDev = (type: string) => created.filter((r) => r.type === type && r.inputs.metadata?.namespace === "dev");
-
-  it("carries the environment label and the restricted Pod Security Standard", () => {
-    expect(byName("kubernetes:core/v1:Namespace", "dev").metadata).toEqual({
-      name: "dev",
-      labels: { "cycsail.team/environment": "dev", "pod-security.kubernetes.io/enforce": "restricted" },
-    });
-  });
-
-  it("caps total requests and allows no load balancer or node port", () => {
-    const [quota] = ofDev("kubernetes:core/v1:ResourceQuota");
-    expect(quota!.inputs.spec.hard).toEqual({
-      "requests.cpu": "4",
-      "requests.memory": "10Gi",
-      pods: "30",
-      "services.loadbalancers": "0",
-      "services.nodeports": "0",
-    });
-  });
-
-  it("defaults and caps each container's requests", () => {
-    const [limitRange] = ofDev("kubernetes:core/v1:LimitRange");
-    expect(limitRange!.inputs.spec.limits).toEqual([
-      {
-        type: "Container",
-        default: { cpu: "250m", memory: "512Mi" },
-        defaultRequest: { cpu: "250m", memory: "512Mi" },
-        max: { cpu: "1", memory: "2Gi" },
-      },
-    ]);
-  });
-
-  const policy = (name: string) => byName("kubernetes:networking.k8s.io/v1:NetworkPolicy", name);
-
-  it("denies ingress from other namespaces, except the load balancer's, on any port", () => {
-    expect(policy("dev-isolation").spec).toEqual({
-      podSelector: {},
-      policyTypes: ["Ingress"],
-      ingress: [
-        { from: [{ podSelector: {} }] },
-        { from: [{ ipBlock: { cidr: "35.191.0.0/16" } }, { ipBlock: { cidr: "130.211.0.0/22" } }] },
-      ],
-    });
-  });
-
-  it("admits the API's proxy from the konnectivity agents only", () => {
-    expect(policy("dev-api-proxy")).toMatchObject({
-      metadata: { namespace: "dev", name: "allow-api-proxy" },
-      spec: {
-        podSelector: {},
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: [
-              {
-                namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": "kube-system" } },
-                podSelector: { matchLabels: { "k8s-app": "konnectivity-agent" } },
-              },
-            ],
-          },
-        ],
-      },
-    });
-  });
-
-  it("allows egress to the cluster on any port, and outside it on all but the mail ports", () => {
-    expect(policy("dev-mail-egress")).toMatchObject({
-      metadata: { namespace: "dev", name: "deny-mail-egress" },
-      spec: {
-        podSelector: {},
-        policyTypes: ["Egress"],
-        egress: [
-          { to: [{ namespaceSelector: {} }] },
-          {
-            ports: [
-              { protocol: "TCP", port: 1, endPort: 24 },
-              { protocol: "TCP", port: 26, endPort: 464 },
-              { protocol: "TCP", port: 466, endPort: 586 },
-              { protocol: "TCP", port: 588, endPort: 65535 },
-              { protocol: "UDP" },
-            ],
-          },
-        ],
-      },
-    });
-  });
-
-  const bindings = () =>
-    created.filter((r) => r.type === "kubernetes:rbac.authorization.k8s.io/v1:RoleBinding").map((r) => r.inputs);
-  // GKE names a caller by its numeric ID when the token lacks the email scope, as ADC's does.
-  const deployDev = [
-    { apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevEmail },
-    { apiGroup: "rbac.authorization.k8s.io", kind: "User", name: deployDevId },
-  ];
-
-  it("binds admin to deploy-dev in dev only", () => {
-    expect(bindings()).toContainEqual({
-      apiVersion: "rbac.authorization.k8s.io/v1",
-      kind: "RoleBinding",
-      metadata: { namespace: "dev", name: "deploy-dev-admin" },
-      roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "ClusterRole", name: "admin" },
-      subjects: deployDev,
-    });
-  });
-
-  it("lets deploy-dev edit HTTPRoutes and HealthCheckPolicies in dev only", () => {
-    const [role] = created.filter((r) => r.type === "kubernetes:rbac.authorization.k8s.io/v1:Role");
-    expect(role!.inputs.metadata).toEqual({ namespace: "dev", name: "route-editor" });
-    expect(role!.inputs.rules).toEqual([
-      expect.objectContaining({ apiGroups: ["gateway.networking.k8s.io"], resources: ["httproutes"] }),
-      expect.objectContaining({ apiGroups: ["networking.gke.io"], resources: ["healthcheckpolicies"] }),
-    ]);
-    for (const rule of role!.inputs.rules) {
-      expect(rule.verbs).toEqual(expect.arrayContaining(["create", "patch", "delete"]));
-    }
-    expect(bindings()).toContainEqual({
-      apiVersion: "rbac.authorization.k8s.io/v1",
-      kind: "RoleBinding",
-      metadata: { namespace: "dev", name: "deploy-dev-routes" },
-      roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "Role", name: "route-editor" },
-      subjects: deployDev,
-    });
-  });
-
-  it("grants deploy-dev nothing cluster-wide or in another namespace", () => {
-    expect(created.map((r) => r.type)).not.toContain("kubernetes:rbac.authorization.k8s.io/v1:ClusterRoleBinding");
-    expect(bindings()).toHaveLength(2);
-    for (const binding of bindings()) {
-      expect(binding.metadata.namespace).toBe("dev");
-    }
-  });
-});
-
-describe("dev platform outputs", () => {
-  const object = () => byName("gcp:storage/bucketObject:BucketObject", "dev-platform-outputs");
-
-  it("lives at platform/outputs.json in dev's state bucket", () => {
-    expect(object()).toMatchObject({
-      bucket: "example-project-pulumi-dev",
-      name: "platform/outputs.json",
-      contentType: "application/json",
-    });
-  });
-
-  it("holds every platform value, and nothing else", () => {
-    // The provider marks an object's content secret.
-    expect(JSON.parse(object().content.value)).toEqual({
-      project: "example-project",
-      projectNumber: "123456789",
-      region: "us-west1",
-      cluster: "cyc",
-      clusterEndpoint: "gke-example.us-west1.gke.goog",
-      namespace: "dev",
-      gateway: { name: "shared", namespace: "gateway" },
-      domain: "dev.example.team",
-      sqlConnectionName: "example-project:us-west1:cyc-dev",
-      sqlHost: "10.159.0.6",
-      gatewayAddress: "203.0.113.10",
-      registry: "us-west1-docker.pkg.dev/example-project/artifact-docker-repository",
-    });
+    expect(records).toEqual([]);
   });
 });
 
@@ -494,13 +292,25 @@ describe("prod namespace", () => {
     ]);
   });
 
-  it("denies ingress from other namespaces, and has no other policy", () => {
+  it("denies ingress from other namespaces, except the load balancer's, on any port", () => {
+    expect(byName("kubernetes:networking.k8s.io/v1:NetworkPolicy", "prod-isolation").spec).toEqual({
+      podSelector: {},
+      policyTypes: ["Ingress"],
+      ingress: [
+        { from: [{ podSelector: {} }] },
+        { from: [{ ipBlock: { cidr: "35.191.0.0/16" } }, { ipBlock: { cidr: "130.211.0.0/22" } }] },
+      ],
+    });
+  });
+
+  it("has no other policy", () => {
     const policies = ofProd("kubernetes:networking.k8s.io/v1:NetworkPolicy");
     expect(policies.map((p) => p.inputs.metadata.name)).toEqual(["deny-other-namespaces"]);
   });
 
   it("binds no one, because deploy-runner's container.admin covers it", () => {
     expect(ofProd("kubernetes:rbac.authorization.k8s.io/v1:RoleBinding")).toEqual([]);
+    expect(ofProd("kubernetes:rbac.authorization.k8s.io/v1:Role")).toEqual([]);
   });
 });
 
@@ -683,7 +493,7 @@ describe("log exclusions", () => {
 
   it("never exclude an app's logs", () => {
     for (const { inputs } of exclusions()) {
-      expect(inputs.filter).not.toMatch(/namespace_name="(dev|prod)"/);
+      expect(inputs.filter).not.toMatch(/namespace_name="prod"/);
     }
   });
 });

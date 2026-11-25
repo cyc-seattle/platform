@@ -26,7 +26,7 @@ instance exists), and be running again within a few hours.
   this month's copy exists. The instance can't read one: anyone with `cloudsql.admin` on prod, the
   deploys included, could import it and read it, so a restore grants read by hand for its length.
 - **A file deleted or replaced** at the source stays in the files bucket as an old version for 90 days.
-- **Not copied:** dev, whose data is made up, and the hand-set secrets in Secret Manager.
+- **Not copied:** the hand-set secrets in Secret Manager.
   [Manual setup](manual-setup.md#5-secret-values-secret-manager) lists where each one comes from.
   Pulumi-generated secrets are in the copy of the state, encrypted with the main project's KMS keys.
 - **Only the people in `bootstrap:humanDeployers`** can read `csc-backups`. The copies hold minors'

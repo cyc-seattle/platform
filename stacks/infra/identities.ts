@@ -31,9 +31,7 @@ function account(outputName: string): pulumi.Output<Account> {
 }
 
 export const deployRunner = account("deployRunner");
-export const deployDev = account("deployDev");
 export const gkeNodes = account("gkeNodes");
 
 export const deployRunnerMember = deployRunner.member;
-export const deployDevMember = deployDev.member;
 export const gkeNodesMember = gkeNodes.member;

@@ -1,38 +1,24 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import * as yaml from "js-yaml";
 import { expect } from "vitest";
-import { newRunId, secretData } from "./cluster.ts";
+import { newRunId } from "./cluster.ts";
 import { countAfterWait, postForm, text, waitForMail } from "./mail.ts";
 import { describeAccessFeature, onEachScenario, Step } from "./steps/index.ts";
-import { devPlatform } from "./support.ts";
 import { localTarget } from "./target.ts";
 
 // The newsletter's scenarios sign up through Listmonk as the website's form does, read the
 // confirmation from Mailpit, and check the list through Listmonk's API as the read-only test login.
 // Each reader's address carries a run ID, so runs never read each other's.
 
-const listId =
-  localTarget()?.listmonk.listId ??
-  ((
-    yaml.load(readFileSync(join(import.meta.dirname, "../../stacks/listmonk/Pulumi.dev.yaml"), "utf8")) as {
-      config: Record<string, unknown>;
-    }
-  ).config["listmonk:listId"] as string);
+const listId = localTarget().listmonk.listId;
 
-/** Listmonk's address: the CI stack's, or dev's `https://mail.<domain>`. */
-async function listmonkUrl(): Promise<string> {
-  return localTarget()?.listmonk.url ?? `https://mail.${(await devPlatform()).domain}`;
+/** Listmonk's address on the CI stack. */
+function listmonkUrl(): string {
+  return localTarget().listmonk.url;
 }
 
 /** The tests' read-only API login. */
-async function apiLogin(): Promise<{ user: string; token: string }> {
-  const local = localTarget()?.listmonk;
-  if (local) {
-    return { user: local.apiUser, token: local.apiToken };
-  }
-  const { LISTMONK_API_USER, LISTMONK_API_TOKEN } = await secretData("listmonk-tests");
-  return { user: LISTMONK_API_USER!, token: LISTMONK_API_TOKEN! };
+function apiLogin(): { user: string; token: string } {
+  const { apiUser, apiToken } = localTarget().listmonk;
+  return { user: apiUser, token: apiToken };
 }
 const next = "https://cyccommunitysailing.org/newsletter/check-your-email";
 
@@ -47,7 +33,7 @@ const reader = () => `reader-${runId}@example.com`;
 const theirMail = () => `to:"${reader()}"`;
 
 async function signUp(nonce = "") {
-  return postForm(`${await listmonkUrl()}/subscription/form`, {
+  return postForm(`${listmonkUrl()}/subscription/form`, {
     email: reader(),
     name: `Reader ${runId}`,
     l: listId,
@@ -58,9 +44,9 @@ async function signUp(nonce = "") {
 
 /** Their subscription to the newsletter list, as Listmonk's API reports it, or undefined. */
 async function subscription(): Promise<string | undefined> {
-  const { user, token } = await apiLogin();
+  const { user, token } = apiLogin();
   // `search`, not `query`: a SQL query needs the permission that reads every subscriber's every field.
-  const response = await fetch(`${await listmonkUrl()}/api/subscribers?search=${encodeURIComponent(reader())}`, {
+  const response = await fetch(`${listmonkUrl()}/api/subscribers?search=${encodeURIComponent(reader())}`, {
     headers: { authorization: `token ${user}:${token}` },
   });
   expect(response.status, await response.clone().text()).toBe(200);
@@ -125,7 +111,7 @@ Step("a subscriber on the newsletter list", async () => {
 Step("they leave the list from the link to their preferences in an issue", async () => {
   const subscriber = optin!.pathname.split("/").at(-1);
   const { status } = await postForm(
-    `${await listmonkUrl()}/subscription/00000000-0000-0000-0000-000000000000/${subscriber}`,
+    `${listmonkUrl()}/subscription/00000000-0000-0000-0000-000000000000/${subscriber}`,
     { manage: "true", name: `Reader ${runId}` },
   );
   expect(status).toBe(200);

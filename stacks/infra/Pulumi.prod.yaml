@@ -2,12 +2,6 @@ config:
   gcp:project: cyc-admin-scripts
   gcp:region: us-west1
   infra:bootstrapStack: organization/bootstrap/prod
-  infra:devDatabases:
-    - authentik
-    - directus
-    - clubspot_fake
-    - inbox
-    - listmonk
   infra:externalDomain: cyccommunitysailing.org
   infra:internalDomain: cycsail.team
   infra:shortDomain: cycsailing.center
