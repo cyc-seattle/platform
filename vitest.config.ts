@@ -6,7 +6,7 @@ export default mergeConfig(
   base,
   defineConfig({
     test: {
-      exclude: [...configDefaults.exclude, "test/features/**"],
+      exclude: [...configDefaults.exclude, "test/features/**", "test/seed/**"],
     },
   }),
 );

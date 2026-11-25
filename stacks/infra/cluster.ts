@@ -34,7 +34,8 @@ export const cluster = new gcp.container.Cluster(
     monitoringConfig: {
       enableComponents: ["SYSTEM_COMPONENTS"],
       managedPrometheus: { enabled: true },
-      advancedDatapathObservabilityConfig: { enableMetrics: false, enableRelay: false },
+      // GKE keeps Dataplane V2's metrics on in Autopilot; they bill only once a ClusterPodMonitoring collects them.
+      advancedDatapathObservabilityConfig: { enableMetrics: true, enableRelay: false },
     },
     // Autopilot takes the node service account here; the default Compute Engine one holds Editor.
     clusterAutoscaling: {

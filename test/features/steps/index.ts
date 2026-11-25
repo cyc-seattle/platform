@@ -630,7 +630,21 @@ export interface Shard {
  * rows and users after. Given a shard, it runs only that shard's Rules.
  */
 export function describeAccessFeature(name: string, ownSteps: Record<string, ScenarioSteps> = {}, shard?: Shard): void {
-  const parsed = feature(name);
+  describeParsedFeature(feature(name), { ownSteps, ...(shard && { shard }) });
+}
+
+interface Task {
+  result?: { state?: string };
+  tasks?: readonly Task[];
+}
+const failed = (task: Task): boolean => task.result?.state === "fail" || (task.tasks ?? []).some(failed);
+
+/** As `describeAccessFeature`, for a parsed feature. `keep` leaves the run's rows and users in place if it passed. */
+export function describeParsedFeature(
+  parsed: ReturnType<typeof feature>,
+  options: { ownSteps?: Record<string, ScenarioSteps>; shard?: Shard; keep?: boolean } = {},
+): void {
+  const { ownSteps = {}, shard, keep = false } = options;
   // Gherkin's tags apply to everything under them, but vitest-cucumber matches only a scenario's own.
   for (const rule of parsed.rules) {
     for (const tag of parsed.tags) rule.tags.add(tag);
@@ -660,7 +674,13 @@ export function describeAccessFeature(name: string, ownSteps: Record<string, Sce
     }
   }
   // vitest-cucumber runs AfterAllScenarios after each Rule, so cleanup waits for the whole file.
-  afterAll(async () => {
+  // vitest passes the file second, and refuses a first argument that isn't a destructured context.
+  // eslint-disable-next-line no-empty-pattern
+  afterAll(async ({}, file) => {
+    // A failed seed deletes its rows too, since the next run's keys would collide with them.
+    if (keep && !failed(file)) {
+      return;
+    }
     // Rows first: a person's row points at its user.
     const failures = [...(await deleteRows()), ...(await deleteUsers()), ...(await deleteAccounts())];
     if (failures.length > 0) {
