@@ -86,6 +86,8 @@ describe("the shared inbox in prod", () => {
       INBOX_SMTP_PORT: "587",
       INBOX_SMTP_ENCRYPTION: "tls",
     });
+    // Swift Mailer's EHLO name. The relay answers 421 to EHLO [127.0.0.1].
+    expect(env()).toMatchObject({ SERVER_NAME: "inbox.example.com" });
     expect(env()).not.toHaveProperty("APP_REMOTE_HOST_WHITE_LIST");
     expect(env()).not.toHaveProperty("INBOX_TEST_MAILBOX");
     expect(resources.find((r) => r.name === "greenmail")).toBeUndefined();
