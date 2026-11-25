@@ -61,3 +61,26 @@ mise run ci-stack-down
 a local Directus left running for 24 hours spends an activation.
 
 On dev, as deploy.yml does: `PULUMI_STACK=dev mise run integration`.
+
+## Screenshots and demos
+
+Take screenshots and give demos on a CI stack of your own, filled with sample data, never on prod. With Docker
+and the license key in `DIRECTUS_LICENSE_KEY`:
+
+```sh
+mise run ci-stack
+mise run ci-seed
+```
+
+`ci-seed` runs the Givens in `test/seed/sample-data.feature`, the features' own steps, and keeps what they
+make: a team of seven sailors and the five children's parents, a family in a program that isn't a team, a sailor
+with parents and emergency contacts, a crew member with the catalog, an announcement and a link, and a Financial
+Plan. Its rows are named "Sample", such as `Camp Sample`. Run again, it finds its marker and adds nothing. If a
+step fails, it deletes what it made, so you can run it again. It prints the logins it made, which all have the
+password `sample-password`.
+
+Point the app at Directus on `http://localhost:8055`, in place of dev's. Sign in to the Data Studio there as
+`admin@example.com` with `ci-admin-password`, or in the app as one of the sample logins.
+
+Run `mise run ci-stack-down` the same day you start it. Directus's license allows a throwaway instance only if
+it's gone within 24 hours ([Never destroy it](backend.md#never-destroy-it)), and the next `ci-stack` starts empty.

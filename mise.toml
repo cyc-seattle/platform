@@ -131,3 +131,8 @@ run = "node scripts/ci-stack/index.ts down"
 description = "Run the integration tests against the CI stack, all but the @dev features"
 run = "pnpm exec vitest run --config vitest.integration.config.ts"
 env.CI_STACK_TARGET = "{{config_root}}/.ci-stack/target.json"
+
+[tasks.ci-seed]
+description = "Fill the CI stack's Directus with sample data, for screenshots and demos"
+run = "node scripts/ci-seed.ts"
+env.CI_STACK_TARGET = "{{config_root}}/.ci-stack/target.json"

@@ -10,11 +10,13 @@ export type Row = Record<string, unknown>;
 /** A row Directus returned, which always has its key. */
 export type Item = Row & { id: string };
 
-export const runId = newRunId();
+// The seed (scripts/ci-seed.ts) names its rows "Sample", in place of a run id, for screenshots.
+export const runId = process.env["SEED_RUN_ID"] ?? newRunId();
 let serial = 0;
 export const key = (prefix: string) => `${prefix}-${runId}-${++serial}`;
 // Directus checks a user's email against the real TLDs, so not `.test`.
-export const email = (name: string) => `${name}.${runId}-${++serial}@example.com`;
+// Lowercase too: Directus refuses capitals, and the seed's run id has one.
+export const email = (name: string) => `${name}.${runId}-${++serial}@example.com`.toLowerCase();
 const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
 let adminSession: Promise<DirectusSession> | undefined;
