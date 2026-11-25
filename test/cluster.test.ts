@@ -132,7 +132,7 @@ describe("cluster", () => {
     expect(cluster().monitoringConfig).toEqual({
       enableComponents: ["SYSTEM_COMPONENTS"],
       managedPrometheus: { enabled: true },
-      advancedDatapathObservabilityConfig: { enableMetrics: false, enableRelay: false },
+      advancedDatapathObservabilityConfig: { enableMetrics: true, enableRelay: false },
     });
   });
 
