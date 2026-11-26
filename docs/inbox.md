@@ -48,6 +48,18 @@ they answer, under the mailbox's Permissions. FreeScout's admins see every mailb
 When Authentik is down, the break-glass admin signs in with a password: its email is
 `inbox:adminEmail`, and its password is in `inbox-admin-password`.
 
+Once **Force OAuth Login** is on, FreeScout shows no password form. The module keeps that switch as
+`OAUTHLOGIN_FORCE_OAUTH_LOGIN=1` in FreeScout's `.env`, which the image links to `/data/.env` on the
+`inbox-data` disk. If sign-in through Authentik breaks, turn the switch off from a workplace checkout,
+then sign in at `/login` as the break-glass admin:
+
+```sh
+kubectl -n prod exec deploy/inbox -- sh -c "sed -i '/^OAUTHLOGIN_FORCE_OAUTH_LOGIN=/d' /data/.env && php artisan cache:clear"
+```
+
+The load balancer checks `/healthz`, which nginx answers itself, because `/login` redirects to
+Authentik while Force OAuth Login is on.
+
 ## Modules
 
 Paid modules are bought once for each instance: a licence covers one. Prod has:
