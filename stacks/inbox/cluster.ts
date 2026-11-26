@@ -90,6 +90,9 @@ export async function deployInbox(adminEmail: string, mailFrom: string): Promise
     requests: { cpu: "100m", memory: "512Mi" },
     limits: { cpu: "500m" },
     readinessProbe: { httpGet: { path: "/login", port: 8080 }, periodSeconds: 30, timeoutSeconds: 10 },
+    // The load balancer accepts only a 200, and /login redirects to Authentik once Force OAuth Login is on.
+    // The kubelet accepts the redirect, so the readiness probe still checks that PHP answers.
+    healthCheck: { path: "/healthz" },
     // FreeScout answers 403 to any other Host (GHSA-822g-7rw5-53xj).
     checksHost: true,
     // It migrates the database before it serves.

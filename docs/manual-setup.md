@@ -285,9 +285,10 @@ the organization needs more than project Owner.
       (`https://login.<domain>/application/o/authorize/`, `.../token/`, and `.../userinfo/`), the
       scopes `openid email profile`, and the `inbox` stack's `oidcClientId` and `oidcClientSecret`
       outputs (`pulumi stack output --show-secrets --cwd stacks/inbox`). Turn on creating users
-      automatically, and Force OAuth Login.
-   3. Once you know the module's callback path, tighten `inboxRedirectUriPattern` in
-      `stacks/authentik/naming.ts` to it.
+      automatically. Leave Force OAuth Login off until signing in through Authentik works.
+   3. Sign out, sign in through Authentik, then turn on Force OAuth Login. If sign-in through
+      Authentik ever breaks after that, [inbox.md](inbox.md#signing-in) has the command that turns
+      it off again.
 
 6. [ ] **Connect info@**, in prod's FreeScout: Manage → Mailboxes → New mailbox, with the email
        `info@cyccommunitysailing.org` and the name CYC Community Sailing Center. Then, in its
