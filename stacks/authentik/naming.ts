@@ -40,11 +40,12 @@ export function listmonkRedirectUri(rootUrl: string): string {
 }
 
 /**
- * The shared inbox's redirects, as a regex. FreeScout's sign-in module doesn't document its callback
- * path, so this admits any path on the inbox's host until it's known (cyc-seattle/platform#182).
+ * The shared inbox's redirect, as a regex: FreeScout's OAuth module calls back to
+ * `/oauth-login/callback/<provider id>`. The id is FreeScout's own, made when the provider was added
+ * in its settings, so any id is admitted and a re-added provider keeps working (cyc-seattle/platform#182).
  */
 export function inboxRedirectUriPattern(internalDomain: string): string {
-  return `^https://inbox\\.${internalDomain.replace(/\./g, "\\.")}/.*$`;
+  return `^https://inbox\\.${internalDomain.replace(/\./g, "\\.")}/oauth-login/callback/[A-Za-z0-9]+$`;
 }
 
 /**
