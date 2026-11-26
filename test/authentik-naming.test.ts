@@ -38,9 +38,12 @@ describe("hostnames", () => {
     expect(listmonkRedirectUri("https://mail.example.org")).toBe("https://mail.example.org/auth/oidc");
   });
 
-  it("admits a redirect to any path on the inbox's host, and nowhere else", () => {
+  it("admits only FreeScout's OAuth callback on the inbox's host", () => {
     const pattern = new RegExp(inboxRedirectUriPattern("cycsail.team"));
-    expect(pattern.test("https://inbox.cycsail.team/oauth/callback")).toBe(true);
+    expect(pattern.test("https://inbox.cycsail.team/oauth-login/callback/7ikwqjg98")).toBe(true);
+    expect(pattern.test("https://inbox.cycsail.team/oauth/callback")).toBe(false);
+    expect(pattern.test("https://inbox.cycsail.team/oauth-login/callback/7ikwqjg98/../../evil")).toBe(false);
+    expect(pattern.test("https://inbox.cycsail.team/")).toBe(false);
     expect(pattern.test("https://inboxxcycsail.team/")).toBe(false);
     expect(pattern.test("https://inbox.cycsail.team.example.com/")).toBe(false);
     expect(pattern.test("http://inbox.cycsail.team/")).toBe(false);
