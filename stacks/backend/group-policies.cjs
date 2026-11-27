@@ -338,7 +338,7 @@ function register({ filter, action, schedule }, { services, database, getSchema,
     cutoff.setMonth(cutoff.getMonth() - config.teamMonths);
     const sailors = database("registrations")
       .join("offerings", "offerings.id", "registrations.offering_id")
-      .join("programs", "programs.id", "offerings.program_id")
+      .join("programs", "programs.product_id", "offerings.product_id")
       .select("registrations.person_id")
       .where("registrations.status", "confirmed")
       .where("programs.team", true)

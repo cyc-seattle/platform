@@ -42,8 +42,10 @@ erDiagram
     qualifications ||--o{ qualification_covers : "covered by"
     accounts |o--o{ accounts : "parent, contra"
     products ||--o| programs : "program subtype"
-    programs ||--o{ offerings : "offerings of"
+    products ||--o{ offerings : "offerings of"
     registration_forms ||--o{ offerings : "sold on"
+    offerings ||--o{ offering_schedule : "meets weekly"
+    offerings ||--o{ activities : "meets on"
     programs ||--o{ program_boat_classes : sails
     boat_classes ||--o{ program_boat_classes : "sailed by"
     assets ||--o| boats : "boat subtype"
@@ -94,13 +96,28 @@ erDiagram
     }
     offerings {
         uuid id PK
-        uuid program_id FK
+        uuid product_id FK "required"
         string name "such as week 3"
         uuid registration_form_id FK
         date starts_on
         date ends_on
         int price_cents
         int capacity
+        timestamp archived_at
+    }
+    offering_schedule {
+        uuid id PK
+        uuid offering_id FK "required"
+        int weekday "1-7, Monday to Sunday"
+        time start_time
+        time end_time
+    }
+    activities {
+        uuid id PK
+        uuid offering_id FK "required"
+        date date
+        time start_time
+        time end_time
         timestamp archived_at
     }
     registration_forms {

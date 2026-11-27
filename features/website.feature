@@ -10,9 +10,11 @@ Feature: The public website
   build. Anything it can see could end up on the public website. So it can see the website, its
   pictures, and the public profiles of crew on the website, with the first and last name of each.
   It can see what's on sale, so a program page shows its dates and prices: each program's name and
-  ages, each offering that isn't archived, with its price, capacity and how many are confirmed, its
-  registration form, and whether that form's Clubspot camp, once public, takes registrations. It
-  can see nothing else. The website shows only the first name unless staff choose the full name.
+  ages, and each offering on sale. An offering is on sale when it isn't archived, and is on a
+  registration form that isn't archived. It sees each one's price, capacity and how many are
+  confirmed, its registration form, whether that form's Clubspot camp, once public, takes
+  registrations, its schedule (the days and times it meets each week), and each day it meets
+  that isn't cancelled. It can see nothing else. The website shows only the first name unless staff choose the full name.
 
   Rule: The website build can see the website and its pictures
 
@@ -74,10 +76,31 @@ Feature: The public website
       And it can see the offering's form, and whether its camp takes registrations
       But it can't see who registered, or the offering's link to Clubspot
 
+    Example: The website build sees an offering's schedule and the days it meets
+      Given the website build's service account
+      And an offering on a public Clubspot camp's form, which meets on Tuesdays from 4:15 to 7:30 pm
+      Then it can see the offering's schedule
+      And it can see the days the offering meets
+
+    Example: The website build can't see a day that's cancelled
+      Given the website build's service account
+      And an offering on a public Clubspot camp's form, with one of its days cancelled
+      Then it can't see the cancelled day
+
     Example: The website build can't see an archived offering
       Given the website build's service account
       And an archived offering
       Then it can't see the offering
+
+    Example: The website build can't see an offering on no registration form
+      Given the website build's service account
+      And an offering on no registration form, which meets on Tuesdays from 4:15 to 7:30 pm
+      Then it can't see the offering, its schedule, or the days it meets
+
+    Example: The website build can't see an offering on an archived registration form
+      Given the website build's service account
+      And an offering on an archived registration form, which meets on Tuesdays from 4:15 to 7:30 pm
+      Then it can't see the offering, its schedule, or the days it meets
 
     Example: The website build can't see a Clubspot camp that isn't public
       Given the website build's service account
@@ -109,11 +132,11 @@ Feature: The public website
       And a picture outside the website's folder
       Then it can't see the picture
 
-    Example: The website build sees only a catalog program's name and ages through the website
+    Example: The website build sees only a catalog program's name, ages and product through the website
       Given the website build's service account
       And a program on the website linked to a program in the catalog
       When it looks at the catalog program through the website's program
-      Then it sees only the catalog program's name and ages
+      Then it sees only the catalog program's name, ages and product
 
     Example: The website build can't find out about a picture kept elsewhere by searching
       Given the website build's service account

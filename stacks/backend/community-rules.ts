@@ -72,7 +72,7 @@ export const TEAM_MONTHS = 12;
 export const TEAM_REGISTRATION: Filter = {
   _and: [
     { status: { _eq: "confirmed" } },
-    { offering_id: { program_id: { team: { _eq: true } } } },
+    { offering_id: { product_id: { programs: { team: { _eq: true } } } } },
     {
       offering_id: {
         _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: `$NOW(-${TEAM_MONTHS} months)` } }],
@@ -103,7 +103,7 @@ const TEAM_PROGRAM: Filter = { team: { _eq: true } };
 /** A team's offering, inside the window. */
 const TEAM_OFFERING: Filter = {
   _and: [
-    { program_id: { team: { _eq: true } } },
+    { product_id: { programs: { team: { _eq: true } } } },
     { _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: `$NOW(-${TEAM_MONTHS} months)` } }] },
   ],
 };
@@ -169,7 +169,7 @@ export const familyPolicies: CommunityPolicyData[] = [
       {
         collection: "offerings",
         action: "read",
-        fields: ["id", "program_id", "starts_on", "ends_on"],
+        fields: ["id", "product_id", "starts_on", "ends_on"],
         permissions: { registrations: { person_id: MY_FAMILY } },
       },
       // A query filter reads `$CURRENT_USER.person_id` with the user's own access, so a page can find their person.
@@ -179,8 +179,10 @@ export const familyPolicies: CommunityPolicyData[] = [
         fields: ["id", "person_id"],
         permissions: { id: { _eq: "$CURRENT_USER" } },
       },
-      // A program's name isn't private, and a page shows it beside each sign-up.
-      { collection: "programs", action: "read", fields: ["id", "name"] },
+      // A program's name isn't private, and a page shows it beside each sign-up, found by its offering's product.
+      { collection: "programs", action: "read", fields: ["id", "name", "product_id"] },
+      // Nor is a product's, which names an offering.
+      { collection: "products", action: "read", fields: ["id", "name"] },
       // Anyone who signs in can see the program areas, but not the revenue accounts they book to.
       { collection: "program_areas", action: "read", fields: ["id", "name"] },
       // The list a family picks a school from.
@@ -228,7 +230,7 @@ export const teamPolicies: CommunityPolicyData[] = [
       {
         collection: "offerings",
         action: "read",
-        fields: ["id", "program_id", "starts_on", "ends_on"],
+        fields: ["id", "product_id", "starts_on", "ends_on"],
         permissions: TEAM_OFFERING,
       },
       {

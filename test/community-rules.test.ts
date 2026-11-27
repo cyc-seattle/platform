@@ -90,7 +90,7 @@ describe("the Team rules", () => {
     expect(TEAM_REGISTRATION).toEqual({
       _and: [
         { status: { _eq: "confirmed" } },
-        { offering_id: { program_id: { team: { _eq: true } } } },
+        { offering_id: { product_id: { programs: { team: { _eq: true } } } } },
         { offering_id: { _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: "$NOW(-12 months)" } }] } },
       ],
     });

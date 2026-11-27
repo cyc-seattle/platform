@@ -88,6 +88,8 @@ Step("it can't see anything outside the website, crew's public profiles, and wha
     "people",
     "programs",
     "offerings",
+    "offering_schedule",
+    "activities",
     "registration_forms",
     "clubspot_camps",
   ]);
@@ -126,8 +128,8 @@ Step("it looks at the catalog program through the website's program", async () =
   refused = await (await theirSession()).request("GET", `/items/website_programs/${websiteProgramId}?fields=${fields}`);
 });
 
-// Directus leaves out the fields a user can't read, so a linked program has only the four it may.
-Step("it sees only the catalog program's name and ages", () => {
+// Directus leaves out the fields a user can't read, so a linked program has only the five it may.
+Step("it sees only the catalog program's name, ages and product", () => {
   expect(refused, "nothing was asked").toBeDefined();
   const { status, body } = refused!;
   expect(status, JSON.stringify(body)).toBe(200);
@@ -135,29 +137,43 @@ Step("it sees only the catalog program's name and ages", () => {
     .catalog_programs;
   expect(links.length, "the website's program lists its link").toBeGreaterThan(0);
   for (const { catalog_program_id: program } of links) {
-    expect(Object.keys(program).sort(), JSON.stringify(body)).toEqual(["id", "max_age", "min_age", "name"]);
+    expect(Object.keys(program).sort(), JSON.stringify(body)).toEqual([
+      "id",
+      "max_age",
+      "min_age",
+      "name",
+      "product_id",
+    ]);
   }
 });
 
 const adminPatch = async (collection: string, id: string, changes: Record<string, unknown>) =>
   (await admin()).ok("PATCH", `/items/${collection}/${id}`, changes);
 
-let sale: { offeringId: string; formId: string; campId: string } | undefined;
+let sale: { offeringId: string; formId: string; campId: string; scheduleId: string; dayId: string } | undefined;
 onEachScenario(() => {
   sale = undefined;
 });
 
-/** An offering of a new program, on its camp's registration form, with a sailor confirmed in it. */
-async function onSale(campIsPublic: boolean, archived = false): Promise<void> {
+/**
+ * An offering of a new program, on its camp's registration form, with a sailor confirmed in it. It meets
+ * on Tuesdays, and on one day next week. The form can be left off, or archived, and the offering or the
+ * day archived.
+ */
+async function onSale(
+  campIsPublic: boolean,
+  { archived = false, form: formState = "open", dayCancelled = false }: OnSale = {},
+): Promise<void> {
   const program = await newProgram(await newCamp("running"));
   await adminPatch("clubspot_camps", program.camp.id, { public: campIsPublic, registration_closed: false });
   const form = await adminCreate("registration_forms", {
     name: `Form ${runId}`,
     opens_on: daysAgo(30),
     clubspot_camp_id: program.camp.id,
+    ...(formState === "archived" && { archived_at: new Date().toISOString() }),
   });
   await adminPatch("offerings", program.offeringId, {
-    registration_form_id: form.id,
+    registration_form_id: formState === "none" ? null : form.id,
     price_cents: 67_500,
     capacity: 12,
     ...(archived && { archived_at: new Date().toISOString() }),
@@ -165,11 +181,76 @@ async function onSale(campIsPublic: boolean, archived = false): Promise<void> {
   const person = await adminCreate("people", await newRow("people"));
   await signUp(person.id, program);
   await adminPatch("offerings", program.offeringId, { confirmed_count: 1 });
-  sale = { offeringId: program.offeringId, formId: form.id, campId: program.camp.id };
+  const schedule = await adminCreate("offering_schedule", {
+    id: randomUUID(),
+    offering_id: program.offeringId,
+    weekday: 2,
+    start_time: "16:15:00",
+    end_time: "19:30:00",
+  });
+  const day = await adminCreate("activities", {
+    id: randomUUID(),
+    offering_id: program.offeringId,
+    date: daysAgo(-7),
+    start_time: "16:15:00",
+    end_time: "19:30:00",
+    ...(dayCancelled && { archived_at: new Date().toISOString() }),
+  });
+  sale = {
+    offeringId: program.offeringId,
+    formId: form.id,
+    campId: program.camp.id,
+    scheduleId: schedule.id,
+    dayId: day.id,
+  };
+}
+interface OnSale {
+  archived?: boolean;
+  form?: "open" | "none" | "archived";
+  dayCancelled?: boolean;
 }
 Step("an offering on a public Clubspot camp's form, with a sailor confirmed in it", () => onSale(true));
-Step("an archived offering", () => onSale(true, true));
+Step("an offering on a public Clubspot camp's form, which meets on Tuesdays from 4:15 to 7:30 pm", () => onSale(true));
+Step("an offering on a public Clubspot camp's form, with one of its days cancelled", () =>
+  onSale(true, { dayCancelled: true }),
+);
+Step("an archived offering", () => onSale(true, { archived: true }));
 Step("an offering on the form of a Clubspot camp that isn't public", () => onSale(false));
+Step("an offering on no registration form, which meets on Tuesdays from 4:15 to 7:30 pm", () =>
+  onSale(true, { form: "none" }),
+);
+Step("an offering on an archived registration form, which meets on Tuesdays from 4:15 to 7:30 pm", () =>
+  onSale(true, { form: "archived" }),
+);
+
+Step("it can see the offering's schedule", async () => {
+  const { status, body } = await read(
+    byId("offering_schedule", sale!.scheduleId, "offering_id,weekday,start_time,end_time"),
+  );
+  expect(status, JSON.stringify(body)).toBe(200);
+  expect(body.data).toEqual([
+    { offering_id: sale!.offeringId, weekday: 2, start_time: "16:15:00", end_time: "19:30:00" },
+  ]);
+});
+Step("it can see the days the offering meets", async () => {
+  const { status, body } = await read(byId("activities", sale!.dayId, "id,offering_id,date,start_time,end_time"));
+  expect(status, JSON.stringify(body)).toBe(200);
+  expect(body.data).toEqual([
+    {
+      id: sale!.dayId,
+      offering_id: sale!.offeringId,
+      date: daysAgo(-7),
+      start_time: "16:15:00",
+      end_time: "19:30:00",
+    },
+  ]);
+});
+Step("it can't see the cancelled day", () => seesNothing(byId("activities", sale!.dayId)));
+Step("it can't see the offering, its schedule, or the days it meets", async () => {
+  await seesNothing(byId("offerings", sale!.offeringId));
+  await seesNothing(byId("offering_schedule", sale!.scheduleId));
+  await seesNothing(byId("activities", sale!.dayId));
+});
 
 Step("it can see the offering's dates, price and capacity, and that one is confirmed", async () => {
   const fields = "starts_on,ends_on,price_cents,capacity,confirmed_count";

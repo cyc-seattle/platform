@@ -13,12 +13,12 @@ import { runClubspotSync } from "./syncs.ts";
  * ends `daysLate` days after the session does.
  */
 async function linkOffering({ runId, id }: ClubspotRun, daysLate: number): Promise<string> {
-  const program = (await adminCreate("programs", await newRow("programs", { name: `Program ${runId}` }))).id;
+  const program = await adminCreate("programs", await newRow("programs", { name: `Program ${runId}` }));
   const session = await asAdmin("GET", `/items/clubspot_sessions/${id("ses")}?fields=start_date,end_date`);
   const ends = new Date(`${session.end_date}T00:00:00Z`);
   ends.setUTCDate(ends.getUTCDate() + daysLate);
   const offering = await adminCreate("offerings", {
-    program_id: program,
+    product_id: program["product_id"],
     name: `Offering ${runId}`,
     starts_on: session.start_date,
     ends_on: ends.toISOString().slice(0, 10),

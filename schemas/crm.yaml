@@ -198,7 +198,7 @@ collections:
       collapse: open
       collection: registrations
       color: null
-      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{offering_id.program_id.name}}, {{offering_id.starts_on}}"
+      display_template: "{{person_id.first_name}} {{person_id.last_name}} - {{offering_id.product_id.name}}, {{offering_id.starts_on}}"
       group: CRM
       hidden: false
       icon: how_to_reg
@@ -1966,14 +1966,14 @@ fields:
       conditions: null
       display: related-values
       display_options:
-        template: "{{offering_id.program_id.name}}"
+        template: "{{offering_id.product_id.name}}"
       field: registrations
       group: null
       hidden: false
       interface: list-o2m
       note: What this person is signed up for.
       options:
-        template: "{{offering_id.program_id.name}}"
+        template: "{{offering_id.product_id.name}}"
       readonly: true
       required: false
       searchable: true
@@ -2407,14 +2407,14 @@ fields:
       conditions: null
       display: related-values
       display_options:
-        template: "{{program_id.name}}, {{starts_on}} to {{ends_on}}"
+        template: "{{product_id.name}}, {{starts_on}} to {{ends_on}}"
       field: offering_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
       options:
-        template: "{{program_id.name}}, {{starts_on}} to {{ends_on}}"
+        template: "{{product_id.name}}, {{starts_on}} to {{ends_on}}"
       readonly: true
       required: true
       searchable: true

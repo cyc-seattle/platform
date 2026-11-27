@@ -351,6 +351,13 @@ permissionRule(
   { dependsOn: crmSchema },
 );
 
+// A class's program is its offerings' product's, so the sync reads which product each program is.
+permissionRule(
+  "crm-clubspot-sync-programs-read",
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "programs", action: "read", fields: ["id", "product_id"] },
+  { dependsOn: crmSchema },
+);
+
 // registration_billing keys on the billing objectId, so a replaced billing object is a delete of
 // the old row followed by a create, not an update - see planRegistrationBilling.
 permissionRule(

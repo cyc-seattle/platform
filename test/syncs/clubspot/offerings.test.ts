@@ -43,7 +43,7 @@ const withoutIds = <Row extends { id: string }>(rows: Row[]) =>
 /** A catalog offering, linked to Clubspot unless the overrides say otherwise. */
 function offering(overrides: Partial<OfferingRow> & Pick<OfferingRow, "id">): OfferingRow {
   return {
-    program_id: "program-guppies",
+    product_id: "product-guppies",
     starts_on: "2026-06-15",
     ends_on: "2026-06-19",
     capacity: null,
@@ -115,7 +115,12 @@ describe("offeringIdsByKey", () => {
 });
 
 describe("planClassPrograms", () => {
-  it("gives a class its offerings' program, and none when they disagree or there are none", () => {
+  const programOf = new Map([
+    ["product-guppies", "program-guppies"],
+    ["product-j-pod", "program-j-pod"],
+  ]);
+
+  it("gives a class its offerings' product's program, and none when they disagree or there are none", () => {
     const patches = planClassPrograms(
       [
         { id: "guppies", program_id: null },
@@ -127,9 +132,10 @@ describe("planClassPrograms", () => {
         offering({ id: "o-1" }),
         offering({ id: "o-2", clubspot_session_id: "week-2" }),
         offering({ id: "o-3", clubspot_class_id: "mixed" }),
-        offering({ id: "o-4", clubspot_class_id: "mixed", clubspot_session_id: "week-2", program_id: "program-j-pod" }),
-        offering({ id: "o-5", clubspot_class_id: "same", program_id: "program-j-pod" }),
+        offering({ id: "o-4", clubspot_class_id: "mixed", clubspot_session_id: "week-2", product_id: "product-j-pod" }),
+        offering({ id: "o-5", clubspot_class_id: "same", product_id: "product-j-pod" }),
       ],
+      programOf,
     );
 
     expect(patches).toEqual([
@@ -137,6 +143,16 @@ describe("planClassPrograms", () => {
       { id: "mixed", patch: { program_id: null } },
       { id: "unlinked", patch: { program_id: null } },
     ]);
+  });
+
+  it("gives none to a class whose offerings' product isn't a program", () => {
+    const patches = planClassPrograms(
+      [{ id: "charter", program_id: "program-guppies" }],
+      [offering({ id: "o-1", clubspot_class_id: "charter", product_id: "product-charter" })],
+      programOf,
+    );
+
+    expect(patches).toEqual([{ id: "charter", patch: { program_id: null } }]);
   });
 });
 

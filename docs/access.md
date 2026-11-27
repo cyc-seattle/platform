@@ -43,7 +43,7 @@ permissions, plus any shared policies it's given:
 - Community has one policy, Community: own family, in `stacks/backend/community-rules.ts`. It
   matches the signed-in user by their login's person, `directus_users.person_id`, not their email,
   so each of a person's logins sees the same, and a login with no person sees no one. It gives everyone in their household with their
-  details, their children's registrations and medical information, the names of programs and
+  details, their children's registrations and medical information, the names of products, programs and
   program areas, and the list of schools. It reads their own login's `person_id` too, so an app
   finds their row with a filter on `id` for `$CURRENT_USER.person_id`. Directus reads that variable
   with the user's own access in a query, though not in a permission rule.
@@ -77,24 +77,24 @@ permissions, plus any shared policies it's given:
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
 
-| Policy              | Gives                                                                                                                  |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| CRM Reader          | Reads every CRM collection but medical information                                                                     |
-| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only                   |
-| Medical Reader      | Reads every sailor's medical information                                                                               |
-| Medical Writer      | Changes every sailor's medical information                                                                             |
-| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                       |
-| Catalog Writer      | Changes the catalog, and reads the directory                                                                           |
-| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                        |
-| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does        |
-| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same |
-| Crew Reader         | Reads Crew, but a term's pay ([crew-schema.md](crew-schema.md))                                                        |
-| Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                       |
-| Link Writer         | Changes Sail Team's links, but not their previews                                                                      |
-| Announcement Writer | Changes Sail Team's announcements                                                                                      |
-| FreeScout Agent     | Signs in to FreeScout, the shared inbox. Nothing in Directus                                                           |
-| Listmonk Write      | Signs in to Listmonk with its Write role: writes and tests newsletters, and manages subscribers. Nothing in Directus   |
-| Listmonk Send       | Signs in to Listmonk with its Send role: Listmonk Write's, and sends newsletters. Nothing in Directus                  |
+| Policy              | Gives                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| CRM Reader          | Reads every CRM collection but medical information, and each product's name                                                     |
+| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only. Reads each product's name |
+| Medical Reader      | Reads every sailor's medical information                                                                                        |
+| Medical Writer      | Changes every sailor's medical information                                                                                      |
+| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                                |
+| Catalog Writer      | Changes the catalog, and reads the directory                                                                                    |
+| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                                 |
+| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does                 |
+| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same          |
+| Crew Reader         | Reads Crew, but a term's pay ([crew-schema.md](crew-schema.md))                                                                 |
+| Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                                |
+| Link Writer         | Changes Sail Team's links, but not their previews                                                                               |
+| Announcement Writer | Changes Sail Team's announcements                                                                                               |
+| FreeScout Agent     | Signs in to FreeScout, the shared inbox. Nothing in Directus                                                                    |
+| Listmonk Write      | Signs in to Listmonk with its Write role: writes and tests newsletters, and manages subscribers. Nothing in Directus            |
+| Listmonk Send       | Signs in to Listmonk with its Send role: Listmonk Write's, and sends newsletters. Nothing in Directus                           |
 
 They're coarse: whole collections, with no row filters and no hidden fields, but for users, people,
 link previews, and Crew: a Plan policy reads only each user's and person's first and last name, so a
@@ -114,7 +114,8 @@ rather than a policy (`docs/planning-schema.md`). A Medical policy is given with
 Programs and offerings belong to the catalog, so only a Catalog Writer changes them, the links from
 offerings to Clubspot's classes included. A CRM policy reads them, and so do Crew and the Google sync,
 but none of them changes them. The Clubspot sync reads offerings, and writes only each one's count of
-confirmed sailors, which no one else writes. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
+confirmed sailors, which no one else writes. It reads each program's product too, to set a Clubspot
+class's program. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
 
 One field is held back: no policy a person can hold sets a login's person,
 `directus_users.person_id`, or the list of a person's logins, `people.logins`, because a login's
@@ -181,9 +182,11 @@ position's name: never their pay or qualifications. Of People it reads only `fir
 `last_name`, and only of a person whose crew member is on the website, through the `crew_members`
 list on people. The site shows the first name alone unless `show_full_name` is set. It can't read
 anyone else in the CRM, or any other field of theirs. Of the catalog it reads what's on sale: each
-program's name and ages, each offering that isn't archived (its dates, price, capacity, confirmed count
-and form, never its registrations or its link to Clubspot), each registration form that isn't archived,
-and, of a Clubspot camp that's public, whether it takes registrations and hides spots left.
+program's name, ages and product, each offering that isn't archived and is on a registration form that
+isn't (its product, dates, price, capacity, confirmed count and form, never its registrations or its
+link to Clubspot), those offerings' schedules and the days they meet that aren't archived, each
+registration form that isn't archived, and, of a Clubspot camp that's public, whether it takes
+registrations and hides spots left.
 `features/website.feature` gives the rule.
 
 Anything in the Website folder is public: never put a file there that the public website shouldn't show.

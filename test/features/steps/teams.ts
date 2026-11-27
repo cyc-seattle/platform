@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { adminCreate, key, newRow, runId } from "./rows.ts";
+import { admin, adminCreate, key, newRow, runId } from "./rows.ts";
 
 // Programs, and sailors signed up for them, as Clubspot's mirrors, the catalog's offerings, and the CRM's
 // registrations hold them. Each offering is linked to its class as staff would link it, and each
@@ -46,9 +46,9 @@ export async function newCamp(season: Season): Promise<Camp> {
 
 /** A program's class in `camp`, and its offering. A team is a program the club marks as one. */
 export async function newProgram(camp: Camp, { team = false, programId }: { team?: boolean; programId?: string } = {}) {
-  const program =
-    programId ??
-    (await adminCreate("programs", await newRow("programs", { name: `Program ${key("program")}`, team }))).id;
+  const { id: program, product_id: productId } = programId
+    ? await (await admin()).ok("GET", `/items/programs/${programId}?fields=id,product_id`)
+    : await adminCreate("programs", await newRow("programs", { name: `Program ${key("program")}`, team }));
   const { id: classId } = await adminCreate("clubspot_classes", {
     id: key("class"),
     name: `Class ${runId}`,
@@ -58,7 +58,7 @@ export async function newProgram(camp: Camp, { team = false, programId }: { team
   // A class with no sessions of its own is one offering, over its camp's dates.
   const offering = await adminCreate("offerings", {
     id: randomUUID(),
-    program_id: program,
+    product_id: productId,
     name: `Offering ${runId}`,
     starts_on: camp.startsOn,
     ends_on: camp.endsOn,
