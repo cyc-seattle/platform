@@ -35,10 +35,10 @@ let p = new PnlPlan();
 onEachScenario(() => {
   p = new PnlPlan();
 });
-const first = () => p.offerings[0]!["key"];
-const second = () => p.offerings[1]!["key"];
+const first = () => p.offerings[0]!["id"];
+const second = () => p.offerings[1]!["id"];
 const onOffering = (key: unknown, account: string) => (l: CostLine) =>
-  l.cost_center_type === "offering" && l.cost_center_key === key && l.account_id === account;
+  l.cost_center_type === "offering" && l.cost_center_id === key && l.account_id === account;
 
 Step("a Program Plan", () => p.area());
 Step("an offering in it of a program from another program area", async () => {
@@ -86,17 +86,17 @@ Step("a program area with two offerings that each cost {money}", (_, money: stri
 );
 Step("{money} of storage charged to the program area", async (_, money: string) => {
   const area = p.areas[0]!;
-  await p.line(p.areaPlan(area), "storage", { cost_center_type: "program_area", cost_center_key: area }, cents(money), {
+  await p.line(p.areaPlan(area), "storage", { cost_center_type: "program_area", cost_center_id: area }, cents(money), {
     in_mtdc: false,
   });
 });
 Step("the program area takes in {money}", (_, money: string) => {
-  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
+  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.subject_id === p.areas[0]);
   expect(pnl?.revenue_cents).toBe(cents(money));
 });
 Step("its costs include the {money} of storage", async (_, money: string) => {
   const storage = await p.account("storage");
-  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
+  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.subject_id === p.areas[0]);
   expect(pnl?.by_account.find((a) => a.account_id === storage)?.amount_cents).toBe(cents(money));
 });
 // A program area's P&L for each term, one of the Operations Plan's, made the first time a step names it. The
@@ -124,11 +124,11 @@ const termNamed = (key: string | null | undefined) =>
   key == null ? "no term" : ([...terms].find(([, k]) => k === key)?.[0] ?? key);
 const areaTerm = async (name: string) => {
   const key = await termKey(name);
-  return p.out.pnl.find((x) => x.level === "program_area_term" && x.key === p.areas[0] && x.term_key === key);
+  return p.out.pnl.find((x) => x.level === "program_area_term" && x.subject_id === p.areas[0] && x.term_id === key);
 };
 async function termOffering(term: string | null, price: number, costs = 0): Promise<Item> {
   const area = p.areas[0] ?? (await p.area());
-  const extra = { term_key: await termKey(term) };
+  const extra = { term_id: await termKey(term) };
   return p.offering(p.areaPlan(area), await p.product("program", area), price, 1, costs, extra);
 }
 Step("a program area with an offering in {string} that takes in {money}", (_, term: string, money: string) =>
@@ -139,8 +139,8 @@ Step("an offering in {string} that takes in {money}", (_, term: string, money: s
 );
 Step("an offering in no term that takes in {money}", (_, money: string) => termOffering(null, cents(money)));
 Step("the program area's P&L for each term is:", (_, table: { term: string; "takes in": string }[]) => {
-  const rows = p.out.pnl.filter((x) => x.level === "program_area_term" && x.key === p.areas[0]);
-  expect(rows.map((r) => ({ term: termNamed(r.term_key), "takes in": r.revenue_cents }))).toEqual(
+  const rows = p.out.pnl.filter((x) => x.level === "program_area_term" && x.subject_id === p.areas[0]);
+  expect(rows.map((r) => ({ term: termNamed(r.term_id), "takes in": r.revenue_cents }))).toEqual(
     table.map((r) => ({ term: r.term, "takes in": cents(r["takes in"]) })),
   );
 });
@@ -180,7 +180,6 @@ Step(
     const position = await adminCreate("plan_salaried_positions", {
       id: randomUUID(),
       plan_id: plan,
-      key: randomUUID(),
       name: "Director",
       annual_salary_cents: cents(money) * 2080,
       paid_hours_per_year: 2080,
@@ -188,7 +187,6 @@ Step(
     await adminCreate("plan_salaried_bookings", {
       id: randomUUID(),
       plan_id: plan,
-      key: randomUUID(),
       position_id: position.id,
       program_area_id: p.areas[0],
       kind: "management",
@@ -251,13 +249,13 @@ Step("{money} of office costs shared by every offering", async (_, money: string
   await p.line(
     await p.operationsPlan(),
     "office",
-    { cost_center_type: "pool", cost_center_key: await p.pool() },
+    { cost_center_type: "pool", cost_center_id: await p.pool() },
     cents(money),
   );
 });
 Step("every program's indirect cost rate is {percent}", (_, percent: string) => p.indirectCostRate(share(percent)));
 Step("the second offering costs twice as much", async () => {
-  const [line] = await read("plan_budget_lines", { cost_center_key: { _eq: second() } });
+  const [line] = await read("plan_budget_lines", { cost_center_id: { _eq: second() } });
   await (
     await admin()
   ).ok("PATCH", itemPath("plan_budget_lines", line!["id"]), { amount_cents: Number(line!["amount_cents"]) * 2 });
@@ -302,13 +300,13 @@ Step("a {money} coach boat charged to a program area", async (_, money: string) 
   await p.line(
     p.areaPlan(area),
     "coachBoats",
-    { cost_center_type: "program_area", cost_center_key: area },
+    { cost_center_type: "program_area", cost_center_id: area },
     cents(money),
   );
 });
 Step("the program area doesn't pay for the coach boat", async () => {
   const boats = await p.account("coachBoats");
-  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.key === p.areas[0]);
+  const pnl = p.out.pnl.find((x) => x.level === "program_area" && x.subject_id === p.areas[0]);
   expect(pnl?.by_account.some((a) => a.account_id === boats)).toBe(false);
   expect(p.total((l) => l.account_id === boats && l.cost_center_type !== "org")).toBe(0);
 });
@@ -380,7 +378,7 @@ Step("the director's bonus is {money}", (_, money: string) => {
 
 // Bonuses by term.
 const byNet = async (term: string | null, net: number) => {
-  const extra = { term_key: await termKey(term) };
+  const extra = { term_id: await termKey(term) };
   return net < 0 ? bonusProgram(0, -net, extra) : bonusProgram(net, 0, extra);
 };
 Step(
@@ -406,7 +404,7 @@ Step(
 );
 Step("the director's bonus for each term is:", (_, table: { term: string; net: string; bonus: string }[]) => {
   const mine = p.out.bonuses.filter((b) => b.program_area_id === earner!.area);
-  expect(mine.map((b) => ({ term: termNamed(b.term_key), net: b.net_cents, bonus: b.bonus_cents }))).toEqual(
+  expect(mine.map((b) => ({ term: termNamed(b.term_id), net: b.net_cents, bonus: b.bonus_cents }))).toEqual(
     table.map((r) => ({ term: r.term, net: cents(r.net), bonus: cents(r.bonus) })),
   );
 });
@@ -429,7 +427,7 @@ Step(
     await p.line(
       await p.operationsPlan(),
       "office",
-      { cost_center_type: "pool", cost_center_key: await p.pool() },
+      { cost_center_type: "pool", cost_center_id: await p.pool() },
       cents(costs),
     );
     await p.indirectCostRate(share(percent));
@@ -490,10 +488,10 @@ Step("a bonus for the director that comes to {money}", async (_, money: string) 
   const area = p.areas[0]!;
   const product = await p.product("program", area);
   await p.offering(p.areaPlan(area), product, cents(money) * 2, 1);
-  await p.bonus(await p.operationsPlan(), 0.5, [product], { position_key: position });
+  await p.bonus(await p.operationsPlan(), 0.5, [product], { position_id: position });
 });
 Step("the director's pay for the year is:", (_, table: { pay: string; amount: string }[]) => {
-  const pay = p.out.positions.find((x) => x.position_key === position)!;
+  const pay = p.out.positions.find((x) => x.position_id === position)!;
   const shown: Record<string, number> = {
     salary: pay.salary_cents,
     "hourly coaching": pay.hourly_coaching_cents,
@@ -649,7 +647,7 @@ const enoughBoats = async (sailors: number) => [
   { boat_class_id: await boatClass("Sailqubes"), count: Math.ceil(sailors / 2) },
 ];
 
-const wagesOf = async (offering: Item) => p.total(onOffering(offering["key"], await p.account("coachWages")));
+const wagesOf = async (offering: Item) => p.total(onOffering(offering["id"], await p.account("coachWages")));
 const warning = (code: string) => p.out.warnings.find((w) => w.code === code);
 
 Step("{program} have a coach for every {count} sailors", async (_, program: string, sailors: string) => {
@@ -710,7 +708,7 @@ Step(
   },
 );
 Step("the offering takes in {money}", (_, money: string) => {
-  const pnl = p.out.pnl.find((x) => x.level === "offering" && x.key === first());
+  const pnl = p.out.pnl.find((x) => x.level === "offering" && x.subject_id === first());
   expect(pnl?.revenue_cents).toBe(cents(money));
 });
 
@@ -772,7 +770,7 @@ Step(
   "a {program} offering for up to {count} sailors that expects {count}, with a practice from {times}, in a block the director coaches with a coach paid {money} an hour",
   async (_, program: string, max: string, expected: string, times: string, money: string) => {
     await blockOf([await upTo(program, max, expected)], times, {
-      staff: [{ position_key: position, count: 1 }, await staffAt("Coach", 1, cents(money))],
+      staff: [{ position_id: position, count: 1 }, await staffAt("Coach", 1, cents(money))],
     });
   },
 );
@@ -819,7 +817,7 @@ async function coachedBlocks(practices: number, hours: number, pay: "salary" | "
   for (const date of juneDays(practices)) {
     const block = await p.block(plan, date);
     await p.activities(offering, [date], "16:00", `${16 + hours}:00`, { block_id: block });
-    await p.given("plan_block_staff", plan, block, { position_key: position, count: 1, pay });
+    await p.given("plan_block_staff", plan, block, { position_id: position, count: 1, pay });
     for (const s of extra) await p.given("plan_block_staff", plan, block, s);
   }
 }
@@ -854,7 +852,7 @@ async function directorsBlocks(count: number): Promise<void> {
   groups = [];
   for (let i = 0; i < count; i++) groups.push(await offeringOf(undefined, 1));
 }
-const coachedBy = () => ({ staff: [{ position_key: position, count: 1 }] });
+const coachedBy = () => ({ staff: [{ position_id: position, count: 1 }] });
 Step("a salaried director who coaches two blocks", () => directorsBlocks(2));
 Step("a salaried director who coaches three blocks", () => directorsBlocks(3));
 for (const text of [
@@ -876,7 +874,7 @@ Step("the planner is warned that the director is coaching two blocks at once", (
   expect(p.warned("position_double_booked")).toBe(true);
 });
 Step("the director's blocks need {count} hours of another coach", (_, hours: string) => {
-  expect(p.out.positions.find((x) => x.position_key === position)?.double_booked_hours).toBe(Number(hours));
+  expect(p.out.positions.find((x) => x.position_id === position)?.double_booked_hours).toBe(Number(hours));
 });
 
 // The organization's boats and RIBs.
@@ -990,7 +988,7 @@ Step("the offering pays {money} for boat charters", async (_, money: string) => 
 });
 Step("the two offerings pay {money} for boat charters between them", async (_, money: string) => {
   const charters = await p.account("boatCharters");
-  const paid = (o: Item) => p.total(onOffering(o["key"] as string, charters));
+  const paid = (o: Item) => p.total(onOffering(o["id"] as string, charters));
   expect(paid(p.offerings[0]!) + paid(p.offerings[1]!)).toBe(cents(money));
 });
 
@@ -1101,7 +1099,7 @@ Step(
     await blockOf(offerings, MORNING, { boats: await enoughBoats(Number(sailors)) });
   },
 );
-const pnlOf = (offering: Item) => p.out.pnl.find((x) => x.level === "offering" && x.key === offering["key"]);
+const pnlOf = (offering: Item) => p.out.pnl.find((x) => x.level === "offering" && x.subject_id === offering["id"]);
 const offeringOfProgram = (program: string) => p.offerings.find((o) => o["product_id"] === programs[program])!;
 Step("the offering's block can take {count} sailors", (_, sailors: string) => {
   expect(pnlOf(p.offerings[0]!)?.allocation_holds).toBe(Number(sailors));
@@ -1118,7 +1116,7 @@ Step(
     await p.line(
       offering["plan_id"] as string,
       "costs",
-      { cost_center_type: "offering", cost_center_key: offering["key"] },
+      { cost_center_type: "offering", cost_center_id: offering["id"] },
       cents(costs),
     );
   },
@@ -1139,7 +1137,7 @@ Step(
     await p.line(
       offering["plan_id"] as string,
       "costs",
-      { cost_center_type: "offering", cost_center_key: offering["key"] },
+      { cost_center_type: "offering", cost_center_id: offering["id"] },
       cents(costs),
     );
     await blockOf([offering], times, await coachesPaid(count, money));
@@ -1159,7 +1157,7 @@ Step("the planner isn't warned about the block", () => {
 // Readable result lines.
 Step("{money} of office costs in a pool named {string}", async (_, money: string, name: string) => {
   const pool = await p.operationsRow("plan_pools", { name });
-  await p.line(await p.operationsPlan(), "office", { cost_center_type: "pool", cost_center_key: pool }, cents(money), {
+  await p.line(await p.operationsPlan(), "office", { cost_center_type: "pool", cost_center_id: pool }, cents(money), {
     name: "Office",
   });
 });
@@ -1248,7 +1246,10 @@ const plansOf = async (set: string) => (await copied(set)).map((plan) => plan["i
 
 /** The copy of `offering` in a Financial Plan started from the one that holds it. */
 async function copyOf(offering: Item, set: string): Promise<Row> {
-  const [copy] = await read("plan_offerings", { plan_id: { _in: await plansOf(set) }, key: { _eq: offering["key"] } });
+  const [copy] = await read("plan_offerings", {
+    plan_id: { _in: await plansOf(set) },
+    name: { _eq: offering["name"] },
+  });
   expect(copy, "the offering's copy").toBeDefined();
   return copy!;
 }
@@ -1257,7 +1258,7 @@ async function copyOf(offering: Item, set: string): Promise<Row> {
 async function officeIn(set: string, offering: unknown): Promise<number> {
   const office = await p.account("office");
   return (await financialPlanResults(set)).lines
-    .filter((l) => l["account_id"] === office && l["cost_center_key"] === offering)
+    .filter((l) => l["account_id"] === office && l["cost_center_id"] === offering)
     .reduce((t, l) => t + Number(l["amount_cents"]), 0);
 }
 
@@ -1364,7 +1365,7 @@ Step("they start a Financial Plan for the year after from {string}", async (_, n
 });
 Step("the new Financial Plan has the same offering at {money} a sailor", async (_, money: string) => {
   const copy = await copyOf(offering!, started!);
-  expect(copy).toMatchObject({ key: offering!["key"], price_cents: cents(money) });
+  expect(copy).toMatchObject({ name: offering!["name"], price_cents: cents(money) });
   expect(copy["id"]).not.toBe(offering!["id"]);
 });
 Step("its parent is {string}", async (_, name: string) => {
@@ -1385,7 +1386,7 @@ onEachScenario(() => {
 });
 async function draftWithTerm(name: string, inTerm: boolean): Promise<void> {
   term = await p.operationsRow("plan_terms", { name, starts_on: `${PLAN_YEAR}-06-01`, ends_on: `${PLAN_YEAR}-08-31` });
-  offering = (await programWithOffering(100_000, inTerm ? { term_key: term } : {})).offering;
+  offering = (await programWithOffering(100_000, inTerm ? { term_id: term } : {})).offering;
   financialPlan = await p.draftSet();
 }
 Step("a draft Financial Plan whose Operations Plan has a term named {string}, with an offering", (_, name: string) =>
@@ -1393,16 +1394,16 @@ Step("a draft Financial Plan whose Operations Plan has a term named {string}, wi
 );
 Step("a draft Financial Plan whose offering is in a term", () => draftWithTerm(`Summer ${PLAN_YEAR}`, true));
 Step("they put the offering in {string}", async () => {
-  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: term }));
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_id: term }));
 });
 Step("they take the offering out of its term", async () => {
-  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_key: null }));
+  expectOk(await theyWrite("PATCH", itemPath("plan_offerings", offering!["id"]), { term_id: null }));
 });
 Step("the offering is in {string}", async () => {
-  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: term });
+  expect(await one("plan_offerings", offering!["id"], "term_id")).toEqual({ term_id: term });
 });
 Step("the offering is in no term", async () => {
-  expect(await one("plan_offerings", offering!["id"], "term_key")).toEqual({ term_key: null });
+  expect(await one("plan_offerings", offering!["id"], "term_id")).toEqual({ term_id: null });
 });
 
 // An offering's activities, in a Financial Plan started from it.
@@ -1415,7 +1416,6 @@ Step("a frozen Financial Plan named {string} with a practice on June 6", async (
   practice = await adminCreate("plan_activities", {
     id: randomUUID(),
     plan_id: offering["plan_id"],
-    key: randomUUID(),
     offering_id: offering["id"],
     date: `${PLAN_YEAR}-06-06`,
     start_time: "09:00",
@@ -1428,7 +1428,7 @@ Step("a frozen Financial Plan named {string} with a practice on June 6", async (
 Step("its practice on June 6 is the same practice as the one in {string}", async () => {
   const copy = await copyOf(offering!, started!);
   const [activity] = await read("plan_activities", { offering_id: { _eq: copy["id"] } });
-  expect(activity).toMatchObject({ key: practice!["key"], date: `${PLAN_YEAR}-06-06`, plan_id: copy["plan_id"] });
+  expect(activity).toMatchObject({ key: practice!["id"], date: `${PLAN_YEAR}-06-06`, plan_id: copy["plan_id"] });
   expect(activity!["id"]).not.toBe(practice!["id"]);
 });
 
@@ -1478,7 +1478,7 @@ Step("a draft Financial Plan with two Program Plans whose offerings each cost {m
 Step("each Program Plan's offering pays {money} of the office costs", async (_, money: string) => {
   const office = await p.account("office");
   for (const each of p.offerings) {
-    expect(p.total(onOffering(each["key"], office))).toBe(cents(money));
+    expect(p.total(onOffering(each["id"], office))).toBe(cents(money));
   }
 });
 Step("a draft Financial Plan whose offering takes in {money}", async (_, money: string) => {
@@ -1509,7 +1509,7 @@ Step("they see that the Financial Plan's P&L shows the offering takes in {money}
     const { status, body } = await they.request("GET", `/items/plan_result_pnl?limit=-1&filter=${filter}`);
     expect(status).toBe(200);
     const rows = (body as { data: Row[] }).data;
-    return Number(rows.find((r) => r["subject_key"] === offering!["key"])?.["revenue_cents"]);
+    return Number(rows.find((r) => r["subject_id"] === offering!["id"])?.["revenue_cents"]);
   };
   await expect.poll(revenue, DRAFT_RESULTS).toBe(cents(money));
 });
@@ -1517,7 +1517,7 @@ Step("the Financial Plan's P&L shows that the offering takes in {money}", async 
   // A draft's P&L is worked out again a moment after each change, so this waits for the new one.
   const revenue = async () => {
     const { pnl } = await financialPlanResults(financialPlan!);
-    const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
+    const mine = pnl.find((r) => r["level"] === "offering" && r["subject_id"] === offering!["id"]);
     return Number(mine?.["revenue_cents"]);
   };
   await expect.poll(revenue, DRAFT_RESULTS).toBe(cents(money));
@@ -1526,7 +1526,7 @@ Step(
   "a draft Financial Plan that pays a director {percent} of an offering in {string} that takes in {money}",
   async (_, percent: string, term: string, money: string) => {
     await directorWithBonus(share(percent));
-    offering = await bonusProgram(cents(money), 0, { term_key: await termKey(term) });
+    offering = await bonusProgram(cents(money), 0, { term_id: await termKey(term) });
     financialPlan = await p.draftSet();
   },
 );
@@ -1535,7 +1535,7 @@ Step(
   async (_, money: string, term: string) => {
     const { pnl } = await financialPlanResults(financialPlan!);
     const row = pnl.find(
-      (r) => r["level"] === "program_area_term" && r["subject_key"] === earner!.area && r["term_name"] === term,
+      (r) => r["level"] === "program_area_term" && r["subject_id"] === earner!.area && r["term_name"] === term,
     );
     expect(Number(row?.["revenue_cents"])).toBe(cents(money));
   },
@@ -1554,7 +1554,7 @@ Step(
     await p.line(
       await p.operationsPlan(),
       "office",
-      { cost_center_type: "pool", cost_center_key: await p.pool() },
+      { cost_center_type: "pool", cost_center_id: await p.pool() },
       cents(money),
     );
     // The offering's direct costs are $1,000.
@@ -1579,13 +1579,13 @@ Step(
 Step(
   "the P&L of {string} still shows that the offering pays {money} of office costs",
   async (_, name: string, money: string) => {
-    expect(await officeIn(named[name]!, offering!["key"])).toBe(cents(money));
+    expect(await officeIn(named[name]!, offering!["id"])).toBe(cents(money));
   },
 );
 Step("the Financial Plan's P&L names the offering's share of the office {string}", async (_, lineName: string) => {
   const { lines } = await financialPlanResults(financialPlan!);
   const share = lines.find(
-    (l) => l["cost_center_key"] === offering!["key"] && l["account_id"] === p.lines["office"]!["account_id"],
+    (l) => l["cost_center_id"] === offering!["id"] && l["account_id"] === p.lines["office"]!["account_id"],
   );
   expect(share?.["line_name"]).toBe(lineName);
 });
@@ -1679,7 +1679,7 @@ Step(
   "they change {program} to a coach for every {count} sailors in the new Financial Plan",
   async (_, _program: string, sailors: string) => {
     const original = await one("plan_programs", settings, "key");
-    const inCopies = { plan_id: { _in: await plansOf(started!) }, key: { _eq: original["key"] } };
+    const inCopies = { plan_id: { _in: await plansOf(started!) }, key: { _eq: original["id"] } };
     const [copy] = await read("plan_programs", inCopies, "id");
     expectOk(await theyWrite("PATCH", itemPath("plan_programs", copy!["id"]), { sailors_per_coach: Number(sailors) }));
   },
@@ -1890,7 +1890,7 @@ Step("the draft is still in force, and its P&L has the offering at {money} a sai
   // A draft's P&L is worked out again a moment after each change. The offering has 10 sailors.
   const revenue = async () => {
     const { pnl } = await financialPlanResults(financialPlan!);
-    const mine = pnl.find((r) => r["level"] === "offering" && r["subject_key"] === offering!["key"]);
+    const mine = pnl.find((r) => r["level"] === "offering" && r["subject_id"] === offering!["id"]);
     return Number(mine?.["revenue_cents"]);
   };
   await expect.poll(revenue, DRAFT_RESULTS).toBe(cents(money) * 10);
@@ -1982,7 +1982,6 @@ Step("they add a bonus to one of its Program Plans", async () => {
   await theyWrite("POST", "/items/plan_bonus_owners", {
     id: randomUUID(),
     plan_id: p.areaPlan(p.areas[0]!),
-    key: randomUUID(),
     role_name: "Director",
     bonus_rate: 0.1,
     account_id: await p.account("bonus"),
@@ -1994,12 +1993,12 @@ Step("they're told that bonuses go in the Operations Plan", () => expectTold(BON
 const SHIFTS: Record<string, (area: string) => Promise<Row>> = {
   "left out of the split of shared costs": async (area) => ({
     cost_center_type: "program_area",
-    cost_center_key: area,
+    cost_center_id: area,
     in_mtdc: false,
   }),
-  "charged to the shared costs": async () => ({ cost_center_type: "pool", cost_center_key: await p.pool() }),
-  "charged to the organization": async () => ({ cost_center_type: "org", cost_center_key: null }),
-  "for capital": async () => ({ cost_center_type: "org", cost_center_key: null }),
+  "charged to the shared costs": async () => ({ cost_center_type: "pool", cost_center_id: await p.pool() }),
+  "charged to the organization": async () => ({ cost_center_type: "org", cost_center_id: null }),
+  "for capital": async () => ({ cost_center_type: "org", cost_center_id: null }),
 };
 parameter("shift", Object.keys(SHIFTS));
 Step("a draft Financial Plan whose Program Plan has a line {shift}", async (_, shift: string) => {
@@ -2015,7 +2014,7 @@ Step("a draft Financial Plan whose Operations Plan has a line left out of the sp
   await p.line(
     await p.operationsPlan(),
     "storage",
-    { cost_center_type: "pool", cost_center_key: await p.pool() },
+    { cost_center_type: "pool", cost_center_id: await p.pool() },
     100_000,
     { in_mtdc: false },
   );

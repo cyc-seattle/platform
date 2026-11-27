@@ -282,9 +282,9 @@ describe("a database error", () => {
 
   it("from a trigger's refusal, reads as the hook's own refusal", () => {
     expect(databaseError(raised(REFUSED))).toMatchObject({ name: "DirectusError", status: 403, message: REFUSED });
-    expect(databaseError(raised("A plan row can only link to rows in its own plan."))).toMatchObject({
+    expect(databaseError(raised("A plan row can only link to rows in its own Financial Plan."))).toMatchObject({
       status: 400,
-      message: "A plan row can only link to rows in its own plan.",
+      message: "A plan row can only link to rows in its own Financial Plan.",
     });
   });
 

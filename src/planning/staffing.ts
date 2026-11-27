@@ -13,10 +13,10 @@ import type {
   WarningSeverity,
 } from "./types.ts";
 
-/** Hours a salaried position coached, by offering key, for the salaried rule. */
+/** Hours a salaried position coached, by offering id, for the salaried rule. */
 export interface SalariedCoaching {
-  position_key: Id;
-  offering_key: Id;
+  position_id: Id;
+  offering_id: Id;
   hours: number;
   /** `salary` hours are charged at the salary's hourly equivalent; `hourly` ones are paid as wages. */
   pay: "salary" | "hourly";
@@ -147,7 +147,7 @@ export class Staffing {
         this.ctx.warn(
           "unknown_block",
           `${this.ctx.offeringName(a.offering)}'s ${a.kind} is in a missing block.`,
-          a.stored.key,
+          a.stored.id,
         );
         continue;
       }
@@ -155,7 +155,7 @@ export class Staffing {
         this.ctx.warn(
           "block_date_mismatch",
           `${this.ctx.offeringName(a.offering)}'s ${a.kind} is in ${row.name}, on ${dayOf(row.date)}.`,
-          a.stored.key,
+          a.stored.id,
           { plan_id: a.stored.plan_id, date: a.date },
         );
       }
@@ -331,11 +331,11 @@ export class Staffing {
     for (const [a, share] of block.shares) {
       this.ctx.book({
         cost_center_type: "offering",
-        cost_center_key: a.offering.key,
+        cost_center_id: a.offering.id,
         account_id: account,
         function: this.ctx.functionFor(account, null, "offering"),
         amount: amount * share,
-        line_key: `${line}:${a.offering.key}`,
+        line_key: `${line}:${a.offering.id}`,
         line_name: name,
         explanation,
         mtdc_share: mtdcShare,
@@ -551,12 +551,12 @@ export class Staffing {
     const byDay = new Map<string, Block[]>();
     for (const b of blocks) {
       for (const s of b.staff) {
-        if (s.position_key == null || s.count <= 0) continue;
-        const id = `${s.position_key}|${b.row.date}`;
+        if (s.position_id == null || s.count <= 0) continue;
+        const id = `${s.position_id}|${b.row.date}`;
         byDay.set(id, [...(byDay.get(id) ?? []), b]);
       }
     }
-    const names = new Map(this.ctx.data.plan_salaried_positions.map((p) => [p.key, p.name]));
+    const names = new Map(this.ctx.data.plan_salaried_positions.map((p) => [p.id, p.name]));
     const result = new Map<Id, DoubleBooked>();
     for (const [id, list] of byDay) {
       const [key, date] = id.split("|") as [Id, string];
@@ -599,7 +599,7 @@ export class Staffing {
 
     const coaching: SalariedCoaching[] = [];
     const rates = new Map(ctx.data.plan_staff_levels.map((l) => [l.staff_level_id, l.hourly_rate_cents]));
-    const positions = new Map(ctx.data.plan_salaried_positions.map((p) => [p.key, p]));
+    const positions = new Map(ctx.data.plan_salaried_positions.map((p) => [p.id, p]));
     const boatClasses = new Map(ctx.data.boat_classes.map((c) => [c.id, c]));
     const boatRates = new Map(ctx.data.plan_boat_rates.map((r) => [r.boat_class_id, r]));
     const given = new Map<ScheduledActivity, { coaches: number; boats: number }>();
@@ -614,8 +614,8 @@ export class Staffing {
       let paid = 0;
       for (const s of block.staff) {
         if (s.count <= 0) continue;
-        if (s.position_key != null) {
-          const position = positions.get(s.position_key);
+        if (s.position_id != null) {
+          const position = positions.get(s.position_id);
           if (s.pay === "hourly") {
             const hours = s.count * paidHours;
             const rate = position?.hourly_coaching_rate_cents;
@@ -623,7 +623,7 @@ export class Staffing {
               this.warnOnce(
                 "no_hourly_rate",
                 `${position.name} has no hourly coaching rate, so its hours cost nothing.`,
-                position.key,
+                position.id,
                 scope,
               );
             }
@@ -631,8 +631,8 @@ export class Staffing {
             if ((rate ?? 0) > 0) paid += hours;
             for (const [a, share] of block.shares) {
               coaching.push({
-                position_key: s.position_key,
-                offering_key: a.offering.key,
+                position_id: s.position_id,
+                offering_id: a.offering.id,
                 hours: hours * share,
                 pay: "hourly",
                 wages: hours * share * (rate ?? 0),
@@ -642,8 +642,8 @@ export class Staffing {
             const hours = s.count * paidHours;
             for (const [a, share] of block.shares) {
               coaching.push({
-                position_key: s.position_key,
-                offering_key: a.offering.key,
+                position_id: s.position_id,
+                offering_id: a.offering.id,
                 hours: hours * share,
                 pay: "salary",
                 wages: 0,
@@ -657,7 +657,7 @@ export class Staffing {
           this.warnOnce(
             "unknown_staff_level",
             `${block.row.name}'s staff level has no rate, so they cost nothing.`,
-            s.staff_level_id ?? s.key,
+            s.staff_level_id ?? s.id,
             scope,
           );
           continue;
@@ -708,7 +708,6 @@ export class Staffing {
       holds,
       activities: scheduled.map((a) => ({
         offering_id: a.offering.id,
-        offering_key: a.offering.key,
         trip_id: a.trip?.id ?? null,
         activity_id: a.stored.id,
         date: a.date,
@@ -743,7 +742,7 @@ export class Staffing {
         this.warnOnce(
           "trip_without_staff",
           `${trip.name} has no staff on its travel days, so no coach airfare or lodging.`,
-          trip.key,
+          trip.id,
           { plan_id: trip.plan_id, ...(first !== undefined && { date: first }) },
         );
       }
@@ -764,11 +763,11 @@ export class Staffing {
       if (account === undefined) continue;
       ctx.book({
         cost_center_type: "offering",
-        cost_center_key: offering.key,
+        cost_center_id: offering.id,
         account_id: account,
         function: ctx.functionFor(account, null, "offering"),
         amount,
-        line_key: `trip:${trip.key}`,
+        line_key: `trip:${trip.id}`,
         line_name: trip.name,
         explanation: `${trip.name}: ${round2(coaches)} coaches, ${trip.nights ?? 0} nights, ${trip.miles ?? 0} miles`,
       });

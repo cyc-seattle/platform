@@ -25,19 +25,19 @@ export class CostCenterBooker {
 
   add(entry: EntryInput): void {
     const spread = entry.cost_center_type === "product" || entry.cost_center_type === "program_area";
-    if (spread && entry.cost_center_key != null) this.pending.push(entry);
+    if (spread && entry.cost_center_id != null) this.pending.push(entry);
     else this.ctx.book(entry);
   }
 
   flush(): void {
     const pending = this.pending.splice(0);
     const weights = pending.map((entry) =>
-      this.weightsFor(entry.cost_center_type as "product" | "program_area", entry.cost_center_key as Id),
+      this.weightsFor(entry.cost_center_type as "product" | "program_area", entry.cost_center_id as Id),
     );
     pending.forEach((entry, i) => {
       const w = weights[i] ?? null;
       if (w === null) {
-        const key = entry.cost_center_key ?? "";
+        const key = entry.cost_center_id ?? "";
         const name =
           entry.cost_center_type === "product"
             ? (this.ctx.products.get(key)?.name ?? key)
@@ -45,7 +45,7 @@ export class CostCenterBooker {
         this.ctx.warn(
           `${entry.cost_center_type}_without_offerings`,
           `${name} has no offerings this year, so ${entry.line_name} stays on it.`,
-          entry.cost_center_key ?? undefined,
+          entry.cost_center_id ?? undefined,
         );
         this.ctx.book(entry);
         return;
@@ -54,7 +54,7 @@ export class CostCenterBooker {
         this.ctx.book({
           ...entry,
           cost_center_type: "offering",
-          cost_center_key: key,
+          cost_center_id: key,
           amount: entry.amount * share,
           paid_hours: (entry.paid_hours ?? 0) * share,
         });
@@ -66,10 +66,10 @@ export class CostCenterBooker {
 function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, line: string): boolean {
   const known =
     type === "org" ||
-    (type === "offering" && key != null && ctx.offeringsByKey.has(key)) ||
+    (type === "offering" && key != null && ctx.offeringsById.has(key)) ||
     (type === "product" && key != null && ctx.products.has(key)) ||
     (type === "program_area" && key != null && ctx.areas.has(key)) ||
-    (type === "pool" && key != null && ctx.data.plan_pools.some((p) => p.key === key));
+    (type === "pool" && key != null && ctx.data.plan_pools.some((p) => p.id === key));
   if (!known)
     ctx.warn("unknown_cost_center", `Line ${line}'s ${type.replace("_", " ")} ${key ?? ""} isn't in the plan.`, line);
   return known;
@@ -83,12 +83,12 @@ function checkCostCenter(ctx: Context, type: CostCenterType, key: Id | null, lin
  */
 function warnCostShift(
   ctx: Context,
-  line: Pick<PlanBudgetLine, "plan_id" | "key" | "name" | "cost_center_type" | "account_id"> & {
+  line: Pick<PlanBudgetLine, "plan_id" | "id" | "name" | "cost_center_type" | "account_id"> & {
     in_mtdc?: boolean;
   },
 ): void {
   if (ctx.planOf.get(line.plan_id)?.kind !== "program_area") return;
-  const warn = (message: string) => ctx.warn("cost_off_programs", message, line.key, { plan_id: line.plan_id });
+  const warn = (message: string) => ctx.warn("cost_off_programs", message, line.id, { plan_id: line.plan_id });
   const org = ctx.data.organization.name;
   const capital = ctx.accountType(line.account_id) === "asset";
   if (capital && line.cost_center_type === "org") {
@@ -107,20 +107,20 @@ function warnCostShift(
 export function bookBudgetLines(ctx: Context, booker: CostCenterBooker): void {
   for (const line of ctx.data.plan_budget_lines) {
     if (line.fiscal_year !== ctx.data.fiscal_year) continue;
-    if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_key, line.key)) continue;
+    if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_id, line.id)) continue;
     const capital = ctx.accountType(line.account_id) === "asset";
     const onOrg = line.cost_center_type === "org" || capital;
     warnCostShift(ctx, line);
     if (capital && line.cost_center_type !== "org") {
-      ctx.warn("capital_off_org", `${line.name} is capital, so ${ctx.data.organization.name} pays for it.`, line.key);
+      ctx.warn("capital_off_org", `${line.name} is capital, so ${ctx.data.organization.name} pays for it.`, line.id);
     }
     booker.add({
       cost_center_type: onOrg ? "org" : line.cost_center_type,
-      cost_center_key: onOrg ? null : line.cost_center_key,
+      cost_center_id: onOrg ? null : line.cost_center_id,
       account_id: line.account_id,
       function: ctx.functionFor(line.account_id, line.function, onOrg ? "org" : line.cost_center_type),
       amount: line.amount_cents,
-      line_key: `budget:${line.key}`,
+      line_key: `budget:${line.id}`,
       line_name: line.name,
       explanation: line.name,
       mtdc_share: line.in_mtdc ? 1 : 0,
@@ -133,21 +133,21 @@ export function bookLaborLines(ctx: Context, booker: CostCenterBooker): void {
   const rates = new Map(ctx.data.plan_staff_levels.map((l) => [l.staff_level_id, l.hourly_rate_cents]));
   const names = new Map(ctx.data.staff_levels.map((l) => [l.id, l.name]));
   for (const line of ctx.data.plan_labor_lines) {
-    if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_key, line.key)) continue;
+    if (!checkCostCenter(ctx, line.cost_center_type, line.cost_center_id, line.id)) continue;
     warnCostShift(ctx, line);
     const level = line.staff_level_id;
     const rate = level == null ? undefined : rates.get(level);
     if (level == null || rate === undefined) {
-      ctx.warn("unknown_staff_level", `Labor line ${line.key}'s staff level has no rate. It's left out.`, line.key);
+      ctx.warn("unknown_staff_level", `Labor line ${line.id}'s staff level has no rate. It's left out.`, line.id);
       continue;
     }
     booker.add({
       cost_center_type: line.cost_center_type,
-      cost_center_key: line.cost_center_type === "org" ? null : line.cost_center_key,
+      cost_center_id: line.cost_center_type === "org" ? null : line.cost_center_id,
       account_id: line.account_id,
       function: ctx.functionFor(line.account_id, line.function, line.cost_center_type),
       amount: line.hours * rate,
-      line_key: `labor:${line.key}`,
+      line_key: `labor:${line.id}`,
       line_name: line.name,
       explanation: `${line.name}: hours × ${names.get(level) ?? "the staff level"}'s rate`,
       wages: true,

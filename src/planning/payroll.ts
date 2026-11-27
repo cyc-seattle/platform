@@ -21,11 +21,11 @@ export function bookPayrollTax(ctx: Context): void {
   warnUnpaidHours(ctx, taxes);
   const wages = new Map<
     string,
-    Pick<Entry, "cost_center_type" | "cost_center_key" | "function"> & { amount: number; hours: number }
+    Pick<Entry, "cost_center_type" | "cost_center_id" | "function"> & { amount: number; hours: number }
   >();
   for (const e of ctx.entries) {
     if (!e.wages) continue;
-    const id = [e.cost_center_type, e.cost_center_key, e.function].join("|");
+    const id = [e.cost_center_type, e.cost_center_id, e.function].join("|");
     const sum = wages.get(id) ?? { ...e, amount: 0, hours: 0 };
     sum.amount += e.amount;
     sum.hours += e.paid_hours;
@@ -38,11 +38,11 @@ export function bookPayrollTax(ctx: Context): void {
     for (const tax of taxes) {
       ctx.book({
         cost_center_type: w.cost_center_type,
-        cost_center_key: w.cost_center_key,
+        cost_center_id: w.cost_center_id,
         account_id: account,
         function: w.function,
         amount: payrollTax(tax, w.amount, w.hours),
-        line_key: `payroll_tax:${tax.key}`,
+        line_key: `payroll_tax:${tax.id}`,
         line_name: tax.name,
         explanation: payrollTaxBasis(tax),
       });
@@ -59,7 +59,7 @@ function warnUnpaidHours(ctx: Context, taxes: PlanPayrollTax[]): void {
     ctx.warn(
       "no_paid_hours_for_tax",
       `${position.name} has no paid hours a year, so no ${hourly.name} on its salary.`,
-      position.key,
+      position.id,
     );
   }
 }

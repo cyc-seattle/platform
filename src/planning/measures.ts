@@ -6,22 +6,22 @@ function counts(entry: Entry): boolean {
 }
 
 /** Sums the entries an offering's base counts, weighting each by `weigh`. */
-function sumEntries(ctx: Context, offeringKey: Id, weigh: (e: Entry) => number): number {
+function sumEntries(ctx: Context, offeringId: Id, weigh: (e: Entry) => number): number {
   let total = 0;
   for (const e of ctx.entries) {
-    if (e.cost_center_type !== "offering" || e.cost_center_key !== offeringKey || !counts(e)) continue;
+    if (e.cost_center_type !== "offering" || e.cost_center_id !== offeringId || !counts(e)) continue;
     total += e.amount * weigh(e);
   }
   return total;
 }
 
 /** Modified total direct costs: an offering's direct expenses, less those excluded from MTDC. */
-export function mtdc(ctx: Context, offeringKey: Id): number {
-  return sumEntries(ctx, offeringKey, (e) => (ctx.accountType(e.account_id) === "expense" ? e.mtdc_share : 0));
+export function mtdc(ctx: Context, offeringId: Id): number {
+  return sumEntries(ctx, offeringId, (e) => (ctx.accountType(e.account_id) === "expense" ? e.mtdc_share : 0));
 }
 
-export function revenue(ctx: Context, offeringKey: Id): number {
-  return sumEntries(ctx, offeringKey, (e) => (ctx.accountType(e.account_id) === "revenue" ? 1 : 0));
+export function revenue(ctx: Context, offeringId: Id): number {
+  return sumEntries(ctx, offeringId, (e) => (ctx.accountType(e.account_id) === "revenue" ? 1 : 0));
 }
 
 /**
@@ -33,8 +33,8 @@ export function spreadWeights(ctx: Context, type: "product" | "program_area", ke
     type === "product" ? o.product_id === key : ctx.products.get(o.product_id)?.program_area_id === key,
   );
   if (offerings.length === 0) return null;
-  const weights = new Map(offerings.map((o) => [o.key, Math.max(0, mtdc(ctx, o.key))]));
+  const weights = new Map(offerings.map((o) => [o.id, Math.max(0, mtdc(ctx, o.id))]));
   const total = [...weights.values()].reduce((t, w) => t + w, 0);
-  if (total <= 0) return new Map(offerings.map((o) => [o.key, 1 / offerings.length]));
+  if (total <= 0) return new Map(offerings.map((o) => [o.id, 1 / offerings.length]));
   return new Map([...weights].map(([k, w]) => [k, w / total]));
 }

@@ -26,7 +26,7 @@ const NOT_EDITOR = "Only someone who can edit this Financial Plan can do this.";
 const NOT_DRAFT = "Only a draft's numbers can be worked out again.";
 const PLAN_STAYS = "A plan can't move to another Financial Plan.";
 const ROW_STAYS = "A plan row can't move to another plan. Copy it into that plan instead.";
-const SAME_PLAN = "A plan row can only link to rows in its own plan.";
+const SAME_PLAN = "A plan row can only link to rows in its own Financial Plan.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
 const RESULTS_BY_HOOK = "A Financial Plan's results are worked out from its plans, and can't be written by hand.";
 const NEW_SET_DRAFT = "A new Financial Plan starts as a draft.";
@@ -234,7 +234,7 @@ CREATE OR REPLACE FUNCTION cyc_frozen_plans_row() RETURNS trigger LANGUAGE plpgs
 DECLARE
   set_status text;
   linked_id uuid;
-  linked_plan uuid;
+  linked_set uuid;
 BEGIN
   IF TG_OP = 'UPDATE' AND NEW.plan_id IS DISTINCT FROM OLD.plan_id THEN
     ${raise(ROW_STAYS)};
@@ -259,9 +259,12 @@ BEGIN
   FOR i IN 0 .. TG_NARGS - 1 BY 2 LOOP
     linked_id := (to_jsonb(NEW) ->> TG_ARGV[i])::uuid;
     IF linked_id IS NOT NULL THEN
-      EXECUTE format('SELECT plan_id FROM %I WHERE id = $1', TG_ARGV[i + 1]) INTO linked_plan USING linked_id;
+      EXECUTE format('SELECT p.financial_plan_id FROM %I r JOIN ${PLANS} p ON p.id = r.plan_id WHERE r.id = $1',
+        TG_ARGV[i + 1]) INTO linked_set USING linked_id;
       -- A row that doesn't exist is the foreign key's to refuse.
-      IF linked_plan IS NOT NULL AND linked_plan <> NEW.plan_id THEN
+      IF linked_set IS NOT NULL AND linked_set IS DISTINCT FROM (
+        SELECT financial_plan_id FROM ${PLANS} WHERE id = NEW.plan_id
+      ) THEN
         ${raise(SAME_PLAN)};
       END IF;
     END IF;
@@ -557,8 +560,8 @@ async function seedPayrollTaxes(db) {
   if (!ready) return [];
   await db.exec("ALTER TABLE plan_payroll_taxes DISABLE TRIGGER USER");
   await db.exec(
-    `INSERT INTO plan_payroll_taxes (id, plan_id, key, name, wage_share, hourly_cents, sort)
-      SELECT gen_random_uuid(), s.plan_id, gen_random_uuid(), s.name, s.wage_share, s.hourly_cents, s.sort
+    `INSERT INTO plan_payroll_taxes (id, plan_id, name, wage_share, hourly_cents, sort)
+      SELECT gen_random_uuid(), s.plan_id, s.name, s.wage_share, s.hourly_cents, s.sort
         FROM ${PAYROLL_TAXES_SEED} s JOIN ${PLANS} p ON p.id = s.plan_id`,
   );
   await db.exec("ALTER TABLE plan_payroll_taxes ENABLE TRIGGER USER");
@@ -634,39 +637,39 @@ async function loadPlan(config, db, set, plans) {
 function resultRows(data, out, operations) {
   const areaPlan = new Map();
   for (const p of data.plans) if (p.kind === "program_area") areaPlan.set(p.program_area_id, p.id);
-  const offerings = new Map(data.plan_offerings.map((o) => [o.key, o]));
+  const offerings = new Map(data.plan_offerings.map((o) => [o.id, o]));
   const products = new Map(data.products.map((p) => [p.id, p]));
   const areas = new Map(data.program_areas.map((a) => [a.id, a]));
-  const pools = new Map(data.plan_pools.map((p) => [p.key, p]));
-  const owners = new Map(data.plan_bonus_owners.map((o) => [o.key, o.plan_id]));
-  const terms = new Map((data.plan_terms ?? []).map((t) => [t.key, t]));
+  const pools = new Map(data.plan_pools.map((p) => [p.id, p]));
+  const owners = new Map(data.plan_bonus_owners.map((o) => [o.id, o.plan_id]));
+  const terms = new Map((data.plan_terms ?? []).map((t) => [t.id, t]));
   // A frozen plan keeps its terms' names and first days, so its results read without its rows.
-  const termOf = (key) => ({
-    term_key: key ?? null,
-    term_name: terms.get(key)?.name ?? null,
-    term_starts_on: terms.get(key)?.starts_on ?? null,
+  const termOf = (id) => ({
+    term_id: id ?? null,
+    term_name: terms.get(id)?.name ?? null,
+    term_starts_on: terms.get(id)?.starts_on ?? null,
   });
-  const ownerOf = (type, key) => {
-    if (type === "offering") return offerings.get(key)?.plan_id;
-    if (type === "product") return areaPlan.get(products.get(key)?.program_area_id) ?? operations;
-    if (type === "program_area" || type === "program_area_term") return areaPlan.get(key) ?? operations;
+  const ownerOf = (type, id) => {
+    if (type === "offering") return offerings.get(id)?.plan_id;
+    if (type === "product") return areaPlan.get(products.get(id)?.program_area_id) ?? operations;
+    if (type === "program_area" || type === "program_area_term") return areaPlan.get(id) ?? operations;
     return operations;
   };
-  const nameOf = (type, key) =>
+  const nameOf = (type, id) =>
     ({
-      offering: () => offerings.get(key)?.name,
-      product: () => products.get(key)?.name,
-      program_area: () => areas.get(key)?.name,
-      program_area_term: () => areas.get(key)?.name,
-      pool: () => pools.get(key)?.name,
+      offering: () => offerings.get(id)?.name,
+      product: () => products.get(id)?.name,
+      program_area: () => areas.get(id)?.name,
+      program_area_term: () => areas.get(id)?.name,
+      pool: () => pools.get(id)?.name,
     })[type]?.() ?? "Organization";
   const { operating, fundraising } = out.organization;
   return {
     plan_result_lines: out.lines.map((l) => ({
-      owner: ownerOf(l.cost_center_type, l.cost_center_key),
+      owner: ownerOf(l.cost_center_type, l.cost_center_id),
       cost_center_type: l.cost_center_type,
-      cost_center_key: l.cost_center_key,
-      cost_center_name: nameOf(l.cost_center_type, l.cost_center_key),
+      cost_center_id: l.cost_center_id,
+      cost_center_name: nameOf(l.cost_center_type, l.cost_center_id),
       account_id: l.account_id,
       function: l.function,
       amount_cents: l.amount_cents,
@@ -675,10 +678,10 @@ function resultRows(data, out, operations) {
       explanation: l.explanation,
     })),
     plan_result_pnl: out.pnl.map((p) => ({
-      owner: ownerOf(p.level, p.key),
+      owner: ownerOf(p.level, p.subject_id),
       level: p.level,
-      subject_key: p.key,
-      name: nameOf(p.level, p.key),
+      subject_id: p.subject_id,
+      name: nameOf(p.level, p.subject_id),
       revenue_cents: p.revenue_cents,
       expense_cents: p.expense_cents,
       net_cents: p.net_cents,
@@ -688,10 +691,10 @@ function resultRows(data, out, operations) {
       sailor_days: p.sailor_days,
       allocation_holds: p.allocation_holds,
       breakeven_enrollment: p.breakeven_enrollment,
-      ...termOf(p.term_key),
+      ...termOf(p.term_id),
     })),
     plan_result_positions: out.positions.map((p) => ({
-      position_key: p.position_key,
+      position_id: p.position_id,
       name: p.name,
       salary_cents: p.salary_cents,
       salaried_coaching_hours: p.salaried_coaching_hours,
@@ -707,18 +710,18 @@ function resultRows(data, out, operations) {
       double_booked_dates: p.double_booked_dates,
     })),
     plan_result_bonuses: out.bonuses.map((b) => ({
-      owner: owners.get(b.bonus_owner_key),
+      owner: owners.get(b.bonus_owner_id),
       name: b.role_name,
-      ...termOf(b.term_key),
+      ...termOf(b.term_id),
       bonus_rate: b.bonus_rate,
       net_cents: b.net_cents,
       bonus_cents: b.bonus_cents,
-      bonus_owner_key: b.bonus_owner_key,
-      program_area_key: b.program_area_id,
+      bonus_owner_id: b.bonus_owner_id,
+      program_area_id: b.program_area_id,
     })),
     plan_result_capital: out.capital.map((c) => ({
       rank: c.rank,
-      item_key: c.key,
+      item_id: c.item_id,
       name: c.name,
       amount_cents: c.amount_cents,
       running_cents: c.running_cents,
@@ -728,7 +731,7 @@ function resultRows(data, out, operations) {
       owner: w.plan_id ?? null,
       code: w.code,
       message: w.message,
-      subject_key: w.key ?? null,
+      subject_id: w.subject_id ?? null,
       date: w.date ?? null,
       category: w.category,
       severity: w.severity,
@@ -925,7 +928,7 @@ function asWritten(row) {
 
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each of the parent's plans, with
- * every row, each keeping its `key`, and each link pointing at the copy of the row it linked to.
+ * every row, each link pointing at the copy of the row it linked to.
  * Does nothing if the Financial Plan has no parent, or already has plans.
  */
 async function copyParent(config, db, setId) {
@@ -940,6 +943,7 @@ async function copyParent(config, db, setId) {
       copyOf.set(source.id, copy.id);
     }
     const ids = [...copyOf.keys()];
+    const copied = [];
     for (const table of copyOrder(config)) {
       const links = Object.entries(config.links[table] ?? {});
       const rows = ids.length === 0 ? [] : await trx(table).whereIn("plan_id", ids).select("*");
@@ -964,6 +968,12 @@ async function copyParent(config, db, setId) {
             .update({ [field]: copyOf.get(row[field]) });
         }
       }
+      copied.push(...rows.filter((r) => r.cost_center_id != null).map((row) => ({ table, row })));
+    }
+    // A cost center names an offering or a pool by its row's id, or a catalog row, whose id stays.
+    for (const { table, row } of copied) {
+      const center = copyOf.get(row.cost_center_id);
+      if (center !== undefined) await trx(table).where("id", copyOf.get(row.id)).update({ cost_center_id: center });
     }
     return true;
   });

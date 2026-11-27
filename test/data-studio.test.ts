@@ -56,21 +56,15 @@ const VISIBLE_KEYS: Record<string, string> = {
   "sync_tasks.key": "Names what the task works on, such as a camp, not the task itself.",
 };
 
-/** Key fields planners type on the row's page, copying another row's Key. Out of the default columns. */
-const PLANNER_KEYS: Record<string, string> = {
-  "plan_offerings.term_key": "Planners copy in a term's Key.",
-  "plan_block_staff.position_key": "Planners copy in a salaried position's Key.",
-  "plan_labor_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
-  "plan_budget_lines.cost_center_key": "Planners copy in an offering's or pool's Key, or a product's ID.",
-  "plan_bonus_owners.position_key": "Planners copy in a salaried position's Key.",
-  "plan_bonus_owners.term_key": "Planners copy in a term's Key.",
+/** IDs planners type on the row's page, copying another row's ID. Out of the default columns. */
+const PLANNER_IDS: Record<string, string> = {
+  "plan_labor_lines.cost_center_id":
+    "A cost center is an offering, a pool, a product or an area, so no one picker fits.",
+  "plan_budget_lines.cost_center_id":
+    "A cost center is an offering, a pool, a product or an area, so no one picker fits.",
 };
 
-/** A planning row's own Key: read-only, and visible so planners can copy it into the fields above. */
-const isPlanRowKey = (field: Field) => field.collection.startsWith("plan_") && field.field === "key";
-
-const shownOnPurpose = (field: Field) =>
-  key(field) in VISIBLE_KEYS || key(field) in PLANNER_KEYS || (isPlanRowKey(field) && field.meta.readonly);
+const shownOnPurpose = (field: Field) => key(field) in VISIBLE_KEYS || key(field) in PLANNER_IDS;
 
 /** Status fields that stay free text. */
 const FREE_TEXT_STATUS: Record<string, string> = {
@@ -174,14 +168,14 @@ describe("the Data Studio", () => {
       expect(shown).toEqual([]);
     });
 
-    it("keeps the key fields planners type out of the default columns, with a note", () => {
-      const keyFields = columns.filter((field) => key(field) in PLANNER_KEYS || isPlanRowKey(field));
+    it("keeps the IDs planners type out of the default columns, with a note", () => {
+      const keyFields = columns.filter((field) => key(field) in PLANNER_IDS);
       const columned = keyFields.filter((field) =>
         defaultViews.some((view) => view.collection === field.collection && view.fields.includes(field.field)),
       );
       expect(columned.map(key)).toEqual([]);
       expect(keyFields.filter((field) => !field.meta.note).map(key)).toEqual([]);
-      expect(Object.keys(PLANNER_KEYS).filter((k) => !columns.some((field) => key(field) === k))).toEqual([]);
+      expect(Object.keys(PLANNER_IDS).filter((k) => !columns.some((field) => key(field) === k))).toEqual([]);
     });
 
     it("hides an ID that links to nothing", () => {

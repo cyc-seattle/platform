@@ -23,12 +23,11 @@ function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
   return {
     id: "owner",
     plan_id: "v1",
-    key: "owner-key",
     role_name: "Director",
     bonus_rate: 0.5,
     account_id: A.bonus,
     basis: null,
-    position_key: null,
+    position_id: null,
     ...overrides,
   };
 }
@@ -55,7 +54,7 @@ function programs(rows: { revenue: number; cost: number }[], extra: Partial<Plan
         account_id: A.rent,
         amount_cents: r.cost,
         cost_center_type: "offering",
-        cost_center_key: offerings[i]!.key,
+        cost_center_id: offerings[i]!.id,
       }),
     ),
     plan_bonus_owner_products: [owns(p.id)],
@@ -71,9 +70,7 @@ describe("bonus bases", () => {
       plan_bonus_owners: [owner({ basis })],
       plan_pools: [ga],
     });
-    data.plan_budget_lines.push(
-      budgetLine({ amount_cents: 600_000, cost_center_type: "pool", cost_center_key: ga.key }),
-    );
+    data.plan_budget_lines.push(budgetLine({ amount_cents: 600_000, cost_center_type: "pool", cost_center_id: ga.id }));
     return computePlan(allocateAll(data));
   }
 
@@ -87,13 +84,13 @@ describe("bonus bases", () => {
 
   it("never counts one bonus in another's base", () => {
     const data = programs([{ revenue: 1_000_000, cost: 0 }], {
-      plan_bonus_owners: [owner(), owner({ id: "second", key: "second-key" })],
+      plan_bonus_owners: [owner(), owner({ id: "second" })],
     });
     data.plan_bonus_owner_products.push(owns(data.products[0]!.id, "second"));
     data.plan_bonus_owner_products[1]!.id = "bp-second";
     const out = computePlan(data);
-    expect(total(out, { line: "bonus:owner-key" })).toBe(500_000);
-    expect(total(out, { line: "bonus:second-key" })).toBe(500_000);
+    expect(total(out, { line: "bonus:owner" })).toBe(500_000);
+    expect(total(out, { line: "bonus:second" })).toBe(500_000);
   });
 });
 
@@ -104,7 +101,7 @@ describe("payroll tax on a bonus", () => {
       plan_payroll_taxes: [payrollTax()],
     });
     const out = computePlan(data);
-    expect(total(out, { line: "bonus_payroll_tax:owner-key", account_id: A.payrollTax })).toBe(50_000);
+    expect(total(out, { line: "bonus_payroll_tax:owner", account_id: A.payrollTax })).toBe(50_000);
   });
 
   it("charges each tax on wages as its own line, and no tax by the hour, since a bonus pays for no hours", () => {
@@ -138,14 +135,14 @@ describe("payroll tax on a bonus", () => {
             account_id: A.rent,
             amount_cents: 100_000,
             cost_center_type: "offering",
-            cost_center_key: o.key,
+            cost_center_id: o.id,
           }),
         ),
-        budgetLine({ amount_cents: 100_000, cost_center_type: "pool", cost_center_key: ga.key }),
+        budgetLine({ amount_cents: 100_000, cost_center_type: "pool", cost_center_id: ga.id }),
       ],
     });
     const out = computePlan(allocateAll(data));
-    expect(pnlOf(out, first.key).mtdc_cents).toBe(pnlOf(out, second.key).mtdc_cents);
+    expect(pnlOf(out, first.id).mtdc_cents).toBe(pnlOf(out, second.id).mtdc_cents);
   });
 });
 
@@ -191,7 +188,7 @@ describe("a salaried coach on a block", () => {
       activity(o.id, { date: `2027-06-${String(i + 1).padStart(2, "0")}`, start_time: "16:00", end_time: "19:00" }),
     );
     const staff = [
-      { position_key: coach.key, pay },
+      { position_id: coach.id, pay },
       ...(others > 0 ? [{ staff_level_id: level.staff_level_id, count: others }] : []),
     ];
     const data = emptyPlan({
@@ -210,21 +207,21 @@ describe("a salaried coach on a block", () => {
     const { o, coach, data } = coached(null);
     const out = computePlan(data);
     // 30 hours at 4000¢, the salary's hourly equivalent.
-    expect(total(out, { line: `salary:${coach.key}:coaching`, cost_center_key: o.key })).toBe(120_000);
+    expect(total(out, { line: `salary:${coach.id}:coaching`, cost_center_id: o.id })).toBe(120_000);
     expect(total(out, { account_id: A.coachWages })).toBe(0);
   });
 
   it("can be paid by the hour at their own rate, on top of the salary", () => {
     const { o, coach, data } = coached("hourly");
     const out = computePlan(data);
-    expect(total(out, { account_id: A.coachWages, cost_center_key: o.key })).toBe(90_000);
-    expect(total(out, { line: `salary:${coach.key}:coaching` })).toBe(0);
-    expect(out.positions.find((p) => p.position_key === coach.key)?.hourly_coaching_cents).toBe(90_000);
+    expect(total(out, { account_id: A.coachWages, cost_center_id: o.id })).toBe(90_000);
+    expect(total(out, { line: `salary:${coach.id}:coaching` })).toBe(0);
+    expect(out.positions.find((p) => p.position_id === coach.id)?.hourly_coaching_cents).toBe(90_000);
   });
 
   it("pays the block's other staff their level's rate", () => {
     const { o, data } = coached("hourly", { rate: 4000, others: 1 });
-    expect(total(computePlan(data), { account_id: A.coachWages, cost_center_key: o.key })).toBe(210_000);
+    expect(total(computePlan(data), { account_id: A.coachWages, cost_center_id: o.id })).toBe(210_000);
   });
 
   it("pays nothing for the hours of a coach paid by the hour with no rate of their own, and warns", () => {
@@ -236,10 +233,10 @@ describe("a salaried coach on a block", () => {
 
   it("adds up a position's salary, hourly coaching and bonus", () => {
     const { coach, data } = coached("hourly", { extra: { plan_payroll_taxes: [payrollTax()] } });
-    data.plan_bonus_owners = [owner({ position_key: coach.key, bonus_rate: 0.1 })];
+    data.plan_bonus_owners = [owner({ position_id: coach.id, bonus_rate: 0.1 })];
     data.plan_bonus_owner_products = [owns(data.products[0]!.id)];
     const out = computePlan(data);
-    const summary = out.positions.find((p) => p.position_key === coach.key);
+    const summary = out.positions.find((p) => p.position_id === coach.id);
     // Net: 2000000 − 90000 wages − 9000 tax on them = 1901000; 10% of it.
     expect(summary).toMatchObject({
       salary_cents: 2_000_000,
@@ -267,7 +264,7 @@ describe("one salaried coach in two places", () => {
       plan_salaried_positions: [director],
       plan_activities: acts,
       ...blocks(
-        ...acts.map((a, i) => block([a], { staff: [{ position_key: director.key }] }, { name: `Group ${i + 1}` })),
+        ...acts.map((a, i) => block([a], { staff: [{ position_id: director.id }] }, { name: `Group ${i + 1}` })),
       ),
     });
     return { data, acts, director };
@@ -339,8 +336,8 @@ describe("one salaried coach in two places", () => {
     Object.assign(
       data,
       blocks(
-        block([acts[0]!, acts[1]!], { staff: [{ position_key: director.key }] }),
-        block([acts[2]!], { staff: [{ position_key: director.key }] }),
+        block([acts[0]!, acts[1]!], { staff: [{ position_id: director.id }] }),
+        block([acts[2]!], { staff: [{ position_id: director.id }] }),
       ),
     );
     expect(computePlan(data).positions[0]).toMatchObject({ double_booked_hours: 3, double_booked_dates: 1 });
@@ -369,7 +366,7 @@ describe("closed dates", () => {
     const data = emptyPlan({
       products: [p],
       plan_offerings: [o],
-      plan_closed_dates: [{ id: "c", plan_id: "v1", key: "c", date: "2027-09-06", name: "Labor Day" }],
+      plan_closed_dates: [{ id: "c", plan_id: "v1", date: "2027-09-06", name: "Labor Day" }],
       plan_activities: [activity(o.id, { date: "2027-09-06" })],
     });
     expect(computePlan(data).warnings).toContainEqual(
@@ -397,10 +394,10 @@ describe("the review's edge cases", () => {
             account_id: A.programRevenue,
             amount_cents: 100_000,
             cost_center_type: "product",
-            cost_center_key: p.id,
+            cost_center_id: p.id,
           }),
         ],
-        plan_bonus_owners: [owner({ position_key: director.key })],
+        plan_bonus_owners: [owner({ position_id: director.id })],
         plan_bonus_owner_products: [owns(p.id)],
       }),
     );
@@ -419,7 +416,7 @@ describe("the review's edge cases", () => {
         products: [p],
         plans: [{ id: "v1", kind: "program_area", program_area_id: area.id }],
         plan_offerings: [o],
-        plan_closed_dates: [{ id: "c", plan_id: "v1", key: "c", date: "2027-06-01", name: "A day off" }],
+        plan_closed_dates: [{ id: "c", plan_id: "v1", date: "2027-06-01", name: "A day off" }],
         plan_activities: [activity(o.id)],
       }),
     );
@@ -437,8 +434,8 @@ describe("the review's edge cases", () => {
         plan_offerings: [o],
         plan_salaried_positions: [position()],
         plan_activities: acts,
-        ...blocks(...acts.map((a) => block([a], { staff: [{ position_key: "missing" }] }))),
-        plan_bonus_owners: [owner({ position_key: "missing" })],
+        ...blocks(...acts.map((a) => block([a], { staff: [{ position_id: "missing" }] }))),
+        plan_bonus_owners: [owner({ position_id: "missing" })],
       }),
     );
     expect(out.warnings.filter((w) => w.code === "unknown_position")).toHaveLength(1);

@@ -274,7 +274,6 @@ export class PnlPlan {
     const offering = await adminCreate("plan_offerings", {
       id: randomUUID(),
       plan_id: plan,
-      key: randomUUID(),
       product_id: product,
       name: `Offering ${key("offering")}`,
       starts_on: `${PLAN_YEAR}-06-01`,
@@ -285,7 +284,7 @@ export class PnlPlan {
     });
     this.offerings.push(offering);
     if (costs > 0) {
-      await this.line(plan, "costs", { cost_center_type: "offering", cost_center_key: offering["key"] }, costs);
+      await this.line(plan, "costs", { cost_center_type: "offering", cost_center_id: offering["id"] }, costs);
     }
     return offering;
   }
@@ -295,7 +294,6 @@ export class PnlPlan {
     const line = await adminCreate("plan_budget_lines", {
       id: randomUUID(),
       plan_id: plan,
-      key: randomUUID(),
       name: `${account} ${key("line")}`,
       account_id: await this.account(account),
       amount_cents: amount,
@@ -313,10 +311,9 @@ export class PnlPlan {
       await adminCreate("plan_pools", {
         id: randomUUID(),
         plan_id: await this.operationsPlan(),
-        key: randomUUID(),
         name: "Office",
       })
-    )["key"] as string;
+    )["id"] as string;
     return this.poolId;
   }
 
@@ -324,7 +321,6 @@ export class PnlPlan {
     await adminCreate("plan_revenue_charges", {
       id: randomUUID(),
       plan_id: await this.operationsPlan(),
-      key: randomUUID(),
       name,
       rate,
       product_kinds: kinds,
@@ -333,15 +329,14 @@ export class PnlPlan {
     });
   }
 
-  /** A row in the Operations Plan, such as a salaried position. Returns its key. */
+  /** A row in the Operations Plan, such as a salaried position. Returns its id. */
   async operationsRow(collection: string, fields: Row): Promise<string> {
     const row = await adminCreate(collection, {
       id: randomUUID(),
       plan_id: await this.operationsPlan(),
-      key: randomUUID(),
       ...fields,
     });
-    return row["key"] as string;
+    return row["id"] as string;
   }
 
   /** A bonus owner in `plan` with `rate` of its products' net, owning `products`. Returns its id. */
@@ -349,7 +344,6 @@ export class PnlPlan {
     const owner = await adminCreate("plan_bonus_owners", {
       id: randomUUID(),
       plan_id: plan,
-      key: randomUUID(),
       role_name: "Director",
       bonus_rate: rate,
       account_id: await this.account("bonus"),
@@ -363,7 +357,6 @@ export class PnlPlan {
     await adminCreate("plan_bonus_owner_products", {
       id: randomUUID(),
       plan_id: plan,
-      key: randomUUID(),
       bonus_owner_id: owner,
       product_id: product,
     });
@@ -377,7 +370,6 @@ export class PnlPlan {
         await adminCreate("plan_activities", {
           id: randomUUID(),
           plan_id: offering["plan_id"],
-          key: randomUUID(),
           offering_id: offering.id,
           date,
           start_time: start,
@@ -396,7 +388,6 @@ export class PnlPlan {
     const settings = await adminCreate("plan_programs", {
       id: randomUUID(),
       plan_id: this.areaPlan(area),
-      key: randomUUID(),
       product_id: product,
       ...fields,
     });
@@ -416,7 +407,6 @@ export class PnlPlan {
       await adminCreate("plan_activity_blocks", {
         id: randomUUID(),
         plan_id: plan,
-        key: randomUUID(),
         date,
         name,
         ...fields,
@@ -434,7 +424,6 @@ export class PnlPlan {
     await adminCreate(collection, {
       id: randomUUID(),
       plan_id: plan,
-      key: randomUUID(),
       block_id: block,
       ...fields,
     });

@@ -43,8 +43,8 @@ describe("activities", () => {
       activity(id, { date: "2027-06-02" }),
       activity(id, { date: "2027-06-03", kind: "travel" }),
     ]);
-    expect(pnlOf(out, o.key).days).toBe(2);
-    expect(pnlOf(out, o.key).sailor_days).toBe(12);
+    expect(pnlOf(out, o.id).days).toBe(2);
+    expect(pnlOf(out, o.id).sailor_days).toBe(12);
   });
 
   it("schedules an offering's activities on both sides of the plan year's start", () => {

@@ -7,7 +7,7 @@ import type { BonusSummary, Id, PlanBonusOwner, PlanPayrollTax, PlanTerm } from 
 interface Base {
   term: PlanTerm | null;
   net: number;
-  offeringKeys: Id[];
+  offeringIds: Id[];
 }
 
 /**
@@ -31,11 +31,11 @@ export function bookBonuses(ctx: Context, terms: OfferingTerms): BonusSummary[] 
       const bonus = owner.bonus_rate * Math.max(0, base.net);
       const booked = bonus === 0 ? 0 : bookBonus(ctx, owner, base, bonus, taxes, taxAccount);
       summaries.push({
-        bonus_owner_key: owner.key,
+        bonus_owner_id: owner.id,
         role_name: owner.role_name,
-        position_key: owner.position_key ?? null,
+        position_id: owner.position_id ?? null,
         program_area_id: area,
-        term_key: base.term?.key ?? null,
+        term_id: base.term?.id ?? null,
         bonus_rate: owner.bonus_rate,
         net_cents: Math.round(base.net),
         bonus_cents: Math.round(booked),
@@ -55,16 +55,16 @@ function bookBonus(
   taxAccount: Id | undefined,
 ): number {
   const weights = new Map<Id, number>();
-  for (const key of base.offeringKeys) {
+  for (const key of base.offeringIds) {
     const r = revenue(ctx, key);
     if (r > 0) weights.set(key, r);
   }
   if (weights.size === 0) {
-    if (base.offeringKeys.length === 0) {
+    if (base.offeringIds.length === 0) {
       ctx.warn(
         "bonus_without_offerings",
         `${owner.role_name}'s bonus has no offerings this year. It's left out.`,
-        owner.key,
+        owner.id,
       );
       return 0;
     }
@@ -72,20 +72,20 @@ function bookBonus(
     ctx.warn(
       "bonus_without_revenue",
       `${owner.role_name}'s offerings have no revenue, so its bonus is split evenly.`,
-      owner.key,
+      owner.id,
     );
-    for (const key of base.offeringKeys) weights.set(key, 1);
+    for (const key of base.offeringIds) weights.set(key, 1);
   }
   const total = [...weights.values()].reduce((t, w) => t + w, 0);
   for (const [key, w] of weights) {
     const amount = (bonus * w) / total;
     ctx.book({
       cost_center_type: "offering",
-      cost_center_key: key,
+      cost_center_id: key,
       account_id: owner.account_id,
       function: ctx.functionFor(owner.account_id, null, "offering"),
       amount,
-      line_key: `bonus:${owner.key}`,
+      line_key: `bonus:${owner.id}`,
       line_name: `Bonus: ${owner.role_name}`,
       explanation: `${owner.role_name}: ${owner.bonus_rate} × net of its products ${base.term === null ? "in no term" : `in ${base.term.name}`}`,
       stage: "bonus",
@@ -95,11 +95,11 @@ function bookBonus(
     for (const tax of taxes) {
       ctx.book({
         cost_center_type: "offering",
-        cost_center_key: key,
+        cost_center_id: key,
         account_id: taxAccount,
         function: ctx.functionFor(owner.account_id, null, "offering"),
         amount: amount * (tax.wage_share ?? 0),
-        line_key: `bonus_payroll_tax:${owner.key}:${tax.key}`,
+        line_key: `bonus_payroll_tax:${owner.id}:${tax.id}`,
         line_name: `${tax.name} on bonus: ${owner.role_name}`,
         explanation: `${payrollTaxBasis(tax)} on ${owner.role_name}'s bonus`,
         stage: "bonus",
@@ -122,7 +122,7 @@ function areaOf(ctx: Context, owner: PlanBonusOwner): Id | null {
 
 /**
  * The owner's products' net in each term they have an offering in, with those offerings, in term
- * order and then no term. An owner with a `term_key` has only that term's. An area plan's bonus
+ * order and then no term. An owner with a `term_id` has only that term's. An area plan's bonus
  * counts only that area's products, and warns about any other.
  */
 function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Base[] {
@@ -135,7 +135,7 @@ function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Bas
       ctx.warn(
         "bonus_outside_area",
         `${owner.role_name}'s bonus names ${product?.name ?? row.product_id}, from another area. It's left out.`,
-        owner.key,
+        owner.id,
       );
       continue;
     }
@@ -144,33 +144,33 @@ function basesOf(ctx: Context, owner: PlanBonusOwner, terms: OfferingTerms): Bas
 
   const bases = new Map<Id | null, Base>();
   const baseFor = (term: PlanTerm | null): Base => {
-    const base = bases.get(term?.key ?? null) ?? { term, net: 0, offeringKeys: [] };
-    bases.set(term?.key ?? null, base);
+    const base = bases.get(term?.id ?? null) ?? { term, net: 0, offeringIds: [] };
+    bases.set(term?.id ?? null, base);
     return base;
   };
   const owned = new Set<Id>();
   for (const o of ctx.data.plan_offerings) {
     if (!products.has(o.product_id)) continue;
-    owned.add(o.key);
-    baseFor(terms.get(o.key) ?? null).offeringKeys.push(o.key);
+    owned.add(o.id);
+    baseFor(terms.get(o.id) ?? null).offeringIds.push(o.id);
   }
   const afterPools = (owner.basis ?? "after_shared_costs") === "after_shared_costs";
   for (const e of ctx.entries) {
-    if (e.stage === "bonus" || (!afterPools && e.stage === "pool") || e.cost_center_key == null) continue;
+    if (e.stage === "bonus" || (!afterPools && e.stage === "pool") || e.cost_center_id == null) continue;
     let term: PlanTerm | null;
-    if (e.cost_center_type === "offering" && owned.has(e.cost_center_key)) {
-      term = terms.get(e.cost_center_key) ?? null;
-    } else if (e.cost_center_type === "product" && products.has(e.cost_center_key)) {
+    if (e.cost_center_type === "offering" && owned.has(e.cost_center_id)) {
+      term = terms.get(e.cost_center_id) ?? null;
+    } else if (e.cost_center_type === "product" && products.has(e.cost_center_id)) {
       term = null;
     } else continue;
     const type = ctx.accountType(e.account_id);
     if (type === "revenue") baseFor(term).net += e.amount;
     else if (type === "expense") baseFor(term).net -= e.amount;
   }
-  if (owner.term_key == null) return [...bases.values()].sort((a, b) => compareTerms(a.term, b.term));
-  const term = (ctx.data.plan_terms ?? []).find((t) => t.key === owner.term_key);
+  if (owner.term_id == null) return [...bases.values()].sort((a, b) => compareTerms(a.term, b.term));
+  const term = (ctx.data.plan_terms ?? []).find((t) => t.id === owner.term_id);
   if (term === undefined) {
-    ctx.warn("unknown_bonus_term", `${owner.role_name}'s bonus term isn't in the plan, so it isn't paid.`, owner.key);
+    ctx.warn("unknown_bonus_term", `${owner.role_name}'s bonus term isn't in the plan, so it isn't paid.`, owner.id);
     return [];
   }
   return [baseFor(term)];

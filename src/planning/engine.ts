@@ -41,7 +41,7 @@ export function computePlan(data: PlanData): EngineOutput {
   const rates = indirectCostRates(data);
   for (const row of output.pnl) {
     if (row.level !== "offering") continue;
-    const offering = data.plan_offerings.find((o) => o.key === row.key);
+    const offering = data.plan_offerings.find((o) => o.id === row.subject_id);
     if (offering === undefined) continue;
     const rate = output.organization.indirect.recovered_cents === 0 ? 0 : (rates.get(offering.product_id) ?? 0);
     row.breakeven_enrollment = breakeven(data, offering, row.net_cents, rate);
@@ -52,7 +52,7 @@ export function computePlan(data: PlanData): EngineOutput {
 
 /** Warns when an offering needs more sailors than expected to pay for itself, or never does. */
 function offeringWarnings(offering: PlanOffering, name: string, row: Pnl): EngineWarning[] {
-  const about = { key: offering.key, plan_id: offering.plan_id };
+  const about = { subject_id: offering.id, plan_id: offering.plan_id };
   const warnings: EngineWarning[] = [];
   if (offering.capacity == null) return warnings;
   const breakeven = row.breakeven_enrollment;
@@ -87,7 +87,7 @@ function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate
   const slice = sliceOf(data, offering);
   const netAt = (n: number) => {
     const row = calculate(slice, new Map([[offering.id, n]])).pnl.find(
-      (p) => p.level === "offering" && p.key === offering.key,
+      (p) => p.level === "offering" && p.subject_id === offering.id,
     );
     return row === undefined ? 0 : row.net_cents - rate * Math.max(0, row.mtdc_cents);
   };
@@ -108,8 +108,8 @@ function sliceOf(data: PlanData, offering: PlanOffering): PlanData {
   );
   const offeringIds = new Set(activities.map((a) => a.offering_id).concat(offering.id));
   const inBlocks = <T extends { block_id: Id }>(rows: T[]) => rows.filter((r) => blockIds.has(r.block_id));
-  const onOffering = <T extends { cost_center_type: string; cost_center_key: Id | null }>(rows: T[]) =>
-    rows.filter((r) => r.cost_center_type === "offering" && r.cost_center_key === offering.key);
+  const onOffering = <T extends { cost_center_type: string; cost_center_id: Id | null }>(rows: T[]) =>
+    rows.filter((r) => r.cost_center_type === "offering" && r.cost_center_id === offering.id);
   return {
     ...data,
     plan_offerings: data.plan_offerings.filter((o) => offeringIds.has(o.id)),
@@ -149,13 +149,13 @@ function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
   booker.flush();
   bookPayrollTax(ctx);
 
-  const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.key, mtdc(ctx, o.key)]));
+  const mtdcByOffering = new Map(ctx.data.plan_offerings.map((o) => [o.id, mtdc(ctx, o.id)]));
   const indirect = allocateIndirectCosts(ctx);
   const bonuses = bookBonuses(ctx, terms);
   const bonusByPosition = new Map<Id, number>();
   for (const b of bonuses) {
-    if (b.position_key == null) continue;
-    bonusByPosition.set(b.position_key, (bonusByPosition.get(b.position_key) ?? 0) + b.bonus_cents);
+    if (b.position_id == null) continue;
+    bonusByPosition.set(b.position_id, (bonusByPosition.get(b.position_id) ?? 0) + b.bonus_cents);
   }
 
   const lines = sumLines(ctx);
@@ -197,7 +197,7 @@ function checkAreas(ctx: Context): void {
         plan.kind === "operations"
           ? `${ctx.offeringName(offering)} is in the Operations Plan, but its program is in an area.`
           : `${ctx.offeringName(offering)} is in another area's plan.`;
-      ctx.warn("offering_in_wrong_plan", message, offering.key);
+      ctx.warn("offering_in_wrong_plan", message, offering.id);
     }
   }
 }
@@ -210,10 +210,10 @@ function summarizePositions(
   bonuses: Map<Id, number>,
   doubleBooked: Map<Id, DoubleBooked>,
 ): PositionSummary[] {
-  const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.key));
+  const known = new Set(ctx.data.plan_salaried_positions.map((p) => p.id));
   const named = [
-    ...coaching.map((c) => c.position_key),
-    ...ctx.data.plan_bonus_owners.flatMap((o) => (o.position_key == null ? [] : [o.position_key])),
+    ...coaching.map((c) => c.position_id),
+    ...ctx.data.plan_bonus_owners.flatMap((o) => (o.position_id == null ? [] : [o.position_id])),
   ];
   for (const key of new Set(named)) {
     if (!known.has(key)) {
@@ -221,16 +221,16 @@ function summarizePositions(
     }
   }
   return ctx.data.plan_salaried_positions.map((position) => {
-    const hourly = coaching.filter((c) => c.position_key === position.key && c.pay === "hourly");
-    const charges = charged.get(position.key);
+    const hourly = coaching.filter((c) => c.position_id === position.id && c.pay === "hourly");
+    const charges = charged.get(position.id);
     const hourlyCents = hourly.reduce((t, c) => t + c.wages, 0);
-    const bonus = bonuses.get(position.key) ?? 0;
+    const bonus = bonuses.get(position.id) ?? 0;
     const hourlyHours = hourly.reduce((t, c) => t + c.hours, 0);
     const total = position.annual_salary_cents + hourlyCents + bonus;
     // The hours behind its pay: its paid hours, and those it coaches by the hour at a rate of its own.
     const paidHours = (position.paid_hours_per_year ?? 0) + (hourlyCents > 0 ? hourlyHours : 0);
     return {
-      position_key: position.key,
+      position_id: position.id,
       name: position.name,
       salary_cents: position.annual_salary_cents,
       salaried_coaching_hours: charges?.coaching_hours ?? 0,
@@ -242,8 +242,8 @@ function summarizePositions(
       bonus_cents: Math.round(bonus),
       total_pay_cents: Math.round(total),
       payroll_tax_cents: Math.round(ctx.payrollTaxes.reduce((t, tax) => t + payrollTax(tax, total, paidHours), 0)),
-      double_booked_hours: round2(doubleBooked.get(position.key)?.hours ?? 0),
-      double_booked_dates: doubleBooked.get(position.key)?.dates ?? 0,
+      double_booked_hours: round2(doubleBooked.get(position.id)?.hours ?? 0),
+      double_booked_dates: doubleBooked.get(position.id)?.dates ?? 0,
     };
   });
 }
@@ -285,10 +285,10 @@ function organizationTotals(ctx: Context, lines: CostLine[], indirect: IndirectC
 function sumLines(ctx: Context): CostLine[] {
   const lines = new Map<string, CostLine & { exact: number }>();
   for (const e of ctx.entries) {
-    const id = [e.cost_center_type, e.cost_center_key, e.account_id, e.function, e.line_key].join("|");
+    const id = [e.cost_center_type, e.cost_center_id, e.account_id, e.function, e.line_key].join("|");
     const line = lines.get(id) ?? {
       cost_center_type: e.cost_center_type,
-      cost_center_key: e.cost_center_key,
+      cost_center_id: e.cost_center_id,
       account_id: e.account_id,
       function: e.function,
       amount_cents: 0,
@@ -306,7 +306,7 @@ function sumLines(ctx: Context): CostLine[] {
   return [...lines.values()]
     .sort(
       (a, b) =>
-        (a.cost_center_key ?? "").localeCompare(b.cost_center_key ?? "") ||
+        (a.cost_center_id ?? "").localeCompare(b.cost_center_id ?? "") ||
         a.line_key.localeCompare(b.line_key) ||
         a.account_id.localeCompare(b.account_id) ||
         a.cost_center_type.localeCompare(b.cost_center_type),
@@ -346,7 +346,7 @@ function summarize(
     }
     return {
       level,
-      key,
+      subject_id: key,
       revenue_cents: revenue,
       expense_cents: expense,
       net_cents: revenue - expense,
@@ -360,25 +360,25 @@ function summarize(
     };
   };
 
-  const offerings = [...ctx.data.plan_offerings].sort((a, b) => a.key.localeCompare(b.key));
+  const offerings = [...ctx.data.plan_offerings].sort((a, b) => a.id.localeCompare(b.id));
   const offeringPnl = offerings.map((o) => {
     const enrollment = ctx.enrollment.get(o.id) ?? 0;
-    const days = ctx.days.get(o.key) ?? 0;
+    const days = ctx.days.get(o.id) ?? 0;
     return pnl(
       "offering",
-      o.key,
-      lines.filter((l) => l.cost_center_type === "offering" && l.cost_center_key === o.key),
-      { mtdc_cents: Math.round(mtdcByOffering.get(o.key) ?? 0), enrollment, days, sailor_days: enrollment * days },
+      o.id,
+      lines.filter((l) => l.cost_center_type === "offering" && l.cost_center_id === o.id),
+      { mtdc_cents: Math.round(mtdcByOffering.get(o.id) ?? 0), enrollment, days, sailor_days: enrollment * days },
       { max_enrollment: ctx.maxEnrollment.get(o.id) ?? 0, allocation_holds: holds.get(o.id) ?? null },
     );
   });
 
   const productIds = new Set(offerings.map((o) => o.product_id));
   for (const l of lines)
-    if (l.cost_center_type === "product" && l.cost_center_key !== null) productIds.add(l.cost_center_key);
+    if (l.cost_center_type === "product" && l.cost_center_id !== null) productIds.add(l.cost_center_id);
   const productPnl = [...productIds].sort().map((id) => {
-    const own = offeringPnl.filter((s) => ctx.offeringsByKey.get(s.key)?.product_id === id);
-    const keys = new Set(own.map((s) => s.key));
+    const own = offeringPnl.filter((s) => ctx.offeringsById.get(s.subject_id)?.product_id === id);
+    const keys = new Set(own.map((s) => s.subject_id));
     const add = (field: "mtdc_cents" | "enrollment" | "days" | "sailor_days"): number =>
       own.reduce((t, s) => t + s[field], 0);
     return pnl(
@@ -386,8 +386,8 @@ function summarize(
       id,
       lines.filter(
         (l) =>
-          (l.cost_center_type === "offering" && l.cost_center_key !== null && keys.has(l.cost_center_key)) ||
-          (l.cost_center_type === "product" && l.cost_center_key === id),
+          (l.cost_center_type === "offering" && l.cost_center_id !== null && keys.has(l.cost_center_id)) ||
+          (l.cost_center_type === "product" && l.cost_center_id === id),
       ),
       {
         mtdc_cents: add("mtdc_cents"),
@@ -403,18 +403,18 @@ function summarize(
     if (area != null) areaIds.add(area);
   }
   for (const l of lines)
-    if (l.cost_center_type === "program_area" && l.cost_center_key !== null) areaIds.add(l.cost_center_key);
+    if (l.cost_center_type === "program_area" && l.cost_center_id !== null) areaIds.add(l.cost_center_id);
   const areaPnl: Pnl[] = [];
   const termPnl: Pnl[] = [];
   for (const id of [...areaIds].sort()) {
     const own = offeringPnl.filter((s) => {
-      const product = ctx.offeringsByKey.get(s.key)?.product_id;
+      const product = ctx.offeringsById.get(s.subject_id)?.product_id;
       return product !== undefined && ctx.products.get(product)?.program_area_id === id;
     });
-    const products = new Set(own.map((s) => ctx.offeringsByKey.get(s.key)?.product_id));
+    const products = new Set(own.map((s) => ctx.offeringsById.get(s.subject_id)?.product_id));
     // Costs left on the area or a product, because it had no offerings to divide them among, are in no term.
     const rollup = (level: Pnl["level"], offerings: Pnl[], leftovers: boolean): Pnl => {
-      const keys = new Set(offerings.map((s) => s.key));
+      const keys = new Set(offerings.map((s) => s.subject_id));
       const add = (field: "mtdc_cents" | "enrollment" | "days" | "sailor_days"): number =>
         offerings.reduce((t, s) => t + s[field], 0);
       return pnl(
@@ -422,9 +422,9 @@ function summarize(
         id,
         lines.filter(
           (l) =>
-            (l.cost_center_type === "offering" && l.cost_center_key !== null && keys.has(l.cost_center_key)) ||
-            (leftovers && l.cost_center_type === "product" && products.has(l.cost_center_key ?? undefined)) ||
-            (leftovers && l.cost_center_type === "program_area" && l.cost_center_key === id),
+            (l.cost_center_type === "offering" && l.cost_center_id !== null && keys.has(l.cost_center_id)) ||
+            (leftovers && l.cost_center_type === "product" && products.has(l.cost_center_id ?? undefined)) ||
+            (leftovers && l.cost_center_type === "program_area" && l.cost_center_id === id),
         ),
         {
           mtdc_cents: add("mtdc_cents"),
@@ -435,11 +435,11 @@ function summarize(
       );
     };
     areaPnl.push(rollup("program_area", own, true));
-    const termOf = (s: Pnl) => terms.get(s.key) ?? null;
-    const areaTerms = [...new Map(own.map((s) => [termOf(s)?.key, termOf(s)])).values()].filter((t) => t !== null);
+    const termOf = (s: Pnl) => terms.get(s.subject_id) ?? null;
+    const areaTerms = [...new Map(own.map((s) => [termOf(s)?.id, termOf(s)])).values()].filter((t) => t !== null);
     for (const term of [...areaTerms.sort(compareTerms), null]) {
-      const inTerm = own.filter((s) => termOf(s)?.key === term?.key);
-      const row = { ...rollup("program_area_term", inTerm, term === null), term_key: term?.key ?? null };
+      const inTerm = own.filter((s) => termOf(s)?.id === term?.id);
+      const row = { ...rollup("program_area_term", inTerm, term === null), term_id: term?.id ?? null };
       if (inTerm.length > 0 || row.by_account.length > 0) termPnl.push(row);
     }
   }

@@ -730,8 +730,6 @@ export interface PlanActivities {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   offering_id: string | PlanOfferings;
   /** The trip a travel day belongs to. */
   trip_id: string | PlanTrips | null;
@@ -752,8 +750,6 @@ export interface PlanActivityBlocks {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   date: string;
   /** Such as Guppies and Minnows, morning. */
   name: string;
@@ -764,8 +760,6 @@ export interface PlanBlockBoats {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   block_id: string | PlanActivityBlocks;
   boat_class_id: string | BoatClasses;
   /** How many of the organization's boats. */
@@ -781,13 +775,11 @@ export interface PlanBlockStaff {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   block_id: string | PlanActivityBlocks;
   /** For staff at a staff level. Leave it empty for a salaried position. */
   staff_level_id: string | StaffLevels | null;
-  /** For a salaried position: copy the Key from a salaried position in the Operations Plan. Leave it empty for staff at a staff level. */
-  position_key: string | null;
+  /** For a salaried position, from the Operations Plan. Leave it empty for staff at a staff level. */
+  position_id: string | PlanSalariedPositions | null;
   /** How many. A salaried position is 1. */
   count: number;
   /** For a salaried position: out of their salary, or by the hour at their own hourly rate, on top of it. */
@@ -799,8 +791,6 @@ export interface PlanBoatRates {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   boat_class_id: string | BoatClasses;
   /** Upkeep for each hour one of CSC's boats of the class is on the water. In cents: 12500 is $125.00. */
   maintenance_per_boat_hour_cents: number;
@@ -815,8 +805,6 @@ export interface PlanBonusOwnerProducts {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   bonus_owner_id: string | PlanBonusOwners;
   product_id: string | Products;
 }
@@ -826,18 +814,16 @@ export interface PlanBonusOwners {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   role_name: string;
   /** A share of its products' net. 0.05 means 5%. */
   bonus_rate: string;
   account_id: string | Accounts;
   /** Whether the net is counted after each offering's share of the pools, such as G&A, or before it. */
   basis: "after_shared_costs" | "before_shared_costs" | null;
-  /** The salaried position this bonus pays, if any: copy the Key from a salaried position in the Operations Plan. */
-  position_key: string | null;
+  /** The salaried position this bonus pays, if any, from the Operations Plan. */
+  position_id: string | PlanSalariedPositions | null;
   /** Term it's paid in. Empty: every term. */
-  term_key: string | null;
+  term_id: string | PlanTerms | null;
 }
 
 /** A cost or revenue entered as an amount. */
@@ -845,14 +831,12 @@ export interface PlanBudgetLines {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   name: string;
   account_id: string | Accounts;
   function: "program" | "management" | "fundraising" | null;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
-  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization. */
-  cost_center_key: string | null;
+  /** Who the cost is charged to: the ID of an offering, a pool, a product or a program area, from the end of its page's web address. Leave it empty for the whole organization. */
+  cost_center_id: string | null;
   /** In cents: 12500 is $125.00. */
   amount_cents: number;
   fiscal_year: number;
@@ -867,8 +851,6 @@ export interface PlanCapitalItems {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   /** What to buy, such as a coach boat. */
   name: string;
   /** In cents: 12500 is $125.00. */
@@ -888,8 +870,6 @@ export interface PlanClosedDates {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   date: string;
   /** Why it's closed, such as Labor Day. */
   name: string;
@@ -900,12 +880,10 @@ export interface PlanLaborLines {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   name: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
-  /** Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization. */
-  cost_center_key: string | null;
+  /** Who the cost is charged to: the ID of an offering, a pool, a product or a program area, from the end of its page's web address. Leave it empty for the whole organization. */
+  cost_center_id: string | null;
   /** Who does the work. */
   staff_level_id: string | StaffLevels | null;
   hours: string;
@@ -920,13 +898,11 @@ export interface PlanOfferings {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   product_id: string | Products;
   /** What it adds to its program's name, such as "Week 3" or "Spring". */
   name: string;
-  /** The term it runs in: copy the Key from a term in the Operations Plan. Leave it empty for an offering in no term. */
-  term_key: string | null;
+  /** The term it runs in, from the Operations Plan. Leave it empty for an offering in no term. */
+  term_id: string | PlanTerms | null;
   starts_on: string;
   ends_on: string;
   capacity: number | null;
@@ -945,8 +921,6 @@ export interface PlanPayrollTaxes {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   /** As it reads on the P&L, such as "Social Security" or "L&I". */
   name: string;
   /** For a tax on wages: its share of every wage. 0.062 means 6.2%. Leave it empty for a tax by the hour. */
@@ -961,8 +935,6 @@ export interface PlanPools {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   name: string;
 }
 
@@ -971,8 +943,6 @@ export interface PlanPrograms {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   /** The program. */
   product_id: string | Products;
   /** The staff level that coaches it. */
@@ -990,8 +960,6 @@ export interface PlanRates {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   /** In cents: 12500 is $125.00. */
   lodging_per_night_cents: number | null;
   /** In cents: 12500 is $125.00. */
@@ -1003,7 +971,7 @@ export interface PlanResultBonuses {
   id: string;
   /** The bonus's role, such as Director. */
   name: string;
-  term_key: string | null;
+  term_id: string | null;
   /** The term it's paid on. Empty for the offerings in no term, such as Adult Learn to Sail, whose bonus is worked out on the year. */
   term_name: string | null;
   /** The term's first day, which puts the terms in order. */
@@ -1014,8 +982,8 @@ export interface PlanResultBonuses {
   net_cents: number;
   /** Its rate × the net, or nothing when the net is a loss. In cents: 12500 is $125.00. */
   bonus_cents: number;
-  bonus_owner_key: string;
-  program_area_key: string | null;
+  bonus_owner_id: string;
+  program_area_id: string | null;
   /** The Financial Plan these results are for. */
   financial_plan_id: string | FinancialPlans;
   /** The plan it's charged in, or about. */
@@ -1029,7 +997,7 @@ export interface PlanResultCapital {
   financial_plan_id: string | FinancialPlans;
   /** 1 is the most needed. */
   rank: number | null;
-  item_key: string;
+  item_id: string;
   name: string | null;
   /** In cents: 12500 is $125.00. */
   amount_cents: number | null;
@@ -1043,7 +1011,7 @@ export interface PlanResultCapital {
 export interface PlanResultLines {
   id: string;
   cost_center_type: "offering" | "product" | "program_area" | "pool" | "org";
-  cost_center_key: string | null;
+  cost_center_id: string | null;
   cost_center_name: string;
   account_id: string | Accounts;
   function: "program" | "management" | "fundraising" | null;
@@ -1064,7 +1032,7 @@ export interface PlanResultLines {
 export interface PlanResultPnl {
   id: string;
   level: "offering" | "product" | "program_area" | "program_area_term";
-  subject_key: string;
+  subject_id: string;
   name: string;
   /** In cents: 12500 is $125.00. */
   revenue_cents: number;
@@ -1081,7 +1049,7 @@ export interface PlanResultPnl {
   financial_plan_id: string | FinancialPlans;
   /** The plan it's charged in, or about. */
   plan_id: string | Plans | null;
-  term_key: string | null;
+  term_id: string | null;
   /** For a program area by term, the term. Empty for its offerings in no term, such as Adult Learn to Sail. */
   term_name: string | null;
   /** The term's first day, which puts the terms in order. */
@@ -1095,7 +1063,7 @@ export interface PlanResultPnl {
 /** Each salaried position's pay for the year, in a Financial Plan. A draft's are worked out again a moment after each change to it, and a frozen one's when it's frozen, and then never change. */
 export interface PlanResultPositions {
   id: string;
-  position_key: string;
+  position_id: string;
   name: string;
   /** In cents: 12500 is $125.00. */
   salary_cents: number;
@@ -1128,7 +1096,7 @@ export interface PlanResultWarnings {
   /** The kind of warning. */
   code: string;
   message: string;
-  subject_key: string | null;
+  subject_id: string | null;
   /** The Financial Plan these results are for. */
   financial_plan_id: string | FinancialPlans;
   /** The plan it's charged in, or about. */
@@ -1172,8 +1140,6 @@ export interface PlanRevenueCharges {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   name: string;
   /** The share of each offering's revenue: 0.02 means 2%. */
   rate: string;
@@ -1192,8 +1158,6 @@ export interface PlanSalariedBookings {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   position_id: string | PlanSalariedPositions;
   /** The product the hours are for. Set this or the program area, not both. */
   product_id: string | Products | null;
@@ -1207,8 +1171,6 @@ export interface PlanSalariedPositions {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   name: string;
   /** In cents: 12500 is $125.00. */
   annual_salary_cents: number;
@@ -1238,8 +1200,6 @@ export interface PlanTerms {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   /** What it's called, such as Summer 2027. */
   name: string;
   /** Its first day. */
@@ -1253,8 +1213,6 @@ export interface PlanTrips {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  /** Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key. */
-  key: string;
   offering_id: string | PlanOfferings;
   name: string;
   nights: number | null;

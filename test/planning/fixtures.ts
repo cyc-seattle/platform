@@ -33,9 +33,8 @@ export function nextId(prefix: string): string {
   return `${prefix}-${counter}`;
 }
 
-function versioned(prefix: string): { id: string; plan_id: string; key: string } {
-  const id = nextId(prefix);
-  return { id, plan_id: "v1", key: `${id}-key` };
+function versioned(prefix: string): { id: string; plan_id: string } {
+  return { id: nextId(prefix), plan_id: "v1" };
 }
 
 function account(
@@ -203,7 +202,7 @@ export function offering(productId: string, overrides: Partial<PlanOffering> = {
     ...versioned("offering"),
     product_id: productId,
     name: "An offering",
-    term_key: null,
+    term_id: null,
     starts_on: "2027-06-01",
     ends_on: "2027-06-30",
     capacity: null,
@@ -331,7 +330,7 @@ export function block(
       ...versioned("staff"),
       block_id: row.id,
       staff_level_id: null,
-      position_key: null,
+      position_id: null,
       count: 1,
       pay: null,
       ...s,
@@ -365,7 +364,7 @@ export function budgetLine(overrides: Partial<PlanBudgetLine> = {}): PlanBudgetL
     account_id: A.insurance,
     function: null,
     cost_center_type: "org",
-    cost_center_key: null,
+    cost_center_id: null,
     amount_cents: 0,
     fiscal_year: 2027,
     in_mtdc: true,
@@ -379,7 +378,7 @@ export function laborLine(levelId: string, overrides: Partial<PlanLaborLine> = {
     ...versioned("labor"),
     name: "Labor",
     cost_center_type: "org",
-    cost_center_key: null,
+    cost_center_id: null,
     staff_level_id: levelId,
     hours: 0,
     account_id: A.coachWages,
@@ -438,7 +437,7 @@ export function total(out: EngineOutput, match: Partial<CostLine> & { line?: str
 
 /** An offering's P&L, or a product's or program area's. */
 export function pnlOf(out: EngineOutput, key: string, level: Pnl["level"] = "offering"): Pnl {
-  const found = out.pnl.find((p) => p.level === level && p.key === key);
+  const found = out.pnl.find((p) => p.level === level && p.subject_id === key);
   if (found === undefined) throw new Error(`No P&L for ${level} ${key}`);
   return found;
 }

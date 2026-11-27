@@ -1005,47 +1005,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_offerings
-    field: key
-    type: uuid
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_offerings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_offerings
     field: product_id
     type: uuid
     meta:
@@ -1130,24 +1089,26 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_offerings
-    field: term_key
+    field: term_id
     type: uuid
     meta:
       collection: plan_offerings
       conditions: null
-      display: null
-      display_options: null
-      field: term_key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: term_id
       group: null
       hidden: false
-      interface: input
-      note: "The term it runs in: copy the Key from a term in the Operations Plan. Leave it empty for an offering in no term."
+      interface: select-dropdown-m2o
+      note: The term it runs in, from the Operations Plan. Leave it empty for an offering in no term.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 6
-      special: null
+      special:
+        - m2o
       translations:
         - language: en-US
           translation: Term
@@ -1155,7 +1116,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: term_key
+      name: term_id
       table: plan_offerings
       data_type: uuid
       default_value: null
@@ -1169,8 +1130,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: plan_terms
+      foreign_key_column: id
   - collection: plan_offerings
     field: starts_on
     type: date
@@ -1542,47 +1503,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_trips
-    field: key
-    type: uuid
-    meta:
-      collection: plan_trips
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_trips
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_trips
     field: offering_id
     type: uuid
     meta:
@@ -1873,47 +1793,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_activities
-    field: key
-    type: uuid
-    meta:
-      collection: plan_activities
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_activities
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_activities
     field: offering_id
     type: uuid
@@ -2476,47 +2355,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_labor_lines
-    field: key
-    type: uuid
-    meta:
-      collection: plan_labor_lines
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_labor_lines
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_labor_lines
     field: name
     type: string
     meta:
@@ -2626,18 +2464,18 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_labor_lines
-    field: cost_center_key
+    field: cost_center_id
     type: uuid
     meta:
       collection: plan_labor_lines
       conditions: null
       display: null
       display_options: null
-      field: cost_center_key
+      field: cost_center_id
       group: null
       hidden: false
       interface: input
-      note: "Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization."
+      note: "Who the cost is charged to: the ID of an offering, a pool, a product or a program area, from the end of its page's web address. Leave it empty for the whole organization."
       options: null
       readonly: false
       required: false
@@ -2649,7 +2487,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: cost_center_key
+      name: cost_center_id
       table: plan_labor_lines
       data_type: uuid
       default_value: null
@@ -2979,47 +2817,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_budget_lines
-    field: key
-    type: uuid
-    meta:
-      collection: plan_budget_lines
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_budget_lines
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_budget_lines
     field: name
     type: string
     meta:
@@ -3232,18 +3029,18 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_budget_lines
-    field: cost_center_key
+    field: cost_center_id
     type: uuid
     meta:
       collection: plan_budget_lines
       conditions: null
       display: null
       display_options: null
-      field: cost_center_key
+      field: cost_center_id
       group: null
       hidden: false
       interface: input
-      note: "Who the cost is charged to: copy the Key from an offering or a pool, or a product's ID from the end of its page's web address. Leave empty for the whole organization."
+      note: "Who the cost is charged to: the ID of an offering, a pool, a product or a program area, from the end of its page's web address. Leave it empty for the whole organization."
       options: null
       readonly: false
       required: false
@@ -3255,7 +3052,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: cost_center_key
+      name: cost_center_id
       table: plan_budget_lines
       data_type: uuid
       default_value: null
@@ -3521,47 +3318,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_capital_items
-    field: key
-    type: uuid
-    meta:
-      collection: plan_capital_items
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_capital_items
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_capital_items
     field: name
     type: string
@@ -3899,47 +3655,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_revenue_charges
-    field: key
-    type: uuid
-    meta:
-      collection: plan_revenue_charges
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_revenue_charges
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_revenue_charges
     field: name
     type: string
@@ -4300,47 +4015,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_rates
-    field: key
-    type: uuid
-    meta:
-      collection: plan_rates
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_rates
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_rates
     field: lodging_per_night_cents
     type: integer
     meta:
@@ -4509,47 +4183,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_payroll_taxes
-    field: key
-    type: uuid
-    meta:
-      collection: plan_payroll_taxes
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_payroll_taxes
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_payroll_taxes
     field: name
     type: string
@@ -4971,47 +4604,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_salaried_positions
-    field: key
-    type: uuid
-    meta:
-      collection: plan_salaried_positions
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_salaried_positions
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_salaried_positions
     field: name
     type: string
     meta:
@@ -5347,47 +4939,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_salaried_bookings
-    field: key
-    type: uuid
-    meta:
-      collection: plan_salaried_bookings
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_salaried_bookings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_salaried_bookings
     field: position_id
     type: uuid
     meta:
@@ -5645,47 +5196,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_boat_rates
-    field: key
-    type: uuid
-    meta:
-      collection: plan_boat_rates
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_boat_rates
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_boat_rates
     field: boat_class_id
     type: uuid
     meta:
@@ -5941,47 +5451,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_pools
-    field: key
-    type: uuid
-    meta:
-      collection: plan_pools
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_pools
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_pools
     field: name
     type: string
     meta:
@@ -6106,47 +5575,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_bonus_owners
-    field: key
-    type: uuid
-    meta:
-      collection: plan_bonus_owners
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_bonus_owners
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_bonus_owners
     field: role_name
     type: string
@@ -6328,24 +5756,26 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_bonus_owners
-    field: position_key
+    field: position_id
     type: uuid
     meta:
       collection: plan_bonus_owners
       conditions: null
-      display: null
-      display_options: null
-      field: position_key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: position_id
       group: null
       hidden: false
-      interface: input
-      note: "The salaried position this bonus pays, if any: copy the Key from a salaried position in the Operations Plan."
+      interface: select-dropdown-m2o
+      note: The salaried position this bonus pays, if any, from the Operations Plan.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 9
-      special: null
+      special:
+        - m2o
       translations:
         - language: en-US
           translation: Salaried position
@@ -6353,7 +5783,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: position_key
+      name: position_id
       table: plan_bonus_owners
       data_type: uuid
       default_value: null
@@ -6367,27 +5797,29 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: plan_salaried_positions
+      foreign_key_column: id
   - collection: plan_bonus_owners
-    field: term_key
+    field: term_id
     type: uuid
     meta:
       collection: plan_bonus_owners
       conditions: null
-      display: null
-      display_options: null
-      field: term_key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: term_id
       group: null
       hidden: false
-      interface: input
+      interface: select-dropdown-m2o
       note: "Term it's paid in. Empty: every term."
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 10
-      special: null
+      special:
+        - m2o
       translations:
         - language: en-US
           translation: Term
@@ -6395,7 +5827,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: term_key
+      name: term_id
       table: plan_bonus_owners
       data_type: uuid
       default_value: null
@@ -6409,8 +5841,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: plan_terms
+      foreign_key_column: id
   - collection: plan_bonus_owner_products
     field: id
     type: uuid
@@ -6496,47 +5928,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_bonus_owner_products
-    field: key
-    type: uuid
-    meta:
-      collection: plan_bonus_owner_products
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_bonus_owner_products
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_bonus_owner_products
     field: bonus_owner_id
     type: uuid
@@ -6711,47 +6102,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_closed_dates
-    field: key
-    type: uuid
-    meta:
-      collection: plan_closed_dates
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_closed_dates
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_closed_dates
     field: date
     type: date
     meta:
@@ -6916,47 +6266,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_terms
-    field: key
-    type: uuid
-    meta:
-      collection: plan_terms
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_terms
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_terms
     field: name
     type: string
@@ -7695,14 +7004,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_lines
-    field: cost_center_key
+    field: cost_center_id
     type: uuid
     meta:
       collection: plan_result_lines
       conditions: null
       display: null
       display_options: null
-      field: cost_center_key
+      field: cost_center_id
       group: null
       hidden: true
       interface: input
@@ -7718,7 +7027,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: cost_center_key
+      name: cost_center_id
       table: plan_result_lines
       data_type: uuid
       default_value: null
@@ -8237,14 +7546,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_pnl
-    field: subject_key
+    field: subject_id
     type: uuid
     meta:
       collection: plan_result_pnl
       conditions: null
       display: null
       display_options: null
-      field: subject_key
+      field: subject_id
       group: null
       hidden: true
       interface: input
@@ -8260,7 +7569,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: subject_key
+      name: subject_id
       table: plan_result_pnl
       data_type: uuid
       default_value: null
@@ -8695,14 +8004,14 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_result_pnl
-    field: term_key
+    field: term_id
     type: uuid
     meta:
       collection: plan_result_pnl
       conditions: null
       display: null
       display_options: null
-      field: term_key
+      field: term_id
       group: null
       hidden: true
       interface: input
@@ -8718,7 +8027,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: term_key
+      name: term_id
       table: plan_result_pnl
       data_type: uuid
       default_value: null
@@ -8982,14 +8291,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_bonuses
-    field: term_key
+    field: term_id
     type: uuid
     meta:
       collection: plan_result_bonuses
       conditions: null
       display: null
       display_options: null
-      field: term_key
+      field: term_id
       group: null
       hidden: true
       interface: input
@@ -9005,7 +8314,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: term_key
+      name: term_id
       table: plan_result_bonuses
       data_type: uuid
       default_value: null
@@ -9230,14 +8539,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_bonuses
-    field: bonus_owner_key
+    field: bonus_owner_id
     type: uuid
     meta:
       collection: plan_result_bonuses
       conditions: null
       display: null
       display_options: null
-      field: bonus_owner_key
+      field: bonus_owner_id
       group: null
       hidden: true
       interface: input
@@ -9253,7 +8562,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: bonus_owner_key
+      name: bonus_owner_id
       table: plan_result_bonuses
       data_type: uuid
       default_value: null
@@ -9270,14 +8579,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_bonuses
-    field: program_area_key
+    field: program_area_id
     type: uuid
     meta:
       collection: plan_result_bonuses
       conditions: null
       display: null
       display_options: null
-      field: program_area_key
+      field: program_area_id
       group: null
       hidden: true
       interface: input
@@ -9293,7 +8602,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: program_area_key
+      name: program_area_id
       table: plan_result_bonuses
       data_type: uuid
       default_value: null
@@ -9439,14 +8748,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_positions
-    field: position_key
+    field: position_id
     type: uuid
     meta:
       collection: plan_result_positions
       conditions: null
       display: null
       display_options: null
-      field: position_key
+      field: position_id
       group: null
       hidden: true
       interface: input
@@ -9462,7 +8771,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: position_key
+      name: position_id
       table: plan_result_positions
       data_type: uuid
       default_value: null
@@ -10192,14 +9501,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_capital
-    field: item_key
+    field: item_id
     type: uuid
     meta:
       collection: plan_result_capital
       conditions: null
       display: null
       display_options: null
-      field: item_key
+      field: item_id
       group: null
       hidden: true
       interface: input
@@ -10215,7 +9524,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: item_key
+      name: item_id
       table: plan_result_capital
       data_type: uuid
       default_value: null
@@ -10519,14 +9828,14 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: plan_result_warnings
-    field: subject_key
+    field: subject_id
     type: string
     meta:
       collection: plan_result_warnings
       conditions: null
       display: null
       display_options: null
-      field: subject_key
+      field: subject_id
       group: null
       hidden: true
       interface: input
@@ -10542,7 +9851,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: subject_key
+      name: subject_id
       table: plan_result_warnings
       data_type: character varying
       default_value: null
@@ -11380,47 +10689,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_programs
-    field: key
-    type: uuid
-    meta:
-      collection: plan_programs
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_programs
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_programs
     field: product_id
     type: uuid
     meta:
@@ -11722,47 +10990,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_activity_blocks
-    field: key
-    type: uuid
-    meta:
-      collection: plan_activity_blocks
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_activity_blocks
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_activity_blocks
     field: date
     type: date
     meta:
@@ -11928,47 +11155,6 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_block_staff
-    field: key
-    type: uuid
-    meta:
-      collection: plan_block_staff
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_block_staff
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
-  - collection: plan_block_staff
     field: block_id
     type: uuid
     meta:
@@ -12057,24 +11243,26 @@ fields:
       foreign_key_table: staff_levels
       foreign_key_column: id
   - collection: plan_block_staff
-    field: position_key
+    field: position_id
     type: uuid
     meta:
       collection: plan_block_staff
       conditions: null
-      display: null
-      display_options: null
-      field: position_key
+      display: related-values
+      display_options:
+        template: "{{name}}"
+      field: position_id
       group: null
       hidden: false
-      interface: input
-      note: "For a salaried position: copy the Key from a salaried position in the Operations Plan. Leave it empty for staff at a staff level."
+      interface: select-dropdown-m2o
+      note: For a salaried position, from the Operations Plan. Leave it empty for staff at a staff level.
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 6
-      special: null
+      special:
+        - m2o
       translations:
         - language: en-US
           translation: Salaried position
@@ -12082,7 +11270,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: position_key
+      name: position_id
       table: plan_block_staff
       data_type: uuid
       default_value: null
@@ -12096,8 +11284,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
+      foreign_key_table: plan_salaried_positions
+      foreign_key_column: id
   - collection: plan_block_staff
     field: count
     type: integer
@@ -12279,47 +11467,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: plans
       foreign_key_column: id
-  - collection: plan_block_boats
-    field: key
-    type: uuid
-    meta:
-      collection: plan_block_boats
-      conditions: null
-      display: null
-      display_options: null
-      field: key
-      group: null
-      hidden: false
-      interface: input
-      note: Stays the same when a Financial Plan is copied. Copy it where another row asks for this one's Key.
-      options: null
-      readonly: true
-      required: false
-      searchable: true
-      sort: 3
-      special:
-        - uuid
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: key
-      table: plan_block_boats
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_block_boats
     field: block_id
     type: uuid
@@ -14085,3 +13232,87 @@ relations:
       constraint_name: plan_salaried_positions_person_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
+  - collection: plan_offerings
+    field: term_id
+    related_collection: plan_terms
+    meta:
+      junction_field: null
+      many_collection: plan_offerings
+      many_field: term_id
+      one_allowed_collections: null
+      one_collection: plan_terms
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_offerings
+      column: term_id
+      foreign_key_table: plan_terms
+      foreign_key_column: id
+      constraint_name: plan_offerings_term_id_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
+  - collection: plan_bonus_owners
+    field: term_id
+    related_collection: plan_terms
+    meta:
+      junction_field: null
+      many_collection: plan_bonus_owners
+      many_field: term_id
+      one_allowed_collections: null
+      one_collection: plan_terms
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_bonus_owners
+      column: term_id
+      foreign_key_table: plan_terms
+      foreign_key_column: id
+      constraint_name: plan_bonus_owners_term_id_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
+  - collection: plan_bonus_owners
+    field: position_id
+    related_collection: plan_salaried_positions
+    meta:
+      junction_field: null
+      many_collection: plan_bonus_owners
+      many_field: position_id
+      one_allowed_collections: null
+      one_collection: plan_salaried_positions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_bonus_owners
+      column: position_id
+      foreign_key_table: plan_salaried_positions
+      foreign_key_column: id
+      constraint_name: plan_bonus_owners_position_id_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
+  - collection: plan_block_staff
+    field: position_id
+    related_collection: plan_salaried_positions
+    meta:
+      junction_field: null
+      many_collection: plan_block_staff
+      many_field: position_id
+      one_allowed_collections: null
+      one_collection: plan_salaried_positions
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: plan_block_staff
+      column: position_id
+      foreign_key_table: plan_salaried_positions
+      foreign_key_column: id
+      constraint_name: plan_block_staff_position_id_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION

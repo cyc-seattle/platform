@@ -25,11 +25,11 @@ A Financial Plan holds what planners enter, and the results the [planning engine
 
 ### Diagram conventions
 
-Every row of a plan also has an `id`, a `plan_id` and a `key`, apart from a staff level's rate, which is found by its level. A new row gets a random `key` unless it's given one, and a copy into a new draft keeps it. A `key` should be unique within its plan, but Directus can't make a pair of columns unique, so nothing checks it. The diagrams below leave these out except where they matter.
+Every row of a plan also has an `id` and a `plan_id`. A row names another row by its `id`, in the same Financial Plan: a Program Plan's offering names its term in the Operations Plan by `term_id`, for example ([cyc-seattle/platform#395](https://github.com/cyc-seattle/platform/issues/395)). The diagrams below leave these out except where they matter.
 
 Arrays are shown as `json`.
 
-Dashed lines are references by stable `key` across plans. The engine looks them up within a Financial Plan; they are not database foreign keys.
+A cost center names an offering, a pool, a product or a program area by its `id`, with `cost_center_type` saying which, so it isn't a database foreign key.
 
 ### `core` catalog
 
@@ -228,9 +228,9 @@ A plan's `notes` hold what the planner wants that the plan's numbers don't captu
 
 Every `note` a person writes, on a Financial Plan, an offering, a line, a charge, a capital item or an asset, holds at most 280 characters, with inline markdown only: bold, italic, code and links.
 
-A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization, from any year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, each keeping its `key`, and each link pointing at the copy of the row it linked to. Started from last year's, next year's plan starts with last year's dates, for the planner's AI to move. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
+A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization, from any year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, and each link pointing at the copy of the row it linked to, a cost center's included. Started from last year's, next year's plan starts with last year's dates, for the planner's AI to move. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
 
-A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook works out the results again ([A Financial Plan's results](#a-financial-plans-results)), and they record the engine that did. A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived. A Program Plan's row that names an Operations Plan row by key, such as `coach_level_key`, means the row with that key in the Operations Plan of the same Financial Plan.
+A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook works out the results again ([A Financial Plan's results](#a-financial-plans-results)), and they record the engine that did. A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived.
 
 Once, at the maintainer's request, a migration (`cyc0022`) broke both rules for prod's 2026 Financial Plans: it set which plan each started from, and made "2026 with conflicts resolved" a draft again, clearing its freeze stamps and its results for the hook to work out again. It was a one-off, not a feature: the rules stand, and another such fix needs a reviewed migration of its own.
 
@@ -256,14 +256,14 @@ Together they refuse:
 - adding, changing, or deleting a frozen Financial Plan's plans, or a row in one of them
 - a second Operations Plan, or a second Program Plan for an area, in one Financial Plan
 - moving a plan to another Financial Plan, or a row to another plan
-- a row that links to a row in another plan, such as an activity whose `offering_id` is another plan's offering
+- a row that links to a row in another Financial Plan, such as an offering whose `term_id` is another Financial Plan's term
 - a Program Plan without its program area, or an Operations Plan with one
 - a note in a plan's or a program's `notes` that isn't one line of at most 280 characters
 - writing a Financial Plan's results, except by the hook, a whole set at a time into one with none, or changing or deleting a frozen one's
 - two Financial Plans for an organization's year active from the same date, deleting an active one, archiving the plan in force or one active from a later date, or giving an archived one a date
 - a bonus, or a bonus's product, in a Program Plan
 
-A row's link to a catalog row restricts delete, so deleting a catalog row a plan uses fails instead of reaching into a frozen plan. A row's link to its plan, and a plan's to its Financial Plan, cascade, so deleting a draft takes everything in it. Links between rows of one plan, such as an activity's block, are checked at the end of the statement, so a cascade can delete both.
+A row's link to a catalog row restricts delete, so deleting a catalog row a plan uses fails instead of reaching into a frozen plan. A row's link to its plan, and a plan's to its Financial Plan, cascade, so deleting a draft takes everything in it. Links between rows of one Financial Plan, such as an activity's block or an offering's term, are checked at the end of the statement, so a cascade can delete both.
 
 An admin can still get past this in two ways, as a last resort: by changing a planning collection's fields or relations in the Data Studio, which changes the table itself, or by running SQL as the database's owner, which can turn the triggers off. On the CI stack, `backend:frozenPlansDeletable` lets the integration tests delete a frozen Financial Plan, with its plans, their rows, and its results, so they can clean up. Through the API, only the first admin account can. The triggers can't tell which Directus user is writing, so in the CI stack's database they allow those deletes on every path. The prod stack refuses that flag.
 
@@ -275,6 +275,7 @@ erDiagram
     products ||--o{ plan_programs : "settings of"
     plans ||--o{ plan_offerings : contains
     products ||--o{ plan_offerings : "offering of"
+    plan_terms |o--o{ plan_offerings : "term of, in the Operations Plan"
     plan_offerings ||--o{ plan_activities : runs
     plan_offerings ||--o{ plan_trips : "travels for"
     plan_trips |o--o{ plan_activities : "travel days"
@@ -285,6 +286,7 @@ erDiagram
     boat_classes ||--o{ plan_block_boats : "boat class"
     staff_levels |o--o{ plan_programs : coaches
     staff_levels |o--o{ plan_block_staff : "staff at"
+    plan_salaried_positions |o--o{ plan_block_staff : "position at, in the Operations Plan"
     staff_levels |o--o{ plan_labor_lines : "does the work"
     plan_offerings ||--o{ plan_budget_lines : "direct lines"
     plan_offerings ||--o{ plan_labor_lines : "direct labor"
@@ -299,10 +301,9 @@ erDiagram
         json notes "the planner's short notes"
     }
     plan_offerings {
-        uuid key "stable"
         uuid product_id FK
         string name
-        uuid term_key "operations key, or none"
+        uuid term_id FK "in the Operations Plan, or none"
         date starts_on
         date ends_on
         int capacity
@@ -331,7 +332,7 @@ erDiagram
     plan_block_staff {
         uuid block_id FK
         uuid staff_level_id FK "or"
-        uuid position_key "operations key"
+        uuid position_id FK "in the Operations Plan"
         int count
         string pay "salary|hourly, for a position"
     }
@@ -352,7 +353,7 @@ erDiagram
     plan_labor_lines {
         string name
         string cost_center_type "offering|product|program_area|pool|org"
-        uuid cost_center_key
+        uuid cost_center_id
         uuid staff_level_id FK
         decimal hours
         uuid account_id FK
@@ -364,7 +365,7 @@ erDiagram
         uuid account_id FK
         string function
         string cost_center_type "offering|product|program_area|pool|org"
-        uuid cost_center_key
+        uuid cost_center_id
         int amount_cents
         int fiscal_year
         boolean in_mtdc "true unless 2 CFR 200.1 leaves it out"
@@ -374,9 +375,7 @@ erDiagram
 
 All of an offering's revenue and costs go in its plan's year, and its dates may run past either end of that year, as a winter program's do ([cyc-seattle/platform#252](https://github.com/cyc-seattle/platform/issues/252)). Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
 
-An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
-
-An offering can be in one of its Financial Plan's terms, by `term_key`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
+An offering can be in one of its Financial Plan's terms, by `term_id`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
 
 Each activity is a dated row. The planner enters them, or a tool such as a scheduler or an agent writes them; nothing creates them automatically. A travel day is an activity of kind `travel`, linked to its trip.
 
@@ -414,6 +413,8 @@ erDiagram
     plan_salaried_positions }o--o| plan_pools : "rest of salary to"
     people |o--o{ plan_salaried_positions : "in the position"
     plan_bonus_owners ||--o{ plan_bonus_owner_products : owns
+    plan_salaried_positions |o--o{ plan_bonus_owners : "paid by"
+    plan_terms |o--o{ plan_bonus_owners : "paid in"
     products ||--o{ plan_bonus_owner_products : "owned by"
 
     plan_rates {
@@ -466,15 +467,14 @@ erDiagram
         decimal bonus_rate
         uuid account_id FK
         string basis "after_shared_costs|before_shared_costs"
-        uuid position_key "operations key: the position it pays"
-        uuid term_key "operations key: the one term it's paid in, or every term"
+        uuid position_id FK "the position it pays"
+        uuid term_id FK "the one term it's paid in, or every term"
     }
     plan_closed_dates {
         date date
         string name
     }
     plan_terms {
-        uuid key "stable"
         string name "such as Summer 2027"
         date starts_on
         date ends_on
@@ -510,11 +510,11 @@ frozen Financial Plan never changes.
 
 A pool is a group of shared costs that no single offering owns, such as general and administrative (G&A) costs or program admin. It holds the lines put in it, and the part of a salaried person's pay that isn't charged to a program. The programs pay toward the pools at their indirect cost rates, and what the rates leave unallocated stays with the organization ([Indirect costs](planning-engine.md#indirect-costs)).
 
-A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before its indirect costs (`basis`), if that net is above zero. Every bonus is in the Operations Plan, which the database enforces. `position_key` names the salaried position the bonus pays, so the engine can add up that person's pay. `term_key` limits it to one term, such as Winter; empty pays it in every term.
+A bonus owner's bonus is `bonus_rate` × the net of its products for the year, after or before its indirect costs (`basis`), if that net is above zero. Every bonus is in the Operations Plan, which the database enforces. `position_id` names the salaried position the bonus pays, so the engine can add up that person's pay. `term_id` limits it to one term, such as Winter; empty pays it in every term.
 
 `plan_capital_items` is the ranked list of what the organization means to buy, such as a coach boat, with the most needed first. Planners drag the rows into order in the Data Studio. Each is capital on the organization, and the engine says how far down the list the year's money goes.
 
-`plan_terms` lists the planning periods, such as Summer 2027, each with its first and last day. A Program Plan's offering names one by its key, `term_key`, or none. Terms are in the Operations Plan, so every Program Plan shares them. A term's dates don't limit its offerings' dates. A plan frozen before terms (cyc-seattle/platform#251) has none.
+`plan_terms` lists the planning periods, such as Summer 2027, each with its first and last day. A Program Plan's offering names one by `term_id`, or none. Terms are in the Operations Plan, so every Program Plan shares them. A term's dates don't limit its offerings' dates. A plan frozen before terms (cyc-seattle/platform#251) has none.
 
 `plan_closed_dates` lists the days the organization is closed, such as Labor Day. Agents read them when they write activities, and the engine warns about an activity on one.
 
@@ -554,12 +554,12 @@ erDiagram
         uuid financial_plan_id FK
         uuid plan_id FK "the plan it's charged in"
         string cost_center_type
-        uuid cost_center_key
+        uuid cost_center_id
         string cost_center_name
         uuid account_id FK
         string function
         int amount_cents
-        text line "the engine's key"
+        text line "the engine's name for it"
         text line_name "such as G&A share: Payroll tax"
         text explanation
     }
@@ -567,7 +567,7 @@ erDiagram
         uuid financial_plan_id FK
         uuid plan_id FK
         string level "offering|product|program_area|program_area_term"
-        uuid subject_key
+        uuid subject_id
         string name
         int revenue_cents
         int expense_cents
@@ -578,26 +578,26 @@ erDiagram
         int sailor_days
         int allocation_holds
         int breakeven_enrollment
-        uuid term_key "for program_area_term; null is no term"
+        uuid term_id "for program_area_term; null is no term"
         string term_name
         date term_starts_on
     }
     plan_result_bonuses {
         uuid financial_plan_id FK
         uuid plan_id FK "the plan that pays it"
-        uuid bonus_owner_key
+        uuid bonus_owner_id
         string name "the role"
-        uuid term_key "null is no term, on the year"
+        uuid term_id "null is no term, on the year"
         string term_name
         date term_starts_on
         decimal bonus_rate
         int net_cents
         int bonus_cents
-        uuid program_area_key "null when its products span areas"
+        uuid program_area_id "null when its products span areas"
     }
     plan_result_positions {
         uuid financial_plan_id FK
-        uuid position_key
+        uuid position_id
         string name
         int salary_cents
         decimal salaried_coaching_hours
@@ -615,7 +615,7 @@ erDiagram
     plan_result_capital {
         uuid financial_plan_id FK
         int rank
-        uuid item_key
+        uuid item_id
         string name
         int amount_cents
         int running_cents "this and everything above it"
@@ -626,7 +626,7 @@ erDiagram
         uuid plan_id FK "the plan it's about"
         string code
         text message
-        string subject_key
+        string subject_id
         date date "the date it's about"
         string category "allocation|data"
         string severity "warning|error"
@@ -645,7 +645,7 @@ Freezing a Financial Plan clears its draft results in the same statement, and th
 
 Only the hook writes results. Its filter refuses any write to them through the API, even an admin's, and the triggers refuse a result row unless the hook's transaction has set `cyc.writing_results`, and the Financial Plan has no results yet. They refuse to delete a draft's results without it too, apart from the delete of the draft, or of one of its plans, taking its results with it. No result row is ever changed, and a frozen one's are never deleted. Anyone with a Plan policy can see them, a draft's the same way as a frozen one's. A draft with no `plan_results` row is still being worked out, or the engine failed on it.
 
-Each result line's `line_name` says in plain words what it is, such as "Coach wages" or "G&A share: Payroll tax". `line` is the engine's key for it.
+Each result line's `line_name` says in plain words what it is, such as "Coach wages" or "G&A share: Payroll tax". `line` is the engine's name for it.
 
 ### Actuals
 
@@ -655,7 +655,7 @@ erDiagram
 
     actuals {
         string cost_center_type
-        uuid cost_center_key
+        uuid cost_center_id
         uuid account_id FK
         string function
         date month

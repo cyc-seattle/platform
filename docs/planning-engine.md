@@ -37,8 +37,8 @@ Planners enter each of these in the plans ([docs/planning-schema.md](planning-sc
 - `fiscal_year` and the organization are the Financial Plan's own `fiscal_year` and
   `organization_id`.
 - The plans are the ones a Financial Plan holds: its Operations Plan and each of its Program
-  Plans. A Program Plan's row that names an Operations Plan row by key means the row with that key
-  in that Operations Plan.
+  Plans. A Program Plan's row that names an Operations Plan row, such as an offering's `term_id`,
+  names it by its `id`.
 - Each program's indirect cost rate is in its Program Plan's `plan_programs` row, and the shared
   costs are in the Operations Plan, so the organization's totals count every plan in the Financial Plan.
 - The catalog is read as it is now. A frozen Financial Plan doesn't copy it, so recalculating an old
@@ -185,7 +185,7 @@ coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issu
   its planned net less the slice's net at its enrollment, so bonuses and anything else outside the
   slice stay as planned. Each number is tried in turn, since costs set per sailor can step. It's null when the
   offering doesn't cover its costs even when full, or has no `capacity`.
-- An offering with a `capacity` gets a data warning, naming it in `key`, when its
+- An offering with a `capacity` gets a data warning, naming it in `subject_id`, when its
   `breakeven_enrollment` is more than its enrollment (`breakeven_above_target`), or null
   (`never_breaks_even`).
 
@@ -295,7 +295,7 @@ Data warnings about blocks:
 Capital is something lasting the organization buys, such as a coach boat. Planners list it in the
 Operations Plan's `plan_capital_items`, each with its `sort`, its rank: 1 is the most needed.
 
-- Each item is a line on its asset account, on the organization, keyed `capital:<item key>`. It
+- Each item is a line on its asset account, on the organization, keyed `capital:<item id>`. It
   never reaches a program area or an offering, and never counts toward MTDC. An item on any other
   kind of account is left out, with a warning (`capital_not_asset`).
 - `capital` lists the items by `sort`, then name, with an item with no `sort` last. Each has its
@@ -337,7 +337,7 @@ The engine warns about:
 - the hours it coached out of its salary, and what they charged
 - the hours it coached by the hour, and their wages
 - its booking hours, and what they charged
-- the bonuses that name it in `position_key`
+- the bonuses that name it in `position_id`
 - its total pay: salary, hourly wages and bonus
 - the year's payroll taxes: each tax on wages on that total, and each tax by the hour on its paid hours
   per year and its hours coached by the hour
@@ -391,10 +391,10 @@ the rate at budget time from the year before's shared costs ÷ its programs' MTD
   `plan_programs` row, × the offering's MTDC (see [MTDC](#mtdc)). A program with no rate pays none, and the engine warns
   (`no_indirect_cost_rate`). Only a Plan Admin sets the rate.
 - The indirect costs are split over the pools' lines by their size, keeping each line's account and
-  function, keyed `pool:<pool key>:<the original line key>`. So a program's P&L shows its indirect
+  function, keyed `pool:<pool id>:<the original line key>`. So a program's P&L shows its indirect
   costs by pool and account.
 - What the rates leave unallocated of each pooled line stays on the organization's books, keyed
-  `unrecovered:<pool key>:<the original line key>`. When the rates allocate more than the shared
+  `unrecovered:<pool id>:<the original line key>`. When the rates allocate more than the shared
   costs, it's a credit there. Either way the organization's net is the same whatever the rates.
 - Non-program's offerings pay no indirect costs, so their P&L shows their own margin, and it stays
   with the organization.
@@ -406,10 +406,10 @@ the rate at budget time from the year before's shared costs ÷ its programs' MTD
 
 ### Terms
 
-- An offering's term is the `plan_terms` row its `term_key` names. One the plan doesn't have counts
+- An offering's term is the `plan_terms` row its `term_id` names. One the plan doesn't have counts
   as no term, with a warning.
 - Each program area has a P&L, at level `program_area_term`, for each term it has an offering in,
-  in the order the terms start, and one more, with `term_key` null, for its offerings in no term.
+  in the order the terms start, and one more, with `term_id` null, for its offerings in no term.
   Together they add up to the area's P&L.
 - A term's P&L adds up its offerings'. Costs on a product or the area, and indirect costs, already reach
   the offerings, so a term has its share of them.
@@ -422,7 +422,7 @@ the rate at budget time from the year before's shared costs ÷ its programs' MTD
   another term's bonus.
 - Its products' offerings in no term make one more net, for the year, with anything booked on
   the products themselves.
-- A bonus owner with a `term_key` is paid only in that term, on its offerings there. A term the
+- A bonus owner with a `term_id` is paid only in that term, on its offerings there. A term the
   Operations Plan doesn't have pays nothing, with a warning (`unknown_bonus_term`).
 - `basis` `after_shared_costs`, the default, counts each offering's indirect costs;
   `before_shared_costs` doesn't.

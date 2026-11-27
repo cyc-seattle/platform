@@ -85,7 +85,7 @@ function writer(db: PGlite) {
 }
 
 const ROW_STAYS = "A plan row can't move to another plan. Copy it into that plan instead.";
-const SAME_PLAN = "A plan row can only link to rows in its own plan.";
+const SAME_PLAN = "A plan row can only link to rows in its own Financial Plan.";
 const AREA_NAMED = "A program area's plan names its program area, and an Operations Plan names none.";
 
 const refusal = (message: string) => expect.objectContaining({ code: "CY001", message });
@@ -106,27 +106,24 @@ async function plans(db: PGlite, year = 2027) {
     status: "draft",
   });
   const operations = await w.insert("plans", { financial_plan_id: set, kind: "operations" });
-  await w.insert("plan_rates", { plan_id: operations, key: randomUUID() });
+  await w.insert("plan_rates", { plan_id: operations });
   const frozen = await w.insert("plans", { financial_plan_id: set, kind: "program_area", program_area_id: area });
   const offering = async (plan: string) =>
-    w.insert("plan_offerings", { plan_id: plan, key: randomUUID(), product_id: product, name: "Offering" });
+    w.insert("plan_offerings", { plan_id: plan, product_id: product, name: "Offering" });
   const frozenOffering = await offering(frozen);
   const block = await w.insert("plan_activity_blocks", {
     plan_id: frozen,
-    key: randomUUID(),
     date: `${year}-06-06`,
     name: "Saturday morning",
   });
   await w.insert("plan_activities", {
     plan_id: frozen,
-    key: randomUUID(),
     offering_id: frozenOffering,
     date: `${year}-06-06`,
     block_id: block,
   });
   await w.insert("plan_revenue_charges", {
     plan_id: operations,
-    key: randomUUID(),
     name: "Card fees",
     rate: 0,
     product_kinds: JSON.stringify(["program", "charter"]),
@@ -243,9 +240,9 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
   describe("on a frozen plan's rows", () => {
     it("refuse to add, change, or delete one", async () => {
       const { frozen, frozenOffering, product } = await plans(db, 2101);
-      expect(
-        await w.refusedInsert("plan_offerings", { plan_id: frozen, key: randomUUID(), product_id: product }),
-      ).toEqual(refusal(REFUSED));
+      expect(await w.refusedInsert("plan_offerings", { plan_id: frozen, product_id: product })).toEqual(
+        refusal(REFUSED),
+      );
       expect(await w.update("plan_offerings", frozenOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
       expect(await w.remove("plan_offerings", frozenOffering)).toEqual(refusal(REFUSED));
       expect((await w.read("plan_offerings", frozenOffering))?.["name"]).toBe("Offering");
@@ -257,10 +254,9 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       const LOCK_ONLY = 0x0080;
       const SHARE = 0x0050;
       await db.transaction(async (tx) => {
-        await tx.query(`INSERT INTO plan_offerings (id, plan_id, key, product_id) VALUES ($1, $2, $3, $4)`, [
+        await tx.query(`INSERT INTO plan_offerings (id, plan_id, product_id) VALUES ($1, $2, $3)`, [
           randomUUID(),
           draft,
-          randomUUID(),
           product,
         ]);
         const [tuple] = (
@@ -288,7 +284,7 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
         ALTER TABLE plan_staff_levels DISABLE TRIGGER USER;
         ALTER TABLE plan_programs DISABLE TRIGGER USER;
         INSERT INTO plan_staff_levels (id, plan_id, hourly_rate_cents) VALUES ('${rate}', '${operations}', 3000);
-        INSERT INTO plan_programs (id, plan_id, key, product_id) VALUES ('${settings}', '${frozen}', gen_random_uuid(), '${product}');
+        INSERT INTO plan_programs (id, plan_id, product_id) VALUES ('${settings}', '${frozen}', '${product}');
         ALTER TABLE plan_staff_levels ENABLE TRIGGER USER;
         ALTER TABLE plan_programs ENABLE TRIGGER USER;
         CREATE TABLE cyc_seed_staff_levels (name text PRIMARY KEY, role text, grade text, role_sort integer);
@@ -324,12 +320,11 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(await seed()).toContain(draftSet);
       expect(await seed()).toEqual([]);
       const { rows } = await db.query<Values>(
-        `SELECT id, key, name, wage_share, hourly_cents, sort FROM plan_payroll_taxes WHERE plan_id = '${operations}'`,
+        `SELECT id, name, wage_share, hourly_cents, sort FROM plan_payroll_taxes WHERE plan_id = '${operations}'`,
       );
       expect(rows).toEqual([
         expect.objectContaining({ name: "Payroll tax", wage_share: "0.0948", hourly_cents: null, sort: 1 }),
       ]);
-      expect(rows[0]!["key"]).toEqual(expect.any(String));
       // The triggers are back on.
       expect(await w.update("plan_payroll_taxes", rows[0]!["id"] as string, { wage_share: 0.1 })).toEqual(
         refusal(REFUSED),
@@ -347,12 +342,12 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
   describe("on a draft plan's rows", () => {
     it("let them be added, changed, and deleted", async () => {
       const { draft, draftOffering, product } = await plans(db, 2104);
-      const added = await w.insert("plan_offerings", { plan_id: draft, key: randomUUID(), product_id: product });
+      const added = await w.insert("plan_offerings", { plan_id: draft, product_id: product });
       expect(await w.update("plan_offerings", draftOffering, { name: "Changed" })).toBeUndefined();
       expect(await w.remove("plan_offerings", added)).toBeUndefined();
     });
 
-    it("refuse a link to a row in another plan, for every link", async () => {
+    it("refuse a link to a row in another Financial Plan, for every link, and take one in its own", async () => {
       const { draft: programDraft, frozen, draftSet } = await plans(db, 2105);
       const operationsDraft = await w.insert("plans", { financial_plan_id: draftSet, kind: "operations" });
       const { links } = config(false);
@@ -361,23 +356,29 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       for (const [table, fields] of Object.entries(links)) {
         // Only an Operations Plan holds a bonus.
         const draft = table.startsWith("plan_bonus_") ? operationsDraft : programDraft;
+        const sibling = draft === programDraft ? operationsDraft : programDraft;
         for (const [field, target] of Object.entries(fields)) {
           const elsewhere = randomUUID();
           await db.exec(`ALTER TABLE "${target}" DISABLE TRIGGER cyc_frozen_plans`);
-          await db.query(`INSERT INTO "${target}" (id, plan_id, key) VALUES ($1, $2, $3)`, [
-            elsewhere,
-            frozen,
-            randomUUID(),
-          ]);
+          await db.query(`INSERT INTO "${target}" (id, plan_id) VALUES ($1, $2)`, [elsewhere, frozen]);
           await db.exec(`ALTER TABLE "${target}" ENABLE TRIGGER cyc_frozen_plans`);
           const here = randomUUID();
-          await db.query(`INSERT INTO "${target}" (id, plan_id, key) VALUES ($1, $2, $3)`, [here, draft, randomUUID()]);
-          expect(
-            await w.refusedInsert(table, { plan_id: draft, key: randomUUID(), [field]: elsewhere }),
-            `${table}.${field}`,
-          ).toEqual(refusal(SAME_PLAN));
-          const row = await w.insert(table, { plan_id: draft, key: randomUUID(), [field]: here });
+          const besides = randomUUID();
+          await db.exec(`ALTER TABLE "${target}" DISABLE TRIGGER cyc_frozen_plans`);
+          await db.query(`INSERT INTO "${target}" (id, plan_id) VALUES ($1, $2), ($3, $4)`, [
+            here,
+            draft,
+            besides,
+            sibling,
+          ]);
+          await db.exec(`ALTER TABLE "${target}" ENABLE TRIGGER cyc_frozen_plans`);
+          expect(await w.refusedInsert(table, { plan_id: draft, [field]: elsewhere }), `${table}.${field}`).toEqual(
+            refusal(SAME_PLAN),
+          );
+          const row = await w.insert(table, { plan_id: draft, [field]: here });
           expect(await w.update(table, row, { [field]: elsewhere }), `${table}.${field}`).toEqual(refusal(SAME_PLAN));
+          // A row in another of its Financial Plan's plans, such as an Operations Plan's term, is its own.
+          await w.insert(table, { plan_id: draft, [field]: besides });
         }
       }
     });
@@ -454,14 +455,12 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
       expect(
         await w.refusedInsert("plan_programs", {
           plan_id: draft,
-          key: randomUUID(),
           product_id: product,
           notes: JSON.stringify(["x".repeat(281)]),
         }),
       ).toEqual(refusal(SHORT_NOTES));
       await w.insert("plan_programs", {
         plan_id: draft,
-        key: randomUUID(),
         product_id: product,
         notes: JSON.stringify(["Up to 8 sailors"]),
       });
@@ -552,16 +551,15 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
     it("let a draft be deleted, with its plans and every row in them", async () => {
       const { draftSet, draft, product } = await plans(db, 2312);
       // Rows that link to each other, which a cascade deletes together.
-      const offering = await w.insert("plan_offerings", { plan_id: draft, key: randomUUID(), product_id: product });
-      const block = await w.insert("plan_activity_blocks", { plan_id: draft, key: randomUUID(), date: "2312-06-06" });
+      const offering = await w.insert("plan_offerings", { plan_id: draft, product_id: product });
+      const block = await w.insert("plan_activity_blocks", { plan_id: draft, date: "2312-06-06" });
       await w.insert("plan_activities", {
         plan_id: draft,
-        key: randomUUID(),
         offering_id: offering,
         block_id: block,
         date: "2312-06-06",
       });
-      await w.insert("plan_block_staff", { plan_id: draft, key: randomUUID(), block_id: block, count: 1 });
+      await w.insert("plan_block_staff", { plan_id: draft, block_id: block, count: 1 });
       expect(await w.remove("financial_plans", draftSet)).toBeUndefined();
       expect(await w.read("plans", draft)).toBeUndefined();
       for (const table of ["plan_offerings", "plan_activities", "plan_activity_blocks", "plan_block_staff"]) {
@@ -647,14 +645,12 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
     it("refuse one in a Program Plan, and take one in an Operations Plan", async () => {
       const { draft, draftSet } = await plans(db, 2509);
       const operations = await w.insert("plans", { financial_plan_id: draftSet, kind: "operations" });
-      expect(await w.refusedInsert("plan_bonus_owners", { plan_id: draft, key: randomUUID() })).toEqual(
+      expect(await w.refusedInsert("plan_bonus_owners", { plan_id: draft })).toEqual(refusal(BONUS_IN_OPERATIONS));
+      const owner = await w.insert("plan_bonus_owners", { plan_id: operations });
+      expect(await w.refusedInsert("plan_bonus_owner_products", { plan_id: draft })).toEqual(
         refusal(BONUS_IN_OPERATIONS),
       );
-      const owner = await w.insert("plan_bonus_owners", { plan_id: operations, key: randomUUID() });
-      expect(await w.refusedInsert("plan_bonus_owner_products", { plan_id: draft, key: randomUUID() })).toEqual(
-        refusal(BONUS_IN_OPERATIONS),
-      );
-      await w.insert("plan_bonus_owner_products", { plan_id: operations, key: randomUUID(), bonus_owner_id: owner });
+      await w.insert("plan_bonus_owner_products", { plan_id: operations, bonus_owner_id: owner });
     });
   });
 
@@ -824,14 +820,25 @@ function knexOver(db: PGlite | Transaction): unknown {
 }
 
 describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
-  it("copies each plan in the parent into a draft, with every row, its key, and its links", async () => {
+  it("copies each plan in the parent into a draft, with every row, and its links, across plans too", async () => {
     const db = await database(config(false));
     const w = writer(db);
     const { organization, set, frozen, operations, frozenOffering } = await plans(db, 2601);
     await db.exec("ALTER TABLE plans DISABLE TRIGGER USER");
     await db.query("UPDATE plans SET notes = $2 WHERE id = $1", [frozen, JSON.stringify(["Mondays"])]);
     await db.exec("ALTER TABLE plans ENABLE TRIGGER USER");
-    const original = (await w.read("plan_offerings", frozenOffering))!;
+    // An offering in the Operations Plan's term, and lines charged to the offering and to a pool.
+    const [term, pool] = [randomUUID(), randomUUID()];
+    await db.exec("SET session_replication_role = replica");
+    await db.query("INSERT INTO plan_terms (id, plan_id, name) VALUES ($1, $2, 'Summer')", [term, operations]);
+    await db.query("INSERT INTO plan_pools (id, plan_id, name) VALUES ($1, $2, 'G&A')", [pool, operations]);
+    await db.query("UPDATE plan_offerings SET term_id = $2 WHERE id = $1", [frozenOffering, term]);
+    await db.query(
+      `INSERT INTO plan_budget_lines (id, plan_id, name, cost_center_type, cost_center_id)
+        VALUES ($1, $2, 'Rent', 'offering', $3), ($4, $5, 'Audit', 'pool', $6)`,
+      [randomUUID(), frozen, frozenOffering, randomUUID(), operations, pool],
+    );
+    await db.exec("SET session_replication_role = DEFAULT");
     const child = await w.insert("financial_plans", {
       organization_id: organization,
       fiscal_year: 2601,
@@ -846,13 +853,28 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
     const copy = copies.find((p) => p["kind"] === "program_area")!;
     expect(copy).toMatchObject({ notes: ["Mondays"] });
     const [offering] = (await db.query<Values>(`SELECT * FROM plan_offerings WHERE plan_id = $1`, [copy["id"]])).rows;
-    expect(offering).toMatchObject({ key: original["key"], name: "Offering" });
+    expect(offering).toMatchObject({ name: "Offering" });
     expect(offering!["id"]).not.toBe(frozenOffering);
+    const operationsCopy = copies.find((p) => p["kind"] === "operations")!;
+    const [termCopy] = (await db.query<Values>(`SELECT * FROM plan_terms WHERE plan_id = $1`, [operationsCopy["id"]]))
+      .rows;
+    expect(offering!["term_id"]).toBe(termCopy!["id"]);
+    const [poolCopy] = (await db.query<Values>(`SELECT * FROM plan_pools WHERE plan_id = $1`, [operationsCopy["id"]]))
+      .rows;
+    const lines = (
+      await db.query<Values>(
+        `SELECT name, cost_center_id FROM plan_budget_lines WHERE plan_id IN ($1, $2) ORDER BY name`,
+        [copy["id"], operationsCopy["id"]],
+      )
+    ).rows;
+    expect(lines).toEqual([
+      { name: "Audit", cost_center_id: poolCopy!["id"] },
+      { name: "Rent", cost_center_id: offering!["id"] },
+    ]);
     const [activity] = (await db.query<Values>(`SELECT * FROM plan_activities WHERE plan_id = $1`, [copy["id"]])).rows;
     const [block] = (await db.query<Values>(`SELECT * FROM plan_activity_blocks WHERE plan_id = $1`, [copy["id"]]))
       .rows;
     expect(activity).toMatchObject({ offering_id: offering!["id"], block_id: block!["id"] });
-    const operationsCopy = copies.find((p) => p["kind"] === "operations")!;
     const [charge] = (
       await db.query<Values>(`SELECT * FROM plan_revenue_charges WHERE plan_id = $1`, [operationsCopy["id"]])
     ).rows;
@@ -962,7 +984,7 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
         const out = computePlan(data);
         const line = {
           cost_center_type: "organization",
-          cost_center_key: null,
+          cost_center_id: null,
           account_id: randomUUID(),
           function: "program",
           amount_cents: 1,
@@ -985,14 +1007,12 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     ).toBeUndefined();
     await w.insert("plan_activities", {
       plan_id: plan,
-      key: randomUUID(),
       offering_id: draftOffering,
       date: "2807-06-06",
       kind: "practice",
     });
     await w.insert("plan_closed_dates", {
       plan_id: draftOperations,
-      key: randomUUID(),
       date: "2807-06-06",
       name: "Closed",
     });

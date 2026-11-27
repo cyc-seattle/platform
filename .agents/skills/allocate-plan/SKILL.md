@@ -37,7 +37,7 @@ From the Operations Plan:
 
 - `plan_staff_levels`: each level's `staff_level_id` and hourly rate, $0 for a volunteer. The
   levels' names are in the catalog's `staff_levels`, such as Senior Instructor.
-- `plan_salaried_positions`: each position's `key`, name and `hourly_coaching_rate_cents`.
+- `plan_salaried_positions`: each position's `id`, name and `hourly_coaching_rate_cents`.
 - `plan_boat_rates`: which boat classes have a charter rate, for boats the organization doesn't have.
 - Each boat class's `max_capacity` from `boat_classes`. A coach boat's class, such as RIB, takes 0.
 
@@ -84,7 +84,7 @@ For each date, in the part of the plan you're allocating:
    higher level covering a lower one. A salaried position on the block counts as one coach for any
    of its programs. Then apply the
    notes, such as "if there are more than 12 Guppies, add a Junior Instructor". A row is either a
-   `staff_level_id` with a `count`, or one salaried position's `position_key` with `count` 1 and
+   `staff_level_id` with a `count`, or one salaried position's `position_id` with `count` 1 and
    `pay` `salary` or `hourly`. A note says who coaches what; a salaried position can't be on two
    blocks at once.
 3. **Give it coach boats**, in `plan_block_boats` with their class, such as RIB, by the notes, such
@@ -95,9 +95,8 @@ For each date, in the part of the plan you're allocating:
    few that day. Enough seats means Σ (boats × the class's `max_capacity`) is at least the block's
    sailors expected. A block whose activities don't use boats needs none.
 
-Each row you write needs a new `id` and `key`, and its plan's `id` as `plan_id`. A key field such as
-`position_key` takes the `key` of the row in the same Financial Plan's Operations Plan, not
-its `id`. `staff_level_id` takes a catalog `staff_levels` row's `id`, one the Operations Plan has a
+Each row you write needs a new `id`, and its plan's `id` as `plan_id`. `position_id` takes the `id` of
+a position in the same Financial Plan's Operations Plan. `staff_level_id` takes a catalog `staff_levels` row's `id`, one the Operations Plan has a
 rate for. Set each activity's `block_id` to its block.
 
 To rewrite a block, delete its `plan_block_staff` and `plan_block_boats`
