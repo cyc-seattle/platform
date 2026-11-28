@@ -182,12 +182,17 @@ Feature: Plans
       When they change the offering's price to $1,200 a sailor in the new Financial Plan
       Then "Budget" still has the offering at $1,000 a sailor
 
-    Example: Next year's plan starts as a copy of this year's
-      Given a user with the Plan Writer policy
+    Example: Next year's plan starts as a copy of this year's, planning next year's offerings
+      Given a user with the Plan Writer, Plan Admin and Catalog Writer policies
       And a frozen Financial Plan named "Budget" with an offering at $1,000 a sailor
       When they start a Financial Plan for the year after from "Budget"
-      Then the new Financial Plan has the same offering at $1,000 a sailor
+      Then the new Financial Plan plans next year's offering at $1,000 a sailor
       And its parent is "Budget"
+
+    Example: Only a Catalog Writer starts next year's plan, since it makes next year's offerings
+      Given a user with the Plan Writer and Plan Admin policies
+      And a frozen Financial Plan named "Budget" with an offering at $1,000 a sailor
+      Then they can't start a Financial Plan for the year after from "Budget"
 
   Rule: Each Program Plan sets its programs' staff levels and how many sailors each coach can take
 

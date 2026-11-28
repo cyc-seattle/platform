@@ -18,7 +18,7 @@ A Financial Plan holds what planners enter, and the results the [planning engine
 - **Activity block:** offerings whose activities share coaches and boats on certain days, set up by the planner. For example, J-Pod and K-Pod on Wednesdays.
 - **Cost center:** what a money line belongs to. That is an offering, a product or a program area (each divided among its offerings), a pool (G&A, program admin), or the org. Strictly speaking, an offering that earns revenue is a profit center, but we call all of these cost centers.
 - **Bonus owner:** a role, such as a program area's director. It owns a set of products and earns a bonus on their net. Every bonus is in the Operations Plan.
-- **Catalog offering:** what CSC sells, kept in the catalog: one program for one dated period, such as Guppies week 3 of summer 2027, with its price and how many sailors it takes. After the board approves a Financial Plan, the plan's offerings are copied into catalog offerings, and Clubspot's camps are built from those. A plan's offerings don't link to them.
+- **Catalog offering:** what CSC sells, kept in the catalog: one program for one dated period, such as Guppies week 3 of summer 2027, with its price and how many sailors it takes. Each plan offering plans one catalog offering, which a Catalog Writer makes first, and which names its product and itself ([cyc-seattle/platform#395](https://github.com/cyc-seattle/platform/issues/395)). Clubspot's camps are built from the catalog offerings.
 - **Plan** (`plans`): one part of a Financial Plan, with every row it holds. A **Program Plan** holds one program area's offerings for the year. The **Operations Plan** holds what the areas share, the charges set as a share of revenue, and the products in no area: merchandise, storage and charters.
 - **Financial Plan** (`financial_plans`): the organization's plan for a year: one Operations Plan and a Program Plan for any of the program areas, with the P&L they make together. Planners change its plans while it's a draft. Freezing it keeps it, and its plans, from changing, apart from its name, its note, its date and whether it's archived. A new one starts as a copy of its parent, so two started from the same parent are options to compare, like branches in git.
   - The Financial Plan **in force** on a day is the one for its organization and year with the latest `effective_from` on or before that day: the plan being run, which tracking compares with what happened.
@@ -245,7 +245,7 @@ A plan's `notes` hold what the planner wants that the plan's numbers don't captu
 
 Every `note` a person writes, on a Financial Plan, an offering, a line, a charge, a capital item or an asset, holds at most 280 characters, with inline markdown only: bold, italic, code and links.
 
-A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization, from any year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, and each link pointing at the copy of the row it linked to, a cost center's included. Started from last year's, next year's plan starts with last year's dates, for the planner's AI to move. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
+A planner starts a Financial Plan by adding a `financial_plans` row. Given a `parent_id`, a Financial Plan for the same organization, from any year, the `frozen-plans` hook copies the parent's plans into it a moment after: a draft copy of each, with every row, and each link pointing at the copy of the row it linked to, a cost center's included. A copy for the same year plans the same catalog offerings. Started from last year's, next year's plan starts with last year's dates, for the planner's AI to move, and plans next year's catalog offerings, one for each of last year's, with the same product and name: 2028's Guppies week 3 isn't 2027's. It plans one another of next year's Financial Plans already plans, such as a second draft started from the same plan, and makes the rest, on no form. So only someone who holds Catalog Writer starts a Financial Plan from another year's, and the hook refuses anyone else. A Plan Admin can also add a plan to a draft, or delete one with its rows. Its organization, year, and parent never change. Deleting a draft Financial Plan deletes its plans, their rows and its results.
 
 A Plan Admin freezes a Financial Plan by setting its `status` to `frozen`, and the database refuses it without an Operations Plan. Freezing is one way. The hook works out the results again ([A Financial Plan's results](#a-financial-plans-results)), and they record the engine that did. A frozen Financial Plan never changes, apart from its `name`, its `note`, such as "Reviewed with the board", the date it's active from, and whether it's archived.
 
@@ -291,7 +291,7 @@ erDiagram
     plans ||--o{ plan_programs : contains
     products ||--o{ plan_programs : "settings of"
     plans ||--o{ plan_offerings : contains
-    products ||--o{ plan_offerings : "offering of"
+    offerings ||--o{ plan_offerings : "planned as"
     plan_terms |o--o{ plan_offerings : "term of, in the Operations Plan"
     plan_offerings ||--o{ plan_activities : runs
     plan_offerings ||--o{ plan_trips : "travels for"
@@ -318,8 +318,7 @@ erDiagram
         json notes "the planner's short notes"
     }
     plan_offerings {
-        uuid product_id FK
-        string name
+        uuid offering_id FK "the catalog offering, required"
         uuid term_id FK "in the Operations Plan, or none"
         date starts_on
         date ends_on
@@ -391,6 +390,8 @@ erDiagram
 ```
 
 All of an offering's revenue and costs go in its plan's year, and its dates may run past either end of that year, as a winter program's do ([cyc-seattle/platform#252](https://github.com/cyc-seattle/platform/issues/252)). Its enrollment is a whole number of kids, and its revenue is `price_cents` × enrollment.
+
+A plan offering's product and name are its catalog offering's, through `offering_id`. A planner plans an offering the catalog has; only a Catalog Writer makes one. Planned once in a Financial Plan, an offering has its plan's numbers there, and the engine warns about one planned twice, since Directus can't make the pair unique. Deleting a catalog offering a plan plans is refused.
 
 An offering can be in one of its Financial Plan's terms, by `term_id`, or in none, such as Adult Learn to Sail (cyc-seattle/platform#251).
 

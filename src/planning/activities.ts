@@ -1,10 +1,10 @@
 import { minutesOf } from "./dates.ts";
 import type { Context } from "./context.ts";
-import type { ActivityKind, PlanActivity, PlanOffering, PlanTrip } from "./types.ts";
+import type { ActivityKind, PlanActivity, OfferingInPlan, PlanTrip } from "./types.ts";
 
 /** A stored activity, before staffing, with its paid time and time on the water. */
 export interface ScheduledActivity {
-  offering: PlanOffering;
+  offering: OfferingInPlan;
   trip: PlanTrip | null;
   stored: PlanActivity;
   date: string;

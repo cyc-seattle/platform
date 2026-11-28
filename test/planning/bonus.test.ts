@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, type PlanBonusOwner } from "../../src/planning/index.ts";
-import { A, area, budgetLine, emptyPlan, offering, pnlOf, pool, product, allocateAll, total } from "./fixtures.ts";
+import { type PlanBonusOwner } from "../../src/planning/index.ts";
+import {
+  A,
+  area,
+  budgetLine,
+  emptyPlan,
+  offering,
+  pnlOf,
+  pool,
+  product,
+  allocateAll,
+  total,
+  computePlan,
+} from "./fixtures.ts";
 
 function owner(overrides: Partial<PlanBonusOwner> = {}): PlanBonusOwner {
   return {

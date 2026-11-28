@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, type PlanBoatRate, type PlanData } from "../../src/planning/index.ts";
+import { type PlanBoatRate, type PlanData } from "../../src/planning/index.ts";
 import {
   A,
   activity,
@@ -19,6 +19,7 @@ import {
   total,
   trip,
   type Given,
+  computePlan,
 } from "./fixtures.ts";
 
 const codes = (data: PlanData) => computePlan(data).warnings.map((w) => w.code);

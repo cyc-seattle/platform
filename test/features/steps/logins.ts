@@ -200,7 +200,8 @@ async function actorUser(actor: Actor): Promise<User> {
   const role = actorRole(actor);
   // The hook makes a family Team only while they're on a team, so a Team user starts as Community.
   const user = await createUser(
-    email(JSON.stringify(actor).replace(/\W+/g, "-")),
+    // An email's local part is at most 64 characters; the run and a serial keep it unique.
+    email(JSON.stringify(actor).replace(/\W+/g, "-").replace(/^-|-$/g, "").slice(0, 32)),
     role === "Team" ? "Community" : role,
   );
   const policies = actor.policies ?? [];

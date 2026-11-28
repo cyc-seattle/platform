@@ -175,8 +175,8 @@ export const defaultViews: DefaultView[] = [
   },
   {
     collection: "plan_offerings",
-    sort: ["plan_id.financial_plan_id.name", "starts_on", "name"],
-    fields: ["name", "plan_id", "product_id", "starts_on", "ends_on", "capacity", "price_cents"],
+    sort: ["plan_id.financial_plan_id.name", "starts_on", "offering_id.name"],
+    fields: ["offering_id", "plan_id", "starts_on", "ends_on", "capacity", "price_cents"],
   },
   {
     collection: "plan_programs",
@@ -185,7 +185,7 @@ export const defaultViews: DefaultView[] = [
   },
   {
     collection: "plan_trips",
-    sort: ["offering_id.name", "name"],
+    sort: ["offering_id.offering_id.name", "name"],
     fields: ["name", "offering_id", "nights", "miles", "airfare_cents"],
   },
   {

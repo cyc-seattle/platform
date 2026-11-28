@@ -54,7 +54,8 @@ From each Program Plan:
   `indirect_cost_rate` as it is: only a Plan Admin sets it.
 - The plan's own `notes`: the planner's notes for the program area.
 - `plan_offerings` with their most sailors (`capacity`, or the expected enrollment when it's empty)
-  and their expected enrollment (`target_enrollment`),
+  and their expected enrollment (`target_enrollment`), and each one's product and name through its
+  catalog offering (`offering_id.product_id`, `offering_id.name`),
   `plan_activities` with their dates and times, `plan_trips`, and any blocks already there:
   `plan_activity_blocks`, `plan_block_staff`, `plan_block_boats`.
 

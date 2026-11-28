@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePlan } from "../../src/planning/index.ts";
-import { A, area, charge, emptyPlan, offering, pnlOf, product, total } from "./fixtures.ts";
+import { A, area, charge, emptyPlan, offering, pnlOf, product, total, computePlan } from "./fixtures.ts";
 
 function setup(o: Partial<Parameters<typeof offering>[1]> = {}) {
   const p = product();

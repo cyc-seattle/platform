@@ -28,6 +28,7 @@ import {
   writeDraftResults,
   workOutAgain,
   writeSetResults,
+  holdsPolicy,
 } from "../stacks/backend/frozen-plans.cjs";
 import { computePlan } from "../src/planning/index.ts";
 import { connect, database, schemas, tables } from "./planning-database.ts";
@@ -108,8 +109,9 @@ async function plans(db: PGlite, year = 2027) {
   const operations = await w.insert("plans", { financial_plan_id: set, kind: "operations" });
   await w.insert("plan_rates", { plan_id: operations });
   const frozen = await w.insert("plans", { financial_plan_id: set, kind: "program_area", program_area_id: area });
-  const offering = async (plan: string) =>
-    w.insert("plan_offerings", { plan_id: plan, product_id: product, name: "Offering" });
+  // The catalog offering both Financial Plans' offerings plan.
+  const catalog = await w.insert("offerings", { product_id: product, name: "Offering" });
+  const offering = async (plan: string) => w.insert("plan_offerings", { plan_id: plan, offering_id: catalog });
   const frozenOffering = await offering(frozen);
   const block = await w.insert("plan_activity_blocks", {
     plan_id: frozen,
@@ -139,7 +141,19 @@ async function plans(db: PGlite, year = 2027) {
   });
   const draft = await w.insert("plans", { financial_plan_id: draftSet, kind: "program_area", program_area_id: area });
   const draftOffering = await offering(draft);
-  return { organization, area, product, set, operations, frozen, draftSet, draft, frozenOffering, draftOffering };
+  return {
+    catalog,
+    organization,
+    area,
+    product,
+    set,
+    operations,
+    frozen,
+    draftSet,
+    draft,
+    frozenOffering,
+    draftOffering,
+  };
 }
 
 // Starting a PGlite can take longer than the 5s default on a CI runner.
@@ -239,25 +253,25 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
 
   describe("on a frozen plan's rows", () => {
     it("refuse to add, change, or delete one", async () => {
-      const { frozen, frozenOffering, product } = await plans(db, 2101);
-      expect(await w.refusedInsert("plan_offerings", { plan_id: frozen, product_id: product })).toEqual(
+      const { frozen, frozenOffering, catalog } = await plans(db, 2101);
+      expect(await w.refusedInsert("plan_offerings", { plan_id: frozen, offering_id: catalog })).toEqual(
         refusal(REFUSED),
       );
-      expect(await w.update("plan_offerings", frozenOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
+      expect(await w.update("plan_offerings", frozenOffering, { capacity: 3 })).toEqual(refusal(REFUSED));
       expect(await w.remove("plan_offerings", frozenOffering)).toEqual(refusal(REFUSED));
-      expect((await w.read("plan_offerings", frozenOffering))?.["name"]).toBe("Offering");
+      expect((await w.read("plan_offerings", frozenOffering))?.["capacity"]).toBeNull();
     });
 
     it("lock the Financial Plan inside the write's transaction, so freezing it waits for the write", async () => {
-      const { draft, draftSet, product } = await plans(db, 2102);
+      const { draft, draftSet, catalog } = await plans(db, 2102);
       // A row lock lives in the Financial Plan's tuple: its xmax, and these bits of its infomask.
       const LOCK_ONLY = 0x0080;
       const SHARE = 0x0050;
       await db.transaction(async (tx) => {
-        await tx.query(`INSERT INTO plan_offerings (id, plan_id, product_id) VALUES ($1, $2, $3)`, [
+        await tx.query(`INSERT INTO plan_offerings (id, plan_id, offering_id) VALUES ($1, $2, $3)`, [
           randomUUID(),
           draft,
-          product,
+          catalog,
         ]);
         const [tuple] = (
           await tx.query<{ t_infomask: number; t_xmax: string; xid: string }>(
@@ -341,9 +355,9 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
 
   describe("on a draft plan's rows", () => {
     it("let them be added, changed, and deleted", async () => {
-      const { draft, draftOffering, product } = await plans(db, 2104);
-      const added = await w.insert("plan_offerings", { plan_id: draft, product_id: product });
-      expect(await w.update("plan_offerings", draftOffering, { name: "Changed" })).toBeUndefined();
+      const { draft, draftOffering, catalog } = await plans(db, 2104);
+      const added = await w.insert("plan_offerings", { plan_id: draft, offering_id: catalog });
+      expect(await w.update("plan_offerings", draftOffering, { capacity: 3 })).toBeUndefined();
       expect(await w.remove("plan_offerings", added)).toBeUndefined();
     });
 
@@ -549,9 +563,9 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
     });
 
     it("let a draft be deleted, with its plans and every row in them", async () => {
-      const { draftSet, draft, product } = await plans(db, 2312);
+      const { draftSet, draft, catalog } = await plans(db, 2312);
       // Rows that link to each other, which a cascade deletes together.
-      const offering = await w.insert("plan_offerings", { plan_id: draft, product_id: product });
+      const offering = await w.insert("plan_offerings", { plan_id: draft, offering_id: catalog });
       const block = await w.insert("plan_activity_blocks", { plan_id: draft, date: "2312-06-06" });
       await w.insert("plan_activities", {
         plan_id: draft,
@@ -657,9 +671,9 @@ describe("the frozen-plans triggers", { timeout: 30_000 }, () => {
   it("stay in place when a schema apply changes a table", async () => {
     const { frozenOffering } = await plans(db, 2124);
     await db.exec(`ALTER TABLE plan_offerings ADD COLUMN extra integer`);
-    await db.exec(`ALTER TABLE plan_offerings ALTER COLUMN name TYPE text`);
+    await db.exec(`ALTER TABLE plan_offerings ALTER COLUMN note TYPE text`);
     await db.exec(`ALTER TABLE plan_offerings ALTER COLUMN capacity SET NOT NULL`).catch(() => undefined);
-    expect(await w.update("plan_offerings", frozenOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
+    expect(await w.update("plan_offerings", frozenOffering, { capacity: 3 })).toEqual(refusal(REFUSED));
   });
 
   it("install again in place, without a second trigger", async () => {
@@ -734,7 +748,7 @@ describe("the frozen-plans triggers with the CI stack's flag", { timeout: 30_000
     const { set, frozen, draftSet, frozenOffering } = await plans(db);
     expect(await w.update("financial_plans", set, { effective_from: "2026-07-01" })).toBeUndefined();
     expect(await w.update("financial_plans", set, { frozen_at: "2000-01-01T00:00:00Z" })).toEqual(refusal(SET_STAYS));
-    expect(await w.update("plan_offerings", frozenOffering, { name: "Changed" })).toEqual(refusal(REFUSED));
+    expect(await w.update("plan_offerings", frozenOffering, { capacity: 3 })).toEqual(refusal(REFUSED));
     expect(await w.update("plans", frozen, { notes: JSON.stringify(["Changed"]) })).toEqual(refusal(PLANS_FIXED));
     // The draft started from it goes first, since it points at it.
     expect(await w.remove("financial_plans", draftSet)).toBeUndefined();
@@ -823,7 +837,7 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
   it("copies each plan in the parent into a draft, with every row, and its links, across plans too", async () => {
     const db = await database(config(false));
     const w = writer(db);
-    const { organization, set, frozen, operations, frozenOffering } = await plans(db, 2601);
+    const { catalog, organization, set, frozen, operations, frozenOffering } = await plans(db, 2601);
     await db.exec("ALTER TABLE plans DISABLE TRIGGER USER");
     await db.query("UPDATE plans SET notes = $2 WHERE id = $1", [frozen, JSON.stringify(["Mondays"])]);
     await db.exec("ALTER TABLE plans ENABLE TRIGGER USER");
@@ -853,7 +867,8 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
     const copy = copies.find((p) => p["kind"] === "program_area")!;
     expect(copy).toMatchObject({ notes: ["Mondays"] });
     const [offering] = (await db.query<Values>(`SELECT * FROM plan_offerings WHERE plan_id = $1`, [copy["id"]])).rows;
-    expect(offering).toMatchObject({ name: "Offering" });
+    // A Financial Plan for the same year plans the same catalog offering.
+    expect(offering).toMatchObject({ offering_id: catalog });
     expect(offering!["id"]).not.toBe(frozenOffering);
     const operationsCopy = copies.find((p) => p["kind"] === "operations")!;
     const [termCopy] = (await db.query<Values>(`SELECT * FROM plan_terms WHERE plan_id = $1`, [operationsCopy["id"]]))
@@ -880,10 +895,64 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
     ).rows;
     expect(charge).toMatchObject({ product_kinds: ["program", "charter"] });
     // The copy is a draft, so it can change, and the parent stays as it was.
-    expect(await w.update("plan_offerings", offering!["id"] as string, { name: "Changed" })).toBeUndefined();
-    expect((await w.read("plan_offerings", frozenOffering))!["name"]).toBe("Offering");
+    expect(await w.update("plan_offerings", offering!["id"] as string, { capacity: 3 })).toBeUndefined();
+    expect((await w.read("plan_offerings", frozenOffering))!["capacity"]).toBeNull();
     // A second try copies nothing more.
     expect(await copyParent(config(false), knexOver(db), child)).toBe(false);
+  });
+
+  it("plans new catalog offerings in a Financial Plan started from another year's", async () => {
+    const db = await database(config(false));
+    const w = writer(db);
+    const { catalog, organization, set, product } = await plans(db, 2603);
+    const child = await w.insert("financial_plans", {
+      organization_id: organization,
+      fiscal_year: 2604,
+      name: "Next year",
+      status: "draft",
+      parent_id: set,
+    });
+    expect(await copyParent(config(false), knexOver(db), child)).toBe(true);
+    const [offering] = (
+      await db.query<Values>(
+        `SELECT o.offering_id FROM plan_offerings o JOIN plans p ON p.id = o.plan_id WHERE p.financial_plan_id = $1`,
+        [child],
+      )
+    ).rows;
+    expect(offering!["offering_id"]).not.toBe(catalog);
+    expect(await w.read("offerings", offering!["offering_id"] as string)).toMatchObject({
+      product_id: product,
+      name: "Offering",
+      registration_form_id: null,
+    });
+  });
+
+  it("plans the same catalog offerings in two of next year's drafts from one plan", async () => {
+    const db = await database(config(false));
+    const w = writer(db);
+    const { catalog, organization, set } = await plans(db, 2607);
+    const nextYear = async (name: string) => {
+      const child = await w.insert("financial_plans", {
+        organization_id: organization,
+        fiscal_year: 2608,
+        name,
+        status: "draft",
+        parent_id: set,
+      });
+      expect(await copyParent(config(false), knexOver(db), child)).toBe(true);
+      const { rows } = await db.query<Values>(
+        `SELECT o.offering_id FROM plan_offerings o JOIN plans p ON p.id = o.plan_id WHERE p.financial_plan_id = $1`,
+        [child],
+      );
+      return rows.map((row) => row["offering_id"]);
+    };
+    const [first] = await nextYear("Two coaches");
+    const [second] = await nextYear("Three coaches");
+    expect(first).not.toBe(catalog);
+    expect(second).toBe(first);
+    const { rows } = await db.query<Values>(`SELECT count(*)::int AS n FROM offerings WHERE name = 'Offering'`);
+    // This year's, and next year's.
+    expect(rows).toEqual([{ n: 2 }]);
   });
 
   it("does nothing for a Financial Plan with no parent", async () => {
@@ -923,13 +992,26 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     return { ...made, w, draftOperations: operations };
   }
 
+  it("names each offering in its results by its catalog offering, after its product", async () => {
+    const db = await database(config(false));
+    const { draftSet, draftOffering, w } = await draft(db, 2802);
+    expect(await w.update("plan_offerings", draftOffering, { target_enrollment: 4, price_cents: 100 })).toBeUndefined();
+    expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
+    const { rows: pnl } = await db.query<Values>(
+      `SELECT name FROM plan_result_pnl WHERE financial_plan_id = $1 AND level = 'offering'`,
+      [draftSet],
+    );
+    // A line's cost center is named the same way.
+    expect(pnl).toEqual([{ name: "Test product Offering" }]);
+  });
+
   it("works out a draft's results again in place of the ones it had", async () => {
     const db = await database(config(false));
     const { draftSet, draftOffering, w } = await draft(db, 2801);
     expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
     const [first] = await totals(db, draftSet);
     expect(first).toBeDefined();
-    expect(await w.update("plan_offerings", draftOffering, { name: "Renamed" })).toBeUndefined();
+    expect(await w.update("plan_offerings", draftOffering, { capacity: 12 })).toBeUndefined();
     expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
     const again = await totals(db, draftSet);
     expect(again).toHaveLength(1);
@@ -1052,3 +1134,43 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     expect(await changes("directus_users", [randomUUID()])).toEqual([]);
   });
 });
+
+describe("who holds a policy", { timeout: 30_000 }, () => {
+  it("counts one given to the user or to their role, by its name", async () => {
+    const db = await PGlite.create();
+    await db.exec(`
+      CREATE TABLE directus_policies (id uuid PRIMARY KEY, name varchar NOT NULL);
+      CREATE TABLE directus_users (id uuid PRIMARY KEY, role uuid);
+      CREATE TABLE directus_access (id uuid PRIMARY KEY, policy uuid NOT NULL, "user" uuid, role uuid);
+      INSERT INTO directus_policies VALUES ('${ids.policy}', 'Catalog Writer'), ('${ids.other}', 'Plan Admin');
+      INSERT INTO directus_users VALUES ('${ids.direct}', NULL), ('${ids.byRole}', '${ids.role}'), ('${ids.none}', NULL);
+      INSERT INTO directus_access VALUES (gen_random_uuid(), '${ids.policy}', '${ids.direct}', NULL),
+        (gen_random_uuid(), '${ids.policy}', NULL, '${ids.role}'), (gen_random_uuid(), '${ids.other}', '${ids.none}', NULL);
+    `);
+    let n = 0;
+    const query = async (sql: string, bindings: unknown[]) =>
+      (
+        await db.query<Record<string, unknown>>(
+          sql.replace(/\?/g, () => `$${++n}`),
+          bindings,
+        )
+      ).rows;
+    const holds = async (user: string | null) => {
+      n = 0;
+      return holdsPolicy(query, user, "Catalog Writer");
+    };
+    expect(await holds(ids.direct)).toBe(true);
+    expect(await holds(ids.byRole)).toBe(true);
+    expect(await holds(ids.none)).toBe(false);
+    expect(await holds(null)).toBe(false);
+  });
+});
+
+const ids = {
+  policy: randomUUID(),
+  other: randomUUID(),
+  role: randomUUID(),
+  direct: randomUUID(),
+  byRole: randomUUID(),
+  none: randomUUID(),
+};

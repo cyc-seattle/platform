@@ -360,10 +360,10 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
   }),
   plan_pools: async (fixed) => inPlan(fixed, { name: `Pool ${key("pool")}` }),
   plan_staff_levels: async (fixed) => inPlan(fixed, { staff_level_id: row["staff_levels"], hourly_rate_cents: 2_500 }),
+  // Planning the run's catalog offering.
   plan_offerings: async (fixed) =>
     inPlan(fixed, {
-      product_id: row["products"],
-      name: `Offering ${key("offering")}`,
+      offering_id: row["offerings"],
       starts_on: "2027-06-01",
       ends_on: "2027-08-31",
       capacity: 12,

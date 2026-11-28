@@ -7,6 +7,8 @@ export interface Write {
   /** The rows an update or delete touches. */
   keys?: string[];
   user?: string | null;
+  /** Whether the writer is an admin, who may do anything a policy allows. */
+  admin?: boolean;
   now: string;
 }
 
@@ -29,6 +31,10 @@ export interface Lookup {
   plans(ids: string[]): Promise<Plan[]>;
   sets(ids: string[]): Promise<FinancialPlan[]>;
   deletesFrozen(user: string | null | undefined): Promise<boolean>;
+  /** A Financial Plan's year. */
+  yearOf(id: string): Promise<number | undefined>;
+  /** Whether the user holds the Catalog Writer policy. */
+  writesCatalog(user: string | null | undefined): Promise<boolean>;
 }
 
 /** Runs SQL inside the transaction the caller opened. */
@@ -93,6 +99,13 @@ export const ARCHIVED_NOT_ACTIVE: string;
 export const ACTIVE_STAYS: string;
 export const BONUS_IN_OPERATIONS: string;
 export const SHORT_NOTES: string;
+export const CATALOG_WRITER_TO_COPY: string;
+/** Whether `user` holds the policy named `name`, given to them or to their role. */
+export function holdsPolicy(
+  query: (sql: string, bindings: unknown[]) => Promise<Record<string, unknown>[]>,
+  user: string | null | undefined,
+  name: string,
+): Promise<boolean>;
 
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each plan, with every row and its

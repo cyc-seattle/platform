@@ -162,6 +162,10 @@ Step("{service}'s service account", (_, service: string) => setThey(actor({ serv
 Step("a user with the Plan Writer and Plan Admin policies", () =>
   setThey(actor({ policies: ["Plan Writer", "Plan Admin"] })),
 );
+// Starting next year's plan makes next year's offerings, so a Plan Admin is given Catalog Writer too.
+Step("a user with the Plan Writer, Plan Admin and Catalog Writer policies", () =>
+  setThey(actor({ policies: ["Plan Writer", "Plan Admin", "Catalog Writer"] })),
+);
 
 const ACTIONS = ["create", "read", "update", "delete"] as const;
 type Action = (typeof ACTIONS)[number];

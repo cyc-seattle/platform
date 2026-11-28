@@ -31,6 +31,14 @@ export interface Product {
   program_area_id: Id | null;
 }
 
+/** What the organization sells: one product for one dated period, such as Guppies week 3 of summer 2027. */
+export interface Offering {
+  id: Id;
+  product_id: Id;
+  /** Which period, such as "Week 3", shown after the product's name. */
+  name: string | null;
+}
+
 /** A part of the organization's programs, such as Summer, with its revenue account. */
 export interface ProgramArea {
   id: Id;
@@ -154,8 +162,8 @@ export interface Plan {
 export type ActivityKind = "practice" | "regatta" | "clinic" | "travel";
 
 export interface PlanOffering extends PlanRow {
-  product_id: Id;
-  name: string;
+  /** Its catalog offering, which names its product and itself (cyc-seattle/platform#395). */
+  offering_id: Id;
   /** A `plan_terms` id in the Operations Plan, or none. */
   term_id: Id | null;
   starts_on: DateString;
@@ -166,6 +174,12 @@ export interface PlanOffering extends PlanRow {
   price_cents: number | null;
   cogs_rate: number | null;
   note: string | null;
+}
+
+/** A plan offering with its catalog offering's product and name, as the engine reads it. */
+export interface OfferingInPlan extends PlanOffering {
+  product_id: Id;
+  name: string;
 }
 
 /** A program's settings in a Program Plan: who coaches it, and how many sailors each coach takes. */
@@ -399,6 +413,8 @@ export interface PlanData {
   boats: Boat[];
   staff_roles: StaffRole[];
   staff_levels: StaffLevel[];
+  /** The catalog offerings the plans' offerings link to. */
+  offerings: Offering[];
 
   /** The plans being calculated, so the engine can tell which plan each row is in. */
   plans: Plan[];
@@ -427,6 +443,9 @@ export interface PlanData {
   plan_capital_items?: PlanCapitalItem[];
   plan_terms?: PlanTerm[];
 }
+
+/** `PlanData` with each plan offering's product and name, from its catalog offering, as the engine works on it. */
+export type CalcData = Omit<PlanData, "plan_offerings"> & { plan_offerings: OfferingInPlan[] };
 
 // Output
 

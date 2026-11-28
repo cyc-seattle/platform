@@ -20,6 +20,8 @@ const PLANS = "plans";
 // Written last when a Financial Plan's results go in, so one that has it has them all.
 const RESULTS = "plan_results";
 const SETS = "financial_plans";
+const OFFERINGS = "plan_offerings";
+const CATALOG_OFFERINGS = "offerings";
 
 const REFUSED = "A frozen plan can't be changed. Start a new Financial Plan from the one it's in.";
 const NOT_EDITOR = "Only someone who can edit this Financial Plan can do this.";
@@ -43,6 +45,11 @@ const ARCHIVED_NOT_ACTIVE = "An archived Financial Plan can't be made active. Br
 const ACTIVE_STAYS = "An active Financial Plan can't be deleted. Clear the date it's active from first.";
 const BONUS_IN_OPERATIONS = "A bonus goes in the Operations Plan.";
 const SHORT_NOTES = "Each note is one line of at most 280 characters.";
+const CATALOG_WRITER_TO_COPY =
+  "Starting a Financial Plan from another year's makes the new year's offerings, which only a Catalog Writer can do.";
+
+/** The policy that changes the catalog, which a copy from another year needs, since it makes offerings (docs/access.md). */
+const CATALOG_WRITER = "Catalog Writer";
 
 /** What a frozen Financial Plan lets change: its name, its note, the date it's active from, and whether it's archived. */
 const SET_EDITABLE = ["name", "note", "effective_from", "archived_at"];
@@ -71,6 +78,7 @@ const REASONS = {
   [ARCHIVED_NOT_ACTIVE]: 400,
   [BONUS_IN_OPERATIONS]: 400,
   [SHORT_NOTES]: 400,
+  [CATALOG_WRITER_TO_COPY]: 403,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
@@ -109,8 +117,10 @@ function unstamped(payload, fields) {
  * - `plans(ids)`: each plan's `id`, `financial_plan_id`, `kind`, and `program_area_id`
  * - `sets(ids)`: each Financial Plan's `id`, `status`, and `archived_at`
  * - `deletesFrozen(user)`: whether this user may delete a frozen Financial Plan, which only dev allows
+ * - `yearOf(id)`: a Financial Plan's `fiscal_year`
+ * - `writesCatalog(user)`: whether this user holds the Catalog Writer policy
  */
-async function guard({ collection, event, payload, keys = [], user, now }, config, lookup) {
+async function guard({ collection, event, payload, keys = [], user, admin = false, now }, config, lookup) {
   const frozenSet = async (ids) => ids.length > 0 && (await lookup.sets(ids)).some((set) => isFrozen(set.status));
   const frozenPlan = async (ids) =>
     ids.length > 0 && frozenSet([...new Set((await lookup.plans(ids)).map((plan) => plan.financial_plan_id))]);
@@ -139,6 +149,11 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     const stamps = ["frozen_by", "frozen_at"];
     if (event === "create") {
       if ((payload.status ?? "draft") !== "draft") throw refuse(NEW_SET_DRAFT, 400);
+      // A copy from another year makes that year's catalog offerings (cyc-seattle/platform#395).
+      const parent = keyOf(payload.parent_id);
+      if (parent && !admin && (await lookup.yearOf(parent)) !== payload.fiscal_year) {
+        if (!(await lookup.writesCatalog(user))) throw refuse(CATALOG_WRITER_TO_COPY);
+      }
       return unstamped(payload, stamps);
     }
     if (event === "delete") {
@@ -583,6 +598,7 @@ const CATALOG = [
   "staff_levels",
   "programs",
   "program_boat_classes",
+  "offerings",
 ];
 
 /** A `date` as `YYYY-MM-DD`, whether the driver gives a string, or a `Date` at UTC or local midnight. */
@@ -639,6 +655,16 @@ function resultRows(data, out, operations) {
   for (const p of data.plans) if (p.kind === "program_area") areaPlan.set(p.program_area_id, p.id);
   const offerings = new Map(data.plan_offerings.map((o) => [o.id, o]));
   const products = new Map(data.products.map((p) => [p.id, p]));
+  // A plan offering's name is its catalog offering's, after its product's, as the engine names it.
+  const catalog = new Map((data.offerings ?? []).map((o) => [o.id, o]));
+  const offeringName = (id) => {
+    const offering = catalog.get(offerings.get(id)?.offering_id);
+    if (offering === undefined) return undefined;
+    const product = products.get(offering.product_id)?.name;
+    const own = offering.name ?? product;
+    if (product === undefined || own === product || own.startsWith(`${product} `)) return own;
+    return `${product} ${own}`;
+  };
   const areas = new Map(data.program_areas.map((a) => [a.id, a]));
   const pools = new Map(data.plan_pools.map((p) => [p.id, p]));
   const owners = new Map(data.plan_bonus_owners.map((o) => [o.id, o.plan_id]));
@@ -657,7 +683,7 @@ function resultRows(data, out, operations) {
   };
   const nameOf = (type, id) =>
     ({
-      offering: () => offerings.get(id)?.name,
+      offering: () => offeringName(id),
       product: () => products.get(id)?.name,
       program_area: () => areas.get(id)?.name,
       program_area_term: () => areas.get(id)?.name,
@@ -927,8 +953,26 @@ function asWritten(row) {
 }
 
 /**
+ * Whether `user` holds the policy named `name`, given to them or to their role. `query(sql, bindings)` runs SQL
+ * with `?` for each binding, and returns its rows.
+ */
+async function holdsPolicy(query, user, name) {
+  if (!user) return false;
+  const rows = await query(
+    `SELECT 1 FROM directus_access a JOIN directus_policies p ON p.id = a.policy
+      WHERE p.name = ? AND (a."user" = ? OR a.role = (SELECT u.role FROM directus_users u WHERE u.id = ?))
+      LIMIT 1`,
+    [name, user, user],
+  );
+  return rows.length > 0;
+}
+
+/**
  * Copies a new Financial Plan's parent into it: a draft copy of each of the parent's plans, with
- * every row, each link pointing at the copy of the row it linked to.
+ * every row, each link pointing at the copy of the row it linked to. A copy from another year's links
+ * its offerings to that year's catalog offerings, one for each the parent's offerings link to, with the
+ * same product and name: 2028's Guppies week 3 isn't 2027's (cyc-seattle/platform#395). It plans one
+ * another of the year's Financial Plans plans, and makes the rest, on no form.
  * Does nothing if the Financial Plan has no parent, or already has plans.
  */
 async function copyParent(config, db, setId) {
@@ -944,6 +988,8 @@ async function copyParent(config, db, setId) {
     }
     const ids = [...copyOf.keys()];
     const copied = [];
+    const parent = await trx(SETS).where("id", set.parent_id).first();
+    const nextYear = new Map();
     for (const table of copyOrder(config)) {
       const links = Object.entries(config.links[table] ?? {});
       const rows = ids.length === 0 ? [] : await trx(table).whereIn("plan_id", ids).select("*");
@@ -953,6 +999,48 @@ async function copyParent(config, db, setId) {
         copyOf.set(row.id, copy.id);
         return copy;
       });
+      if (table === OFFERINGS && parent.fiscal_year !== set.fiscal_year) {
+        // The year's catalog offerings another of its Financial Plans plans, such as a second draft from
+        // the same parent's: a copy plans one with the same product and name, once, before it makes one.
+        const answer = await trx.raw(
+          `SELECT DISTINCT o.id, o.product_id, o.name FROM ${CATALOG_OFFERINGS} o
+            JOIN ${OFFERINGS} po ON po.offering_id = o.id
+            JOIN ${PLANS} p ON p.id = po.plan_id
+            JOIN ${SETS} s ON s.id = p.financial_plan_id
+            WHERE s.organization_id = ? AND s.fiscal_year = ? AND s.id <> ?
+            ORDER BY o.id`,
+          [set.organization_id, set.fiscal_year, set.id],
+        );
+        const theYears = answer.rows ?? answer;
+        const planned = new Set();
+        for (const copy of copies) {
+          if (!nextYear.has(copy.offering_id)) {
+            const was = await trx(CATALOG_OFFERINGS).where("id", copy.offering_id).first();
+            const same = theYears.find(
+              (o) => o.product_id === was.product_id && o.name === was.name && !planned.has(o.id),
+            );
+            if (same !== undefined) {
+              planned.add(same.id);
+              nextYear.set(copy.offering_id, same.id);
+              copy.offering_id = same.id;
+              continue;
+            }
+            const made = {
+              id: crypto.randomUUID(),
+              product_id: was.product_id,
+              name: was.name,
+              starts_on: copy.starts_on,
+              ends_on: copy.ends_on,
+              price_cents: copy.price_cents,
+              capacity: copy.capacity,
+            };
+            await trx(CATALOG_OFFERINGS).insert(made);
+            planned.add(made.id);
+            nextYear.set(copy.offering_id, made.id);
+          }
+          copy.offering_id = nextYear.get(copy.offering_id);
+        }
+      }
       for (const copy of copies) {
         for (const [field, linked] of links) {
           if (copy[field] == null) continue;
@@ -1208,6 +1296,9 @@ function register({ filter, action, init }, { services, env, database, getSchema
     sets: async (ids) =>
       ids.length === 0 ? [] : database(SETS).select("id", "status", "archived_at").whereIn("id", ids),
     // Only so the tests can clean up after themselves (`backend:frozenPlansDeletable`).
+    yearOf: async (id) => (await database(SETS).select("fiscal_year").where("id", id).first())?.fiscal_year,
+    writesCatalog: async (user) =>
+      holdsPolicy(async (sql, bindings) => (await database.raw(sql, bindings)).rows, user, CATALOG_WRITER),
     deletesFrozen: async (user) => {
       if (!config.deletable || !user || !bootstrapAdmin) return false;
       const found = await database("directus_users").select("email").where("id", user).first();
@@ -1226,6 +1317,7 @@ function register({ filter, action, init }, { services, env, database, getSchema
           payload,
           keys,
           user: accountability?.user,
+          admin: accountability?.admin === true,
           now: new Date().toISOString(),
         },
         config,
@@ -1264,3 +1356,5 @@ module.exports.ARCHIVED_NOT_ACTIVE = ARCHIVED_NOT_ACTIVE;
 module.exports.ACTIVE_STAYS = ACTIVE_STAYS;
 module.exports.BONUS_IN_OPERATIONS = BONUS_IN_OPERATIONS;
 module.exports.SHORT_NOTES = SHORT_NOTES;
+module.exports.CATALOG_WRITER_TO_COPY = CATALOG_WRITER_TO_COPY;
+module.exports.holdsPolicy = holdsPolicy;
