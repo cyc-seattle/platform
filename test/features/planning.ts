@@ -1428,7 +1428,7 @@ Step("a frozen Financial Plan named {string} with a practice on June 6", async (
 Step("its practice on June 6 is the same practice as the one in {string}", async () => {
   const copy = await copyOf(offering!, started!);
   const [activity] = await read("plan_activities", { offering_id: { _eq: copy["id"] } });
-  expect(activity).toMatchObject({ key: practice!["id"], date: `${PLAN_YEAR}-06-06`, plan_id: copy["plan_id"] });
+  expect(activity).toMatchObject({ date: `${PLAN_YEAR}-06-06`, start_time: "09:00:00", plan_id: copy["plan_id"] });
   expect(activity!["id"]).not.toBe(practice!["id"]);
 });
 
@@ -1678,8 +1678,8 @@ Step(
 Step(
   "they change {program} to a coach for every {count} sailors in the new Financial Plan",
   async (_, _program: string, sailors: string) => {
-    const original = await one("plan_programs", settings, "key");
-    const inCopies = { plan_id: { _in: await plansOf(started!) }, key: { _eq: original["id"] } };
+    const original = await one("plan_programs", settings, "product_id");
+    const inCopies = { plan_id: { _in: await plansOf(started!) }, product_id: { _eq: original["product_id"] } };
     const [copy] = await read("plan_programs", inCopies, "id");
     expectOk(await theyWrite("PATCH", itemPath("plan_programs", copy!["id"]), { sailors_per_coach: Number(sailors) }));
   },
