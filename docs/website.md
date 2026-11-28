@@ -14,6 +14,7 @@ Directus's API and MCP, as an admin, so every text field is Markdown.
 | `website_pages`, `website_page_sections`      | The fixed pages, by slug, and the blocks below a page's body                                           |
 | `website_categories`                          | Program categories, with their status, and sorted lists of programs, FAQ topics, crew, and photos      |
 | `website_programs`                            | Program pages. Hidden ones have no page. Each can link to programs in the catalog                      |
+| `website_program_groups`                      | Sections of a category's page, such as Youth Sailing, each holding some of its programs                |
 | `website_faq_topics`, `website_faqs`          | Sets of questions, one question per row                                                                |
 | `website_crew_sections`                       | The lists on Our Crew, each a sorted list of Crew's positions                                          |
 | `website_policies`, `website_policy_versions` | Policies and their dated versions. The site shows the latest version that has taken effect             |
@@ -28,6 +29,13 @@ of its positions in order, the crew members in it today who are on the website, 
 Meet Our Crew shows the list it names. The build reads a crew member's bio, photo, and first and last
 name, and shows the first name alone unless staff chose to show their full name
 ([crew-schema.md](crew-schema.md)). It reads nothing else about them in the CRM.
+
+A category's page shows its programs in sections (cyc-seattle/csc-website#18). A program group
+(`website_program_groups`) belongs to one category, in the order of its `sort`, and a program joins one with
+`website_programs.group_id`. A program can be on several categories but in one group, so its group counts
+only on its group's category page, and elsewhere the program is in no section. Directus can't check that.
+A category with no groups shows its programs as one section with no heading. A group's ages are never
+stored: the site works them out from its programs' catalog programs.
 
 A program page links to the catalog programs it covers (`website_programs.catalog_programs`), and
 shows what's on sale of them, from the catalog (cyc-seattle/platform#332). An offering is on sale when it

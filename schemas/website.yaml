@@ -132,6 +132,32 @@ collections:
       versioning: false
     schema:
       name: website_page_sections
+  - collection: website_program_groups
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: website_program_groups
+      color: null
+      display_template: "{{title}}"
+      group: Website
+      hidden: false
+      icon: folder_special
+      item_duplication_fields: null
+      note: A section on a category's page, such as Youth Sailing, holding some of its programs.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: website_program_groups
   - collection: website_programs
     meta:
       accountability: all
@@ -5728,6 +5754,272 @@ fields:
       has_auto_increment: false
       foreign_key_table: website_crew_sections
       foreign_key_column: id
+  - collection: website_program_groups
+    field: id
+    type: uuid
+    meta:
+      collection: website_program_groups
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: website_program_groups
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_program_groups
+    field: title
+    type: string
+    meta:
+      collection: website_program_groups
+      conditions: null
+      display: null
+      display_options: null
+      field: title
+      group: null
+      hidden: false
+      interface: input
+      note: The section's heading, such as Youth Sailing.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: title
+      table: website_program_groups
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_program_groups
+    field: category_id
+    type: uuid
+    meta:
+      collection: website_program_groups
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: category_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The category whose page shows it.
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Category
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: category_id
+      table: website_program_groups
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_categories
+      foreign_key_column: id
+  - collection: website_program_groups
+    field: sort
+    type: integer
+    meta:
+      collection: website_program_groups
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: website_program_groups
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: website_program_groups
+    field: programs
+    type: alias
+    meta:
+      collection: website_program_groups
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: programs
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: The programs in it. A program shows in it only on this category's page, and with no section anywhere else.
+      options:
+        template: "{{title}}"
+        enableCreate: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_categories
+    field: program_groups
+    type: alias
+    meta:
+      collection: website_categories
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: program_groups
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: Sections of its page, each with some of its programs, in the order the page shows them. With none, the page shows its programs under no heading.
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 14
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Program groups
+      validation: null
+      validation_message: null
+      width: full
+  - collection: website_programs
+    field: group_id
+    type: uuid
+    meta:
+      collection: website_programs
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{title}}"
+      field: group_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: The section it's in on its group's category page. A group of another category has no effect here.
+      options:
+        template: "{{title}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 17
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Group
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: group_id
+      table: website_programs
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: website_program_groups
+      foreign_key_column: id
 relations:
   - collection: website_settings
     field: logo
@@ -6336,5 +6628,47 @@ relations:
       foreign_key_table: website_crew_sections
       foreign_key_column: id
       constraint_name: website_categories_crew_section_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: website_program_groups
+    field: category_id
+    related_collection: website_categories
+    meta:
+      junction_field: null
+      many_collection: website_program_groups
+      many_field: category_id
+      one_allowed_collections: null
+      one_collection: website_categories
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: program_groups
+      sort_field: sort
+    schema:
+      table: website_program_groups
+      column: category_id
+      foreign_key_table: website_categories
+      foreign_key_column: id
+      constraint_name: website_program_groups_category_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: website_programs
+    field: group_id
+    related_collection: website_program_groups
+    meta:
+      junction_field: null
+      many_collection: website_programs
+      many_field: group_id
+      one_allowed_collections: null
+      one_collection: website_program_groups
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: programs
+      sort_field: null
+    schema:
+      table: website_programs
+      column: group_id
+      foreign_key_table: website_program_groups
+      foreign_key_column: id
+      constraint_name: website_programs_group_id_foreign
       on_update: NO ACTION
       on_delete: SET NULL
