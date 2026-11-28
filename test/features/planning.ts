@@ -1248,7 +1248,7 @@ const plansOf = async (set: string) => (await copied(set)).map((plan) => plan["i
 async function copyOf(offering: Item, set: string): Promise<Row> {
   const [copy] = await read("plan_offerings", {
     plan_id: { _in: await plansOf(set) },
-    name: { _eq: offering["name"] },
+    offering_id: { _eq: offering["offering_id"] },
   });
   expect(copy, "the offering's copy").toBeDefined();
   return copy!;
@@ -1365,8 +1365,34 @@ Step("they start a Financial Plan for the year after from {string}", async (_, n
 });
 Step("the new Financial Plan has the same offering at {money} a sailor", async (_, money: string) => {
   const copy = await copyOf(offering!, started!);
-  expect(copy).toMatchObject({ name: offering!["name"], price_cents: cents(money) });
+  expect(copy).toMatchObject({ offering_id: offering!["offering_id"], price_cents: cents(money) });
   expect(copy["id"]).not.toBe(offering!["id"]);
+});
+Step("the new Financial Plan plans next year's offering at {money} a sailor", async (_, money: string) => {
+  const [copy] = await read("plan_offerings", { plan_id: { _in: await plansOf(started!) } });
+  expect(copy).toMatchObject({ price_cents: cents(money) });
+  // Next year's catalog offering, for the same product, by the same name: not this year's.
+  expect(copy!["offering_id"]).not.toBe(offering!["offering_id"]);
+  // The hook made it, so cleanup deletes it once the new Financial Plan's offerings are gone, and before its product.
+  const at = created.findIndex((row) => row.collection === "financial_plans" && row.id === started);
+  created.splice(Math.max(at, 0), 0, { collection: "offerings", id: copy!["offering_id"] });
+  expect(await one("offerings", copy!["offering_id"], "product_id,name")).toEqual({
+    product_id: offering!["product_id"],
+    name: offering!["name"],
+  });
+});
+Step("they can't start a Financial Plan for the year after from {string}", async (_, name: string) => {
+  const parent = named[name];
+  const organization = (await one("financial_plans", parent, "organization_id"))["organization_id"];
+  expectRefused(
+    await theyWrite("POST", "/items/financial_plans", {
+      id: randomUUID(),
+      organization_id: organization,
+      fiscal_year: PLAN_YEAR + 1,
+      name: `After ${name} ${runId}`,
+      parent_id: parent,
+    }),
+  );
 });
 Step("its parent is {string}", async (_, name: string) => {
   expect(await one("financial_plans", started, "parent_id")).toEqual({ parent_id: named[name] });

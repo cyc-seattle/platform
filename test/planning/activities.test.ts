@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePlan } from "../../src/planning/index.ts";
-import { activity, emptyPlan, offering, pnlOf, product } from "./fixtures.ts";
+import { activity, emptyPlan, offering, pnlOf, product, computePlan } from "./fixtures.ts";
 
 function setup(activities: (offeringId: string) => ReturnType<typeof activity>[]) {
   const p = product();

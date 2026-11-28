@@ -24,8 +24,9 @@ import type {
   Id,
   OrganizationTotals,
   Pnl,
+  CalcData,
   PlanData,
-  PlanOffering,
+  OfferingInPlan,
   PositionSummary,
   Totals,
 } from "./types.ts";
@@ -34,7 +35,8 @@ import type {
  * Calculates the plan year's P&L from a plan's rows. The steps run in the order
  * docs/planning-engine.md gives, each reading only what earlier steps recorded.
  */
-export function computePlan(data: PlanData): EngineOutput {
+export function computePlan(input: PlanData): EngineOutput {
+  const data = withOfferings(input);
   const output = calculate(data, new Map());
   // Only for offerings' names: its own warnings are already in the output.
   const names = new Context(data);
@@ -50,8 +52,23 @@ export function computePlan(data: PlanData): EngineOutput {
   return output;
 }
 
+/**
+ * `input` with each plan offering's product and name from the catalog offering it links to. One that links to
+ * none the catalog has keeps its own id for a name and no product, which the revenue warns about.
+ */
+function withOfferings(input: PlanData): CalcData {
+  const catalog = new Map(input.offerings.map((o) => [o.id, o]));
+  return {
+    ...input,
+    plan_offerings: input.plan_offerings.map((o) => {
+      const offering = catalog.get(o.offering_id);
+      return { ...o, product_id: offering?.product_id ?? "", name: offering?.name ?? o.offering_id };
+    }),
+  };
+}
+
 /** Warns when an offering needs more sailors than expected to pay for itself, or never does. */
-function offeringWarnings(offering: PlanOffering, name: string, row: Pnl): EngineWarning[] {
+function offeringWarnings(offering: OfferingInPlan, name: string, row: Pnl): EngineWarning[] {
   const about = { subject_id: offering.id, plan_id: offering.plan_id };
   const warnings: EngineWarning[] = [];
   if (offering.capacity == null) return warnings;
@@ -82,7 +99,7 @@ function offeringWarnings(offering: PlanOffering, name: string, row: Pnl): Engin
  * whole plan for each would take seconds, so only the offering's own slice is, with its indirect cost
  * rate on the slice's MTDC at that number, and whatever lies outside it, such as its bonus, stays as planned.
  */
-function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate: number): number | null {
+function breakeven(data: CalcData, offering: OfferingInPlan, planned: number, rate: number): number | null {
   if (offering.capacity == null) return null;
   const slice = sliceOf(data, offering);
   const netAt = (n: number) => {
@@ -100,7 +117,7 @@ function breakeven(data: PlanData, offering: PlanOffering, planned: number, rate
  * The rows that change with an offering's sailors: it, its activities, trips and lines, and its
  * blocks with the activities that share them. Pools, bonuses and bookings are left out.
  */
-function sliceOf(data: PlanData, offering: PlanOffering): PlanData {
+function sliceOf(data: CalcData, offering: OfferingInPlan): CalcData {
   const own = data.plan_activities.filter((a) => a.offering_id === offering.id);
   const blockIds = new Set(own.flatMap((a) => (a.block_id == null ? [] : [a.block_id])));
   const activities = data.plan_activities.filter(
@@ -128,7 +145,7 @@ function sliceOf(data: PlanData, offering: PlanOffering): PlanData {
 }
 
 /** The plan with each offering's expected sailors, or the number `enrollment` gives it instead. */
-function calculate(data: PlanData, enrollment: Map<Id, number>): EngineOutput {
+function calculate(data: CalcData, enrollment: Map<Id, number>): EngineOutput {
   const ctx = new Context(data);
   for (const o of data.plan_offerings) {
     ctx.enrollment.set(o.id, enrollment.get(o.id) ?? enrollmentOf(o));
@@ -198,6 +215,18 @@ function checkAreas(ctx: Context): void {
           ? `${ctx.offeringName(offering)} is in the Operations Plan, but its program is in an area.`
           : `${ctx.offeringName(offering)} is in another area's plan.`;
       ctx.warn("offering_in_wrong_plan", message, offering.id);
+    }
+  }
+  // An offering is planned once in a Financial Plan; Directus can't make the pair unique.
+  const planned = new Map<Id, OfferingInPlan[]>();
+  for (const o of ctx.data.plan_offerings) planned.set(o.offering_id, [...(planned.get(o.offering_id) ?? []), o]);
+  for (const twice of planned.values()) {
+    if (twice.length < 2) continue;
+    const name = ctx.offeringName(twice[0]!);
+    for (const o of twice) {
+      ctx.warn("offering_planned_twice", `${name} is planned ${twice.length} times. Plan it once.`, o.id, {
+        plan_id: o.plan_id,
+      });
     }
   }
 }

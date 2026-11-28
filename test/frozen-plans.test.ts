@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  CATALOG_WRITER_TO_COPY,
   databaseError,
   draftQueue,
   guard,
@@ -38,12 +39,14 @@ const config = {
 };
 
 // Each offering is named for the plan it belongs to.
-function lookup(deletesFrozen = false): Lookup {
+function lookup(deletesFrozen = false, writesCatalog = false): Lookup {
   return {
     planIds: async (_, keys) => keys,
     plans: async (ids) => ids.map((id) => plans[id]!).filter(Boolean),
     sets: async (ids) => ids.map((id) => sets[id]!).filter(Boolean),
     deletesFrozen: async () => deletesFrozen,
+    yearOf: async (id) => ({ frozen: 2026, draft: 2027 })[id],
+    writesCatalog: async () => writesCatalog,
   };
 }
 
@@ -76,6 +79,23 @@ describe("the frozen-plans hook", () => {
       await expect(
         check({ collection: "financial_plans", event: "create", payload: { name: "Budget", status: "frozen" } }),
       ).rejects.toThrow(/starts as a draft/);
+    });
+
+    it("starts from another year's only for a Catalog Writer or an admin, since it makes that year's offerings", async () => {
+      const nextYear = {
+        collection: "financial_plans",
+        event: "create",
+        payload: { fiscal_year: 2027, parent_id: "frozen" },
+      } as const;
+      await expect(check(nextYear)).rejects.toThrow(CATALOG_WRITER_TO_COPY);
+      await expect(guard({ user: "planner", ...nextYear, now }, config, lookup(false, true))).resolves.toEqual(
+        nextYear.payload,
+      );
+      await expect(guard({ user: "admin", admin: true, ...nextYear, now }, config, lookup())).resolves.toEqual(
+        nextYear.payload,
+      );
+      const sameYear = { ...nextYear, payload: { fiscal_year: 2027, parent_id: "draft" } };
+      await expect(check(sameYear)).resolves.toEqual(sameYear.payload);
     });
   });
 

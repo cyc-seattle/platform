@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, type Account, type PlanCapitalItem } from "../../src/planning/index.ts";
-import { A, budgetLine, emptyPlan, nextId, total } from "./fixtures.ts";
+import { type Account, type PlanCapitalItem } from "../../src/planning/index.ts";
+import { A, budgetLine, emptyPlan, nextId, total, computePlan } from "./fixtures.ts";
 
 const equipment: Account = {
   id: "acct-equipment-owned",

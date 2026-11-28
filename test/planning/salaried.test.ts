@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { computePlan } from "../../src/planning/index.ts";
-import { A, budgetLine, emptyPlan, offering, pool, position, product, allocateAll, total } from "./fixtures.ts";
+import {
+  A,
+  budgetLine,
+  emptyPlan,
+  offering,
+  pool,
+  position,
+  product,
+  allocateAll,
+  total,
+  computePlan,
+} from "./fixtures.ts";
 
 function booking(positionId: string, productId: string, hours: number) {
   return {

@@ -20,6 +20,8 @@ const PLANS = "plans";
 // Written last when a Financial Plan's results go in, so one that has it has them all.
 const RESULTS = "plan_results";
 const SETS = "financial_plans";
+const OFFERINGS = "plan_offerings";
+const CATALOG_OFFERINGS = "offerings";
 
 const REFUSED = "A frozen plan can't be changed. Start a new Financial Plan from the one it's in.";
 const NOT_EDITOR = "Only someone who can edit this Financial Plan can do this.";
@@ -43,6 +45,11 @@ const ARCHIVED_NOT_ACTIVE = "An archived Financial Plan can't be made active. Br
 const ACTIVE_STAYS = "An active Financial Plan can't be deleted. Clear the date it's active from first.";
 const BONUS_IN_OPERATIONS = "A bonus goes in the Operations Plan.";
 const SHORT_NOTES = "Each note is one line of at most 280 characters.";
+const CATALOG_WRITER_TO_COPY =
+  "Starting a Financial Plan from another year's makes the new year's offerings, which only a Catalog Writer can do.";
+
+/** The policy that changes the catalog, which a copy from another year needs, since it makes offerings (docs/access.md). */
+const CATALOG_WRITER = "Catalog Writer";
 
 /** What a frozen Financial Plan lets change: its name, its note, the date it's active from, and whether it's archived. */
 const SET_EDITABLE = ["name", "note", "effective_from", "archived_at"];
@@ -71,6 +78,7 @@ const REASONS = {
   [ARCHIVED_NOT_ACTIVE]: 400,
   [BONUS_IN_OPERATIONS]: 400,
   [SHORT_NOTES]: 400,
+  [CATALOG_WRITER_TO_COPY]: 403,
 };
 /** The SQLSTATE every trigger raises, so the hook can tell its refusals from other errors. */
 const SQLSTATE = "CY001";
@@ -109,8 +117,10 @@ function unstamped(payload, fields) {
  * - `plans(ids)`: each plan's `id`, `financial_plan_id`, `kind`, and `program_area_id`
  * - `sets(ids)`: each Financial Plan's `id`, `status`, and `archived_at`
  * - `deletesFrozen(user)`: whether this user may delete a frozen Financial Plan, which only dev allows
+ * - `yearOf(id)`: a Financial Plan's `fiscal_year`
+ * - `writesCatalog(user)`: whether this user holds the Catalog Writer policy
  */
-async function guard({ collection, event, payload, keys = [], user, now }, config, lookup) {
+async function guard({ collection, event, payload, keys = [], user, admin = false, now }, config, lookup) {
   const frozenSet = async (ids) => ids.length > 0 && (await lookup.sets(ids)).some((set) => isFrozen(set.status));
   const frozenPlan = async (ids) =>
     ids.length > 0 && frozenSet([...new Set((await lookup.plans(ids)).map((plan) => plan.financial_plan_id))]);
@@ -139,6 +149,11 @@ async function guard({ collection, event, payload, keys = [], user, now }, confi
     const stamps = ["frozen_by", "frozen_at"];
     if (event === "create") {
       if ((payload.status ?? "draft") !== "draft") throw refuse(NEW_SET_DRAFT, 400);
+      // A copy from another year makes that year's catalog offerings (cyc-seattle/platform#395).
+      const parent = keyOf(payload.parent_id);
+      if (parent && !admin && (await lookup.yearOf(parent)) !== payload.fiscal_year) {
+        if (!(await lookup.writesCatalog(user))) throw refuse(CATALOG_WRITER_TO_COPY);
+      }
       return unstamped(payload, stamps);
     }
     if (event === "delete") {
@@ -583,6 +598,7 @@ const CATALOG = [
   "staff_levels",
   "programs",
   "program_boat_classes",
+  "offerings",
 ];
 
 /** A `date` as `YYYY-MM-DD`, whether the driver gives a string, or a `Date` at UTC or local midnight. */
@@ -928,7 +944,9 @@ function asWritten(row) {
 
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each of the parent's plans, with
- * every row, each link pointing at the copy of the row it linked to.
+ * every row, each link pointing at the copy of the row it linked to. A copy from another year's links
+ * its offerings to new catalog offerings, one for each the parent's offerings link to, with the same
+ * product and name, on no form: 2028's Guppies week 3 isn't 2027's (cyc-seattle/platform#395).
  * Does nothing if the Financial Plan has no parent, or already has plans.
  */
 async function copyParent(config, db, setId) {
@@ -944,6 +962,8 @@ async function copyParent(config, db, setId) {
     }
     const ids = [...copyOf.keys()];
     const copied = [];
+    const parent = await trx(SETS).where("id", set.parent_id).first();
+    const nextYear = new Map();
     for (const table of copyOrder(config)) {
       const links = Object.entries(config.links[table] ?? {});
       const rows = ids.length === 0 ? [] : await trx(table).whereIn("plan_id", ids).select("*");
@@ -953,6 +973,25 @@ async function copyParent(config, db, setId) {
         copyOf.set(row.id, copy.id);
         return copy;
       });
+      if (table === OFFERINGS && parent.fiscal_year !== set.fiscal_year) {
+        for (const copy of copies) {
+          if (!nextYear.has(copy.offering_id)) {
+            const was = await trx(CATALOG_OFFERINGS).where("id", copy.offering_id).first();
+            const made = {
+              id: crypto.randomUUID(),
+              product_id: was.product_id,
+              name: was.name,
+              starts_on: copy.starts_on,
+              ends_on: copy.ends_on,
+              price_cents: copy.price_cents,
+              capacity: copy.capacity,
+            };
+            await trx(CATALOG_OFFERINGS).insert(made);
+            nextYear.set(copy.offering_id, made.id);
+          }
+          copy.offering_id = nextYear.get(copy.offering_id);
+        }
+      }
       for (const copy of copies) {
         for (const [field, linked] of links) {
           if (copy[field] == null) continue;
@@ -1208,6 +1247,17 @@ function register({ filter, action, init }, { services, env, database, getSchema
     sets: async (ids) =>
       ids.length === 0 ? [] : database(SETS).select("id", "status", "archived_at").whereIn("id", ids),
     // Only so the tests can clean up after themselves (`backend:frozenPlansDeletable`).
+    yearOf: async (id) => (await database(SETS).select("fiscal_year").where("id", id).first())?.fiscal_year,
+    writesCatalog: async (user) => {
+      if (!user) return false;
+      const held = await database("directus_access as a")
+        .join("directus_policies as p", "p.id", "a.policy")
+        .leftJoin("directus_users as u", "u.id", user)
+        .where("p.name", CATALOG_WRITER)
+        .andWhere((q) => q.where("a.user", user).orWhereRaw("a.role = u.role"))
+        .first();
+      return held !== undefined;
+    },
     deletesFrozen: async (user) => {
       if (!config.deletable || !user || !bootstrapAdmin) return false;
       const found = await database("directus_users").select("email").where("id", user).first();
@@ -1226,6 +1276,7 @@ function register({ filter, action, init }, { services, env, database, getSchema
           payload,
           keys,
           user: accountability?.user,
+          admin: accountability?.admin === true,
           now: new Date().toISOString(),
         },
         config,
@@ -1264,3 +1315,4 @@ module.exports.ARCHIVED_NOT_ACTIVE = ARCHIVED_NOT_ACTIVE;
 module.exports.ACTIVE_STAYS = ACTIVE_STAYS;
 module.exports.BONUS_IN_OPERATIONS = BONUS_IN_OPERATIONS;
 module.exports.SHORT_NOTES = SHORT_NOTES;
+module.exports.CATALOG_WRITER_TO_COPY = CATALOG_WRITER_TO_COPY;

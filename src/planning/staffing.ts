@@ -8,7 +8,7 @@ import type {
   PlanActivityBlock,
   PlanBlockBoats,
   PlanBlockStaff,
-  PlanOffering,
+  OfferingInPlan,
   PlanProgram,
   WarningSeverity,
 } from "./types.ts";
@@ -33,12 +33,12 @@ export interface DoubleBooked {
 }
 
 /** Whole kids expected: `target_enrollment`, or none when it's empty. */
-export function enrollmentOf(offering: PlanOffering): number {
+export function enrollmentOf(offering: OfferingInPlan): number {
   return Math.round(offering.target_enrollment ?? 0);
 }
 
 /** The most sailors an offering takes: its `capacity`, or else the sailors expected. */
-export function maxEnrollmentOf(offering: PlanOffering): number {
+export function maxEnrollmentOf(offering: OfferingInPlan): number {
   return offering.capacity ?? enrollmentOf(offering);
 }
 
@@ -93,7 +93,7 @@ function offeringsOf(ctx: Context, block: Block): string {
 }
 
 /** The offerings a block holds, other than on a travel day, each once. */
-function offeringsIn(block: Block): PlanOffering[] {
+function offeringsIn(block: Block): OfferingInPlan[] {
   return [
     ...new Map(block.members.filter((a) => a.kind !== "travel").map((a) => [a.offering.id, a.offering])).values(),
   ];
@@ -208,7 +208,7 @@ export class Staffing {
   private checkCapacity(block: Block, holds: Map<Id, number>): void {
     const { ctx } = this;
     const offerings = offeringsIn(block);
-    const most = (o: PlanOffering) => ctx.maxEnrollment.get(o.id) ?? 0;
+    const most = (o: OfferingInPlan) => ctx.maxEnrollment.get(o.id) ?? 0;
     const sailors = sum(offerings.map(most));
     const warns = sailors > 0;
     const scope = { plan_id: block.row.plan_id, date: block.row.date };
@@ -262,7 +262,7 @@ export class Staffing {
    * it needs a coach boat for each coach its programs need, the extra ones of the coach boat class
    * it's given most of. Charters stay as given.
    */
-  private ownedFor(block: Block, programs: Map<Id, PlanProgram>, most: (o: PlanOffering) => number): Map<Id, number> {
+  private ownedFor(block: Block, programs: Map<Id, PlanProgram>, most: (o: OfferingInPlan) => number): Map<Id, number> {
     const result = new Map<Id, number>();
     if (!block.members.some((a) => a.uses_boats)) return result;
     const { ctx } = this;

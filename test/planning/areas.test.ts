@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, type Account, type PlanData } from "../../src/planning/index.ts";
-import { A, area, budgetLine, emptyPlan, offering, pnlOf, position, product, total } from "./fixtures.ts";
+import { type Account, type PlanData } from "../../src/planning/index.ts";
+import { A, area, budgetLine, emptyPlan, offering, pnlOf, position, product, total, computePlan } from "./fixtures.ts";
 
 const capitalAccount: Account = {
   id: "acct-boats-owned",

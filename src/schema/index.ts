@@ -924,9 +924,8 @@ export interface PlanOfferings {
   id: string;
   /** The plan this row belongs to. */
   plan_id: string | Plans;
-  product_id: string | Products;
-  /** What it adds to its program's name, such as "Week 3" or "Spring". */
-  name: string;
+  /** The catalog offering it plans. A Catalog Writer makes it first. */
+  offering_id: string | Offerings;
   /** The term it runs in, from the Operations Plan. Leave it empty for an offering in no term. */
   term_id: string | PlanTerms | null;
   starts_on: string;

@@ -62,7 +62,7 @@ collections:
       collapse: open
       collection: plan_offerings
       color: null
-      display_template: "{{name}}"
+      display_template: "{{offering_id.product_id.name}} {{offering_id.name}}"
       group: Planning
       hidden: false
       icon: storefront
@@ -1005,19 +1005,19 @@ fields:
       foreign_key_table: plans
       foreign_key_column: id
   - collection: plan_offerings
-    field: product_id
+    field: offering_id
     type: uuid
     meta:
       collection: plan_offerings
       conditions: null
       display: related-values
       display_options:
-        template: "{{name}}"
-      field: product_id
+        template: "{{product_id.name}} {{name}}"
+      field: offering_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: The catalog offering it plans. A Catalog Writer makes it first.
       options: null
       readonly: false
       required: true
@@ -1027,12 +1027,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Product
+          translation: Offering
       validation: null
       validation_message: null
       width: full
     schema:
-      name: product_id
+      name: offering_id
       table: plan_offerings
       data_type: uuid
       default_value: null
@@ -1046,48 +1046,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: products
+      foreign_key_table: offerings
       foreign_key_column: id
-  - collection: plan_offerings
-    field: name
-    type: string
-    meta:
-      collection: plan_offerings
-      conditions: null
-      display: null
-      display_options: null
-      field: name
-      group: null
-      hidden: false
-      interface: input
-      note: What it adds to its program's name, such as "Week 3" or "Spring".
-      options: null
-      readonly: false
-      required: true
-      searchable: true
-      sort: 5
-      special: null
-      translations: null
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: name
-      table: plan_offerings
-      data_type: character varying
-      default_value: null
-      max_length: 255
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: false
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: null
-      foreign_key_column: null
   - collection: plan_offerings
     field: term_id
     type: uuid
@@ -1510,7 +1470,7 @@ fields:
       conditions: null
       display: related-values
       display_options:
-        template: "{{name}}"
+        template: "{{offering_id.product_id.name}} {{offering_id.name}}"
       field: offering_id
       group: null
       hidden: false
@@ -1801,7 +1761,7 @@ fields:
       conditions: null
       display: related-values
       display_options:
-        template: "{{name}}"
+        template: "{{offering_id.product_id.name}} {{offering_id.name}}"
       field: offering_id
       group: null
       hidden: false
@@ -11910,24 +11870,24 @@ relations:
       on_update: NO ACTION
       on_delete: CASCADE
   - collection: plan_offerings
-    field: product_id
-    related_collection: products
+    field: offering_id
+    related_collection: offerings
     meta:
       junction_field: null
       many_collection: plan_offerings
-      many_field: product_id
+      many_field: offering_id
       one_allowed_collections: null
-      one_collection: products
+      one_collection: offerings
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: plan_offerings
-      column: product_id
-      foreign_key_table: products
+      column: offering_id
+      foreign_key_table: offerings
       foreign_key_column: id
-      constraint_name: plan_offerings_product_id_foreign
+      constraint_name: plan_offerings_offering_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: plan_trips

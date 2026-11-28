@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { PlanData } from "../../src/planning/index.ts";
-import { computePlan } from "../../src/planning/index.ts";
 import {
   A,
   budgetLine,
@@ -12,6 +11,7 @@ import {
   payrollTax,
   allocateAll,
   staffLevel,
+  computePlan,
 } from "./fixtures.ts";
 
 function defaultTo(data: PlanData, accountId: string, fn: "program" | "management" | "fundraising"): void {

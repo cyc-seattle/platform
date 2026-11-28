@@ -6,8 +6,8 @@ import type {
   DateString,
   EngineWarning,
   Id,
-  PlanData,
-  PlanOffering,
+  CalcData,
+  OfferingInPlan,
   PlanPayrollTax,
   Plan,
   PlanRates,
@@ -81,7 +81,7 @@ export class Context {
   readonly areas: Map<Id, ProgramArea>;
   /** Each plan, by its id. */
   readonly planOf: Map<Id, Plan>;
-  readonly offeringsById: Map<Id, PlanOffering>;
+  readonly offeringsById: Map<Id, OfferingInPlan>;
   /** Expected enrollment per offering id, which the costs and revenue use. */
   readonly enrollment = new Map<Id, number>();
   /** The most sailors each offering id takes, which the checks use. */
@@ -93,20 +93,20 @@ export class Context {
   readonly payrollTaxes: PlanPayrollTax[];
   private readonly costAccounts: Map<CostType, Id>;
 
-  readonly data: PlanData;
+  readonly data: CalcData;
 
   /**
    * An offering as people name it: its program, then its own name, such as "Guppies Week 3". An offering's own name is
    * only what it adds to its program, but one named before that already starts with it, and keeps its name.
    */
-  offeringName(offering: PlanOffering): string {
+  offeringName(offering: OfferingInPlan): string {
     const program = this.products.get(offering.product_id)?.name;
     if (program === undefined || offering.name === program || offering.name.startsWith(`${program} `))
       return offering.name;
     return `${program} ${offering.name}`;
   }
 
-  constructor(data: PlanData) {
+  constructor(data: CalcData) {
     this.data = data;
     this.accounts = new Map(data.accounts.map((a) => [a.id, a]));
     this.products = new Map(data.products.map((p) => [p.id, p]));

@@ -271,17 +271,21 @@ export class PnlPlan {
     costs = 0,
     extra: Row = {},
   ): Promise<Item> {
-    const offering = await adminCreate("plan_offerings", {
+    // A plan offering plans a catalog offering, which names its product and itself (cyc-seattle/platform#395).
+    const name = `Offering ${key("offering")}`;
+    const catalog = await adminCreate("offerings", { id: randomUUID(), product_id: product, name });
+    const planned = await adminCreate("plan_offerings", {
       id: randomUUID(),
       plan_id: plan,
-      product_id: product,
-      name: `Offering ${key("offering")}`,
+      offering_id: catalog.id,
       starts_on: `${PLAN_YEAR}-06-01`,
       ends_on: `${PLAN_YEAR}-06-30`,
       target_enrollment: sailors,
       price_cents: price,
       ...extra,
     });
+    // With its catalog offering's product and name, which the steps read it by.
+    const offering = { ...planned, product_id: product, name };
     this.offerings.push(offering);
     if (costs > 0) {
       await this.line(plan, "costs", { cost_center_type: "offering", cost_center_id: offering["id"] }, costs);
@@ -507,6 +511,7 @@ export class PnlPlan {
         organization_id: { _eq: this.organizationId },
       }),
       products: await read("products", { id: anyOf(this.products) }),
+      offerings: await read("offerings", { product_id: anyOf(this.products) }),
       program_areas: await read("program_areas", { id: anyOf(this.areas) }),
       accounts: await read("accounts", { id: { _in: Object.values(this.accounts) } }),
       // The engine doesn't read qualifications (#208).

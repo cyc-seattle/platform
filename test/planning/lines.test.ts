@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { computePlan } from "../../src/planning/index.ts";
 import {
   A,
   activity,
@@ -16,6 +15,7 @@ import {
   allocateAll,
   staffLevel,
   total,
+  computePlan,
 } from "./fixtures.ts";
 
 function twoOfferings() {

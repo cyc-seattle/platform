@@ -1,6 +1,6 @@
 import type { Context, Entry } from "./context.ts";
 import { mtdc } from "./measures.ts";
-import type { Id, PlanData } from "./types.ts";
+import type { Id, CalcData } from "./types.ts";
 
 /** What the year's shared costs are, and how much of them the programs' indirect cost rates allocate. */
 export interface IndirectCosts {
@@ -18,7 +18,7 @@ function isProgram(ctx: Context, productId: Id): boolean {
 }
 
 /** Each program's indirect cost rate, from its `plan_programs` row. A program with none has no rate. */
-export function indirectCostRates(data: PlanData): Map<Id, number> {
+export function indirectCostRates(data: CalcData): Map<Id, number> {
   const rates = new Map<Id, number>();
   for (const p of data.plan_programs) if (p.indirect_cost_rate != null) rates.set(p.product_id, p.indirect_cost_rate);
   return rates;

@@ -1,5 +1,5 @@
 // Small invented fixtures. Every figure here is made up.
-import { computePlan } from "../../src/planning/index.ts";
+import { computePlan as engine } from "../../src/planning/index.ts";
 import type {
   Account,
   CostLine,
@@ -13,6 +13,7 @@ import type {
   PlanBudgetLine,
   PlanData,
   PlanLaborLine,
+  OfferingInPlan,
   PlanOffering,
   PlanPayrollTax,
   PlanPool,
@@ -101,8 +102,25 @@ export function assetList(
   return list;
 }
 
+/**
+ * The engine, with a catalog offering for each plan offering that names its product and name, as `offering`
+ * makes them, unless the data lists the catalog's offerings itself.
+ */
+export function computePlan(data: PlanData): EngineOutput {
+  const planned = data.plan_offerings as (PlanOffering & Partial<OfferingInPlan>)[];
+  const listed = new Set(data.offerings.map((o) => o.id));
+  const offerings = [
+    ...data.offerings,
+    ...planned
+      .filter((o) => !listed.has(o.offering_id))
+      .map((o) => ({ id: o.offering_id, product_id: o.product_id ?? "", name: o.name ?? null })),
+  ];
+  return engine({ ...data, offerings: [...new Map(offerings.map((o) => [o.id, o])).values()] });
+}
+
 export function emptyPlan(overrides: Partial<PlanData> = {}): PlanData {
   return {
+    offerings: [],
     fiscal_year: 2027,
     organization: { id: "org", name: "A club", fiscal_year_start_month: 1 },
     organization_cost_accounts: (
@@ -197,9 +215,15 @@ export function charge(overrides: Partial<PlanRevenueCharge> = {}): PlanRevenueC
   };
 }
 
-export function offering(productId: string, overrides: Partial<PlanOffering> = {}): PlanOffering {
+/**
+ * A plan offering, with the product and name its catalog offering would give it, which `computePlan` makes the
+ * catalog offering from.
+ */
+export function offering(productId: string, overrides: Partial<OfferingInPlan> = {}): OfferingInPlan {
+  const row = versioned("offering");
   return {
-    ...versioned("offering"),
+    ...row,
+    offering_id: `catalog-${row.id}`,
     product_id: productId,
     name: "An offering",
     term_id: null,

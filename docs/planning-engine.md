@@ -28,6 +28,9 @@ named as the schema names them, plus:
 - `staff_roles` and `staff_levels`: the [staff levels](hr-schema.md), whose names the engine gives
   labor lines. A plan row names its level by `staff_level_id`, and the Operations Plan's
   `plan_staff_levels` gives each level's rate.
+- `offerings`: the catalog offerings the plans' offerings plan. A plan offering's product and name are
+  its catalog offering's, through `offering_id` (cyc-seattle/platform#395). One whose catalog offering
+  isn't there has no product, and its revenue is left out with a warning.
 - `assets` and `boats`: the asset list, which says how many boats of each class, sailboats and
   powerboats, the organization has on each day.
 - `plans`: the plans being calculated, so the engine can tell which plan each row is in.
@@ -188,6 +191,8 @@ coaches ([cyc-seattle/platform#294](https://github.com/cyc-seattle/platform/issu
 - An offering with a `capacity` gets a data warning, naming it in `subject_id`, when its
   `breakeven_enrollment` is more than its enrollment (`breakeven_above_target`), or null
   (`never_breaks_even`).
+- An offering planned twice in a Financial Plan, by two plan offerings with one catalog offering, gets a
+  data warning on each (`offering_planned_twice`). Each still counts.
 
 ### Warnings
 

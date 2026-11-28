@@ -1,6 +1,6 @@
 // One plan shaped like a club's year: invented programs, rates and costs, every figure made up.
 import { describe, expect, it } from "vitest";
-import { computePlan, perDay, perSailorDay, type CostLine, type PlanData } from "../../src/planning/index.ts";
+import { perDay, perSailorDay, type CostLine, type OfferingInPlan, type PlanData } from "../../src/planning/index.ts";
 import {
   A,
   activity,
@@ -24,6 +24,7 @@ import {
   trip,
   weekly,
   withRate,
+  computePlan,
 } from "./fixtures.ts";
 
 const v = (id: string) => ({ id, plan_id: "v1" });
@@ -399,7 +400,7 @@ describe("a realistic plan, end to end", () => {
   const out = computePlan(data);
   const { lines } = out;
   const offeringsOf = (productId: string) =>
-    new Set(data.plan_offerings.filter((o) => o.product_id === productId).map((o) => o.id));
+    new Set((data.plan_offerings as OfferingInPlan[]).filter((o) => o.product_id === productId).map((o) => o.id));
 
   it("splits every pool over the offerings", () => {
     expect(lines.filter((l) => l.cost_center_type === "pool")).toEqual([]);

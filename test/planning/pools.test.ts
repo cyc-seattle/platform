@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { computePlan } from "../../src/planning/index.ts";
 import {
   A,
   budgetLine,
@@ -13,6 +12,7 @@ import {
   allocateAll,
   total,
   withRate,
+  computePlan,
 } from "./fixtures.ts";
 
 /**
