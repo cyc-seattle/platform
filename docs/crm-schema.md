@@ -44,9 +44,9 @@ Every collection that mirrors Clubspot carries the `clubspot_` prefix, since Dir
 collection in one namespace and Clubspot's terms are ours only at the sync boundary
 (cyc-seattle/isthmia#241). The CRM's own `registrations` are made from them:
 
-- A catalog **offering** (`offerings`, in `schemas/core.yaml`) links to its Clubspot class, and to its
-  session when it sells one session. An offering with no session is a class whose cap covers every
-  session, from its first session to its last. A Catalog Writer sets the link. The link fields are
+- A catalog **offering** (`offerings`, in `schemas/core.yaml`) is one Clubspot class in one session
+  (cyc-seattle/platform#395), so it links to both, or to neither; a check on the table keeps them
+  together. A registration form is one Clubspot camp. A Catalog Writer sets the links. The link fields are
   declared in `schemas/clubspot.yaml`, beside the mirrors they point at, and clear, not delete the
   offering, when Clubspot deletes the class or session. An offering that loses its session loses its
   class too, by a trigger on `clubspot_sessions`, so a week never reads as the whole class.

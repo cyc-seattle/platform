@@ -194,8 +194,9 @@ sailors' registrations gave. It never replaces a value (`src/syncs/clubspot/shar
 
 **The sync registers sailors in the catalog's offerings, and never makes one.** Staff link each
 catalog offering to its Clubspot class and session (cyc-seattle/platform#332). After the camp loop and the
-merges, the sync makes each registration in the offering its entry's class and session are linked to,
-or the class's when the offering covers every session. An entry with no linked offering waits, and
+merges, the sync makes each registration in the offering its entry's class and session are linked to.
+An offering is one class in one session, at the session's cap; a cap that covers every session limits the
+class across the camp, which no one offering has. An entry with no linked offering waits, and
 `class_without_offering` reports its class, in a camp that isn't archived or over, so the rosters miss
 those sailors until staff link it. A cleared or changed link never deletes a registration: it keeps
 its offering until the entry is linked again, and goes only when its Clubspot entry does. The same

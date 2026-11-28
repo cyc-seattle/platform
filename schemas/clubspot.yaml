@@ -5056,7 +5056,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: Its session in Clubspot, for an offering of one session. Empty when the class's limit covers every session.
+      note: Its session in Clubspot. An offering is its class in one session, so it links both or neither.
       options:
         template: "{{name}} ({{camp_id.name}})"
       readonly: false

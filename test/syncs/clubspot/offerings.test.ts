@@ -71,21 +71,25 @@ describe("clubspotOfferings", () => {
     });
   });
 
-  it("reads a class whose cap covers every session as one, over all of them", () => {
+  it("reads a class in each of its sessions, at each session's cap, even when a cap covers every session", () => {
     const found = clubspotOfferings(
       mirrors({
         classes: [{ id: "j-pod", camp_id: "camp-1", name: "j-pod", program_id: null }],
         sessionClasses: inBothWeeks("j-pod"),
-        entryCaps: [{ class_id: "j-pod", session_id: null, cap: 8 }],
+        entryCaps: [
+          { class_id: "j-pod", session_id: null, cap: 16 },
+          { class_id: "j-pod", session_id: "week-2", cap: 8 },
+        ],
       }),
     );
 
     expect(Object.fromEntries(found)).toEqual({
-      "j-pod:": { starts_on: "2026-06-15", ends_on: "2026-06-26", capacity: 8 },
+      "j-pod:week-1": { starts_on: "2026-06-15", ends_on: "2026-06-19", capacity: null },
+      "j-pod:week-2": { starts_on: "2026-06-22", ends_on: "2026-06-26", capacity: 8 },
     });
   });
 
-  it("dates a class with no sessions by its camp, and leaves out an archived session", () => {
+  it("reads nothing for a class with no sessions, and leaves out an archived session", () => {
     const found = clubspotOfferings(
       mirrors({
         sessions: [empty.sessions[0]!, { ...empty.sessions[1]!, archived: true }],
@@ -97,20 +101,19 @@ describe("clubspotOfferings", () => {
       }),
     );
 
-    expect([...found.keys()]).toEqual(["k-pod:", "guppies:week-1"]);
-    expect(found.get("k-pod:")).toMatchObject({ starts_on: "2026-06-01", ends_on: "2026-08-31" });
+    expect([...found.keys()]).toEqual(["guppies:week-1"]);
   });
 });
 
 describe("offeringIdsByKey", () => {
-  it("finds each linked offering by its class and session, and skips one not linked yet", () => {
+  it("finds each linked offering by its class and session, and skips one not linked to both yet", () => {
     const ids = offeringIdsByKey([
       offering({ id: "o-1" }),
       offering({ id: "o-2", clubspot_class_id: "j-pod", clubspot_session_id: null }),
       offering({ id: "o-3", clubspot_class_id: null, clubspot_session_id: null }),
     ]);
 
-    expect(Object.fromEntries(ids)).toEqual({ "guppies:week-1": "o-1", "j-pod:": "o-2" });
+    expect(Object.fromEntries(ids)).toEqual({ "guppies:week-1": "o-1" });
   });
 });
 
@@ -200,7 +203,7 @@ describe("findClassesWithoutOffering", () => {
           entry("e-4", "j-pod", "week-1"),
         ],
       }),
-      new Map([["j-pod:", "offering-j-pod"]]),
+      new Map([["j-pod:week-1", "offering-j-pod"]]),
       "2026-06-01",
     );
 
@@ -297,7 +300,7 @@ describe("planRegistrations", () => {
   };
   const offerings = new Map([
     ["guppies:week-1", "offering-guppies-1"],
-    ["j-pod:", "offering-j-pod"],
+    ["j-pod:week-2", "offering-j-pod"],
   ]);
 
   it("registers each entry's person in its offering, waiting for a person to be matched", () => {

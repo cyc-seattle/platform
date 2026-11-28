@@ -41,16 +41,6 @@ export interface RowPlan<Row extends { id: string }> {
 
 const offeringKey = (classId: string, sessionId: string | null) => `${classId}:${sessionId ?? ""}`;
 
-function earliest(dates: (string | null)[]): string | null {
-  const known = dates.filter((date): date is string => date !== null).sort();
-  return known[0] ?? null;
-}
-
-function latest(dates: (string | null)[]): string | null {
-  const known = dates.filter((date): date is string => date !== null).sort();
-  return known[known.length - 1] ?? null;
-}
-
 /** Keeps only `desired`'s fields that differ from `existing`. */
 function changes<Row extends object>(existing: Row, desired: Row): Partial<Row> {
   return Object.fromEntries(
@@ -88,7 +78,7 @@ function reconcile<Row extends { id: string }>(
   return { ...plan, idByKey };
 }
 
-/** What Clubspot says of a class in a session, or of a class whose cap covers every session. */
+/** What Clubspot says of a class in one session. */
 export interface ClubspotOffering {
   starts_on: string | null;
   ends_on: string | null;
@@ -96,12 +86,12 @@ export interface ClubspotOffering {
 }
 
 /**
- * What Clubspot says of each class in each session, keyed as an offering links to it. A class whose cap
- * covers every session (a cap with no session) is one, from its first session to its last. Archived
- * sessions are left out: Clubspot archives a session it no longer offers.
+ * What Clubspot says of each class in each session, keyed as an offering links to it: an offering is one
+ * class in one session (cyc-seattle/platform#395). Its capacity is the session's cap; a cap with no session
+ * limits the class across the camp, which no one offering has. Archived sessions are left out: Clubspot
+ * archives a session it no longer offers.
  */
 export function clubspotOfferings(mirrors: Mirrors): Map<string, ClubspotOffering> {
-  const campById = new Map(mirrors.camps.map((camp) => [camp.id, camp]));
   const sessionById = new Map(mirrors.sessions.filter((s) => !s.archived).map((session) => [session.id, session]));
   const found = new Map<string, ClubspotOffering>();
   for (const cls of mirrors.classes) {
@@ -110,16 +100,6 @@ export function clubspotOfferings(mirrors: Mirrors): Map<string, ClubspotOfferin
       .map((join) => sessionById.get(join.session_id))
       .filter((session) => session !== undefined);
     const caps = mirrors.entryCaps.filter((cap) => cap.class_id === cls.id);
-    const classWide = caps.find((cap) => cap.session_id === null);
-    if (classWide !== undefined || sessions.length === 0) {
-      const camp = campById.get(cls.camp_id);
-      found.set(offeringKey(cls.id, null), {
-        starts_on: earliest(sessions.length > 0 ? sessions.map((s) => s.start_date) : [camp?.start_date ?? null]),
-        ends_on: latest(sessions.length > 0 ? sessions.map((s) => s.end_date) : [camp?.end_date ?? null]),
-        capacity: classWide?.cap ?? null,
-      });
-      continue;
-    }
     for (const session of sessions) {
       found.set(offeringKey(cls.id, session.id), {
         starts_on: session.start_date,
@@ -135,7 +115,7 @@ export function clubspotOfferings(mirrors: Mirrors): Map<string, ClubspotOfferin
 export function offeringIdsByKey(offerings: readonly OfferingRow[]): Map<string, string> {
   return new Map(
     offerings
-      .filter((offering) => offering.clubspot_class_id !== null)
+      .filter((offering) => offering.clubspot_class_id !== null && offering.clubspot_session_id !== null)
       .map((offering) => [offeringKey(offering.clubspot_class_id!, offering.clubspot_session_id), offering.id]),
   );
 }
@@ -257,15 +237,12 @@ export function planRegistrations(
   return { toCreate, toUpdate, toDelete };
 }
 
-/** The offering an entry's class is linked to as a whole, or else its class and session. */
+/** The offering linked to an entry's class and session. */
 function offeringIdOf(
   offeringIdByKey: ReadonlyMap<string, string>,
   entry: Pick<RegistrationEntryRow, "class_id" | "session_id">,
 ): string | undefined {
-  return (
-    offeringIdByKey.get(offeringKey(entry.class_id, null)) ??
-    offeringIdByKey.get(offeringKey(entry.class_id, entry.session_id))
-  );
+  return offeringIdByKey.get(offeringKey(entry.class_id, entry.session_id));
 }
 
 /**
