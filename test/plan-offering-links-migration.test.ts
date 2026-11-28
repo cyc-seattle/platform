@@ -10,8 +10,8 @@ const migrate = (db: PGlite) => up({ raw: (sql: string) => db.exec(sql) });
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 // The first reviewed pair: a plan offering, and the catalog offering the maintainer matched it to.
 const [REVIEWED_PLAN, REVIEWED_CATALOG] = REVIEWED[0]!;
-const [OLD, LATEST, NEXT] = [id(1), id(2), id(3)];
-const [P_OLD, P_LATEST, P_NEXT] = [id(11), id(12), id(13)];
+const [OLD, LATEST, NEXT, DRAFT] = [id(1), id(2), id(3), id(4)];
+const [P_OLD, P_LATEST, P_NEXT, P_DRAFT] = [id(11), id(12), id(13), id(14)];
 const [GUPPIES, CHARTERS] = [id(21), id(22)];
 
 async function before() {
@@ -20,21 +20,26 @@ async function before() {
     CREATE TABLE directus_fields (id serial PRIMARY KEY, collection varchar(64), field varchar(64), special varchar(64));
     CREATE TABLE directus_relations (id serial PRIMARY KEY, many_collection varchar(64), many_field varchar(64),
       one_collection varchar(64), one_field varchar(64));
-    CREATE TABLE financial_plans (id uuid PRIMARY KEY, fiscal_year integer NOT NULL, effective_from date);
+    CREATE TABLE financial_plans (id uuid PRIMARY KEY, fiscal_year integer NOT NULL, status varchar NOT NULL,
+      effective_from date);
     CREATE TABLE plans (id uuid PRIMARY KEY, financial_plan_id uuid NOT NULL);
     CREATE TABLE offerings (id uuid PRIMARY KEY, product_id uuid NOT NULL, name varchar, starts_on date, ends_on date,
       price_cents integer, capacity integer, confirmed_count integer NOT NULL DEFAULT 0);
     CREATE TABLE plan_offerings (id uuid PRIMARY KEY, plan_id uuid NOT NULL, product_id uuid NOT NULL, name varchar NOT NULL,
       starts_on date NOT NULL, ends_on date NOT NULL, price_cents integer, capacity integer);
 
-    INSERT INTO financial_plans VALUES ('${OLD}', 2026, '2026-01-01'), ('${LATEST}', 2026, '2026-09-03'), ('${NEXT}', 2027, NULL);
-    INSERT INTO plans VALUES ('${P_OLD}', '${OLD}'), ('${P_LATEST}', '${LATEST}'), ('${P_NEXT}', '${NEXT}');
+    -- A draft active after the frozen ones, which the frozen one in force wins over.
+    INSERT INTO financial_plans VALUES ('${OLD}', 2026, 'frozen', '2026-01-01'), ('${LATEST}', 2026, 'frozen', '2026-09-03'),
+      ('${DRAFT}', 2026, 'draft', '2026-11-18'), ('${NEXT}', 2027, 'draft', NULL);
+    INSERT INTO plans VALUES ('${P_OLD}', '${OLD}'), ('${P_LATEST}', '${LATEST}'), ('${P_NEXT}', '${NEXT}'),
+      ('${P_DRAFT}', '${DRAFT}');
     INSERT INTO offerings (id, product_id, name) VALUES ('${REVIEWED_CATALOG}', '${GUPPIES}', 'June 22 - June 26');
     INSERT INTO plan_offerings VALUES
       ('${REVIEWED_PLAN}', '${P_LATEST}', '${GUPPIES}', 'Week 1', '2026-06-22', '2026-06-26', 39500, 12),
       -- The same charters in two of 2026's Financial Plans, at another price in the later one, and in 2027's.
       ('${id(31)}', '${P_OLD}', '${CHARTERS}', 'Sep', '2026-09-01', '2026-09-30', 10000, 4),
       ('${id(32)}', '${P_LATEST}', '${CHARTERS}', 'Sep', '2026-09-01', '2026-09-30', 12000, 5),
+      ('${id(34)}', '${P_DRAFT}', '${CHARTERS}', 'Sep', '2026-09-01', '2026-09-30', 99000, 9),
       ('${id(33)}', '${P_NEXT}', '${CHARTERS}', 'Sep', '2026-09-01', '2026-09-30', 12000, 5);
     INSERT INTO directus_fields (collection, field) VALUES ('plan_offerings', 'product_id'), ('plan_offerings', 'name'),
       ('plan_offerings', 'starts_on');
@@ -68,14 +73,14 @@ describe("the plan offering links migration", { timeout: 30_000 }, () => {
         WHERE o.product_id = '${CHARTERS}' GROUP BY o.id ORDER BY 6`,
     );
     expect(made).toEqual([
-      // From the later Financial Plan's, which is in force.
+      // From the latest frozen Financial Plan's, not the draft active after it.
       {
         product_id: CHARTERS,
         name: "Sep",
         starts_on: "2026-09-01",
         price_cents: 12000,
         capacity: 5,
-        plans: [id(31), id(32)],
+        plans: [id(31), id(32), id(34)],
       },
       { product_id: CHARTERS, name: "Sep", starts_on: "2026-09-01", price_cents: 12000, capacity: 5, plans: [id(33)] },
     ]);
@@ -102,6 +107,12 @@ describe("the plan offering links migration", { timeout: 30_000 }, () => {
     await expect(db.exec(`DELETE FROM offerings WHERE id = '${REVIEWED_CATALOG}'`)).rejects.toThrow(
       "plan_offerings_offering_id_foreign",
     );
+  });
+
+  it("stops when a reviewed match's catalog offering is gone", async () => {
+    const db = await before();
+    await db.exec(`DELETE FROM offerings WHERE id = '${REVIEWED_CATALOG}'`);
+    await expect(migrate(db)).rejects.toThrow(`catalog offering ${REVIEWED_CATALOG}, which is gone`);
   });
 
   it("does nothing when run again, or on a new database", async () => {

@@ -100,6 +100,12 @@ export const ACTIVE_STAYS: string;
 export const BONUS_IN_OPERATIONS: string;
 export const SHORT_NOTES: string;
 export const CATALOG_WRITER_TO_COPY: string;
+/** Whether `user` holds the policy named `name`, given to them or to their role. */
+export function holdsPolicy(
+  query: (sql: string, bindings: unknown[]) => Promise<Record<string, unknown>[]>,
+  user: string | null | undefined,
+  name: string,
+): Promise<boolean>;
 
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each plan, with every row and its

@@ -655,6 +655,16 @@ function resultRows(data, out, operations) {
   for (const p of data.plans) if (p.kind === "program_area") areaPlan.set(p.program_area_id, p.id);
   const offerings = new Map(data.plan_offerings.map((o) => [o.id, o]));
   const products = new Map(data.products.map((p) => [p.id, p]));
+  // A plan offering's name is its catalog offering's, after its product's, as the engine names it.
+  const catalog = new Map((data.offerings ?? []).map((o) => [o.id, o]));
+  const offeringName = (id) => {
+    const offering = catalog.get(offerings.get(id)?.offering_id);
+    if (offering === undefined) return undefined;
+    const product = products.get(offering.product_id)?.name;
+    const own = offering.name ?? product;
+    if (product === undefined || own === product || own.startsWith(`${product} `)) return own;
+    return `${product} ${own}`;
+  };
   const areas = new Map(data.program_areas.map((a) => [a.id, a]));
   const pools = new Map(data.plan_pools.map((p) => [p.id, p]));
   const owners = new Map(data.plan_bonus_owners.map((o) => [o.id, o.plan_id]));
@@ -673,7 +683,7 @@ function resultRows(data, out, operations) {
   };
   const nameOf = (type, id) =>
     ({
-      offering: () => offerings.get(id)?.name,
+      offering: () => offeringName(id),
       product: () => products.get(id)?.name,
       program_area: () => areas.get(id)?.name,
       program_area_term: () => areas.get(id)?.name,
@@ -940,6 +950,21 @@ function asWritten(row) {
         : value,
     ]),
   );
+}
+
+/**
+ * Whether `user` holds the policy named `name`, given to them or to their role. `query(sql, bindings)` runs SQL
+ * with `?` for each binding, and returns its rows.
+ */
+async function holdsPolicy(query, user, name) {
+  if (!user) return false;
+  const rows = await query(
+    `SELECT 1 FROM directus_access a JOIN directus_policies p ON p.id = a.policy
+      WHERE p.name = ? AND (a."user" = ? OR a.role = (SELECT u.role FROM directus_users u WHERE u.id = ?))
+      LIMIT 1`,
+    [name, user, user],
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -1248,16 +1273,8 @@ function register({ filter, action, init }, { services, env, database, getSchema
       ids.length === 0 ? [] : database(SETS).select("id", "status", "archived_at").whereIn("id", ids),
     // Only so the tests can clean up after themselves (`backend:frozenPlansDeletable`).
     yearOf: async (id) => (await database(SETS).select("fiscal_year").where("id", id).first())?.fiscal_year,
-    writesCatalog: async (user) => {
-      if (!user) return false;
-      const held = await database("directus_access as a")
-        .join("directus_policies as p", "p.id", "a.policy")
-        .leftJoin("directus_users as u", "u.id", user)
-        .where("p.name", CATALOG_WRITER)
-        .andWhere((q) => q.where("a.user", user).orWhereRaw("a.role = u.role"))
-        .first();
-      return held !== undefined;
-    },
+    writesCatalog: async (user) =>
+      holdsPolicy(async (sql, bindings) => (await database.raw(sql, bindings)).rows, user, CATALOG_WRITER),
     deletesFrozen: async (user) => {
       if (!config.deletable || !user || !bootstrapAdmin) return false;
       const found = await database("directus_users").select("email").where("id", user).first();
@@ -1316,3 +1333,4 @@ module.exports.ACTIVE_STAYS = ACTIVE_STAYS;
 module.exports.BONUS_IN_OPERATIONS = BONUS_IN_OPERATIONS;
 module.exports.SHORT_NOTES = SHORT_NOTES;
 module.exports.CATALOG_WRITER_TO_COPY = CATALOG_WRITER_TO_COPY;
+module.exports.holdsPolicy = holdsPolicy;

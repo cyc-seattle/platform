@@ -6,7 +6,8 @@
 // maintainer's reviewed list (.review/platform-395-2026-matches.md, 2026-11-28) links to the catalog
 // offering it names there. Every other plan offering gets a catalog offering of its own, on no form and
 // linked to no Clubspot class: one for each year's plan offerings that share a product, a name and
-// dates, made from the one in the latest Financial Plan in force, as the review lists them.
+// dates, made from the one in a frozen Financial Plan if there is one, then the latest active, as the review
+// lists them. A reviewed match whose catalog offering is gone stops the migration.
 //
 // It changes frozen Financial Plans, which the frozen-plans rules forbid, so their triggers are off for
 // these statements. ALTER TABLE locks the table until the migration commits, so no other write gets in
@@ -330,6 +331,8 @@ const literal = (value) => `'${value.replaceAll("'", "''")}'`;
 
 const SQL = `
 DO $migration$
+DECLARE
+  gone uuid;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -341,10 +344,14 @@ BEGIN
   ALTER TABLE plan_offerings DISABLE TRIGGER USER;
   ALTER TABLE plan_offerings ADD COLUMN offering_id uuid;
 
-  UPDATE plan_offerings p SET offering_id = r.offering_id
-    FROM (VALUES ${REVIEWED.map(([plan, catalog]) => `(${literal(plan)}::uuid, ${literal(catalog)}::uuid)`).join(", ")})
-      AS r (plan_offering_id, offering_id)
-    WHERE p.id = r.plan_offering_id AND EXISTS (SELECT 1 FROM offerings o WHERE o.id = r.offering_id);
+  CREATE TEMPORARY TABLE cyc_reviewed (plan_offering_id uuid, offering_id uuid) ON COMMIT DROP;
+  INSERT INTO cyc_reviewed VALUES ${REVIEWED.map(([plan, catalog]) => `(${literal(plan)}::uuid, ${literal(catalog)}::uuid)`).join(", ")};
+  SELECT r.offering_id INTO gone FROM cyc_reviewed r JOIN plan_offerings p ON p.id = r.plan_offering_id
+    WHERE NOT EXISTS (SELECT 1 FROM offerings o WHERE o.id = r.offering_id) LIMIT 1;
+  IF gone IS NOT NULL THEN
+    RAISE EXCEPTION 'cyc0033: the reviewed list links plan offerings to catalog offering %, which is gone', gone;
+  END IF;
+  UPDATE plan_offerings p SET offering_id = r.offering_id FROM cyc_reviewed r WHERE p.id = r.plan_offering_id;
 
   -- One catalog offering for each year's plan offerings that share a product, a name and dates.
   CREATE TEMPORARY TABLE cyc_new_offerings ON COMMIT DROP AS
@@ -353,7 +360,8 @@ BEGIN
         p.price_cents, p.capacity
       FROM plan_offerings p JOIN plans pl ON pl.id = p.plan_id JOIN financial_plans s ON s.id = pl.financial_plan_id
       WHERE p.offering_id IS NULL
-      ORDER BY s.fiscal_year, p.product_id, p.name, p.starts_on, p.ends_on, s.effective_from DESC NULLS LAST, p.id;
+      ORDER BY s.fiscal_year, p.product_id, p.name, p.starts_on, p.ends_on,
+        s.status = 'frozen' DESC, s.effective_from DESC NULLS LAST, p.id;
   INSERT INTO offerings (id, product_id, name, starts_on, ends_on, price_cents, capacity)
     SELECT offering_id, product_id, name, starts_on, ends_on, price_cents, capacity FROM cyc_new_offerings;
   UPDATE plan_offerings p SET offering_id = n.offering_id

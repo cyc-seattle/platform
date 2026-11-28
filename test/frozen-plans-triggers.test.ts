@@ -28,6 +28,7 @@ import {
   writeDraftResults,
   workOutAgain,
   writeSetResults,
+  holdsPolicy,
 } from "../stacks/backend/frozen-plans.cjs";
 import { computePlan } from "../src/planning/index.ts";
 import { connect, database, schemas, tables } from "./planning-database.ts";
@@ -963,6 +964,19 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     return { ...made, w, draftOperations: operations };
   }
 
+  it("names each offering in its results by its catalog offering, after its product", async () => {
+    const db = await database(config(false));
+    const { draftSet, draftOffering, w } = await draft(db, 2802);
+    expect(await w.update("plan_offerings", draftOffering, { target_enrollment: 4, price_cents: 100 })).toBeUndefined();
+    expect(await writeDraftResults(config(false), knexOver(db), draftSet, engine)).toBe(true);
+    const { rows: pnl } = await db.query<Values>(
+      `SELECT name FROM plan_result_pnl WHERE financial_plan_id = $1 AND level = 'offering'`,
+      [draftSet],
+    );
+    // A line's cost center is named the same way.
+    expect(pnl).toEqual([{ name: "Test product Offering" }]);
+  });
+
   it("works out a draft's results again in place of the ones it had", async () => {
     const db = await database(config(false));
     const { draftSet, draftOffering, w } = await draft(db, 2801);
@@ -1092,3 +1106,43 @@ describe("working out a Financial Plan's results", { timeout: 30_000 }, () => {
     expect(await changes("directus_users", [randomUUID()])).toEqual([]);
   });
 });
+
+describe("who holds a policy", { timeout: 30_000 }, () => {
+  it("counts one given to the user or to their role, by its name", async () => {
+    const db = await PGlite.create();
+    await db.exec(`
+      CREATE TABLE directus_policies (id uuid PRIMARY KEY, name varchar NOT NULL);
+      CREATE TABLE directus_users (id uuid PRIMARY KEY, role uuid);
+      CREATE TABLE directus_access (id uuid PRIMARY KEY, policy uuid NOT NULL, "user" uuid, role uuid);
+      INSERT INTO directus_policies VALUES ('${ids.policy}', 'Catalog Writer'), ('${ids.other}', 'Plan Admin');
+      INSERT INTO directus_users VALUES ('${ids.direct}', NULL), ('${ids.byRole}', '${ids.role}'), ('${ids.none}', NULL);
+      INSERT INTO directus_access VALUES (gen_random_uuid(), '${ids.policy}', '${ids.direct}', NULL),
+        (gen_random_uuid(), '${ids.policy}', NULL, '${ids.role}'), (gen_random_uuid(), '${ids.other}', '${ids.none}', NULL);
+    `);
+    let n = 0;
+    const query = async (sql: string, bindings: unknown[]) =>
+      (
+        await db.query<Record<string, unknown>>(
+          sql.replace(/\?/g, () => `$${++n}`),
+          bindings,
+        )
+      ).rows;
+    const holds = async (user: string | null) => {
+      n = 0;
+      return holdsPolicy(query, user, "Catalog Writer");
+    };
+    expect(await holds(ids.direct)).toBe(true);
+    expect(await holds(ids.byRole)).toBe(true);
+    expect(await holds(ids.none)).toBe(false);
+    expect(await holds(null)).toBe(false);
+  });
+});
+
+const ids = {
+  policy: randomUUID(),
+  other: randomUUID(),
+  role: randomUUID(),
+  direct: randomUUID(),
+  byRole: randomUUID(),
+  none: randomUUID(),
+};
