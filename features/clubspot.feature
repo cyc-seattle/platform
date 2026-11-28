@@ -109,11 +109,12 @@ Feature: Registrations from Clubspot
       And it can't delete its notes
       And it can't delete its run logs
 
-  Rule: The Clubspot sync can't see or add programs
+  Rule: The Clubspot sync can see programs, but can't change them
 
-    Example: The Clubspot sync looks for programs
+    Example: The Clubspot sync looks up programs
       Given the Clubspot sync's service account
-      Then it can't add or see programs
+      Then it can see programs
+      But it can't change programs
 
   Rule: When the Clubspot sync merges two people, the person kept takes over the duplicate's place on Crew
 

@@ -114,8 +114,8 @@ rather than a policy (`docs/planning-schema.md`). A Medical policy is given with
 Programs and offerings belong to the catalog, so only a Catalog Writer changes them, the links from
 offerings to Clubspot's classes included. A CRM policy reads them, and so do Crew and the Google sync,
 but none of them changes them. The Clubspot sync reads offerings, and writes only each one's count of
-confirmed sailors, which no one else writes. It reads each program's product too, to set a Clubspot
-class's program. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
+confirmed sailors, which no one else writes. It reads programs too, to set a Clubspot class's program,
+but never changes one. The directory, `schemas/directory.yaml`, is the organizations and venues; every catalog and plan policy reads it, and only an admin changes it.
 
 One field is held back: no policy a person can hold sets a login's person,
 `directus_users.person_id`, or the list of a person's logins, `people.logins`, because a login's
