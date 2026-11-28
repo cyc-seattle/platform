@@ -224,7 +224,8 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     currency: "usd",
   }),
   registration_forms: async () => ({ id: randomUUID(), name: `Form ${key("form")}` }),
-  // Linked to the run's class and session, as staff link them.
+  // Linked to the run's class and session, as staff link them. A class and session have one offering,
+  // so another offering takes a session of its own.
   offerings: async () => ({
     id: randomUUID(),
     product_id: fixture["programs"]!["product_id"],
@@ -233,7 +234,16 @@ export const builders: Record<string, (fixed: Row) => Promise<Row>> = {
     ends_on: null,
     capacity: 10,
     clubspot_class_id: row["clubspot_classes"],
-    clubspot_session_id: row["clubspot_sessions"],
+    clubspot_session_id:
+      row["offerings"] === undefined
+        ? row["clubspot_sessions"]
+        : (
+            await adminCreate("clubspot_sessions", {
+              id: key("session"),
+              camp_id: row["clubspot_camps"],
+              archived: false,
+            })
+          ).id,
   }),
   offering_schedule: async () => ({
     id: randomUUID(),
