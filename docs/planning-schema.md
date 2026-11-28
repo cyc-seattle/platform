@@ -665,6 +665,27 @@ Only the hook writes results. Its filter refuses any write to them through the A
 
 Each result line's `line_name` says in plain words what it is, such as "Coach wages" or "G&A share: Payroll tax". `line` is the engine's name for it.
 
+### The plan-to-catalog sync
+
+After the board approves a Financial Plan, a Catalog Writer brings it into the catalog with a sync
+([cyc-seattle/platform#395](https://github.com/cyc-seattle/platform/issues/395)). `catalogDifference` in
+`@cyc-seattle/platform/planning` works out what to change; Sail Team shows it, and writes what the person ticks,
+with their own access.
+
+- It reads the Financial Plan in force for a year, the whole of it, and refuses a draft, so the catalog never
+  takes numbers the board didn't approve.
+- For each catalog offering a plan offering plans, it shows each of `starts_on`, `ends_on`, `capacity` and
+  `price_cents` the plan gives another value.
+- It shows the offering's schedule, compared whole: each weekday with a plan activity in at least half the weeks
+  that have any, at the start and end most of them share there, the earlier on a tie. Travel days and activities
+  without both times don't count.
+- It matches plan activities to the catalog offering's activities by date and start time. One the catalog lacks is
+  an add, a different end time a change, and a catalog activity the plan lacks an archive. An archived catalog
+  activity the plan still has comes back. A plan activity without both times is skipped, and listed.
+- A catalog offering some Financial Plan for the year plans, archived ones included, but the plan in force
+  doesn't, is an archive. One with registrations shows how many.
+- Nothing is kept between syncs: a difference shows every time until the plan and the catalog agree.
+
 ### Actuals
 
 ```mermaid
