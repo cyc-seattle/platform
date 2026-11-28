@@ -4,10 +4,10 @@
  * registrations from the Clubspot mirrors, and keeps each offering's confirmed count.
  */
 
-/** What CSC sells: one program for one dated period, linked to a Clubspot class in one session, or in all of them. */
+/** What CSC sells: one product for one dated period, linked to a Clubspot class in one session, or in all of them. */
 export interface OfferingRow {
   id: string;
-  program_id: string;
+  product_id: string;
   starts_on: string | null;
   ends_on: string | null;
   capacity: number | null;

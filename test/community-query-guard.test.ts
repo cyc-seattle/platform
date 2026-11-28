@@ -47,7 +47,7 @@ const check = (collection: string, query: Record<string, unknown>, access = team
 
 describe("effectiveAccess", () => {
   it("restricts nothing for Community, whose one rule per collection gives the same fields on every row", () => {
-    expect(accessOf(COMMUNITY)).toEqual({ restricted: {}, open: ["program_areas", "programs", "schools"] });
+    expect(accessOf(COMMUNITY)).toEqual({ restricted: {}, open: ["products", "program_areas", "programs", "schools"] });
   });
 
   it("restricts the fields some Team read rule withholds", () => {
@@ -62,7 +62,8 @@ describe("effectiveAccess", () => {
         "school_id",
         "share_contact",
       ],
-      programs: ["google_group_id", "product_id", "team"],
+      products: ["program_area_id"],
+      programs: ["google_group_id", "team"],
     });
     expect(team.open).toEqual(["program_areas", "schools"]);
   });

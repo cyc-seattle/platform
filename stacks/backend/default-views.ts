@@ -87,8 +87,14 @@ export const defaultViews: DefaultView[] = [
   { collection: "programs", sort: ["name"], fields: ["name", "product_id", "color"] },
   {
     collection: "offerings",
-    sort: ["-starts_on", "program_id.name"],
-    fields: ["program_id", "name", "starts_on", "ends_on", "price_cents", "capacity", "registration_form_id"],
+    sort: ["-starts_on", "product_id.name"],
+    fields: ["product_id", "name", "starts_on", "ends_on", "price_cents", "capacity", "registration_form_id"],
+  },
+  {
+    collection: "activities",
+    sort: ["-date", "start_time"],
+    fields: ["offering_id", "date", "start_time", "end_time"],
+    filter: { archived_at: { _null: true } },
   },
   { collection: "registration_forms", sort: ["-opens_on", "name"], fields: ["name", "opens_on", "clubspot_camp_id"] },
   { collection: "qualifications", sort: ["name"], fields: ["name", "covers"] },
@@ -362,7 +368,7 @@ export const defaultViews: DefaultView[] = [
  * guard refuses a sort through one, and these sort on the row's own fields.
  */
 export const familyViews: DefaultView[] = [
-  { collection: "offerings", sort: ["-starts_on"], fields: ["program_id", "starts_on", "ends_on"] },
+  { collection: "offerings", sort: ["-starts_on"], fields: ["product_id", "starts_on", "ends_on"] },
   { collection: "registrations", sort: ["status", "person_id"], fields: ["person_id", "offering_id", "status"] },
   // A planner who is also a family reads only their own person whole, so the view can't sort through people.
   { collection: "crew_members", sort: ["person_id"], fields: ["person_id", "terms"] },

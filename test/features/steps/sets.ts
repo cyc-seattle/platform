@@ -10,6 +10,8 @@ export interface Target {
   rows: string[];
   /** Fields a new row takes, so it lands where the step means, such as in a frozen plan. */
   fixed?: () => Row;
+  /** The fields a read asks for, where the step means only some of them. */
+  fields?: string;
 }
 
 const plain = (...collections: string[]): Target[] =>
@@ -106,6 +108,8 @@ const sets: Record<string, Target[]> = {
     "boat_classes",
     "programs",
     "offerings",
+    "offering_schedule",
+    "activities",
     "registration_forms",
     "staff_roles",
     "staff_levels",
@@ -122,6 +126,10 @@ const sets: Record<string, Target[]> = {
     "staff_levels",
   ),
   products: plain("products"),
+  "products' names": [{ collection: "products", rows: ["products"], fields: "id,name" }],
+  "the rest of the products": [
+    { collection: "products", rows: ["products"], fields: "id,kind,program_area_id,revenue_account_id" },
+  ],
   "program areas": plain("program_areas"),
   "revenue accounts": plain("accounts"),
   // The directory, as directory.feature defines it.

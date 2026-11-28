@@ -824,7 +824,7 @@ Step("they open the roster page", async () => {
   since.setUTCMonth(since.getUTCMonth() - 12);
   const recent = new URLSearchParams({
     limit: "-1",
-    fields: "id,program_id,starts_on,ends_on",
+    fields: "id,product_id,starts_on,ends_on",
     filter: JSON.stringify({
       _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: since.toISOString().slice(0, 10) } }],
     }),
@@ -835,9 +835,9 @@ Step("they open the roster page", async () => {
   const programs = await readByIds(
     session,
     "programs",
-    "id",
-    [...new Set(offeringRows.map((row) => row["program_id"]))],
-    readable(permissions, "programs", ["id", "name", "team"]),
+    "product_id",
+    [...new Set(offeringRows.map((row) => row["product_id"]))],
+    readable(permissions, "programs", ["id", "product_id", "name", "team"]),
   );
   const registrations = await readByIds(
     session,

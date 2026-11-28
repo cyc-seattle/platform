@@ -81,7 +81,7 @@ describe("the policies a group can give", () => {
     expect(options.enableCreate).toBe(false);
   });
 
-  it("are coarse: no row filters but the planners' by kind of plan and Crew's photos, and no field lists but a person's writable fields, CRM Writer's hand-set one, Crew's, and the catalog fields the sync keeps", () => {
+  it("are coarse: no row filters but the planners' by kind of plan and Crew's photos, and no field lists but a person's writable fields, CRM Writer's hand-set one and product names, Crew's, and the catalog fields the sync keeps", () => {
     const planners = ["Plan Writer", "Plan Admin"];
     for (const { name, rules } of policies.filter(({ name }) => !planners.includes(name))) {
       for (const rule of rules) {
@@ -94,6 +94,7 @@ describe("the policies a group can give", () => {
     );
     expect(fielded.map(({ collection, fields }) => `${collection}.${fields}`)).toEqual([
       "clubspot_participants.person_id",
+      "products.id,name",
     ]);
     const catalogFielded = named("Catalog Writer").rules.filter((rule) => rule.fields);
     expect(catalogFielded.map(({ collection, action }) => `${collection}.${action}`)).toEqual([
@@ -123,7 +124,9 @@ describe("the policies a group can give", () => {
         expect(changed).not.toContain("accounts");
       }
       if (!policy.name.startsWith("Catalog ") && !policy.name.startsWith("Plan ")) {
-        expect(touched).not.toContain("products");
+        // A CRM policy reads a product's name, which names its offerings, and nothing else of it.
+        const products = policy.rules.filter((rule) => rule.collection === "products");
+        expect(products.map((rule) => rule.fields)).toEqual(policy.name.startsWith("CRM ") ? [["id", "name"]] : []);
         expect(touched).not.toContain("accounts");
       }
     }
@@ -226,6 +229,8 @@ describe("the Catalog policies", () => {
     "programs",
     "program_boat_classes",
     "offerings",
+    "offering_schedule",
+    "activities",
     "registration_forms",
     "organization_cost_accounts",
     "staff_roles",
@@ -517,7 +522,7 @@ describe("queryGuardConfig", () => {
     expect(config.policies["CRM Reader"]?.["people"]).toEqual([{ fields: "*", filtered: false }]);
     expect(config.policies["Community: own family"]?.["medical_profiles"]).toEqual([{ fields: "*", filtered: true }]);
     expect(config.policies["Community: own family"]?.["programs"]).toEqual([
-      { fields: ["id", "name"], filtered: false },
+      { fields: ["id", "name", "product_id"], filtered: false },
     ]);
   });
 });
@@ -569,12 +574,31 @@ describe("the csc-website build's rules", () => {
         .filter((rule) => WEBSITE_CATALOG_READS.some(({ collection }) => collection === rule.collection))
         .map((r) => [r.collection, r]),
     );
-    expect(Object.keys(read).sort()).toEqual(["clubspot_camps", "offerings", "programs", "registration_forms"]);
-    expect(read["programs"]!.fields).toEqual(["id", "name", "min_age", "max_age"]);
+    expect(Object.keys(read).sort()).toEqual([
+      "activities",
+      "clubspot_camps",
+      "offering_schedule",
+      "offerings",
+      "programs",
+      "registration_forms",
+    ]);
+    expect(read["programs"]!.fields).toEqual(["id", "product_id", "name", "min_age", "max_age"]);
     expect(read["offerings"]!.fields).not.toEqual(
       expect.arrayContaining(["clubspot_class_id", "clubspot_session_id", "registrations", "archived_at"]),
     );
-    expect(read["offerings"]!.permissions).toEqual({ archived_at: { _null: true } });
+    const shown = {
+      _and: [
+        { archived_at: { _null: true } },
+        { registration_form_id: { _nnull: true } },
+        { registration_form_id: { archived_at: { _null: true } } },
+      ],
+    };
+    expect(read["offerings"]!.permissions).toEqual(shown);
+    expect(read["offering_schedule"]!.permissions).toEqual({ offering_id: shown });
+    expect(read["activities"]!.permissions).toEqual({
+      _and: [{ archived_at: { _null: true } }, { offering_id: shown }],
+    });
+    expect(read["activities"]!.fields).toEqual(["id", "offering_id", "date", "start_time", "end_time"]);
     expect(read["registration_forms"]!.permissions).toEqual({ archived_at: { _null: true } });
     expect(read["clubspot_camps"]!.permissions).toEqual({ public: { _eq: true } });
     expect(rules.map((rule) => rule.collection)).not.toEqual(

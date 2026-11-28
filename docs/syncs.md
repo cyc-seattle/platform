@@ -199,8 +199,8 @@ or the class's when the offering covers every session. An entry with no linked o
 `class_without_offering` reports its class, in a camp that isn't archived or over, so the rosters miss
 those sailors until staff link it. A cleared or changed link never deletes a registration: it keeps
 its offering until the entry is linked again, and goes only when its Clubspot entry does. The same
-pass writes each offering's `confirmed_count`, sets each class's `program_id` to its offerings'
-program for gsuite-sync, and raises `offering_differs` for an offering, not archived or over, whose
+pass writes each offering's `confirmed_count`, sets each class's `program_id` to the program of its
+offerings' product for gsuite-sync, and raises `offering_differs` for an offering, not archived or over, whose
 dates or cap aren't Clubspot's. The catalog is right, so the fix is in Clubspot or the link. If the
 pass fails, its open findings are left alone (`src/syncs/clubspot/offerings.ts`).
 
