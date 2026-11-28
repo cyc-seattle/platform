@@ -476,7 +476,9 @@ const signInGroups = SIGN_IN_POLICIES.map(({ key, name }) => ({
 // The hook's account, which can see users and change only the sign-in groups' members. It can't
 // make anyone a superuser: adding to a superuser group takes a permission it doesn't have.
 const accessSyncRole = new authentik.RbacRole("directus-access-sync", { name: "Directus access sync" }, opts);
-new authentik.RbacPermissionRole(
+// The role's writes go one at a time. Under concurrent writes to the role, the provider's read-back
+// after an assign can miss the permission it just made, and fail with "permission not found".
+let lastRoleWrite: pulumi.Resource = new authentik.RbacPermissionRole(
   "directus-access-sync-view-users",
   { role: accessSyncRole.id, permission: "authentik_core.view_user" },
   opts,
@@ -490,7 +492,7 @@ for (const { key, group } of signInGroups) {
   for (const codename of ["view_group", "add_user_to_group", "remove_user_from_group"]) {
     // With its app label even on one object: Authentik's assign_perm splits on the dot either way, and
     // fails with a 500 on a bare codename. The provider reads it back the same way.
-    new authentik.RbacPermissionRole(
+    lastRoleWrite = new authentik.RbacPermissionRole(
       `directus-access-sync-${key}-${codename}`,
       {
         role: accessSyncRole.id,
@@ -498,7 +500,7 @@ for (const { key, group } of signInGroups) {
         objectId: group.id,
         permission: `authentik_core.${codename}`,
       },
-      opts,
+      { ...opts, dependsOn: [lastRoleWrite] },
     );
   }
 }
@@ -510,7 +512,7 @@ const accessSyncUser = new authentik.User(
     type: "service_account",
     roles: [accessSyncRole.id],
   },
-  opts,
+  { ...opts, dependsOn: [lastRoleWrite] },
 );
 const accessSyncToken = new authentik.Token(
   "directus-access-sync-token",
