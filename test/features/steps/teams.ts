@@ -40,7 +40,12 @@ export async function newCamp(season: Season): Promise<Camp> {
     start_date: startsOn,
     end_date: endsOn,
   });
-  const session = await adminCreate("clubspot_sessions", { id: key("session"), camp_id: id });
+  const session = await adminCreate("clubspot_sessions", {
+    id: key("session"),
+    camp_id: id,
+    start_date: startsOn,
+    end_date: endsOn,
+  });
   return { id, sessionId: session.id, startsOn, endsOn };
 }
 
@@ -55,7 +60,12 @@ export async function newProgram(camp: Camp, { team = false, programId }: { team
     camp_id: camp.id,
     program_id: program,
   });
-  // A class with no sessions of its own is one offering, over its camp's dates.
+  // An offering is the class in one session (cyc-seattle/platform#395): here, the camp's only one.
+  await adminCreate("clubspot_session_classes", {
+    id: `${camp.sessionId}:${classId}`,
+    session_id: camp.sessionId,
+    class_id: classId,
+  });
   const offering = await adminCreate("offerings", {
     id: randomUUID(),
     product_id: productId,
@@ -64,7 +74,7 @@ export async function newProgram(camp: Camp, { team = false, programId }: { team
     ends_on: camp.endsOn,
     capacity: null,
     clubspot_class_id: classId,
-    clubspot_session_id: null,
+    clubspot_session_id: camp.sessionId,
   });
   return { camp, programId: program, classId, offeringId: offering.id } satisfies Program;
 }

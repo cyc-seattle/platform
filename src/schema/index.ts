@@ -655,7 +655,7 @@ export interface OfferingSchedule {
 export interface Offerings {
   /** Its class in Clubspot. Set once the class is made in Clubspot. */
   clubspot_class_id: string | ClubspotClasses | null;
-  /** Its session in Clubspot, for an offering of one session. Empty when the class's limit covers every session. */
+  /** Its session in Clubspot. An offering is its class in one session, so it links both or neither. */
   clubspot_session_id: string | ClubspotSessions | null;
   id: string;
   product_id: string | Products;
