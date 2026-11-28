@@ -48,6 +48,7 @@ export function extensionDirs(extensions: DirectusExtensions): ExtensionDir[] {
     hook("community-query-guard", "community-query-guard.cjs", extensions.queryGuard),
     hook("group-policies", "group-policies.cjs", extensions.groupPolicies),
     hook("frozen-plans", "frozen-plans.cjs", extensions.frozenPlans, extensions.engine),
+    hook("catalog-rules", "catalog-rules.cjs", {}),
     hook("school-choice", "school-choice.cjs", {}),
     hook("link-preview", "link-preview.cjs", {}),
     hook("website-publish", "website-publish.cjs", extensions.websitePublish),

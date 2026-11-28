@@ -4,7 +4,7 @@ Feature: Registrations from Clubspot
   registration, with the sailor's answers to the sign-up questions and their payments. Staff change them in Clubspot, not in the CRM, because the next copy from Clubspot would
   undo a change made in the CRM. In the CRM, staff only link them to the rest of the club's data:
   which person in the CRM a sailor is. Clubspot's camps are built from the catalog's offerings, and
-  each offering is linked to the Clubspot class, and the session for a weekly one, that sells it.
+  each offering is one Clubspot class in one session, linked to both.
 
   The Clubspot sync copies the sessions, classes, and registrations into the CRM. It registers each
   sailor in the offering their class and session are linked to, and keeps count of each offering's

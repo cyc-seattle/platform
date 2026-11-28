@@ -4,7 +4,7 @@
 // An offering is one Clubspot class in one session (cyc-seattle/platform#395). The CRM's sync made one
 // offering for a whole class when Clubspot capped the class across its sessions, and those rows stayed.
 // Each such offering becomes one for each session its class is offered in, or a registration names:
-// the same product, form and price, with the session's name, dates and cap, and the offering's
+// the same product, form and price, with the session's name, dates and cap (the larger of two), and the offering's
 // schedule. Each registration moves to its entry's session's offering, and each activity to the one
 // whose dates hold it. The whole-class offering, then empty, goes. One whose class has no session left
 // in Clubspot, and nothing pointing at it, just goes. A check then keeps an offering's class and
@@ -45,7 +45,8 @@ BEGIN
             archived_at, clubspot_class_id, clubspot_session_id, confirmed_count)
           VALUES (made, w.product_id, coalesce(s.name, w.name), w.registration_form_id, s.start_date, s.end_date,
             w.price_cents,
-            (SELECT c.cap FROM clubspot_entry_caps c WHERE c.class_id = w.clubspot_class_id AND c.session_id = s.id LIMIT 1),
+            -- Clubspot lists some class and session pairs twice; the larger cap counts, as clubspot-sync reads it.
+            (SELECT max(c.cap) FROM clubspot_entry_caps c WHERE c.class_id = w.clubspot_class_id AND c.session_id = s.id),
             w.archived_at, w.clubspot_class_id, s.id, 0);
         IF to_regclass('offering_schedule') IS NOT NULL THEN
           INSERT INTO offering_schedule (id, offering_id, weekday, start_time, end_time)

@@ -71,13 +71,14 @@ describe("clubspotOfferings", () => {
     });
   });
 
-  it("reads a class in each of its sessions, at each session's cap, even when a cap covers every session", () => {
+  it("reads a class in each of its sessions, at each session's larger cap, even when a cap covers every session", () => {
     const found = clubspotOfferings(
       mirrors({
         classes: [{ id: "j-pod", camp_id: "camp-1", name: "j-pod", program_id: null }],
         sessionClasses: inBothWeeks("j-pod"),
         entryCaps: [
           { class_id: "j-pod", session_id: null, cap: 16 },
+          { class_id: "j-pod", session_id: "week-2", cap: 6 },
           { class_id: "j-pod", session_id: "week-2", cap: 8 },
         ],
       }),

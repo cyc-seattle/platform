@@ -32,7 +32,8 @@ async function before() {
       ('old', 'Old', '2026-05-01', '2026-05-02', true);
     INSERT INTO clubspot_session_classes VALUES ('w1:guppies', 'w1', 'guppies'), ('w2:guppies', 'w2', 'guppies'),
       ('w3:guppies', 'w3', 'guppies'), ('old:gone', 'old', 'gone'), ('w1:weekly', 'w1', 'weekly');
-    INSERT INTO clubspot_entry_caps VALUES ('c0', 'guppies', NULL, 10), ('c1', 'guppies', 'w1', 12), ('c2', 'guppies', 'w2', 11);
+    INSERT INTO clubspot_entry_caps VALUES ('c0', 'guppies', NULL, 10), ('c1', 'guppies', 'w1', 12), ('c2', 'guppies', 'w2', 11),
+      ('c3', 'guppies', 'w2', 9);
     INSERT INTO clubspot_registration_entries VALUES ('e1', 'w1', 'guppies'), ('e2', 'w1', 'guppies'), ('e3', 'w3', 'guppies'),
       ('e4', 'w1', 'weekly');
     INSERT INTO offerings (id, product_id, name, registration_form_id, starts_on, ends_on, price_cents, capacity,

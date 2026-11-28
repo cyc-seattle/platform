@@ -41,6 +41,8 @@ export interface RowPlan<Row extends { id: string }> {
 
 const offeringKey = (classId: string, sessionId: string | null) => `${classId}:${sessionId ?? ""}`;
 
+const largest = (caps: number[]) => (caps.length === 0 ? null : Math.max(...caps));
+
 /** Keeps only `desired`'s fields that differ from `existing`. */
 function changes<Row extends object>(existing: Row, desired: Row): Partial<Row> {
   return Object.fromEntries(
@@ -87,9 +89,9 @@ export interface ClubspotOffering {
 
 /**
  * What Clubspot says of each class in each session, keyed as an offering links to it: an offering is one
- * class in one session (cyc-seattle/platform#395). Its capacity is the session's cap; a cap with no session
- * limits the class across the camp, which no one offering has. Archived sessions are left out: Clubspot
- * archives a session it no longer offers.
+ * class in one session (cyc-seattle/platform#395). Its capacity is the session's cap, the larger when
+ * Clubspot lists two; a cap with no session limits the class across the camp, which no one offering has.
+ * Archived sessions are left out: Clubspot archives a session it no longer offers.
  */
 export function clubspotOfferings(mirrors: Mirrors): Map<string, ClubspotOffering> {
   const sessionById = new Map(mirrors.sessions.filter((s) => !s.archived).map((session) => [session.id, session]));
@@ -104,7 +106,7 @@ export function clubspotOfferings(mirrors: Mirrors): Map<string, ClubspotOfferin
       found.set(offeringKey(cls.id, session.id), {
         starts_on: session.start_date,
         ends_on: session.end_date,
-        capacity: caps.find((cap) => cap.session_id === session.id)?.cap ?? null,
+        capacity: largest(caps.filter((cap) => cap.session_id === session.id).map((cap) => cap.cap)),
       });
     }
   }
