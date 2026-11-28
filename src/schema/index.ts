@@ -101,6 +101,7 @@ export interface Schema {
   website_pages_faq_topics: WebsitePagesFaqTopics[];
   website_policies: WebsitePolicies[];
   website_policy_versions: WebsitePolicyVersions[];
+  website_program_groups: WebsiteProgramGroups[];
   website_programs: WebsitePrograms[];
   website_programs_catalog_programs: WebsiteProgramsCatalogPrograms[];
   website_programs_files: WebsiteProgramsFiles[];
@@ -1475,6 +1476,8 @@ export interface WebsiteCategories {
   gallery: (string | WebsiteCategoriesFiles)[];
   /** The crew list this category's page shows under Meet Our Crew. */
   crew_section_id: string | WebsiteCrewSections | null;
+  /** Sections of its page, each with some of its programs, in the order the page shows them. With none, the page shows its programs under no heading. */
+  program_groups: (string | WebsiteProgramGroups)[];
 }
 
 export interface WebsiteCategoriesFaqTopics {
@@ -1596,6 +1599,18 @@ export interface WebsitePolicyVersions {
   body: string | null;
 }
 
+/** A section on a category's page, such as Youth Sailing, holding some of its programs. */
+export interface WebsiteProgramGroups {
+  id: string;
+  /** The section's heading, such as Youth Sailing. */
+  title: string;
+  /** The category whose page shows it. */
+  category_id: string | WebsiteCategories;
+  sort: number | null;
+  /** The programs in it. A program shows in it only on this category's page, and with no section anywhere else. */
+  programs: (string | WebsitePrograms)[];
+}
+
 /** A program's page, at /program/ and its slug, and its card on each category's page. */
 export interface WebsitePrograms {
   id: string;
@@ -1623,6 +1638,8 @@ export interface WebsitePrograms {
   gallery: (string | WebsiteProgramsFiles)[];
   /** The programs in the catalog this page is about, for their dates and prices later. Optional. */
   catalog_programs: (string | WebsiteProgramsCatalogPrograms)[];
+  /** The section it's in on its group's category page. A group of another category has no effect here. */
+  group_id: string | WebsiteProgramGroups | null;
 }
 
 export interface WebsiteProgramsCatalogPrograms {

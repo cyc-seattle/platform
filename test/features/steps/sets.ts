@@ -159,6 +159,7 @@ const sets: Record<string, Target[]> = {
     "website_crew_sections_positions",
     "website_categories_files",
     "website_programs",
+    "website_program_groups",
     "website_programs_files",
     "website_programs_catalog_programs",
     "website_faq_topics",
