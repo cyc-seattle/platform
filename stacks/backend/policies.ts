@@ -532,13 +532,14 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
           ),
       ],
     },
-    // Given with Plan Writer: the rules, and which Financial Plan is in force.
+    // Given with Plan Writer: the rules, and which Financial Plan is in force. Given with Catalog Writer too,
+    // since starting a Financial Plan from another year's makes that year's offerings (cyc-seattle/platform#395).
     {
       key: "plan-admin",
       name: "Plan Admin",
       icon: "approval",
       description:
-        "Changes the Operations Plan in a draft, freezes a Financial Plan, makes one active from a date, and archives one. Sees every plan, the catalog, and users' names.",
+        "Changes the Operations Plan in a draft, freezes a Financial Plan, makes one active from a date, and archives one. Sees every plan, the catalog, and users' names. Given with Catalog Writer, to start next year's plan.",
       rules: [
         ...readCatalog,
         readUserNames,
