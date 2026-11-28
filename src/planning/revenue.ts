@@ -6,7 +6,7 @@ export function countDays(ctx: Context, activities: ComputedActivity[]): void {
   const dates = new Map<string, Set<string>>();
   for (const a of activities) {
     if (a.kind === "travel") continue;
-    dates.set(a.offering_key, (dates.get(a.offering_key) ?? new Set()).add(a.date));
+    dates.set(a.offering_id, (dates.get(a.offering_id) ?? new Set()).add(a.date));
   }
   for (const [key, set] of dates) ctx.days.set(key, set.size);
 }
@@ -20,7 +20,7 @@ export function bookRevenue(ctx: Context): void {
   for (const offering of ctx.data.plan_offerings) {
     const product = ctx.products.get(offering.product_id);
     if (product === undefined) {
-      ctx.warn("unknown_product", `Offering ${offering.key}'s product doesn't exist.`, offering.key);
+      ctx.warn("unknown_product", `Offering ${offering.id}'s product doesn't exist.`, offering.id);
       continue;
     }
     const enrollment = ctx.enrollment.get(offering.id) ?? 0;
@@ -42,11 +42,11 @@ export function bookRevenue(ctx: Context): void {
     ): void =>
       ctx.book({
         cost_center_type: "offering",
-        cost_center_key: offering.key,
+        cost_center_id: offering.id,
         account_id: account,
         function: ctx.functionFor(account, null, "offering"),
         amount,
-        line_key: `${line}:${offering.key}`,
+        line_key: `${line}:${offering.id}`,
         line_name: name,
         explanation,
         mtdc_share,
@@ -63,7 +63,7 @@ export function bookRevenue(ctx: Context): void {
       book(
         charge.account_id,
         total * charge.rate,
-        `charge:${charge.key}`,
+        `charge:${charge.id}`,
         charge.name,
         `${charge.name}: ${charge.rate} × revenue`,
         charge.in_mtdc ? 1 : 0,

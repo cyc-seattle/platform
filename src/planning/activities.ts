@@ -27,11 +27,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
   for (const c of ctx.data.plan_closed_dates ?? []) {
     // The closed days are the Operations Plan's, not an area's.
     if (ctx.planOf.get(c.plan_id)?.kind === "program_area") {
-      ctx.warn(
-        "closed_date_in_area_plan",
-        `${c.name} doesn't count. Only the Operations Plan's closed days do.`,
-        c.key,
-      );
+      ctx.warn("closed_date_in_area_plan", `${c.name} doesn't count. Only the Operations Plan's closed days do.`, c.id);
       continue;
     }
     closed.set(c.date, c.name);
@@ -40,7 +36,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
   for (const activity of ctx.data.plan_activities) {
     const offering = ctx.offeringsById.get(activity.offering_id);
     if (offering === undefined) {
-      ctx.warn("unknown_offering", `Activity ${activity.key}'s offering isn't in the plan.`, activity.key);
+      ctx.warn("unknown_offering", `Activity ${activity.id}'s offering isn't in the plan.`, activity.id);
       continue;
     }
     const timed = activity.start_time != null && activity.end_time != null;
@@ -51,7 +47,7 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
     const span = start !== null && end !== null ? end - start : 0;
     const closedFor = closed.get(activity.date);
     if (closedFor !== undefined && activity.kind !== "travel") {
-      ctx.warn("closed_date", `${ctx.offeringName(offering)}'s ${activity.kind} is on ${closedFor}.`, activity.key, {
+      ctx.warn("closed_date", `${ctx.offeringName(offering)}'s ${activity.kind} is on ${closedFor}.`, activity.id, {
         plan_id: activity.plan_id,
         date: activity.date,
       });
@@ -70,5 +66,5 @@ export function scheduleActivities(ctx: Context): ScheduledActivity[] {
       uses_boats: usesBoats,
     });
   }
-  return result.sort((a, b) => a.date.localeCompare(b.date) || a.offering.key.localeCompare(b.offering.key));
+  return result.sort((a, b) => a.date.localeCompare(b.date) || a.offering.id.localeCompare(b.offering.id));
 }

@@ -12,13 +12,13 @@ describe("revenue", () => {
   it("books price × enrollment to the product's revenue account", () => {
     const { off, data } = setup();
     const out = computePlan(data);
-    expect(total(out, { line: "revenue", account_id: A.programRevenue, cost_center_key: off.key })).toBe(500_000);
+    expect(total(out, { line: "revenue", account_id: A.programRevenue, cost_center_id: off.id })).toBe(500_000);
   });
 
   it("counts no kids for an offering with no target enrollment", () => {
     const { off, data } = setup({ target_enrollment: null, capacity: 15 });
     const out = computePlan(data);
-    expect(pnlOf(out, off.key).enrollment).toBe(0);
+    expect(pnlOf(out, off.id).enrollment).toBe(0);
     expect(total(out, { line: "revenue" })).toBe(0);
   });
 
@@ -40,7 +40,7 @@ describe("revenue", () => {
     const fees = charge({ rate: 0.03 });
     data.plan_revenue_charges = [fees, charge({ rate: 0.5, product_kinds: ["merchandise"] })];
     const out = computePlan(data);
-    expect(total(out, { line: `charge:${fees.key}`, account_id: A.cardFees })).toBe(15_000);
+    expect(total(out, { line: `charge:${fees.id}`, account_id: A.cardFees })).toBe(15_000);
     expect(total(out, { line: "charge:" })).toBe(15_000);
   });
 
@@ -48,14 +48,14 @@ describe("revenue", () => {
     const { off: o, data } = setup();
     data.plan_revenue_charges = [charge({ rate: 0.03, account_id: A.charterRevenue })];
     const out = computePlan(data);
-    expect(pnlOf(out, o.key).revenue_cents).toBe(515_000);
-    expect(pnlOf(out, o.key).mtdc_cents).toBe(0);
+    expect(pnlOf(out, o.id).revenue_cents).toBe(515_000);
+    expect(pnlOf(out, o.id).mtdc_cents).toBe(0);
   });
 
   it("leaves a charge out of MTDC when it says so", () => {
     const { off: o, data } = setup();
     data.plan_revenue_charges = [charge({ rate: 0.02, in_mtdc: false }), charge({ rate: 0.03 })];
-    expect(pnlOf(computePlan(data), o.key).mtdc_cents).toBe(15_000);
+    expect(pnlOf(computePlan(data), o.id).mtdc_cents).toBe(15_000);
   });
 
   it("books revenue to the program area's account", () => {

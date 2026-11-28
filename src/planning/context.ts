@@ -51,7 +51,7 @@ export type Stage = "direct" | "pool" | "bonus";
 /** One amount, in fractional cents, before lines are rounded and summed. */
 export interface Entry {
   cost_center_type: CostCenterType;
-  cost_center_key: Id | null;
+  cost_center_id: Id | null;
   account_id: Id;
   function: AccountFunction | null;
   amount: number;
@@ -82,12 +82,11 @@ export class Context {
   /** Each plan, by its id. */
   readonly planOf: Map<Id, Plan>;
   readonly offeringsById: Map<Id, PlanOffering>;
-  readonly offeringsByKey: Map<Id, PlanOffering>;
   /** Expected enrollment per offering id, which the costs and revenue use. */
   readonly enrollment = new Map<Id, number>();
   /** The most sailors each offering id takes, which the checks use. */
   readonly maxEnrollment = new Map<Id, number>();
-  /** Days per offering key: the dates it has an activity other than travel. */
+  /** Days per offering id: the dates it has an activity other than travel. */
   readonly days = new Map<Id, number>();
   readonly rates: PlanRates | undefined;
   /** The year's payroll taxes, each with a share of wages or an amount an hour. */
@@ -114,7 +113,6 @@ export class Context {
     this.areas = new Map(data.program_areas.map((a) => [a.id, a]));
     this.planOf = new Map(data.plans.map((p) => [p.id, p]));
     this.offeringsById = new Map(data.plan_offerings.map((o) => [o.id, o]));
-    this.offeringsByKey = new Map(data.plan_offerings.map((o) => [o.key, o]));
     this.rates = data.plan_rates[0];
     if (data.plan_rates.length > 1) this.warn("many_rates", "Only the first set of rates counts.");
     this.payrollTaxes = this.checkPayrollTaxes(data.plan_payroll_taxes);
@@ -132,7 +130,7 @@ export class Context {
       this.warn(
         "payroll_tax_basis",
         `${tax.name} needs a share of wages or an hourly amount, not both. It's left out.`,
-        tax.key,
+        tax.id,
       );
       return false;
     });
@@ -147,7 +145,7 @@ export class Context {
     return account;
   }
 
-  warn(code: string, message: string, key?: string, scope: WarningScope = {}): void {
+  warn(code: string, message: string, subjectId?: string, scope: WarningScope = {}): void {
     const same = (w: EngineWarning) => w.code === code && w.message === message && w.plan_id === scope.plan_id;
     if (this.warnings.some(same)) return;
     const category: WarningCategory = ALLOCATION_WARNINGS.has(code) ? "allocation" : "data";
@@ -156,7 +154,7 @@ export class Context {
       message,
       category,
       severity: scope.severity ?? "warning",
-      ...(key !== undefined && { key }),
+      ...(subjectId !== undefined && { subject_id: subjectId }),
       ...(scope.plan_id !== undefined && { plan_id: scope.plan_id }),
       ...(scope.date !== undefined && { date: scope.date }),
     });

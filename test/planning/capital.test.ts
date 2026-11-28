@@ -25,7 +25,6 @@ const donations: Account = {
 function item(overrides: Partial<PlanCapitalItem> = {}): PlanCapitalItem {
   return {
     id: nextId("capital"),
-    key: nextId("capital-key"),
     plan_id: "v-ops",
     name: "Coach boat",
     amount_cents: 0,
@@ -94,9 +93,9 @@ describe("capital items", () => {
     const lump = budgetLine({ name: "Capital spend", account_id: equipment.id, amount_cents: 1_000_000 });
     data.plan_budget_lines.push(lump);
     const out = computePlan(data);
-    expect(out.capital.map((c) => [c.rank, c.key, c.running_cents])).toEqual([
-      [1, data.plan_capital_items![0]!.key, 300_000],
-      [2, lump.key, 1_300_000],
+    expect(out.capital.map((c) => [c.rank, c.item_id, c.running_cents])).toEqual([
+      [1, data.plan_capital_items![0]!.id, 300_000],
+      [2, lump.id, 1_300_000],
     ]);
     expect(out.warnings.map((w) => [w.code, w.message])).toEqual([
       ["capital_unranked", "Add Capital spend to the capital list to rank it."],

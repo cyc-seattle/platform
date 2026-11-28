@@ -33,8 +33,8 @@ describe("salaried positions", () => {
     });
     const out = computePlan(data);
     // 120 h at 600¢.
-    expect(total(out, { line: `salary:${director.key}:management`, cost_center_key: o.key })).toBe(72_000);
-    expect(total(out, { line: `salary:${director.key}:remainder` })).toBe(1_200_000 - 72_000);
+    expect(total(out, { line: `salary:${director.id}:management`, cost_center_id: o.id })).toBe(72_000);
+    expect(total(out, { line: `salary:${director.id}:remainder` })).toBe(1_200_000 - 72_000);
   });
 
   it("keeps ga_share off the top, and scales bookings that overrun the rest", () => {
@@ -49,8 +49,8 @@ describe("salaried positions", () => {
       plan_salaried_bookings: [booking(director.id, p.id, 1200)],
     });
     const out = computePlan(data);
-    expect(total(out, { line: `salary:${director.key}:management` })).toBe(600_000);
-    expect(total(out, { line: `salary:${director.key}:remainder` })).toBe(600_000);
+    expect(total(out, { line: `salary:${director.id}:management` })).toBe(600_000);
+    expect(total(out, { line: `salary:${director.id}:remainder` })).toBe(600_000);
     expect(out.warnings.map((w) => w.code)).toContain("position_overbooked");
   });
 
@@ -64,10 +64,10 @@ describe("salaried positions", () => {
       plan_offerings: [o],
       plan_pools: [admin],
       plan_salaried_positions: [director],
-      plan_budget_lines: [budgetLine({ amount_cents: 1000, cost_center_type: "offering", cost_center_key: o.key })],
+      plan_budget_lines: [budgetLine({ amount_cents: 1000, cost_center_type: "offering", cost_center_id: o.id })],
     });
     const out = computePlan(allocateAll(data));
-    expect(total(out, { account_id: A.salaries, cost_center_key: o.key })).toBe(120_000);
+    expect(total(out, { account_id: A.salaries, cost_center_id: o.id })).toBe(120_000);
     expect(total(out, { cost_center_type: "pool" })).toBe(0);
   });
 });

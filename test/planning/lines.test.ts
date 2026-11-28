@@ -56,12 +56,12 @@ describe("budget lines", () => {
         amount_cents: 2_400_000,
         in_mtdc: false,
         cost_center_type: "offering",
-        cost_center_key: spring.key,
+        cost_center_id: spring.id,
       }),
     ];
     const out = computePlan(data);
     expect(total(out, { account_id: A.equipment })).toBe(2_400_000);
-    expect(pnlOf(out, spring.key).mtdc_cents).toBe(0);
+    expect(pnlOf(out, spring.id).mtdc_cents).toBe(0);
   });
 
   it("spreads a product's line to its offerings by MTDC, which leaves out lines excluded from it", () => {
@@ -71,44 +71,44 @@ describe("budget lines", () => {
         account_id: A.rent,
         amount_cents: 30_000,
         cost_center_type: "offering",
-        cost_center_key: spring.key,
+        cost_center_id: spring.id,
       }),
       budgetLine({
         account_id: A.rent,
         amount_cents: 10_000,
         cost_center_type: "offering",
-        cost_center_key: summer.key,
+        cost_center_id: summer.id,
       }),
       budgetLine({
         account_id: A.scholarships,
         amount_cents: 90_000,
         cost_center_type: "offering",
-        cost_center_key: summer.key,
+        cost_center_id: summer.id,
         in_mtdc: false,
       }),
-      budgetLine({ amount_cents: 8000, cost_center_type: "product", cost_center_key: p.id }),
+      budgetLine({ amount_cents: 8000, cost_center_type: "product", cost_center_id: p.id }),
     ];
     const out = computePlan(data);
-    expect(total(out, { account_id: A.insurance, cost_center_key: spring.key })).toBe(6000);
-    expect(total(out, { account_id: A.insurance, cost_center_key: summer.key })).toBe(2000);
-    expect(pnlOf(out, summer.key).mtdc_cents).toBe(10_000 + 2000);
+    expect(total(out, { account_id: A.insurance, cost_center_id: spring.id })).toBe(6000);
+    expect(total(out, { account_id: A.insurance, cost_center_id: summer.id })).toBe(2000);
+    expect(pnlOf(out, summer.id).mtdc_cents).toBe(10_000 + 2000);
   });
 
   it("keeps a product's line at the product when it has no offering in the year", () => {
     const p = product();
     const data = emptyPlan({
       products: [p],
-      plan_budget_lines: [budgetLine({ amount_cents: 1200, cost_center_type: "product", cost_center_key: p.id })],
+      plan_budget_lines: [budgetLine({ amount_cents: 1200, cost_center_type: "product", cost_center_id: p.id })],
     });
     const out = computePlan(data);
-    expect(total(out, { cost_center_type: "product", cost_center_key: p.id })).toBe(1200);
+    expect(total(out, { cost_center_type: "product", cost_center_id: p.id })).toBe(1200);
     expect(pnlOf(out, p.id, "product").expense_cents).toBe(1200);
     expect(out.warnings.map((w) => w.code)).toContain("product_without_offerings");
   });
 
   it("warns about, and skips, a line to a missing cost center", () => {
     const data = emptyPlan({
-      plan_budget_lines: [budgetLine({ amount_cents: 100, cost_center_type: "offering", cost_center_key: "nope" })],
+      plan_budget_lines: [budgetLine({ amount_cents: 100, cost_center_type: "offering", cost_center_id: "nope" })],
     });
     const out = computePlan(data);
     expect(out.lines).toEqual([]);
@@ -122,9 +122,9 @@ describe("labor lines", () => {
     const level = staffLevel({ hourly_rate_cents: 2500 });
     data.plan_staff_levels = [level];
     data.plan_labor_lines = [
-      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_key: spring.key }),
+      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_id: spring.id }),
     ];
-    expect(total(computePlan(data), { line: "labor", cost_center_key: spring.key })).toBe(100_000);
+    expect(total(computePlan(data), { line: "labor", cost_center_id: spring.id })).toBe(100_000);
   });
 
   it("names the staff level whose rate prices it", () => {
@@ -152,17 +152,17 @@ describe("payroll tax", () => {
     const level = staffLevel({ hourly_rate_cents: 2500 });
     data.plan_staff_levels = [level];
     data.plan_labor_lines = [
-      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_key: spring.key }),
+      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_id: spring.id }),
       laborLine(level.staff_level_id, { hours: 10 }),
     ];
     data.plan_budget_lines = [
-      budgetLine({ amount_cents: 50_000, cost_center_type: "offering", cost_center_key: spring.key }),
+      budgetLine({ amount_cents: 50_000, cost_center_type: "offering", cost_center_id: spring.id }),
     ];
     data.plan_payroll_taxes = [payrollTax()];
     const out = computePlan(data);
-    expect(total(out, { line: "payroll_tax", account_id: A.payrollTax, cost_center_key: spring.key })).toBe(10_000);
+    expect(total(out, { line: "payroll_tax", account_id: A.payrollTax, cost_center_id: spring.id })).toBe(10_000);
     expect(total(out, { line: "payroll_tax", cost_center_type: "org" })).toBe(2500);
-    expect(pnlOf(out, spring.key).mtdc_cents).toBe(100_000 + 10_000 + 50_000);
+    expect(pnlOf(out, spring.id).mtdc_cents).toBe(100_000 + 10_000 + 50_000);
   });
 });
 
@@ -178,13 +178,13 @@ describe("line names", () => {
       products: [p],
       plan_offerings: [o],
       plan_activities: [practice],
-      ...block([practice], { staff: [{ position_key: director.key }] }),
+      ...block([practice], { staff: [{ position_id: director.id }] }),
       plan_staff_levels: [level],
       plan_salaried_positions: [director],
       plan_pools: [ga],
       plan_payroll_taxes: [payrollTax()],
       plan_budget_lines: [
-        budgetLine({ name: "Office", amount_cents: 1000, cost_center_type: "pool", cost_center_key: ga.key }),
+        budgetLine({ name: "Office", amount_cents: 1000, cost_center_type: "pool", cost_center_id: ga.id }),
       ],
     });
     const names = new Set(computePlan(allocateAll(data)).lines.map((l) => l.line_name));
@@ -209,7 +209,7 @@ describe("lines that move a cost off a program area's programs", () => {
         { id: "v1", kind: "program_area", program_area_id: "area" },
         { id: "v2", kind: "operations", program_area_id: null },
       ],
-      plan_pools: [pool({ key: "ga", plan_id: "v2" })],
+      plan_pools: [pool({ id: "ga", plan_id: "v2" })],
       plan_budget_lines: [budgetLine({ name: "Storage", plan_id: version, ...line })],
     });
     data.accounts.push({ ...data.accounts[0]!, id: "acct-boat", number: "1500", name: "Boats", type: "asset" });
@@ -228,7 +228,7 @@ describe("lines that move a cost off a program area's programs", () => {
         plan_id: "v1",
       },
     ]);
-    expect(shifts(planWith({ cost_center_type: "pool", cost_center_key: "ga" }))).toEqual([
+    expect(shifts(planWith({ cost_center_type: "pool", cost_center_id: "ga" }))).toEqual([
       { message: "Storage is charged to shared costs.", plan_id: "v1" },
     ]);
   });

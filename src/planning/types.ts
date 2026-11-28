@@ -12,8 +12,6 @@ export type TimeString = string;
 export interface PlanRow {
   id: Id;
   plan_id: Id;
-  /** Stays the same when a Financial Plan is copied; references from other plans use it. */
-  key: Id;
 }
 
 export type CostCenterType = "offering" | "product" | "program_area" | "pool" | "org";
@@ -158,8 +156,8 @@ export type ActivityKind = "practice" | "regatta" | "clinic" | "travel";
 export interface PlanOffering extends PlanRow {
   product_id: Id;
   name: string;
-  /** A `plan_terms` key in the Operations Plan, or none. */
-  term_key: Id | null;
+  /** A `plan_terms` id in the Operations Plan, or none. */
+  term_id: Id | null;
   starts_on: DateString;
   ends_on: DateString;
   capacity: number | null;
@@ -220,8 +218,8 @@ export interface PlanBlockStaff extends PlanRow {
   block_id: Id;
   /** The staff level of hourly or volunteer staff. */
   staff_level_id: Id | null;
-  /** A `plan_salaried_positions` key. */
-  position_key: Id | null;
+  /** A `plan_salaried_positions` id. */
+  position_id: Id | null;
   count: number;
   /** How a salaried position is paid for the block: out of its salary (the default), or by the hour at its own rate. */
   pay: "salary" | "hourly" | null;
@@ -239,7 +237,7 @@ export interface PlanBlockBoats extends PlanRow {
 export interface PlanLaborLine extends PlanRow {
   name: string;
   cost_center_type: CostCenterType;
-  cost_center_key: Id | null;
+  cost_center_id: Id | null;
   /** Who does the work. */
   staff_level_id: Id | null;
   hours: number;
@@ -253,7 +251,7 @@ export interface PlanBudgetLine extends PlanRow {
   account_id: Id;
   function: AccountFunction | null;
   cost_center_type: CostCenterType;
-  cost_center_key: Id | null;
+  cost_center_id: Id | null;
   amount_cents: number;
   fiscal_year: number;
   /** Whether it counts toward MTDC; cleared for a cost 2 CFR 200.1 leaves out, such as equipment or participant support. */
@@ -295,8 +293,8 @@ export interface PlanPayrollTax extends PlanRow {
   sort: number | null;
 }
 
-/** A staff level's rate for the year. A volunteer's is 0. Found by its level, so it has no key. */
-export interface PlanStaffLevel extends Omit<PlanRow, "key"> {
+/** A staff level's rate for the year. A volunteer's is 0. Found by its level. */
+export interface PlanStaffLevel extends PlanRow {
   staff_level_id: Id;
   hourly_rate_cents: number;
 }
@@ -342,10 +340,10 @@ export interface PlanBonusOwner extends PlanRow {
   account_id: Id;
   /** Whether the net is counted after the pools are shared out (the default), or before. */
   basis?: "after_shared_costs" | "before_shared_costs" | null;
-  /** A `plan_salaried_positions` key: the position the bonus pays. */
-  position_key?: Id | null;
-  /** A `plan_terms` key: the one term it's paid in. Empty pays in every term, and on the year. */
-  term_key?: Id | null;
+  /** A `plan_salaried_positions` id: the position the bonus pays. */
+  position_id?: Id | null;
+  /** A `plan_terms` id: the one term it's paid in. Empty pays in every term, and on the year. */
+  term_id?: Id | null;
 }
 
 export interface PlanBonusOwnerProduct extends PlanRow {
@@ -435,7 +433,7 @@ export interface PlanData {
 /** One line of cost or revenue for the plan year, on one offering, product, pool or the organization. */
 export interface CostLine {
   cost_center_type: CostCenterType;
-  cost_center_key: Id | null;
+  cost_center_id: Id | null;
   account_id: Id;
   function: AccountFunction | null;
   /** Always positive: the account's type says whether it's revenue or expense. */
@@ -457,10 +455,10 @@ export interface Totals {
 export interface Pnl extends Totals {
   /** `program_area_term` is a program area's offerings in one term, or in none. */
   level: "offering" | "product" | "program_area" | "program_area_term";
-  /** An offering key, a product id, or a program area id. */
-  key: Id;
-  /** A `program_area_term`'s `plan_terms` key, null for its offerings in no term. Only that level has one. */
-  term_key?: Id | null;
+  /** An offering's, a product's, or a program area's id. */
+  subject_id: Id;
+  /** A `program_area_term`'s `plan_terms` id, null for its offerings in no term. Only that level has one. */
+  term_id?: Id | null;
   /** Each account's total, revenue and expense alike. */
   by_account: { account_id: Id; amount_cents: number }[];
   mtdc_cents: number;
@@ -487,7 +485,6 @@ export interface Pnl extends Totals {
 /** An activity with the staffing the engine gave it. */
 export interface ComputedActivity {
   offering_id: Id;
-  offering_key: Id;
   trip_id: Id | null;
   activity_id: Id;
   date: DateString;
@@ -513,8 +510,8 @@ export interface EngineWarning {
   message: string;
   category: WarningCategory;
   severity: WarningSeverity;
-  /** The key of the row it's about, when there is one. */
-  key?: string;
+  /** The id of the row it's about, when there is one. */
+  subject_id?: string;
   /** The plan it's about, when there is one. */
   plan_id?: Id;
   /** The date it's about, when there is one. */
@@ -553,8 +550,8 @@ export interface IndirectTotals {
  */
 export interface CapitalRank {
   rank: number;
-  /** The `plan_capital_items` key, or for capital entered as a budget line, that line's key. */
-  key: Id;
+  /** The `plan_capital_items` id, or for capital entered as a budget line, that line's id. */
+  item_id: Id;
   name: string;
   account_id: Id;
   amount_cents: number;
@@ -566,7 +563,7 @@ export interface CapitalRank {
 
 /** One salaried position's year: what it's paid, and where its hours went. */
 export interface PositionSummary {
-  position_key: Id;
+  position_id: Id;
   name: string;
   salary_cents: number;
   /** Hours it coached out of its salary, and what they charged to the offerings. */
@@ -592,13 +589,13 @@ export interface PositionSummary {
 
 /** A bonus owner's bonus for one term, or on its offerings in no term for the year. */
 export interface BonusSummary {
-  bonus_owner_key: Id;
+  bonus_owner_id: Id;
   role_name: string;
-  position_key: Id | null;
+  position_id: Id | null;
   /** The program area of all the owner's products, or null when they're in more than one. */
   program_area_id: Id | null;
-  /** A `plan_terms` key, or null for its offerings in no term. */
-  term_key: Id | null;
+  /** A `plan_terms` id, or null for its offerings in no term. */
+  term_id: Id | null;
   bonus_rate: number;
   /** The net the bonus is figured on, which can be below zero. */
   net_cents: number;

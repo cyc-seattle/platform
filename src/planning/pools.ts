@@ -42,14 +42,14 @@ export function allocateIndirectCosts(ctx: Context): IndirectCosts {
   let base = 0;
   for (const o of ctx.data.plan_offerings) {
     if (!isProgram(ctx, o.product_id)) continue;
-    const own = Math.max(0, mtdc(ctx, o.key));
+    const own = Math.max(0, mtdc(ctx, o.id));
     base += own;
     const rate = rates.get(o.product_id);
     if (rate === undefined && pooled.length > 0) {
       const name = ctx.products.get(o.product_id)?.name ?? o.product_id;
       ctx.warn("no_indirect_cost_rate", `${name} pays no shared costs.`, o.product_id, { plan_id: o.plan_id });
     }
-    charges.set(o.key, (rate ?? 0) * own);
+    charges.set(o.id, (rate ?? 0) * own);
   }
   const full_recovery_rate = base > 0 ? shared / base : null;
   let allocated = [...charges.values()].reduce((t, c) => t + c, 0);
@@ -58,19 +58,19 @@ export function allocateIndirectCosts(ctx: Context): IndirectCosts {
     allocated = 0;
   }
 
-  const pools = new Map(ctx.data.plan_pools.map((p) => [p.key, p]));
+  const pools = new Map(ctx.data.plan_pools.map((p) => [p.id, p]));
   ctx.entries.splice(0, ctx.entries.length, ...kept);
   for (const e of pooled) {
-    const name = pools.get(e.cost_center_key ?? "")?.name ?? "Pool";
+    const name = pools.get(e.cost_center_id ?? "")?.name ?? "Pool";
     const part = allocated === 0 ? 0 : e.amount / shared;
     const base = { account_id: e.account_id, function: e.function, stage: "pool" as const, mtdc_share: 0 };
     for (const [key, charge] of charges) {
       ctx.book({
         ...base,
         cost_center_type: "offering",
-        cost_center_key: key,
+        cost_center_id: key,
         amount: charge * part,
-        line_key: `pool:${e.cost_center_key}:${e.line_key}`,
+        line_key: `pool:${e.cost_center_id}:${e.line_key}`,
         line_name: `${name} share: ${e.line_name}`,
         explanation: `${name}: ${e.explanation}, its part of the program's indirect cost rate × its MTDC`,
       });
@@ -79,9 +79,9 @@ export function allocateIndirectCosts(ctx: Context): IndirectCosts {
     ctx.book({
       ...base,
       cost_center_type: "org",
-      cost_center_key: null,
+      cost_center_id: null,
       amount: left,
-      line_key: `unrecovered:${e.cost_center_key}:${e.line_key}`,
+      line_key: `unrecovered:${e.cost_center_id}:${e.line_key}`,
       line_name: `${name} ${left >= 0 ? "unallocated" : "over-allocated"}: ${e.line_name}`,
       explanation: `${name}: ${e.explanation}, less what the indirect cost rates allocate`,
     });

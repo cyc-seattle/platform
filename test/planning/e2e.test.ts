@@ -26,7 +26,7 @@ import {
   withRate,
 } from "./fixtures.ts";
 
-const v = (id: string) => ({ id, plan_id: "v1", key: `${id}-key` });
+const v = (id: string) => ({ id, plan_id: "v1" });
 
 function realisticPlan(): PlanData {
   const youth = area({ id: "youth", name: "Youth" });
@@ -205,7 +205,7 @@ function realisticPlan(): PlanData {
       block(
         [a, devPractices.find((d) => d.date === a.date)!],
         {
-          staff: [{ position_key: director.key, count: 1 }, staff(instructor2.staff_level_id, 3)],
+          staff: [{ position_id: director.id, count: 1 }, staff(instructor2.staff_level_id, 3)],
           boats: [boats("opti", 11, 2), boats("420", 3, 1), ribs(2)],
         },
         { name: "Spring youth" },
@@ -316,14 +316,14 @@ function realisticPlan(): PlanData {
         name: "Camp head instructor prep",
         hours: 60,
         cost_center_type: "product",
-        cost_center_key: camp.id,
+        cost_center_id: camp.id,
       }),
       laborLine(instructor1.staff_level_id, {
         ...v("fleet-maintenance"),
         name: "Fleet maintenance labor",
         hours: 120,
         cost_center_type: "pool",
-        cost_center_key: ga.key,
+        cost_center_id: ga.id,
         account_id: A.boats,
       }),
     ],
@@ -333,7 +333,7 @@ function realisticPlan(): PlanData {
         name: "Insurance",
         amount_cents: 2_400_000,
         cost_center_type: "pool",
-        cost_center_key: ga.key,
+        cost_center_id: ga.id,
       }),
       budgetLine({
         ...v("clubhouse"),
@@ -341,7 +341,7 @@ function realisticPlan(): PlanData {
         account_id: A.rent,
         amount_cents: 1_800_000,
         cost_center_type: "pool",
-        cost_center_key: ga.key,
+        cost_center_id: ga.id,
       }),
       budgetLine({
         ...v("gala"),
@@ -363,7 +363,7 @@ function realisticPlan(): PlanData {
         account_id: A.depreciation,
         amount_cents: 600_000,
         cost_center_type: "product",
-        cost_center_key: racing.id,
+        cost_center_id: racing.id,
       }),
       budgetLine({
         ...v("scholarships"),
@@ -372,7 +372,7 @@ function realisticPlan(): PlanData {
         amount_cents: 400_000,
         in_mtdc: false,
         cost_center_type: "offering",
-        cost_center_key: campWeeks[0]!.key,
+        cost_center_id: campWeeks[0]!.id,
       }),
     ],
     plan_pools: [admin, ga],
@@ -399,17 +399,17 @@ describe("a realistic plan, end to end", () => {
   const out = computePlan(data);
   const { lines } = out;
   const offeringsOf = (productId: string) =>
-    new Set(data.plan_offerings.filter((o) => o.product_id === productId).map((o) => o.key));
+    new Set(data.plan_offerings.filter((o) => o.product_id === productId).map((o) => o.id));
 
   it("splits every pool over the offerings", () => {
     expect(lines.filter((l) => l.cost_center_type === "pool")).toEqual([]);
   });
 
   it("keeps every line's total through the pools", () => {
-    expect(sum(lines, (l) => l.line_key.endsWith("budget:insurance-key"))).toBe(2_400_000);
-    expect(sum(lines, (l) => l.line_key.endsWith("budget:clubhouse-key"))).toBe(1_800_000);
+    expect(sum(lines, (l) => l.line_key.endsWith("budget:insurance"))).toBe(2_400_000);
+    expect(sum(lines, (l) => l.line_key.endsWith("budget:clubhouse"))).toBe(1_800_000);
     expect(sum(lines, (l) => l.account_id === A.salaries)).toBe(7_000_000 + 5_200_000);
-    expect(sum(lines, (l) => l.line_key.endsWith("labor:fleet-maintenance-key"))).toBe(120 * 2000);
+    expect(sum(lines, (l) => l.line_key.endsWith("labor:fleet-maintenance"))).toBe(120 * 2000);
   });
 
   it("counts the RIB purchase as a cost in the year it's bought", () => {
@@ -418,12 +418,12 @@ describe("a realistic plan, end to end", () => {
 
   it("prices revenue as price × enrollment", () => {
     const revenueOf = (key: string) => sum(lines, (l) => l.line_key === `revenue:${key}`);
-    expect(revenueOf("racing-fall-key")).toBe(18 * 85_000);
-    expect(revenueOf("racing-spring-key")).toBe(16 * 85_000);
-    expect(revenueOf("charters-year-key")).toBe(40 * 15_000);
-    expect(revenueOf("storage-year-key")).toBe(50 * 48_000);
-    expect(revenueOf("merch-year-key")).toBe(200 * 2500);
-    expect(sum(lines, (l) => l.line_key === "cogs:merch-year-key")).toBe(250_000);
+    expect(revenueOf("racing-fall")).toBe(18 * 85_000);
+    expect(revenueOf("racing-spring")).toBe(16 * 85_000);
+    expect(revenueOf("charters-year")).toBe(40 * 15_000);
+    expect(revenueOf("storage-year")).toBe(50 * 48_000);
+    expect(revenueOf("merch-year")).toBe(200 * 2500);
+    expect(sum(lines, (l) => l.line_key === "cogs:merch-year")).toBe(250_000);
   });
 
   it("charges card fees on revenue, and payroll taxes on wages and paid hours", () => {
@@ -434,18 +434,18 @@ describe("a realistic plan, end to end", () => {
 
   it("costs the trip from its travel days' coaches", () => {
     // 3 coaches × 2 nights × 15000¢, and 300 miles × 67¢.
-    expect(sum(lines, (l) => l.line_key === "trip:fall-trip-key")).toBe(3 * 2 * 15_000 + 300 * 67);
+    expect(sum(lines, (l) => l.line_key === "trip:fall-trip")).toBe(3 * 2 * 15_000 + 300 * 67);
   });
 
   it("pays the director's coaching in the shared block", () => {
-    expect(sum(lines, (l) => l.line_key === "salary:director-key:coaching")).toBeGreaterThan(0);
+    expect(sum(lines, (l) => l.line_key === "salary:director:coaching")).toBeGreaterThan(0);
     expect(out.activities.every((a) => a.block_id !== null)).toBe(true);
   });
 
   it("earns the bonus on the owned product's net after every pool", () => {
     const owned = offeringsOf("youth-racing");
     const net = lines
-      .filter((l) => l.cost_center_key !== null && owned.has(l.cost_center_key) && !l.line_key.startsWith("bonus:"))
+      .filter((l) => l.cost_center_id !== null && owned.has(l.cost_center_id) && !l.line_key.startsWith("bonus:"))
       .reduce((t, l) => {
         const type = data.accounts.find((a) => a.id === l.account_id)?.type;
         return type === "revenue" ? t + l.amount_cents : type === "expense" ? t - l.amount_cents : t;
@@ -461,7 +461,7 @@ describe("a realistic plan, end to end", () => {
   });
 
   it("gives an offering's P&L for one day it runs and for one sailor on one day", () => {
-    const camp = pnlOf(out, "camp-week-1-key");
+    const camp = pnlOf(out, "camp-week-1");
     expect(camp.enrollment).toBe(27);
     expect(camp.days).toBe(5);
     expect(camp.sailor_days).toBe(135);
@@ -470,28 +470,28 @@ describe("a realistic plan, end to end", () => {
     expect(perDay(camp)?.net_cents).toBe(Math.round(camp.net_cents / 5));
     expect(camp.revenue_cents - camp.expense_cents).toBe(camp.net_cents);
     expect(camp.by_account.reduce((t, a) => t + a.amount_cents, 0)).toBe(camp.revenue_cents + camp.expense_cents);
-    expect(perDay(pnlOf(out, "merch-year-key"))).toBeNull();
+    expect(perDay(pnlOf(out, "merch-year"))).toBeNull();
   });
 
   it("gives the most sailors each offering's blocks take, and whether it pays for itself", () => {
-    expect(pnlOf(out, "racing-fall-key")).toMatchObject({ max_enrollment: 24, allocation_holds: 24 });
-    expect(pnlOf(out, "camp-week-1-key")).toMatchObject({ max_enrollment: 30, allocation_holds: 30 });
+    expect(pnlOf(out, "racing-fall")).toMatchObject({ max_enrollment: 24, allocation_holds: 24 });
+    expect(pnlOf(out, "camp-week-1")).toMatchObject({ max_enrollment: 30, allocation_holds: 30 });
     // Every program loses money before fundraising, even when full.
-    expect(pnlOf(out, "racing-fall-key").breakeven_enrollment).toBeNull();
+    expect(pnlOf(out, "racing-fall").breakeven_enrollment).toBeNull();
     expect(pnlOf(out, "summer-camp", "product")).toMatchObject({ allocation_holds: null, breakeven_enrollment: null });
   });
 
   it("adds a product's offerings up into its P&L", () => {
     const camp = pnlOf(out, "summer-camp", "product");
-    const weeks = ["camp-week-1-key", "camp-week-2-key"].map((k) => pnlOf(out, k));
+    const weeks = ["camp-week-1", "camp-week-2"].map((k) => pnlOf(out, k));
     expect(camp.net_cents).toBe(weeks[0]!.net_cents + weeks[1]!.net_cents);
     expect(camp.days).toBe(10);
   });
 
   it("warns only about the programs that don't pay for themselves at their targets", () => {
-    expect(out.warnings.map((w) => [w.code, w.key, w.message])).toEqual([
-      ["breakeven_above_target", "camp-week-1-key", "Summer Camp week 1 breaks even at 29. Target is 27."],
-      ["never_breaks_even", "racing-fall-key", "Youth Racing Fall loses money even when full."],
+    expect(out.warnings.map((w) => [w.code, w.subject_id, w.message])).toEqual([
+      ["breakeven_above_target", "camp-week-1", "Summer Camp week 1 breaks even at 29. Target is 27."],
+      ["never_breaks_even", "racing-fall", "Youth Racing Fall loses money even when full."],
     ]);
   });
 

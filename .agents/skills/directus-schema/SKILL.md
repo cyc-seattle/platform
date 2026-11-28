@@ -39,10 +39,10 @@ it. The rest are for you and the reviewer, who checks them in a CI stack's Data 
 - Hide each row ID (`hidden: true`), Clubspot's text IDs included.
 - Hide `key`, `*_key`, and `*_keys` fields, and a UUID that links to nothing. Directus can't follow
   them, so they'd only ever show a code.
-- Planning is the exception: planners fill in some fields by copying another row's Key, such as a
-  labor line's staff level. Those fields stay visible and editable on the row's own page, out of the
-  default columns, with a note that says what to put there. Each planning row's own `key` stays
-  visible too, read-only, to copy from.
+- A row has one identifier, its `id`, and names another row by it, in a `*_id` field (cyc-seattle/platform#395).
+  The exception is a polymorphic ID with no one table to pick from, such as a planning line's
+  `cost_center_id`: it stays visible and editable on the row's own page, out of the default columns,
+  with a note that says what to put there.
 - Don't link to `directus_users`. Directus adds a database foreign key even when asked not to,
   which can stop a user being deleted, and staff who aren't admins can't see other users anyway.
 

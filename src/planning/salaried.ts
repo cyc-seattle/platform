@@ -5,12 +5,12 @@ import type { Id } from "./types.ts";
 
 interface Charge {
   cost_center_type: "offering" | "product" | "program_area";
-  cost_center_key: Id;
+  cost_center_id: Id;
   hours: number;
   line: string;
 }
 
-/** What a position's hours charged to programs, by position key, for its summary. */
+/** What a position's hours charged to programs, by position id, for its summary. */
 export interface PositionCharges {
   coaching_hours: number;
   coaching_cents: number;
@@ -43,10 +43,10 @@ export function bookSalaries(
 
     const charges: Charge[] = [
       ...coaching
-        .filter((c) => c.position_key === position.key && c.pay === "salary")
+        .filter((c) => c.position_id === position.id && c.pay === "salary")
         .map((c) => ({
           cost_center_type: "offering" as const,
-          cost_center_key: c.offering_key,
+          cost_center_id: c.offering_id,
           hours: c.hours,
           line: "coaching",
         })),
@@ -56,8 +56,8 @@ export function bookSalaries(
           if ((b.product_id == null) === (b.program_area_id == null)) {
             ctx.warn(
               "booking_cost_center",
-              `Booking ${b.key} needs a product or an area, not both. It's left out.`,
-              b.key,
+              `Booking ${b.id} needs a product or an area, not both. It's left out.`,
+              b.id,
             );
             return [];
           }
@@ -65,13 +65,13 @@ export function bookSalaries(
             b.product_id != null
               ? {
                   cost_center_type: "product" as const,
-                  cost_center_key: b.product_id,
+                  cost_center_id: b.product_id,
                   hours: b.hours,
                   line: "management",
                 }
               : {
                   cost_center_type: "program_area" as const,
-                  cost_center_key: b.program_area_id as Id,
+                  cost_center_id: b.program_area_id as Id,
                   hours: b.hours,
                   line: "management",
                 },
@@ -82,7 +82,7 @@ export function bookSalaries(
       ctx.warn(
         "no_paid_hours",
         `${position.name} has no paid hours a year, so its hours on programs cost nothing.`,
-        position.key,
+        position.id,
       );
     }
 
@@ -93,7 +93,7 @@ export function bookSalaries(
       ctx.warn(
         "position_overbooked",
         `${position.name}'s hours on programs cost more than its salary allows, so they're cut to fit.`,
-        position.key,
+        position.id,
       );
     }
     const sums: PositionCharges = { coaching_hours: 0, coaching_cents: 0, booking_hours: 0, booking_cents: 0 };
@@ -107,15 +107,15 @@ export function bookSalaries(
         sums.booking_cents += amount;
       }
     }
-    charged.set(position.key, sums);
+    charged.set(position.id, sums);
     for (const c of charges) {
       booker.add({
         cost_center_type: c.cost_center_type,
-        cost_center_key: c.cost_center_key,
+        cost_center_id: c.cost_center_id,
         account_id: account,
         function: ctx.functionFor(account, null, "offering"),
         amount: c.hours * (rate ?? 0) * scale,
-        line_key: `salary:${position.key}:${c.line}`,
+        line_key: `salary:${position.id}:${c.line}`,
         line_name: `${position.name}: ${c.line}`,
         explanation: `${position.name}: ${c.line} hours at the salary's hourly equivalent`,
         wages: true,
@@ -126,11 +126,11 @@ export function bookSalaries(
     const remainderPool = position.remainder_pool_id == null ? undefined : pools.get(position.remainder_pool_id);
     booker.add({
       cost_center_type: remainderPool === undefined ? "org" : "pool",
-      cost_center_key: remainderPool?.key ?? null,
+      cost_center_id: remainderPool?.id ?? null,
       account_id: account,
       function: ctx.functionFor(account, null, "pool"),
       amount: salary - demand * scale,
-      line_key: `salary:${position.key}:remainder`,
+      line_key: `salary:${position.id}:remainder`,
       line_name: `${position.name}: rest of salary`,
       explanation: `${position.name}: salary not charged to coaching or bookings`,
       wages: true,

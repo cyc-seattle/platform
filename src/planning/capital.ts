@@ -10,7 +10,7 @@ function rankedItems(ctx: Context): PlanCapitalItem[] {
   return (ctx.data.plan_capital_items ?? [])
     .filter((item) => {
       if (ctx.accountType(item.account_id) === "asset") return true;
-      ctx.warn("capital_not_asset", `${item.name} isn't on an asset account. It's left out.`, item.key);
+      ctx.warn("capital_not_asset", `${item.name} isn't on an asset account. It's left out.`, item.id);
       return false;
     })
     .sort(byRank);
@@ -21,11 +21,11 @@ export function bookCapitalItems(ctx: Context, booker: CostCenterBooker): void {
   for (const item of rankedItems(ctx)) {
     booker.add({
       cost_center_type: "org",
-      cost_center_key: null,
+      cost_center_id: null,
       account_id: item.account_id,
       function: ctx.functionFor(item.account_id, null, "org"),
       amount: item.amount_cents,
-      line_key: `capital:${item.key}`,
+      line_key: `capital:${item.id}`,
       line_name: item.name,
       explanation: item.name,
       mtdc_share: 0,
@@ -53,13 +53,13 @@ export function rankCapital(ctx: Context, lines: CostLine[], organization: Organ
   let running = 0;
   return [
     ...rankedItems(ctx).map((i) => ({
-      key: i.key,
+      item_id: i.id,
       name: i.name,
       account_id: i.account_id,
       amount_cents: i.amount_cents,
     })),
     ...budget.map((l) => ({
-      key: l.line_key.slice("budget:".length),
+      item_id: l.line_key.slice("budget:".length),
       name: l.line_name,
       account_id: l.account_id,
       amount_cents: l.amount_cents,

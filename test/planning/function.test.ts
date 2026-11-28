@@ -35,7 +35,7 @@ describe("function", () => {
     data.plan_staff_levels = [level];
     data.plan_payroll_taxes = [payrollTax()];
     data.plan_labor_lines = [
-      laborLine(level.staff_level_id, { cost_center_type: "offering", cost_center_key: o.key, hours: 100 }),
+      laborLine(level.staff_level_id, { cost_center_type: "offering", cost_center_id: o.id, hours: 100 }),
     ];
     const out = computePlan(data);
     const wage = out.lines.find((l) => l.line_key.startsWith("labor:"));
@@ -49,8 +49,8 @@ describe("function", () => {
     const ga = pool();
     data.plan_pools = [ga];
     data.plan_budget_lines = [
-      budgetLine({ account_id: A.travel, cost_center_type: "offering", cost_center_key: o.key, amount_cents: 1000 }),
-      budgetLine({ cost_center_type: "pool", cost_center_key: ga.key, amount_cents: 50_000 }),
+      budgetLine({ account_id: A.travel, cost_center_type: "offering", cost_center_id: o.id, amount_cents: 1000 }),
+      budgetLine({ cost_center_type: "pool", cost_center_id: ga.id, amount_cents: 50_000 }),
     ];
     const shares = computePlan(allocateAll(data)).lines.filter((l) => l.line_key.startsWith("pool:"));
     expect(shares.length).toBeGreaterThan(0);
@@ -82,7 +82,7 @@ describe("function", () => {
   it("lets a line's own function win over its cost center", () => {
     const { o, data } = oneOffering();
     data.plan_budget_lines = [
-      budgetLine({ cost_center_type: "offering", cost_center_key: o.key, function: "fundraising", amount_cents: 1000 }),
+      budgetLine({ cost_center_type: "offering", cost_center_id: o.id, function: "fundraising", amount_cents: 1000 }),
     ];
     const line = computePlan(data).lines.find((l) => l.line_key.startsWith("budget:"));
     expect(line?.function).toBe("fundraising");

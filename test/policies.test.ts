@@ -445,12 +445,14 @@ describe("frozenPlansConfig", () => {
     expect(deletable).toBe(false);
   });
 
-  it("lists every link from a plan row to another, which must stay in the row's plan", () => {
+  it("lists every link from a plan row to another, which must stay in the row's Financial Plan", () => {
     const { links } = frozenPlansConfig(schemas, false, "1.0.0");
     expect(links).toEqual({
+      plan_offerings: { term_id: "plan_terms" },
+      plan_bonus_owners: { term_id: "plan_terms", position_id: "plan_salaried_positions" },
       plan_trips: { offering_id: "plan_offerings" },
       plan_activities: { offering_id: "plan_offerings", trip_id: "plan_trips", block_id: "plan_activity_blocks" },
-      plan_block_staff: { block_id: "plan_activity_blocks" },
+      plan_block_staff: { block_id: "plan_activity_blocks", position_id: "plan_salaried_positions" },
       plan_block_boats: { block_id: "plan_activity_blocks" },
       plan_salaried_positions: { remainder_pool_id: "plan_pools" },
       plan_salaried_bookings: { position_id: "plan_salaried_positions" },

@@ -29,7 +29,7 @@ describe("payroll taxes", () => {
     data.plan_staff_levels = [level];
     data.plan_payroll_taxes = [social, medicare];
     data.plan_labor_lines = [
-      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_key: o.key }),
+      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_id: o.id }),
     ];
     const out = computePlan(data);
     const taxes = out.lines.filter((l) => l.line_key.startsWith("payroll_tax:"));
@@ -46,11 +46,11 @@ describe("payroll taxes", () => {
     data.plan_staff_levels = [paid, volunteer];
     data.plan_payroll_taxes = [payrollTax({ name: "L&I", hourly_cents: 45.235 })];
     data.plan_labor_lines = [
-      laborLine(paid.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_key: o.key }),
-      laborLine(volunteer.staff_level_id, { hours: 100, cost_center_type: "offering", cost_center_key: o.key }),
+      laborLine(paid.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_id: o.id }),
+      laborLine(volunteer.staff_level_id, { hours: 100, cost_center_type: "offering", cost_center_id: o.id }),
     ];
     const out = computePlan(data);
-    expect(total(out, { line: "payroll_tax:", cost_center_key: o.key })).toBe(Math.round(40 * 45.235));
+    expect(total(out, { line: "payroll_tax:", cost_center_id: o.id })).toBe(Math.round(40 * 45.235));
   });
 
   it("charges a tax by the hour on a block's paid staff hours", () => {
@@ -70,7 +70,7 @@ describe("payroll taxes", () => {
       }),
     });
     const out = computePlan(data);
-    expect(total(out, { line: "payroll_tax:", cost_center_key: o.key })).toBe(3 * 2 * 50);
+    expect(total(out, { line: "payroll_tax:", cost_center_id: o.id })).toBe(3 * 2 * 50);
   });
 
   it("charges a tax by the hour on a salary's paid hours, where its salary goes", () => {
@@ -81,10 +81,10 @@ describe("payroll taxes", () => {
       plan_activities: [practice],
       plan_salaried_positions: [director],
       plan_payroll_taxes: [payrollTax({ name: "L&I", hourly_cents: 50 })],
-      ...block([practice], { staff: [{ position_key: director.key }] }),
+      ...block([practice], { staff: [{ position_id: director.id }] }),
     });
     const out = computePlan(data);
-    expect(total(out, { line: "payroll_tax:", cost_center_key: o.key })).toBe(2 * 50);
+    expect(total(out, { line: "payroll_tax:", cost_center_id: o.id })).toBe(2 * 50);
     expect(total(out, { line: "payroll_tax:", cost_center_type: "org" })).toBe(1998 * 50);
     expect(out.positions[0]?.payroll_tax_cents).toBe(2000 * 50);
   });
@@ -112,7 +112,7 @@ describe("payroll taxes", () => {
       payrollTax({ name: "Neither", wage_share: null }),
     ];
     data.plan_labor_lines = [
-      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_key: o.key }),
+      laborLine(level.staff_level_id, { hours: 40, cost_center_type: "offering", cost_center_id: o.id }),
     ];
     const out = computePlan(data);
     expect(total(out, { line: "payroll_tax:" })).toBe(0);

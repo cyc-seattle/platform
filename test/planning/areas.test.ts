@@ -21,10 +21,10 @@ function twoOfferings(costs: readonly [number, number]) {
   const summer = area({ id: "summer" });
   const products = [0, 1].map((i) => product({ id: `p${i}`, program_area_id: summer.id }));
   const offerings = products.map((p, i) =>
-    offering(p.id, { key: `o${i}`, target_enrollment: 10, price_cents: 100_000 }),
+    offering(p.id, { id: `o${i}`, target_enrollment: 10, price_cents: 100_000 }),
   );
   const direct = offerings.map((o, i) =>
-    budgetLine({ cost_center_type: "offering", cost_center_key: o.key, amount_cents: costs[i] ?? 0 }),
+    budgetLine({ cost_center_type: "offering", cost_center_id: o.id, amount_cents: costs[i] ?? 0 }),
   );
   const data = emptyPlan({
     program_areas: [summer],
@@ -40,23 +40,23 @@ describe("program areas", () => {
     const { summer, data } = twoOfferings([200_000, 100_000]);
     data.plan_budget_lines.push(
       budgetLine({
-        key: "storage",
+        id: "storage",
         account_id: A.rent,
         cost_center_type: "program_area",
-        cost_center_key: summer.id,
+        cost_center_id: summer.id,
         amount_cents: 300_000,
         in_mtdc: false,
       }),
     );
     const out = computePlan(data);
-    expect(total(out, { line: "budget:storage", cost_center_key: "o0" })).toBe(200_000);
-    expect(total(out, { line: "budget:storage", cost_center_key: "o1" })).toBe(100_000);
+    expect(total(out, { line: "budget:storage", cost_center_id: "o0" })).toBe(200_000);
+    expect(total(out, { line: "budget:storage", cost_center_id: "o1" })).toBe(100_000);
   });
 
   it("give each area a P&L that adds up its offerings", () => {
     const { summer, data } = twoOfferings([100_000, 100_000]);
     data.plan_budget_lines.push(
-      budgetLine({ account_id: A.rent, cost_center_type: "program_area", cost_center_key: summer.id, amount_cents: 1 }),
+      budgetLine({ account_id: A.rent, cost_center_type: "program_area", cost_center_id: summer.id, amount_cents: 1 }),
     );
     const out = computePlan(data);
     const pnl = pnlOf(out, summer.id, "program_area");
@@ -70,11 +70,11 @@ describe("program areas", () => {
     const data = emptyPlan({
       program_areas: [empty],
       plan_budget_lines: [
-        budgetLine({ cost_center_type: "program_area", cost_center_key: empty.id, amount_cents: 5_000 }),
+        budgetLine({ cost_center_type: "program_area", cost_center_id: empty.id, amount_cents: 5_000 }),
       ],
     });
     const out = computePlan(data);
-    expect(total(out, { cost_center_type: "program_area", cost_center_key: empty.id })).toBe(5_000);
+    expect(total(out, { cost_center_type: "program_area", cost_center_id: empty.id })).toBe(5_000);
     expect(out.warnings.map((w) => w.code)).toContain("program_area_without_offerings");
   });
 
@@ -86,7 +86,6 @@ describe("program areas", () => {
       {
         id: "b",
         plan_id: "v1",
-        key: "b",
         position_id: director.id,
         product_id: null,
         program_area_id: summer.id,
@@ -95,7 +94,7 @@ describe("program areas", () => {
     ];
     const out = computePlan(data);
     for (const key of ["o0", "o1"]) {
-      expect(total(out, { line: `salary:${director.key}:management`, cost_center_key: key })).toBe(250_000);
+      expect(total(out, { line: `salary:${director.id}:management`, cost_center_id: key })).toBe(250_000);
     }
   });
 
@@ -107,7 +106,6 @@ describe("program areas", () => {
       {
         id: "b",
         plan_id: "v1",
-        key: "b",
         position_id: director.id,
         product_id: products[0]!.id,
         program_area_id: summer.id,
@@ -116,7 +114,7 @@ describe("program areas", () => {
     ];
     const out = computePlan(data);
     expect(out.warnings.map((w) => w.code)).toContain("booking_cost_center");
-    expect(total(out, { line: `salary:${director.key}:management` })).toBe(0);
+    expect(total(out, { line: `salary:${director.id}:management` })).toBe(0);
   });
 });
 
@@ -164,9 +162,9 @@ describe("the organization's totals", () => {
     const data = emptyPlan({
       accounts: [...emptyPlan().accounts, capitalAccount, donations],
       products: [p],
-      plan_offerings: [offering(p.id, { key: "o", target_enrollment: 10, price_cents: 1_000_000 })],
+      plan_offerings: [offering(p.id, { id: "o", target_enrollment: 10, price_cents: 1_000_000 })],
       plan_budget_lines: [
-        budgetLine({ cost_center_type: "offering", cost_center_key: "o", amount_cents: 9_000_000 }),
+        budgetLine({ cost_center_type: "offering", cost_center_id: "o", amount_cents: 9_000_000 }),
         budgetLine({ account_id: donations.id, function: "fundraising", amount_cents: 3_000_000 }),
         budgetLine({ account_id: A.insurance, function: "fundraising", amount_cents: 500_000 }),
         budgetLine({ account_id: capitalAccount.id, amount_cents: 2_000_000 }),
@@ -188,7 +186,7 @@ describe("the organization's totals", () => {
       budgetLine({
         account_id: capitalAccount.id,
         cost_center_type: "program_area",
-        cost_center_key: summer.id,
+        cost_center_id: summer.id,
         amount_cents: 2_000_000,
       }),
     );
