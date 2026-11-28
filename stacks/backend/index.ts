@@ -269,7 +269,7 @@ function declarePolicy(prefix: string, policy: PolicyData, roleIds: pulumi.Input
 
 // Least privilege for the clubspot-sync machine user (crm-clubspot-sync in
 // src/directus/roles.ts): create/read/update on every collection it writes.
-// `programs` is deliberately absent: a program is durable and staff-created, and Clubspot has no
+// `programs` is deliberately absent, but for the read below: a program is durable and staff-created, and Clubspot has no
 // durable program id to derive one from. Withholding the grant makes that a rule the permission
 // system enforces, not just one the mapping code happens to follow.
 const clubspotSyncCollections = [
@@ -348,6 +348,13 @@ permissionRule(
 permissionRule(
   "crm-clubspot-sync-offerings-update",
   { ...auth, policyId: clubspotSyncPolicyId, collection: "offerings", action: "update", fields: ["confirmed_count"] },
+  { dependsOn: crmSchema },
+);
+
+// A class's program is its offerings' product's, so the sync reads programs, and still never writes one.
+permissionRule(
+  "crm-clubspot-sync-programs-read",
+  { ...auth, policyId: clubspotSyncPolicyId, collection: "programs", action: "read" },
   { dependsOn: crmSchema },
 );
 

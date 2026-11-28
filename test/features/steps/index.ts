@@ -237,7 +237,7 @@ async function can(actions: Action[], target: Target): Promise<void> {
     return;
   }
   if (has("read")) {
-    const { status, body } = await user.request("GET", readQuery(target));
+    const { status, body } = await user.request("GET", readQuery(target, target.fields));
     expect(status, `${collection} read: ${JSON.stringify(body)}`).toBe(200);
     const ids = rowIds(target);
     if (ids.length > 0) {
@@ -273,7 +273,7 @@ async function cant(actions: Action[], target: Target): Promise<void> {
     } else if (action === "read") {
       // A role whose rules match none of the run's rows reads an empty list, not a 403: Crew, say,
       // reading medical profiles through Community's own-family rule.
-      const { status, body } = await user.request("GET", readQuery(target));
+      const { status, body } = await user.request("GET", readQuery(target, target.fields));
       if (status !== 403) {
         expect(status, `${collection} read: ${JSON.stringify(body)}`).toBe(200);
         expect(body.data, `${collection} read`).toEqual([]);

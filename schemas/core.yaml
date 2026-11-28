@@ -298,13 +298,13 @@ collections:
       collapse: open
       collection: offerings
       color: null
-      display_template: "{{program_id.name}} · {{name}}"
+      display_template: "{{product_id.name}} · {{name}}"
       group: Catalog
       hidden: false
       icon: event_available
       item_duplication_fields: null
       note: >-
-        What CSC sells: one program for one dated period, such as Guppies week 3 of summer 2027. Clubspot's camps are
+        What CSC sells: one product for one dated period, such as Guppies week 3 of summer 2027. Clubspot's camps are
         built from these.
       preview_url: null
       singleton: false
@@ -316,6 +316,58 @@ collections:
       versioning: false
     schema:
       name: offerings
+  - collection: offering_schedule
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: offering_schedule
+      color: null
+      display_template: "{{offering_id.product_id.name}} · {{offering_id.name}}, {{weekday}} {{start_time}}–{{end_time}}"
+      group: Catalog
+      hidden: true
+      icon: schedule
+      item_duplication_fields: null
+      note: One day of the week an offering meets, and its times. Edited on the offering, as its schedule.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: offering_schedule
+  - collection: activities
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: activities
+      color: null
+      display_template: "{{offering_id.product_id.name}} · {{offering_id.name}}, {{date}} {{start_time}}"
+      group: Catalog
+      hidden: false
+      icon: event
+      item_duplication_fields: null
+      note: One day an offering meets, with its times.
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: activities
   - collection: registration_forms
     meta:
       accountability: all
@@ -3428,7 +3480,7 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: offerings
-    field: program_id
+    field: product_id
     type: uuid
     meta:
       collection: offerings
@@ -3436,7 +3488,7 @@ fields:
       display: related-values
       display_options:
         template: "{{name}}"
-      field: program_id
+      field: product_id
       group: null
       hidden: false
       interface: select-dropdown-m2o
@@ -3450,12 +3502,12 @@ fields:
         - m2o
       translations:
         - language: en-US
-          translation: Program
+          translation: Product
       validation: null
       validation_message: null
       width: full
     schema:
-      name: program_id
+      name: product_id
       table: offerings
       data_type: uuid
       default_value: null
@@ -3469,7 +3521,7 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: programs
+      foreign_key_table: products
       foreign_key_column: id
   - collection: offerings
     field: name
@@ -3483,7 +3535,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Which period, such as "Week 3" or "Fall". Shown after the program's name.
+      note: Which period, such as "Week 3" or "Fall". Shown after the product's name.
       options: null
       readonly: false
       required: false
@@ -3762,6 +3814,529 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: offerings
+    field: schedule
+    type: alias
+    meta:
+      collection: offerings
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{weekday}} {{start_time}}–{{end_time}}"
+      field: schedule
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: "The days and times it meets each week, one row a day, such as Tuesday and Thursday 4:15–7:30 pm."
+      options:
+        template: "{{weekday}} {{start_time}}–{{end_time}}"
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special:
+        - o2m
+      translations:
+        - language: en-US
+          translation: Schedule
+      validation: null
+      validation_message: null
+      width: full
+    schema: null
+  - collection: offering_schedule
+    field: id
+    type: uuid
+    meta:
+      collection: offering_schedule
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: offering_schedule
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offering_schedule
+    field: offering_id
+    type: uuid
+    meta:
+      collection: offering_schedule
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{product_id.name}} · {{name}}"
+      field: offering_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{product_id.name}} · {{name}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Offering
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: offering_id
+      table: offering_schedule
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: offerings
+      foreign_key_column: id
+  - collection: offering_schedule
+    field: weekday
+    type: integer
+    meta:
+      collection: offering_schedule
+      conditions: null
+      display: labels
+      display_options:
+        choices:
+          - text: Monday
+            value: 1
+          - text: Tuesday
+            value: 2
+          - text: Wednesday
+            value: 3
+          - text: Thursday
+            value: 4
+          - text: Friday
+            value: 5
+          - text: Saturday
+            value: 6
+          - text: Sunday
+            value: 7
+      field: weekday
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: The day it meets each week.
+      options:
+        choices:
+          - text: Monday
+            value: 1
+          - text: Tuesday
+            value: 2
+          - text: Wednesday
+            value: 3
+          - text: Thursday
+            value: 4
+          - text: Friday
+            value: 5
+          - text: Saturday
+            value: 6
+          - text: Sunday
+            value: 7
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation:
+        weekday:
+          _between:
+            - 1
+            - 7
+      validation_message: Must be a day of the week.
+      width: full
+    schema:
+      name: weekday
+      table: offering_schedule
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offering_schedule
+    field: start_time
+    type: time
+    meta:
+      collection: offering_schedule
+      conditions: null
+      display: null
+      display_options: null
+      field: start_time
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Starts at
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: start_time
+      table: offering_schedule
+      data_type: time without time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: offering_schedule
+    field: end_time
+    type: time
+    meta:
+      collection: offering_schedule
+      conditions: null
+      display: null
+      display_options: null
+      field: end_time
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Ends at
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: end_time
+      table: offering_schedule
+      data_type: time without time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: activities
+    field: id
+    type: uuid
+    meta:
+      collection: activities
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: activities
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: activities
+    field: offering_id
+    type: uuid
+    meta:
+      collection: activities
+      conditions: null
+      display: related-values
+      display_options:
+        template: "{{product_id.name}} · {{name}}"
+      field: offering_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: "{{product_id.name}} · {{name}}"
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special:
+        - m2o
+      translations:
+        - language: en-US
+          translation: Offering
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: offering_id
+      table: activities
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: offerings
+      foreign_key_column: id
+  - collection: activities
+    field: date
+    type: date
+    meta:
+      collection: activities
+      conditions: null
+      display: null
+      display_options: null
+      field: date
+      group: null
+      hidden: false
+      interface: datetime
+      note: The day it happens.
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date
+      table: activities
+      data_type: date
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: activities
+    field: start_time
+    type: time
+    meta:
+      collection: activities
+      conditions: null
+      display: null
+      display_options: null
+      field: start_time
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations:
+        - language: en-US
+          translation: Starts at
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: start_time
+      table: activities
+      data_type: time without time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: activities
+    field: end_time
+    type: time
+    meta:
+      collection: activities
+      conditions: null
+      display: null
+      display_options: null
+      field: end_time
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 5
+      special: null
+      translations:
+        - language: en-US
+          translation: Ends at
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: end_time
+      table: activities
+      data_type: time without time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: activities
+    field: archived_at
+    type: timestamp
+    meta:
+      collection: activities
+      conditions: null
+      display: null
+      display_options: null
+      field: archived_at
+      group: null
+      hidden: false
+      interface: datetime
+      note: Set when it's cancelled.
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: archived_at
+      table: activities
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: registration_forms
     field: id
     type: uuid
@@ -3893,14 +4468,14 @@ fields:
       conditions: null
       display: related-values
       display_options:
-        template: "{{program_id.name}} · {{name}}"
+        template: "{{product_id.name}} · {{name}}"
       field: offerings
       group: null
       hidden: false
       interface: list-o2m
       note: null
       options:
-        template: "{{program_id.name}} · {{name}}"
+        template: "{{product_id.name}} · {{name}}"
       readonly: false
       required: false
       searchable: true
@@ -4291,24 +4866,66 @@ relations:
       on_delete: RESTRICT
 
   - collection: offerings
-    field: program_id
-    related_collection: programs
+    field: product_id
+    related_collection: products
     meta:
       junction_field: null
       many_collection: offerings
-      many_field: program_id
+      many_field: product_id
       one_allowed_collections: null
-      one_collection: programs
+      one_collection: products
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: offerings
-      column: program_id
-      foreign_key_table: programs
+      column: product_id
+      foreign_key_table: products
       foreign_key_column: id
-      constraint_name: offerings_program_id_foreign
+      constraint_name: offerings_product_id_foreign
+      on_update: NO ACTION
+      on_delete: RESTRICT
+  - collection: offering_schedule
+    field: offering_id
+    related_collection: offerings
+    meta:
+      junction_field: null
+      many_collection: offering_schedule
+      many_field: offering_id
+      one_allowed_collections: null
+      one_collection: offerings
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: schedule
+      sort_field: null
+    schema:
+      table: offering_schedule
+      column: offering_id
+      foreign_key_table: offerings
+      foreign_key_column: id
+      constraint_name: offering_schedule_offering_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: activities
+    field: offering_id
+    related_collection: offerings
+    meta:
+      junction_field: null
+      many_collection: activities
+      many_field: offering_id
+      one_allowed_collections: null
+      one_collection: offerings
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: activities
+      column: offering_id
+      foreign_key_table: offerings
+      foreign_key_column: id
+      constraint_name: activities_offering_id_foreign
       on_update: NO ACTION
       on_delete: RESTRICT
   - collection: offerings

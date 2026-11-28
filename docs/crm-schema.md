@@ -18,8 +18,8 @@ the sibling issues (cyc-seattle/isthmia#92-cyc-seattle/isthmia#95) that decompos
 - The CRM's terms are ours, and Clubspot's appear only in its mirrors and the sync
   (cyc-seattle/isthmia#241). A **program** is a lasting thing CYC runs, such as Guppies or J-Pod, and
   is what a Google Group or a Crew term attaches to. A program with `team` set is a **team**, such
-  as a race team. An **offering** is the catalog's: what CSC sells, one program for one dated period
-  (cyc-seattle/platform#332). A Clubspot **camp** (`clubspot_camps`) is only how people sign up, built
+  as a race team. An **offering** is the catalog's: what CSC sells, one product, such as a program, for one dated
+  period (cyc-seattle/platform#332, cyc-seattle/platform#395). A Clubspot **camp** (`clubspot_camps`) is only how people sign up, built
   from a registration form's offerings each season, and staff link each offering to the Clubspot class,
   and session, that sells it. A **registration** is ours, made from Clubspot's entries
   ([Collections](#collections)). We say registration, not "enrollment."

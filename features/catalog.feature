@@ -4,10 +4,12 @@ Feature: The catalog
   product is one of these kinds: a program, a charter, a storage lease, merchandise, event hosting,
   or other. Some products are programs, which sailors sign up for, such as Summer Camp or the race
   team. A program has details of its own, such as its Google group and the ages it takes. The
-  catalog's offerings say what CSC sells: one program for one dated period, such as Guppies week 3
-  of summer 2027, with its price and how many sailors it takes. Each is on a registration form, such
-  as 2027 Summer Sailing Camps, which says when registration opens. Clubspot's camps are built from
-  them, and each offering is linked to the Clubspot class that sells it. The catalog also lists the revenue accounts
+  catalog's offerings say what CSC sells: one product for one dated period, such as Guppies week 3
+  of summer 2027, with its price and how many sailors it takes. An offering's schedule gives the
+  days and times it meets each week, such as Tuesdays and Thursdays from 4:15 to 7:30 pm, and the
+  catalog lists each day it meets too. Each offering is on a registration form, such as 2027 Summer
+  Sailing Camps, which says when registration opens. Clubspot's camps are built from them, and each
+  offering is linked to the Clubspot class that sells it. The catalog also lists the revenue accounts
   the club's money is booked to, the qualifications a coach can hold, and the boat classes, such as
   Opti, 420, or RIB for a coach boat. It lists the staff levels hourly staff are paid at, too. Each
   is a role, such as Instructor, Coach, or Office, at a grade: Volunteer, Junior, Standard, Senior,
@@ -24,8 +26,9 @@ Feature: The catalog
   admins, only the few people who manage the club's products and revenue accounts can change the
   catalog. They have the Catalog Writer policy. The Catalog Reader policy lets someone see the
   catalog without changing it. Crew, the people an admin trusts with every roster, can see products
-  and revenue accounts too. People with a CRM policy can see programs' details, but not the rest of
-  the products or the revenue accounts unless they're also Crew. To change something means to add, edit, or
+  and revenue accounts too. Anyone who signs in can see products' names, which name the offerings.
+  People with a CRM policy can see programs' details too, but not the rest of the products or the
+  revenue accounts unless they're also Crew. To change something means to add, edit, or
   delete it.
 
   Rule: A program can't be deleted while it has details of its own
@@ -118,17 +121,19 @@ Feature: The catalog
       Then they can see program areas
       But they can't change program areas
 
-  Rule: Only admins, Crew, people with a Catalog or Plan policy, and the Google sync can see products and revenue accounts
+  Rule: Only admins, Crew, people with a Catalog or Plan policy, and the Google sync can see more of a product than its name, or see revenue accounts
 
-    Example: A family member can't see products or revenue accounts
+    Example: A family member can see products' names, but not the rest of the products or revenue accounts
       Given a user with the Community role
-      Then they can't see products
+      Then they can see products' names
+      But they can't see the rest of the products
       And they can't see revenue accounts
 
     Example: A CRM Writer who isn't Crew can see a program's details, but not the rest of its product or its revenue account
       Given a user with the Community role and the CRM Writer policy
       Then they can see programs' details
-      But they can't see products
+      And they can see products' names
+      But they can't see the rest of the products
       And they can't see revenue accounts
 
   Rule: Anyone who signs in can see program areas

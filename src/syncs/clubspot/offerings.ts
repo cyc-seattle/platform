@@ -141,18 +141,20 @@ export function offeringIdsByKey(offerings: readonly OfferingRow[]): Map<string,
 }
 
 /**
- * Each class's program, from the offerings linked to it: theirs when they agree, and none when there are
- * none or they disagree. gsuite-sync still reads it.
+ * Each class's program, from the offerings linked to it: their product's program when they agree, and none
+ * when there are none, they disagree, or their product isn't a program. gsuite-sync still reads it.
+ * `programOf` maps a product's ID to its program's.
  */
 export function planClassPrograms(
   classes: readonly Pick<ClassRow, "id" | "program_id">[],
   offerings: readonly OfferingRow[],
+  programOf: ReadonlyMap<string, string>,
 ): { id: string; patch: Pick<ClassRow, "program_id"> }[] {
-  const programs = new Map<string, Set<string>>();
+  const programs = new Map<string, Set<string | null>>();
   for (const offering of offerings) {
     if (offering.clubspot_class_id === null) continue;
-    const held = programs.get(offering.clubspot_class_id) ?? new Set<string>();
-    held.add(offering.program_id);
+    const held = programs.get(offering.clubspot_class_id) ?? new Set<string | null>();
+    held.add(programOf.get(offering.product_id) ?? null);
     programs.set(offering.clubspot_class_id, held);
   }
   return classes.flatMap((cls) => {
@@ -439,7 +441,7 @@ export async function syncOfferings(directus: DirectusClient, today: string): Pr
     ...all,
     fields: [
       "id",
-      "program_id",
+      "product_id",
       "starts_on",
       "ends_on",
       "capacity",
@@ -461,7 +463,12 @@ export async function syncOfferings(directus: DirectusClient, today: string): Pr
   for (const { id, patch } of planConfirmedCounts(offerings, registered)) {
     if (await unlessVanished(() => directus.updateItem<OfferingRow>("offerings", id, patch))) offeringsWritten++;
   }
-  for (const { id, patch } of planClassPrograms(classes, offerings)) {
+  const programs = await directus.readItems<{ id: string; product_id: string }>("programs", {
+    ...all,
+    fields: ["id", "product_id"],
+  });
+  const programOf = new Map(programs.map((program) => [program.product_id, program.id]));
+  for (const { id, patch } of planClassPrograms(classes, offerings, programOf)) {
     await unlessVanished(() => directus.updateItem<ClassRow>("clubspot_classes", id, patch));
   }
   return {

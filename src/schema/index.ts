@@ -3,6 +3,7 @@
 /** Every collection, for `createDirectus<Schema>()`. */
 export interface Schema {
   accounts: Accounts[];
+  activities: Activities[];
   announcements: Announcements[];
   assets: Assets[];
   audit_findings: AuditFindings[];
@@ -36,6 +37,7 @@ export interface Schema {
   households: Households[];
   links: Links[];
   medical_profiles: MedicalProfiles[];
+  offering_schedule: OfferingSchedule[];
   offerings: Offerings[];
   organization_cost_accounts: OrganizationCostAccounts[];
   organizations: Organizations[];
@@ -124,6 +126,18 @@ export interface Accounts {
   contra_account_id: string | Accounts | null;
   /** Kept for history, and closed to new lines. */
   retired: boolean;
+}
+
+/** One day an offering meets, with its times. */
+export interface Activities {
+  id: string;
+  offering_id: string | Offerings;
+  /** The day it happens. */
+  date: string;
+  start_time: string;
+  end_time: string;
+  /** Set when it's cancelled. */
+  archived_at: string | null;
 }
 
 /** What Sail Team's home page shows, newest first. */
@@ -627,15 +641,25 @@ export interface MedicalProfiles {
   date_updated: string | null;
 }
 
-/** What CSC sells: one program for one dated period, such as Guppies week 3 of summer 2027. Clubspot's camps are built from these. */
+/** One day of the week an offering meets, and its times. Edited on the offering, as its schedule. */
+export interface OfferingSchedule {
+  id: string;
+  offering_id: string | Offerings;
+  /** The day it meets each week. */
+  weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  start_time: string;
+  end_time: string;
+}
+
+/** What CSC sells: one product for one dated period, such as Guppies week 3 of summer 2027. Clubspot's camps are built from these. */
 export interface Offerings {
   /** Its class in Clubspot. Set once the class is made in Clubspot. */
   clubspot_class_id: string | ClubspotClasses | null;
   /** Its session in Clubspot, for an offering of one session. Empty when the class's limit covers every session. */
   clubspot_session_id: string | ClubspotSessions | null;
   id: string;
-  program_id: string | Programs;
-  /** Which period, such as "Week 3" or "Fall". Shown after the program's name. */
+  product_id: string | Products;
+  /** Which period, such as "Week 3" or "Fall". Shown after the product's name. */
   name: string | null;
   /** The form families sign up on. */
   registration_form_id: string | RegistrationForms | null;
@@ -649,6 +673,8 @@ export interface Offerings {
   capacity: number | null;
   /** Set when it's cancelled. The website stops showing it. */
   archived_at: string | null;
+  /** The days and times it meets each week, one row a day, such as Tuesday and Thursday 4:15–7:30 pm. */
+  schedule: (string | OfferingSchedule)[];
   /** How many sailors are confirmed. Counted from Clubspot each hour. */
   confirmed_count: number;
   registrations: (string | Registrations)[];

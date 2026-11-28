@@ -166,8 +166,20 @@ export const WEBSITE_FILE_FIELDS = [
 ];
 
 /**
+ * An offering the website shows: not archived, and on a registration form that isn't. The form's filter
+ * alone would pass an offering with no form, since Directus left-joins it.
+ */
+const SHOWN_OFFERING = {
+  _and: [
+    { archived_at: { _null: true } },
+    { registration_form_id: { _nnull: true } },
+    { registration_form_id: { archived_at: { _null: true } } },
+  ],
+};
+
+/**
  * What the site reads outside the website's own collections (cyc-seattle/platform#332): what's on sale, so a
- * program page shows its dates, price, ages, and whether it takes registrations. Only these fields, and
+ * program page shows its dates, days and times, price, ages, and whether it takes registrations. Only these fields, and
  * only the rows the filters let through: never a registration, an offering's link to Clubspot, or a
  * program's money. Each row filter's field is watched too, so a change that adds or drops a row publishes.
  */
@@ -177,12 +189,12 @@ export const WEBSITE_CATALOG_READS: {
   permissions?: Record<string, unknown>;
   watch: string[];
 }[] = [
-  { collection: "programs", fields: ["id", "name", "min_age", "max_age"], watch: [] },
+  { collection: "programs", fields: ["id", "product_id", "name", "min_age", "max_age"], watch: [] },
   {
     collection: "offerings",
     fields: [
       "id",
-      "program_id",
+      "product_id",
       "name",
       "registration_form_id",
       "starts_on",
@@ -191,7 +203,19 @@ export const WEBSITE_CATALOG_READS: {
       "capacity",
       "confirmed_count",
     ],
-    permissions: { archived_at: { _null: true } },
+    permissions: SHOWN_OFFERING,
+    watch: ["archived_at"],
+  },
+  {
+    collection: "offering_schedule",
+    fields: ["id", "offering_id", "weekday", "start_time", "end_time"],
+    permissions: { offering_id: SHOWN_OFFERING },
+    watch: [],
+  },
+  {
+    collection: "activities",
+    fields: ["id", "offering_id", "date", "start_time", "end_time"],
+    permissions: { _and: [{ archived_at: { _null: true } }, { offering_id: SHOWN_OFFERING }] },
     watch: ["archived_at"],
   },
   {
@@ -375,6 +399,8 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
     { collection: "crew_positions", action: "read" },
     readTermsWithoutPay,
   ];
+  // An offering is named by its product, but the CRM has no need for a product's revenue account.
+  const readProductNames: PermissionRuleInput = { collection: "products", action: "read", fields: ["id", "name"] };
   // A planner sees who holds a paid position, and the person in a salaried one, by name.
   const readCrewPay = [
     { collection: "crew_terms", action: "read" as const },
@@ -398,7 +424,11 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
       name: "CRM Reader",
       icon: "person_search",
       description: "Sees people, their details, and Clubspot's events and registrations. No medical information.",
-      rules: [...collections.map((collection) => ({ collection, action: "read" as const })), ...readPositionHolders],
+      rules: [
+        ...collections.map((collection) => ({ collection, action: "read" as const })),
+        ...readPositionHolders,
+        readProductNames,
+      ],
     },
     {
       key: "crm-writer",
@@ -413,6 +443,7 @@ export function groupPolicies(schemas: LoadedSchema[]): PolicyData[] {
           (collection) => fieldsIn(schemas, collection),
         ),
         ...readPositionHolders,
+        readProductNames,
       ],
     },
     {

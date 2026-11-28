@@ -30,11 +30,15 @@ name, and shows the first name alone unless staff chose to show their full name
 ([crew-schema.md](crew-schema.md)). It reads nothing else about them in the CRM.
 
 A program page links to the catalog programs it covers (`website_programs.catalog_programs`), and
-shows what's on sale of them, from the catalog (cyc-seattle/platform#332): each offering that isn't
-archived, with its dates, price, capacity and confirmed count, its registration form, and, once the
-form's Clubspot camp is public, whether that camp takes registrations. It reads each program's name and
-ages too, and nothing else of the catalog: no registration, no offering's link to Clubspot, and no
-program's money ([crm-schema.md](crm-schema.md#collections)).
+shows what's on sale of them, from the catalog (cyc-seattle/platform#332). An offering is on sale when it
+isn't archived and is on a registration form that isn't archived. The build reads each one's dates, price,
+capacity and confirmed count, its registration form, and, once the form's Clubspot camp is public, whether
+that camp takes registrations. It reads each offering's schedule, the days and times it meets each week
+(`offering_schedule`), and each day it meets that isn't archived (`activities`)
+(cyc-seattle/platform#395). An offering belongs to a product, and the build finds its program by the
+program's `product_id`. It reads each program's name and ages too, and nothing else of the catalog: no
+registration, no offering's link to Clubspot, and no program's money
+([crm-schema.md](crm-schema.md#collections)).
 
 The site's build reads them as the Website Build user ([access.md](access.md#the-website-build)).
 
@@ -44,9 +48,9 @@ The site is built ahead of time, so a content change shows only after a build. P
 one itself: the `website-publish` hook (`stacks/backend/website-publish.cjs`) runs
 cyc-seattle/csc-website's `publish` workflow after a row in a `website_*` collection, a crew member,
 term, or position, or a file in the Website folder, is created, changed, sorted, or deleted. Of what's
-on sale, it starts one when a program, offering, registration form, or Clubspot camp comes or goes, or
-when a field the site reads changes, or the field that decides whether the site sees the row:
-`archived_at` or the camp's `public`. A camp's sync bookkeeping, such as `synced_through`, publishes
+on sale, it starts one when a program, offering, schedule row, day, registration form, or Clubspot camp
+comes or goes, or when a field the site reads changes, or the field that decides whether the site sees
+the row: `archived_at` or the camp's `public`. A camp's sync bookkeeping, such as `synced_through`, publishes
 nothing (`WEBSITE_CATALOG_READS` in `stacks/backend/policies.ts`). It waits until edits have stopped for 30
 seconds, and no more than 5 minutes, so a burst of edits is one build. The workflow's nightly run
 publishes anything a failed start missed, and a term that starts or ends that day.
