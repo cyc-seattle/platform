@@ -3,8 +3,13 @@
 //
 // No plan keys (cyc-seattle/platform#395): a plan row has one identifier, its `id`. Each reference by
 // key becomes a reference by id, to the row with that key in the same Financial Plan, and the `key`
-// columns go. A reference to a key no row in its Financial Plan has is cleared, since an id must
-// name a row. Results change only their references, so a frozen Financial Plan's numbers stay.
+// columns go. A key no row in its Financial Plan has:
+// - in a column that may be empty (a row's term, position or cost center, a result line's cost center,
+//   a P&L row's term, a bonus's term) is cleared, since an id must name a row;
+// - in one that may not (an offering's P&L row, a bonus's owner, a position's pay, a capital rank)
+//   stops the migration, naming the table and the Financial Plan, before it changes anything;
+// - as a warning's subject is left as it was, since a subject can also be a product's id or a rate.
+// Results change only their references, so a frozen Financial Plan's numbers stay.
 //
 // It changes frozen Financial Plans, which the frozen-plans rules forbid, so their triggers are off
 // for these statements. ALTER TABLE locks each table until the migration commits, so no other write
@@ -68,6 +73,34 @@ const RENAMED = [
   ["plan_result_warnings", "subject_key", "subject_id"],
 ];
 
+/**
+ * Each result column that may not be empty, as [table, column, the tables its key can name as a Postgres
+ * array, which of its rows hold a key], checked before anything changes.
+ */
+const REQUIRED = [
+  ["plan_result_pnl", "subject_key", "{plan_offerings}", "t.level = 'offering'"],
+  ["plan_result_bonuses", "bonus_owner_key", "{plan_bonus_owners}", "true"],
+  ["plan_result_positions", "position_key", "{plan_salaried_positions}", "true"],
+  ["plan_result_capital", "item_key", "{plan_capital_items,plan_budget_lines}", "true"],
+];
+
+/** The tables a warning's subject can name a row of, in the order a key found in two is taken from. */
+const SUBJECTS = [
+  "plan_offerings",
+  "plan_activities",
+  "plan_trips",
+  "plan_block_staff",
+  "plan_closed_dates",
+  "plan_budget_lines",
+  "plan_labor_lines",
+  "plan_capital_items",
+  "plan_pools",
+  "plan_payroll_taxes",
+  "plan_salaried_positions",
+  "plan_salaried_bookings",
+  "plan_bonus_owners",
+];
+
 const literal = (value) => `'${value.replaceAll("'", "''")}'`;
 const array = (values) => `ARRAY[${values.map(literal).join(", ")}]`;
 
@@ -87,6 +120,7 @@ DO $migration$
 DECLARE
   t text;
   ref text[];
+  missing uuid;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -110,8 +144,27 @@ BEGIN
     END IF;
   END LOOP;
 
-  FOREACH ref SLICE 1 IN ARRAY ARRAY[${RENAMED.map(array).join(", ")}] LOOP
+  -- A result column that may not be empty needs every key in it to name a row.
+  FOREACH ref SLICE 1 IN ARRAY ARRAY[${REQUIRED.map(array).join(", ")}] LOOP
     IF to_regclass(ref[1]) IS NOT NULL THEN
+      EXECUTE format($sql$
+        SELECT t.financial_plan_id FROM %I t
+          WHERE %s AND NOT EXISTS (
+            SELECT 1 FROM cyc_plan_ids i
+              WHERE i.financial_plan_id = t.financial_plan_id AND i.key = t.%I::text AND i.tbl = ANY (%L::text[])
+          ) LIMIT 1$sql$, ref[1], ref[4], ref[2], ref[3]) INTO missing;
+      IF missing IS NOT NULL THEN
+        RAISE EXCEPTION 'cyc0031: %.% names a key no row in Financial Plan % has. Fix it before this runs.',
+          ref[1], ref[2], missing;
+      END IF;
+    END IF;
+  END LOOP;
+
+  FOREACH ref SLICE 1 IN ARRAY ARRAY[${RENAMED.map(array).join(", ")}] LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = ref[1] AND column_name = ref[2]
+    ) THEN
       EXECUTE format('ALTER TABLE %I RENAME COLUMN %I TO %I', ref[1], ref[2], ref[3]);
       -- Nested, because PL/pgSQL prepares a statement only when it reaches it.
       IF to_regclass('directus_fields') IS NOT NULL THEN
@@ -153,8 +206,12 @@ BEGIN
     ${byKey("plan_result_positions", "position_id", "ARRAY['plan_salaried_positions']", resultSet)};
     ${byKey("plan_result_capital", "item_id", "ARRAY['plan_capital_items', 'plan_budget_lines']", resultSet)};
     -- A warning's subject is a row's key, or something else, such as a product's id, which stays.
-    UPDATE plan_result_warnings t SET subject_id = i.id::text
-      FROM cyc_plan_ids i WHERE i.financial_plan_id = t.financial_plan_id AND i.key = t.subject_id;
+    UPDATE plan_result_warnings t SET subject_id = coalesce((
+      SELECT i.id::text FROM cyc_plan_ids i
+        WHERE i.financial_plan_id = t.financial_plan_id AND i.key = t.subject_id AND i.tbl = ANY (${array(SUBJECTS)})
+        ORDER BY array_position(${array(SUBJECTS)}, i.tbl)
+        LIMIT 1
+    ), t.subject_id) WHERE t.subject_id IS NOT NULL;
   END IF;
 
   FOREACH t IN ARRAY ${array(ROWS)} LOOP

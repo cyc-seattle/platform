@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { up } from "../stacks/backend/migrations/cyc0030-plan-ids.cjs";
+import { up } from "../stacks/backend/migrations/cyc0031-plan-ids.cjs";
 
 // No plan keys (cyc-seattle/platform#395), in a real Postgres (PGlite), with a trigger like the
 // frozen-plans hook's that refuses every write.
@@ -156,6 +156,33 @@ describe("the plan ids migration", { timeout: 30_000 }, () => {
       { collection: "plan_result_pnl", field: "level" },
     ]);
     await expect(db.exec(`UPDATE plan_offerings SET term_id = NULL`)).rejects.toThrow("frozen");
+  });
+
+  it("stops before changing anything when a result that needs a row names a key no row has", async () => {
+    const db = await before();
+    await db.exec(
+      `INSERT INTO plan_result_positions (financial_plan_id, position_key) VALUES ('${DRAFT}', '${key(99)}')`,
+    );
+    await expect(migrate(db)).rejects.toThrow(
+      `cyc0031: plan_result_positions.position_key names a key no row in Financial Plan ${DRAFT} has.`,
+    );
+    expect(await rows(db, "SELECT term_key FROM plan_offerings ORDER BY id")).toEqual([
+      { term_key: key(1) },
+      { term_key: key(9) },
+    ]);
+  });
+
+  it("takes a warning's subject from the table it can name, when two of a Financial Plan's rows share its key", async () => {
+    const db = await before();
+    // A key the frozen plan's offering and its rates both have, which only the offering can be a warning about.
+    await db.exec(`
+      CREATE TABLE plan_rates (id uuid PRIMARY KEY, plan_id uuid NOT NULL, key uuid NOT NULL);
+      INSERT INTO plan_rates VALUES ('${id(40)}', '${F_OPS}', '${key(3)}');
+    `);
+    await migrate(db);
+    expect(await rows(db, "SELECT subject_id FROM plan_result_warnings ORDER BY id LIMIT 1")).toEqual([
+      { subject_id: F_OFF },
+    ]);
   });
 
   it("does nothing when run again, or on a new database", async () => {
