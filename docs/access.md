@@ -77,24 +77,24 @@ permissions, plus any shared policies it's given:
 Groups give the rest. `groupPolicies` in `stacks/backend/policies.ts` declares the policies a group
 can give, attached to no role:
 
-| Policy              | Gives                                                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| CRM Reader          | Reads every CRM collection but medical information, and each product's name                                                     |
-| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only. Reads each product's name |
-| Medical Reader      | Reads every sailor's medical information                                                                                        |
-| Medical Writer      | Changes every sailor's medical information                                                                                      |
-| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                                |
-| Catalog Writer      | Changes the catalog, and reads the directory                                                                                    |
-| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                                 |
-| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does                 |
-| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same          |
-| Crew Reader         | Reads Crew, but a term's pay ([crew-schema.md](crew-schema.md))                                                                 |
-| Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                                |
-| Link Writer         | Changes Sail Team's links, but not their previews                                                                               |
-| Announcement Writer | Changes Sail Team's announcements                                                                                               |
-| FreeScout Agent     | Signs in to FreeScout, the shared inbox. Nothing in Directus                                                                    |
-| Listmonk Write      | Signs in to Listmonk with its Write role: writes and tests newsletters, and manages subscribers. Nothing in Directus            |
-| Listmonk Send       | Signs in to Listmonk with its Send role: Listmonk Write's, and sends newsletters. Nothing in Directus                           |
+| Policy              | Gives                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CRM Reader          | Reads every CRM collection but medical information, and each product's name                                                                       |
+| CRM Writer          | Changes every CRM collection but medical information. Clubspot's records and programs stay read-only. Reads each product's name                   |
+| Medical Reader      | Reads every sailor's medical information                                                                                                          |
+| Medical Writer      | Changes every sailor's medical information                                                                                                        |
+| Catalog Reader      | Reads the catalog: every collection in `schemas/core.yaml`, programs included, and the directory                                                  |
+| Catalog Writer      | Changes the catalog, and reads the directory                                                                                                      |
+| Plan Reader         | Reads every plan, wages and bonus rates included, the catalog, and users' names                                                                   |
+| Plan Writer         | Starts and deletes a draft Financial Plan, and changes any Program Plan in a draft. Reads what Plan Reader does                                   |
+| Plan Admin          | Changes the Operations Plan in a draft, and a Financial Plan's plans; freezes, dates, and archives one. Reads the same. Given with Catalog Writer |
+| Crew Reader         | Reads Crew, but a term's pay ([crew-schema.md](crew-schema.md))                                                                                   |
+| Crew Writer         | Changes Crew, pay included, and adds a crew member's photo to the Website folder                                                                  |
+| Link Writer         | Changes Sail Team's links, but not their previews                                                                                                 |
+| Announcement Writer | Changes Sail Team's announcements                                                                                                                 |
+| FreeScout Agent     | Signs in to FreeScout, the shared inbox. Nothing in Directus                                                                                      |
+| Listmonk Write      | Signs in to Listmonk with its Write role: writes and tests newsletters, and manages subscribers. Nothing in Directus                              |
+| Listmonk Send       | Signs in to Listmonk with its Send role: Listmonk Write's, and sends newsletters. Nothing in Directus                                             |
 
 They're coarse: whole collections, with no row filters and no hidden fields, but for users, people,
 link previews, and Crew: a Plan policy reads only each user's and person's first and last name, so a
@@ -103,7 +103,9 @@ a link's preview. A term's pay is read only by Crew Writers and the Plan policie
 policies read who holds which position without it. A Crew policy reads only a person's name and
 email.
 And the planners' writes split by the kind of plan a row is in (cyc-seattle/platform#251). A Plan
-Admin is given with Plan Writer. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
+Admin is given with Plan Writer, and with Catalog Writer: starting a Financial Plan from another year's
+makes that year's catalog offerings, so the `frozen-plans` hook refuses it to anyone without Catalog
+Writer (cyc-seattle/platform#395). A Plan Writer plans offerings the catalog has, and can't add one. A Plan Writer changes a row only in a Program Plan, through the one many-to-one path
 `plan_id.kind`, and none of the collections only an Operations Plan uses
 (`OPERATIONS_ONLY`), such as rates, staff levels, pools, terms, and bonuses. On a Financial Plan it sets
 only the name, note, and parent, and on a Program Plan only its notes. A Plan Admin changes a row only in an Operations Plan, and a
