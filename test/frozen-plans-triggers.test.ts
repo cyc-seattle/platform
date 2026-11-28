@@ -927,6 +927,34 @@ describe("starting a Financial Plan from another", { timeout: 30_000 }, () => {
     });
   });
 
+  it("plans the same catalog offerings in two of next year's drafts from one plan", async () => {
+    const db = await database(config(false));
+    const w = writer(db);
+    const { catalog, organization, set } = await plans(db, 2607);
+    const nextYear = async (name: string) => {
+      const child = await w.insert("financial_plans", {
+        organization_id: organization,
+        fiscal_year: 2608,
+        name,
+        status: "draft",
+        parent_id: set,
+      });
+      expect(await copyParent(config(false), knexOver(db), child)).toBe(true);
+      const { rows } = await db.query<Values>(
+        `SELECT o.offering_id FROM plan_offerings o JOIN plans p ON p.id = o.plan_id WHERE p.financial_plan_id = $1`,
+        [child],
+      );
+      return rows.map((row) => row["offering_id"]);
+    };
+    const [first] = await nextYear("Two coaches");
+    const [second] = await nextYear("Three coaches");
+    expect(first).not.toBe(catalog);
+    expect(second).toBe(first);
+    const { rows } = await db.query<Values>(`SELECT count(*)::int AS n FROM offerings WHERE name = 'Offering'`);
+    // This year's, and next year's.
+    expect(rows).toEqual([{ n: 2 }]);
+  });
+
   it("does nothing for a Financial Plan with no parent", async () => {
     const db = await database(config(false));
     const { organization } = await plans(db, 2602);

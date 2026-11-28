@@ -970,8 +970,9 @@ async function holdsPolicy(query, user, name) {
 /**
  * Copies a new Financial Plan's parent into it: a draft copy of each of the parent's plans, with
  * every row, each link pointing at the copy of the row it linked to. A copy from another year's links
- * its offerings to new catalog offerings, one for each the parent's offerings link to, with the same
- * product and name, on no form: 2028's Guppies week 3 isn't 2027's (cyc-seattle/platform#395).
+ * its offerings to that year's catalog offerings, one for each the parent's offerings link to, with the
+ * same product and name: 2028's Guppies week 3 isn't 2027's (cyc-seattle/platform#395). It plans one
+ * another of the year's Financial Plans plans, and makes the rest, on no form.
  * Does nothing if the Financial Plan has no parent, or already has plans.
  */
 async function copyParent(config, db, setId) {
@@ -999,9 +1000,31 @@ async function copyParent(config, db, setId) {
         return copy;
       });
       if (table === OFFERINGS && parent.fiscal_year !== set.fiscal_year) {
+        // The year's catalog offerings another of its Financial Plans plans, such as a second draft from
+        // the same parent's: a copy plans one with the same product and name, once, before it makes one.
+        const answer = await trx.raw(
+          `SELECT DISTINCT o.id, o.product_id, o.name FROM ${CATALOG_OFFERINGS} o
+            JOIN ${OFFERINGS} po ON po.offering_id = o.id
+            JOIN ${PLANS} p ON p.id = po.plan_id
+            JOIN ${SETS} s ON s.id = p.financial_plan_id
+            WHERE s.organization_id = ? AND s.fiscal_year = ? AND s.id <> ?
+            ORDER BY o.id`,
+          [set.organization_id, set.fiscal_year, set.id],
+        );
+        const theYears = answer.rows ?? answer;
+        const planned = new Set();
         for (const copy of copies) {
           if (!nextYear.has(copy.offering_id)) {
             const was = await trx(CATALOG_OFFERINGS).where("id", copy.offering_id).first();
+            const same = theYears.find(
+              (o) => o.product_id === was.product_id && o.name === was.name && !planned.has(o.id),
+            );
+            if (same !== undefined) {
+              planned.add(same.id);
+              nextYear.set(copy.offering_id, same.id);
+              copy.offering_id = same.id;
+              continue;
+            }
             const made = {
               id: crypto.randomUUID(),
               product_id: was.product_id,
@@ -1012,6 +1035,7 @@ async function copyParent(config, db, setId) {
               capacity: copy.capacity,
             };
             await trx(CATALOG_OFFERINGS).insert(made);
+            planned.add(made.id);
             nextYear.set(copy.offering_id, made.id);
           }
           copy.offering_id = nextYear.get(copy.offering_id);
